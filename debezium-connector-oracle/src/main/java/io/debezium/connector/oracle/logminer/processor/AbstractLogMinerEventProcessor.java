@@ -111,6 +111,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     private Instant lastProcessedScnChangeTime = null;
     private Scn lastProcessedScn = Scn.NULL;
     private boolean sequenceUnavailable = false;
+    private HashMap<Long, TableId> objectIdToTableIdCache = new HashMap<>();
 
     private final Set<String> abandonedTransactionsCache = new HashSet<>();
 
@@ -226,6 +227,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     @Override
     public Scn process(Scn startScn, Scn endScn) throws SQLException, InterruptedException {
         counters.reset();
+
+        // Recreate the cache on each iteration
+        objectIdToTableIdCache = new HashMap<>();
 
         try (PreparedStatement statement = createQueryStatement()) {
             LOGGER.debug("Fetching results for SCN [{}, {}]", startScn, endScn);
@@ -362,23 +366,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                     // Special use case where the table has been dropped and purged, and we are processing an
                     // old event for the table that comes prior to the drop.
                     LOGGER.debug("Found DML for dropped table in history with object-id based table name {}.", row.getTableId().table());
-                    for (TableId tableId : schema.tableIds()) {
-                        LOGGER.debug("Processing table id '{}'", tableId);
-                        Table table = schema.tableFor(tableId);
-                        if (LOGGER.isDebugEnabled()) {
-                            for (Attribute attribute : table.attributes()) {
-                                LOGGER.debug("Attribute {} with value {}", attribute.name(), attribute.value());
-                            }
-                        }
-                        Attribute attribute = table.attributeWithName("OBJECT_ID");
-                        if (attribute != null) {
-                            LOGGER.debug("Found table '{}' with object id {}", table.id(), attribute.asLong());
-                        }
-                        if (attribute != null && attribute.asLong().equals(row.getObjectId())) {
-                            LOGGER.debug("Table lookup resolved to '{}'", table.id());
-                            row.setTableId(table.id());
-                            break;
-                        }
+                    final TableId tableId = getTableIdByObjectId(row.getObjectId());
+                    if (tableId != null) {
+                        row.setTableId(tableId);
                     }
                 }
                 if (!tableFilter.isIncluded(row.getTableId())) {
@@ -1700,6 +1690,29 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         }
 
         return calculatedLastScn;
+    }
+
+    /**
+     * Automatically maintains a cache across the mining step of table object id to {@link TableId}.
+     * This prevents the need to do expensive iteration loops when multiple changes for a given object id
+     * require the same lookup, this can be optimized using the cache.
+     *
+     * @param objectId the table object id to lookup
+     * @return the matching {@link TableId} if found, or {@code null} if not match found
+     */
+    private TableId getTableIdByObjectId(Long objectId) {
+        return objectIdToTableIdCache.computeIfAbsent(objectId, (tableObjectId) -> {
+            for (TableId tableId : schema.tableIds()) {
+                final Table table = schema.tableFor(tableId);
+                final Attribute attribute = table.attributeWithName("OBJECT_ID");
+                if (attribute != null && attribute.asLong().equals(tableObjectId)) {
+                    LOGGER.debug("Table lookup for object id {} resolved to '{}'", tableObjectId, table.id());
+                    return table.id();
+                }
+            }
+            LOGGER.debug("Table lookup for object id {} did not find a match.", tableObjectId);
+            return null;
+        });
     }
 
     /**
