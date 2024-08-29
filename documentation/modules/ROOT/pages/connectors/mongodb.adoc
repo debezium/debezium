@@ -1574,11 +1574,14 @@ Many properties have default values. Information about the properties is organiz
 
 * xref:debezium-mongodb-connector-required-configuration-properties[Required {prodname} MongoDB connector configuration properties]
 * xref:debezium-mongodb-connector-advanced-configuration-properties[Advanced {prodname} MongoDB connector configuration properties]
+* xref:debezium-mongodb-connector-pass-through-kafka-signals-configuration-properties[Pass-through Kafka signals configuration properties]
+* xref:debezium-mongodb-connector-pass-through-kafka-sink-notification-configuration-properties[Pass-through sink notification configuration properties]
 
 The following configuration properties are _required_ unless a default value is available.
 
 [id="debezium-mongodb-connector-required-configuration-properties"]
-.Required {prodname} MongoDB connector configuration properties
+==== Required {prodname} MongoDB connector configuration properties
+
 [cols="30%a,25%a,45%a",options="header"]
 |===
 |Property |Default |Description
@@ -1838,9 +1841,9 @@ See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more de
 
 The following _advanced_ configuration properties have good defaults that will work in most situations and therefore rarely need to be specified in the connector's configuration.
 
-// Title: Advanced {prodname} MongoDB connector configuration properties
 [id="debezium-mongodb-connector-advanced-configuration-properties"]
-.{prodname} MongoDB connector advanced configuration properties
+==== {prodname} MongoDB connector advanced configuration properties
+
 [cols="30%a,25%a,45%a",options="header"]
 |===
 |Property
@@ -2235,13 +2238,15 @@ After the next failure, the connector stops, and user intervention is required t
 
 |===
 
-[id="debezium-mongodb-connector-kafka-signals-configuration-properties"]
-==== {prodname} connector Kafka signals configuration properties
+
+[id="debezium-mongodb-connector-pass-through-kafka-signals-configuration-properties"]
+==== Pass-through properties for configuring how the MongoDB connector interacts with the Kafka signaling topic
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
 
-[id="debezium-mongodb-connector-kafka-notifications-configuration-properties"]
-==== {prodname} connector sink notifications configuration properties
+
+[id="debezium-mongodb-connector-pass-through-kafka-sink-notification-configuration-properties"]
+==== Pass-through properties for configuring the MongoDB connector sink notification channel
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-sink-notification-configuration-properties.adoc[leveloffset=+1]
 
