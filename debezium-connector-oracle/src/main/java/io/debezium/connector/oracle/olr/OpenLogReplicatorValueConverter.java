@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle.olr;
 
+import java.math.BigInteger;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -62,7 +63,7 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
 
     @Override
     protected Object convertTimestampToEpochMillis(Column column, Field fieldDefn, Object value) {
-        if (value instanceof Long) {
+        if (value instanceof Number) {
             value = convertTimestampValue(column, value);
         }
         return super.convertTimestampToEpochMillis(column, fieldDefn, value);
@@ -70,7 +71,7 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
 
     @Override
     protected Object convertTimestampToEpochMicros(Column column, Field fieldDefn, Object value) {
-        if (value instanceof Long) {
+        if (value instanceof Number) {
             value = convertTimestampValue(column, value);
         }
         return super.convertTimestampToEpochMicros(column, fieldDefn, value);
@@ -78,7 +79,7 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
 
     @Override
     protected Object convertTimestampToEpochNanos(Column column, Field fieldDefn, Object value) {
-        if (value instanceof Long) {
+        if (value instanceof Number) {
             value = convertTimestampValue(column, value);
         }
         return super.convertTimestampToEpochNanos(column, fieldDefn, value);
@@ -86,7 +87,7 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
 
     @Override
     protected Object convertTimestampToEpochMillisAsDate(Column column, Field fieldDefn, Object value) {
-        if (value instanceof Long) {
+        if (value instanceof Number) {
             value = convertTimestampValue(column, value);
         }
         return super.convertTimestampToEpochMillisAsDate(column, fieldDefn, value);
@@ -113,7 +114,7 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
 
     @Override
     protected Object convertTimestampWithLocalZone(Column column, Field fieldDefn, Object value) {
-        if (value instanceof Long) {
+        if (value instanceof Number) {
             final Instant instant = Instant.ofEpochSecond(0, (Long) value);
             return getTimestampWithLocalTimeZoneFormatter(column).format(OffsetDateTime.ofInstant(instant, ZoneOffset.UTC));
         }
@@ -155,7 +156,12 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
         if (column.typeName().equalsIgnoreCase(COLUMN_TYPE_DATE)) {
             // Value is being provided in nanoseconds based on OpenLogReplicator configuration
             // We need to reduce the column's precision to milliseconds
-            value = ((Long) value) / 1_000_000L;
+            if (value instanceof BigInteger) {
+                value = ((BigInteger) value).divide(BigInteger.valueOf(1_000_000L)).longValue();
+            }
+            else {
+                value = ((Long) value) / 1_000_000L;
+            }
         }
         else {
             // TIMESTAMP(n)
