@@ -6,63 +6,14 @@
 
 package io.debezium.connector.postgresql;
 
-import java.util.List;
 import java.util.Map;
 
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
-import io.debezium.connector.postgresql.data.vector.HalfVector;
 import io.debezium.connector.postgresql.data.vector.SparseVector;
-import io.debezium.connector.postgresql.data.vector.Vector;
 
 public class VectorDatabaseTest {
-
-    @Test
-    public void shouldParseVector() {
-        final var expectedVector = List.of(10.0, 20.0, 30.0);
-        Assertions.assertThat(Vector.fromLogical(Vector.schema(), "[10,20,30]")).isEqualTo(expectedVector);
-        Assertions.assertThat(Vector.fromLogical(Vector.schema(), "[ 10,20,30] ")).isEqualTo(expectedVector);
-        Assertions.assertThat(Vector.fromLogical(Vector.schema(), " [ 10,20,30 ]")).isEqualTo(expectedVector);
-        Assertions.assertThat(Vector.fromLogical(Vector.schema(), "[10 ,20 ,30]")).isEqualTo(expectedVector);
-        Assertions.assertThat(Vector.fromLogical(Vector.schema(), "[10.2 , 20, 30]")).isEqualTo(List.of(10.2, 20.0, 30.0));
-        Assertions.assertThat(Vector.fromLogical(Vector.schema(), "[10.2e-1 , 20, 30]")).isEqualTo(List.of(1.02, 20.0, 30.0));
-    }
-
-    @Test
-    public void shouldIgnoreErrorInVectorFormat() {
-        Assertions.assertThat(Vector.fromLogical(Vector.schema(), "10,20,30]")).isNull();
-        Assertions.assertThat(Vector.fromLogical(Vector.schema(), "[10,20,30")).isNull();
-        Assertions.assertThat(Vector.fromLogical(Vector.schema(), "{10,20,30}")).isNull();
-    }
-
-    @Test(expected = NumberFormatException.class)
-    public void shouldFailOnNumberInVectorFormat() {
-        Vector.fromLogical(Vector.schema(), "[a10,20,30]");
-    }
-
-    @Test
-    public void shouldParseHalfVector() {
-        final var expectedVector = List.of(10.0f, 20.0f, 30.0f);
-        Assertions.assertThat(HalfVector.fromLogical(HalfVector.schema(), "[10,20,30]")).isEqualTo(expectedVector);
-        Assertions.assertThat(HalfVector.fromLogical(HalfVector.schema(), "[ 10,20,30] ")).isEqualTo(expectedVector);
-        Assertions.assertThat(HalfVector.fromLogical(HalfVector.schema(), " [ 10,20,30 ]")).isEqualTo(expectedVector);
-        Assertions.assertThat(HalfVector.fromLogical(HalfVector.schema(), "[10 ,20 ,30]")).isEqualTo(expectedVector);
-        Assertions.assertThat(HalfVector.fromLogical(HalfVector.schema(), "[10.2 , 20, 30]")).isEqualTo(List.of(10.2f, 20.0f, 30.0f));
-        Assertions.assertThat(HalfVector.fromLogical(HalfVector.schema(), "[10.2e-1 , 20, 30]")).isEqualTo(List.of(1.02f, 20.0f, 30.0f));
-    }
-
-    @Test
-    public void shouldIgnoreErrorInHalfVectorFormat() {
-        Assertions.assertThat(HalfVector.fromLogical(HalfVector.schema(), "10,20,30]")).isNull();
-        Assertions.assertThat(HalfVector.fromLogical(HalfVector.schema(), "[10,20,30")).isNull();
-        Assertions.assertThat(HalfVector.fromLogical(HalfVector.schema(), "{10,20,30}")).isNull();
-    }
-
-    @Test(expected = NumberFormatException.class)
-    public void shouldFailOnNumberInHalfVectorFormat() {
-        HalfVector.fromLogical(HalfVector.schema(), "[a10,20,30]");
-    }
 
     @Test
     public void shouldParseSparseVector() {
