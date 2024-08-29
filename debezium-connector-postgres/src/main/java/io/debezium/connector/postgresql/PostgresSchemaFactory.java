@@ -64,6 +64,7 @@ public class PostgresSchemaFactory extends SchemaFactory {
                 .field(Envelope.FieldName.OPERATION, Schema.STRING_SCHEMA)
                 .field(Envelope.FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(Envelope.FieldName.SOURCE, config.getSourceInfoStructMaker().schema())
+                .field(Envelope.FieldName.TRANSACTION, config.getTransactionMetadataFactory().getTransactionStructMaker().getTransactionBlockSchema())
                 .field(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY, logicalDecodingMessageMonitorBlockSchema(adjuster, binaryHandlingMode))
                 .build();
     }

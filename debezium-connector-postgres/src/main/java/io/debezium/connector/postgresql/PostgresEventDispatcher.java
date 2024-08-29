@@ -62,7 +62,7 @@ public class PostgresEventDispatcher<T extends DataCollectionId> extends EventDi
                                                LogicalDecodingMessage message)
             throws InterruptedException {
         if (messageFilter.isIncluded(message.getPrefix())) {
-            logicalDecodingMessageMonitor.logicalDecodingMessageEvent(partition, offset, decodeTimestamp, message);
+            logicalDecodingMessageMonitor.logicalDecodingMessageEvent(partition, offset, decodeTimestamp, message, transactionMonitor);
         }
         else {
             LOGGER.trace("Filtered data change event for logical decoding message with prefix{}", message.getPrefix());
