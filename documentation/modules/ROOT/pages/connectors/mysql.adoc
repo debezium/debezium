@@ -283,6 +283,22 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=spatial-data-types]
 
+[id="mysql-vector-types"]
+=== Vector types
+
+Currently, the {prodname} {connector-name} connector supports the following vector data types.
+
+.Description of vector type mappings
+[cols="35%a,15%a,50%a",options="header",subs="+attributes"]
+|===
+|{connector-name} type |Literal type |Semantic type
+
+|`VECTOR`
+|`ARRAY (FLOAT32)`
+|`io.debezium.data.FloatVector` +
+
+|===
+
 // Type: concept
 // Title: Custom converters for mapping {connector-name} data to alternative data types
 [id="debezium-mysql-connector-converters"]
