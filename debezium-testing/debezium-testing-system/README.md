@@ -32,6 +32,7 @@ cd ${ORACLE_ARTIFACT_DIR}
 ```
 
 Download [Oracle Instant Client package](https://www.oracle.com/database/technologies/instant-client/downloads.html), unpack it and place `ojdbc8.jar` and `xstreams.jar` to `${ORACLE_ARTIFACT_DIR}` folder.
+The downloaded Oracle Instant Client version has to be the same as `ORACLE_ARTIFACT_VERSION`. 
 
 ```bash
 mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=ojdbc8 \
