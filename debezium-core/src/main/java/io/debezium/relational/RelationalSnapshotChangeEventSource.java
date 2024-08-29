@@ -434,7 +434,13 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 lastSnapshotRecord(snapshotContext);
             }
 
-            SchemaChangeEvent event = getCreateTableEvent(snapshotContext, snapshotContext.tables.forTable(tableId));
+            final Table table = snapshotContext.tables.forTable(tableId);
+            if (table == null) {
+                throw new DebeziumException("Unable to find relational table model for '" + tableId +
+                        "', there may be an issue with your include/exclude list configuration.");
+            }
+
+            SchemaChangeEvent event = getCreateTableEvent(snapshotContext, table);
             if (HistorizedRelationalDatabaseSchema.class.isAssignableFrom(schema.getClass()) &&
                     ((HistorizedRelationalDatabaseSchema) schema).skipSchemaChangeEvent(event)) {
                 continue;
