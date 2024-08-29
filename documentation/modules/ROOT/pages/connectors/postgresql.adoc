@@ -2549,7 +2549,7 @@ The `image` property in the CR specifies the name of the container image that yo
 You apply this CR to the OpenShift instance where link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat {StreamsName}] is deployed.
 {StreamsName} offers operators and images that bring Apache Kafka to OpenShift.
 
-* A `KafkaConnector` CR that defines your {prodname} Db2 connector.
+* A `KafkaConnector` CR that defines your {prodname} PostgreSQL connector.
 Apply this CR to the same OpenShift instance where you applied the `KafkaConnect` CR.
 
 .Prerequisites
@@ -2847,9 +2847,17 @@ The {prodname} PostgreSQL connector has many configuration properties that you c
 
 * xref:postgresql-required-configuration-properties[Required configuration properties]
 * xref:postgresql-advanced-configuration-properties[Advanced configuration properties]
-* xref:postgresql-pass-through-properties[Pass-through configuration properties]
+
+* xref:debezium-postgresql-connector-pass-through-properties[Pass-through PostgreSQL connector configuration properties]
+** xref:debezium-postgresql-connector-pass-through-kafka-signals-configuration-properties[Pass-through Kafka signals configuration properties]
+** xref:debezium-postgresql-connector-pass-through-signals-kafka-consumer-client-configuration-properties[Pass-through Kafka signals consumer client configuration properties]
+** xref:debezium-postgresql-connector-pass-through-kafka-sink-notification-configuration-properties[Pass-through sink notification configuration properties]
+** xref:debezium-postgresql-connector-pass-through-database-driver-configuration-properties[Pass-through database driver configuration properties]
+
 
 [id="postgresql-required-configuration-properties"]
+==== Required {prodname} PostgreSQL connector configuration properties
+
 The following configuration properties are _required_ unless a default value is available.
 
 .Required connector configuration properties
@@ -3328,8 +3336,9 @@ For information about the structure of _message_ events and about their ordering
 
 |===
 
-// Title: Advanced {prodname} PostgreSQL connector configuration properties
 [id="postgresql-advanced-configuration-properties"]
+==== Advanced {prodname} PostgreSQL connector configuration properties
+
 The following _advanced_ configuration properties have defaults that work in most situations and therefore rarely need to be specified in the connector's configuration.
 
 .Advanced connector configuration properties
@@ -3805,29 +3814,32 @@ Set the value to `0` (zero) to remove the timeout limit.
 |===
 
 [id="postgresql-pass-through-properties"]
-.Pass-through connector configuration properties
-The connector also supports _pass-through_ configuration properties that are used when creating the Kafka producer and consumer.
+==== Pass-through PostgreSQL connector configuration properties
 
-Be sure to consult the {link-kafka-docs}.html[Kafka documentation] for all of the configuration properties for Kafka producers and consumers. The PostgreSQL connector does use the {link-kafka-docs}.html#consumerconfigs[new consumer configuration properties].
+The connector supports _pass-through_ properties that enable {prodname} to specify custom configuration options for fine-tuning the behavior of the Apache Kafka producer and consumer.
+For information about the full range of configuration properties for Kafka producers and consumers, see the {link-kafka-docs}/#configuration[Kafka documentation].
 
-[id="debezium-{context}-connector-kafka-signals-configuration-properties"]
-==== {prodname} connector Kafka signals configuration properties
+
+[id="debezium-postgresql-connector-pass-through-kafka-signals-configuration-properties"]
+===== Pass-through properties for configuring how the PostgreSQL connector interacts with the Kafka signaling topic
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
 
-[id="debezium-{context}-connector-kafka-notifications-configuration-properties"]
-==== {prodname} connector sink notifications configuration properties
+
+[id="debezium-postgresql-connector-pass-through-signals-kafka-consumer-client-configuration-properties"]
+===== Pass-through properties for configuring the Kafka consumer client for the signaling channel
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-signals-kafka-consumer-client-configuration-properties.adoc[leveloffset=+1]
+
+
+[id="debezium-postgresql-connector-pass-through-kafka-sink-notification-configuration-properties"]
+===== Pass-through properties for configuring the PostgreSQL connector sink notification channel
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-sink-notification-configuration-properties.adoc[leveloffset=+1]
 
 
-[id="postgresql-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients"]
-==== Pass-through database schema history properties for configuring producer and consumer clients
-
-include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients.adoc[leveloffset=+1]
-
-[id="debezium-{context}-connector-pass-through-database-driver-configuration-properties"]
-==== {prodname} connector pass-through database driver configuration properties
+[id="debezium-postgresql-connector-pass-through-database-driver-configuration-properties"]
+===== {prodname} connector pass-through database driver configuration properties
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-driver-configuration-properties.adoc[leveloffset=+1]
 
