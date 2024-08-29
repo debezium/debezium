@@ -10,9 +10,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.postgresql.data.Ltree;
-import io.debezium.connector.postgresql.data.vector.HalfVector;
 import io.debezium.connector.postgresql.data.vector.SparseVector;
-import io.debezium.connector.postgresql.data.vector.Vector;
 import io.debezium.data.Envelope;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -74,18 +72,6 @@ public class PostgresSchemaFactory extends SchemaFactory {
         return SchemaBuilder.string()
                 .name(Ltree.LOGICAL_NAME)
                 .version(Ltree.SCHEMA_VERSION);
-    }
-
-    public SchemaBuilder datatypeVectorSchema() {
-        return SchemaBuilder.array(Schema.FLOAT64_SCHEMA)
-                .name(Vector.LOGICAL_NAME)
-                .version(Vector.SCHEMA_VERSION);
-    }
-
-    public SchemaBuilder datatypeHalfVectorSchema() {
-        return SchemaBuilder.array(Schema.FLOAT32_SCHEMA)
-                .name(HalfVector.LOGICAL_NAME)
-                .version(HalfVector.SCHEMA_VERSION);
     }
 
     public SchemaBuilder datatypeSparseVectorSchema() {
