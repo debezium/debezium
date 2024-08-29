@@ -256,6 +256,7 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 == Data type mappings
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=data-type-mappings]
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=data-type-mappings-list-mysql-only]
 
 [id="mysql-basic-types"]
 === Basic types
