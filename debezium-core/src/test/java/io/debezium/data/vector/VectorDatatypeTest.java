@@ -14,7 +14,7 @@ import org.junit.Test;
 public class VectorDatatypeTest {
 
     @Test
-    public void shouldParseVector() {
+    public void shouldParseDoubleVector() {
         final var expectedVector = List.of(10.0, 20.0, 30.0);
         Assertions.assertThat(DoubleVector.fromLogical(DoubleVector.schema(), "[10,20,30]")).isEqualTo(expectedVector);
         Assertions.assertThat(DoubleVector.fromLogical(DoubleVector.schema(), "[ 10,20,30] ")).isEqualTo(expectedVector);
@@ -25,19 +25,19 @@ public class VectorDatatypeTest {
     }
 
     @Test
-    public void shouldIgnoreErrorInVectorFormat() {
+    public void shouldIgnoreErrorInDoubleVectorFormat() {
         Assertions.assertThat(DoubleVector.fromLogical(DoubleVector.schema(), "10,20,30]")).isNull();
         Assertions.assertThat(DoubleVector.fromLogical(DoubleVector.schema(), "[10,20,30")).isNull();
         Assertions.assertThat(DoubleVector.fromLogical(DoubleVector.schema(), "{10,20,30}")).isNull();
     }
 
     @Test(expected = NumberFormatException.class)
-    public void shouldFailOnNumberInVectorFormat() {
+    public void shouldFailOnNumberInDoubleVectorFormat() {
         DoubleVector.fromLogical(DoubleVector.schema(), "[a10,20,30]");
     }
 
     @Test
-    public void shouldParseHalfVector() {
+    public void shouldParseFloatVector() {
         final var expectedVector = List.of(10.0f, 20.0f, 30.0f);
         Assertions.assertThat(FloatVector.fromLogical(FloatVector.schema(), "[10,20,30]")).isEqualTo(expectedVector);
         Assertions.assertThat(FloatVector.fromLogical(FloatVector.schema(), "[ 10,20,30] ")).isEqualTo(expectedVector);
@@ -48,14 +48,14 @@ public class VectorDatatypeTest {
     }
 
     @Test
-    public void shouldIgnoreErrorInHalfVectorFormat() {
+    public void shouldIgnoreErrorInFloatVectorFormat() {
         Assertions.assertThat(FloatVector.fromLogical(FloatVector.schema(), "10,20,30]")).isNull();
         Assertions.assertThat(FloatVector.fromLogical(FloatVector.schema(), "[10,20,30")).isNull();
         Assertions.assertThat(FloatVector.fromLogical(FloatVector.schema(), "{10,20,30}")).isNull();
     }
 
     @Test(expected = NumberFormatException.class)
-    public void shouldFailOnNumberInHalfVectorFormat() {
+    public void shouldFailOnNumberInFloatVectorFormat() {
         FloatVector.fromLogical(FloatVector.schema(), "[a10,20,30]");
     }
 }

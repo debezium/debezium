@@ -1926,11 +1926,11 @@ The PostgreSQL connector supports all link:https://github.com/pgvector/pgvector[
 
 |`VECTOR`
 |`ARRAY (FLOAT64)`
-|`io.debezium.data.Vector` +
+|`io.debezium.data.DoubleVector` +
 
 |`HALFVEC`
 |`ARRAY (FLOAT32)`
-|`io.debezium.data.HalfVector` +
+|`io.debezium.data.FloatVector` +
 
 |`SPARSEVEC`
 |`STRUCT`
