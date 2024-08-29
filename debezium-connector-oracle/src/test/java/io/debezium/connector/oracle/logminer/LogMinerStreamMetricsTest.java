@@ -280,7 +280,7 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
     @Test
     @FixFor("DBZ-2754")
     public void testCustomTransactionRetention() throws Exception {
-        init(TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION, 3));
+        init(TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION_MS, 10_800_000));
         assertThat(metrics.getHoursToKeepTransactionInBuffer()).isEqualTo(3);
         assertThat(metrics.getMillisecondsToKeepTransactionsInBuffer()).isEqualTo(3 * 3600000);
     }
@@ -288,7 +288,7 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
     @Test
     @FixFor("DBZ-5179")
     public void testRollbackTransactionIdSetSizeLimit() throws Exception {
-        init(TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION, 3));
+        init(TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION_MS, 10_800_000));
 
         // Check state up to maximum size
         for (int i = 1; i <= 10; ++i) {
@@ -309,7 +309,7 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
     @Test
     @FixFor("DBZ-5179")
     public void testAbandonedTransactionIdSetSizeLimit() throws Exception {
-        init(TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION, 3));
+        init(TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION_MS, 10_800_000));
 
         // Check state up to maximum size
         for (int i = 1; i <= 10; ++i) {

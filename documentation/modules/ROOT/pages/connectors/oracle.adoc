@@ -2489,22 +2489,22 @@ The {prodname} Oracle connector only uses destinations that have a status of `VA
 If your Oracle environment includes multiple destinations that satisfy that criteria, consult with your Oracle administrator to determine which archive log destination {prodname} should use.
 
 .Procedure
-* To specify the archive log destination that you want {prodname} to use, set the xref:oracle-property-log-mining-archive-destination-name[`log.mining.archive.destination.name`] property in the connector configuration. +
+* To specify the archive log destination that you want {prodname} to use, set the xref:oracle-property-archive-destination-name[`archive.destination.name`] property in the connector configuration. +
  +
 For example, suppose that a database is configured with two archive destination paths, `/path/one` and `/path/two`, and that the `V$ARCHIVE_DEST_STATUS` table associates these paths with destination names that are specified in the column `DEST_NAME`.
-If both destinations satisfy the criteria for {prodname} -- that is, their `status` is `VALID` and their `type` is `LOCAL` -- to configure the connector to use the archive logs that the database writes to `/path/two`, set the value of `log.mining.archive.destination.name` to the value in the `DEST_NAME` column that is associated with `/path/two` in the `V$ARCHIVE_DEST_STATUS` table.
+If both destinations satisfy the criteria for {prodname} -- that is, their `status` is `VALID` and their `type` is `LOCAL` -- to configure the connector to use the archive logs that the database writes to `/path/two`, set the value of `archive.destination.name` to the value in the `DEST_NAME` column that is associated with `/path/two` in the `V$ARCHIVE_DEST_STATUS` table.
 For example, if the `DEST_NAME` is `LOG_ARCHIVE_DEST_3` for `/path/two`, you would configure Debezium as follows:
 
 [source,json]
 ----
 {
-  "log.mining.archive.destination.name": "LOG_ARCHIVE_DEST_3"
+  "archive.destination.name": "LOG_ARCHIVE_DEST_3"
 }
 ----
 
 [NOTE]
 ====
-Do not set the value of `log.mining.archive.destination.name` to the path that the database uses for the archive logs.
+Do not set the value of `archive.destination.name` to the path that the database uses for the archive logs.
 Set the property to the name of an archive log destination in the `DEST_NAME` column for a row in the `V$ARCHIVE_DEST_STATUS` table that satisfies your archive log retention policy.
 ====
 
@@ -4004,7 +4004,7 @@ This also servers as a measure for adjusting batch size - when the difference be
 |`200`
 |The maximum amount of time up or down that the connector uses to tune the optimal sleep time when reading data from logminer. Value is in milliseconds.
 
-|[[oracle-property-log-mining-archive-log-hours]]<<oracle-property-log-mining-archive-log-hours, `+log.mining.archive.log.hours+`>>
+|[[oracle-property-archive-log-hours]]<<oracle-property-archive-log-hours, `+archive.log.hours+`>>
 |`0`
 |The number of hours in the past from SYSDATE to mine archive logs.
 When the default setting (`0`) is used, the connector mines all archive logs.
@@ -4035,7 +4035,7 @@ Because all of the DML operations that are part of a transaction are buffered un
 long-running transactions should be avoided in order to not overflow that buffer.
 Any transaction that exceeds this configured value is discarded entirely, and the connector does not emit any messages for the operations that were part of the transaction.
 
-|[[oracle-property-log-mining-archive-destination-name]]<<oracle-property-log-mining-archive-destination-name, `+log.mining.archive.destination.name+`>>
+|[[oracle-property-archive-destination-name]]<<oracle-property-archive-destination-name, `+archive.destination.name+`>>
 |No default
 |Specifies the configured Oracle archive destination to use when mining archive logs with LogMiner. +
  +

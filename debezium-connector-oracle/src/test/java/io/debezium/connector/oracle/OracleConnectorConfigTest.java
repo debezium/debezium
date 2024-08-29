@@ -185,11 +185,11 @@ public class OracleConnectorConfigTest {
     @Test
     @FixFor("DBZ-2754")
     public void testTransactionRetention() throws Exception {
-        final Field transactionRetentionField = OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION;
+        final Field transactionRetentionField = OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION_MS;
 
         Configuration config = Configuration.create()
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
-                .with(transactionRetentionField, 3)
+                .with(transactionRetentionField, 10_800_000)
                 .build();
 
         assertThat(config.validateAndRecord(Collections.singletonList(transactionRetentionField), LOGGER::error)).isTrue();

@@ -169,17 +169,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 11))
             .withDescription("A token to replace on snapshot predicate template");
 
-    @Deprecated
-    public static final Field LOG_MINING_TRANSACTION_RETENTION = Field.create("log.mining.transaction.retention.hours")
-            .withDisplayName("Log Mining long running transaction retention")
-            .withType(Type.LONG)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.MEDIUM)
-            .withDefault(0)
-            .withValidation(Field::isNonNegativeLong)
-            .withDescription("Hours to keep long running transactions in transaction buffer between log mining " +
-                    "sessions. By default, all transactions are retained.");
-
     public static final Field LOG_MINING_TRANSACTION_RETENTION_MS = Field.create("log.mining.transaction.retention.ms")
             .withDisplayName("Log Mining long running transaction retention")
             .withType(Type.LONG)
@@ -324,16 +313,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(OracleConnectorConfig::validateUsernameExcludeList)
             .withDescription("Comma separated list of usernames to exclude from LogMiner query.");
 
-    @Deprecated
-    public static final Field LOG_MINING_ARCHIVE_DESTINATION_NAME = Field.create("log.mining.archive.destination.name")
-            .withDisplayName("Name of the archive log destination to be used for reading archive logs")
-            .withType(Type.STRING)
-            .withWidth(Width.MEDIUM)
-            .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 20))
-            .withDescription("Sets the specific archive log destination as the source for reading archive logs." +
-                    "When not set, the connector will automatically select the first LOCAL and VALID destination.");
-
     public static final Field ARCHIVE_DESTINATION_NAME = Field.create("archive.destination.name")
             .withDisplayName("Name of the archive log destination to be used for reading archive logs")
             .withType(Type.STRING)
@@ -342,16 +321,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 32))
             .withDescription("Sets the specific archive log destination as the source for reading archive logs." +
                     "When not set, the connector will automatically select the first LOCAL and VALID destination.");
-
-    @Deprecated
-    public static final Field LOG_MINING_ARCHIVE_LOG_HOURS = Field.create("log.mining.archive.log.hours")
-            .withDisplayName("Log Mining Archive Log Hours")
-            .withType(Type.LONG)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 10))
-            .withDefault(0)
-            .withDescription("The number of hours in the past from SYSDATE to mine archive logs. Using 0 mines all available archive logs");
 
     public static final Field ARCHIVE_LOG_HOURS = Field.create("archive.log.hours")
             .withDisplayName("Archive Log Hours")
@@ -706,7 +675,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     SNAPSHOT_LOCKING_MODE,
                     RAC_NODES,
                     INTERVAL_HANDLING_MODE,
-                    LOG_MINING_ARCHIVE_LOG_HOURS,
                     ARCHIVE_LOG_HOURS,
                     LOG_MINING_BATCH_SIZE_DEFAULT,
                     LOG_MINING_BATCH_SIZE_MIN,
@@ -715,13 +683,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_SLEEP_TIME_MIN_MS,
                     LOG_MINING_SLEEP_TIME_MAX_MS,
                     LOG_MINING_SLEEP_TIME_INCREMENT_MS,
-                    LOG_MINING_TRANSACTION_RETENTION,
                     LOG_MINING_TRANSACTION_RETENTION_MS,
                     LOG_MINING_ARCHIVE_LOG_ONLY_MODE,
                     LOB_ENABLED,
                     LOG_MINING_USERNAME_INCLUDE_LIST,
                     LOG_MINING_USERNAME_EXCLUDE_LIST,
-                    LOG_MINING_ARCHIVE_DESTINATION_NAME,
                     ARCHIVE_DESTINATION_NAME,
                     LOG_MINING_BUFFER_TYPE,
                     LOG_MINING_BUFFER_DROP_ON_STOP,
@@ -864,7 +830,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         // LogMiner
         this.logMiningStrategy = LogMiningStrategy.parse(config.getString(LOG_MINING_STRATEGY));
         this.racNodes = resolveRacNodes(config);
-        this.archiveLogRetention = resolveArchiveLogHours(config);
+        this.archiveLogRetention = config.getDuration(ARCHIVE_LOG_HOURS, ChronoUnit.HOURS);
         this.logMiningBatchSizeMin = config.getInteger(LOG_MINING_BATCH_SIZE_MIN);
         this.logMiningBatchSizeMax = config.getInteger(LOG_MINING_BATCH_SIZE_MAX);
         this.logMiningBatchSizeDefault = config.getInteger(LOG_MINING_BATCH_SIZE_DEFAULT);
@@ -872,11 +838,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningSleepTimeMax = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_MAX_MS));
         this.logMiningSleepTimeDefault = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_DEFAULT_MS));
         this.logMiningSleepTimeIncrement = Duration.ofMillis(config.getInteger(LOG_MINING_SLEEP_TIME_INCREMENT_MS));
-        this.logMiningTransactionRetention = resolveLogMiningTransactionRetentionDuration(config);
+        this.logMiningTransactionRetention = config.getDuration(LOG_MINING_TRANSACTION_RETENTION_MS, ChronoUnit.MILLIS);
         this.archiveLogOnlyMode = config.getBoolean(LOG_MINING_ARCHIVE_LOG_ONLY_MODE);
         this.logMiningUsernameIncludes = Strings.setOfTrimmed(config.getString(LOG_MINING_USERNAME_INCLUDE_LIST), String::new);
         this.logMiningUsernameExcludes = Strings.setOfTrimmed(config.getString(LOG_MINING_USERNAME_EXCLUDE_LIST), String::new);
-        this.archiveLogDestinationName = resolveArchiveLogDestinationName(config);
+        this.archiveLogDestinationName = config.getString(ARCHIVE_DESTINATION_NAME);
         this.logMiningBufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
         this.logMiningBufferTransactionEventsThreshold = config.getLong(LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD);
         this.logMiningBufferDropOnStop = config.getBoolean(LOG_MINING_BUFFER_DROP_ON_STOP);
@@ -904,34 +870,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.openLogReplicatorSource = config.getString(OLR_SOURCE);
         this.openLogReplicatorHostname = config.getString(OLR_HOST);
         this.openLogReplicatorPort = config.getInteger(OLR_PORT, 0);
-    }
-
-    private String resolveArchiveLogDestinationName(Configuration config) {
-
-        String archiveLogDestinationName = config.getString(ARCHIVE_DESTINATION_NAME);
-        String logMiningArchiveLogDestinationName = config.getString(LOG_MINING_ARCHIVE_DESTINATION_NAME);
-        if (archiveLogDestinationName == null) {
-            if (logMiningArchiveLogDestinationName != null) {
-                LOGGER.warn("The option {} is deprecated and replaced by {} and will be removed in a future build.",
-                        LOG_MINING_ARCHIVE_DESTINATION_NAME.name(), ARCHIVE_DESTINATION_NAME.name());
-                return logMiningArchiveLogDestinationName;
-            }
-        }
-        return archiveLogDestinationName;
-    }
-
-    private Duration resolveArchiveLogHours(Configuration config) {
-
-        Duration archiveLogHours = config.getDuration(ARCHIVE_LOG_HOURS, ChronoUnit.HOURS);
-        Duration logMiningArchiveLogHours = config.getDuration(LOG_MINING_ARCHIVE_LOG_HOURS, ChronoUnit.HOURS);
-        if (archiveLogHours.isZero()) {
-            if (!logMiningArchiveLogHours.isZero()) {
-                LOGGER.warn("The option {} is deprecated and replaced by {} and will be removed in a future build.",
-                        LOG_MINING_ARCHIVE_LOG_HOURS.name(), ARCHIVE_LOG_HOURS.name());
-                return logMiningArchiveLogHours;
-            }
-        }
-        return archiveLogHours;
     }
 
     private static String toUpperCase(String property) {
@@ -2036,20 +1974,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 return node;
             }
         }).collect(Collectors.toSet());
-    }
-
-    private Duration resolveLogMiningTransactionRetentionDuration(Configuration config) {
-        // Calculate the log mining transaction retention between the two properties
-        Duration logMiningTransactionRetentionMs = config.getDuration(LOG_MINING_TRANSACTION_RETENTION_MS, ChronoUnit.MILLIS);
-        Duration logMiningTransactionRetentionHours = config.getDuration(LOG_MINING_TRANSACTION_RETENTION, ChronoUnit.HOURS);
-        if (logMiningTransactionRetentionMs.isZero()) {
-            if (!logMiningTransactionRetentionHours.isZero()) {
-                LOGGER.warn("The option {} is deprecated and replaced by {} and will be removed in a future build.",
-                        LOG_MINING_TRANSACTION_RETENTION.name(), LOG_MINING_TRANSACTION_RETENTION_MS.name());
-                return logMiningTransactionRetentionHours;
-            }
-        }
-        return logMiningTransactionRetentionMs;
     }
 
     public static int validateOutServerName(Configuration config, Field field, ValidationOutput problems) {
