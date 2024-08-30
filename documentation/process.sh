@@ -43,3 +43,7 @@ while IFS= read -r file; do
             ;;
     esac
 done < "$file_list"
+
+cp using.adoc ../build
+cp attributes.adoc ../build
+cp gen-attributes.adoc ../build
