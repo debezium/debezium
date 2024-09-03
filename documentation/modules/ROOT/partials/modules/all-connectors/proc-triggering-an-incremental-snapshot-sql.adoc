@@ -63,7 +63,6 @@ Rather, during the snapshot, {prodname} generates its own `id` string as a water
 The array lists regular expressions that use the format `{collection-container}.table` to match the fully-qualified names of the {data-collection}s.
 This format is the same as the one that you use to specify the name of the connector's {link-prefix}:{link-signalling}#format-for-specifying-fully-qualified-names-for-data-collections[signaling {data-collection}].
 
-
 |5
 |`incremental`
 |An optional `type` component of the `data` field of a signal that specifies the type of snapshot operation to run. +
