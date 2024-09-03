@@ -115,7 +115,7 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
     @Override
     protected Object convertTimestampWithLocalZone(Column column, Field fieldDefn, Object value) {
         if (value instanceof Number) {
-            final Instant instant = Instant.ofEpochSecond(0, (Long) value);
+            final Instant instant = Instant.ofEpochSecond(0, ((Number) value).longValue());
             return getTimestampWithLocalTimeZoneFormatter(column).format(OffsetDateTime.ofInstant(instant, ZoneOffset.UTC));
         }
         return super.convertTimestampWithLocalZone(column, fieldDefn, value);
@@ -160,12 +160,12 @@ public class OpenLogReplicatorValueConverter extends OracleValueConverters {
                 value = ((BigInteger) value).divide(BigInteger.valueOf(1_000_000L)).longValue();
             }
             else {
-                value = ((Long) value) / 1_000_000L;
+                value = ((Number) value).longValue() / 1_000_000L;
             }
         }
         else {
             // TIMESTAMP(n)
-            value = Instant.ofEpochSecond(0, (Long) value);
+            value = Instant.ofEpochSecond(0, ((Number) value).longValue());
         }
         return value;
     }
