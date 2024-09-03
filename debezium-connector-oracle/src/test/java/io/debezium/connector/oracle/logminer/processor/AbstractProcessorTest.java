@@ -233,7 +233,7 @@ public abstract class AbstractProcessorTest extends AbstractConnectorTest {
 
             connection.commit();
 
-            assertThat(logInterceptor.containsMessage(", 1 tables [ORCLPDB1.DEBEZIUM.DBZ8044]")).isTrue();
+            assertThat(logInterceptor.containsMessage(String.format(", 1 tables [%s.DEBEZIUM.DBZ8044]", TestHelper.getDatabaseName()))).isTrue();
         }
         finally {
             TestHelper.dropTable(connection, "dbz8044");
