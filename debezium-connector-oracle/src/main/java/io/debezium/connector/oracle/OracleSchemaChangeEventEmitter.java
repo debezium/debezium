@@ -225,8 +225,8 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
                 if (table != null) {
                     // If the table has not yet been registered, there is nothing to apply
                     final TableEditor editor = table.edit();
-                    editor.addAttribute(Attribute.editor().name("OBJECT_ID").value(objectId).create());
-                    editor.addAttribute(Attribute.editor().name("DATA_OBJECT_ID").value(dataObjectId).create());
+                    editor.addAttribute(Attribute.editor().name(OracleDatabaseSchema.ATTRIBUTE_OBJECT_ID).value(objectId).create());
+                    editor.addAttribute(Attribute.editor().name(OracleDatabaseSchema.ATTRIBUTE_DATA_OBJECT_ID).value(dataObjectId).create());
                     schema.getTables().overwriteTable(editor.create());
                 }
                 else {
