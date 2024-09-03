@@ -66,7 +66,6 @@ import io.debezium.connector.oracle.logminer.parser.XmlBeginParser;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
-import io.debezium.relational.Attribute;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
@@ -112,7 +111,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
     private Instant lastProcessedScnChangeTime = null;
     private Scn lastProcessedScn = Scn.NULL;
     private boolean sequenceUnavailable = false;
-    private HashMap<Long, TableId> objectIdToTableIdCache = new HashMap<>();
 
     private final Set<String> abandonedTransactionsCache = new HashSet<>();
     private final InMemoryPendingTransactionsCache inMemoryPendingTransactionsCache = new InMemoryPendingTransactionsCache();
@@ -269,9 +267,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
     @Override
     public Scn process(Scn startScn, Scn endScn) throws SQLException, InterruptedException {
         counters.reset();
-
-        // Recreate the cache on each iteration
-        objectIdToTableIdCache = new HashMap<>();
 
         try (PreparedStatement statement = createQueryStatement()) {
             LOGGER.debug("Fetching results for SCN [{}, {}]", startScn, endScn);
@@ -486,7 +481,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                     // Special use case where the table has been dropped and purged, and we are processing an
                     // old event for the table that comes prior to the drop.
                     LOGGER.debug("Found DML for dropped table in history with object-id based table name {}.", row.getTableId().table());
-                    final TableId tableId = getTableIdByObjectId(row.getObjectId());
+                    final TableId tableId = schema.getTableIdByObjectId(row.getObjectId(), null);
                     if (tableId != null) {
                         row.setTableId(tableId);
                     }
@@ -1406,15 +1401,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
             }
             else if (tableId.table().equalsIgnoreCase("UNKNOWN")) {
                 // Object has been dropped and purged.
-                for (TableId schemaTableId : schema.tableIds()) {
-                    final Table table = schema.tableFor(schemaTableId);
-                    final Attribute objectId = table.attributeWithName("OBJECT_ID");
-                    final Attribute dataObjectId = table.attributeWithName("DATA_OBJECT_ID");
-                    if (objectId != null && dataObjectId != null) {
-                        if (row.getObjectId() == objectId.asLong() && row.getDataObjectId() == dataObjectId.asLong()) {
-                            return table.id();
-                        }
-                    }
+                final TableId resolvedTableId = schema.getTableIdByObjectId(row.getObjectId(), row.getDataObjectId());
+                if (resolvedTableId != null) {
+                    return resolvedTableId;
                 }
                 throw new DebeziumException("Failed to resolve UNKNOWN table name by object id lookup");
             }
@@ -1959,29 +1948,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
             comparison = first.getChangeTime().compareTo(second.getChangeTime());
         }
         return comparison;
-    }
-
-    /**
-     * Automatically maintains a cache across the mining step of table object id to {@link TableId}.
-     * This prevents the need to do expensive iteration loops when multiple changes for a given object id
-     * require the same lookup, this can be optimized using the cache.
-     *
-     * @param objectId the table object id to lookup
-     * @return the matching {@link TableId} if found, or {@code null} if not match found
-     */
-    private TableId getTableIdByObjectId(Long objectId) {
-        return objectIdToTableIdCache.computeIfAbsent(objectId, (tableObjectId) -> {
-            for (TableId tableId : schema.tableIds()) {
-                final Table table = schema.tableFor(tableId);
-                final Attribute attribute = table.attributeWithName("OBJECT_ID");
-                if (attribute != null && attribute.asLong().equals(tableObjectId)) {
-                    LOGGER.debug("Table lookup for object id {} resolved to '{}'", tableObjectId, table.id());
-                    return table.id();
-                }
-            }
-            LOGGER.debug("Table lookup for object id {} did not find a match.", tableObjectId);
-            return null;
-        });
     }
 
     /**
