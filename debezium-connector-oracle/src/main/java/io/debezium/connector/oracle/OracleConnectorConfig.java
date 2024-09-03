@@ -649,6 +649,16 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("(Deprecated) if true, CONTINUOUS_MINE option will be added to the log mining session. " +
                     "This will manage log files switches seamlessly.");
 
+    public static final Field OBJECT_ID_CACHE_SIZE = Field.createInternal("object.id.cache.size")
+            .withDisplayName("Controls the maximum size of the object ID cache")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withDefault(10)
+            .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateObjectIdCacheSize)
+            .withDescription("The connector maintains a least-recently used cache of database table object ID to name mappings. "
+                    + "This controls the maximum capacity of this cache.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -724,7 +734,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG,
                     LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG,
                     LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG,
-                    LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG)
+                    LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG,
+                    OBJECT_ID_CACHE_SIZE)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .create();
 
@@ -755,6 +766,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final SnapshotLockingMode snapshotLockingMode;
     private final int queryFetchSize;
     private final int snapshotRetryDatabaseErrorsMaxRetries;
+    private final int objectIdToTableIdCacheSize;
 
     // LogMiner options
     private final LogMiningStrategy logMiningStrategy;
@@ -818,6 +830,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.connectorAdapter = ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER));
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
         this.lobEnabled = config.getBoolean(LOB_ENABLED);
+        this.objectIdToTableIdCacheSize = config.getInteger(OBJECT_ID_CACHE_SIZE);
 
         this.streamingAdapter = this.connectorAdapter.getInstance(this);
         if (this.streamingAdapter == null) {
@@ -1955,6 +1968,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return logMiningEhCacheConfiguration;
     }
 
+    /**
+     * Return the object id to table id cache size
+     *
+     * @return the maximum size of the object id to table id cache
+     */
+    public int getObjectIdToTableIdCacheSize() {
+        return objectIdToTableIdCacheSize;
+    }
+
     @Override
     public String getConnectorName() {
         return Module.name();
@@ -2152,5 +2174,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             }
         }
         return 0;
+    }
+
+    public static int validateObjectIdCacheSize(Configuration config, Field field, ValidationOutput problems) {
+        int result = Field.isRequired(config, field, problems);
+        if (result != 0) {
+            return result;
+        }
+        return Field.isPositiveInteger(config, field, problems);
     }
 }
