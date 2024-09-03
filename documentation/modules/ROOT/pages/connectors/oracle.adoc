@@ -2382,6 +2382,7 @@ When the {prodname} Oracle connector captures tables, it automatically excludes 
 * `outln`
 * `sys`
 * `system`
+* `vecsys` (Oracle 23+)
 * `wmsys`
 * `xdb`
 

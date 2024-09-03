@@ -39,6 +39,16 @@ The following example, shows the JSON for an incremental snapshot event that is 
 
 .Incremental snapshot event message
 ====
+=======
+[source,sql,indent=0,subs="+attributes"]
+----
+INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additional-conditions":[{"data-collection": "schema1.products", "filter": "color=blue AND quantity>10"}]}');
+----
+
+The following example, shows the JSON for an incremental snapshot event that is captured by a connector.
+
+.Incremental snapshot event message
+====
 [source,json,index=0]
 ----
 {
