@@ -4457,10 +4457,13 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5441")
                     .build();
 
+            int waitTime = TestHelper.defaultMessageConsumerPollTimeout() * 2;
+
             final LogInterceptor streamInterceptor;
             switch (TestHelper.getAdapter(config)) {
                 case XSTREAM:
                     streamInterceptor = new LogInterceptor("io.debezium.connector.oracle.xstream.LcrEventHandler");
+                    waitTime *= 2; // XStream on CI can be quite slow, double the wait time to avoid failure
                     break;
                 default:
                     streamInterceptor = new LogInterceptor(AbstractLogMinerEventProcessor.class);
@@ -4479,7 +4482,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             connection.execute("INSERT INTO DEBEZIUM.DBZ5441 (id,lvl) values (1,1)");
 
             Awaitility.await()
-                    .atMost(180, TimeUnit.SECONDS)
+                    .atMost(waitTime, TimeUnit.SECONDS)
                     .until(() -> streamInterceptor.containsMessage("is not a relational table and will be skipped"));
 
             assertNoRecordsToConsume();
