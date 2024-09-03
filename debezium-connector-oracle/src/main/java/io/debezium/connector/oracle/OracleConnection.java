@@ -685,8 +685,8 @@ public class OracleConnection extends JdbcConnection {
             getDatabaseObjectDetails(tableId, tableType, (objectId, dataObjectId) -> {
                 LOGGER.info("\tRegistering '{}' attributes: object_id={}, data_object_id={}", tableId, objectId, dataObjectId);
                 final List<Attribute> attributes = new ArrayList<>();
-                attributes.add(Attribute.editor().name("OBJECT_ID").value(objectId).create());
-                attributes.add(Attribute.editor().name("DATA_OBJECT_ID").value(dataObjectId).create());
+                attributes.add(Attribute.editor().name(OracleDatabaseSchema.ATTRIBUTE_OBJECT_ID).value(objectId).create());
+                attributes.add(Attribute.editor().name(OracleDatabaseSchema.ATTRIBUTE_DATA_OBJECT_ID).value(dataObjectId).create());
                 results.put(tableId, attributes);
             });
             return results;

@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -17,6 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
+import io.debezium.relational.Attribute;
 import io.debezium.relational.Column;
 import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.HistorizedRelationalDatabaseSchema;
@@ -27,6 +29,7 @@ import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
+import io.debezium.util.LRUCacheMap;
 
 import oracle.jdbc.OracleTypes;
 
@@ -39,11 +42,13 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleDatabaseSchema.class);
 
+    public static final String ATTRIBUTE_OBJECT_ID = "OBJECT_ID";
+    public static final String ATTRIBUTE_DATA_OBJECT_ID = "DATA_OBJECT_ID";
+
     private final OracleDdlParser ddlParser;
     private final ConcurrentMap<TableId, List<Column>> lobColumnsByTableId = new ConcurrentHashMap<>();
     private final OracleValueConverters valueConverters;
-
-    private boolean storageInitializationExecuted = false;
+    private final LRUCacheMap<Long, TableId> objectIdToTableId;
 
     public OracleDatabaseSchema(OracleConnectorConfig connectorConfig, OracleValueConverters valueConverters,
                                 DefaultValueConverter defaultValueConverter, SchemaNameAdjuster schemaNameAdjuster,
@@ -68,6 +73,8 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                 connectorConfig.isSchemaCommentsHistoryEnabled(),
                 valueConverters,
                 connectorConfig.getTableFilters().dataCollectionFilter());
+
+        this.objectIdToTableId = new LRUCacheMap<>(connectorConfig.getObjectIdToTableIdCacheSize());
     }
 
     public Tables getTables() {
@@ -121,7 +128,43 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
             // Cache LOB column mappings for performance
             buildAndRegisterTableLobColumns(table);
+
+            // Cache Object ID to Table ID for performance
+            buildAndRegisterTableObjectIdReferences(table);
         }
+    }
+
+    /**
+     * Get the {@link TableId} by {@code objectId}.
+     *
+     * @param objectId the object id find the table id about, cannot be {@code null}
+     * @param dataObjectId the data object id, may be {@code null}
+     * @return the table identifier or {@code null} if no entry is cached or in the schema with the object id
+     */
+    public TableId getTableIdByObjectId(Long objectId, Long dataObjectId) {
+        Objects.requireNonNull(objectId, "The database table object id is null and is not allowed");
+        // Internally we cache this using a bounded cache for performance reasons, particularly when a
+        // transaction may refer to the same table for consecutive DML events. This avoids the need to
+        // iterate the list of tables on each DML event observed.
+        return objectIdToTableId.computeIfAbsent(objectId, (tableObjectId) -> {
+            for (TableId tableId : tableIds()) {
+                final Table table = tableFor(tableId);
+                final Attribute attribute = table.attributeWithName(ATTRIBUTE_OBJECT_ID);
+                if (attribute != null && attribute.asLong().equals(tableObjectId)) {
+                    if (dataObjectId != null) {
+                        final Attribute dataAttribute = table.attributeWithName(ATTRIBUTE_DATA_OBJECT_ID);
+                        if (dataAttribute == null || !dataAttribute.asLong().equals(dataObjectId)) {
+                            // Did not match, continue
+                            continue;
+                        }
+                    }
+                    LOGGER.debug("Table lookup for object {} resolved to '{}'", tableObjectId, table.id());
+                    return table.id();
+                }
+            }
+            LOGGER.debug("Table lookup for object id {} did not find a match.", tableObjectId);
+            return null;
+        });
     }
 
     /**
@@ -173,6 +216,13 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
      */
     private static boolean isBlobColumn(Column column) {
         return column.jdbcType() == OracleTypes.BLOB;
+    }
+
+    private void buildAndRegisterTableObjectIdReferences(Table table) {
+        final Attribute attribute = table.attributeWithName(ATTRIBUTE_OBJECT_ID);
+        if (attribute != null) {
+            objectIdToTableId.put(attribute.asLong(), table.id());
+        }
     }
 
     private void buildAndRegisterTableLobColumns(Table table) {
