@@ -426,7 +426,7 @@ Set the value to `true` to prevent the connector from capturing records when no 
 
 
 [id="{context}-property-table-exclude-list"]
-xref:{context}-property-table-exclude-list[`table-exclude-list`]::
+xref:{context}-property-table-exclude-list[`table.exclude.list`]::
 Default value: _empty string_ +
 An optional, comma-separated list of regular expressions that match fully-qualified table identifiers of tables from which you do not want the connector to capture changes.
 The connector captures changes in any table that is not included in `table.exclude.list`.
