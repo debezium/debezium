@@ -1513,10 +1513,9 @@ The value of a change event for an update in the sample `customers` table has th
       "version": "{debezium-version}",
       "name": "{context}-server-1",
       "connector": "{context}",
-      "name": "{context}-server-1",
       "ts_ms": 1465581029100,
-      "ts_ms": 1465581029100000,
-      "ts_ms": 1465581029100000000,
+      "ts_us": 1465581029100000,
+      "ts_ns": 1465581029100000000,
       "snapshot": false,
       "db": "inventory",
       "table": "customers",
@@ -1530,8 +1529,8 @@ The value of a change event for an update in the sample `customers` table has th
     },
     "op": "u", // <4>
     "ts_ms": 1465581029523, // <5>
-    "ts_ms": 1465581029523758, // <6>
-    "ts_ms": 1465581029523758914 // <7>
+    "ts_us": 1465581029523758, // <6>
+    "ts_ns": 1465581029523758914 // <7>
   }
 }
 ----
