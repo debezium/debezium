@@ -28,7 +28,7 @@ import io.debezium.dlq.ErrorReporter;
 public class MongoDbSinkConnectorTask extends SinkTask {
     static final Logger LOGGER = LoggerFactory.getLogger(MongoDbSinkConnectorTask.class);
     private static final String CONNECTOR_TYPE = "sink";
-    private StartedMongoDbSinkTask startedTask;
+    private MongoDbChangeEventSink mongoSink;
     private MongoDbConnectionContext connectionContext;
 
     @Override
@@ -51,7 +51,7 @@ public class MongoDbSinkConnectorTask extends SinkTask {
         try {
             this.connectionContext = new MongoDbConnectionContext(config);
             client = this.connectionContext.getMongoClient();
-            startedTask = new StartedMongoDbSinkTask(sinkConfig, client, createErrorReporter());
+            mongoSink = new MongoDbChangeEventSink(sinkConfig, client, createErrorReporter());
         }
         catch (RuntimeException taskStartingException) {
             // noinspection EmptyTryBlock
@@ -81,7 +81,7 @@ public class MongoDbSinkConnectorTask extends SinkTask {
      */
     @Override
     public void put(final Collection<SinkRecord> records) {
-        startedTask.put(records);
+        mongoSink.execute(records);
     }
 
     /**
@@ -107,8 +107,8 @@ public class MongoDbSinkConnectorTask extends SinkTask {
     @Override
     public void stop() {
         LOGGER.info("Stopping MongoDB sink task");
-        if (startedTask != null) {
-            startedTask.close();
+        if (mongoSink != null) {
+            mongoSink.close();
         }
     }
 
@@ -135,6 +135,6 @@ public class MongoDbSinkConnectorTask extends SinkTask {
     @VisibleForTesting(otherwise = VisibleForTesting.AccessModifier.PRIVATE)
     static ErrorReporter nopErrorReporter() {
         return (record, e) -> {
-        };
+            /* do nothing */ };
     }
 }
