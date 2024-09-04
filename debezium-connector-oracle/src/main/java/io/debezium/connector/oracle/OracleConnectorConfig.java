@@ -636,7 +636,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDisplayName("Controls the maximum size of the object ID cache")
             .withType(Type.INT)
             .withWidth(Width.SHORT)
-            .withDefault(10)
+            .withDefault(256)
             .withImportance(Importance.LOW)
             .withValidation(OracleConnectorConfig::validateObjectIdCacheSize)
             .withDescription("The connector maintains a least-recently used cache of database table object ID to name mappings. "
