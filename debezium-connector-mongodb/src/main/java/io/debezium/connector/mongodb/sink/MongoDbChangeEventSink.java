@@ -26,14 +26,15 @@ import com.mongodb.client.model.WriteModel;
 
 import io.debezium.DebeziumException;
 import io.debezium.dlq.ErrorReporter;
+import io.debezium.pipeline.spi.ChangeEventSink;
 
-final class StartedMongoDbSinkTask implements AutoCloseable {
+final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
 
     private final MongoDbSinkConnectorConfig sinkConfig;
     private final MongoClient mongoClient;
     private final ErrorReporter errorReporter;
 
-    StartedMongoDbSinkTask(
+    MongoDbChangeEventSink(
                            final MongoDbSinkConnectorConfig sinkConfig,
                            final MongoClient mongoClient,
                            final ErrorReporter errorReporter) {
@@ -51,7 +52,7 @@ final class StartedMongoDbSinkTask implements AutoCloseable {
         }
     }
 
-    void put(final Collection<SinkRecord> records) {
+    public void execute(final Collection<SinkRecord> records) {
         try {
             trackLatestRecordTimestampOffset(records);
             if (records.isEmpty()) {

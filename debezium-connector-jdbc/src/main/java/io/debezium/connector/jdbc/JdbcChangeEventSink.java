@@ -30,7 +30,7 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.naming.TableNamingStrategy;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.relational.TableId;
-import io.debezium.pipeline.sink.spi.ChangeEventSink;
+import io.debezium.pipeline.spi.ChangeEventSink;
 import io.debezium.util.Stopwatch;
 import io.debezium.util.Strings;
 
@@ -52,7 +52,6 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     private final RecordWriter recordWriter;
 
     public JdbcChangeEventSink(JdbcSinkConnectorConfig config, StatelessSession session, DatabaseDialect dialect, RecordWriter recordWriter) {
-
         this.config = config;
         this.tableNamingStrategy = config.getTableNamingStrategy();
         this.dialect = dialect;
