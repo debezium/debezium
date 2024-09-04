@@ -33,6 +33,9 @@ jobs:
         with:
           repository: debezium/debezium-server
           path: server
+          # Always checkout based on pushed branch name in main repository
+          # This should always exist in the debezium-server repository.
+          ref: ${{ github.ref_name }}
 
       - uses: ./core/.github/actions/setup-java
 
