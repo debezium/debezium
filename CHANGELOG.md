@@ -2,6 +2,57 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.7.2.Final
+September 5th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12431372)
+
+### New features since 2.7.1.Final
+
+* Log additional details about abandoned transactions [DBZ-8044](https://issues.redhat.com/browse/DBZ-8044)
+* Support DECIMAL(p) Floating Point [DBZ-8114](https://issues.redhat.com/browse/DBZ-8114)
+* Truncate byte buffer should return a new array [DBZ-8189](https://issues.redhat.com/browse/DBZ-8189)
+
+
+### Breaking changes since 2.7.1.Final
+
+* Debezium Server Kafka BLOCKED forever when Kafka send failed [DBZ-7575](https://issues.redhat.com/browse/DBZ-7575)
+* Error registering JMX signal and notification for multi task SQLServer  [DBZ-8137](https://issues.redhat.com/browse/DBZ-8137)
+
+
+### Fixes since 2.7.1.Final
+
+* Incremental snapshots don't work with CloudEvent converter [DBZ-7601](https://issues.redhat.com/browse/DBZ-7601)
+* Incremental snapshot fails with NPE if surrogate key doesn't exist [DBZ-7797](https://issues.redhat.com/browse/DBZ-7797)
+* Postgres connector - null value processing for "money" type column. [DBZ-8027](https://issues.redhat.com/browse/DBZ-8027)
+* Using snapshot.include.collection.list with Oracle raises NullPointerException [DBZ-8032](https://issues.redhat.com/browse/DBZ-8032)
+* Performance degradation when reconstructing (log.mining.stragtegy hybrid mode) [DBZ-8071](https://issues.redhat.com/browse/DBZ-8071)
+* ORA-00600: internal error code, arguments: [krvrdGetUID:2], [18446744073709551614], [], [], [], [], [], [], [], [], [], [] [DBZ-8125](https://issues.redhat.com/browse/DBZ-8125)
+* ConvertingFailureIT#shouldFailConversionTimeTypeWithConnectModeWhenFailMode fails randomly [DBZ-8128](https://issues.redhat.com/browse/DBZ-8128)
+* Unpredicatable ordering of table rows during insertion causing foreign key error [DBZ-8130](https://issues.redhat.com/browse/DBZ-8130)
+* schema_only crashes ibmi Connector [DBZ-8131](https://issues.redhat.com/browse/DBZ-8131)
+* Support larger database.server.id values [DBZ-8134](https://issues.redhat.com/browse/DBZ-8134)
+* Open redo thread consistency check can lead to ORA-01291 - missing logfile [DBZ-8144](https://issues.redhat.com/browse/DBZ-8144)
+* SchemaOnlyRecoverySnapshotter not registered as an SPI service implementation [DBZ-8147](https://issues.redhat.com/browse/DBZ-8147)
+* When stopping the Oracle rac node the Debezium server throws an expections - ORA-12514: Cannot connect to database and retries  [DBZ-8149](https://issues.redhat.com/browse/DBZ-8149)
+* Issue with Debezium Snapshot: DateTimeParseException with plugin pgoutput [DBZ-8150](https://issues.redhat.com/browse/DBZ-8150)
+* JDBC connector validation fails when using record_value with no primary.key.fields [DBZ-8151](https://issues.redhat.com/browse/DBZ-8151)
+* Taking RAC node offline and back online can lead to thread inconsistency [DBZ-8162](https://issues.redhat.com/browse/DBZ-8162)
+* Postgres JSONB Fields are not supported with Reselect Post Processor [DBZ-8168](https://issues.redhat.com/browse/DBZ-8168)
+* NullPointerException (schemaUpdateCache is null) when restarting Oracle engine [DBZ-8187](https://issues.redhat.com/browse/DBZ-8187)
+* XStream may fail to attach on retry if previous attempt failed [DBZ-8188](https://issues.redhat.com/browse/DBZ-8188)
+* Exclude Oracle 23 VECSYS tablespace from capture [DBZ-8198](https://issues.redhat.com/browse/DBZ-8198)
+* AbstractProcessorTest uses an incorrect database name when run against Oracle 23 Free edition [DBZ-8199](https://issues.redhat.com/browse/DBZ-8199)
+
+
+### Other changes since 2.7.1.Final
+
+* Documentation for signals provides incorrect data-collection format for some connectors [DBZ-8090](https://issues.redhat.com/browse/DBZ-8090)
+* Add LogMiner start mining session retry attempt counter to logs [DBZ-8143](https://issues.redhat.com/browse/DBZ-8143)
+* Reduce logging verbosity of XStream DML event data [DBZ-8148](https://issues.redhat.com/browse/DBZ-8148)
+* Add MariaDB connector server distribution [DBZ-8186](https://issues.redhat.com/browse/DBZ-8186)
+* Reduce log verbosity of OpenLogReplicator SCN confirmation [DBZ-8201](https://issues.redhat.com/browse/DBZ-8201)
+
+
+
 ## 2.7.1.Final
 August 8th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12430010)
 
