@@ -346,10 +346,4 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
     public void insertDeleteWatermarkingStrategy() throws Exception {
         // test has not to be executed on read only
     }
-
-    protected void populate4PkTable() throws SQLException {
-        try (JdbcConnection connection = databaseConnection()) {
-            populate4PkTable(connection, "a4");
-        }
-    }
 }
