@@ -325,6 +325,7 @@ Lourens Naudé
 Luca Scannapieco
 Luis Garcés-Erice
 Lukas Krejci
+Lukas Langegger
 Lukasz Korzeniowski
 lyidataminr
 M Sazzadul Hoque
@@ -446,6 +447,7 @@ Rotem Adhoh
 Sagar Rao
 Sahan Dilshan
 Sahap Asci
+Sylvain Marty
 René Kerner
 Ricardo Rosales
 Rich O'Connell
@@ -474,6 +476,7 @@ Sebastiaan Knijnenburg
 Sebastian Bruckner
 Seo Jae-kwon
 Seongjoon Jeong
+Sergei Kazakov
 Sergei Morozov
 Sergey Eizner
 Sergey Ivanov
