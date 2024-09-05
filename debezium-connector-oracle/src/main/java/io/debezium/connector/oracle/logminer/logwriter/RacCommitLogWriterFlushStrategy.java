@@ -112,9 +112,6 @@ public class RacCommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
                     allNodesFlushed = false;
                 }
             }
-            else {
-                allNodesFlushed = false;
-            }
         }
 
         if (!allNodesFlushed) {
