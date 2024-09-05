@@ -60,8 +60,8 @@ public class OracleErrorHandler extends ErrorHandler {
      */
     @Immutable
     private static final Set<String> RETRIABLE_ORA600_ERROR_MESSAGES = Collect.unmodifiableSet(
-            "krvrdGetUID" // Changes made to object identifier (schema change)
-    );
+            "krvrdGetUID", // Changes made to object identifier (schema change)
+            "krvrdccs10");
 
     public OracleErrorHandler(OracleConnectorConfig connectorConfig, ChangeEventQueue<?> queue, ErrorHandler replacedErrorHandler) {
         super(OracleConnector.class, connectorConfig, queue, replacedErrorHandler);
