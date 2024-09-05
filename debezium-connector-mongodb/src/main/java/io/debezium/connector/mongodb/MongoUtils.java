@@ -16,6 +16,7 @@ import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mongodb.MongoException;
 import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -235,7 +236,14 @@ public class MongoUtils {
 
     public static BsonTimestamp hello(MongoClient client, String dbName) {
         var database = client.getDatabase(dbName);
-        var result = database.runCommand(new Document("hello", 1), BsonDocument.class);
+        BsonDocument result;
+        try {
+            result = database.runCommand(new Document("hello", 1), BsonDocument.class);
+        }
+        catch (MongoException e) {
+            LOGGER.error(e.getMessage(), e);
+            result = database.runCommand(new Document("isMaster", 1), BsonDocument.class);
+        }
         return result.getTimestamp("operationTime");
     }
 
