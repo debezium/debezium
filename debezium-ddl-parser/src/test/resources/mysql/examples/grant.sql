@@ -99,6 +99,8 @@ REVOKE reader FROM 'mysqluser'@'localhost'
 REVOKE reader FROM topreader
 REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'retool'@
 REVOKE `cloudsqlsuperuser`@`%` FROM `sarmonitoring`@`10.90.29.%`
+REVOKE IF EXISTS SELECT ON test.t1 FROM jerry@localhost;
+REVOKE IF EXISTS Bogus ON test FROM jerry@localhost IGNORE UNKNOWN USER;
 
 -- MariaDB
 GRANT BINLOG_MONITOR ON *.* TO 'mysqluser'@'localhost'
