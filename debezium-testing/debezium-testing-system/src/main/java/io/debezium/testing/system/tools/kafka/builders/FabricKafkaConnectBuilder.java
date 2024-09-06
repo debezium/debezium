@@ -40,7 +40,7 @@ import io.strimzi.api.kafka.model.connect.build.Plugin;
  */
 public class FabricKafkaConnectBuilder extends
         FabricBuilderWrapper<FabricKafkaConnectBuilder, KafkaConnectBuilder, KafkaConnect> {
-    public static String DEFAULT_KC_NAME = "debezium-kafka-connect-cluster";
+    public static String DEFAULT_KC_NAME = "connect-cluster";
     public static String KAFKA_CERT_SECRET = DEFAULT_KAFKA_NAME + "-cluster-ca-cert";
 
     public static String KAFKA_CLIENT_CERT_SECRET = DEFAULT_KAFKA_NAME + "-clients-ca-cert";
