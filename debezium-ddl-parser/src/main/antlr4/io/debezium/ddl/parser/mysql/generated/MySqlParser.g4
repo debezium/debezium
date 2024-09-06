@@ -1719,15 +1719,16 @@ renameUser
     ;
 
 revokeStatement
-    : REVOKE privelegeClause (',' privelegeClause)*
+    : REVOKE ifExists? (privelegeClause | uid) (',' privelegeClause | uid)*
       ON
       privilegeObject=(TABLE | FUNCTION | PROCEDURE)?
       privilegeLevel
-      FROM userName (',' userName)*                                 #detailRevoke
-    | REVOKE ALL PRIVILEGES? ',' GRANT OPTION
-      FROM userName (',' userName)*                                 #shortRevoke
-    | REVOKE (userName | uid) (',' (userName | uid))*
-      FROM (userName | uid) (',' (userName | uid))*                 #roleRevoke
+      FROM userName (',' userName)* (IGNORE UNKNOWN USER)?          #detailRevoke
+    | REVOKE ifExists? ALL PRIVILEGES? ',' GRANT OPTION
+      FROM userName (',' userName)*  (IGNORE UNKNOWN USER)?         #shortRevoke
+    | REVOKE ifExists? (userName | uid) (',' (userName | uid))*
+      FROM (userName | uid) (',' (userName | uid))*
+      (IGNORE UNKNOWN USER)?                                        #roleRevoke
     ;
 
 revokeProxy
