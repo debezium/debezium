@@ -176,6 +176,10 @@ SELECT JSON_STORAGE_FREE(jcol), JSON_STORAGE_FREE(jcol) FROM jtable;
 SELECT o_id, JSON_ARRAYAGG(attribute) AS attributes FROM t3 GROUP BY o_id;
 SELECT o_id, JSON_OBJECTAGG(attribute, value) FROM t3 GROUP BY o_id;
 #end
+#begin
+-- VECTOR
+SELECT DISTANCE(b1, b2, "COSINE"), STRING_TO_VECTOR('[]'), VECTOR_DIM(b1), VECTOR_TO_STRING(b1) FROM a;
+#end
 SELECT trigger.num FROM test `trigger`;
 -- Valid when SELECT is in stored procedure
 SELECT * FROM test LIMIT LIMIT1,LIMIT2;
