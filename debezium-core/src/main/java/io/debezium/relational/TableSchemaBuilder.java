@@ -328,7 +328,7 @@ public class TableSchemaBuilder {
                             result.put(fields[i], value);
                         }
                         catch (final Exception e) {
-                            Column col = columns.get(i);
+                            Column col = columnsThatShouldBeAdded.get(i);
                             String message = "Failed to properly convert data value for '{}.{}' of type {}";
                             if (eventConvertingFailureHandlingMode == null) {
                                 Loggings.logErrorAndTraceRecord(LOGGER, row,
