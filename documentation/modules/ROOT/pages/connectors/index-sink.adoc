@@ -1,0 +1,11 @@
+= Sink Connectors
+
+{prodname} provides sink connectors that can consume events from sources such as Apache Kafka topics.
+A sink connector standardizes the format of the data, and then persists the event data to a configured sink repository.
+Other systems, applications, or users can then access the events from the data sink.
+
+Because the sink connector applies a consistent structure to the event data that it consumes, downstream applications that read from the data sink can more easily interpret and process that data.
+
+Currently, {prodname} provides the following sink connectors:
+
+* xref:connectors/jdbc.adoc[JDBC]
