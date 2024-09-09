@@ -92,15 +92,11 @@
             <artifactId>ehcache</artifactId>
             <version>${version.ehcache}</version>
         </dependency>
+        <!-- Ehcache JAXB implementation dependency -->
         <dependency>
-            <groupId>com.sun.xml.bind</groupId>
-            <artifactId>jaxb-core</artifactId>
-            <version>2.3.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.sun.xml.bind</groupId>
-            <artifactId>jaxb-impl</artifactId>
-            <version>2.3.1</version>
+            <groupId>org.glassfish.jaxb</groupId>
+            <artifactId>jaxb-runtime</artifactId>
+            <version>${version.jaxb.implementation}</version>
         </dependency>
 
         <!-- Testing -->
@@ -198,8 +194,12 @@
         <adapter.name>logminer</adapter.name>
         <log.mining.buffer.type.name>memory</log.mining.buffer.type.name>
         <log.mining.read.only.mode>false</log.mining.read.only.mode>
-        <version.ehcache>3.9.6</version.ehcache>
         <version.oracle.server>19.3.0</version.oracle.server>
+
+        <!-- EhCache Specific Versions -->
+        <version.ehcache>3.9.6</version.ehcache>
+        <!-- Must be aligned with the version.jaxb of the JAXB-API -->
+        <version.jaxb.implementation>2.3.1</version.jaxb.implementation>
 
         <protobuf.output.directory>${project.basedir}/generated-sources</protobuf.output.directory>
 
