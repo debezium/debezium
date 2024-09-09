@@ -117,6 +117,10 @@ public class EhcacheLogMinerEventProcessor extends AbstractLogMinerEventProcesso
 
             // Create the full XML configuration based on configuration template
             final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+
+            // Required for propagating namespace info
+            factory.setNamespaceAware(true);
+
             final DocumentBuilder builder = factory.newDocumentBuilder();
 
             final String xmlData = getConfigurationWithSubstitutions(ehcacheConfig);
