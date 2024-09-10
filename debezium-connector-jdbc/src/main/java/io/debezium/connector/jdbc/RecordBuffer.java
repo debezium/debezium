@@ -12,7 +12,7 @@ import java.util.Objects;
 import org.apache.kafka.connect.data.Schema;
 
 /**
- * A buffer of {@link SinkRecordDescriptor}. It contains the logic of when is the time to flush
+ * A buffer of {@link JdbcSinkRecord}. It contains the logic of when is the time to flush
  *
  * @author Mario Fiore Vitale
  */
@@ -21,31 +21,30 @@ public class RecordBuffer implements Buffer {
     private final JdbcSinkConnectorConfig connectorConfig;
     private Schema keySchema;
     private Schema valueSchema;
-    private final ArrayList<SinkRecordDescriptor> records = new ArrayList<>();
+    private final ArrayList<JdbcSinkRecord> records = new ArrayList<>();
 
     public RecordBuffer(JdbcSinkConnectorConfig connectorConfig) {
 
         this.connectorConfig = connectorConfig;
     }
 
-    public List<SinkRecordDescriptor> add(SinkRecordDescriptor recordDescriptor) {
-
-        List<SinkRecordDescriptor> flushed = new ArrayList<>();
+    public List<JdbcSinkRecord> add(JdbcSinkRecord record) {
+        List<JdbcSinkRecord> flushed = new ArrayList<>();
         boolean isSchemaChanged = false;
 
         if (records.isEmpty()) {
-            keySchema = recordDescriptor.getKeySchema();
-            valueSchema = recordDescriptor.getValueSchema();
+            keySchema = record.keySchema();
+            valueSchema = record.valueSchema();
         }
 
-        if (!Objects.equals(keySchema, recordDescriptor.getKeySchema()) || !Objects.equals(valueSchema, recordDescriptor.getValueSchema())) {
-            keySchema = recordDescriptor.getKeySchema();
-            valueSchema = recordDescriptor.getValueSchema();
+        if (!Objects.equals(keySchema, record.keySchema()) || !Objects.equals(valueSchema, record.valueSchema())) {
+            keySchema = record.keySchema();
+            valueSchema = record.valueSchema();
             flushed = flush();
             isSchemaChanged = true;
         }
 
-        records.add(recordDescriptor);
+        records.add(record);
 
         if (isSchemaChanged) {
             // current record is already added in internal buffer after flush
@@ -60,9 +59,9 @@ public class RecordBuffer implements Buffer {
         return flushed;
     }
 
-    public List<SinkRecordDescriptor> flush() {
+    public List<JdbcSinkRecord> flush() {
 
-        List<SinkRecordDescriptor> flushed = new ArrayList<>(records);
+        List<JdbcSinkRecord> flushed = new ArrayList<>(records);
         records.clear();
 
         return flushed;

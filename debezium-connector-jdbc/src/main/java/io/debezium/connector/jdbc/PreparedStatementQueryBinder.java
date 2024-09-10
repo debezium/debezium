@@ -21,7 +21,6 @@ public class PreparedStatementQueryBinder implements QueryBinder {
 
     @Override
     public void bind(ValueBindDescriptor valueBindDescriptor) {
-
         try {
             if (valueBindDescriptor.getTargetSqlType() != null) {
                 if (valueBindDescriptor.getTargetSqlType() == Types.ARRAY) {

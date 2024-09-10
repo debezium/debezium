@@ -16,13 +16,13 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
-import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
 import io.debezium.connector.jdbc.junit.TestHelper;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.doc.FixFor;
+import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
 
 /**
  * Common delete enabled tests.

@@ -21,11 +21,11 @@ import org.apache.kafka.connect.health.ConnectClusterState;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.Module;
 import io.debezium.connector.oracle.OracleConnector;
+import io.debezium.metadata.CollectionId;
 import io.debezium.rest.ConnectionValidationResource;
 import io.debezium.rest.FilterValidationResource;
 import io.debezium.rest.MetricsResource;
 import io.debezium.rest.SchemaResource;
-import io.debezium.rest.model.DataCollection;
 import io.debezium.rest.model.MetricsDescriptor;
 
 /**
@@ -68,9 +68,9 @@ public class DebeziumOracleConnectorResource implements SchemaResource, Connecti
     }
 
     @Override
-    public List<DataCollection> getMatchingCollections(Configuration configuration) {
+    public List<CollectionId> getMatchingCollections(Configuration configuration) {
         return getConnector().getMatchingCollections(configuration).stream()
-                .map(tableId -> new DataCollection(tableId.schema(), tableId.table()))
+                .map(tableId -> new CollectionId(tableId.schema(), tableId.table()))
                 .collect(Collectors.toList());
     }
 }
