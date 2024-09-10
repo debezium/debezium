@@ -146,7 +146,7 @@
         Specify the properties for the various Docker containers.
         -->
         <mariadb.server.image.source>mariadb</mariadb.server.image.source>
-        <version.mariadb.server>11.1.2</version.mariadb.server>
+        <version.mariadb.server>11.4.3</version.mariadb.server>
         <mariadb.user>mysqluser</mariadb.user>
         <mariadb.password>mysqlpw</mariadb.password>
         <mariadb.replica.user>mysqlreplica</mariadb.replica.user>
