@@ -10,10 +10,15 @@
     <artifactId>debezium-connector-mongodb</artifactId>
     <name>Debezium Connector for MongoDB</name>
     <packaging>jar</packaging>
+
     <dependencies>
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-sink</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>

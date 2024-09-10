@@ -63,7 +63,6 @@ class BitType extends AbstractType {
 
     @Override
     public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
-
         if (value == null) {
             return List.of(new ValueBindDescriptor(index, null));
         }

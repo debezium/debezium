@@ -3,9 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.jdbc.filter;
-
-import java.util.Arrays;
+package io.debezium.sink.filter;
 
 import io.debezium.util.Strings;
 
@@ -19,7 +17,6 @@ public class FieldFilterFactory {
     @FunctionalInterface
     public interface FieldNameFilter {
         boolean matches(String topicName, String columnName);
-
     }
 
     /** Default filter that always includes a field */
@@ -30,11 +27,11 @@ public class FieldFilterFactory {
 
         return (topicName, fieldName) -> {
             for (String entry : entries) {
-                String[] parts = Arrays.stream(entry.split(":")).map(String::strip).toArray(String[]::new);
-                if (parts.length == 2 && parts[0].equals(topicName) && parts[1].equals(fieldName)) {
+                String[] parts = entry.trim().split(":");
+                if (parts.length == 1 && parts[0].trim().equals(fieldName.trim())) {
                     return include;
                 }
-                if (parts.length == 1 && parts[0].equals(fieldName)) {
+                if (parts.length == 2 && parts[0].trim().equals(topicName.trim()) && parts[1].trim().equals(fieldName.trim())) {
                     return include;
                 }
             }
