@@ -9,10 +9,10 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
+import io.debezium.sink.SinkConnectorConfig;
 
 /**
  * A type represents a relational column type used for query abd parameter binding.
@@ -29,7 +29,7 @@ public interface Type {
      * @param config the JDBC sink connector's configuration, should not be {@code null}
      * @param dialect the database dialect, should not be {@code null}
      */
-    void configure(JdbcSinkConnectorConfig config, DatabaseDialect dialect);
+    void configure(SinkConnectorConfig config, DatabaseDialect dialect);
 
     /**
      * Returns the names that this type will be mapped as.
