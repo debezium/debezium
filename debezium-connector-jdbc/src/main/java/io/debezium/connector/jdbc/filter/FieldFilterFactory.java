@@ -32,6 +32,9 @@ public class FieldFilterFactory {
                 if (parts.length == 2 && parts[0].equals(topicName) && parts[1].equals(fieldName)) {
                     return include;
                 }
+                if (parts.length == 1 && parts[0].equals(fieldName)) {
+                    return include;
+                }
             }
             return !include;
         };
