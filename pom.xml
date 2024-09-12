@@ -167,6 +167,11 @@
         <version.infinispan>15.0.5.Final</version.infinispan>
         <version.infinispan.protostream>5.0.4.Final</version.infinispan.protostream>
 
+        <!-- EhCache Specific Versions -->
+        <version.ehcache>3.9.6</version.ehcache>
+        <!-- Must be aligned with the version.jaxb of the JAXB-API -->
+        <version.jaxb.implementation>2.3.1</version.jaxb.implementation>
+
         <!-- RocketMQ version for RocketMQ storage and Server sink -->
         <version.rocketmq>5.1.4</version.rocketmq>
 
