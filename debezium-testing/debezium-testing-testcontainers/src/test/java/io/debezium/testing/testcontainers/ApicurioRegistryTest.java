@@ -82,6 +82,7 @@ public class ApicurioRegistryTest {
 
     @BeforeAll
     public static void startContainers() {
+        LOGGER.info("Using Apicurio image: {}", apicurioContainer.getDockerImageName());
         Startables.deepStart(Stream.of(
                 apicurioContainer, kafkaContainer, postgresContainer, debeziumContainer)).join();
     }
