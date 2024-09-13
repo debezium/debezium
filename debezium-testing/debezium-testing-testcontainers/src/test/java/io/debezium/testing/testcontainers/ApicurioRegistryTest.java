@@ -45,6 +45,7 @@ import org.testcontainers.lifecycle.Startables;
 import com.jayway.jsonpath.JsonPath;
 
 import io.debezium.doc.FixFor;
+import io.debezium.util.Testing;
 
 /**
  * An integration test verifying the Apicurio registry is interoperable with Debezium
@@ -134,6 +135,9 @@ public class ApicurioRegistryTest {
 
     @Test
     public void shouldConvertToAvro() throws Exception {
+        Testing.Debug.enable();
+        Testing.Print.enable();
+
         try (Connection connection = getConnection(postgresContainer);
                 Statement statement = connection.createStatement();
                 KafkaConsumer<byte[], byte[]> consumer = getConsumerBytes(kafkaContainer)) {
@@ -151,6 +155,7 @@ public class ApicurioRegistryTest {
             consumer.subscribe(Arrays.asList("dbserver2.todo.todo"));
 
             List<ConsumerRecord<byte[], byte[]>> changeEvents = drain(consumer, 1);
+            assertThat(changeEvents).hasSize(1);
 
             // Verify magic byte of Avro messages
             assertThat(changeEvents.get(0).key()[0]).isZero();
