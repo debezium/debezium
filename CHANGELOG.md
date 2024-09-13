@@ -2,6 +2,70 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.0.0.CR1
+September 13rd 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12432262)
+
+### New features since 3.0.0.Beta1
+
+* Add support for MySQL 9 [DBZ-8030](https://issues.redhat.com/browse/DBZ-8030)
+* Add support for MySQL vector datatype [DBZ-8157](https://issues.redhat.com/browse/DBZ-8157)
+* Refactor engine signal support [DBZ-8160](https://issues.redhat.com/browse/DBZ-8160)
+* Add feature to inherit shard epoch [DBZ-8163](https://issues.redhat.com/browse/DBZ-8163)
+* Avoid 3 second delay in Oracle when one of the RAC nodes is offline [DBZ-8177](https://issues.redhat.com/browse/DBZ-8177)
+* Truncate byte buffer should return a new array [DBZ-8189](https://issues.redhat.com/browse/DBZ-8189)
+* Support for older MongoDb versions [DBZ-8202](https://issues.redhat.com/browse/DBZ-8202)
+* Add VECTOR functions to MySQL grammar [DBZ-8210](https://issues.redhat.com/browse/DBZ-8210)
+* Support MariaDB 11.4.3 [DBZ-8226](https://issues.redhat.com/browse/DBZ-8226)
+* Add information about helm chart installation to operator readme [DBZ-8233](https://issues.redhat.com/browse/DBZ-8233)
+
+
+### Breaking changes since 3.0.0.Beta1
+
+* Error registering JMX signal and notification for multi task SQLServer  [DBZ-8137](https://issues.redhat.com/browse/DBZ-8137)
+* Remove several deprecated Oracle configuration options [DBZ-8181](https://issues.redhat.com/browse/DBZ-8181)
+* Unify vector datatypes between PostgreSQL and MySQL [DBZ-8183](https://issues.redhat.com/browse/DBZ-8183)
+
+
+### Fixes since 3.0.0.Beta1
+
+* Make ORA-00600 - krvrdccs10 automatically retriable [DBZ-5009](https://issues.redhat.com/browse/DBZ-5009)
+* Incremental snapshot fails with NPE if surrogate key doesn't exist [DBZ-7797](https://issues.redhat.com/browse/DBZ-7797)
+* MySQL 8.4 incompatibility due to removed SQL commands [DBZ-7838](https://issues.redhat.com/browse/DBZ-7838)
+* Postgres connector - null value processing for "money" type column. [DBZ-8027](https://issues.redhat.com/browse/DBZ-8027)
+* Using snapshot.include.collection.list with Oracle raises NullPointerException [DBZ-8032](https://issues.redhat.com/browse/DBZ-8032)
+* Performance degradation when reconstructing (log.mining.stragtegy hybrid mode) [DBZ-8071](https://issues.redhat.com/browse/DBZ-8071)
+* The source data type exceeds the debezium data type and cannot deserialize the object [DBZ-8142](https://issues.redhat.com/browse/DBZ-8142)
+* Incorrect use of generic types in tests [DBZ-8166](https://issues.redhat.com/browse/DBZ-8166)
+* Postgres JSONB Fields are not supported with Reselect Post Processor [DBZ-8168](https://issues.redhat.com/browse/DBZ-8168)
+* NullPointerException (schemaUpdateCache is null) when restarting Oracle engine [DBZ-8187](https://issues.redhat.com/browse/DBZ-8187)
+* XStream may fail to attach on retry if previous attempt failed [DBZ-8188](https://issues.redhat.com/browse/DBZ-8188)
+* Exclude Oracle 23 VECSYS tablespace from capture [DBZ-8198](https://issues.redhat.com/browse/DBZ-8198)
+* AbstractProcessorTest uses an incorrect database name when run against Oracle 23 Free edition [DBZ-8199](https://issues.redhat.com/browse/DBZ-8199)
+* DDL statement couldn't be parsed: REVOKE IF EXISTS [DBZ-8209](https://issues.redhat.com/browse/DBZ-8209)
+* System testsuite fails with route name being too long [DBZ-8213](https://issues.redhat.com/browse/DBZ-8213)
+* Oracle TableSchemaBuilder provides wrong column name in error message [DBZ-8217](https://issues.redhat.com/browse/DBZ-8217)
+* Using ehcache in Kafka connect throws an XMLConfiguration parse exception [DBZ-8219](https://issues.redhat.com/browse/DBZ-8219)
+* OcpJdbcSinkConnectorIT fails [DBZ-8228](https://issues.redhat.com/browse/DBZ-8228)
+* Container image does not install correct apicurio deps [DBZ-8230](https://issues.redhat.com/browse/DBZ-8230)
+
+
+### Other changes since 3.0.0.Beta1
+
+* Documentation for signals provides incorrect data-collection format for some connectors [DBZ-8090](https://issues.redhat.com/browse/DBZ-8090)
+* Latest Informix JDBC Driver [DBZ-8167](https://issues.redhat.com/browse/DBZ-8167)
+* upgrade Adobe s3mock to version 3.10.0 [DBZ-8169](https://issues.redhat.com/browse/DBZ-8169)
+* Include Jackson libraries to JDBC connector Docker image distribution [DBZ-8175](https://issues.redhat.com/browse/DBZ-8175)
+* Ehcache fails to start, throwing "Invaild XML Configuration" [DBZ-8178](https://issues.redhat.com/browse/DBZ-8178)
+* Enable snapshot.database.errors.max.retriesEnable during Oracle tests [DBZ-8184](https://issues.redhat.com/browse/DBZ-8184)
+* Change event for a logical decoding message doesn't contain `transaction` field [DBZ-8185](https://issues.redhat.com/browse/DBZ-8185)
+* Add MariaDB connector server distribution [DBZ-8186](https://issues.redhat.com/browse/DBZ-8186)
+* Update Vitess example to Debezium 2.7/Vitess 19 [DBZ-8196](https://issues.redhat.com/browse/DBZ-8196)
+* OracleConnectorIT test shouldGracefullySkipObjectBasedTables can timeout prematurely [DBZ-8197](https://issues.redhat.com/browse/DBZ-8197)
+* Reduce log verbosity of OpenLogReplicator SCN confirmation [DBZ-8201](https://issues.redhat.com/browse/DBZ-8201)
+* Implement separate source and sink connector sections in documentation navigation [DBZ-8220](https://issues.redhat.com/browse/DBZ-8220)
+
+
+
 ## 3.0.0.Beta1
 August 22nd 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12431096)
 
