@@ -610,7 +610,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // Consume any residual left-over events after stopping incremental snapshots such as open/close
         // and wait for the stop message in the connector logs
         assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
-                interceptor, "Stopping incremental snapshot")).isTrue();
+                interceptor, "Removing collections from incremental snapshot: ")).isTrue();
 
         // stop the connector
         stopConnector((r) -> interceptor.clear());
@@ -669,7 +669,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         // Consume any residual left-over events after stopping incremental snapshots such as open/close
         // and wait for the stop message in the connector logs
         assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
-                interceptor, "Removing '[" + tableDataCollectionId() + "]' collections from incremental snapshot")).isTrue();
+                interceptor, "Removing collections from incremental snapshot: '[" + tableDataCollectionId() + "]'")).isTrue();
 
         // stop the connector
         stopConnector((r) -> interceptor.clear());
@@ -730,7 +730,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         // Wait until the stop has been processed, verifying it was removed from the snapshot.
         Awaitility.await().atMost(60, TimeUnit.SECONDS)
-                .until(() -> interceptor.containsMessage("Removing '[" + collectionIdToRemove + "]' collections from incremental snapshot"));
+                .until(() -> interceptor.containsMessage("Removing collections from incremental snapshot: '[" + collectionIdToRemove + "]'"));
 
         try (JdbcConnection connection = databaseConnection()) {
             connection.setAutoCommit(false);
@@ -781,7 +781,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         // Wait until the stop has been processed, verifying it was removed from the snapshot.
         Awaitility.await().atMost(60, TimeUnit.SECONDS)
-                .until(() -> interceptor.containsMessage("Removing '[" + collectionIdToRemove + "]' collections from incremental snapshot"));
+                .until(() -> interceptor.containsMessage("Removing collections from incremental snapshot: '[" + collectionIdToRemove + "]'"));
 
         try (JdbcConnection connection = databaseConnection()) {
             connection.setAutoCommit(false);

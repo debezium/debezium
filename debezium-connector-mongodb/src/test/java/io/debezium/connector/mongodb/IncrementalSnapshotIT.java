@@ -612,7 +612,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         // Consume any residual left-over events after stopping incremental snapshots such as open/close
         // and wait for the stop message in the connector logs
         assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
-                interceptor, "Stopping incremental snapshot")).isTrue();
+                interceptor, "Removing collections from incremental snapshot: ")).isTrue();
 
         // stop the connector
         stopConnector((r) -> interceptor.clear());
@@ -654,7 +654,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         // Consume any residual left-over events after stopping incremental snapshots such as open/close
         // and wait for the stop message in the connector logs
         assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
-                interceptor, "Removing '[" + fullDataCollectionName() + "]' collections from incremental snapshot")).isTrue();
+                interceptor, "Removing collections from incremental snapshot: '[" + fullDataCollectionName() + "]'")).isTrue();
 
         // stop the connector
         stopConnector((r) -> interceptor.clear());
@@ -697,7 +697,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
 
         // Wait until the stop has been processed, verifying it was removed from the snapshot.
         Awaitility.await().atMost(60, TimeUnit.SECONDS)
-                .until(() -> interceptor.containsMessage("Removing '[" + collectionIdToRemove + "]' collections from incremental snapshot"));
+                .until(() -> interceptor.containsMessage("Removing collections from incremental snapshot: '[" + collectionIdToRemove + "]'"));
 
         insertAdditionalData(COLLECTION_NAME);
 
@@ -733,7 +733,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
 
         // Wait until the stop has been processed, verifying it was removed from the snapshot.
         Awaitility.await().atMost(60, TimeUnit.SECONDS)
-                .until(() -> interceptor.containsMessage("Removing '[" + collectionIdToRemove + "]' collections from incremental snapshot"));
+                .until(() -> interceptor.containsMessage("Removing collections from incremental snapshot: '[" + collectionIdToRemove + "]'"));
 
         insertAdditionalData(COLLECTION2_NAME);
 
