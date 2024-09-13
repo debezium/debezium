@@ -13,7 +13,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import org.assertj.db.api.AbstractColumnAssert;
@@ -41,10 +43,16 @@ public class Sink extends JdbcConnectionProvider {
     }
 
     public String getJdbcUrl() {
+        return getJdbcUrl(Collections.emptyMap());
+    }
+
+    public String getJdbcUrl(Map<String, String> urlParameters) {
+        final JdbcDatabaseContainer<?> container = getContainer();
+        urlParameters.forEach(container::withUrlParam);
         if (SinkType.SQLSERVER == type) {
-            return getContainer().getJdbcUrl() + ";databaseName=testDB";
+            return container.getJdbcUrl() + ";databaseName=testDB";
         }
-        return getContainer().getJdbcUrl();
+        return container.getJdbcUrl();
     }
 
     public String formatTableName(String tableName) {

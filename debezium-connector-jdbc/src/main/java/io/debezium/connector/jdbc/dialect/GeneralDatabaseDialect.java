@@ -18,6 +18,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -582,6 +583,11 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     @Override
     public String getFormattedTimestampWithTimeZone(String value) {
         return String.format("'%s'", value);
+    }
+
+    @Override
+    public Set<Class<? extends Exception>> getCommunicationExceptions() {
+        return Collections.emptySet();
     }
 
     protected String getTypeName(int jdbcType, int length) {
