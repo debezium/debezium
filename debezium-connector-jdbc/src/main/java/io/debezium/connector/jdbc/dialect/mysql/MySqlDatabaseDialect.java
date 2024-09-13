@@ -14,11 +14,14 @@ import java.time.temporal.TemporalAccessor;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
+import org.hibernate.PessimisticLockException;
 import org.hibernate.SessionFactory;
 import org.hibernate.StatelessSession;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.MySQLDialect;
+import org.hibernate.exception.LockAcquisitionException;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.SinkRecordDescriptor;
@@ -28,6 +31,7 @@ import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.time.ZonedTimestamp;
+import io.debezium.util.Collect;
 import io.debezium.util.Strings;
 
 /**
@@ -188,6 +192,11 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
         }
 
         return builder.build();
+    }
+
+    @Override
+    public Set<Class<? extends Exception>> getCommunicationExceptions() {
+        return Collect.unmodifiableSet(LockAcquisitionException.class, PessimisticLockException.class);
     }
 
     @Override
