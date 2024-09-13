@@ -115,7 +115,13 @@ public class OcpArtifactServerController {
                 "connect-converter",
                 "groovy/groovy",
                 "groovy/groovy-json",
-                "groovy/groovy-jsr223");
+                "groovy/groovy-jsr223",
+                "jackson/jackson-dataformat-csv",
+                "jackson/jackson-datatype-jsr310",
+                "jackson/jackson-jaxrs-base",
+                "jackson/jackson-jaxrs-json-provider",
+                "jackson/jackson-module-jaxb-annotations",
+                "jackson/jackson-module-scala_2.13");
         List<String> artifacts = Stream.concat(commonArtifacts.stream(), extraArtifacts.stream()).collect(toList());
 
         return createPlugin("debezium-connector-" + database, artifacts);
