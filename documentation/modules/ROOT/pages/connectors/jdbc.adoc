@@ -886,6 +886,15 @@ Fully-qualified names for fields are of the form `_fieldName_` or `_topicName_:_
  +
 If you include this property in the configuration, do not set the `field.include.list` property.
 
+|[[jdbc-property-flush-max-retries]]<<jdbc-property-flush-max-retries, `+flush.max.retries+`>>
+|5
+|Specifies the maximum number of attempts to flush changes to the target database on specific database errors.
+If the number of retries is exhausted, the sink connector will enter a _FAILED_ state.
+
+|[[jdbc-property-flush-retry-delay-ms]]<<jdbc-property-flush-retry-delay-ms, `+flush.retry.delay.ms+`>>
+|1000
+|Specifies the number of milliseconds to wait in between flush attempts when a flush operation fails and is scheduled to be retried.
+
 |===
 
 [[jdbc-connector-properties-extendable]]

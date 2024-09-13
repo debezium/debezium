@@ -298,7 +298,8 @@ public class JdbcSinkConnectorConfig {
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(5)
-            .withDescription("Max retry count when fail to flush. retry if retriable exceptions");
+            .withDescription("Max retry count when fail to flush. In case of retriable exceptions, " +
+                    "the flush will be retried for the defined max retry count. Default is 5.");
 
     public static final Field FLUSH_RETRY_DELAY_MS_FIELD = Field.create(FLUSH_RETRY_DELAY_MS)
             .withDisplayName("Delay to retry flush")
