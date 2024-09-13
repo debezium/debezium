@@ -326,7 +326,7 @@ ifdef::product[]
 == {prodname} logging on OpenShift
 
 If you are using {prodname} on OpenShift, you can use the Kafka Connect loggers to configure the {prodname} loggers and logging levels.
-For more information about configuring logging properties in a Kafka Connect schema, see link:{LinkStreamsOpenShift}#type-KafkaConnectSpec-schema-reference[{NameStreamsOpenShift}].
+For more information about configuring logging properties in a Kafka Connect schema, see link:{LinkDeployManageStreamsOpenShift}#external-logging_str[{NameDeployManageStreamsOpenShift}].
 
 endif::product[]
 
