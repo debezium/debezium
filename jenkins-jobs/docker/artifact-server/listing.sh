@@ -61,4 +61,14 @@ for groovy_script in **/groovy/*.{zip,jar}; do
     echo "$artifact::$groovy_script" >> "$OUTPUT"
 done
 
+for jackson_lib in **/jackson/*.jar; do
+    name=$(echo "$jackson_lib" | sed -rn 's@^(.*)-[0-9]\..*$@\1@p')
+    artifact="$name"
+    if [[ ! $artifact ]]; then
+        continue
+    fi
+    echo "$artifact"
+    echo "$artifact::$jackson_lib" >> "$OUTPUT"
+done
+
 popd || exit
