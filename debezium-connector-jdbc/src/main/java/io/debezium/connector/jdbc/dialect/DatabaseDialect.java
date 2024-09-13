@@ -383,4 +383,11 @@ public interface DatabaseDialect {
      * @return the list of bounded values
      */
     List<ValueBindDescriptor> bindValue(FieldDescriptor field, int startIndex, Object value);
+
+    /**
+     * Set of retriable exceptions if flush fails.
+     *
+     * @return set of retriable exception classes
+     */
+    Set<Class<? extends Exception>> getCommunicationExceptions();
 }

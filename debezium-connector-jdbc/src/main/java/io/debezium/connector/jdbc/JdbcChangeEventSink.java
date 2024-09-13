@@ -8,6 +8,8 @@ package io.debezium.connector.jdbc;
 import static io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE;
 
 import java.sql.SQLException;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,6 +33,8 @@ import io.debezium.connector.jdbc.naming.TableNamingStrategy;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.connector.jdbc.relational.TableId;
 import io.debezium.pipeline.spi.ChangeEventSink;
+import io.debezium.util.Clock;
+import io.debezium.util.Metronome;
 import io.debezium.util.Stopwatch;
 import io.debezium.util.Strings;
 
@@ -50,6 +54,8 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     private final StatelessSession session;
     private final TableNamingStrategy tableNamingStrategy;
     private final RecordWriter recordWriter;
+    private final int flushMaxRetries;
+    private final Duration flushRetryDelay;
 
     public JdbcChangeEventSink(JdbcSinkConnectorConfig config, StatelessSession session, DatabaseDialect dialect, RecordWriter recordWriter) {
         this.config = config;
@@ -57,6 +63,9 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         this.dialect = dialect;
         this.session = session;
         this.recordWriter = recordWriter;
+        this.flushMaxRetries = config.getFlushMaxRetries();
+        this.flushRetryDelay = Duration.of(config.getFlushRetryDelayMs(), ChronoUnit.MILLIS);
+
         final DatabaseVersion version = this.dialect.getVersion();
         LOGGER.info("Database version {}.{}.{}", version.getMajor(), version.getMinor(), version.getMicro());
     }
@@ -123,14 +132,14 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     // When an delete arrives, update buffer must be flushed to avoid losing an
                     // delete for the same record after its update.
 
-                    flushBuffer(tableId, updateBufferByTable.get(tableId).flush());
+                    flushBufferWithRetries(tableId, updateBufferByTable.get(tableId).flush());
                 }
 
                 Buffer tableIdBuffer = resolveBuffer(deleteBufferByTable, tableId, sinkRecordDescriptor);
 
                 List<SinkRecordDescriptor> toFlush = tableIdBuffer.add(sinkRecordDescriptor);
 
-                flushBuffer(tableId, toFlush);
+                flushBufferWithRetries(tableId, toFlush);
             }
             else {
 
@@ -138,7 +147,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     // When an insert arrives, delete buffer must be flushed to avoid losing an insert for the same record after its deletion.
                     // this because at the end we will always flush inserts before deletes.
 
-                    flushBuffer(tableId, deleteBufferByTable.get(tableId).flush());
+                    flushBufferWithRetries(tableId, deleteBufferByTable.get(tableId).flush());
                 }
 
                 Stopwatch updateBufferStopwatch = Stopwatch.reusable();
@@ -150,7 +159,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 updateBufferStopwatch.stop();
 
                 LOGGER.trace("[PERF] Update buffer execution time {}", updateBufferStopwatch.durations());
-                flushBuffer(tableId, toFlush);
+                flushBufferWithRetries(tableId, toFlush);
             }
 
         }
@@ -203,30 +212,57 @@ public class JdbcChangeEventSink implements ChangeEventSink {
 
     private void flushBuffers(Map<TableId, Buffer> bufferByTable) {
 
-        bufferByTable.forEach((tableId, recordBuffer) -> flushBuffer(tableId, recordBuffer.flush()));
+        bufferByTable.forEach((tableId, recordBuffer) -> flushBufferWithRetries(tableId, recordBuffer.flush()));
     }
 
-    private void flushBuffer(TableId tableId, List<SinkRecordDescriptor> toFlush) {
+    private void flushBufferWithRetries(TableId tableId, List<SinkRecordDescriptor> toFlush) {
+        int retries = 0;
+        Exception lastException = null;
 
+        LOGGER.debug("Flushing records in JDBC Writer for table: {}", tableId.getTableName());
+        while (retries <= flushMaxRetries) {
+            try {
+                if (retries > 0) {
+                    LOGGER.warn("Retry to flush records for table '{}'. Retry {}/{} with delay {} ms",
+                            tableId.getTableName(), retries, flushMaxRetries, flushRetryDelay.toMillis());
+                    try {
+                        Metronome.parker(flushRetryDelay, Clock.SYSTEM).pause();
+                    }
+                    catch (InterruptedException e) {
+                        throw new ConnectException("Interrupted while waiting to retry flush records", e);
+                    }
+                }
+                flushBuffer(tableId, toFlush);
+                return;
+            }
+            catch (Exception e) {
+                lastException = e;
+                if (isRetriable(e)) {
+                    retries++;
+                }
+                else {
+                    throw new ConnectException("Failed to process a sink record", e);
+                }
+            }
+        }
+        throw new ConnectException("Exceeded max retries " + flushMaxRetries + " times, failed to process sink records", lastException);
+    }
+
+    private void flushBuffer(TableId tableId, List<SinkRecordDescriptor> toFlush) throws SQLException {
         Stopwatch flushBufferStopwatch = Stopwatch.reusable();
         Stopwatch tableChangesStopwatch = Stopwatch.reusable();
         if (!toFlush.isEmpty()) {
-            LOGGER.debug("Flushing records in JDBC Writer for table: {}", tableId.getTableName());
-            try {
-                tableChangesStopwatch.start();
-                final TableDescriptor table = checkAndApplyTableChangesIfNeeded(tableId, toFlush.get(0));
-                tableChangesStopwatch.stop();
-                String sqlStatement = getSqlStatement(table, toFlush.get(0));
-                flushBufferStopwatch.start();
-                recordWriter.write(toFlush, sqlStatement);
-                flushBufferStopwatch.stop();
+            LOGGER.debug("Starting flushing in JDBC Writer for table: {}", tableId.getTableName());
+            tableChangesStopwatch.start();
+            final TableDescriptor table = checkAndApplyTableChangesIfNeeded(tableId, toFlush.get(0));
+            tableChangesStopwatch.stop();
+            String sqlStatement = getSqlStatement(table, toFlush.get(0));
+            flushBufferStopwatch.start();
+            recordWriter.write(toFlush, sqlStatement);
+            flushBufferStopwatch.stop();
 
-                LOGGER.trace("[PERF] Flush buffer execution time {}", flushBufferStopwatch.durations());
-                LOGGER.trace("[PERF] Table changes execution time {}", tableChangesStopwatch.durations());
-            }
-            catch (Exception e) {
-                throw new ConnectException("Failed to process a sink record", e);
-            }
+            LOGGER.trace("[PERF] Flush buffer execution time {}", flushBufferStopwatch.durations());
+            LOGGER.trace("[PERF] Table changes execution time {}", tableChangesStopwatch.durations());
         }
     }
 
@@ -398,5 +434,17 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             transaction.rollback();
             throw e;
         }
+    }
+
+    private boolean isRetriable(Throwable throwable) {
+        if (throwable == null) {
+            return false;
+        }
+        for (Class<? extends Exception> e : dialect.getCommunicationExceptions()) {
+            if (e.isAssignableFrom(throwable.getClass())) {
+                return true;
+            }
+        }
+        return isRetriable(throwable.getCause());
     }
 }

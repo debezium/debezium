@@ -6,6 +6,7 @@
 package io.debezium.connector.jdbc.integration;
 
 import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.util.Arrays;
 import java.util.List;
@@ -162,11 +163,17 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         final String topicName = topicName("server1", "schema", tableName);
         try {
             consume(factory.createRecordNoKey(topicName));
-            stopSinkConnector();
+            // consume again because the exception will be thrown next put call
+            consume(factory.createRecordNoKey(topicName));
+            fail();
         }
         catch (Exception e) {
             assertThat(e.getCause().getCause().getMessage()).matches(
                     "Cannot write to table [a-zA-Z0-9_]* with no key fields defined\\.");
+            assertThat(e.getCause().getMessage()).doesNotContain("Exceeded max retries");
+        }
+        finally {
+            stopSinkConnector();
         }
     }
 
