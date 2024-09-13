@@ -44,7 +44,6 @@ import org.testcontainers.lifecycle.Startables;
 
 import com.jayway.jsonpath.JsonPath;
 
-import io.debezium.doc.FixFor;
 import io.debezium.util.Testing;
 
 /**
