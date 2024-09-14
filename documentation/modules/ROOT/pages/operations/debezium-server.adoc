@@ -491,9 +491,10 @@ You can configure the following options for the asynchronous embedded engine:
 |Description
 
 |[[debezium-server-property-record-processing-threads]]<<debezium-server-property-record-processing-threads, `+record.processing.threads+`>>
-|Threads allocated on demand, based on the workload and the number of available threads.
+|Threads allocated on demand, based on the workload and the number of available CPU cores.
 |The number of threads that are available to process change event records.
-If no value is specified (the default), the engine uses the Java https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/Executors.html#newCachedThreadPool()[cached thread pool] method to dynamically adjust the number of threads, based on the current workload.
+If no value is specified (the default), the engine uses the Java https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/ThreadPoolExecutor.html[ThreadPoolExecutor] to dynamically adjust the number of threads, based on the current workload.
+Maximum number of threads is number of CPU cores on given machine.
 If a value is specified, the engine uses the Java https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/Executors.html#newFixedThreadPool(int)[fixed thread pool] method to create a thread pool with the specified number of threads.
 To use all available cores on given machine, set the placeholder value, `AVAILABLE_CORES`.
 
