@@ -34,23 +34,26 @@ public class DebeziumEnginePerf {
 
     @State(Scope.Thread)
     public static class AsyncEnginePerfTest extends AbstractDebeziumEnginePerf {
-        @Param({ "1", "2", "4", "8", "16" })
+        @Param({ "0", "1", "2", "4", "8", "16" })
         public int threadCount;
 
         @Param({ "ORDERED", "UNORDERED" })
         public String processingOrder;
 
         public DebeziumEngine createEngine() {
-            Configuration config = Configuration.create()
+            Configuration.Builder confBuilder = Configuration.create()
                     .with(EmbeddedEngine.ENGINE_NAME, "async-engine")
                     .with(EmbeddedEngine.CONNECTOR_CLASS, PreComputedRecordsSourceConnector.class)
                     .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, getPath(OFFSET_FILE_NAME).toAbsolutePath())
                     .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 3_600_000)
                     .with(AsyncEngineConfig.RECORD_PROCESSING_SHUTDOWN_TIMEOUT_MS, 100)
                     .with(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS, 100)
-                    .with(AsyncEngineConfig.RECORD_PROCESSING_THREADS, threadCount)
-                    .with(AsyncEngineConfig.RECORD_PROCESSING_ORDER, processingOrder)
-                    .build();
+                    .with(AsyncEngineConfig.RECORD_PROCESSING_ORDER, processingOrder);
+            // threadCount == 0 stands for the default configuration, when RECORD_PROCESSING_THREADS is not specified.
+            if (threadCount > 0) {
+                confBuilder.with(AsyncEngineConfig.RECORD_PROCESSING_THREADS, threadCount);
+            }
+            Configuration config = confBuilder.build();
 
             return new ConvertingAsyncEngineBuilderFactory()
                     .builder((KeyValueHeaderChangeEventFormat) null)
