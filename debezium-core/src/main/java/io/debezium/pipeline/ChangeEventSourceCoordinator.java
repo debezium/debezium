@@ -283,6 +283,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         eventDispatcher.setEventListener(snapshotMetrics);
 
         SnapshotResult<O> snapshotResult = snapshotSource.execute(context, partition, previousOffset, snapshottingTask);
+        eventDispatcher.setEventListener(streamingMetrics);
         LOGGER.info("Snapshot ended with {}", snapshotResult);
 
         if (snapshotResult.getStatus() == SnapshotResultStatus.COMPLETED || schema.tableInformationComplete()) {
