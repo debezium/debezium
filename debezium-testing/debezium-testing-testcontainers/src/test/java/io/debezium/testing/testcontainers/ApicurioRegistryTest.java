@@ -146,7 +146,8 @@ public class ApicurioRegistryTest {
 
             debeziumContainer.registerConnector("my-connector-avro", getConfiguration(
                     2, "io.apicurio.registry.utils.converter.AvroConverter",
-                    "schema.name.adjustment.mode", "avro"));
+                    "schema.name.adjustment.mode", "avro",
+                    "key.converter.apicurio.registry.headers.enabled", "false"));
 
             consumer.subscribe(Arrays.asList("dbserver2.todo.todo"));
 
