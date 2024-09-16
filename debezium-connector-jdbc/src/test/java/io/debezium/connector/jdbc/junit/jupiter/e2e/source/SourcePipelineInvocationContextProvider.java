@@ -8,8 +8,6 @@ package io.debezium.connector.jdbc.junit.jupiter.e2e.source;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -43,7 +41,6 @@ import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.OracleContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.lifecycle.Startable;
 import org.testcontainers.lifecycle.Startables;
 import org.testcontainers.utility.DockerImageName;
@@ -61,6 +58,7 @@ import io.debezium.connector.jdbc.junit.jupiter.e2e.WithTemporalPrecisionMode;
 import io.debezium.connector.jdbc.util.RandomTableNameGenerator;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.testing.testcontainers.DebeziumContainer;
+import io.debezium.testing.testcontainers.DebeziumKafkaContainer;
 
 /**
  * The JDBC sink end to end pipeline context provider.
@@ -74,10 +72,6 @@ import io.debezium.testing.testcontainers.DebeziumContainer;
 public class SourcePipelineInvocationContextProvider implements BeforeAllCallback, AfterAllCallback, TestTemplateInvocationContextProvider {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SourcePipelineInvocationContextProvider.class);
-
-    private static final String KAFKA_IMAGE_NAME = "confluentinc/cp-kafka";
-
-    private static final String CONNECT_IMAGE_NAME = "debezium/connect-with-oracle";
 
     private static final String MYSQL_IMAGE_NAME = "debezium/example-mysql";
     private static final String MYSQL_USERNAME = "mysqluser";
@@ -93,8 +87,6 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
     private static final String ORACLE_IMAGE_NAME = "quay.io/rh_integration/dbz-oracle:19.3.0";
     private static final String ORACLE_USERNAME = "debezium";
     private static final String ORACLE_PASSWORD = "dbz";
-
-    private static final String DB2_IMAGE_NAME = "ibmcom/db2:11.5.0.0a";
 
     private static final Network network = Network.newNetwork();
 
@@ -343,22 +335,16 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
 
     @SuppressWarnings("resource")
     private KafkaContainer getKafkaContainer() {
-        return new KafkaContainer(DockerImageName.parse(KAFKA_IMAGE_NAME))
-                .withNetwork(network)
-                .withNetworkAliases("kafka");
+        return DebeziumKafkaContainer.defaultKafkaContainer(network).withNetworkAliases("kafka");
     }
 
     @SuppressWarnings("resource")
     private DebeziumContainer getKafkaConnectContainer(KafkaContainer kafkaContainer) {
-        final Path dockerFile = Paths.get("src", "test", "docker", "debezium-connect-with-oracle-driver")
-                .toFile()
-                .getAbsoluteFile()
-                .toPath();
-
-        return new DebeziumContainer(new ImageFromDockerfile().withFileFromPath(".", dockerFile))
+        return DebeziumContainer.nightly()
                 .withKafka(kafkaContainer)
                 .withNetwork(network)
-                .withNetworkAliases("connect");
+                .withNetworkAliases("connect")
+                .dependsOn(kafkaContainer);
     }
 
     @SuppressWarnings("resource")
