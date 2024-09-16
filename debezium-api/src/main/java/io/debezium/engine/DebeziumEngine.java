@@ -16,8 +16,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 
-import org.slf4j.LoggerFactory;
-
 import io.debezium.DebeziumException;
 import io.debezium.engine.format.ChangeEventFormat;
 import io.debezium.engine.format.KeyValueChangeEventFormat;
@@ -335,17 +333,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
     }
 
     private static BuilderFactory determineBuilderFactory() {
-        final ServiceLoader<BuilderFactory> loader = ServiceLoader.load(BuilderFactory.class);
-        final Iterator<BuilderFactory> iterator = loader.iterator();
-        if (!iterator.hasNext()) {
-            throw new DebeziumException("No implementation of Debezium engine builder was found");
-        }
-        final BuilderFactory builder = iterator.next();
-        if (iterator.hasNext()) {
-            LoggerFactory.getLogger(Builder.class)
-                    .warn("More than one Debezium engine builder implementation was found, using {} (in Debezium 2.6 you can ignore this warning)", builder.getClass());
-        }
-        return builder;
+        return determineBuilderFactory("io.debezium.embedded.ConvertingEngineBuilderFactory");
     }
 
     private static BuilderFactory determineBuilderFactory(String builderFactory) {
