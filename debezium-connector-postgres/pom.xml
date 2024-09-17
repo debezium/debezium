@@ -167,6 +167,70 @@
     <build>
         <plugins>
             <plugin>
+                <groupId>io.confluent</groupId>
+                <version>0.12.0</version>
+                <artifactId>kafka-connect-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>kafka-connect</goal>
+                        </goals>
+                        <configuration>
+                            <title>Kafka Connect YugabyteDB</title>
+                            <documentationUrl>https://docs.yugabyte.com/preview/explore/change-data-capture/using-logical-replication/yugabytedb-connector/</documentationUrl>
+                            <description>
+                                The YugabyteDB Connector is based on the Debezium API, and captures row-level changes in the schemas of a YugabyteDB database using the PostgreSQL replication protocol.
+
+                                The first time it connects to a YugabyteDB server, the connector takes a consistent snapshot of all schemas. After that snapshot is complete, the connector continuously captures row-level changes that insert, update, and delete database content, and that were committed to a YugabyteDB database.
+
+                                The connector generates data change event records and streams them to Kafka topics. For each table, the default behavior is that the connector streams all generated events to a separate Kafka topic for that table. Applications and services consume data change event records from that topic.
+                            </description>
+                            <logo>logos/yugabytedb.png</logo>
+
+                            <supportProviderName>Yugabyte Inc.</supportProviderName>
+                            <supportSummary>Yugabyte supports the YugabyteDB source connector.</supportSummary>
+                            <supportUrl>http://support.yugabyte.com/</supportUrl>
+                            <supportLogo>logos/yugabytedb.png</supportLogo>
+
+                            <ownerUsername>yugabyte</ownerUsername>
+                            <ownerType>organization</ownerType>
+                            <ownerName>Yugabyte Inc.</ownerName>
+                            <ownerUrl>https://www.yugabyte.com//</ownerUrl>
+                            <ownerLogo>logos/yugabytedb.png</ownerLogo>
+
+                            <dockerNamespace>quay.io/yugabyte</dockerNamespace>
+                            <dockerName>ybdb-debezium</dockerName>
+                            <dockerTag>${project.version}</dockerTag>
+
+                            <sourceUrl>https://github.com/yugabyte/debezium/tree/ybdb-debezium-2.5.2/debezium-connector-postgres</sourceUrl>
+
+                            <componentTypes>
+                                <componentType>source</componentType>
+                            </componentTypes>
+
+                            <tags>
+                                <tag>Yugabyte</tag>
+                                <tag>yugabytedb</tag>
+                                <tag>source</tag>
+                                <tag>cdc</tag>
+                                <tag>wal</tag>
+                                <tag>replication</tag>
+                            </tags>
+
+                            <requirements>
+                                <requirement>YugabyteDB 2024.1.x</requirement>
+                            </requirements>
+
+                            <deliveryGuarantee>
+                                <deliveryGuarantee>atLeastOnce</deliveryGuarantee>
+                            </deliveryGuarantee>
+
+                            <confluentControlCenterIntegration>true</confluentControlCenterIntegration>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
                 <version>3.6.0</version>

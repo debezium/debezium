@@ -1,0 +1,56 @@
+name: Create package for Confluent
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version of the connector to be packaged"
+        required: true
+        type: string
+      isSnapshotBuild:
+        description: "Snapshot build?"
+        required: true
+        type: boolean
+        default: false
+
+permissions: write-all
+
+jobs:
+  build:
+    name: "Create YugabyteDBConnector package for"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+      
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+      
+      - name: Set version for release
+        run: ./mvnw versions:set -DnewVersion=${{ inputs.version }}
+      
+      - name: Compile jar file
+        run: ./mvnw clean install -Dquick -pl debezium-connector-postgres -pl debezium-bom -pl support/ide-configs -am
+      - name: Create GitHub release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ inputs.version }}
+          release_name: Release ${{ inputs.version }}
+          draft: true
+          prerelease: ${{ inputs.isSnapshotBuild }}
+      - name: Upload zip package GitHub release
+        id: upload-zip-package
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./debezium-connector-postgres/target/components/packages/yugabyte-debezium-connector-yugabytedb-${{ inputs.version }}.zip
+          asset_name: yugabyte-debezium-connector-yugabytedb-${{ inputs.version }}.zip
+          asset_content_type: application/zip
