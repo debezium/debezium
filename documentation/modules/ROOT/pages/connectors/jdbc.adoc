@@ -664,9 +664,11 @@ Information about the properties is organized as follows:
 * xref:jdbc-connector-properties-connection[JDBC connector connection properties]
 * xref:jdbc-connector-properties-runtime[JDBC connector runtime properties]
 * xref:jdbc-connector-properties-extendable[JDBC connector extendable properties]
+* xref:jdbc-connector-hibernate-passthrough-properties[JDBC connector `hibernate.*` passthrough properties]
 
 [[jdbc-connector-properties-generic]]
-.Generic properties
+=== JDBC connector generic properties
+
 [cols="30%a,25%a,45%a"]
 |===
 |Property |Default |Description
@@ -700,7 +702,8 @@ Do not use this property in combination with the xref:jdbc-property-connection-t
 |===
 
 [[jdbc-connector-properties-connection]]
-.JDBC connector connection properties
+=== JDBC connector connection properties
+
 [cols="30%a,25%a,45%a"]
 |===
 |Property |Default |Description
@@ -740,7 +743,8 @@ Do not use this property in combination with the xref:jdbc-property-connection-t
 |===
 
 [[jdbc-connector-properties-runtime]]
-.JDBC connector runtime properties
+=== JDBC connector runtime properties
+
 [cols="30%a,25%a,45%a"]
 |===
 |Property |Default |Description
@@ -865,7 +869,7 @@ You can also configure the connector’s underlying consumer’s `_max.poll.reco
 
 Choose one of the following settings:
 
-`false`:: (default) The connector writes each change event that it consumes from Kafka as a separate logical SQL change. 
+`false`:: (default) The connector writes each change event that it consumes from Kafka as a separate logical SQL change.
 `true`:: The connector uses the reduction buffer to reduce change events before it writes them to the sink database.
 That is, if multiple events refer to the same primary key, the connector consolidates the SQL queries and writes only a single logical SQL change, based on the row state that is reported in the most recent offset record. +
 Choose this option to reduce the SQL load on the target database.
@@ -898,7 +902,8 @@ If the number of retries exceeds the retry value, the sink connector enters a _F
 |===
 
 [[jdbc-connector-properties-extendable]]
-.JDBC connector extendable properties
+=== JDBC connector extendable properties
+
 [cols="30%a,25%a,45%a"]
 |===
 |Property |Default |Description
@@ -918,6 +923,17 @@ The default behavior is to: +
 * Sanitize the table name by replacing dots (`.`) with underscores (`_`).
 
 |===
+
+[id="jdbc-connector-hibernate-passthrough-properties"]
+=== JDBC connector `hibernate.*` passthrough properties
+
+Kafka Connect supports passthrough configuration, enabling you to modify the behavior of an underlying system by passing certain properties directly from the connector configuration.
+By default, some Hibernate properties are exposed via the JDBC connector xref:jdbc-connector-properties-connection[connection properties] (for example, `connection.url`, `connection.username`, and `connection.pool.*_size`),
+and through the connector's xref:jdbc-connector-properties-runtime[runtime properties] (for example, `database.time_zone`, `quote.identifiers`).
+
+If you want to customize other Hibernate behavior, you can take advantage of the passthrough mechanism by adding properties that use the `hibernate.*` namespace to the connector configuration.
+For example, to assist Hibernate in resolving the type and version of the target database, you can add the `hibernate.dialect` property and set it to the fully qualified class name of the database, for example, `org.hibernate.dialect.MariaDBDialect`.
+
 
 // Type: concept
 // ModuleID: debezium-jdbc-connector-frequently-asked-questions
