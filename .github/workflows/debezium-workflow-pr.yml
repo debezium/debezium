@@ -206,6 +206,7 @@ jobs:
         with:
           repository: debezium/debezium-server
           path: server
+          ref: ${{ github.event.pull_request.base.ref }} 
 
       - uses: ./core/.github/actions/setup-java
 
@@ -479,6 +480,7 @@ jobs:
         with:
           repository: debezium/debezium-connector-cassandra
           path: cassandra
+          ref: ${{ github.event.pull_request.base.ref }} 
 
       - uses: ./core/.github/actions/setup-java
 
@@ -509,6 +511,7 @@ jobs:
         with:
           repository: debezium/debezium-connector-db2
           path: db2
+          ref: ${{ github.event.pull_request.base.ref }} 
 
       - uses: ./core/.github/actions/setup-java
 
@@ -538,6 +541,7 @@ jobs:
         with:
           repository: debezium/debezium-connector-ibmi
           path: ibmi
+          ref: ${{ github.event.pull_request.base.ref }} 
 
       - uses: ./core/.github/actions/setup-java
 
@@ -568,6 +572,7 @@ jobs:
         with:
           repository: debezium/debezium-connector-informix
           path: informix
+          ref: ${{ github.event.pull_request.base.ref }} 
 
       - uses: ./core/.github/actions/setup-java
 
@@ -598,6 +603,7 @@ jobs:
         with:
           repository: debezium/debezium-connector-vitess
           path: vitess
+          ref: ${{ github.event.pull_request.base.ref }} 
 
       - uses: ./core/.github/actions/setup-java
 
@@ -628,6 +634,7 @@ jobs:
         with:
           repository: debezium/debezium-connector-spanner
           path: spanner
+          ref: ${{ github.event.pull_request.base.ref }} 
 
       - uses: ./core/.github/actions/setup-java
 
@@ -671,6 +678,7 @@ jobs:
         with:
           repository: debezium/debezium-server
           path: server
+          ref: ${{ github.event.pull_request.base.ref }} 
 
       - uses: ./core/.github/actions/setup-java
 
