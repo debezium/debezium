@@ -248,6 +248,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
 
                 SnapshottingTask snapshottingTask = snapshotSource.getBlockingSnapshottingTask(partition, (O) offsetContext, snapshotConfiguration);
                 SnapshotResult<O> snapshotResult = doSnapshot(snapshotSource, context, partition, (O) offsetContext, snapshottingTask);
+                eventDispatcher.setEventListener(streamingMetrics);
 
                 if (running && snapshotResult.isCompletedOrSkipped()) {
                     previousLogContext.set(taskContext.configureLoggingContext("streaming", partition));
