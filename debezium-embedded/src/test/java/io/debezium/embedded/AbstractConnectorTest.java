@@ -540,7 +540,7 @@ public abstract class AbstractConnectorTest implements Testing {
         int recordsConsumed = 0;
         int nullReturn = 0;
         boolean isLastRecord = false;
-        while (!isLastRecord && isEngineRunning.get()) {
+        while (!isLastRecord) {
             SourceRecord record = consumedLines.poll(pollTimeoutInMs, TimeUnit.MILLISECONDS);
             if (record != null) {
                 nullReturn = 0;
@@ -564,6 +564,9 @@ public abstract class AbstractConnectorTest implements Testing {
             else {
                 if (++nullReturn >= breakAfterNulls) {
                     return recordsConsumed;
+                }
+                if (!isEngineRunning.get()) {
+                    break;
                 }
             }
         }
