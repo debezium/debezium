@@ -15,6 +15,7 @@ import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
@@ -227,12 +228,12 @@ public class Predicates {
      * @throws PatternSyntaxException if the string includes an invalid regular expression
      */
     public static <T> Predicate<T> includes(String regexPatterns, Function<T, String> conversion) {
-        Set<Pattern> patterns = Strings.setOfRegex(regexPatterns, Pattern.CASE_INSENSITIVE);
+        Set<Pattern> patterns = Strings.setOfRegex(regexPatterns != null ? Matcher.quoteReplacement(regexPatterns) : null, Pattern.CASE_INSENSITIVE);
         return includedInPatterns(patterns, conversion);
     }
 
     public static <T, U> BiPredicate<T, U> includes(String regexPatterns, BiFunction<T, U, String> conversion) {
-        Set<Pattern> patterns = Strings.setOfRegex(regexPatterns, Pattern.CASE_INSENSITIVE);
+        Set<Pattern> patterns = Strings.setOfRegex(regexPatterns != null ? Matcher.quoteReplacement(regexPatterns) : null, Pattern.CASE_INSENSITIVE);
         return includedInPatterns(patterns, conversion);
     }
 
