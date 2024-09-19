@@ -3091,7 +3091,8 @@ For more information, see link:https://www.postgresql.org/docs/current/static/li
 
 |[[postgresql-property-database-sslfactory]]<<postgresql-property-database-sslfactory, `+database.sslfactory+`>>
 |No default
-|A name of class to that creates SSL Sockets. Use `org.postgresql.ssl.NonValidatingFactory` to disable SSL validation in development environments.
+|A name of the class that creates SSL Sockets.
+Use `org.postgresql.ssl.NonValidatingFactory` to disable SSL validation in development environments.
 
 |[[postgresql-property-database-tcpkeepalive]]<<postgresql-property-database-tcpkeepalive, `+database.tcpKeepAlive+`>>
 |`true`
