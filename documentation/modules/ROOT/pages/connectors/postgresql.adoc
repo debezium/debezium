@@ -3089,6 +3089,10 @@ For more information, see link:https://www.postgresql.org/docs/current/static/li
 |The path to the file that contains the root certificate(s) against which the server is validated.
 For more information, see link:https://www.postgresql.org/docs/current/static/libpq-connect.html[the PostgreSQL documentation].
 
+|[[postgresql-property-database-sslfactory]]<<postgresql-property-database-sslfactory, `+database.sslfactory+`>>
+|No default
+|A name of class to that creates SSL Sockets. Use `org.postgresql.ssl.NonValidatingFactory` to disable SSL validation in development environments.
+
 |[[postgresql-property-database-tcpkeepalive]]<<postgresql-property-database-tcpkeepalive, `+database.tcpKeepAlive+`>>
 |`true`
 |Enable TCP keep-alive probe to verify that the database connection is still alive.
