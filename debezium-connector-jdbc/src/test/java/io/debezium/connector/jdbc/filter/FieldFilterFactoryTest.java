@@ -16,7 +16,7 @@ public class FieldFilterFactoryTest {
 
     @Test
     public void testFullyQualifiedFilter() {
-        FieldNameFilter filter = FieldFilterFactory.createFieldFilter("mytopic:myfield,mytopic2:myfield2", null);
+        FieldNameFilter filter = FieldFilterFactory.createFieldFilter("mytopic:myfield, mytopic2:myfield2", null);
         assertTrue(filter.matches("mytopic", "myfield"), "matchees first item");
         assertTrue(filter.matches("mytopic2", "myfield2"), "matchees second item");
         assertFalse(filter.matches("mytopic3", "myfield"), "doesnt match when topic is different");
@@ -25,7 +25,7 @@ public class FieldFilterFactoryTest {
 
     @Test
     public void testUnqualifiedFilter() {
-        FieldNameFilter filter = FieldFilterFactory.createFieldFilter("myfield,myfield2", null);
+        FieldNameFilter filter = FieldFilterFactory.createFieldFilter("myfield, myfield2", null);
         assertTrue(filter.matches("mytopic", "myfield"), "matchees first item");
         assertTrue(filter.matches("mytopic3", "myfield"), "matches first field in another topic");
         assertTrue(filter.matches("mytopic2", "myfield2"), "matchees second item");
