@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.jdbc.filter;
 
+import java.util.Arrays;
+
 import io.debezium.util.Strings;
 
 /**
@@ -28,7 +30,7 @@ public class FieldFilterFactory {
 
         return (topicName, fieldName) -> {
             for (String entry : entries) {
-                String[] parts = entry.split(":");
+                String[] parts = Arrays.stream(entry.split(":")).map(String::strip).toArray(String[]::new);
                 if (parts.length == 2 && parts[0].equals(topicName) && parts[1].equals(fieldName)) {
                     return include;
                 }
