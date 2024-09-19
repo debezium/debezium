@@ -898,7 +898,11 @@ If the number of retries exceeds the retry value, the sink connector enters a _F
 |[[jdbc-property-flush-retry-delay-ms]]<<jdbc-property-flush-retry-delay-ms, `+flush.retry.delay.ms+`>>
 |1000
 |Specifies the number of milliseconds that the connector waits to retry a flush operation that failed.
-
+[NOTE]
+====
+Please note that this property, when used in conjunction with the xref:jdbc-property-flush-max-retries[`flush-max-retries`] property , may affect the behavior of the link:https://kafka.apache.org/documentation/#consumerconfigs_max.poll.interval.ms[max.poll.interval.ms].
+To prevent a re-balance, ensure that the total retry delay is less than the `max.poll.interval.ms` value (default is 5 minutes).
+====
 |===
 
 [[jdbc-connector-properties-extendable]]
