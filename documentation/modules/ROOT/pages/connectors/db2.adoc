@@ -2068,7 +2068,7 @@ For information about how to obtain the driver, see xref:obtaining-the-db2-jdbc-
 
 .Additional resources
 
-* xref:descriptions-of-debezium-db2-connector-configuration-properties[]
+* xref:descriptions-of-debezium-db2-connector-configuration-properties[Db2 connector configuration properties]
 
 // Type: procedure
 [id="obtaining-the-db2-jdbc-driver"]

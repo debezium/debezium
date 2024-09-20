@@ -1275,7 +1275,7 @@ This is the preferred method.
 
 .Additional resources
 
-* xref:mongodb-connector-properties[]
+* xref:mongodb-connector-properties[MongoDB connector configuration properties]
 
 // Type: concept
 [id="openshift-streams-mongodb-connector-deployment"]
