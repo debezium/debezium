@@ -2833,7 +2833,7 @@ For more information, see xref:obtaining-the-oracle-jdbc-driver[Obtaining the Or
 
 .Additional resources
 
-* xref:descriptions-of-debezium-oracle-connector-configuration-properties[]
+* xref:descriptions-of-debezium-oracle-connector-configuration-properties[Oracle connector configuration properties]
 
 // Type: procedure
 [id="obtaining-the-oracle-jdbc-driver"]
