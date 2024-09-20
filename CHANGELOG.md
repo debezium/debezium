@@ -2,6 +2,44 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.7.3.Final
+September 20th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12432883)
+
+### New features since 2.7.2.Final
+
+* Avoid 3 second delay in Oracle when one of the RAC nodes is offline [DBZ-8177](https://issues.redhat.com/browse/DBZ-8177)
+* Allow skipping exceptions related to DML parser errors [DBZ-8208](https://issues.redhat.com/browse/DBZ-8208)
+* Support MariaDB 11.4.3 [DBZ-8226](https://issues.redhat.com/browse/DBZ-8226)
+* Support BLOB with EMPTY_BLOB() as default [DBZ-8248](https://issues.redhat.com/browse/DBZ-8248)
+
+
+### Breaking changes since 2.7.2.Final
+
+None
+
+
+### Fixes since 2.7.2.Final
+
+* Make ORA-00600 - krvrdccs10 automatically retriable [DBZ-5009](https://issues.redhat.com/browse/DBZ-5009)
+* DDL statement couldn't be parsed: REVOKE IF EXISTS [DBZ-8209](https://issues.redhat.com/browse/DBZ-8209)
+* Oracle TableSchemaBuilder provides wrong column name in error message [DBZ-8217](https://issues.redhat.com/browse/DBZ-8217)
+* Debezium does not restart automatically after throwing an ORA-00600 krvrdccs30 error [DBZ-8223](https://issues.redhat.com/browse/DBZ-8223)
+* JDBC sink doesn't include fields as per documentation [DBZ-8224](https://issues.redhat.com/browse/DBZ-8224)
+* Unbounded number of processing threads in async engine [DBZ-8237](https://issues.redhat.com/browse/DBZ-8237)
+* Streaming metrics are stuck after an ad-hoc blocking snapshot [DBZ-8238](https://issues.redhat.com/browse/DBZ-8238)
+* DDL statement couldn't be parsed with IF EXISTS [DBZ-8240](https://issues.redhat.com/browse/DBZ-8240)
+* Random engine factory used by default [DBZ-8241](https://issues.redhat.com/browse/DBZ-8241)
+
+
+### Other changes since 2.7.2.Final
+
+* Implement separate source and sink connector sections in documentation navigation [DBZ-8220](https://issues.redhat.com/browse/DBZ-8220)
+* Broken link to Streams doc about configuring logging  [DBZ-8231](https://issues.redhat.com/browse/DBZ-8231)
+* Document passthrough hibernate.* properties for the JDBC connector [DBZ-8232](https://issues.redhat.com/browse/DBZ-8232)
+* AbstractConnectorTest consumeRecordsUntil may prematurely exit loop [DBZ-8250](https://issues.redhat.com/browse/DBZ-8250)
+
+
+
 ## 2.7.2.Final
 September 5th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12431372)
 
