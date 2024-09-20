@@ -2542,6 +2542,9 @@ end::validate-binlog-row-options[]
 
 === Deployment
 
+// Retaining the conditional statements in the following section, because they only apply to the upstream content,
+// so there's no problem with them not yielding the expected results as there would be if used downstream.
+
 tag::deployment[]
 ifdef::community[]
 To deploy a {prodname} {connector-name} connector, you install the {prodname} {connector-name} connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
@@ -3023,10 +3026,7 @@ Each change event message includes source-specific information that you can use 
 * Event origin
 * {connector-name} server's event time
 * The binlog file name and position
-* GTIDs
-ifdef::MYSQL[]
-(if used)
-endif::MYSQL[]
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=kc-process-crash-gtid-in-change-event-msg]
 
 [id="debezium-{context}-kafka-process-becomes-unavailable"]
 Kafka becomes unavailable::

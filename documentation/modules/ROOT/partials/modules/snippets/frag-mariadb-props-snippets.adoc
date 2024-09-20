@@ -90,3 +90,29 @@ For more information see the link:https://mariadb.com/kb/en/server-system-variab
 a|The number of seconds that the server waits for activity on a non-interactive connection before closing it.
 For more information, see the link:https://mariadb.com/kb/en/server-system-variables/#wait_timeout[MariaDB documentation].
 end::session-timeout-options-descriptions[]
+
+
+
+
+
+
+=== Configuration properties
+
+// Boolean value for MySQL/MariaDB `schema-history-cfg-store-only-captured-dbs-ddl` config property.
+// Used in `ref-connector-configuration-database-history-properties.adoc`
+// Long term, for each connector, we could create a catalog of these snippet values and store them in connector-specific attribute files.
+// Then include those files in the headers of each connector's main file.
+
+tag::schema-hist-prop-store-only-cap-db-ddl-boolean[]
+|
+`true`
+end::schema-hist-prop-store-only-cap-db-ddl-boolean[]
+
+
+
+=== Behavior when things go wrong
+
+
+tag::kc-process-crash-gtid-in-change-event-msg[]
+* GTIDs.
+end::kc-process-crash-gtid-in-change-event-msg[]
