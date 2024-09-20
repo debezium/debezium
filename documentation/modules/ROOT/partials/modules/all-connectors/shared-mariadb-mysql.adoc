@@ -43,14 +43,9 @@ The {prodname} {connector-name} connector supports the following {connector-name
 
 Standalone::
 When a single {connector-name} server is used, the server must have the binlog enabled so the {prodname} {connector-name} connector can monitor the server.
-This is often acceptable, since the binary log can also be used as an incremental
-ifdef::MARIADB[]
-link:https://mariadb.com/kb/en/backup-and-restore-overview/
-endif::MARIADB[]
-ifdef::MYSQL[]
-link:https://dev.mysql.com/doc/refman/{mysql-version}/en/backup-methods.html
-endif::MYSQL[]
-[backup].
+ +
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[tags=sup-topo-standalone-backupdoc]
+ +
 In this case, the {connector-name} connector always connects to and follows this standalone {connector-name} server instance.
 
 Primary and replica::
@@ -62,35 +57,11 @@ Therefore, the connector must follow just one {connector-name} server instance.
 If that server fails, that server must be restarted or recovered before the connector can continue.
 
 High available clusters::
-A variety of
-ifdef::MARIADB[]
-link:https://mariadb.com/docs/server/architecture/use-cases/high-availability/
-endif::MARIADB[]
-ifdef::MYSQL[]
-https://dev.mysql.com/doc/mysql-ha-scalability/en/
-endif::MYSQL[]
-[high availability] solutions exist for {connector-name}, and they make it significantly easier to tolerate and almost immediately recover from problems and failures.
-Because
-ifdef::MYSQL[]
-most
-endif::MYSQL[]
-HA {connector-name} clusters use GTIDs, replicas are able to track all of the changes that occur on any primary server.
-
-
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[tags=sup-topo-ha]
 
 Multi-primary::
-ifdef::MYSQL[]
-link:https://dev.mysql.com/doc/refman/{mysql-version}/en/mysql-cluster-replication-multi-source.html[Network Database (NDB) cluster replication]
-endif::MYSQL[]
-ifdef::MARIADB[]
-link:https://mariadb.com/kb/en/galera-cluster/[Galera cluster replication]
-endif::MARIADB[]
-uses one or more {connector-name} replica nodes that each replicate from multiple primary servers.
-Cluster replication provides a powerful way to aggregate the replication of multiple {connector-name} clusters.
-ifdef::MYSQL[]
-This topology requires the use of GTIDs.
-endif::MYSQL[]
-+
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[tags=sup-topo-multi-primary]
+ +
 A {prodname} {connector-name} connector can use these multi-primary {connector-name} replicas as sources, and can fail over to different multi-primary {connector-name} replicas as long as the new replica is caught up to the old replica.
 That is, the new replica has all transactions that were seen on the first replica.
 This works even if the connector is using only a subset of databases and/or tables, because the connector can be configured to include or exclude specific GTID sources when attempting to reconnect to a new multi-primary {connector-name} replica and find the correct position in the binlog.
@@ -105,7 +76,7 @@ end::supported-topos[]
 
 
 
-== How the connector works
+=== How the connector works
 
 tag::how-connector-works-intro[]
 
@@ -482,12 +453,7 @@ The snapshot itself does not prevent other clients from applying DDL that might 
 The connector retains the global read lock while it reads the binlog position, and releases the lock as described in a later step.
 
 |4
-ifdef::MYSQL[]
-a|Start a transaction with link:https://dev.mysql.com/doc/refman/{mysql-version}/en/innodb-consistent-read.html[repeatable read semantics] to ensure that all subsequent reads within the transaction are done against the _consistent snapshot_. +
-endif::MYSQL[]
-ifdef::MARIADB[]
-a|Start a transaction with link:https://mariadb.com/kb/en/set-transaction/#repeatable-read[repeatable read semantics] to ensure that all subsequent reads within the transaction are done against the _consistent snapshot_. +
-endif::MARIADB[]
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=snapshots-default-workflow-repeatable-read-semantics]
  +
 [NOTE]
 ====
@@ -580,12 +546,7 @@ To have the connector capture a subset of tables or table elements, you can set 
 |Obtain table-level locks.
 
 |4
-ifdef::MYSQL[]
-a|Start a transaction with link:https://dev.mysql.com/doc/refman/{mysql-version}/en/innodb-consistent-read.html[repeatable read semantics] to ensure that all subsequent reads within the transaction are done against the _consistent snapshot_.
-endif::MYSQL[]
-ifdef::MARIADB[]
-a|Start a transaction with link:https://mariadb.com/kb/en/set-transaction/#repeatable-read[repeatable read semantics] to ensure that all subsequent reads within the transaction are done against the _consistent snapshot_.
-endif::MARIADB[]
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=snapshots-default-workflow-repeatable-read-semantics]
 
 |5
 a|Read the current binlog position.
@@ -1476,10 +1437,7 @@ This field contains information that you can use to compare this event with othe
 * {connector-name} server ID (if available)
 * Timestamp for when the change was made in the database
 
-ifdef::MARIADB[]
-If the xref:enable-query-log-events[`binlog_annotate_row_events`] MariaDB configuration option is enabled and the connector configuration `include.query` property is enabled, the `source` field also provides the `query` field, which contains the original SQL statement that caused the change event.
-endif::MARIADB[]
-
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=create-event-values-table-source-entry]
 |===
 end::create-events[]
 
@@ -1563,9 +1521,7 @@ a|Mandatory field that describes the source metadata for the event. The `source`
 * {connector-name} server ID (if available)
 * Timestamp for when the change was made in the database
 
-ifdef::MARIADB[]
-If the xref:enable-query-log-events[`binlog_annotate_row_events`] MariaDB configuration option is enabled and the connector configuration `include.query` property is enabled, the `source` field also provides the `query` field, which contains the original SQL statement that caused the change event.
-endif::MARIADB[]
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=create-event-values-table-source-entry]
 
 |4
 |`op`
@@ -1687,9 +1643,7 @@ a|Mandatory field that describes the source metadata for the event. In a _delete
 * {connector-name} server ID (if available)
 * Timestamp for when the change was made in the database
 
-ifdef::MARIADB[]
-If the xref:enable-query-log-events[`binlog_annotate_row_events`] MariaDB configuration option is enabled and the connector configuration `include.query` property is enabled, the `source` field also provides the `query` field, which contains the original SQL statement that caused the change event.
-endif::MARIADB[]
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=create-event-values-table-source-entry]
 
 |4
 |`op`
@@ -1921,11 +1875,7 @@ a|The precision is used only to determine storage size.
 A precision `P` from 0 to 23 results in a 4-byte single-precision `FLOAT32` column.
 A precision `P` from 24 to 53 results in an 8-byte double-precision `FLOAT64` column.
 
-ifdef::MARIADB[]
-|`FLOAT(M,D)`
-|`FLOAT64`
-a|_n/a_
-endif::MARIADB[]
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=basic-data-type-descriptions-float-m-d]
 
 |`DOUBLE[(M,D)]`
 |`FLOAT64`
@@ -2054,12 +2004,9 @@ It is converted by {connector-name} from the server (or session’s) current tim
 Such columns are converted into an equivalent `io.debezium.time.ZonedTimestamp` in UTC based on the server (or session’s) current time zone.
 The time zone will be queried from the server by default.
 
-ifdef::MARIADB[]
-If this fails, it must be specified explicitly by the database `timezone` {connector-name} configuration option.
-For example, if the database’s time zone (either globally or configured for the connector by means of the `timezone` option) is "America/Los_Angeles", the TIMESTAMP value "2018-06-20 06:37:03" is represented by a `ZonedTimestamp` with the value "2018-06-20T13:37:03Z".
-endif::MARIADB[]
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=temporal-data-type-timezone-conversions]
 
-The time zone of the JVM running Kafka Connect and {prodname} does not affect these conversions.
+The time zone setting for the JVM that runs Kafka Connect and {prodname} does not affect these conversions.
 
 More details about properties related to temporal values are in the documentation for xref:{context}-connector-properties[{connector-name} connector configuration properties].
 
@@ -2453,23 +2400,8 @@ The binary logs record transaction updates in a way that enables replicas to pro
 
 . Check whether the `log-bin` option is enabled:
 +
-ifdef::MARIADB[]
-[source,SQL]
-----
-mariadb> SHOW VARIABLES LIKE '%log_bin%';
-----
-endif::MARIADB[]
-ifdef::MYSQL[]
-[source,SQL]
-----
-// for MySQL 5.x
-mysql> SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
-FROM information_schema.global_variables WHERE variable_name='log_bin';
-// for MySQL 8.x
-mysql> SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
-FROM performance_schema.global_variables WHERE variable_name='log_bin';
-----
-endif::MYSQL[]
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=setting-up-the-db-enabling-binlog]
+
 . If the binlog is `OFF`, add the properties in the following table to the configuration file for the {connector-name} server:
 +
 [source,properties,subs="+attributes"]
@@ -2483,23 +2415,8 @@ binlog_expire_logs_seconds  = 864000
 
 . Confirm your changes by checking the binlog status once more:
 +
-ifdef::MARIADB[]
-[source,SQL,subs="+attributes"]
-----
-{context}> SHOW VARIABLES LIKE '%log_bin%';
-----
-endif::MARIADB[]
-ifdef::MYSQL[]
-[source,SQL]
-----
-// for MySQL 5.x
-{context}> SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
-FROM information_schema.global_variables WHERE variable_name='log_bin';
-// for MySQL 8.x
-{context}> SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
-FROM performance_schema.global_variables WHERE variable_name='log_bin';
-----
-endif::MYSQL[]
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=setting-up-the-db-enabling-binlog]
+
 . If you run {connector-name} on Amazon RDS, you must enable automated backups for your database instance for binary logging to occur.
 If the database instance is not configured to perform automated backups, the binlog is disabled, even if you apply the settings described in the previous steps.
 
@@ -2571,21 +2488,7 @@ You can prevent this behavior by configuring `interactive_timeout` and `wait_tim
 
 |`interactive_timeout`
 a|The number of seconds the server waits for activity on an interactive connection before closing it.
-For more information see the:
-ifdef::MARIADB[]
-link:https://mariadb.com/kb/en/server-system-variables/#interactive_timeout[MariaDB documentation].
-endif::MARIADB[]
-ifdef::MYSQL[]
-link:https://dev.mysql.com/doc/refman/{mysql-version}/en/server-system-variables.html#sysvar_interactive_timeout[MySQL documentation].
-endif::MYSQL[]
-|`wait_timeout`
-a|The number of seconds that the server waits for activity on a non-interactive connection before closing it.
-ifdef::MARIADB[]
-For more information, see the link:https://mariadb.com/kb/en/server-system-variables/#wait_timeout[MariaDB documentation].
-endif::MARIADB[]
-ifdef::MYSQL[]
-For more information, see the link:https://dev.mysql.com/doc/refman/{mysql-version}/en/server-system-variables.html#sysvar_interactive_timeout[MySQL documentation].
-endif::MYSQL[]
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=session-timeout-options-descriptions]
 |===
 end::cfg-session-timeouts[]
 
@@ -2637,7 +2540,7 @@ end::validate-binlog-row-options[]
 
 
 
-== Deployment
+=== Deployment
 
 tag::deployment[]
 ifdef::community[]
@@ -2685,7 +2588,7 @@ This is the preferred method.
 
 .Additional resources
 
-* xref:{context}-connector-properties[]
+* xref:{context}-connector-properties[{connector-name} connector configuration properties]
 endif::product[]
 end::deployment[]
 
@@ -3008,7 +2911,8 @@ end::add-connector-cfg[]
 tag::connector-props-intro[]
 The {prodname} {connector-name} connector has numerous configuration properties that you can use to achieve the right connector behavior for your application.
 Many properties have default values.
-Information about the properties is organized as follows:
+
+Information about {connector-name} connector configuration properties is organized as follows:
 
 * xref:{context}-required-connector-configuration-properties[Required connector configuration properties]
 * xref:{context}-advanced-connector-configuration-properties[Advanced connector configuration properties]
@@ -3019,7 +2923,6 @@ Information about the properties is organized as follows:
 ** xref:debezium-{context}-connector-pass-through-signals-kafka-consumer-client-configuration-properties[Pass-through Kafka signals consumer client configuration properties]
 ** xref:debezium-{context}-connector-pass-through-kafka-sink-notification-configuration-properties[Pass-through sink notification configuration properties]
 ** xref:debezium-{context}-connector-pass-through-database-driver-configuration-properties[Pass-through database driver configuration properties]
-
 end::connector-props-intro[]
 
 

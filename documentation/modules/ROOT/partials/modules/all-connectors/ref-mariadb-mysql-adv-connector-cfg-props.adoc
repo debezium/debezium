@@ -392,14 +392,9 @@ That is, the specified expression is matched against the entire name string of t
 [id="{context}-property-snapshot-lock-timeout-ms"]
 xref:{context}-property-snapshot-lock-timeout-ms[`snapshot.lock.timeout.ms`]::
 Default value: `10000` +
-Positive integer that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot. If the connector cannot acquire table locks in this time interval, the snapshot fails.
-For more information, see
-ifdef::MYSQL[]
-xref:mysql-snapshots[how {connector-name} connectors perform database snapshots].
-endif::MYSQL[]
-ifdef::MARIADB[]
-xref:mariadb-snapshots[how {connector-name} connectors perform database snapshots].
-endif::MARIADB[]
+Positive integer that specifies the maximum amount of time (in milliseconds) to wait to obtain table locks when performing a snapshot.
+If the connector cannot acquire table locks in this time interval, the snapshot fails.
+For more information, see the documentation that describes xref:{context}-snapshots[how {connector-name} connectors perform database snapshots].
 
 
 
