@@ -1,0 +1,118 @@
+= MariaDB snippets used in properties descriptions
+
+// This file is called from shared-mariadb-mysql.adoc to render content that is specific to one of the two databases.
+// Using this approach because the Nebel tool that is used to prepare the downstream docs does not process ifeval constructions,
+// and downstream builds also failed to conditionalize content based on the MARIADB or MYSQL attributes that I previously added.
+
+
+== Topologies
+
+=== Standalone
+
+tag::sup-topo-standalone-backupdoc[]
+This is often acceptable, since the binary log can also be used as an incremental link:https://mariadb.com/kb/en/backup-and-restore-overview/[backup].
+end::sup-topo-standalone-backupdoc[]
+
+=== High availability
+
+tag::sup-topo-ha[]
+A variety of link:https://mariadb.com/docs/server/architecture/use-cases/high-availability/[high availability] solutions exist for {connector-name}, and they make it significantly easier to tolerate and almost immediately recover from problems and failures.
+Because HA {connector-name} clusters use GTIDs, replicas are able to track all of the changes that occur on any primary server.
+end::sup-topo-ha[]
+
+=== Multi-primary
+
+tag::sup-topo-multi-primary[]
+link:https://mariadb.com/kb/en/galera-cluster/[Galera cluster replication] uses one or more {connector-name} replica nodes that each replicate from multiple primary servers.
+Cluster replication provides a powerful way to aggregate the replication of multiple {connector-name} clusters.
+end::sup-topo-multi-primary[]
+
+=== Snapshots
+
+==== Snapshot default flows (global/table read locks): repeatable read semantics
+
+tag::snapshots-default-workflow-repeatable-read-semantics[]
+a|Start a transaction with link:https://mariadb.com/kb/en/set-transaction/#repeatable-read[repeatable read semantics] to ensure that all subsequent reads within the transaction are done against the _consistent snapshot_. +
+end::snapshots-default-workflow-repeatable-read-semantics[]
+
+
+
+=== Change events
+
+==== Event values: create, update, and delete events
+
+
+tag::create-event-values-table-source-entry[]
+If the xref:enable-mariadb-binlog[`binlog_annotate_row_events`] option is enabled in the MariaDB database configuration, and you enable the `include.query` property in the connector configuration, the `source` field also provides a `query` field, which contains the original SQL statement that caused the change event.
+end::create-event-values-table-source-entry[]
+
+
+
+=== Mapping data types
+
+
+==== Basic types
+
+tag::basic-data-type-descriptions-float-m-d[]
+|`FLOAT(M,D)`
+|`FLOAT64`
+a|_n/a_
+end::basic-data-type-descriptions-float-m-d[]
+
+==== Temporal types
+
+tag::temporal-data-type-timezone-conversions[]
+If this fails, it must be specified explicitly by the database `timezone` {connector-name} configuration option.
+For example, if the database’s time zone (either globally or configured for the connector by means of the `timezone` option) is "America/Los_Angeles", the TIMESTAMP value "2018-06-20 06:37:03" is represented by a `ZonedTimestamp` with the value "2018-06-20T13:37:03Z".
+end::temporal-data-type-timezone-conversions[]
+
+
+
+
+=== Setting up the database
+
+
+==== Enabling the binlog
+
+tag::setting-up-the-db-enabling-binlog[]
+[source,SQL]
+----
+mariadb> SHOW VARIABLES LIKE '%log_bin%';
+----
+end::setting-up-the-db-enabling-binlog[]
+
+
+==== Configuring session timeouts
+
+tag::session-timeout-options-descriptions[]
+For more information see the link:https://mariadb.com/kb/en/server-system-variables/#interactive_timeout[MariaDB documentation].
+|`wait_timeout`
+a|The number of seconds that the server waits for activity on a non-interactive connection before closing it.
+For more information, see the link:https://mariadb.com/kb/en/server-system-variables/#wait_timeout[MariaDB documentation].
+end::session-timeout-options-descriptions[]
+
+
+
+
+
+
+=== Configuration properties
+
+// Boolean value for MySQL/MariaDB `schema-history-cfg-store-only-captured-dbs-ddl` config property.
+// Used in `ref-connector-configuration-database-history-properties.adoc`
+// Long term, for each connector, we could create a catalog of these snippet values and store them in connector-specific attribute files.
+// Then include those files in the headers of each connector's main file.
+
+tag::schema-hist-prop-store-only-cap-db-ddl-boolean[]
+|
+`true`
+end::schema-hist-prop-store-only-cap-db-ddl-boolean[]
+
+
+
+=== Behavior when things go wrong
+
+
+tag::kc-process-crash-gtid-in-change-event-msg[]
+* GTIDs.
+end::kc-process-crash-gtid-in-change-event-msg[]
