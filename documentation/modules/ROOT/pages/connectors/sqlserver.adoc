@@ -2178,7 +2178,7 @@ This is the preferred method.
 
 .Additional resources
 
-* xref:descriptions-of-debezium-sqlserver-connector-configuration-properties[]
+* xref:descriptions-of-debezium-sqlserver-connector-configuration-properties[SQL Server connector configuration properties]
 
 // Type: concept
 [id="openshift-streams-sqlserver-connector-deployment"]

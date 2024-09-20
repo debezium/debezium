@@ -2523,7 +2523,7 @@ This is the preferred method.
 
 .Additional resources
 
-* xref:descriptions-of-debezium-postgresql-connector-configuration-properties[]
+* xref:descriptions-of-debezium-postgresql-connector-configuration-properties[PostgreSQL connector configuration properties]
 
 // Type: concept
 [id="openshift-streams-postgresql-connector-deployment"]
@@ -3244,7 +3244,7 @@ If the connector cannot find the publication, the connector throws an exception 
  +
 `filtered` - If a publication does not exist, the connector creates one by running a SQL command in the following format: `CREATE PUBLICATION <publication_name> FOR TABLE <tbl1, tbl2, tbl3>`. +
 
-The resulting publication includes tables that match the current filter configuration, as specified by the `schema.include.list`, `schema.exclude.list`, `table.include.list`, and `table.exclude.list` connector configuration properties. 
+The resulting publication includes tables that match the current filter configuration, as specified by the `schema.include.list`, `schema.exclude.list`, `table.include.list`, and `table.exclude.list` connector configuration properties.
 
 If the publication exists, the connector updates the publication for tables that match the current filter configuration by running a SQL command in the following format: `ALTER PUBLICATION <publication_name> SET TABLE <tbl1, tbl2, tbl3>`. +
  +
