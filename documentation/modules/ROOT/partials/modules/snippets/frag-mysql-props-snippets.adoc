@@ -1,0 +1,100 @@
+= MySQL snippets used in properties descriptions
+
+
+// This file is called from shared-mariadb-mysql.adoc to render content that is specific to one of the two databases.
+// Using this approach because the Nebel tool that is used to prepare the downstream docs does not process ifeval constructions,
+// and downstream builds also failed to conditionalize content based on the MARIADB or MYSQL attributes that I previously added.
+
+== Topologies
+
+=== Standalone
+
+tag::sup-topo-standalone-backupdoc[]
+This is often acceptable, since the binary log can also be used as an incremental link:https://dev.mysql.com/doc/refman/{mysql-version}/en/backup-methods.html[backup].
+end::sup-topo-standalone-backupdoc[]
+
+=== HA
+
+tag::sup-topo-ha[]
+You can use a variety of https://dev.mysql.com/doc/refman/8.0/en/replication-solutions-switch.html[solutions to provide redundancy] for {connector-name}.
+Deploying redundant replica hosts makes it significantly easier to tolerate and almost immediately recover from problems and failures.
+Because most HA {connector-name} clusters use GTIDs, replicas are able to track all of the changes that occur on any primary server.
+end::sup-topo-ha[]
+
+=== Multi-primary
+
+tag::sup-topo-multi-primary[]
+link:https://dev.mysql.com/doc/refman/{mysql-version}/en/mysql-cluster-replication-multi-source.html[Network Database (NDB) cluster replication] uses one or more {connector-name} replica nodes that each replicate from multiple primary servers.
+Cluster replication provides a powerful way to aggregate the replication of multiple {connector-name} clusters.
+This topology requires the use of GTIDs.
+end::sup-topo-multi-primary[]
+
+
+=== Snapshots
+
+==== Snapshot default flows (global/table read locks): repeatable read semantics
+
+tag::snapshots-default-workflow-repeatable-read-semantics[]
+a|Start a transaction with link:https://dev.mysql.com/doc/refman/{mysql-version}/en/innodb-consistent-read.html[repeatable read semantics] to ensure that all subsequent reads within the transaction are done against the _consistent snapshot_. +
+end::snapshots-default-workflow-repeatable-read-semantics[]
+
+
+=== Change events
+
+==== Event values: create, update, and delete events
+
+// The value for the following region is intentionally null, because the content applies only to MariaDB
+
+tag::create-event-values-table-source-entry[]
+
+end::create-event-values-table-source-entry[]
+
+
+
+=== Mapping data types
+
+==== Basic types
+
+// The value for the following region is intentionally null, because the content applies only to MariaDB
+
+tag::basic-data-type-descriptions-float-m-d[]
+
+end::basic-data-type-descriptions-float-m-d[]
+
+
+==== Temporal types
+
+// The value for the following region is intentionally null, because the content applies only to MariaDB
+
+tag::temporal-data-type-timezone-conversions[]
+end::temporal-data-type-timezone-conversions[]
+
+
+=== Setting up the database
+
+
+==== Enabling the binlog
+
+tag::setting-up-the-db-enabling-binlog[]
+[source,SQL]
+----
+// for MySQL 5.x
+mysql> SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
+FROM information_schema.global_variables WHERE variable_name='log_bin';
+// for MySQL 8.x
+mysql> SELECT variable_value as "BINARY LOGGING STATUS (log-bin) ::"
+FROM performance_schema.global_variables WHERE variable_name='log_bin';
+----
+end::setting-up-the-db-enabling-binlog[]
+
+
+
+
+==== Configuring session timeouts
+
+tag::session-timeout-options-descriptions[]
+For more information see the link:https://dev.mysql.com/doc/refman/{mysql-version}/en/server-system-variables.html#sysvar_interactive_timeout[MySQL documentation].
+|`wait_timeout`
+a|The number of seconds that the server waits for activity on a non-interactive connection before closing it.
+For more information, see the link:https://dev.mysql.com/doc/refman/{mysql-version}/en/server-system-variables.html#sysvar_interactive_timeout[MySQL documentation].
+end::session-timeout-options-descriptions[]
