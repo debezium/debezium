@@ -273,7 +273,7 @@ public abstract class AbstractBlockingSnapshotTest extends AbstractSnapshotTest 
 
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
 
-        ObjectName objectName = getStreamingMetricsObjectName(connector, server, "streaming", task);
+        ObjectName objectName = getStreamingMetricsObjectName(connector, server, "streaming", task, database);
 
         return (Long) mbeanServer.getAttribute(objectName, "TotalNumberOfCreateEventsSeen");
     }

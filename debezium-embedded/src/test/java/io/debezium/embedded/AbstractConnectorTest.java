@@ -1436,6 +1436,16 @@ public abstract class AbstractConnectorTest implements Testing {
         return new ObjectName("debezium." + connector + ":type=connector-metrics,context=" + context + ",server=" + server + ",task=" + task);
     }
 
+    public static ObjectName getStreamingMetricsObjectName(String connector, String server, String context, String task, String database)
+            throws MalformedObjectNameException {
+
+        Map<String, String> props = new HashMap<>();
+        props.put("task", task);
+        props.put("database", database);
+
+        return getStreamingMetricsObjectName(connector, server, props);
+    }
+
     public static ObjectName getStreamingMetricsObjectName(String connector, String server, Map<String, String> props) throws MalformedObjectNameException {
         String additionalProperties = props.entrySet().stream()
                 .filter(e -> e.getValue() != null)
