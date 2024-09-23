@@ -32,6 +32,8 @@
             all - runs all integration and end to end tests
         -->
         <test.tags>it-mysql,it-postgresql,it-sqlserver</test.tags>
+
+        <connector.assembly.ref>connector-distribution</connector.assembly.ref>
     </properties>
 
     <dependencies>
@@ -299,7 +301,7 @@
                                     <finalName>${project.artifactId}-${project.version}</finalName>
                                     <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
                                     <descriptorRefs>
-                                        <descriptorRef>connector-distribution</descriptorRef>
+                                        <descriptorRef>${connector.assembly.ref}</descriptorRef>
                                     </descriptorRefs>
                                     <tarLongFileMode>posix</tarLongFileMode>
                                 </configuration>
