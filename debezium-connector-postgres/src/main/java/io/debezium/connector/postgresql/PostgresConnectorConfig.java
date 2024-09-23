@@ -265,6 +265,77 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     /**
+     * The set of predefined snapshot isolation mode options.
+     */
+    public enum SnapshotIsolationMode implements EnumeratedValue {
+
+        /**
+         * This mode uses SERIALIZABLE isolation level.
+         */
+        SERIALIZABLE("serializable"),
+
+        /**
+         * This mode uses REPEATABLE READ isolation level.
+         */
+        REPEATABLE_READ("repeatable_read"),
+
+        /**
+         * This mode uses READ COMMITTED isolation level.
+         */
+        READ_COMMITTED("read_committed"),
+
+        /**
+         * This mode uses READ UNCOMMITTED isolation level.
+         */
+        READ_UNCOMMITTED("read_uncommitted");
+
+        private final String value;
+
+        SnapshotIsolationMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static SnapshotIsolationMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (SnapshotIsolationMode option : SnapshotIsolationMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value        the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static SnapshotIsolationMode parse(String value, String defaultValue) {
+            SnapshotIsolationMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
+    /**
      * The set of predefined SecureConnectionMode options or aliases.
      */
     public enum SecureConnectionMode implements EnumeratedValue {
@@ -826,6 +897,22 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     + "'exported': This option is deprecated; use 'initial' instead.; "
                     + "'custom': The connector loads a custom class  to specify how the connector performs snapshots. For more information, see Custom snapshotter SPI in the PostgreSQL connector documentation.");
 
+    public static final Field SNAPSHOT_ISOLATION_MODE = Field.create("snapshot.isolation.mode")
+            .withDisplayName("Snapshot isolation mode")
+            .withEnum(SnapshotIsolationMode.class, SnapshotIsolationMode.SERIALIZABLE)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 1))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Controls which transaction isolation level is used. "
+                    + "The default is '" + SnapshotIsolationMode.SERIALIZABLE.getValue()
+                    + "', which means that serializable isolation level is used. "
+                    + "When '" + SnapshotIsolationMode.REPEATABLE_READ.getValue()
+                    + "' is specified, connector runs the initial snapshot in REPEATABLE READ isolation level. "
+                    + "When '" + SnapshotIsolationMode.READ_COMMITTED.getValue()
+                    + "' is specified, connector runs the initial snapshot in READ COMMITTED isolation level. "
+                    + "In '" + SnapshotIsolationMode.READ_UNCOMMITTED.getValue()
+                    + "' is specified, connector runs the initial snapshot in READ UNCOMMITTED isolation level.");
+
     public static final Field SNAPSHOT_LOCKING_MODE = Field.create("snapshot.locking.mode")
             .withDisplayName("Snapshot locking mode")
             .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.NONE)
@@ -992,6 +1079,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     private final ReplicaIdentityMapper replicaIdentityMapper;
 
     private final SnapshotMode snapshotMode;
+    private final SnapshotIsolationMode snapshotIsolationMode;
     private final SnapshotLockingMode snapshotLockingMode;
     private final boolean readOnlyConnection;
 
@@ -1014,6 +1102,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         final var replicaIdentityMapping = config.getString(REPLICA_IDENTITY_AUTOSET_VALUES);
         this.replicaIdentityMapper = (replicaIdentityMapping != null) ? new ReplicaIdentityMapper(replicaIdentityMapping) : null;
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE), SNAPSHOT_MODE.defaultValueAsString());
+        this.snapshotIsolationMode = SnapshotIsolationMode.parse(config.getString(SNAPSHOT_ISOLATION_MODE), SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
         this.readOnlyConnection = config.getBoolean(READ_ONLY_CONNECTION);
     }
@@ -1128,6 +1217,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return this.snapshotMode;
     }
 
+    public SnapshotIsolationMode getSnapshotIsolationMode() {
+        return this.snapshotIsolationMode;
+    }
+
     @Override
     public Optional<SnapshotLockingMode> getSnapshotLockingMode() {
         return Optional.of(this.snapshotLockingMode);
@@ -1186,6 +1279,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     SOURCE_INFO_STRUCT_MAKER)
             .connector(
                     SNAPSHOT_MODE,
+                    SNAPSHOT_ISOLATION_MODE,
                     SNAPSHOT_QUERY_MODE,
                     SNAPSHOT_QUERY_MODE_CUSTOM_NAME,
                     SNAPSHOT_LOCKING_MODE_CUSTOM_NAME,
