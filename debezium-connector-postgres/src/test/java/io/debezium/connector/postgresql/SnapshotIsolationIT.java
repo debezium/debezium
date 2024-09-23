@@ -122,7 +122,7 @@ public class SnapshotIsolationIT extends AbstractConnectorTest {
             assertThat(record1.sourceOffset())
                     .extracting("snapshot").containsExactly(true);
             assertThat(record1.sourceOffset())
-                    .extracting("snapshot_completed").containsExactly(i == 4 - 1);
+                    .extracting("last_snapshot_record").containsExactly(i == 4 - 1);
             assertNull(value1.get("before"));
         }
     }
