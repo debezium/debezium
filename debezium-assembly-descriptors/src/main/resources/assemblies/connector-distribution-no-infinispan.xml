@@ -34,6 +34,10 @@
               <exclude>com.google.protobuf:protobuf-java:*</exclude>
               <exclude>com.google.protobuf:protobuf-java-util:*</exclude>
 
+              <!-- Exclude Oracle JDBC driver libraries -->
+              <exclude>com.oracle.database.jdbc:ojdbc8:*</exclude>
+              <exclude>com.oracle.database.nls:orai18n:*</exclude>
+
               <!-- Exclude dependencies with incorrect scope -->
               <exclude>org.checkerframework:checker-qual:*</exclude>
           </excludes>
