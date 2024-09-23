@@ -375,6 +375,10 @@ Default value: No default +
 During a snapshot, the connector reads table content in batches of rows.
 This property specifies the maximum number of rows in a batch.
 
+[CAUTION]
+====
+Changing the default value can impair performance.
+====
 
 [id="{context}-property-snapshot-include-collection-list"]
 xref:{context}-property-snapshot-include-collection-list[`snapshot.include.collection.list`]::
