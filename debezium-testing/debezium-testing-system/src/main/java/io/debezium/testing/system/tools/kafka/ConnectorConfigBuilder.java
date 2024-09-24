@@ -58,11 +58,13 @@ public class ConnectorConfigBuilder {
         config.put("key.converter.apicurio.registry.url", apicurioUrl);
         config.put("key.converter.apicurio.registry.auto-register", true);
         config.put("key.converter.apicurio.registry.find-latest", true);
+        config.put("key.converter.apicurio.registry.headers.enabled", false);
 
         config.put("value.converter", "io.apicurio.registry.utils.converter.AvroConverter");
         config.put("value.converter.apicurio.registry.url", apicurioUrl);
         config.put("value.converter.apicurio.registry.auto-register", true);
         config.put("value.converter.apicurio.registry.find-latest", true);
+        config.put("value.converter.apicurio.registry.headers.enabled", false);
 
         config.put("schema.name.adjustment.mode", "avro");
 
