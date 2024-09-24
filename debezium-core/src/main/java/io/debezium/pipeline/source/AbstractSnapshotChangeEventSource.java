@@ -116,7 +116,17 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
                 notificationService.initialSnapshotNotificationService().notifyCompleted(ctx.partition, ctx.offset);
             }
             else {
-                LOGGER.warn("Snapshot was not completed successfully, it will be re-executed upon connector restart");
+
+                String basicWarnMessage = "Snapshot was not completed successfully";
+                String finalWarnMessage = String.format("%s %s", basicWarnMessage, ", it will be re-executed upon connector restart");
+
+                if (snapshottingTask.isOnDemand()) {
+                    // In case of error blocking snapshot will not be automatically executed.
+                    previousOffset.postSnapshotCompletion();
+                    finalWarnMessage = basicWarnMessage;
+                }
+
+                LOGGER.warn(finalWarnMessage);
                 aborted(ctx);
                 snapshotProgressListener.snapshotAborted(offsets.getTheOnlyPartition());
                 notificationService.initialSnapshotNotificationService().notifyAborted(ctx.partition, ctx.offset);

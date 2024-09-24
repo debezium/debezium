@@ -36,6 +36,7 @@ import org.apache.kafka.connect.source.SourceConnector;
 import org.awaitility.Awaitility;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
@@ -44,6 +45,7 @@ import io.debezium.junit.SkipWhenConnectorUnderTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractSnapshotTest;
+import io.debezium.util.Testing;
 
 public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> extends AbstractSnapshotTest<T> {
     private int signalingRecords;
@@ -246,6 +248,37 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
 
     }
 
+    @Test
+    @FixFor("DBZ-8244")
+    public void anErrorDuringBlockingSnapshotShouldLeaveTheConnectorInAGoodState() throws Exception {
+        Testing.Print.enable();
+
+        populateTable();
+
+        startConnectorWithSnapshot(x -> mutableConfig(false, false)
+                .with(CommonConnectorConfig.MAX_BATCH_SIZE, 1));
+
+        waitForSnapshotToBeCompleted(connector(), server(), task(), database());
+
+        insertRecords(ROW_COUNT, ROW_COUNT);
+
+        SourceRecords consumedRecordsByTopic = consumeRecordsByTopic(ROW_COUNT * 2, 20);
+        assertRecordsFromSnapshotAndStreamingArePresent(ROW_COUNT * 2, consumedRecordsByTopic);
+
+        sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(
+                Map.of(tableDataCollectionIds().get(1), "SELECT WITH AN ERROR"), "", BLOCKING,
+                tableDataCollectionIds().get(1));
+
+        waitForLogMessage("Snapshot was not completed successfully", AbstractSnapshotChangeEventSource.class);
+
+        insertRecords(ROW_COUNT, ROW_COUNT * 2);
+
+        signalingRecords = 1;
+
+        assertStreamingRecordsArePresent(ROW_COUNT, consumeRecordsByTopic(ROW_COUNT + signalingRecords, 10));
+
+    }
+
     protected int expectedDdlsCount() {
         return 0;
     };
@@ -342,7 +375,7 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
 
     protected void assertStreamingRecordsArePresent(int expectedRecords, SourceRecords recordsByTopic) {
 
-        assertRecordsWithValuesPresent(expectedRecords, IntStream.range(2000, 2999).boxed().collect(Collectors.toList()), topicName(),
+        assertRecordsWithValuesPresent(expectedRecords, IntStream.rangeClosed(2000, 2999).boxed().collect(Collectors.toList()), topicName(),
                 recordsByTopic);
     }
 
