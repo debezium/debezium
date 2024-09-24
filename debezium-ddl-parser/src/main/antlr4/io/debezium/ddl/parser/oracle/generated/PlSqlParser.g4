@@ -1519,6 +1519,7 @@ out_of_line_constraint
           )
        )
       constraint_state?
+      parallel_clause?
     ;
 
 constraint_state
