@@ -119,9 +119,9 @@ end::schema-hist-prop-store-only-cap-db-ddl-boolean[]
 tag::snapshot-fetch-size-note[]
 [CAUTION]
 ====
-To maintain connector performance, it's best to preserve the unset default of this property.
-This default configuration enables MySQL to stream the result set to {prodname} one row at a time.
-By contrast, if you set this property, performance problems can result, because {prodname} attempts to fetch the entire result set into memory at once.
+To maintain connector performance, it's best to leave this property at its unset default.
+The default configuration enables MySQL to stream the result set to {prodname} one row at a time.
+By contrast, if you set this property performance problems can result, because {prodname} attempts to fetch the entire result set into memory at once.
 ====
 end::snapshot-fetch-size-note[]
 
