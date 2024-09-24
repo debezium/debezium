@@ -3208,8 +3208,8 @@ The connector runs the following SQL command to create a publication: +
 `disabled`::
 The connector does not attempt to create a publication.
 A database administrator or the user configured to perform replications must have created the publication before running the connector.
-If the connector cannot find the publication, the connector throws an exception and stops. +
- +
+If the connector cannot find the publication, the connector throws an exception and stops.
+
 `filtered`::
 If a publication does not exist, the connector creates one by running a SQL command in the following format: +
  +
@@ -3219,7 +3219,7 @@ The resulting publication includes tables that match the current filter configur
  +
 If the publication exists, the connector updates the publication for tables that match the current filter configuration by running a SQL command in the following format: +
  +
-`ALTER PUBLICATION <__publication_name__> SET TABLE <tbl1, tbl2, tbl3>`. +
+`ALTER PUBLICATION <__publication_name__> SET TABLE <tbl1, tbl2, tbl3>`.
 
 `no_tables`::
 If a publication exists, the connector uses it.
