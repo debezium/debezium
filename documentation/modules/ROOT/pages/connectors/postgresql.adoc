@@ -3187,26 +3187,49 @@ However, it's best to use the minimum number that are required to specify a uniq
 
 Note that having this property set and `REPLICA IDENTITY` set to `DEFAULT` on the tables, will cause the tombstone events to not be created properly if the key columns are not part of the primary key of the table. +
 Setting `REPLICA IDENTITY` to `FULL` is the only solution.
+
 |[[postgresql-publication-autocreate-mode]]<<postgresql-publication-autocreate-mode, `+publication.autocreate.mode+`>>
 |_all_tables_
-|Applies only when streaming changes by using link:https://www.postgresql.org/docs/current/sql-createpublication.html[the `pgoutput` plug-in].
-The setting determines how creation of a link:https://www.postgresql.org/docs/current/logical-replication-publication.html[publication] should work.
-Specify one of the following values: +
+|Specifies whether and how the connector creates a link:https://www.postgresql.org/docs/current/logical-replication-publication.html[publication].
+This setting applies only when the connector streams changes by using the link:https://www.postgresql.org/docs/current/sql-createpublication.html[`pgoutput` plug-in].
+
+NOTE: To create publications, the connector must access PostgreSQL through a database account that has specific permissions.
+For more information, see xref:postgresql-replication-user-privileges[Setting privileges to enable {prodname} to create PostgreSQL publications].
+
+Specify one of the following values:
+
+`all_tables`::
+If a publication exists, the connector uses it. +
+If a publication does not exist, the connector creates a publication for all tables in the database from which the connector captures changes.
+The connector runs the following SQL command to create a publication: +
  +
-`all_tables` - If a publication exists, the connector uses it.
-If a publication does not exist, the connector creates a publication for all tables in the database for which the connector is capturing changes.
-For the connector to create a publication it must access the database through a database user account that has permission to create publications and perform replications.
-You grant the required permission by using the following SQL command `CREATE PUBLICATION <publication_name> FOR ALL TABLES;`. +
- +
-`disabled` - The connector does not attempt to create a publication.
+`CREATE PUBLICATION <__publication_name__> FOR ALL TABLES;`
+
+`disabled`::
+The connector does not attempt to create a publication.
 A database administrator or the user configured to perform replications must have created the publication before running the connector.
 If the connector cannot find the publication, the connector throws an exception and stops. +
  +
-`filtered` - If a publication exists, the connector uses it.
-If no publication exists, the connector creates a new publication for tables that match the current filter configuration as specified by the `schema.include.list`, `schema.exclude.list`, and `table.include.list`, and `table.exclude.list` connector configuration properties.
-For example: `CREATE PUBLICATION <publication_name> FOR TABLE <tbl1, tbl2, tbl3>`.
-If the publication exists, the connector updates the publication for tables that match the current filter configuration.
-For example: `ALTER PUBLICATION <publication_name> SET TABLE <tbl1, tbl2, tbl3>`.
+`filtered`::
+If a publication does not exist, the connector creates one by running a SQL command in the following format: +
+ +
+`CREATE PUBLICATION <__publication_name__> FOR TABLE <tbl1, tbl2, tbl3>`
+ +
+The resulting publication includes tables that match the current filter configuration, as specified by the `schema.include.list`, `schema.exclude.list`, `table.include.list`, and `table.exclude.list` connector configuration properties.
+ +
+If the publication exists, the connector updates the publication for tables that match the current filter configuration by running a SQL command in the following format: +
+ +
+`ALTER PUBLICATION <__publication_name__> SET TABLE <tbl1, tbl2, tbl3>`. +
+
+`no_tables`::
+If a publication exists, the connector uses it.
+If a publication does not exist, the connector creates a publication without specifying any table by running a SQL command in the following format: +
+ +
+`CREATE PUBLICATION <__publication_name__>;` +
+ +
+Set the `no_tables` option if you want the connector to capture only logical decoding messages, and not capture any other change events, such as those caused by `INSERT`, `UPDATE`, and `DELETE` operations on any table. +
+ +
+If you select this option, to prevent the connector from emitting and processing `READ` events, you can specify names of schemas or tables for which you do not want to capture changes, for example, by using `"table.exclude.list": "public.*"` or `"schema.exclude.list": "public"`.
 
 |[[postgresql-replica-autoset-type]]<<postgresql-replica-autoset-type, `+replica.identity.autoset.values+`>>
 |_empty string_
