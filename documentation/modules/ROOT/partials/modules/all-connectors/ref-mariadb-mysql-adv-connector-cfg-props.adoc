@@ -371,12 +371,14 @@ An interval in milliseconds that the connector should wait before performing a s
 
 [id="{context}-property-snapshot-fetch-size"]
 xref:{context}-property-snapshot-fetch-size[`snapshot.fetch.size`]::
-Default value: Unset +
-By default, during a snapshot, the connector reads table content in batches of rows.
-Set this property to specify the maximum number of rows in a batch.
+Default value: No default +
+During a snapshot, the connector reads table content in batches of rows.
+This property specifies the maximum number of rows in a batch.
 
-include::{snippetsdir}/frag-{context}-props-snippets.adoc[tags=snapshot-fetch-size-note]
-
+[CAUTION]
+====
+Changing the default value can impair performance.
+====
 
 [id="{context}-property-snapshot-include-collection-list"]
 xref:{context}-property-snapshot-include-collection-list[`snapshot.include.collection.list`]::

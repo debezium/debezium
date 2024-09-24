@@ -103,17 +103,11 @@ end::session-timeout-options-descriptions[]
 // Long term, for each connector, we could create a catalog of these snippet values and store them in connector-specific attribute files.
 // Then include those files in the headers of each connector's main file.
 
-==== schema.history.config-store.only.captured.database.ddl
-
 tag::schema-hist-prop-store-only-cap-db-ddl-boolean[]
 `true`
 end::schema-hist-prop-store-only-cap-db-ddl-boolean[]
 
 
-==== Advanced props snapshot.fetch.size
-
-tag::snapshot-fetch-size-note[]
-end::snapshot-fetch-size-note[]
 
 === Behavior when things go wrong
 
