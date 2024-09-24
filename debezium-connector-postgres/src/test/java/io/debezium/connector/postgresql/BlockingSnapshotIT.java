@@ -26,7 +26,7 @@ import io.debezium.pipeline.AbstractBlockingSnapshotTest;
 import io.debezium.pipeline.signal.channels.FileSignalChannel;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 
-public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
+public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest<PostgresConnector> {
 
     private static final String TOPIC_NAME = "test_server.s1.a";
 
