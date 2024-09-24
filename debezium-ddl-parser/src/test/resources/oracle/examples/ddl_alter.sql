@@ -81,6 +81,8 @@ UPDATE INDEXES (COST_IX (PARTITION C_P1 TABLESPACE TBS_02, PARTITION C_P2 TABLES
 
 ALTER TABLE "AB01"."SMOSTAMM" ADD CONSTRAINT "CC_SMOSTAMM_KRAB" CHECK ((KRAB >= 0. ) AND (KRAB <= 100. )) ENABLE;
 
+ALTER TABLE "ME_CARRIER_HISTORY" ADD CONSTRAINT "CHECK_COMM_TYPE" CHECK (communication_type in('EDI','NON-EDI','API')) NOVALIDATE PARALLEL;
+
 -- alter table (Oracle 23+)
 alter table fruit annotations (Visibility 'Everyone');
 alter table fruit annotations (drop Visibility);
