@@ -8,5 +8,5 @@
 // Then include those files in the headers of each connector's main file.
 
 tag::schema-hist-prop-store-only-cap-db-ddl-boolean[]
-`false`
+|`false`
 end::schema-hist-prop-store-only-cap-db-ddl-boolean[]

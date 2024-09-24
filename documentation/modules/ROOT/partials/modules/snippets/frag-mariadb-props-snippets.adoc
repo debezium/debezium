@@ -104,6 +104,7 @@ end::session-timeout-options-descriptions[]
 // Then include those files in the headers of each connector's main file.
 
 tag::schema-hist-prop-store-only-cap-db-ddl-boolean[]
+|
 `true`
 end::schema-hist-prop-store-only-cap-db-ddl-boolean[]
 

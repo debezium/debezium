@@ -50,7 +50,6 @@ If you later decide to capture changes from tables that you did not originally d
 If you change the default value, and you later configure the connector to capture data from other tables in the database, the connector lacks the schema information that it requires to capture change events from the tables. +
 
 |[[{context}-property-database-history-store-only-captured-databases-ddl]]<<{context}-property-database-history-store-only-captured-databases-ddl, `+schema.history.internal.store.only.captured.databases.ddl+`>>
-|
 include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=schema-hist-prop-store-only-cap-db-ddl-boolean]
 |A Boolean value that specifies whether the connector records schema structures from all logical databases in the database instance. +
 Specify one of the following values:
