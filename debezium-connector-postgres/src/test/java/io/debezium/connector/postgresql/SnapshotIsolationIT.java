@@ -131,4 +131,3 @@ public class SnapshotIsolationIT extends AbstractConnectorTest {
         expected.forEach(schemaAndValueField -> schemaAndValueField.assertFor(record));
     }
 }
- 
