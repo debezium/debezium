@@ -45,7 +45,6 @@ import io.debezium.junit.SkipWhenConnectorUnderTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractSnapshotTest;
-import io.debezium.util.Testing;
 
 public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> extends AbstractSnapshotTest<T> {
     private int signalingRecords;
@@ -251,7 +250,7 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
     @Test
     @FixFor("DBZ-8244")
     public void anErrorDuringBlockingSnapshotShouldLeaveTheConnectorInAGoodState() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         populateTable();
 

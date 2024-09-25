@@ -219,7 +219,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
      *
      * @param snapshotContext snapshot context
      */
-    protected void aborted(SnapshotContext<P, O> snapshotContext) {
+    protected void aborted(SnapshotContext<P, O> snapshotContext) throws InterruptedException {
     }
 
     protected Set<Pattern> getDataCollectionPattern(List<String> dataCollections) {

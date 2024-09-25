@@ -208,11 +208,9 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
     public List<SourceRecord> doPoll() throws InterruptedException {
         List<DataChangeEvent> records = queue.poll();
 
-        List<SourceRecord> sourceRecords = records.stream()
+        return records.stream()
                 .map(DataChangeEvent::getRecord)
                 .collect(Collectors.toList());
-
-        return sourceRecords;
     }
 
     @Override
