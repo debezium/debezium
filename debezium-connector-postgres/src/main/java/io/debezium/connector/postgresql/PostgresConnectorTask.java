@@ -329,11 +329,9 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
     public List<SourceRecord> doPoll() throws InterruptedException {
         final List<DataChangeEvent> records = queue.poll();
 
-        final List<SourceRecord> sourceRecords = records.stream()
+        return records.stream()
                 .map(DataChangeEvent::getRecord)
                 .collect(Collectors.toList());
-
-        return sourceRecords;
     }
 
     @Override

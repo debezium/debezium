@@ -654,4 +654,12 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         preSnapshotAction.run();
         super.preSnapshot();
     }
+
+    @Override
+    protected void aborted(SnapshotContext<P, O> snapshotContext) throws InterruptedException {
+
+        lastEventProcessor.accept(Function.identity());
+
+        super.aborted(snapshotContext);
+    }
 }
