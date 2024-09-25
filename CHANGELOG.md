@@ -2,6 +2,54 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.0.0.CR2
+September 25th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12433150)
+
+### New features since 3.0.0.CR1
+
+* Snapshot isolation level options for postgres [DBZ-1252](https://issues.redhat.com/browse/DBZ-1252)
+* Retry flush records if LockAcquisitionException occured in mysql [DBZ-7291](https://issues.redhat.com/browse/DBZ-7291)
+* Add support for MAX_STRING_SIZE set to EXTENDED [DBZ-8039](https://issues.redhat.com/browse/DBZ-8039)
+* Add invalid value logger for dates to Debezium Vitess Connector  [DBZ-8235](https://issues.redhat.com/browse/DBZ-8235)
+* Support BLOB with EMPTY_BLOB() as default [DBZ-8248](https://issues.redhat.com/browse/DBZ-8248)
+
+
+### Breaking changes since 3.0.0.CR1
+
+None
+
+
+### Fixes since 3.0.0.CR1
+
+* Debezium does not restart automatically after throwing an ORA-00600 krvrdccs30 error [DBZ-8223](https://issues.redhat.com/browse/DBZ-8223)
+* JDBC sink doesn't include fields as per documentation [DBZ-8224](https://issues.redhat.com/browse/DBZ-8224)
+* Unbounded number of processing threads in async engine [DBZ-8237](https://issues.redhat.com/browse/DBZ-8237)
+* Streaming metrics are stuck after an ad-hoc blocking snapshot [DBZ-8238](https://issues.redhat.com/browse/DBZ-8238)
+* DDL statement couldn't be parsed with IF EXISTS [DBZ-8240](https://issues.redhat.com/browse/DBZ-8240)
+* Random engine factory used by default [DBZ-8241](https://issues.redhat.com/browse/DBZ-8241)
+* JDBC sink test suite should use the debezium/connect:nightly image for e2e tests [DBZ-8245](https://issues.redhat.com/browse/DBZ-8245)
+* Performance Regression in Debezium Server Kafka after DBZ-7575 fix [DBZ-8251](https://issues.redhat.com/browse/DBZ-8251)
+* Error Prone library included in MySQL connector [DBZ-8258](https://issues.redhat.com/browse/DBZ-8258)
+* Debezium.text.ParsingException: DDL statement couldn't be parsed [DBZ-8259](https://issues.redhat.com/browse/DBZ-8259)
+
+
+### Other changes since 3.0.0.CR1
+
+* Test and check compatibility with ojdbc11 [DBZ-3658](https://issues.redhat.com/browse/DBZ-3658)
+* Broken link to Streams doc about configuring logging  [DBZ-8231](https://issues.redhat.com/browse/DBZ-8231)
+* Document passthrough hibernate.* properties for the JDBC connector [DBZ-8232](https://issues.redhat.com/browse/DBZ-8232)
+* Bump Infinispan to 15.0.8.Final [DBZ-8246](https://issues.redhat.com/browse/DBZ-8246)
+* AbstractConnectorTest consumeRecordsUntil may prematurely exit loop [DBZ-8250](https://issues.redhat.com/browse/DBZ-8250)
+* Add a note to the docs about JDBC batch retry configs [DBZ-8252](https://issues.redhat.com/browse/DBZ-8252)
+* Fix conditionalization in shared MariaDB/MySQL file [DBZ-8254](https://issues.redhat.com/browse/DBZ-8254)
+* Add Oracle FUTC license [DBZ-8260](https://issues.redhat.com/browse/DBZ-8260)
+* Remove Oracle libs from product assembly package [DBZ-8261](https://issues.redhat.com/browse/DBZ-8261)
+* debezium-connector-binlog does not need MariaDB dependency [DBZ-8263](https://issues.redhat.com/browse/DBZ-8263)
+* Provide subset package for Debezium Server [DBZ-8264](https://issues.redhat.com/browse/DBZ-8264)
+* Bump container images to Fedora 40 [DBZ-8266](https://issues.redhat.com/browse/DBZ-8266)
+
+
+
 ## 3.0.0.CR1
 September 13rd 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12432262)
 
