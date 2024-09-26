@@ -28,6 +28,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.postgresql.geometric.PGpoint;
 import org.postgresql.util.PGobject;
 
+import io.debezium.connector.jdbc.FieldSchemaAndValue;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.InsertMode;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode;
@@ -39,6 +40,7 @@ import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.junit.jupiter.WithPostgresExtension;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
+import io.debezium.data.geometry.Geometry;
 import io.debezium.doc.FixFor;
 
 /**
@@ -126,6 +128,63 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         getSink().assertColumnType(tableAssert, "geography", PGobject.class, expectedGeographyValue);
 
         getSink().assertColumnHasNullValue(tableAssert, "p");
+    }
+
+    @WithPostgresExtension("postgis")
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-8221")
+    public void testBatchWithDifferingSqlParameterBindings(SinkRecordFactory factory) throws SQLException {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.POSTGRES_POSTGIS_SCHEMA, "postgis");
+
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        final SinkRecord recordA = factory.createInsertSchemaAndValue(
+                topicName,
+                List.of(new FieldSchemaAndValue("id", Schema.STRING_SCHEMA, "12345")),
+                List.of(
+                        new FieldSchemaAndValue("gis_area",
+                                Geometry.schema(),
+                                Geometry.createValue(
+                                        Geometry.schema(),
+                                        Base64.getDecoder().decode("AQEAACARDWAAuooeV7P4V0EWN+bdvgBVQO==".getBytes()),
+                                        3857)),
+                        new FieldSchemaAndValue("__deleted", Schema.BOOLEAN_SCHEMA, false)),
+                0);
+
+        final SinkRecord recordB = factory.createInsertSchemaAndValue(
+                topicName,
+                List.of(new FieldSchemaAndValue("id", Schema.STRING_SCHEMA, "23456")),
+                List.of(new FieldSchemaAndValue("gis_area", Geometry.schema(), null),
+                        new FieldSchemaAndValue("__deleted", Schema.BOOLEAN_SCHEMA, false)),
+                1);
+
+        final SinkRecord recordC = factory.createInsertSchemaAndValue(
+                topicName,
+                List.of(new FieldSchemaAndValue("id", Schema.STRING_SCHEMA, "23456")),
+                List.of(
+                        new FieldSchemaAndValue("gis_area",
+                                Geometry.schema(),
+                                Geometry.createValue(
+                                        Geometry.schema(),
+                                        Base64.getDecoder().decode("AQEAACARDWAAuooeV7P4V0EWN+bdvgBVQO==".getBytes()),
+                                        3857)),
+                        new FieldSchemaAndValue("__deleted", Schema.BOOLEAN_SCHEMA, false)),
+                0);
+
+        final List<SinkRecord> records = List.of(recordA, recordB, recordC);
+        consume(records);
+
+        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(recordA));
+        tableAssert.hasNumberOfRows(2).hasNumberOfColumns(3);
     }
 
     @ParameterizedTest
