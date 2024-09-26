@@ -14,8 +14,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.sink.SinkRecord;
 
-import io.debezium.connector.jdbc.FieldSchemaAndValue;
 import io.debezium.converters.spi.SerializerType;
+import io.debezium.data.SchemaAndValueField;
 
 /**
  * @author Chris Cranford
@@ -268,12 +268,12 @@ public interface SinkRecordFactory {
         return basicSchemaBuilder.build();
     }
 
-    default SinkRecord createInsertSchemaAndValue(String topicName, List<FieldSchemaAndValue> keyFields, List<FieldSchemaAndValue> valueFields, int offset) {
+    default SinkRecord createInsertSchemaAndValue(String topicName, List<SchemaAndValueField> keyFields, List<SchemaAndValueField> valueFields, int offset) {
 
         Schema keySchema = null;
         if (!keyFields.isEmpty()) {
             SchemaBuilder keySchemaBuilder = SchemaBuilder.struct();
-            for (FieldSchemaAndValue keyField : keyFields) {
+            for (SchemaAndValueField keyField : keyFields) {
                 keySchemaBuilder.field(keyField.fieldName(), keyField.schema());
             }
             keySchema = keySchemaBuilder.build();
@@ -295,12 +295,12 @@ public interface SinkRecordFactory {
                 .sourceSchema(basicSourceSchema())
                 .source("ts_ms", (int) Instant.now().getEpochSecond());
 
-        for (FieldSchemaAndValue keyField : keyFields) {
+        for (SchemaAndValueField keyField : keyFields) {
             builder.key(keyField.fieldName(), keyField.value());
             builder.after(keyField.fieldName(), keyField.value());
         }
 
-        for (FieldSchemaAndValue valueField : valueFields) {
+        for (SchemaAndValueField valueField : valueFields) {
             builder.after(valueField.fieldName(), valueField.value());
         }
 
