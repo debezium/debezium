@@ -28,7 +28,6 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.postgresql.geometric.PGpoint;
 import org.postgresql.util.PGobject;
 
-import io.debezium.connector.jdbc.FieldSchemaAndValue;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.InsertMode;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode;
@@ -40,6 +39,7 @@ import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.junit.jupiter.WithPostgresExtension;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
+import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.geometry.Geometry;
 import io.debezium.doc.FixFor;
 
@@ -149,35 +149,35 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
 
         final SinkRecord recordA = factory.createInsertSchemaAndValue(
                 topicName,
-                List.of(new FieldSchemaAndValue("id", Schema.STRING_SCHEMA, "12345")),
+                List.of(new SchemaAndValueField("id", Schema.STRING_SCHEMA, "12345")),
                 List.of(
-                        new FieldSchemaAndValue("gis_area",
+                        new SchemaAndValueField("gis_area",
                                 Geometry.schema(),
                                 Geometry.createValue(
                                         Geometry.schema(),
                                         Base64.getDecoder().decode("AQEAACARDWAAuooeV7P4V0EWN+bdvgBVQO==".getBytes()),
                                         3857)),
-                        new FieldSchemaAndValue("__deleted", Schema.BOOLEAN_SCHEMA, false)),
+                        new SchemaAndValueField("__deleted", Schema.BOOLEAN_SCHEMA, false)),
                 0);
 
         final SinkRecord recordB = factory.createInsertSchemaAndValue(
                 topicName,
-                List.of(new FieldSchemaAndValue("id", Schema.STRING_SCHEMA, "23456")),
-                List.of(new FieldSchemaAndValue("gis_area", Geometry.schema(), null),
-                        new FieldSchemaAndValue("__deleted", Schema.BOOLEAN_SCHEMA, false)),
+                List.of(new SchemaAndValueField("id", Schema.STRING_SCHEMA, "23456")),
+                List.of(new SchemaAndValueField("gis_area", Geometry.schema(), null),
+                        new SchemaAndValueField("__deleted", Schema.BOOLEAN_SCHEMA, false)),
                 1);
 
         final SinkRecord recordC = factory.createInsertSchemaAndValue(
                 topicName,
-                List.of(new FieldSchemaAndValue("id", Schema.STRING_SCHEMA, "23456")),
+                List.of(new SchemaAndValueField("id", Schema.STRING_SCHEMA, "23456")),
                 List.of(
-                        new FieldSchemaAndValue("gis_area",
+                        new SchemaAndValueField("gis_area",
                                 Geometry.schema(),
                                 Geometry.createValue(
                                         Geometry.schema(),
                                         Base64.getDecoder().decode("AQEAACARDWAAuooeV7P4V0EWN+bdvgBVQO==".getBytes()),
                                         3857)),
-                        new FieldSchemaAndValue("__deleted", Schema.BOOLEAN_SCHEMA, false)),
+                        new SchemaAndValueField("__deleted", Schema.BOOLEAN_SCHEMA, false)),
                 0);
 
         final List<SinkRecord> records = List.of(recordA, recordB, recordC);
