@@ -14,6 +14,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.sink.SinkRecord;
 
+import io.debezium.connector.jdbc.FieldSchemaAndValue;
 import io.debezium.converters.spi.SerializerType;
 
 /**
@@ -265,6 +266,45 @@ public interface SinkRecordFactory {
         }
 
         return basicSchemaBuilder.build();
+    }
+
+    default SinkRecord createInsertSchemaAndValue(String topicName, List<FieldSchemaAndValue> keyFields, List<FieldSchemaAndValue> valueFields, int offset) {
+
+        Schema keySchema = null;
+        if (!keyFields.isEmpty()) {
+            SchemaBuilder keySchemaBuilder = SchemaBuilder.struct();
+            for (FieldSchemaAndValue keyField : keyFields) {
+                keySchemaBuilder.field(keyField.fieldName(), keyField.schema());
+            }
+            keySchema = keySchemaBuilder.build();
+        }
+
+        final SchemaBuilder recordSchemaBuilder = SchemaBuilder.struct();
+        keyFields.forEach(keyField -> recordSchemaBuilder.field(keyField.fieldName(), keyField.schema()));
+        valueFields.forEach(valueField -> recordSchemaBuilder.field(valueField.fieldName(), valueField.schema()));
+        final Schema recordSchema = recordSchemaBuilder.build();
+
+        SinkRecordBuilder.SinkRecordTypeBuilder builder = SinkRecordBuilder.create()
+                .flat(isFlattened())
+                .name("prefix")
+                .topic(topicName)
+                .offset(offset)
+                .partition(0)
+                .keySchema(keySchema)
+                .recordSchema(recordSchema)
+                .sourceSchema(basicSourceSchema())
+                .source("ts_ms", (int) Instant.now().getEpochSecond());
+
+        for (FieldSchemaAndValue keyField : keyFields) {
+            builder.key(keyField.fieldName(), keyField.value());
+            builder.after(keyField.fieldName(), keyField.value());
+        }
+
+        for (FieldSchemaAndValue valueField : valueFields) {
+            builder.after(valueField.fieldName(), valueField.value());
+        }
+
+        return builder.build();
     }
 
     default SinkRecord createRecordWithSchemaValue(String topicName, byte key, String fieldName, Schema fieldSchema, Object value) {
