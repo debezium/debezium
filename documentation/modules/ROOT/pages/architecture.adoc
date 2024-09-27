@@ -38,7 +38,7 @@ If needed, you can adjust the destination topic name by configuring {prodname}'s
 After change event records are in Apache Kafka, different connectors in the Kafka Connect ecosystem can stream the records to other systems and databases such as Elasticsearch, data warehouses and analytics systems, or caches such as Infinispan.
 Depending on the chosen sink connector, you might need to configure the {prodname} {link-prefix}:{link-event-flattening}#new-record-state-extraction[new record state extraction] transformation.
 This Kafka Connect SMT propagates the `after` structure from a {prodname} change event to the sink connector.
-This is in place of the verbose change event record that is propagated by default.
+The modified change event record replaces the original, more verbose record that is propagated by default.
 
 == {prodname} Server
 
