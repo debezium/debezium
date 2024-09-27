@@ -1980,13 +1980,22 @@ relational_table
           physical_properties?
           column_properties?
           table_partitioning_clauses?
-          segment_attributes_clause? // LogMiner-specific
+          logminer_relational_table_attributes? // LogMiner-specific
           (CACHE | NOCACHE)? (RESULT_CACHE '(' MODE (DEFAULT | FORCE) ')')?
           parallel_clause?
           monitoring_nomonitoring?
           (ROWDEPENDENCIES | NOROWDEPENDENCIES)?
           (enable_disable_clause+)? row_movement_clause? logical_replication_clause? flashback_archive_clause? annotations_clause?
         ;
+
+logminer_relational_table_attributes
+    : logminer_relational_table_attribute logminer_relational_table_attribute*
+    ;
+
+logminer_relational_table_attribute
+    : segment_attributes_clause
+    | parallel_clause
+    ;
 
 relational_property
     : ( out_of_line_constraint
