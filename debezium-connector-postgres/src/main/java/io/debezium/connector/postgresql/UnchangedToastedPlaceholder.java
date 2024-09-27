@@ -28,6 +28,13 @@ public class UnchangedToastedPlaceholder {
     private final Map<String, String> toastPlaceholderHstore = new HashMap<>();
     private final String toastPlaceholderUuid;
 
+    /**
+     * Provides different representations of a placeholder value.<br>
+     *
+     * <b>NOTE:</b> Adding new types might require an update in {@link io.debezium.processors.reselect.ReselectColumnsPostProcessor}.
+     *
+     * @param connectorConfig
+     */
     public UnchangedToastedPlaceholder(PostgresConnectorConfig connectorConfig) {
         toastPlaceholderBinary = connectorConfig.getUnavailableValuePlaceholder();
         toastPlaceholderString = new String(toastPlaceholderBinary);
