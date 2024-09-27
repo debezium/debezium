@@ -257,7 +257,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
 
                 }
                 catch (Exception e) {
-                    LOGGER.error("Error while executing requested blocking snapshot: {}", e.getMessage());
+                    LOGGER.warn("Error while executing requested blocking snapshot.", e);
                     resumeStreaming(partition);
                 }
             }
