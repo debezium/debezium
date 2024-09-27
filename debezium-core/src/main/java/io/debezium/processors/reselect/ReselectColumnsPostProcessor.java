@@ -15,6 +15,7 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Schema.Type;
 import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,6 +68,8 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
     private ByteBuffer unavailableValuePlaceholderBytes;
     private Map<String, String> unavailableValuePlaceholderMap;
     private String unavailableValuePlaceholderJson;
+    private List<Integer> unavailablePlaceholderIntArray;
+    private List<Long> unavailablePlaceholderLongArray;
     private RelationalDatabaseSchema schema;
     private RelationalDatabaseConnectorConfig connectorConfig;
 
@@ -196,6 +199,12 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
         this.unavailableValuePlaceholderBytes = ByteBuffer.wrap(connectorConfig.getUnavailableValuePlaceholder());
         this.unavailableValuePlaceholderMap = Map.of(this.unavailableValuePlaceholder, this.unavailableValuePlaceholder);
         this.unavailableValuePlaceholderJson = "{\"" + this.unavailableValuePlaceholder + "\":\"" + this.unavailableValuePlaceholder + "\"}";
+        unavailablePlaceholderIntArray = new ArrayList<>(unavailableValuePlaceholderBytes.limit());
+        unavailablePlaceholderLongArray = new ArrayList<>(unavailableValuePlaceholderBytes.limit());
+        for (byte b : unavailableValuePlaceholderBytes.array()) {
+            unavailablePlaceholderIntArray.add((int) b);
+            unavailablePlaceholderLongArray.add((long) b);
+        }
 
         this.valueConverterProvider = beanRegistry.lookupByName(StandardBeanNames.VALUE_CONVERTER, ValueConverterProvider.class);
         this.jdbcConnection = beanRegistry.lookupByName(StandardBeanNames.JDBC_CONNECTION, JdbcConnection.class);
@@ -235,6 +244,8 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
                         return true;
                     }
                 }
+                // Case for whole array value representing unavailable value
+                return isUnavailableArrayValueHolder(field.schema(), value);
             }
             else {
                 return isUnavailableValueHolder(field.schema(), value);
@@ -260,6 +271,18 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
                 return unavailableValuePlaceholder.equals(value) || isJsonAndUnavailable;
         }
         return false;
+    }
+
+    private boolean isUnavailableArrayValueHolder(Schema schema, Object value) {
+        assert schema.type() == Type.ARRAY;
+        switch (schema.valueSchema().type()) {
+            case INT32:
+                return unavailablePlaceholderIntArray.equals(value);
+            case INT64:
+                return unavailablePlaceholderLongArray.equals(value);
+            default:
+                return false;
+        }
     }
 
     private Object getConvertedValue(Column column, org.apache.kafka.connect.data.Field field, Object value) {
