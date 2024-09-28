@@ -247,6 +247,38 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-8247")
+    public void testShouldHandleCreateRecordsAfterTruncateRecord(SinkRecordFactory factory) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.TRUNCATE_ENABLED, "true");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        SinkRecord firstRecord = factory.createRecord(topicName, (byte) 1);
+        SinkRecord truncateRecord = factory.truncateRecord(topicName);
+        SinkRecord secondRecord = factory.createRecord(topicName, (byte) 2);
+
+        consume(firstRecord);
+        consume(truncateRecord);
+        consume(secondRecord);
+
+        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(firstRecord));
+        // will skip truncate event since there is no operation "t" in flatten value
+        if (factory.isFlattened()) {
+            tableAssert.exists().hasNumberOfRows(2).hasNumberOfColumns(3);
+        }
+        else {
+            tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(3);
+        }
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     @FixFor("DBZ-7830")
     public void testShouldFlushUpdateBufferWhenDelete(SinkRecordFactory factory) {
         final Map<String, String> properties = getDefaultSinkConfig();
