@@ -119,6 +119,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 catch (SQLException e) {
                     throw new ConnectException("Failed to process a sink record", e);
                 }
+                continue;
             }
 
             if (sinkRecordDescriptor.isDelete()) {
