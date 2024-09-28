@@ -14,6 +14,20 @@
     <name>Debezium Quarkus :: Outbox Reactive :: Deployment</name>
 
     <dependencies>
+        <!-- Debezium Quarkus Outbox Runtime artifact dependency -->
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-quarkus-outbox-reactive</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Outbox common dependency -->
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-quarkus-outbox-deployment-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Quarkus deployment dependencies -->
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -25,33 +39,14 @@
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-vertx-deployment</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-netty-deployment</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
             <artifactId>quarkus-jackson-deployment</artifactId>
         </dependency>
+
+        <!-- test dependencies -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-opentelemetry</artifactId>
             <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>io.debezium</groupId>
-            <artifactId>debezium-quarkus-outbox-deployment-common</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
-        <!-- Debezium Quarkus Outbox Runtime artifact dependency -->
-        <dependency>
-            <groupId>io.debezium</groupId>
-            <artifactId>debezium-quarkus-outbox-reactive</artifactId>
-            <version>${project.version}</version>
         </dependency>
     </dependencies>
 
@@ -59,15 +54,20 @@
         <plugins>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <annotationProcessorPaths>
-                        <path>
-                            <groupId>io.quarkus</groupId>
-                            <artifactId>quarkus-extension-processor</artifactId>
-                            <version>${quarkus.version.extension}</version>
-                        </path>
-                    </annotationProcessorPaths>
-                </configuration>
+                <executions>
+                    <execution>
+                        <id>default-compile</id>
+                        <configuration>
+                            <annotationProcessorPaths>
+                                <path>
+                                    <groupId>io.quarkus</groupId>
+                                    <artifactId>quarkus-extension-processor</artifactId>
+                                    <version>${quarkus.version.extension}</version>
+                                </path>
+                            </annotationProcessorPaths>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

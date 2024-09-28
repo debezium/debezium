@@ -15,9 +15,8 @@
     <packaging>jar</packaging>
 
     <properties>
-        <!-- Quarkus has moved to Java 17 as baseline -->
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.source>${debezium.java.source}</maven.compiler.source>
+        <maven.compiler.target>${debezium.java.specific.target}</maven.compiler.target>
     </properties>
 
     <dependencies>
@@ -35,6 +34,8 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-hibernate-orm-deployment</artifactId>
+            <!-- provided by the non-reactive and reactive deployment -->
+            <scope>provided</scope>
         </dependency>
         <!-- Needed for references to javax.persistence.AttributeConverter -->
         <dependency>
