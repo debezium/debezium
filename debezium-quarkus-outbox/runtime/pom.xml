@@ -28,6 +28,10 @@
             <groupId>io.debezium</groupId>
             <artifactId>debezium-quarkus-outbox-common</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-messaging-kafka</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
@@ -47,7 +51,8 @@
                             <goal>extension-descriptor</goal>
                         </goals>
                         <configuration>
-                            <deployment>${project.groupId}:${project.artifactId}-deployment:${project.version}</deployment>
+                            <deployment>${project.groupId}:${project.artifactId}-deployment:${project.version}
+                            </deployment>
                         </configuration>
                     </execution>
                 </executions>

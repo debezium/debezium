@@ -28,6 +28,10 @@
             <groupId>io.debezium</groupId>
             <artifactId>debezium-quarkus-outbox-common</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-smallrye-reactive-messaging-kafka</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
