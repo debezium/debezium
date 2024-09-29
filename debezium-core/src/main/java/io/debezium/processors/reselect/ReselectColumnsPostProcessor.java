@@ -165,7 +165,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
 
         final Map<String, Object> selections;
         try {
-            selections = jdbcConnection.reselectColumns(tableId, requiredColumnSelections, keyColumns, keyValues, source);
+            selections = jdbcConnection.reselectColumns(table, requiredColumnSelections, keyColumns, keyValues, source);
             if (selections.isEmpty()) {
                 LOGGER.warn("Failed to find row in table {} with key {}.", tableId, key);
                 return;

@@ -45,6 +45,7 @@ import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Attribute;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
@@ -648,12 +649,12 @@ public class OracleConnection extends JdbcConnection {
     }
 
     @Override
-    public Map<String, Object> reselectColumns(TableId tableId, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source)
+    public Map<String, Object> reselectColumns(Table table, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source)
             throws SQLException {
-        final TableId oracleTableId = new TableId(null, tableId.schema(), tableId.table());
+        final TableId oracleTableId = new TableId(null, table.id().schema(), table.id().table());
         final String commitScn = source.getString(SourceInfo.COMMIT_SCN_KEY);
         if (Strings.isNullOrEmpty(commitScn)) {
-            return optionallyDoInContainer(() -> super.reselectColumns(oracleTableId, columns, keyColumns, keyValues, source));
+            return optionallyDoInContainer(() -> super.reselectColumns(table, columns, keyColumns, keyValues, source));
         }
 
         final String query = String.format("SELECT %s FROM (SELECT * FROM %s AS OF SCN ?) WHERE %s",
@@ -670,8 +671,8 @@ public class OracleConnection extends JdbcConnection {
             catch (SQLException e) {
                 if (e.getErrorCode() == 1555 || e.getMessage().startsWith("ORA-01555")) {
                     LOGGER.warn("Failed to re-select row for table {} and key columns {} with values {}. " +
-                            "Trying to perform re-selection without flashback.", tableId, keyColumns, keyValues);
-                    return super.reselectColumns(oracleTableId, columns, keyColumns, keyValues, source);
+                            "Trying to perform re-selection without flashback.", table.id(), keyColumns, keyValues);
+                    return super.reselectColumns(table, columns, keyColumns, keyValues, source);
                 }
                 throw e;
             }
