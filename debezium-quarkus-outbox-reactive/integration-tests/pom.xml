@@ -69,6 +69,7 @@
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-quarkus-test-outbox</artifactId>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
