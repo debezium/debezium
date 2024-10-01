@@ -157,11 +157,11 @@ The converter configuration is specific to each instance.
 ----
     public static class IsbnConverter implements CustomConverter<SchemaBuilder, RelationalColumn> {
 
-        private SchemaBuilder isbnSchema;
+        private String isbnSchemaName;
 
         @Override
         public void configure(Properties props) {
-            isbnSchema = SchemaBuilder.string().name(props.getProperty("schema.name"));
+            isbnSchemaName = props.getProperty("schema.name");
         }
 
         @Override
@@ -169,7 +169,7 @@ The converter configuration is specific to each instance.
                 ConverterRegistration<SchemaBuilder> registration) {
 
             if ("isbn".equals(column.typeName())) {
-                registration.register(isbnSchema, x -> x.toString());
+                registration.register(SchemaBuilder.string().name(isbnSchemaName)), x -> x.toString());
             }
         }
     }
