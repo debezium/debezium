@@ -102,14 +102,31 @@ Here is the _value_ of the first new event (formatted for readability):
   }
 }
 ----
-<1> The `before` field now has the state of the row that was deleted with the database commit.
-<2> The `after` field is `null` because the row no longer exists.
-<3> The `source` field structure has many of the same values as before,
-except the `ts_sec` and `pos` fields have changed
-(the `file` might have changed in other circumstances).
-<4> The `op` field value is now `d`,
-signifying that this row was deleted.
-<5> The `ts_ms`, `ts_us`, `ts_ns` field shows the time stamp for when {prodname} processes this event.
+[cols="1a,7a",options="header",subs="+attributes"]
+.Descriptions of fields in an event value
+|===
+
+|Item |Description
+
+|1
+|The `before` field now has the state of the row that was deleted with the database commit.
+
+|2
+|The `after` field is `null` because the row no longer exists.
+
+|3
+|The `source` field structure has many of the same values as before,
+except that the values of the `ts_sec` and `pos` fields have changed.
+In some circumstances, the `file` value might also change.
+
+|4
+|he `op` field value is now `d`,
+indicating that the record was deleted.
+
+|5
+|The `ts_ms`, `ts_us`, and `ts_ns` fields show timestamps that indicate when {prodname} processed the event.
+
+|===
 
 Thus, this event provides a consumer with the information that it needs to process the removal of the row.
 The old values are also provided, because some consumers might require them to properly handle the removal.
