@@ -6,9 +6,10 @@
 package io.debezium.connector.mongodb.transforms;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -19,7 +20,7 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.DataException;
+import org.apache.kafka.connect.data.Timestamp;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonType;
@@ -36,11 +37,10 @@ import io.debezium.schema.SchemaNameAdjuster;
  * Connect records.
  *
  * @author Sairam Polavarapu
+ * @author Anisha Mohanty
  */
 public class MongoDataConverter {
-
     public static final String SCHEMA_NAME_REGEX = "io.debezium.mongodb.regex";
-
     private final ArrayEncoding arrayEncoding;
     private final FieldNamer<String> fieldNamer;
 
@@ -59,242 +59,172 @@ public class MongoDataConverter {
         this(arrayEncoding, FieldNameSelector.defaultNonRelationalSelector(SchemaNameAdjuster.NO_OP), false);
     }
 
-    public Struct convertRecord(Entry<String, BsonValue> keyvalueforStruct, Schema schema, Struct struct) {
-        convertFieldValue(keyvalueforStruct, struct, schema);
-        return struct;
-    }
-
-    public void convertFieldValue(Entry<String, BsonValue> keyvalueforStruct, Struct struct, Schema schema) {
-        Object colValue = null;
-        String key = fieldNamer.fieldNameFor(keyvalueforStruct.getKey());
-        BsonType type = keyvalueforStruct.getValue().getBsonType();
-
-        switch (type) {
-
-            case NULL:
-                colValue = null;
-                break;
-
-            case STRING:
-                colValue = keyvalueforStruct.getValue().asString().getValue().toString();
-                break;
-
-            case OBJECT_ID:
-                colValue = keyvalueforStruct.getValue().asObjectId().getValue().toString();
-                break;
-
-            case DOUBLE:
-                colValue = keyvalueforStruct.getValue().asDouble().getValue();
-                break;
-
-            case BINARY:
-                colValue = keyvalueforStruct.getValue().asBinary().getData();
-                break;
-
-            case INT32:
-                colValue = keyvalueforStruct.getValue().asInt32().getValue();
-                break;
-
-            case INT64:
-                colValue = keyvalueforStruct.getValue().asInt64().getValue();
-                break;
-
-            case BOOLEAN:
-                colValue = keyvalueforStruct.getValue().asBoolean().getValue();
-                break;
-
-            case DATE_TIME:
-                colValue = new Date(keyvalueforStruct.getValue().asDateTime().getValue());
-                break;
-
-            case JAVASCRIPT:
-                colValue = keyvalueforStruct.getValue().asJavaScript().getCode();
-                break;
-
-            case JAVASCRIPT_WITH_SCOPE:
-                Struct jsStruct = new Struct(schema.field(key).schema());
-                Struct jsScopeStruct = new Struct(
-                        schema.field(key).schema().field("scope").schema());
-                jsStruct.put("code", keyvalueforStruct.getValue().asJavaScriptWithScope().getCode());
-                BsonDocument jwsDoc = keyvalueforStruct.getValue().asJavaScriptWithScope().getScope().asDocument();
-
-                for (Entry<String, BsonValue> jwsDocKey : jwsDoc.entrySet()) {
-                    convertFieldValue(jwsDocKey, jsScopeStruct, schema.field(key).schema());
-                }
-
-                jsStruct.put("scope", jsScopeStruct);
-                colValue = jsStruct;
-                break;
-
-            case REGULAR_EXPRESSION:
-                Struct regexStruct = new Struct(schema.field(key).schema());
-                regexStruct.put("regex", keyvalueforStruct.getValue().asRegularExpression().getPattern());
-                regexStruct.put("options", keyvalueforStruct.getValue().asRegularExpression().getOptions());
-                colValue = regexStruct;
-                break;
-
-            case TIMESTAMP:
-                colValue = new Date(1000L * keyvalueforStruct.getValue().asTimestamp().getTime());
-                break;
-
-            case DECIMAL128:
-                colValue = keyvalueforStruct.getValue().asDecimal128().getValue().toString();
-                break;
-
-            case DOCUMENT:
-                Field field = schema.field(key);
-                if (field == null) {
-                    throw new DataException("Failed to find field '" + key + "' in schema " + schema.name());
-                }
-                Schema documentSchema = field.schema();
-                Struct documentStruct = new Struct(documentSchema);
-                BsonDocument docs = keyvalueforStruct.getValue().asDocument();
-
-                for (Entry<String, BsonValue> doc : docs.entrySet()) {
-                    convertFieldValue(doc, documentStruct, documentSchema);
-                }
-
-                colValue = documentStruct;
-                break;
-
-            case ARRAY:
-                if (keyvalueforStruct.getValue().asArray().isEmpty()) {
-                    // export empty arrays as null for Avro
-                    if (sanitizeValue) {
-                        return;
-                    }
-
-                    switch (arrayEncoding) {
-                        case ARRAY:
-                            colValue = new ArrayList<>();
-                            break;
-                        case DOCUMENT:
-                            final Schema fieldSchema = schema.field(key).schema();
-                            colValue = new Struct(fieldSchema);
-                            break;
-                    }
-                }
-                else {
-                    switch (arrayEncoding) {
-                        case ARRAY:
-                            BsonType valueType = keyvalueforStruct.getValue().asArray().get(0).getBsonType();
-                            List<BsonValue> arrValues = keyvalueforStruct.getValue().asArray().getValues();
-                            ArrayList<Object> list = new ArrayList<>();
-
-                            arrValues.forEach(arrValue -> {
-                                final Schema valueSchema;
-                                if (Arrays.asList(BsonType.ARRAY, BsonType.DOCUMENT).contains(valueType)) {
-                                    valueSchema = schema.field(key).schema().valueSchema();
-                                }
-                                else {
-                                    valueSchema = null;
-                                }
-                                convertFieldValue(valueSchema, valueType, arrValue, list);
-                            });
-                            colValue = list;
-                            break;
-                        case DOCUMENT:
-                            final BsonArray array = keyvalueforStruct.getValue().asArray();
-                            final Map<String, BsonValue> convertedArray = new HashMap<>();
-                            final Schema arraySchema = schema.field(key).schema();
-                            final Struct arrayStruct = new Struct(arraySchema);
-                            for (int i = 0; i < array.size(); i++) {
-                                convertedArray.put(arrayElementStructName(i), array.get(i));
-                            }
-                            convertedArray.entrySet().forEach(x -> {
-                                final Schema elementSchema = schema.field(key).schema();
-                                convertFieldValue(x, arrayStruct, elementSchema);
-                            });
-                            colValue = arrayStruct;
-                            break;
-                    }
-                }
-                break;
-
-            default:
-                return;
+    /**
+     * Parses a BsonDocument and builds a schema map
+     *
+     * @param document the BsonDocument to parse
+     * @return a map representing the schema of the document
+     */
+    public Map<String, Map<Object, BsonType>> parseBsonDocument(BsonDocument document) {
+        if (document.isEmpty()) {
+            return new LinkedHashMap<>();
         }
-        struct.put(key, keyvalueforStruct.getValue().isNull() ? null : colValue);
-    }
 
-    private void convertFieldValue(Schema valueSchema, BsonType valueType, BsonValue arrValue, ArrayList<Object> list) {
-        if (arrValue.getBsonType() == BsonType.STRING && valueType == BsonType.STRING) {
-            String temp = arrValue.asString().getValue();
-            list.add(temp);
-        }
-        else if (arrValue.getBsonType() == BsonType.JAVASCRIPT && valueType == BsonType.JAVASCRIPT) {
-            String temp = arrValue.asJavaScript().getCode();
-            list.add(temp);
-        }
-        else if (arrValue.getBsonType() == BsonType.OBJECT_ID && valueType == BsonType.OBJECT_ID) {
-            String temp = arrValue.asObjectId().getValue().toString();
-            list.add(temp);
-        }
-        else if (arrValue.getBsonType() == BsonType.DOUBLE && valueType == BsonType.DOUBLE) {
-            double temp = arrValue.asDouble().getValue();
-            list.add(temp);
-        }
-        else if (arrValue.getBsonType() == BsonType.BINARY && valueType == BsonType.BINARY) {
-            byte[] temp = arrValue.asBinary().getData();
-            list.add(temp);
-        }
-        else if (arrValue.getBsonType() == BsonType.INT32 && valueType == BsonType.INT32) {
-            int temp = arrValue.asInt32().getValue();
-            list.add(temp);
-        }
-        else if (arrValue.getBsonType() == BsonType.INT64 && valueType == BsonType.INT64) {
-            long temp = arrValue.asInt64().getValue();
-            list.add(temp);
-        }
-        else if (arrValue.getBsonType() == BsonType.DATE_TIME && valueType == BsonType.DATE_TIME) {
-            Date temp = new Date(arrValue.asInt64().getValue());
-            list.add(temp);
-        }
-        else if (arrValue.getBsonType() == BsonType.DECIMAL128 && valueType == BsonType.DECIMAL128) {
-            String temp = arrValue.asDecimal128().getValue().toString();
-            list.add(temp);
-        }
-        else if (arrValue.getBsonType() == BsonType.TIMESTAMP && valueType == BsonType.TIMESTAMP) {
-            Date temp = new Date(1000L * arrValue.asInt32().getValue());
-            list.add(temp);
-        }
-        else if (arrValue.getBsonType() == BsonType.BOOLEAN && valueType == BsonType.BOOLEAN) {
-            boolean temp = arrValue.asBoolean().getValue();
-            list.add(temp);
-        }
-        else if (arrValue.getBsonType() == BsonType.DOCUMENT && valueType == BsonType.DOCUMENT) {
-            Struct struct1 = new Struct(valueSchema);
-            for (Entry<String, BsonValue> entry9 : arrValue.asDocument().entrySet()) {
-                convertFieldValue(entry9, struct1, valueSchema);
+        Map<String, Map<Object, BsonType>> schemaMap = new LinkedHashMap<>();
+
+        for (Entry<String, BsonValue> entry : document.entrySet()) {
+            String key = entry.getKey();
+            BsonValue value = entry.getValue();
+            BsonType type = value.getBsonType();
+
+            switch (type) {
+                case ARRAY:
+                    schemaMap.put(key, Map.of(traverseArray(value.asArray()), BsonType.ARRAY));
+                    break;
+                case DOCUMENT:
+                    schemaMap.put(key, Map.of(parseBsonDocument(value.asDocument()), BsonType.DOCUMENT));
+                    break;
+                default:
+                    schemaMap.put(key, Map.of(value, type));
+                    break;
             }
-            list.add(struct1);
         }
-        else if (arrValue.getBsonType() == BsonType.ARRAY && valueType == BsonType.ARRAY) {
-            ArrayList<Object> subList = new ArrayList<>();
-            final Schema subValueSchema;
-            if (Arrays.asList(BsonType.ARRAY, BsonType.DOCUMENT).contains(arrValue.asArray().get(0).getBsonType())) {
-                subValueSchema = valueSchema.valueSchema();
+        return schemaMap;
+    }
+
+    /**
+     * Traverses a BsonArray and builds a unified schema for the array elements
+     *
+     * @param array the BsonArray to traverse
+     * @return a map representing the unified schema of the array elements
+     */
+    public Map<Object, BsonType> traverseArray(BsonArray array) {
+        Map<Object, BsonType> unifiedSchema = new LinkedHashMap<>();
+        List<Object> arrayElementList = new ArrayList<>();
+        Map<String, Set<Schema>> fieldSchemas = new LinkedHashMap<>();
+        Map<String, Map<Object, BsonType>> mergedDocumentSchema = new LinkedHashMap<>();
+
+        for (BsonValue value : array) {
+            BsonType type = value.getBsonType();
+
+            switch (type) {
+                case ARRAY:
+                    unifiedSchema.put(traverseArray(value.asArray()), BsonType.ARRAY);
+                    break;
+                case DOCUMENT:
+                    Map<String, Map<Object, BsonType>> documentSchema = parseBsonDocument(value.asDocument());
+                    switch (arrayEncoding) {
+                        case ARRAY:
+                            mergeSchemas(mergedDocumentSchema, documentSchema, fieldSchemas);
+                            break;
+                        case DOCUMENT:
+                            unifiedSchema.put(documentSchema, BsonType.DOCUMENT);
+                            break;
+                    }
+                    break;
+                default:
+                    arrayElementList.add(value);
+                    break;
+            }
+        }
+
+        if (arrayEncoding == ArrayEncoding.ARRAY && !mergedDocumentSchema.isEmpty()) {
+            unifiedSchema.put(mergedDocumentSchema, BsonType.DOCUMENT);
+        }
+        else if (!arrayElementList.isEmpty()) {
+            Set<BsonType> types = new LinkedHashSet<>();
+            for (Object element : arrayElementList) {
+                if (element instanceof BsonValue) {
+                    types.add(((BsonValue) element).getBsonType());
+                }
+            }
+            unifiedSchema.put(arrayElementList, types.size() == 1 ? types.iterator().next() : BsonType.ARRAY);
+        }
+        return unifiedSchema;
+    }
+
+    /**
+     * Checks if a value is a nested structure (either a map or a list)
+     */
+    private boolean isNestedMapObject(Object value) {
+        return value instanceof Map && !((Map<?, ?>) value).isEmpty();
+    }
+
+    /**
+     * Checks if a value is an empty nested structure
+     */
+    private boolean isEmptyNestedMapObject(Object value) {
+        return value instanceof Map && ((Map<?, ?>) value).isEmpty();
+    }
+
+    /**
+     * Checks if a value is a nested list structure
+     */
+    private boolean isNestedListObject(Object value) {
+        return value instanceof List && !((List<?>) value).isEmpty();
+    }
+
+    /**
+     * Checks if a value is the same as a BsonType
+     */
+    private boolean isSameType(Object value, BsonType type) {
+        return Objects.equals(value, type);
+    }
+
+    /**
+     * Merges two schemas into a base schema only for ARRAY encoding
+     *
+     * @param baseDocument   the base document schema
+     * @param subDocument    the sub document schema to merge
+     * @param fieldSchemas   the field schemas to update
+     */
+    private void mergeSchemas(Map<String, Map<Object, BsonType>> baseDocument,
+                              Map<String, Map<Object, BsonType>> subDocument,
+                              Map<String, Set<Schema>> fieldSchemas) {
+
+        for (Entry<String, Map<Object, BsonType>> entry : subDocument.entrySet()) {
+            String field = entry.getKey();
+            Map<Object, BsonType> newValue = entry.getValue();
+            BsonType type = newValue.values().iterator().next();
+            Schema schema = getSchema(type);
+            Object value = newValue.keySet().iterator().next();
+
+            fieldSchemas.computeIfAbsent(field, k -> new LinkedHashSet<>()).add(schema);
+
+            if (isNestedMapObject(value) && type == BsonType.DOCUMENT) {
+                baseDocument.merge(field, new LinkedHashMap<>(newValue), (existing, incoming) -> existing.equals(value) ? existing : incoming);
             }
             else {
-                subValueSchema = null;
+                if (fieldSchemas.get(field).size() > 1) {
+                    throw new DebeziumException("Array elements with different Bson types are not supported: " + fieldSchemas);
+                }
+                else {
+                    baseDocument.put(field, new LinkedHashMap<>(newValue));
+                }
             }
-            for (BsonValue v : arrValue.asArray()) {
-                convertFieldValue(subValueSchema, v.getBsonType(), v, subList);
-            }
-            list.add(subList);
         }
     }
 
-    protected String arrayElementStructName(int i) {
-        return "_" + i;
+    public void buildSchema(Map<String, Map<Object, BsonType>> map, SchemaBuilder builder) {
+        for (Entry<String, Map<Object, BsonType>> entry : map.entrySet()) {
+            String key = fieldNamer.fieldNameFor(entry.getKey());
+            for (Entry<Object, BsonType> objectBsonTypeEntry : entry.getValue().entrySet()) {
+                schema(key, objectBsonTypeEntry, builder);
+            }
+        }
     }
 
-    public void addFieldSchema(Entry<String, BsonValue> keyValuesforSchema, SchemaBuilder builder) {
-        String key = fieldNamer.fieldNameFor(keyValuesforSchema.getKey());
-        BsonType type = keyValuesforSchema.getValue().getBsonType();
-
+    /**
+     * Builds the schema for a given key and entry
+     *
+     * @param key    the key to build the schema for
+     * @param entry  the entry containing the value and its BsonType
+     * @param builder the SchemaBuilder to build the schema
+     */
+    public void schema(String key, Entry<Object, BsonType> entry, SchemaBuilder builder) {
+        Object obj = entry.getKey();
+        BsonType type = entry.getValue();
         switch (type) {
-
             case NULL:
             case STRING:
             case JAVASCRIPT:
@@ -302,7 +232,6 @@ public class MongoDataConverter {
             case DECIMAL128:
                 builder.field(key, Schema.OPTIONAL_STRING_SCHEMA);
                 break;
-
             case DOUBLE:
                 builder.field(key, Schema.OPTIONAL_FLOAT64_SCHEMA);
                 break;
@@ -321,7 +250,7 @@ public class MongoDataConverter {
 
             case DATE_TIME:
             case TIMESTAMP:
-                builder.field(key, org.apache.kafka.connect.data.Timestamp.builder().optional().build());
+                builder.field(key, Timestamp.builder().optional().build());
                 break;
 
             case BOOLEAN:
@@ -329,18 +258,19 @@ public class MongoDataConverter {
                 break;
 
             case JAVASCRIPT_WITH_SCOPE:
-                SchemaBuilder jswithscope = SchemaBuilder.struct().name(builder.name() + "." + key);
-                jswithscope.field("code", Schema.OPTIONAL_STRING_SCHEMA);
-                SchemaBuilder scope = SchemaBuilder.struct().name(jswithscope.name() + ".scope").optional();
-                BsonDocument jwsDocument = keyValuesforSchema.getValue().asJavaScriptWithScope().getScope().asDocument();
+                SchemaBuilder jsWithScope = SchemaBuilder.struct().name(builder.name() + "." + key);
+                jsWithScope.field("code", Schema.OPTIONAL_STRING_SCHEMA);
+                SchemaBuilder scope = SchemaBuilder.struct().name(jsWithScope.name() + "." + key + ".scope").optional();
 
-                for (Entry<String, BsonValue> jwsDocumentKey : jwsDocument.entrySet()) {
-                    addFieldSchema(jwsDocumentKey, scope);
+                for (Entry<?, ?> jwsDoc : ((Map<?, ?>) obj).entrySet()) {
+                    String fieldName = fieldNamer.fieldNameFor(jwsDoc.getKey().toString());
+                    Object value = jwsDoc.getValue();
+                    schema(fieldName, (Entry<Object, BsonType>) value, scope);
                 }
 
                 Schema scopeBuild = scope.build();
-                jswithscope.field("scope", scopeBuild).build();
-                builder.field(key, jswithscope);
+                jsWithScope.field("scope", scopeBuild).build();
+                builder.field(key, jsWithScope);
                 break;
 
             case REGULAR_EXPRESSION:
@@ -351,22 +281,29 @@ public class MongoDataConverter {
                 break;
 
             case DOCUMENT:
-                SchemaBuilder builderDoc = SchemaBuilder.struct().name(builder.name() + "." + key).optional();
-                BsonDocument docs = keyValuesforSchema.getValue().asDocument();
+                if (obj instanceof Map<?, ?> map) {
+                    if (map.isEmpty()) {
+                        builder.field(key, SchemaBuilder.struct().optional().build());
+                    }
+                    else {
+                        SchemaBuilder documentBuilder = SchemaBuilder.struct().name(builder.name() + "." + key).optional();
+                        for (Entry<?, ?> doc : map.entrySet()) {
+                            String fieldName = fieldNamer.fieldNameFor(doc.getKey().toString());
+                            Object value = doc.getValue();
 
-                for (Entry<String, BsonValue> doc : docs.entrySet()) {
-                    addFieldSchema(doc, builderDoc);
+                            if (value instanceof Map<?, ?> nestedMap) {
+                                for (Entry<?, ?> nestedDoc : nestedMap.entrySet()) {
+                                    schema(fieldName, (Entry<Object, BsonType>) nestedDoc, documentBuilder);
+                                }
+                            }
+                        }
+                        builder.field(key, documentBuilder.build());
+                    }
                 }
-                builder.field(key, builderDoc.build());
                 break;
 
             case ARRAY:
-                if (keyValuesforSchema.getValue().asArray().isEmpty()) {
-                    // ignore empty arrays; currently only for Avro, but might be worth doing in general as we
-                    // cannot conclude an element type in any meaningful way
-                    if (sanitizeValue) {
-                        return;
-                    }
+                if (!isNestedMapObject(obj)) {
                     switch (arrayEncoding) {
                         case ARRAY:
                             builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
@@ -379,20 +316,47 @@ public class MongoDataConverter {
                 else {
                     switch (arrayEncoding) {
                         case ARRAY:
-                            BsonArray value = keyValuesforSchema.getValue().asArray();
-                            BsonType valueType = value.get(0).getBsonType();
-                            testType(builder, key, keyValuesforSchema.getValue(), valueType);
-                            builder.field(key, SchemaBuilder.array(subSchema(builder, key, valueType, value)).optional().build());
+                            for (Entry<?, ?> doc : ((Map<?, ?>) obj).entrySet()) {
+                                Object object = doc.getKey();
+
+                                if (object instanceof Map<?, ?> map) {
+                                    SchemaBuilder nestedBuilder = SchemaBuilder.struct().name(builder.name() + "." + key).optional();
+                                    handleNestedArray(key, map, builder, nestedBuilder, false);
+                                }
+                                else if (object instanceof List<?> list) {
+                                    handleSimpleArray(key, list, builder, false);
+                                }
+                            }
                             break;
                         case DOCUMENT:
-                            final BsonArray array = keyValuesforSchema.getValue().asArray();
-                            final SchemaBuilder arrayStructBuilder = SchemaBuilder.struct().name(builder.name() + "." + key).optional();
-                            final Map<String, BsonValue> convertedArray = new HashMap<>();
-                            for (int i = 0; i < array.size(); i++) {
-                                convertedArray.put(arrayElementStructName(i), array.get(i));
+                            SchemaBuilder documentBuilder = createDocumentBuilder(builder, key);
+                            int fieldIndex = 0;
+                            for (Entry<?, ?> doc : ((Map<?, ?>) obj).entrySet()) {
+                                Object object = doc.getKey();
+
+                                if (isNestedListObject(object)) {
+                                    parseArrayLists(documentBuilder, (List<?>) object);
+                                }
+                                else if (isNestedMapObject(object)) {
+                                    SchemaBuilder documentMapBuilder = SchemaBuilder.struct()
+                                            .name(documentBuilder.name() + "." + arrayElementStructName(fieldIndex)).optional();
+
+                                    parseMapLists(documentMapBuilder, documentBuilder, (Map<?, ?>) object, builder.name() + "." + key, fieldIndex);
+
+                                    if (!documentMapBuilder.fields().isEmpty()) {
+                                        documentBuilder.field(arrayElementStructName(fieldIndex++), documentMapBuilder.build());
+                                    }
+                                }
                             }
-                            convertedArray.entrySet().forEach(x -> addFieldSchema(x, arrayStructBuilder));
-                            builder.field(key, arrayStructBuilder.build());
+
+                            if (!documentBuilder.schema().name().equals(builder.schema().name())) {
+                                builder.field(key, documentBuilder.build());
+                            }
+                            else {
+                                for (Field field : documentBuilder.fields()) {
+                                    builder.field(field.name(), field.schema());
+                                }
+                            }
                             break;
                     }
                 }
@@ -402,119 +366,436 @@ public class MongoDataConverter {
         }
     }
 
-    private Schema subSchema(SchemaBuilder builder, String key, BsonType valueType, BsonValue value) {
-        switch (valueType) {
+    /**
+     * Parses a map of array objects and adds them to the document builder
+     */
+    private void parseMapLists(SchemaBuilder documentMapBuilder, SchemaBuilder documentBuilder, Map<?, ?> map, String parentKey, int fieldIndex) {
+        for (Entry<?, ?> entry : map.entrySet()) {
+
+            String entryKey = fieldNamer.fieldNameFor(entry.getKey().toString());
+            Object entryValue = entry.getValue();
+
+            if (isNestedMapObject(entryValue)) {
+                for (Entry<?, ?> subEntry : ((Map<?, ?>) entryValue).entrySet()) {
+
+                    if (((Map<?, ?>) entryValue).size() == 1) {
+                        if (isEmptyNestedMapObject(subEntry.getKey()) && isSameType(subEntry.getValue(), BsonType.ARRAY)) {
+                            // parse empty arrays
+                            String arrayKey = fieldNamer.fieldNameFor(documentMapBuilder.name() + "." + entryKey);
+                            documentMapBuilder.field(entryKey, SchemaBuilder.struct().name(arrayKey).optional().build());
+                        }
+                        else if (isNestedMapObject(subEntry.getKey()) && isSameType(subEntry.getValue(), BsonType.ARRAY)) {
+                            // parse nested arrays
+                            SchemaBuilder documentArrayBuilder = SchemaBuilder.struct()
+                                    .name(documentMapBuilder.name() + "." + entryKey).optional();
+                            schema(entryKey, (Entry<Object, BsonType>) subEntry, documentArrayBuilder);
+                            documentMapBuilder.field(entryKey, documentArrayBuilder.build());
+                        }
+                        else {
+                            // parse default values
+                            BsonValue bsonValue = (BsonValue) subEntry.getKey();
+                            documentMapBuilder.field(entryKey, getSchema(bsonValue.getBsonType()));
+                        }
+                    }
+                    else {
+                        SchemaBuilder documentElementBuilder = SchemaBuilder.struct()
+                                .name(parentKey + "." + arrayElementStructName(fieldIndex)).optional();
+                        schema(entryKey, (Entry<Object, BsonType>) subEntry, documentElementBuilder);
+                        documentBuilder.field(arrayElementStructName(fieldIndex++), documentElementBuilder.build());
+                    }
+                }
+            }
+            else if (isNestedListObject(entry.getKey())) {
+                parseArrayLists(documentMapBuilder, (List<?>) entry.getKey());
+            }
+        }
+    }
+
+    /**
+     * Parses list of array objects and adds them to the document builder
+     */
+    private void parseArrayLists(SchemaBuilder documentMapBuilder, List<?> list) {
+        for (int index = 0; index < list.size(); index++) {
+            if (list.get(index) instanceof BsonValue bsonValue) {
+                documentMapBuilder.field(arrayElementStructName(index), getSchema(bsonValue.getBsonType()));
+            }
+        }
+    }
+
+    /**
+     * Creates a document builder with appropriate name based on the parent builder and key
+     */
+    private SchemaBuilder createDocumentBuilder(SchemaBuilder parentBuilder, String key) {
+        if (parentBuilder.name().endsWith(key)) {
+            return SchemaBuilder.struct().name(parentBuilder.name()).optional();
+        }
+
+        return SchemaBuilder.struct().name(parentBuilder.name() + "." + key).optional();
+    }
+
+    /**
+     * Handles nested arrays and arrays of documents in the schema
+     */
+    private void handleNestedArray(String key, Map<?, ?> map, SchemaBuilder builder, SchemaBuilder nestedBuilder, boolean nested) {
+        for (Entry<?, ?> doc : map.entrySet()) {
+            Object docKey = doc.getKey();
+            Object docValue = doc.getValue();
+
+            if (docKey instanceof List<?> list) {
+                handleSimpleArray(key, list, builder, true);
+            }
+            else if (docKey instanceof Map<?, ?> nestedMap) {
+                if (docValue.equals(BsonType.ARRAY)) {
+                    handleSimpleArray(key, new ArrayList<>(nestedMap.values()), builder, true);
+                }
+                else if (docValue.equals(BsonType.DOCUMENT)) {
+                    SchemaBuilder documentArrayBuilder = SchemaBuilder.struct().optional();
+                    handleNestedArray(key, nestedMap, builder, documentArrayBuilder, true);
+                }
+            }
+            else if (docValue instanceof Map<?, ?> nestedMap) {
+                String docKeyString = fieldNamer.fieldNameFor(docKey.toString());
+                validateSingleTypeMap(nestedMap);
+                if (nestedBuilder.field(docKeyString) == null && !nestedMap.isEmpty()) {
+                    schema(docKeyString, (Entry<Object, BsonType>) nestedMap.entrySet().iterator().next(), nestedBuilder);
+                }
+                else {
+                    for (Entry<?, ?> subEntry : nestedMap.entrySet()) {
+                        schema(docKeyString, (Entry<Object, BsonType>) subEntry, nestedBuilder);
+                    }
+                }
+            }
+        }
+
+        if (!nestedBuilder.fields().isEmpty() && builder.field(key) == null) {
+            if (nested) {
+                builder.field(key, SchemaBuilder.array(SchemaBuilder.array(nestedBuilder.build()).optional().build()).optional().build());
+            }
+            else {
+                builder.field(key, SchemaBuilder.array(nestedBuilder.build()).optional().build());
+            }
+        }
+    }
+
+    /**
+     * Handles simple arrays in the schema
+     */
+    private void handleSimpleArray(String key, List<?> list, SchemaBuilder builder, boolean nested) {
+        if (builder.field(key) != null) {
+            return;
+        }
+
+        BsonType elementType = validateSingleTypeArray(list);
+        SchemaBuilder arraySchema = SchemaBuilder.array(getSchema(elementType)).optional();
+
+        builder.field(key, nested
+                ? SchemaBuilder.array(arraySchema.optional().build()).optional().build()
+                : arraySchema.build());
+    }
+
+    /**
+     * Validates that all elements in the array are of the same BsonType
+     */
+    private BsonType validateSingleTypeArray(List<?> list) {
+        List<Schema> types = list.stream()
+                .map(o -> getSchema(((BsonValue) o).getBsonType()))
+                .distinct()
+                .toList();
+
+        if (types.size() > 1) {
+            throw new DebeziumException("Array elements with different Bson types are not supported: " + list);
+        }
+
+        return ((BsonValue) list.get(0)).getBsonType();
+    }
+
+    /**
+     * Validates that all elements in the map are of the same BsonType
+     */
+    private void validateSingleTypeMap(Map<?, ?> map) {
+        List<Schema> types = map.values().stream()
+                .map(o -> getSchema(((BsonType) o)))
+                .distinct()
+                .toList();
+
+        if (types.size() > 1) {
+            throw new DebeziumException("Array elements with different Bson types are not supported: " + map);
+        }
+
+        map.values().iterator().next();
+    }
+
+    /**
+     * Returns the schema for a given BsonType
+     */
+    public Schema getSchema(BsonType type) {
+        switch (type) {
             case NULL:
             case STRING:
             case JAVASCRIPT:
             case OBJECT_ID:
             case DECIMAL128:
                 return Schema.OPTIONAL_STRING_SCHEMA;
+
             case DOUBLE:
                 return Schema.OPTIONAL_FLOAT64_SCHEMA;
+
             case BINARY:
                 return Schema.OPTIONAL_BYTES_SCHEMA;
+
             case INT32:
                 return Schema.OPTIONAL_INT32_SCHEMA;
+
             case INT64:
                 return Schema.OPTIONAL_INT64_SCHEMA;
+
             case TIMESTAMP:
             case DATE_TIME:
-                return org.apache.kafka.connect.data.Timestamp.builder().optional().build();
+                return Timestamp.builder().optional().build();
+
             case BOOLEAN:
                 return Schema.OPTIONAL_BOOLEAN_SCHEMA;
+
+            case ARRAY:
+                switch (arrayEncoding) {
+                    case ARRAY:
+                        return SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build();
+                    case DOCUMENT:
+                        return SchemaBuilder.struct().optional().build();
+                }
+
             case DOCUMENT:
-                final SchemaBuilder documentSchemaBuilder = SchemaBuilder.struct().name(builder.name() + "." + key).optional();
-                final Map<String, BsonType> union = new HashMap<>();
-                if (value.isArray()) {
-                    value.asArray().forEach(f -> subSchema(documentSchemaBuilder, union, f.asDocument(), true));
-                    if (documentSchemaBuilder.fields().size() == 0) {
-                        value.asArray().forEach(f -> subSchema(documentSchemaBuilder, union, f.asDocument(), false));
+                return SchemaBuilder.struct().optional().build();
+
+            default:
+                throw new IllegalArgumentException("The value type " + type + " is not supported for sub schema");
+        }
+    }
+
+    /**
+     * Builds a Struct from a BsonValue based on the provided schema
+     *
+     * @param bsonValueEntry the BsonValue entry to convert
+     * @param schema         the schema for the Struct
+     * @param struct         the Struct to populate with converted values
+     */
+    public void buildStruct(Entry<String, BsonValue> bsonValueEntry, Schema schema, Struct struct) {
+        Object colValue = null;
+        String key = fieldNamer.fieldNameFor(bsonValueEntry.getKey());
+        BsonValue value = bsonValueEntry.getValue();
+        BsonType type = value.getBsonType();
+
+        switch (type) {
+            case JAVASCRIPT_WITH_SCOPE:
+                Struct jsStruct = new Struct(schema.field(key).schema());
+                Struct jsScopeStruct = new Struct(
+                        schema.field(key).schema().field("scope").schema());
+                jsStruct.put("code", value.asJavaScriptWithScope().getCode());
+                BsonDocument jwsDoc = value.asJavaScriptWithScope().getScope().asDocument();
+
+                for (Entry<String, BsonValue> entry : jwsDoc.entrySet()) {
+                    buildStruct(entry, schema.field(key).schema().field(key).schema(), jsScopeStruct);
+                }
+
+                jsStruct.put("scope", jsScopeStruct);
+                colValue = jsStruct;
+                break;
+
+            case REGULAR_EXPRESSION:
+                Struct regexStruct = new Struct(schema.field(key).schema());
+                regexStruct.put("regex", value.asRegularExpression().getPattern());
+                regexStruct.put("options", value.asRegularExpression().getOptions());
+                colValue = regexStruct;
+                break;
+
+            case ARRAY:
+                if (value.asArray().isEmpty()) {
+                    if (sanitizeValue) {
+                        return;
                     }
-                    var missedEmptyArrayFieldNames = value.asArray().stream()
-                            .map(v -> v.asDocument().entrySet())
-                            .flatMap(Set::stream)
-                            .filter(e -> !union.containsKey(e.getKey()))
-                            .filter(e -> e.getValue().isArray() && e.getValue().asArray().isEmpty())
-                            .map(Entry::getKey)
-                            .toList();
-                    for (String name : missedEmptyArrayFieldNames) {
-                        documentSchemaBuilder.field(name, SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
+                    switch (arrayEncoding) {
+                        case ARRAY:
+                            colValue = new ArrayList<>();
+                            break;
+                        case DOCUMENT:
+                            final Schema fieldSchema = schema.field(key).schema();
+                            colValue = new Struct(fieldSchema);
+                            break;
                     }
                 }
                 else {
-                    subSchema(documentSchemaBuilder, union, value.asDocument(), false);
+                    switch (arrayEncoding) {
+                        case ARRAY:
+                            Schema arraySchema = schema.field(key).schema().type() == Schema.Type.ARRAY
+                                    ? schema.field(key).schema().valueSchema()
+                                    : schema.field(key).schema();
+                            colValue = buildArray(value.asArray(), arraySchema, new ArrayList<>());
+                            break;
+                        case DOCUMENT:
+                            final BsonArray array = value.asArray();
+                            final Map<String, BsonValue> convertedArray = new HashMap<>();
+                            Schema arraySchemaForDocument = schema.field(key).schema();
+
+                            Struct arrayStruct = new Struct(arraySchemaForDocument);
+                            for (int i = 0; i < array.size(); i++) {
+                                convertedArray.put(arrayElementStructName(i), array.get(i));
+                            }
+
+                            for (Entry<String, BsonValue> entry : convertedArray.entrySet()) {
+                                buildStruct(entry, arraySchemaForDocument, arrayStruct);
+                            }
+
+                            colValue = arrayStruct;
+                            break;
+                    }
                 }
-                return documentSchemaBuilder.build();
-            case ARRAY:
-                BsonType subValueType = value.asArray().get(0).asArray().get(0).getBsonType();
-                return SchemaBuilder.array(subSchema(builder, key, subValueType, value.asArray().get(0))).optional().build();
+                break;
+
+            case DOCUMENT:
+                Field field = schema.field(key);
+                if (field == null) {
+                    throw new DebeziumException("Can't find field: " + key + " in schema " + schema);
+                }
+                Schema documentSchema = field.schema();
+                Struct documentStruct = new Struct(documentSchema);
+                BsonDocument doc = value.asDocument();
+
+                for (Entry<String, BsonValue> entry : doc.entrySet()) {
+                    buildStruct(entry, documentSchema, documentStruct);
+                }
+
+                colValue = documentStruct;
+                break;
+
             default:
-                throw new IllegalArgumentException("The value type '" + valueType + " is not yet supported inside for a subSchema.");
+                colValue = getObject(value);
+                break;
+
+        }
+
+        if (type != BsonType.UNDEFINED) {
+            struct.put(key, colValue);
         }
     }
 
-    private void subSchema(SchemaBuilder documentSchemaBuilder, Map<String, BsonType> union, BsonDocument arrayDocs, boolean emptyChecker) {
-        for (Entry<String, BsonValue> arrayDoc : arrayDocs.entrySet()) {
-            final String key = fieldNamer.fieldNameFor(arrayDoc.getKey());
-            if (emptyChecker && ((arrayDoc.getValue() instanceof BsonDocument && ((BsonDocument) arrayDoc.getValue()).size() == 0)
-                    || (arrayDoc.getValue() instanceof BsonArray && ((BsonArray) arrayDoc.getValue()).size() == 0))) {
-                continue;
-            }
-            final BsonType prevType = union.putIfAbsent(key, arrayDoc.getValue().getBsonType());
-            if (prevType == null) {
-                addFieldSchema(arrayDoc, documentSchemaBuilder);
-            }
-            else {
-                testArrayElementType(documentSchemaBuilder, arrayDoc, union);
-            }
-        }
+    /**
+     * Returns the name of the array element struct based on its index.
+     */
+    protected String arrayElementStructName(int i) {
+        return "_" + i;
     }
 
-    private void testType(SchemaBuilder builder, String key, BsonValue value, BsonType valueType) {
-        if (valueType == BsonType.DOCUMENT) {
-            final Map<String, BsonType> union = new HashMap<>();
-            for (BsonValue element : value.asArray()) {
-                final BsonDocument arrayDocs = element.asDocument();
-                for (Entry<String, BsonValue> arrayDoc : arrayDocs.entrySet()) {
-                    testArrayElementType(builder, arrayDoc, union);
-                }
-            }
+    /**
+     * Converts a BsonValue to an Object based on its type.
+     *
+     * @param value the BsonValue to convert
+     * @return the converted Object
+     */
+    private Object getObject(BsonValue value) {
+        BsonType type = value.getBsonType();
+        Object colValue = null;
+        switch (type) {
+            case STRING:
+                colValue = value.asString().getValue();
+                break;
+
+            case OBJECT_ID:
+                colValue = value.asObjectId().getValue().toString();
+                break;
+
+            case DECIMAL128:
+                colValue = value.asDecimal128().getValue().toString();
+                break;
+
+            case DOUBLE:
+                colValue = value.asDouble().getValue();
+                break;
+
+            case BINARY:
+                colValue = value.asBinary().getData();
+                break;
+
+            case INT32:
+                colValue = value.asInt32().getValue();
+                break;
+
+            case INT64:
+                colValue = value.asInt64().getValue();
+                break;
+
+            case BOOLEAN:
+                colValue = value.asBoolean().getValue();
+                break;
+
+            case DATE_TIME:
+                colValue = new Date(value.asDateTime().getValue());
+                break;
+
+            case TIMESTAMP:
+                colValue = new Date(1000L * value.asTimestamp().getTime());
+                break;
+
+            case JAVASCRIPT:
+                colValue = value.asJavaScript().getCode();
+                break;
+
+            default:
+                break;
         }
-        else if (valueType == BsonType.ARRAY) {
-            for (BsonValue element : value.asArray()) {
-                BsonType subValueType = element.asArray().get(0).getBsonType();
-                testType(builder, key, element, subValueType);
-            }
-        }
-        else {
-            for (BsonValue element : value.asArray()) {
-                if (element.getBsonType() != valueType) {
-                    throw new DebeziumException("Field " + key + " of schema " + builder.name() + " is not a homogenous array.\n"
-                            + "Check option 'struct' of parameter 'array.encoding'");
-                }
-            }
-        }
+        return colValue;
     }
 
-    private void testArrayElementType(SchemaBuilder builder, Entry<String, BsonValue> arrayDoc, Map<String, BsonType> union) {
-        final String docKey = fieldNamer.fieldNameFor(arrayDoc.getKey());
-        final BsonType currentType = arrayDoc.getValue().getBsonType();
-        final BsonType prevType = union.putIfAbsent(docKey, currentType);
+    /**
+     * Builds an array of objects from a BsonArray based on the provided schema
+     *
+     * @param array  the BsonArray to convert
+     * @param schema the schema for the array elements
+     * @param values the list to populate with converted values
+     * @return the populated list of objects
+     */
+    private Object buildArray(BsonArray array, Schema schema, ArrayList<Object> values) {
+        for (BsonValue value : array) {
+            BsonType type = value.getBsonType();
+            switch (type) {
+                case ARRAY:
+                    ArrayList<Object> subValues = new ArrayList<>();
+                    for (BsonValue arrayValue : value.asArray()) {
+                        BsonType valueBsonType = arrayValue.getBsonType();
+                        switch (valueBsonType) {
+                            case ARRAY:
+                                subValues.add(buildArray(arrayValue.asArray(), schema, new ArrayList<>()));
+                                break;
+                            case DOCUMENT:
+                                BsonDocument doc = arrayValue.asDocument();
+                                Struct struct = new Struct(schema.valueSchema());
+                                for (Entry<String, BsonValue> entry : doc.entrySet()) {
+                                    buildStruct(entry, schema.valueSchema(), struct);
+                                }
+                                subValues.add(struct);
+                                break;
+                            default:
+                                subValues.add(getObject(arrayValue));
+                                break;
+                        }
+                    }
+                    if (!subValues.isEmpty()) {
+                        values.add(subValues);
+                    }
+                    break;
 
-        if (prevType != null) {
-            if ((prevType == BsonType.NULL || currentType == BsonType.NULL)
-                    && !Objects.equals(prevType, currentType)) {
-                // set non-null type as real schema
-                if (prevType == BsonType.NULL) {
-                    union.put(docKey, currentType);
-                }
-            }
-            else if (!Objects.equals(prevType, currentType)) {
-                throw new DebeziumException("Field " + docKey + " of schema " + builder.name()
-                        + " is not the same type for all documents in the array.\n"
-                        + "Check option 'struct' of parameter 'array.encoding'");
+                case DOCUMENT:
+                    BsonDocument doc = value.asDocument();
+                    Struct struct = new Struct(schema);
+                    for (Entry<String, BsonValue> entry : doc.entrySet()) {
+                        buildStruct(entry, schema, struct);
+                    }
+                    values.add(struct);
+                    break;
+
+                default:
+                    values.add(getObject(value));
             }
         }
+        return values;
     }
 }
