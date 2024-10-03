@@ -62,7 +62,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
     private boolean reselectUnavailableValues;
     private boolean reselectNullValues;
     private boolean reselectUseEventKeyFields;
-    private JdbcConnection jdbcConnection;
+    protected JdbcConnection jdbcConnection;
     private ValueConverterProvider valueConverterProvider;
     private String unavailableValuePlaceholder;
     private ByteBuffer unavailableValuePlaceholderBytes;
