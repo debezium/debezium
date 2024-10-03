@@ -3472,14 +3472,14 @@ endif::community[]
 
 |[[postgresql-property-snapshot-locking-mode]]<<postgresql-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
 |`none`
-|Specifies how the connector holds locks on tables while performing a schema snapshot: +
+|Specifies how the connector holds locks on tables while performing a schema snapshot. +
 Set one of the following options:
- +
+
 `shared`:: The connector holds a table lock that prevents exclusive table access during the initial portion phase of the snapshot in which database schemas and other metadata are read.
 After the initial phase, the snapshot no longer requires table locks.
- +
-`none`:: The connector avoids locks entirely. +
-+
+
+`none`:: The connector avoids locks entirely.
+
 [WARNING]
 ====
 Do not use this mode if schema changes might occur during the snapshot.
