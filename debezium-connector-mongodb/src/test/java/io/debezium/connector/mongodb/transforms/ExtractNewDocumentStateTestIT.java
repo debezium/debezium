@@ -27,7 +27,6 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
@@ -39,11 +38,13 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ChangeStreamPreAndPostImagesOptions;
 import com.mongodb.client.model.CreateCollectionOptions;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.Module;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
 import io.debezium.data.Envelope;
+import io.debezium.data.SchemaUtil;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.junit.SkipWhenDatabaseVersion;
@@ -63,6 +64,58 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     @Override
     protected String getCollectionName() {
         return "functional";
+    }
+
+    @Test
+    @FixFor("DBZ-5920")
+    public void shouldTransformNestedDocuments() throws InterruptedException {
+        transformation.configure(Collect.hashMapOf(ARRAY_ENCODING, "array"));
+
+        Document document = Document.parse("{\n" +
+                " \"deployInfo\": {\n" +
+                "    \"id\": 1,\n" +
+                "    \"project\": \"my-project\",\n" +
+                "    \"technology\": \"mysqldb\",\n" +
+                "    \"platformType\": \"kubernetes\",\n" +
+                "    \"platforms\": [],\n" +
+                "    \"status\": true,\n" +
+                "    \"properties\": {\n" +
+                "      \"url\": \"http://hk3cvdv00813.oocl.com:8080/\",\n" +
+                "      \"gitHash\": \"3b211ff4b75d43cef054764c7e1cacd7c7d94c96\",\n" +
+                "      \"sensitiveScanResult\": null\n" +
+                "    },\n" +
+                "    \"startTime\": \"2024-08-13T06:56:12.582Z\",\n" +
+                "    \"endTime\": \"2024-08-13T06:56:25.844Z\",\n" +
+                "  }\n" +
+                "}");
+
+        try (var client = connect()) {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .insertOne(document);
+        }
+
+        SourceRecords records = consumeRecordsByTopic(1);
+
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        final SourceRecord insertRecord = records.recordsForTopic(this.topicName()).get(0);
+        final SourceRecord transformedInsert = transformation.apply(insertRecord);
+        validate(transformedInsert);
+
+        final Struct transformedInsertValue = (Struct) transformedInsert.value();
+        Schema valueSchema = transformedInsert.valueSchema();
+
+        assertThat(valueSchema.field("deployInfo").schema().type()).isEqualTo(Schema.Type.STRUCT);
+        assertThat(valueSchema.field("deployInfo").schema().field("id").schema()).isEqualTo(Schema.OPTIONAL_INT32_SCHEMA);
+        assertThat(valueSchema.field("deployInfo").schema().field("project").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
+        assertThat(valueSchema.field("deployInfo").schema().field("technology").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
+        assertThat(valueSchema.field("deployInfo").schema().field("platformType").schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
+        assertThat(valueSchema.field("deployInfo").schema().field("platforms").schema()).isEqualTo(SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
+        assertThat(valueSchema.field("deployInfo").schema().field("status").schema()).isEqualTo(Schema.OPTIONAL_BOOLEAN_SCHEMA);
+
+        final Struct properties = transformedInsertValue.getStruct("deployInfo").getStruct("properties");
+        assertThat(properties.getString("url")).isEqualTo("http://hk3cvdv00813.oocl.com:8080/");
+        assertThat(properties.getString("gitHash")).isEqualTo("3b211ff4b75d43cef054764c7e1cacd7c7d94c96");
+        assertThat(properties.get("sensitiveScanResult")).isNull();
     }
 
     @Test
@@ -242,12 +295,12 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         final SourceRecord tombstoneRecord = records.recordsForTopic(this.topicName()).get(1);
         final SourceRecord transformedTombstone = transformation.apply(tombstoneRecord);
 
-        // assertThat(transformedTombstone.value()).isNull();
+        assertThat(transformedTombstone.value()).isNull();
         assertThat(transformedTombstone).isNull();
 
         // Assert deletion preserves key
-        // assertThat(SchemaUtil.asString(transformedDelete.keySchema())).isEqualTo(SchemaUtil.asString(transformedTombstone.keySchema()));
-        // assertThat(transformedDelete.key().toString()).isEqualTo(transformedTombstone.key().toString());
+        assertThat(SchemaUtil.asString(transformedDelete.keySchema())).isEqualTo(SchemaUtil.asString(transformedTombstone.keySchema()));
+        assertThat(transformedDelete.key().toString()).isEqualTo(transformedTombstone.key().toString());
     }
 
     @Test
@@ -1646,7 +1699,8 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         final SourceRecord insertRecord = records.recordsForTopic(this.topicName()).get(0);
         final SourceRecord transformedInsert = transformation.apply(insertRecord);
 
-        assertThat(transformedInsert.valueSchema().field("empty_array")).isNull();
+        Struct value = (Struct) transformedInsert.value();
+        assertThat(value.get("empty_array")).isNull();
         VerifyRecord.isValid(transformedInsert);
     }
 
@@ -1722,7 +1776,7 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
 
     }
 
-    @Test(expected = DataException.class)
+    @Test(expected = DebeziumException.class)
     @FixFor("DBZ-2316")
     public void testShouldThrowExceptionWithElementsDifferingStructures() throws Exception {
         waitForStreamingRunning();
