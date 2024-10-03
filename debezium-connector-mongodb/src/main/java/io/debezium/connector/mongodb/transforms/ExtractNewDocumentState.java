@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
-import java.util.Set;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -25,6 +24,7 @@ import org.apache.kafka.connect.transforms.ExtractField;
 import org.apache.kafka.connect.transforms.Flatten;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
+import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -254,52 +254,50 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
     }
 
     private R newRecord(R record, BsonDocument keyDocument, BsonDocument valueDocument) {
+        Map<String, Map<Object, BsonType>> keyMap = converter.parseBsonDocument(keyDocument);
         SchemaBuilder keySchemaBuilder = SchemaBuilder.struct();
-        Set<Entry<String, BsonValue>> keyPairs = keyDocument.entrySet();
-        for (Entry<String, BsonValue> keyPairsForSchema : keyPairs) {
-            converter.addFieldSchema(keyPairsForSchema, keySchemaBuilder);
+        converter.buildSchema(keyMap, keySchemaBuilder);
+        Schema keySchema = keySchemaBuilder.build();
+        Struct keyStruct = new Struct(keySchema);
+
+        for (Entry<String, BsonValue> entry : keyDocument.entrySet()) {
+            converter.buildStruct(entry, keySchema, keyStruct);
         }
 
-        Schema finalKeySchema = keySchemaBuilder.build();
-        Struct finalKeyStruct = new Struct(finalKeySchema);
-
-        for (Entry<String, BsonValue> keyPairsForStruct : keyPairs) {
-            converter.convertRecord(keyPairsForStruct, finalKeySchema, finalKeyStruct);
-        }
-
-        Schema finalValueSchema = null;
-        Struct finalValueStruct = null;
+        String newValueSchemaName;
+        SchemaBuilder valueSchemaBuilder;
+        Schema valueSchema = null;
+        Struct valueStruct = null;
 
         if (!valueDocument.isEmpty()) {
-            String newValueSchemaName = record.valueSchema().name();
+            newValueSchemaName = record.valueSchema().name();
             if (Envelope.isEnvelopeSchema(newValueSchemaName)) {
                 newValueSchemaName = newValueSchemaName.substring(0, newValueSchemaName.length() - 9);
             }
-            SchemaBuilder valueSchemaBuilder = SchemaBuilder.struct().name(newValueSchemaName);
 
-            Set<Entry<String, BsonValue>> valuePairs = valueDocument.entrySet();
-            for (Entry<String, BsonValue> valuePairsForSchema : valuePairs) {
-                converter.addFieldSchema(valuePairsForSchema, valueSchemaBuilder);
-            }
+            Map<String, Map<Object, BsonType>> valueMap = converter.parseBsonDocument(valueDocument);
+
+            valueSchemaBuilder = SchemaBuilder.struct().name(newValueSchemaName);
+            converter.buildSchema(valueMap, valueSchemaBuilder);
 
             if (!additionalFields.isEmpty()) {
                 addAdditionalFieldsSchema(additionalFields, record, valueSchemaBuilder);
             }
 
-            finalValueSchema = valueSchemaBuilder.build();
-            finalValueStruct = new Struct(finalValueSchema);
-            for (Entry<String, BsonValue> valuePairsForStruct : valuePairs) {
-                converter.convertRecord(valuePairsForStruct, finalValueSchema, finalValueStruct);
+            valueSchema = valueSchemaBuilder.build();
+            valueStruct = new Struct(valueSchema);
 
+            for (Entry<String, BsonValue> entry : valueDocument.entrySet()) {
+                converter.buildStruct(entry, valueSchema, valueStruct);
             }
 
             if (!additionalFields.isEmpty()) {
-                addFields(additionalFields, record, finalValueStruct);
+                addFields(additionalFields, record, valueStruct);
             }
         }
 
-        R newRecord = record.newRecord(record.topic(), record.kafkaPartition(), finalKeySchema,
-                finalKeyStruct, finalValueSchema, finalValueStruct, record.timestamp());
+        R newRecord = record.newRecord(record.topic(), record.kafkaPartition(), keySchema, keyStruct, valueSchema,
+                valueStruct, record.timestamp());
 
         if (flattenStruct) {
             return recordFlattener.apply(newRecord);
