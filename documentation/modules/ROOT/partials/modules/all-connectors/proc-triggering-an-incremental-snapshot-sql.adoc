@@ -14,6 +14,7 @@ The `data-collections` array for an incremental snapshot signal has no default v
 If the `data-collections` array is empty, {prodname} interprets the empty array to mean that no action is required, and it does not perform a snapshot.
 
 include::{snippetsdir}/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=fq-table-name-format-note]
+
 .Prerequisites
 
 * {link-prefix}:{link-signalling}#debezium-signaling-enabling-source-signaling-channel[Signaling is enabled]. +
