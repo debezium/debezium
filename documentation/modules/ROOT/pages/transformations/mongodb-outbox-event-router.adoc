@@ -421,17 +421,20 @@ For an example, see the xref:mongodb-outbox-route-by-field-example[description o
 |[[mongodb-outbox-event-router-property-route-topic-regex]]<<mongodb-outbox-event-router-property-route-topic-regex, `route.topic.regex`>>
 |`(?<routedByValue>.*)`
 |Router
-|Specifies a regular expression that the outbox SMT applies in the RegexRouter to outbox collection documents. This regular expression is part of the setting of the xref:mongodb-outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] SMT option. +
-+
-The default behavior is that the SMT replaces the default `pass:[${routedByValue}]` variable in the setting of the `route.topic.replacement` SMT option with the setting of the xref:mongodb-outbox-event-router-property-route-by-field[`route.by.field`] outbox SMT option.
+|Specifies a regular expression that the outbox SMT applies in the RegexRouter to outbox collection documents.
+This regular expression is part of the setting of the xref:mongodb-outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] SMT option. +
+ +
+When this property is set to the default `Router` value, the SMT replaces the default `pass:[${routedByValue}]` variable that is set in the xref:mongodb-outbox-event-router-property-route-topic-replacement[`route.topic.replacement`] property with the value that is specified for the xref:mongodb-outbox-event-router-property-route-by-field[`route.by.field`] property.
 
 |[[mongodb-outbox-event-router-property-route-topic-replacement]]<<mongodb-outbox-event-router-property-route-topic-replacement, `route.topic.replacement`>>
 |`outbox.event{zwsp}.pass:[${routedByValue}]`
 |Router
 a|Specifies the name of the topic to which the connector emits outbox messages.
-The default topic name is `outbox.event.` followed by the `aggregatetype` field value in the outbox collection document. For example, if the `aggregatetype` value is `customers`, the topic name is `outbox.event.customers`. +
-+
-To change the topic name, you can: +
+The default topic name is prefixed by the string `outbox.event.`, followed by the value of the `aggregatetype` field that is assigned to the outbox collection document. +
+ +
+For example, if the `aggregatetype` value is `customers`, then connector emits outbox messages to the topic `outbox.event.customers`. +
+ +
+To change the default name of the destination topic, perform one of the following actions:
 
 * Set the xref:mongodb-outbox-event-router-property-route-by-field[`route.by.field`] option to a different field.
 * Set the xref:mongodb-outbox-event-router-property-route-topic-regex[`route.topic.regex`] option to a different regular expression.
