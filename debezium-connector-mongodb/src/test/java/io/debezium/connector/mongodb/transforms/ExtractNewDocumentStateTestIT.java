@@ -64,6 +64,46 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     }
 
     @Test
+    @FixFor("DBZ-5920")
+    public void shouldTransformNestedDocuments() throws InterruptedException {
+        transformation.configure(Collect.hashMapOf(ARRAY_ENCODING, "array"));
+
+        Document document = Document.parse("{\n" +
+                "  \"properties\": {\n" +
+                "    \"url\": \"http://hk3cvdv00813.oocl.com:8080/job/Pipeline_Package_BackingServiceConfig_v2/255/\",\n" +
+                "    \"jobName\": \"Pipeline_Package_BackingServiceConfig_v2\",\n" +
+                "    \"prefix\": \"n/a\",\n" +
+                "    \"artifactUrls\": [\n" +
+                "      {\n" +
+                "        \"key\": \"ARTIFACTORY_ON_PREMISE\",\n" +
+                "        \"name\": \"chck_alias_1_chck_mysql-1.210.11.10.tar\",\n" +
+                "        \"repo\": \"cms2-build-local-chck\",\n" +
+                "        \"path\": \"cms-deployment/chck/chck_alias_1_chck_mysql/1.210.11.10\"\n" +
+                "      },\n" +
+                "      {\n" +
+                "        \"key\": \"ARTIFACTORY_ON_PREMISE\",\n" +
+                "        \"name\": \"chck_alias_1_chck_mysql-1.210.11.10.tar\"\n" +
+                "      }\n" +
+                "    ],\n" +
+                "    \"allowFallback\": [],\n" +
+                "    \"upstreamUrl\": \"http://hk3cvdv00813.oocl.com:8080\",\n" +
+                "  }\n" +
+                "}");
+
+        try (var client = connect()) {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .insertOne(document);
+        }
+
+        SourceRecords records = consumeRecordsByTopic(1);
+
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        final SourceRecord insertRecord = records.recordsForTopic(this.topicName()).get(0);
+        final SourceRecord transformedInsert = transformation.apply(insertRecord);
+        final Struct transformedInsertValue = (Struct) transformedInsert.value();
+    }
+
+    @Test
     @FixFor("DBZ-563")
     public void shouldDropTombstoneByDefault() throws InterruptedException {
         transformation.configure(Collect.hashMapOf(HANDLE_TOMBSTONE_DELETES, "drop"));
