@@ -127,15 +127,19 @@ The following table lists the configuration options that you can set for the Res
 |[[reselect-columns-post-processor-property-reselect-columns-include-list]]<<reselect-columns-post-processor-property-reselect-columns-include-list, `+reselect.columns.include.list+`>>
 |No default
 |Comma-separated list of column names to reselect from the source database.
-Use the following format to specify column names: + `_<schema>_._<table>_:_<column>_`  +
- +
+Use the following format to specify column names: +
+
+`__<schema>__.__<table>__:__<column>__`
+
 Do not set this property if you set the `reselect.columns.exclude.list` property.
 
 |[[reselect-columns-post-processor-property-reselect-columns-exclude-list]]<<reselect-columns-post-processor-property-reselect-columns-exclude-list, `+reselect.columns.exclude.list+`>>
 |No default
 |Comma-separated list of column names in the source database to exclude from reselection.
-Use the following format to specify column names: + `_<schema>_._<table>_:_<column>_` +
- +
+Use the following format to specify column names: +
+
+`__<schema>__.__<table>__:__<column>__`
+
 Do not set this property if you set the `reselect.columns.include.list` property.
 
 |[[reselect-columns-post-processor-property-reselect-unavailable-values]]<<reselect-columns-post-processor-property-reselect-unavailable-values, `+reselect.unavailable.values+`>>
