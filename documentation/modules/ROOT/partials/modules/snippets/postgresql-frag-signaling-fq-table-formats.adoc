@@ -100,6 +100,7 @@ end::triggering-incremental-snapshot-kafka-multi-addtl-cond-example[]
 === Stopping an incremental snapshot
 
 tag::stopping-incremental-snapshot-example[]
+====
 [source,sql,indent=0,subs="+attributes"]
 ----
 INSERT INTO myschema.debezium_signal (id, type, data) // <1>
@@ -108,6 +109,8 @@ values ('ad-hoc-1',   // <2>
     '{"data-collections": ["schema1.table1", "schema1.table2"], // <4>
     "type":"incremental"}'); // <5>
 ----
+====
++
 end::stopping-incremental-snapshot-example[]
 
 

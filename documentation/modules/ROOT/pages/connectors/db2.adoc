@@ -245,8 +245,8 @@ After the snapshot completes, the connector stops, and does not stream event rec
 |`recovery`
 |Set this option to restore a database schema history topic that is lost or corrupted.
 After a restart, the connector runs a snapshot that rebuilds the topic from the source tables.
-You can also set the property to periodically prune a database schema history topic that experiences unexpected growth. +
-+
+You can also set the property to periodically prune a database schema history topic that experiences unexpected growth.
+
 WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
 
 |`when_needed`
