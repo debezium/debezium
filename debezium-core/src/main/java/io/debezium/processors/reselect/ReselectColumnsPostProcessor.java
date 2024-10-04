@@ -62,7 +62,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
     private boolean reselectUnavailableValues;
     private boolean reselectNullValues;
     private boolean reselectUseEventKeyFields;
-    protected JdbcConnection jdbcConnection;
+    private JdbcConnection jdbcConnection;
     private ValueConverterProvider valueConverterProvider;
     private String unavailableValuePlaceholder;
     private ByteBuffer unavailableValuePlaceholderBytes;
@@ -92,6 +92,14 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
     @Override
     public void close() {
         // nothing to do
+    }
+
+    protected JdbcConnection getJdbcConnection() {
+        return this.jdbcConnection;
+    }
+
+    protected void setJdbcConnection(JdbcConnection jdbcConnection) {
+        this.jdbcConnection = jdbcConnection;
     }
 
     public void apply(Object messageKey, Struct value) {
@@ -207,7 +215,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
         }
 
         this.valueConverterProvider = beanRegistry.lookupByName(StandardBeanNames.VALUE_CONVERTER, ValueConverterProvider.class);
-        this.jdbcConnection = beanRegistry.lookupByName(StandardBeanNames.JDBC_CONNECTION, JdbcConnection.class);
+        resolveJdbcConnection(beanRegistry);
         this.schema = beanRegistry.lookupByName(StandardBeanNames.DATABASE_SCHEMA, RelationalDatabaseSchema.class);
     }
 
@@ -313,6 +321,10 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
         }
 
         return jdbcConnection.createTableId(databaseName, schemaName, tableName);
+    }
+
+    protected void resolveJdbcConnection(BeanRegistry beanRegistry) {
+        this.jdbcConnection = beanRegistry.lookupByName(StandardBeanNames.JDBC_CONNECTION, JdbcConnection.class);
     }
 
     private static class ReselectColumnsPredicateBuilder {

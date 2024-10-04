@@ -42,14 +42,22 @@ public class AuroraReselectColumnsPostProcessor extends ReselectColumnsPostProce
         final Configuration config = Configuration.from(properties);
         super.configure(properties);
         this.readerHost = config.getString(READER_HOST);
-        this.readerPort = config.getInteger(READER_PORT);
+        if (this.readerHost == null || this.readerHost.isEmpty()) {
+            throw new IllegalArgumentException("Reader host cannot be null or empty");
+        }
+
+        Integer port = config.getInteger(READER_PORT);
+        if (port == null || port <= 0) {
+            throw new IllegalArgumentException("Reader port must be a positive integer");
+        }
+        this.readerPort = port;
     }
 
     @Override
     public void close() {
         super.close();
         try {
-            this.jdbcConnection.close();
+            getJdbcConnection().close();
         }
         catch (SQLException e) {
             LOGGER.error("Error closing JDBC connection", e);
@@ -57,14 +65,14 @@ public class AuroraReselectColumnsPostProcessor extends ReselectColumnsPostProce
     }
 
     @Override
-    public void injectBeanRegistry(BeanRegistry beanRegistry) {
-        super.injectBeanRegistry(beanRegistry);
+    protected void resolveJdbcConnection(BeanRegistry beanRegistry) {
+        super.resolveJdbcConnection(beanRegistry);
         // create reader connection
         LOGGER.info("Creating reader connection for reselect using reader host: {} and port: {}", readerHost, readerPort);
-        Configuration newConfig = Configuration.copy(jdbcConnection.config())
+        JdbcConfiguration newJdbcConfiguration = JdbcConfiguration.copy(getJdbcConnection().config())
                 .with(JdbcConfiguration.HOSTNAME, readerHost)
                 .with(JdbcConfiguration.PORT, readerPort)
                 .build();
-        this.jdbcConnection = new PostgresConnection((JdbcConfiguration) newConfig, PostgresConnection.CONNECTION_AURORA_READER_RESELECT);
+        setJdbcConnection(new PostgresConnection(newJdbcConfiguration, PostgresConnection.CONNECTION_AURORA_READER_RESELECT));
     }
 }
