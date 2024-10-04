@@ -62,10 +62,11 @@ public class OracleDdlParser extends AntlrDdlParser<PlSqlLexer, PlSqlParser> {
 
     @Override
     public void parse(String ddlContent, Tables databaseTables) {
-        if (!ddlContent.endsWith(";")) {
-            ddlContent = ddlContent + ";";
+        String strippedDdl = ddlContent.strip();
+        if (!strippedDdl.endsWith(";")) {
+            strippedDdl = strippedDdl + ";";
         }
-        super.parse(ddlContent, databaseTables);
+        super.parse(strippedDdl, databaseTables);
     }
 
     @Override
