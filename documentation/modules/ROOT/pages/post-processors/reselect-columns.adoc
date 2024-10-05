@@ -115,7 +115,7 @@ To enable the connector to use the `ReselectColumnsPostProcessor`, add the follo
 // Title: Descriptions of {prodname} reselect columns post processor configuration properties
 == Configuration options
 
-The following table lists the configuration options that you can set for the Reselect Columns post-processor.
+The following table lists the configuration options that you can set for the Reselect Columns post-processor. When using Postgres Aurora, you can  `AuroraReselectColumnsPostProcessor`  if you want lookup queries to be executed on the Aurora cluster reader instance instead of the writer instance.
 
 .Reselect columns post processor configuration options
 [cols="30%a,25%a,45%a"]
@@ -153,5 +153,13 @@ Do not set this property if you set the `reselect.columns.include.list` property
 By default, the reselection query is based on the relational table's primary key columns or unique key index.
 For tables that do not have a primary key, set this property to `true`, and configure the `message.key.columns` property in the connector configuration to specify a custom key for the connector to use when it creates events.
 The post processor then uses the specified key field names as the primary key in the SQL reselection query.
+
+|[[reader-host]]<<reader-host, `+reader.host+`>>
+|`No default`
+|Specifies the host name of the reader instance in the Aurora cluster. To be set when using class `io.debezium.connector.postgresql.processors.AuroraReselectColumnsPostProcessor` in `reselector.type`.
+
+|[[reader-port]]<<reader-port, `+reader.port+`>>
+|`No default`
+|Specifies the port of the reader instance in the Aurora cluster. To be set when using class `io.debezium.connector.postgresql.processors.AuroraReselectColumnsPostProcessor` in `reselector.type`.
 
 |===
