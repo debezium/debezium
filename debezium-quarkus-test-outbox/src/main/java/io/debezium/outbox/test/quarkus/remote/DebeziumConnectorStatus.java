@@ -9,9 +9,20 @@ import java.util.Objects;
 
 /**
  * Represents the status of a Debezium connector.
- */
-public record DebeziumConnectorStatus(String name, Connector connector) {
-    private static final String RUNNING_STATE = "RUNNING";
+ *
+ * <p>
+ * This class encapsulates the status of a Debezium connector by holding its name
+ * and an instance of the {@link io.debezium.outbox.test.quarkus.remote.Connector} class, which indicates the current
+ * operational state of the connector. It provides a method to check if the
+ * connector is running based on its internal state.
+ * </p>
+ *
+ * <p>
+ * The constructor enforces that both the name and the connector must be non-null.
+ * It also includes a method {@link #isRunning()} to determine if the connector
+ * is currently in the running state.
+ * </p>
+ */public record DebeziumConnectorStatus(String name, Connector connector) {
 
     /**
      * Constructor that requires name and connector to be non-null.
@@ -26,12 +37,12 @@ public record DebeziumConnectorStatus(String name, Connector connector) {
     }
 
     /**
-     * Checks if the connector is in the RUNNING state.
+     * Checks if the connector is currently in the running state.
      *
-     * @return true if the connector state is RUNNING, false otherwise
+     * @return true if the connector is running, false otherwise
      */
     public Boolean isRunning() {
-        return RUNNING_STATE.equals(this.connector.state());
+        return this.connector.isRunning();
     }
 
 }
