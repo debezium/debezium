@@ -240,7 +240,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     protected void readChunk(P partition, OffsetContext offsetContext) throws InterruptedException {
 
         LOGGER.trace("Reading chunk");
-
+        checkAndProcessStopFlag(partition, offsetContext);
         if (!context.snapshotRunning()) {
             LOGGER.info("Skipping read chunk because snapshot is not running");
             postIncrementalSnapshotCompleted();
@@ -462,72 +462,65 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
 
     @Override
     @SuppressWarnings("unchecked")
-    public void stopSnapshot(P partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds) {
-
+    public void requestStopSnapshot(P partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds) {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+        context.requestSnapshotStop(dataCollectionIds);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void checkAndProcessStopFlag(P partition, OffsetContext offsetContext) {
+        context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+        List<String> dataCollectionsToStop = context.getDataCollectionsToStop();
+        if (dataCollectionsToStop.isEmpty()) {
+            return;
+        }
         LOGGER.trace("Stopping incremental snapshot with context {}", context);
-        if (context.snapshotRunning()) {
-            if (dataCollectionIds == null || dataCollectionIds.isEmpty()) {
-                LOGGER.info("Stopping incremental snapshot.");
-                try {
-                    // This must be called prior to closeWindow to ensure the correct state is set
-                    // to prevent chunk reads from triggering additional open/close events.
-                    context.stopSnapshot();
-
-                    // Clear the state
-                    window.clear();
-                    closeWindow(partition, context.currentChunkId(), offsetContext);
-
-                    progressListener.snapshotAborted(partition);
-
-                    notificationService.incrementalSnapshotNotificationService().notifyAborted(context, partition, offsetContext);
-                }
-                catch (InterruptedException e) {
-                    LOGGER.warn("Failed to stop snapshot successfully.", e);
-                }
+        if (!context.snapshotRunning()) {
+            LOGGER.warn("No active incremental snapshot, stop ignored");
+            context.unsetCorrelationId();
+            return;
+        }
+        final List<String> expandedDataCollectionIds = expandAndDedupeDataCollectionIds(dataCollectionsToStop);
+        final List<String> stopped = new ArrayList<>();
+        LOGGER.info("Removing '{}' collections from incremental snapshot", expandedDataCollectionIds);
+        // Iterate and remove any collections that are not current.
+        // If current is marked for removal, delay that until after others have been removed.
+        TableId stopCurrentTableId = null;
+        for (String dataCollectionId : expandedDataCollectionIds) {
+            final TableId collectionId = TableId.parse(dataCollectionId);
+            if (currentTable != null && currentTable.id().equals(collectionId)) {
+                stopCurrentTableId = currentTable.id();
             }
             else {
-                final List<String> expandedDataCollectionIds = expandAndDedupeDataCollectionIds(dataCollectionIds);
-                LOGGER.info("Removing '{}' collections from incremental snapshot", expandedDataCollectionIds);
-                // Iterate and remove any collections that are not current.
-                // If current is marked for removal, delay that until after others have been removed.
-                TableId stopCurrentTableId = null;
-                for (String dataCollectionId : expandedDataCollectionIds) {
-                    final TableId collectionId = TableId.parse(dataCollectionId);
-                    if (currentTable != null && currentTable.id().equals(collectionId)) {
-                        stopCurrentTableId = currentTable.id();
-                    }
-                    else {
-                        if (context.removeDataCollectionFromSnapshot(dataCollectionId)) {
-                            LOGGER.info("Removed '{}' from incremental snapshot collection list.", collectionId);
-                        }
-                        else {
-                            LOGGER.warn("Could not remove '{}', collection is not part of the incremental snapshot.", collectionId);
-                        }
-                    }
+                if (context.removeDataCollectionFromSnapshot(dataCollectionId)) {
+                    stopped.add(dataCollectionId);
+                    LOGGER.info("Removed '{}' from incremental snapshot collection list.", collectionId);
                 }
-                // If current is requested to stop, proceed with stopping it.
-                if (stopCurrentTableId != null) {
-                    window.clear();
-                    LOGGER.info("Removed '{}' from incremental snapshot collection list.", stopCurrentTableId);
-                    tableScanCompleted(partition);
-                    // If snapshot has no more collections, abort; otherwise advance to the next collection.
-                    if (!context.snapshotRunning()) {
-                        LOGGER.info("Incremental snapshot has stopped.");
-                        progressListener.snapshotAborted(partition);
-                    }
-                    else {
-                        LOGGER.info("Advancing to next available collection in the incremental snapshot.");
-                        nextDataCollection(partition, offsetContext);
-                    }
+                else {
+                    LOGGER.warn("Could not remove '{}', collection is not part of the incremental snapshot.", collectionId);
                 }
-
-                notificationService.incrementalSnapshotNotificationService().notifyAborted(context, partition, offsetContext, expandedDataCollectionIds);
             }
         }
-        else {
-            LOGGER.warn("No active incremental snapshot, stop ignored");
+        // If current is requested to stop, proceed with stopping it.
+        if (stopCurrentTableId != null) {
+            LOGGER.info("Removed current collection '{}' from incremental snapshot collection list.", stopCurrentTableId);
+            tableScanCompleted(partition);
+            stopped.add(stopCurrentTableId.identifier());
+            // If snapshot has no more collections, abort; otherwise advance to the next collection.
+            if (!context.snapshotRunning()) {
+                LOGGER.info("Incremental snapshot has stopped.");
+                progressListener.snapshotAborted(partition);
+            }
+            else {
+                LOGGER.info("Advancing to next available collection in the incremental snapshot.");
+                nextDataCollection(partition, offsetContext);
+            }
         }
+        notificationService.incrementalSnapshotNotificationService().notifyAborted(context, partition, offsetContext, stopped);
+        if (!context.snapshotRunning()) {
+            context.unsetCorrelationId();
+        }
+        LOGGER.info("Removed collections from incremental snapshot: '{}'", stopped);
     }
 
     /**
