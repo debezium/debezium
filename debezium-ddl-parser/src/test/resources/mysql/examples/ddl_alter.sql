@@ -69,6 +69,7 @@ ALTER TABLE t1 PARTITION BY SYSTEM_TIME INTERVAL 1 HOUR AUTO;
 alter database test default character set = utf8;
 alter database test_1 default encryption = 'Y' read only = 1;
 alter schema somedb_name upgrade data directory name;
+alter database test_2 /*!40100 DEFAULT CHARACTER SET utf8mb4 */
 #end
 #begin
 -- Alter event
