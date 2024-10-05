@@ -9,11 +9,26 @@ import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import io.debezium.outbox.test.quarkus.JdbcDataSourceSourceConnector;
+
 /**
- * Represents the configuration of the Debezium Connector (Config object).
+ * Represents the configuration of a Debezium Connector.
+ *
+ * <p>
+ * This class serves as a configuration object that encapsulates the necessary
+ * parameters required to set up a Debezium Connector for capturing database
+ * changes and streaming them to Kafka topics.
+ * </p>
+ *
+ * <p>
+ * The configuration includes database connection details such as hostname,
+ * port, user credentials, and specific settings for the Debezium connector
+ * itself.
+ * </p>
  */
 public final class DebeziumConnectorConfigurationConfig {
 
+    final JdbcDataSourceSourceConnector jdbcDataSourceSourceConnector;
     final String databaseHostname;
     final Integer databasePort;
     final String databaseUser;
@@ -27,12 +42,14 @@ public final class DebeziumConnectorConfigurationConfig {
      * @param builder the Builder object
      */
     public DebeziumConnectorConfigurationConfig(final Builder builder) {
-        this(builder.databaseHostname, builder.databasePort, builder.databaseUser, builder.databasePassword, builder.databaseDbname, builder.databaseServerName);
+        this(builder.jdbcDataSourceSourceConnector, builder.databaseHostname, builder.databasePort, builder.databaseUser,
+                builder.databasePassword, builder.databaseDbname, builder.databaseServerName);
     }
 
     /**
      * Constructor for creating the DebeziumConnectorConfigurationConfig with specific parameters.
      *
+     * @param jdbcDataSourceSourceConnector the JDBC data source connector
      * @param databaseHostname the hostname of the database
      * @param databasePort the port of the database
      * @param databaseUser the username for the database
@@ -41,9 +58,11 @@ public final class DebeziumConnectorConfigurationConfig {
      * @param databaseServerName the server name for the database
      * @throws NullPointerException if any argument is null
      */
-    public DebeziumConnectorConfigurationConfig(final String databaseHostname, final Integer databasePort, final String databaseUser,
+    public DebeziumConnectorConfigurationConfig(final JdbcDataSourceSourceConnector jdbcDataSourceSourceConnector,
+                                                final String databaseHostname, final Integer databasePort, final String databaseUser,
                                                 final String databasePassword, final String databaseDbname,
                                                 final String databaseServerName) {
+        this.jdbcDataSourceSourceConnector = Objects.requireNonNull(jdbcDataSourceSourceConnector);
         this.databaseHostname = Objects.requireNonNull(databaseHostname);
         this.databasePort = Objects.requireNonNull(databasePort);
         this.databaseUser = Objects.requireNonNull(databaseUser);
@@ -65,12 +84,18 @@ public final class DebeziumConnectorConfigurationConfig {
      * Builder class for DebeziumConnectorConfigurationConfig.
      */
     public static class Builder {
+        private JdbcDataSourceSourceConnector jdbcDataSourceSourceConnector;
         private String databaseHostname;
         private Integer databasePort;
         private String databaseUser;
         private String databasePassword;
         private String databaseDbname;
         private String databaseServerName;
+
+        public Builder withJdbcDataSourceSourceConnector(final JdbcDataSourceSourceConnector jdbcDataSourceSourceConnector) {
+            this.jdbcDataSourceSourceConnector = jdbcDataSourceSourceConnector;
+            return this;
+        }
 
         public Builder withDatabaseHostname(final String databaseHostname) {
             this.databaseHostname = databaseHostname;
@@ -112,7 +137,7 @@ public final class DebeziumConnectorConfigurationConfig {
 
     @JsonProperty("connector.class")
     public String getConnectorClass() {
-        return "io.debezium.connector.postgresql.PostgresConnector";
+        return jdbcDataSourceSourceConnector.connectorClass();
     }
 
     @JsonProperty("tasks.max")
