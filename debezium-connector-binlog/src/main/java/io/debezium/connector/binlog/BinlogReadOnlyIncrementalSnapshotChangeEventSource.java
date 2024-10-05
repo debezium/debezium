@@ -147,8 +147,8 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
     }
 
     @Override
-    public void stopSnapshot(P partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds) {
-        super.stopSnapshot(partition, offsetContext, additionalData, dataCollectionIds);
+    public void requestStopSnapshot(P partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds) {
+        super.requestStopSnapshot(partition, offsetContext, additionalData, dataCollectionIds);
         getContext().setSignalOffset((Long) additionalData.get(KafkaSignalChannel.CHANNEL_OFFSET));
     }
 
