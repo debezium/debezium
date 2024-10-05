@@ -65,7 +65,7 @@ public interface IncrementalSnapshotContext<T> {
 
     void setSchemaVerificationPassed(boolean schemaVerificationPassed);
 
-    void stopSnapshot();
+    void requestSnapshotStop(List<String> dataCollectionIds);
 
     boolean removeDataCollectionFromSnapshot(String dataCollectionId);
 
@@ -74,5 +74,7 @@ public interface IncrementalSnapshotContext<T> {
     void unsetCorrelationId();
 
     String getCorrelationId();
+
+    List<String> getDataCollectionsToStop();
 
 }
