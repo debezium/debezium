@@ -19,27 +19,48 @@ import org.eclipse.microprofile.config.ConfigProvider;
 
 import io.quarkus.rest.client.reactive.QuarkusRestClientBuilder;
 
+/**
+ * REST API interface for interacting with the Debezium connector.
+ */
 @Path("/")
 public interface RemoteConnectorApi {
 
     String CONNECTOR_NAME = "outbox";
 
+    /**
+     * Registers the outbox connector with the provided configuration.
+     *
+     * @param connectorConfiguration the configuration object for the Debezium connector
+     */
     @POST
     @Path("/connectors")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     void registerOutboxConnector(DebeziumConnectorConfiguration connectorConfiguration);
 
+    /**
+     * Retrieves the status of the outbox connector.
+     *
+     * @return the status of the Debezium outbox connector
+     */
     @GET
     @Path("/connectors/" + CONNECTOR_NAME + "/status")
     @Produces(MediaType.APPLICATION_JSON)
     DebeziumConnectorStatus outboxConnectorStatus();
 
+    /**
+     * Deletes the outbox connector.
+     */
     @DELETE
     @Path("/connectors/" + CONNECTOR_NAME)
     @Produces(MediaType.APPLICATION_JSON)
     void deleteOutboxConnector();
 
+    /**
+     * Creates an instance of RemoteConnectorApi using the base URL from the configuration.
+     *
+     * @return a new instance of RemoteConnectorApi
+     */
     static RemoteConnectorApi createInstance() {
         final String debeziumQuarkusOutboxConnectorHostUrl = ConfigProvider.getConfig()
                 .getValue("debezium.quarkus.outbox.connector.host.url", String.class);

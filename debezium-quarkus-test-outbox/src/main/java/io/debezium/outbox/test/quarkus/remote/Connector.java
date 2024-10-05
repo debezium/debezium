@@ -7,7 +7,16 @@ package io.debezium.outbox.test.quarkus.remote;
 
 import java.util.Objects;
 
+/**
+ * Represents a Connector with a state.
+ */
 public record Connector(String state) {
+    /**
+     * Constructor that requires the state to be non-null.
+     *
+     * @param state the state of the connector
+     * @throws NullPointerException if the state is null
+     */
     public Connector {
         Objects.requireNonNull(state);
     }

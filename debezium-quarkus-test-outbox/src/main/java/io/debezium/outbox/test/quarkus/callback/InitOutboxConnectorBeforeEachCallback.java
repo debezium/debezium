@@ -21,8 +21,36 @@ import io.debezium.outbox.test.quarkus.remote.RemoteConnectorApi;
 import io.quarkus.test.junit.callback.QuarkusTestBeforeEachCallback;
 import io.quarkus.test.junit.callback.QuarkusTestMethodContext;
 
+/**
+ * This class is a QuarkusTest callback that registers a Debezium outbox connector
+ * before each test method execution.
+ *
+ * <p>
+ * It fetches the database connection details from the Quarkus configuration and
+ * uses them to create an instance of the connector. The connector will capture
+ * database changes and route them to Kafka topics.
+ * </p>
+ *
+ * <p>
+ * The connector registration process waits until the connector is fully running
+ * (or throws an exception if the process fails).
+ * </p>
+ */
 public final class InitOutboxConnectorBeforeEachCallback implements QuarkusTestBeforeEachCallback {
 
+    /**
+     * Registers the Debezium outbox connector before each test method.
+     *
+     * <p>
+     * The method retrieves the database connection URL from the Quarkus configuration
+     * (either JDBC or reactive), and it adjusts the hostname to work with Docker environments
+     * if necessary. Once the configuration is set up, it uses {@link io.debezium.outbox.test.quarkus.remote.RemoteConnectorApi}
+     * to register the connector.
+     * </p>
+     *
+     * @param context The test method context provided by the Quarkus test framework.
+     * @throws RuntimeException if the connector registration fails.
+     */
     // https://github.com/debezium/debezium-examples/blob/main/outbox/register-postgres.json
     @Override
     public void beforeEach(final QuarkusTestMethodContext context) {

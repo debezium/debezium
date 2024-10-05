@@ -9,6 +9,9 @@ import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+/**
+ * Represents the configuration of the Debezium Connector (Config object).
+ */
 public final class DebeziumConnectorConfigurationConfig {
 
     final String databaseHostname;
@@ -18,10 +21,26 @@ public final class DebeziumConnectorConfigurationConfig {
     final String databaseDbname;
     final String databaseServerName;
 
+    /**
+     * Constructor using a Builder.
+     *
+     * @param builder the Builder object
+     */
     public DebeziumConnectorConfigurationConfig(final Builder builder) {
         this(builder.databaseHostname, builder.databasePort, builder.databaseUser, builder.databasePassword, builder.databaseDbname, builder.databaseServerName);
     }
 
+    /**
+     * Constructor for creating the DebeziumConnectorConfigurationConfig with specific parameters.
+     *
+     * @param databaseHostname the hostname of the database
+     * @param databasePort the port of the database
+     * @param databaseUser the username for the database
+     * @param databasePassword the password for the database
+     * @param databaseDbname the database name
+     * @param databaseServerName the server name for the database
+     * @throws NullPointerException if any argument is null
+     */
     public DebeziumConnectorConfigurationConfig(final String databaseHostname, final Integer databasePort, final String databaseUser,
                                                 final String databasePassword, final String databaseDbname,
                                                 final String databaseServerName) {
@@ -33,10 +52,18 @@ public final class DebeziumConnectorConfigurationConfig {
         this.databaseServerName = Objects.requireNonNull(databaseServerName);
     }
 
+    /**
+     * Creates a new Builder for DebeziumConnectorConfigurationConfig.
+     *
+     * @return a new instance of Builder
+     */
     public static Builder newBuilder() {
         return new Builder();
     }
 
+    /**
+     * Builder class for DebeziumConnectorConfigurationConfig.
+     */
     public static class Builder {
         private String databaseHostname;
         private Integer databasePort;
@@ -80,6 +107,8 @@ public final class DebeziumConnectorConfigurationConfig {
         }
 
     }
+
+    // Various getter methods for Debezium connector properties, annotated with @JsonProperty for serialization
 
     @JsonProperty("connector.class")
     public String getConnectorClass() {
