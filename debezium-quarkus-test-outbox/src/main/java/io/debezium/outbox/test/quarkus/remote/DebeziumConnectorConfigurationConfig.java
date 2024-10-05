@@ -182,7 +182,7 @@ public final class DebeziumConnectorConfigurationConfig {
 
     @JsonProperty("topic.prefix")
     public String getTopicPrefix() {
-        return "dbserver1";
+        return databaseServerName;
     }
 
     // avoid schema in key part
