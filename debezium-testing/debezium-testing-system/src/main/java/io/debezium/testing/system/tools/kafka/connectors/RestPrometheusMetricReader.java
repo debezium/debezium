@@ -65,6 +65,11 @@ public class RestPrometheusMetricReader implements ConnectorMetricsReader {
     }
 
     @Override
+    public void waitForMariaDbSnapshot(String connectorName) {
+        waitForSnapshot(connectorName, "debezium_mariadb_connector_metrics_snapshotcompleted");
+    }
+
+    @Override
     public void waitForPostgreSqlSnapshot(String connectorName) {
         waitForSnapshot(connectorName, "debezium_postgres_connector_metrics_snapshotcompleted");
     }

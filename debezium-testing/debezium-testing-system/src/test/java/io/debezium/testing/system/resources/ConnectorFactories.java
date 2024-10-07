@@ -46,6 +46,28 @@ public class ConnectorFactories {
 
     }
 
+    public ConnectorConfigBuilder mariadb(SqlDatabaseController controller, String connectorName) {
+        ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
+        String dbHost = controller.getDatabaseHostname();
+        Random random = new Random();
+        int dbPort = controller.getDatabasePort();
+
+        return cb
+                .put("topic.prefix", cb.getDbServerName())
+                .put("connector.class", "io.debezium.connector.mariadb.MariaDbConnector")
+                .put("task.max", 1)
+                .put("database.server.id", 5400 + random.nextInt(1000))
+                .put("database.ssl.mode", "disabled")
+                .put("database.hostname", dbHost)
+                .put("database.port", dbPort)
+                .put("database.user", ConfigProperties.DATABASE_MARIADB_DBZ_USERNAME)
+                .put("database.password", ConfigProperties.DATABASE_MARIADB_DBZ_PASSWORD)
+                .put("schema.history.internal.kafka.bootstrap.servers", kafka.getBootstrapAddress())
+                .put("schema.history.internal.kafka.topic", "schema-changes.inventory")
+                .addOperationRouterForTable("u", "customers");
+
+    }
+
     public ConnectorConfigBuilder postgresql(SqlDatabaseController controller, String connectorName) {
         ConnectorConfigBuilder cb = new ConnectorConfigBuilder(connectorName);
         String dbHost = controller.getDatabaseHostname();
