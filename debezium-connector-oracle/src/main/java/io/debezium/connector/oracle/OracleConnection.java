@@ -654,7 +654,11 @@ public class OracleConnection extends JdbcConnection {
         final TableId oracleTableId = new TableId(null, table.id().schema(), table.id().table());
         final String commitScn = source.getString(SourceInfo.COMMIT_SCN_KEY);
         if (Strings.isNullOrEmpty(commitScn)) {
-            return optionallyDoInContainer(() -> super.reselectColumns(table, columns, keyColumns, keyValues, source));
+            final String query = String.format("SELECT %s FROM %s WHERE %s",
+                    columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
+                    quotedTableIdString(oracleTableId),
+                    keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
+            return optionallyDoInContainer(() -> reselectColumns(query, oracleTableId, columns, keyValues));
         }
 
         final String query = String.format("SELECT %s FROM (SELECT * FROM %s AS OF SCN ?) WHERE %s",
