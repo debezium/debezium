@@ -98,10 +98,6 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
         return this.jdbcConnection;
     }
 
-    protected void setJdbcConnection(JdbcConnection jdbcConnection) {
-        this.jdbcConnection = jdbcConnection;
-    }
-
     public void apply(Object messageKey, Struct value) {
         if (value == null) {
             LOGGER.debug("Value is not a Struct, no re-selection possible.");
@@ -215,7 +211,7 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
         }
 
         this.valueConverterProvider = beanRegistry.lookupByName(StandardBeanNames.VALUE_CONVERTER, ValueConverterProvider.class);
-        resolveJdbcConnection(beanRegistry);
+        this.jdbcConnection = resolveJdbcConnection(beanRegistry);
         this.schema = beanRegistry.lookupByName(StandardBeanNames.DATABASE_SCHEMA, RelationalDatabaseSchema.class);
     }
 
@@ -323,8 +319,8 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
         return jdbcConnection.createTableId(databaseName, schemaName, tableName);
     }
 
-    protected void resolveJdbcConnection(BeanRegistry beanRegistry) {
-        this.jdbcConnection = beanRegistry.lookupByName(StandardBeanNames.JDBC_CONNECTION, JdbcConnection.class);
+    protected JdbcConnection resolveJdbcConnection(BeanRegistry beanRegistry) {
+        return beanRegistry.lookupByName(StandardBeanNames.JDBC_CONNECTION, JdbcConnection.class);
     }
 
     private static class ReselectColumnsPredicateBuilder {

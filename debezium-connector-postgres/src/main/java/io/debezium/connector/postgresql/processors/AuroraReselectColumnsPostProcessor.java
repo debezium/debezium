@@ -11,11 +11,13 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.processors.reselect.ReselectColumnsPostProcessor;
 
 /**
@@ -43,12 +45,12 @@ public class AuroraReselectColumnsPostProcessor extends ReselectColumnsPostProce
         super.configure(properties);
         this.readerHost = config.getString(READER_HOST);
         if (this.readerHost == null || this.readerHost.isEmpty()) {
-            throw new IllegalArgumentException("Reader host cannot be null or empty");
+            throw new DebeziumException("Reader host cannot be null or empty");
         }
 
         Integer port = config.getInteger(READER_PORT);
         if (port == null || port <= 0) {
-            throw new IllegalArgumentException("Reader port must be a positive integer");
+            throw new DebeziumException("Reader port must be a positive integer");
         }
         this.readerPort = port;
     }
@@ -65,14 +67,14 @@ public class AuroraReselectColumnsPostProcessor extends ReselectColumnsPostProce
     }
 
     @Override
-    protected void resolveJdbcConnection(BeanRegistry beanRegistry) {
-        super.resolveJdbcConnection(beanRegistry);
+    protected JdbcConnection resolveJdbcConnection(BeanRegistry beanRegistry) {
+        JdbcConnection jdbcConnection = super.resolveJdbcConnection(beanRegistry);
         // create reader connection
         LOGGER.info("Creating reader connection for reselect using reader host: {} and port: {}", readerHost, readerPort);
-        JdbcConfiguration newJdbcConfiguration = JdbcConfiguration.copy(getJdbcConnection().config())
+        JdbcConfiguration newJdbcConfiguration = JdbcConfiguration.copy(jdbcConnection.config())
                 .with(JdbcConfiguration.HOSTNAME, readerHost)
                 .with(JdbcConfiguration.PORT, readerPort)
                 .build();
-        setJdbcConnection(new PostgresConnection(newJdbcConfiguration, PostgresConnection.CONNECTION_AURORA_READER_RESELECT));
+        return new PostgresConnection(newJdbcConfiguration, PostgresConnection.CONNECTION_AURORA_READER_RESELECT);
     }
 }
