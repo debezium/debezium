@@ -2265,6 +2265,14 @@ By default, the {prodname} Oracle connector provides several `CustomConverter` i
 These custom converters provide alternative mappings for specific data types based on the connector configuration.
 To add a `CustomConverter` to the connector, follow the instructions in the link:../development/converters.adoc[Custom Converters documentation].
 
+The {prodname} Oracle connector provides the following custom converters:
+
+* xref:debezium-oracle-connector-custom-converters-number-to-boolean[`NUMBER(1)` to Boolean]
+* xref:debezium-oracle-connector-custom-converters-number-to-zero-scale[`NUMBER` To Zero Scale]
+* xref:debezium-oracle-connector-custom-converters-raw-to-string[`RAW` to String]
+
+
+[id="debezium-oracle-connector-custom-converters-number-to-boolean"]
 === `NUMBER(1)` to Boolean
 
 Beginning with version 23, Oracle database provides a `BOOLEAN` logical data type.
@@ -2285,6 +2293,7 @@ In the preceding example, the `selector` property is optional.
 The `selector` property specifies a regular expression that designates which tables or columns the converter applies to.
 If you omit the `selector` property, when {prodname} emits an event, every column with the `NUMBER(1)` data type is converted to a field that uses the logical `BOOL` type.
 
+[id="debezium-oracle-connector-custom-converters-number-to-zero-scale"]
 === `NUMBER` To Zero Scale
 
 Oracle supports creating `NUMBER` based columns with negative scale, that is, `NUMBER(-2)`.
@@ -2304,6 +2313,7 @@ In the preceding example, the `decimal.mode` property specifies how the connecto
 This property is optional.
 If you omit the `decimal.mode` property, the converter defaults to using the `PRECISE` decimal handling mode.
 
+[id="debezium-oracle-connector-custom-converters-raw-to-string"]
 === `RAW` to String
 
 Although Oracle recommends against the use of certain data types, such as `RAW`, legacy systems might continue to use such types.
