@@ -115,7 +115,7 @@ To enable the connector to use the `ReselectColumnsPostProcessor`, add the follo
 // Title: Descriptions of {prodname} reselect columns post processor configuration properties
 == Configuration options
 
-The following table lists the configuration options that you can set for the Reselect Columns post-processor. When using Postgres Aurora, you can  `AuroraReselectColumnsPostProcessor`  if you want lookup queries to be executed on the Aurora cluster reader instance instead of the writer instance.
+The following table lists the configuration options that you can set for the Reselect Columns post-processor.
 
 .Reselect columns post processor configuration options
 [cols="30%a,25%a,45%a"]
@@ -154,12 +154,53 @@ By default, the reselection query is based on the relational table's primary key
 For tables that do not have a primary key, set this property to `true`, and configure the `message.key.columns` property in the connector configuration to specify a custom key for the connector to use when it creates events.
 The post processor then uses the specified key field names as the primary key in the SQL reselection query.
 
+|===
+
+== Amazon Aurora - AWS
+
+When using the reselect columns post processor with Amazon Aurora, the reader endpoint will provide better performance for reselect queries than the default connector endpoint, which may be using the writer endpoint.
+
+If your connector uses the writer endpoint, the following steps configure the reader endpoint for reselect queries:
+
+* Set the post processor `type` using the Aurora-specific link:#aurora-implementations[implementation].
+* Configure the required Aurora-specific link:#aurora-specific-configuration-properties[configuration properties].
+
+[id="aurora-implementations"]
+.Aurora-specific implementations
+[cols="30%a,70%a"]
+|===
+|Aurora Type
+|Fully Qualified Debezium Class Name
+
+|PostgreSQL
+|`io.debezium.connector.postgresql.processors.AuroraReselectColumnsPostProcessor`
+
+|===
+
+[id="aurora-specific-configuration-properties"]
+.Required Aurora-specific reselect columns configuration options
+[cols="30%a,25%a,45%a"]
+|===
+|Property
+|Default
+|Description
+
 |[[reader-host]]<<reader-host, `+reader.host+`>>
 |`No default`
-|Specifies the host name of the reader instance in the Aurora cluster. To be set when using class `io.debezium.connector.postgresql.processors.AuroraReselectColumnsPostProcessor` in `reselector.type`.
+|Specifies the host name of the reader instance in the Aurora cluster.
 
 |[[reader-port]]<<reader-port, `+reader.port+`>>
 |`No default`
-|Specifies the port of the reader instance in the Aurora cluster. To be set when using class `io.debezium.connector.postgresql.processors.AuroraReselectColumnsPostProcessor` in `reselector.type`.
+|Specifies the port of the reader instance in the Aurora cluster..
 
 |===
+
+.Example Aurora configuration using reader endpoint for PostgreSQL
+[source,json,subs="+attributes,+quotes"]
+----
+  "post.processors": "reselector",
+  "reselector.type": "io.debezium.connector.postgresql.processors.AuroraReselectColumnsPostProcessor",
+  "reselector.reader.host": "<hostname>",
+  "reselector.reader.port": "<port>",
+  ...
+----
