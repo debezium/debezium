@@ -34,6 +34,7 @@
     <!--Docker configuration-->
     <docker.image.mysql>quay.io/debezium/example-mysql-master:latest</docker.image.mysql>
     <docker.image.mysql.replica>quay.io/debezium/example-mysql-replica:latest</docker.image.mysql.replica>
+    <docker.image.mariadb>quay.io/debezium/example-mariadb:latest</docker.image.mariadb>
     <docker.image.postgresql>quay.io/debezium/example-postgres:latest</docker.image.postgresql>
     <docker.image.postgresql.replica>quay.io/debezium/postgres:15</docker.image.postgresql.replica>
     <docker.image.mongo>quay.io/debezium/example-mongodb:2.6</docker.image.mongo>
@@ -47,6 +48,7 @@
     <ocp.project.debezium>debezium</ocp.project.debezium>
     <ocp.project.registry>${ocp.project.debezium}-registry</ocp.project.registry>
     <ocp.project.mysql>${ocp.project.debezium}-mysql</ocp.project.mysql>
+    <ocp.project.mariadb>${ocp.project.debezium}-mariadb</ocp.project.mariadb>
     <ocp.project.postgresql>${ocp.project.debezium}-postgresql</ocp.project.postgresql>
     <ocp.project.mongo>${ocp.project.debezium}-mongo</ocp.project.mongo>
     <ocp.project.sqlserver>${ocp.project.debezium}-sqlserver</ocp.project.sqlserver>
@@ -54,6 +56,7 @@
     <ocp.project.oracle>${ocp.project.debezium}-oracle</ocp.project.oracle>
 
     <ocp.image.mysql>${docker.image.mysql}</ocp.image.mysql>
+    <ocp.image.mariadb>${docker.image.mariadb}</ocp.image.mariadb>
     <ocp.image.mysql.replica>${docker.image.mysql.replica}</ocp.image.mysql.replica>
     <ocp.image.postgresql>${docker.image.postgresql}</ocp.image.postgresql>
     <ocp.image.postgresql.replica>${docker.image.postgresql.replica}</ocp.image.postgresql.replica>
@@ -81,6 +84,15 @@
     <database.mysql.dbz.username>debezium</database.mysql.dbz.username>
     <database.mysql.dbz.password>dbz</database.mysql.dbz.password>
     <database.mysql.root.password>debezium</database.mysql.root.password>
+
+    <!--MariaDB configuration-->
+    <database.mariadb.port>3306</database.mariadb.port>
+    <database.mariadb.username>mariadbuser</database.mariadb.username>
+    <database.mariadb.password>mariadbpw</database.mariadb.password>
+    <database.mariadb.dbz.username>debezium</database.mariadb.dbz.username>
+    <database.mariadb.dbz.password>dbz</database.mariadb.dbz.password>
+    <database.mariadb.root.password>debezium</database.mariadb.root.password>
+
 
     <!--PostgreSQL configuration-->
     <database.postgresql.port>5432</database.postgresql.port>
@@ -164,6 +176,13 @@
       <dependency>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-connector-mysql</artifactId>
+        <classifier>plugin</classifier>
+        <type>zip</type>
+        <version>${version.debezium.connector}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-connector-mariadb</artifactId>
         <classifier>plugin</classifier>
         <type>zip</type>
         <version>${version.debezium.connector}</version>
@@ -545,6 +564,7 @@
                 <!--Docker Configuration-->
                 <test.docker.image.kc>${docker.image.kc}</test.docker.image.kc>
                 <test.docker.image.mysql>${docker.image.mysql}</test.docker.image.mysql>
+                <test.docker.image.mariabd>${docker.image.mariadb}</test.docker.image.mariabd>
                 <test.docker.image.mysql.replica>${docker.image.mysql.replica}</test.docker.image.mysql.replica>
                 <test.docker.image.postgresql>${docker.image.postgresql}</test.docker.image.postgresql>
                 <test.docker.image.mongo>${docker.image.mongo}</test.docker.image.mongo>
@@ -562,6 +582,7 @@
                 <test.ocp.project.debezium>${ocp.project.debezium}</test.ocp.project.debezium>
                 <test.ocp.project.registry>${ocp.project.registry}</test.ocp.project.registry>
                 <test.ocp.project.mysql>${ocp.project.mysql}</test.ocp.project.mysql>
+                <test.ocp.project.mariadb>${ocp.project.mariadb}</test.ocp.project.mariadb>
                 <test.ocp.project.postgresql>${ocp.project.postgresql}</test.ocp.project.postgresql>
                 <test.ocp.project.mongo>${ocp.project.mongo}</test.ocp.project.mongo>
                 <test.ocp.project.sqlserver>${ocp.project.sqlserver}</test.ocp.project.sqlserver>
@@ -589,6 +610,14 @@
                 <test.database.mysql.dbz.username>${database.mysql.dbz.username}</test.database.mysql.dbz.username>
                 <test.database.mysql.dbz.password>${database.mysql.dbz.password}</test.database.mysql.dbz.password>
                 <test.database.mysql.port>${database.mysql.port}</test.database.mysql.port>
+
+                <!--MariaDB configuration-->
+                <test.database.mariadb.host>${database.mariadb.host}</test.database.mariadb.host>
+                <test.database.mariadb.username>${database.mariadb.username}</test.database.mariadb.username>
+                <test.database.mariadb.password>${database.mariadb.password}</test.database.mariadb.password>
+                <test.database.mariadb.dbz.username>${database.mariadb.dbz.username}</test.database.mariadb.dbz.username>
+                <test.database.mariadb.dbz.password>${database.mariadb.dbz.password}</test.database.mariadb.dbz.password>
+                <test.database.mariadb.port>${database.mariadb.port}</test.database.mariadb.port>
 
                 <!--PostgreSQL configuration-->
                 <test.database.postgresql.host>${database.postgresql.host}</test.database.postgresql.host>

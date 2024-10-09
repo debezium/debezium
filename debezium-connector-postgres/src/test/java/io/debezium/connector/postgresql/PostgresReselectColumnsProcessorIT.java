@@ -381,4 +381,49 @@ public class PostgresReselectColumnsProcessorIT extends AbstractReselectProcesso
 
         assertColumnReselectedForUnavailableValue(logInterceptor, "s1.dbz8212_toast", "data");
     }
+
+    @Test
+    @FixFor("DBZ-8277")
+    public void testToastColumnReselectedWhenPrimaryKeyIsUUIDType() throws Exception {
+        TestHelper.execute("CREATE TABLE s1.dbz8277_toast (id uuid primary key, data text[], data2 int);");
+
+        final LogInterceptor logInterceptor = getReselectLogInterceptor();
+
+        final List<String> textValues = new ArrayList<>();
+        textValues.add(RandomStringUtils.randomAlphanumeric(8192));
+        textValues.add(RandomStringUtils.randomAlphanumeric(8192));
+
+        final String data = textValues.stream().map(v -> "\"" + v + "\"").collect(Collectors.joining(", "));
+
+        Configuration config = getConfigurationBuilder()
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1\\.dbz8277_toast")
+                .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, "true")
+                .build();
+
+        start(PostgresConnector.class, config);
+        waitForStreamingStarted();
+
+        TestHelper.execute(
+                "INSERT INTO s1.dbz8277_toast (id,data,data2) values ('b1164c91-b574-495c-9f17-c4899d88404c'::uuid,'{" + data + "}', 1);",
+                "UPDATE s1.dbz8277_toast SET data2 = 2 where id = 'b1164c91-b574-495c-9f17-c4899d88404c';");
+
+        final SourceRecords sourceRecords = consumeRecordsByTopic(2);
+        final List<SourceRecord> tableRecords = sourceRecords.recordsForTopic("test_server.s1.dbz8277_toast");
+
+        // Check insert
+        SourceRecord record = tableRecords.get(0);
+        Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(after.get("id")).isEqualTo("b1164c91-b574-495c-9f17-c4899d88404c");
+        assertThat(after.get("data")).isEqualTo(textValues);
+        assertThat(after.get("data2")).isEqualTo(1);
+
+        // Check update
+        record = tableRecords.get(1);
+        after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        assertThat(after.get("id")).isEqualTo("b1164c91-b574-495c-9f17-c4899d88404c");
+        assertThat(after.get("data")).isEqualTo(textValues);
+        assertThat(after.get("data2")).isEqualTo(2);
+
+        assertColumnReselectedForUnavailableValue(logInterceptor, "s1.dbz8277_toast", "data");
+    }
 }

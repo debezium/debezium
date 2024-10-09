@@ -15,12 +15,16 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.core.BaseConnection;
 import org.postgresql.jdbc.PgConnection;
@@ -812,6 +816,16 @@ public class PostgresConnection extends JdbcConnection {
         // "By default, null values sort as if larger than any non-null value"
         // https://www.postgresql.org/docs/16/queries-order.html
         return Optional.of(true);
+    }
+
+    @Override
+    public Map<String, Object> reselectColumns(Table table, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source)
+            throws SQLException {
+        final String query = String.format("SELECT %s FROM %s WHERE %s",
+                columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
+                quotedTableIdString(table.id()),
+                keyColumns.stream().map(key -> key + "=?::" + table.columnWithName(key).typeName()).collect(Collectors.joining(" AND ")));
+        return reselectColumns(query, table.id(), columns, keyValues);
     }
 
     @Override

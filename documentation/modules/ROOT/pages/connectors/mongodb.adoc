@@ -1059,8 +1059,8 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 |3
 |`before`
 |Contains the JSON string representation of the actual MongoDB document before change.
-+
-An _update_ event value does not contain an `before` field if the capture mode is not set to one of the `*_with_preimage` options.
+
+An _update_ event value does not contain a `before` field if the capture mode is not set to one of the `*_with_preimage` options.
 
 |4
 |`after`
@@ -1147,8 +1147,8 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 |3
 |`before`
 |Contains the JSON string representation of the actual MongoDB document before change.
-+
-An _update_ event value does not contain an `before` field if the capture mode is not set to one of the `*_with_preimage` options.
+
+An _update_ event value does not contain a `before` field if the capture mode is not set to one of the `*_with_preimage` options.
 
 |4
 |`source`

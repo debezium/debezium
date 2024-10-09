@@ -15,6 +15,13 @@ public interface ConnectorMetricsReader {
     void waitForMySqlSnapshot(String connectorName);
 
     /**
+     * Waits until snapshot phase of given MariaDB connector completes
+     *
+     * @param connectorName connector name
+     */
+    void waitForMariaDbSnapshot(String connectorName);
+
+    /**
      * Waits until snapshot phase of given PostgreSQL connector completes
      *
      * @param connectorName connector name

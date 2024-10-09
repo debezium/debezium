@@ -1009,7 +1009,7 @@ The value of a change event for an update in the sample `customers` table has th
 |1
 |`before`
 |An optional field that contains values that were in the row before the database commit. In this example, only the primary key column, `id`, is present because the table's xref:postgresql-replica-identity[`REPLICA IDENTITY`] setting is, by default, `DEFAULT`.
-+
+
 For an _update_ event to contain the previous values of all columns in the row, you would have to change the `customers` table by running `ALTER TABLE customers REPLICA IDENTITY FULL`.
 
 |2
@@ -3472,14 +3472,14 @@ endif::community[]
 
 |[[postgresql-property-snapshot-locking-mode]]<<postgresql-property-snapshot-locking-mode, `+snapshot.locking.mode+`>>
 |`none`
-|Specifies how the connector holds locks on tables while performing a schema snapshot: +
+|Specifies how the connector holds locks on tables while performing a schema snapshot. +
 Set one of the following options:
- +
+
 `shared`:: The connector holds a table lock that prevents exclusive table access during the initial portion phase of the snapshot in which database schemas and other metadata are read.
 After the initial phase, the snapshot no longer requires table locks.
- +
-`none`:: The connector avoids locks entirely. +
-+
+
+`none`:: The connector avoids locks entirely.
+
 [WARNING]
 ====
 Do not use this mode if schema changes might occur during the snapshot.
