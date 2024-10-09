@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.UUID;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -95,6 +96,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
      * Determines if the incremental snapshot was paused or not.
      */
     private final AtomicBoolean paused = new AtomicBoolean(false);
+    private final LinkedBlockingQueue<String> dataCollectionsToStop = new LinkedBlockingQueue<>();
 
     public AbstractIncrementalSnapshotContext(boolean useCatalogBeforeSchema) {
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
@@ -171,6 +173,13 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         }
     }
 
+    @Override
+    public List<String> getDataCollectionsToStop() {
+        List<String> drainedList = new ArrayList<>();
+        dataCollectionsToStop.drainTo(drainedList);
+        return drainedList;
+    }
+
     public boolean snapshotRunning() {
         return !snapshotDataCollection.isEmpty();
     }
@@ -224,9 +233,15 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     }
 
     @Override
-    public void stopSnapshot() {
-        this.snapshotDataCollection.clear();
-        this.correlationId = null;
+    public void requestSnapshotStop(List<String> dataCollectionIds) {
+        if (snapshotRunning()) {
+            if (dataCollectionIds == null || dataCollectionIds.isEmpty()) {
+                dataCollectionsToStop.add(".*");
+            }
+            else {
+                dataCollectionsToStop.addAll(dataCollectionIds);
+            }
+        }
     }
 
     @Override
@@ -357,7 +372,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
                 + Arrays.toString(maximumKey) + "]";
     }
 
-    private static class SnapshotDataCollection<T> extends LinkedList<DataCollection<T>> {
+    private static class SnapshotDataCollection<T> extends LinkedBlockingQueue<DataCollection<T>> {
 
         public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY = INCREMENTAL_SNAPSHOT_KEY + "_collections";
 

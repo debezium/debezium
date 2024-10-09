@@ -612,7 +612,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         // Consume any residual left-over events after stopping incremental snapshots such as open/close
         // and wait for the stop message in the connector logs
         assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
-                interceptor, "Stopping incremental snapshot")).isTrue();
+                interceptor, "Removed collections from incremental snapshot: ")).isTrue();
 
         // stop the connector
         stopConnector((r) -> interceptor.clear());
