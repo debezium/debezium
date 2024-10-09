@@ -172,9 +172,37 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
     }
 
     private Offsets<MongoDbPartition, MongoDbOffsetContext> getPreviousOffsets(MongoDbConnectorConfig connectorConfig) {
-        var partitionProvider = new MongoDbPartition.Provider(connectorConfig);
+        var partitionProvider = new MongoDbPartition.Provider(connectorConfig, taskContext);
         var offsetLoader = new MongoDbOffsetContext.Loader(connectorConfig);
         var offsets = getPreviousOffsets(partitionProvider, offsetLoader);
+
+        // Compare with previous generation
+        if (connectorConfig.getMultiTaskEnabled() || connectorConfig.getMultiTaskPrevGen() >= 0) {
+            int prevGen = connectorConfig.getMultiTaskPrevGen();
+            var prevPartitionProvider = new MongoDbPartition.PrevGenProvider(connectorConfig, taskContext);
+            var prevOffsets = getPreviousOffsets(prevPartitionProvider, offsetLoader);
+            MongoDbOffsetContext oldestPrevOffset;
+            if (connectorConfig.getMultiTaskPrevGen() < 0) {
+                oldestPrevOffset = prevOffsets.getTheOnlyOffset();
+            }
+            else {
+                if (prevOffsets.getOffsets().values().stream().anyMatch(Objects::isNull)) {
+                    throw new IllegalStateException("Couldn't find saved offsets for previous generation");
+                }
+                oldestPrevOffset = prevOffsets.getOffsets()
+                        .values()
+                        .stream()
+                        .min(MongoDbOffsetContext::compareTo)
+                        .get();
+            }
+            if (Objects.compare(oldestPrevOffset, offsets.getTheOnlyOffset(), MongoDbOffsetContext::compareTo) > 0) {
+                offsets.getOffsets().put(offsets.getTheOnlyPartition(), oldestPrevOffset);
+                LOGGER.info("added offset {} = {} from generation {}",
+                        offsets.getTheOnlyPartition(),
+                        offsets.getTheOnlyOffset(),
+                        prevGen);
+            }
+        }
 
         if (offsets.getTheOnlyOffset() != null) {
             return offsets;
@@ -184,7 +212,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                 .orElse(ConnectionStrings.CLUSTER_RS_NAME);
 
         var compatibleOffset = getPreviousOffsets(
-                new MongoDbPartition.Provider(connectorConfig, Set.of(name)),
+                new MongoDbPartition.Provider(connectorConfig, taskContext, Set.of(name)),
                 new MongoDbOffsetContext.Loader(connectorConfig))
                 .getTheOnlyOffset();
 
@@ -198,7 +226,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         var shardNames = connectionContext.getShardNames();
 
         var shardOffsets = getPreviousOffsets(
-                new MongoDbPartition.Provider(connectorConfig, shardNames),
+                new MongoDbPartition.Provider(connectorConfig, taskContext, shardNames),
                 new MongoDbOffsetContext.Loader(connectorConfig))
                 .getOffsets();
 

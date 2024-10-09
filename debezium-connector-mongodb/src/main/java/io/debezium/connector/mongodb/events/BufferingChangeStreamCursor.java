@@ -22,6 +22,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.bson.BsonDocument;
+import org.bson.BsonTimestamp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,6 +37,8 @@ import io.debezium.annotation.Immutable;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.mongodb.MongoDbConnector;
 import io.debezium.connector.mongodb.MongoDbTaskContext;
+import io.debezium.connector.mongodb.MultiTaskOffsetHandler;
+import io.debezium.connector.mongodb.ResumeTokens;
 import io.debezium.connector.mongodb.metrics.MongoDbStreamingChangeEventSourceMetrics;
 import io.debezium.util.Clock;
 import io.debezium.util.DelayStrategy;
@@ -114,6 +117,71 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
     }
 
     /**
+     * Interface allowing implementers to update the change stream in response to an event
+     * @param <TResult>
+     */
+    public interface StreamManager<TResult> {
+        ChangeStreamIterable<TResult> updateStream(ChangeStreamIterable<TResult> stream);
+
+        boolean shouldUpdateStream(ResumableChangeStreamEvent<TResult> event);
+    }
+
+    public static class DefaultStreamManager<TResult> implements StreamManager<TResult> {
+        @Override
+        public ChangeStreamIterable<TResult> updateStream(ChangeStreamIterable<TResult> stream) {
+            return stream;
+        }
+
+        @Override
+        public boolean shouldUpdateStream(ResumableChangeStreamEvent<TResult> event) {
+            return false;
+        }
+    }
+
+    public static class MultiTaskStreamManager<TResult> implements StreamManager<TResult> {
+
+        private MultiTaskOffsetHandler offsetHandler;
+        BsonTimestamp lastTimestamp;
+
+        public MultiTaskStreamManager(MultiTaskOffsetHandler offsetHandler) {
+            this.offsetHandler = offsetHandler;
+        }
+
+        @Override
+        public ChangeStreamIterable<TResult> updateStream(ChangeStreamIterable<TResult> stream) {
+            offsetHandler = offsetHandler.nextHop(lastTimestamp);
+            LOGGER.info("task {} jump to next hop [{}-{}]",
+                    offsetHandler.taskId,
+                    offsetHandler.oplogStart.getTime(),
+                    offsetHandler.oplogStop.getTime());
+            return stream.startAtOperationTime(offsetHandler.optimizedOplogStart);
+        }
+
+        @Override
+        public boolean shouldUpdateStream(ResumableChangeStreamEvent<TResult> document) {
+            if (!offsetHandler.started) {
+                offsetHandler = offsetHandler.startAtTimestamp(ResumeTokens.getTimestamp(document.resumeToken));
+                LOGGER.info("Setting offset for stepwise taskId '{}'/'{}' start '{}' stop '{}'.",
+                        offsetHandler.taskId,
+                        offsetHandler.taskCount,
+                        offsetHandler.optimizedOplogStart,
+                        offsetHandler.oplogStop);
+            }
+            if (document.isEmpty()) {
+                return false;
+            }
+            ChangeStreamDocument<TResult> event = document.document.get();
+            BsonTimestamp timestamp = event.getClusterTime();
+            if (timestamp.getTime() >= offsetHandler.oplogStop.getTime()) {
+                LOGGER.debug("Stop offset found {} compared to offsetStop {}", timestamp.getTime(), offsetHandler.oplogStop.getTime());
+                lastTimestamp = timestamp;
+                return true;
+            }
+            return false;
+        }
+    }
+
+    /**
      * Runnable responsible for fetching events from {@link ChangeStreamIterable} and buffering them in provided queue;
      * <p>
      * This utilises standard cursors returned by {@link ChangeStreamIterable#cursor()}
@@ -124,7 +192,8 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
 
         public static final long QUEUE_OFFER_TIMEOUT_MS = 100;
 
-        private final ChangeStreamIterable<TResult> stream;
+        private ChangeStreamIterable<TResult> stream;
+        private final StreamManager<TResult> streamManager;
         private final Semaphore capacity;
         private final Queue<ResumableChangeStreamEvent<TResult>> queue;
         private final DelayStrategy throttler;
@@ -139,11 +208,13 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
         private volatile boolean paused;
 
         public EventFetcher(ChangeStreamIterable<TResult> stream,
+                            StreamManager<TResult> streamManager,
                             int capacity,
                             MongoDbStreamingChangeEventSourceMetrics metrics,
                             Clock clock,
                             DelayStrategy throttler) {
             this.stream = stream;
+            this.streamManager = streamManager;
             this.capacity = new Semaphore(capacity);
             this.metrics = metrics;
             this.clock = clock;
@@ -159,7 +230,16 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
                             MongoDbStreamingChangeEventSourceMetrics metrics,
                             Clock clock,
                             Duration throttleMaxSleep) {
-            this(stream, capacity, metrics, clock, DelayStrategy.constant(throttleMaxSleep));
+            this(stream, new DefaultStreamManager<>(), capacity, metrics, clock, DelayStrategy.constant(throttleMaxSleep));
+        }
+
+        public EventFetcher(ChangeStreamIterable<TResult> stream,
+                            MultiTaskOffsetHandler multiTaskOffsetHandler,
+                            int capacity,
+                            MongoDbStreamingChangeEventSourceMetrics metrics,
+                            Clock clock,
+                            Duration throttleMaxSleep) {
+            this(stream, new MultiTaskStreamManager<>(multiTaskOffsetHandler), capacity, metrics, clock, DelayStrategy.constant(throttleMaxSleep));
         }
 
         /**
@@ -257,25 +337,29 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
 
         @Override
         public void run() {
-            try (MongoChangeStreamCursor<ChangeStreamDocument<TResult>> cursor = stream.cursor()) {
-                cursorRef.compareAndSet(null, cursor);
-                running.set(true);
-                noMessageIterations = 0;
-                fetchEvents(cursor);
-            }
-            catch (InterruptedException e) {
-                LOGGER.error("Fetcher thread interrupted", e);
-                Thread.currentThread().interrupt();
-                throw new DebeziumException("Fetcher thread interrupted", e);
-            }
-            catch (Throwable e) {
-                error.set(e);
-                LOGGER.error("Fetcher thread has failed", e);
-            }
-            finally {
-                cursorRef.set(null);
-                close();
-            }
+            do {
+                try (MongoChangeStreamCursor<ChangeStreamDocument<TResult>> cursor = stream.cursor()) {
+                    cursorRef.compareAndSet(null, cursor);
+                    running.set(true);
+                    noMessageIterations = 0;
+                    fetchEvents(cursor);
+                    stream = streamManager.updateStream(stream);
+                }
+                catch (InterruptedException e) {
+                    LOGGER.error("Fetcher thread interrupted", e);
+                    Thread.currentThread().interrupt();
+                    throw new DebeziumException("Fetcher thread interrupted", e);
+                }
+                catch (Throwable e) {
+                    error.set(e);
+                    LOGGER.error("Fetcher thread has failed", e);
+                    close();
+                }
+                finally {
+                    cursorRef.set(null);
+                }
+            } while (isRunning());
+            close();
         }
 
         private void fetchEvents(MongoChangeStreamCursor<ChangeStreamDocument<TResult>> cursor) throws InterruptedException {
@@ -290,6 +374,9 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
                     if (maybeEvent.isEmpty()) {
                         LOGGER.warn("Resume token not available on this poll");
                         continue;
+                    }
+                    if (streamManager.shouldUpdateStream(maybeEvent.get())) {
+                        break;
                     }
                     lastEvent = maybeEvent.get();
                 }
@@ -343,6 +430,21 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
         return new BufferingChangeStreamCursor<>(
                 new EventFetcher<>(stream, config.getMaxBatchSize(), metrics, clock, config.getPollInterval()),
                 Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.getServerName(), "replicator-fetcher", 1),
+                config.getPollInterval());
+    }
+
+    public static <TResult> BufferingChangeStreamCursor<TResult> fromIterable(
+                                                                              ChangeStreamIterable<TResult> stream,
+                                                                              MultiTaskOffsetHandler offsetHandler,
+                                                                              MongoDbTaskContext taskContext,
+                                                                              MongoDbStreamingChangeEventSourceMetrics metrics,
+                                                                              Clock clock) {
+        var config = taskContext.getConnectorConfig();
+
+        String threadName = "replicator-fetcher-" + offsetHandler.taskId;
+        return new BufferingChangeStreamCursor<>(
+                new EventFetcher<>(stream, offsetHandler, config.getMaxBatchSize(), metrics, clock, config.getPollInterval()),
+                Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.getServerName(), threadName, 1),
                 config.getPollInterval());
     }
 
