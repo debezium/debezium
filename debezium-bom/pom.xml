@@ -29,7 +29,7 @@
         <version.grpc>1.56.1</version.grpc>
 
         <!-- Tracing -->
-        <version.opentelemetry>1.23.0</version.opentelemetry>
+        <version.opentelemetry>1.39.0</version.opentelemetry>
 
         <!-- HTTP client -->
         <version.okhttp>4.8.1</version.okhttp>
