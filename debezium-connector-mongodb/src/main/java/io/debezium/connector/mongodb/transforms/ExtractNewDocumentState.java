@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
-import java.util.Set;
+import java.util.TreeMap;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -25,6 +25,7 @@ import org.apache.kafka.connect.transforms.ExtractField;
 import org.apache.kafka.connect.transforms.Flatten;
 import org.bson.BsonBoolean;
 import org.bson.BsonDocument;
+import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +35,6 @@ import io.debezium.config.CommonConnectorConfig.FieldNameAdjustmentMode;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.mongodb.MongoDbFieldName;
-import io.debezium.data.Envelope;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.transforms.AbstractExtractNewRecordState;
@@ -254,52 +254,21 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
     }
 
     private R newRecord(R record, BsonDocument keyDocument, BsonDocument valueDocument) {
-        SchemaBuilder keySchemaBuilder = SchemaBuilder.struct();
-        Set<Entry<String, BsonValue>> keyPairs = keyDocument.entrySet();
-        for (Entry<String, BsonValue> keyPairsForSchema : keyPairs) {
-            converter.addFieldSchema(keyPairsForSchema, keySchemaBuilder);
-        }
 
-        Schema finalKeySchema = keySchemaBuilder.build();
-        Struct finalKeyStruct = new Struct(finalKeySchema);
+        TreeMap<String, Map<Object, BsonType>> keyMap = converter.parse(keyDocument);
+        Schema keySchema = converter.buildSchema(keyMap);
+        Struct keyStruct = new Struct(keySchema);
+        converter.buildStruct(keyDocument, keySchema, keyStruct);
 
-        for (Entry<String, BsonValue> keyPairsForStruct : keyPairs) {
-            converter.convertRecord(keyPairsForStruct, finalKeySchema, finalKeyStruct);
-        }
+        TreeMap<String, Map<Object, BsonType>> valueMap = converter.parse(valueDocument);
+        Schema valueSchema = converter.buildSchema(valueMap);
+        Struct valueStruct = new Struct(valueSchema);
+        converter.buildStruct(valueDocument, valueSchema, valueStruct);
 
-        Schema finalValueSchema = null;
-        Struct finalValueStruct = null;
+        // to-do handle additional fields
 
-        if (!valueDocument.isEmpty()) {
-            String newValueSchemaName = record.valueSchema().name();
-            if (Envelope.isEnvelopeSchema(newValueSchemaName)) {
-                newValueSchemaName = newValueSchemaName.substring(0, newValueSchemaName.length() - 9);
-            }
-            SchemaBuilder valueSchemaBuilder = SchemaBuilder.struct().name(newValueSchemaName);
-
-            Set<Entry<String, BsonValue>> valuePairs = valueDocument.entrySet();
-            for (Entry<String, BsonValue> valuePairsForSchema : valuePairs) {
-                converter.addFieldSchema(valuePairsForSchema, valueSchemaBuilder);
-            }
-
-            if (!additionalFields.isEmpty()) {
-                addAdditionalFieldsSchema(additionalFields, record, valueSchemaBuilder);
-            }
-
-            finalValueSchema = valueSchemaBuilder.build();
-            finalValueStruct = new Struct(finalValueSchema);
-            for (Entry<String, BsonValue> valuePairsForStruct : valuePairs) {
-                converter.convertRecord(valuePairsForStruct, finalValueSchema, finalValueStruct);
-
-            }
-
-            if (!additionalFields.isEmpty()) {
-                addFields(additionalFields, record, finalValueStruct);
-            }
-        }
-
-        R newRecord = record.newRecord(record.topic(), record.kafkaPartition(), finalKeySchema,
-                finalKeyStruct, finalValueSchema, finalValueStruct, record.timestamp());
+        R newRecord = record.newRecord(record.topic(), record.kafkaPartition(), keySchema, keyStruct, valueSchema,
+                valueStruct, record.timestamp());
 
         if (flattenStruct) {
             return recordFlattener.apply(newRecord);
