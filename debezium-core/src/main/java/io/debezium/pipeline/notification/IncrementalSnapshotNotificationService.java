@@ -7,6 +7,7 @@ package io.debezium.pipeline.notification;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -131,8 +132,11 @@ public class IncrementalSnapshotNotificationService<P extends Partition, O exten
                 Map.of(
                         DATA_COLLECTIONS, dataCollections,
                         CURRENT_COLLECTION_IN_PROGRESS, incrementalSnapshotContext.currentDataCollectionId().getId().identifier(),
-                        MAXIMUM_KEY, Objects.toString(incrementalSnapshotContext.maximumKey().orElse(new Object[0])[0], "<null>"),
-                        LAST_PROCESSED_KEY, Objects.toString(incrementalSnapshotContext.chunkEndPosititon()[0], "<null>")),
+                        MAXIMUM_KEY, incrementalSnapshotContext.maximumKey().isPresent() ? Arrays.stream(incrementalSnapshotContext.maximumKey().get())
+                                .map(x -> Objects.toString(x, "<null>")).collect(Collectors.joining(","))
+                                : "\"<null>\"",
+                        LAST_PROCESSED_KEY, Arrays.stream(incrementalSnapshotContext.chunkEndPosititon())
+                                .map(x -> Objects.toString(x, "<null>")).collect(Collectors.joining(","))),
                 offsetContext),
                 Offsets.of(partition, offsetContext));
     }
