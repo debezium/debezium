@@ -13,7 +13,9 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.dlq.ErrorReporter;
+import io.debezium.sink.DebeziumSinkRecord;
 
 final class MongoSinkRecordProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoSinkRecordProcessor.class);
@@ -25,10 +27,11 @@ final class MongoSinkRecordProcessor {
         LOGGER.debug("Number of sink records to process: {}", records.size());
 
         List<List<MongoProcessedSinkRecordData>> orderedProcessedSinkRecordData = new ArrayList<>();
-        List<MongoProcessedSinkRecordData> currentGroup = new ArrayList<>();
+        List<MongoProcessedSinkRecordData> groupedBatch = new ArrayList<>();
         MongoProcessedSinkRecordData previous = null;
 
-        for (SinkRecord record : records) {
+        for (SinkRecord kafkaSinkRecord : records) {
+            DebeziumSinkRecord record = new KafkaDebeziumSinkRecord(kafkaSinkRecord);
             MongoProcessedSinkRecordData processedData = new MongoProcessedSinkRecordData(record, sinkConfig);
 
             if (processedData.getException() != null) {
@@ -45,19 +48,19 @@ final class MongoSinkRecordProcessor {
             }
 
             int maxBatchSize = processedData.getConfig().getBatchSize();
-            if (maxBatchSize > 0 && currentGroup.size() == maxBatchSize
-                    || !previous.getSinkRecord().topic().equals(processedData.getSinkRecord().topic())
+            if (maxBatchSize > 0 && groupedBatch.size() == maxBatchSize
+                    || !previous.getSinkRecord().topicName().equals(processedData.getSinkRecord().topicName())
                     || !previous.getNamespace().equals(processedData.getNamespace())) {
 
-                orderedProcessedSinkRecordData.add(currentGroup);
-                currentGroup = new ArrayList<>();
+                orderedProcessedSinkRecordData.add(groupedBatch);
+                groupedBatch = new ArrayList<>();
             }
             previous = processedData;
-            currentGroup.add(processedData);
+            groupedBatch.add(processedData);
         }
 
-        if (!currentGroup.isEmpty()) {
-            orderedProcessedSinkRecordData.add(currentGroup);
+        if (!groupedBatch.isEmpty()) {
+            orderedProcessedSinkRecordData.add(groupedBatch);
         }
         return orderedProcessedSinkRecordData;
     }

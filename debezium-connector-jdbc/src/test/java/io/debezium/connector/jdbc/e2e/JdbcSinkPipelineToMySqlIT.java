@@ -223,7 +223,7 @@ public class JdbcSinkPipelineToMySqlIT extends AbstractJdbcSinkPipelineIT {
 
     private boolean isConnectionTimeZoneSet() {
         return getCurrentSinkConfig().getHibernateConfiguration()
-                .getProperty(AvailableSettings.URL)
+                .getProperty(AvailableSettings.JAKARTA_JDBC_URL)
                 .contains("connectionTimeZone=");
     }
 }

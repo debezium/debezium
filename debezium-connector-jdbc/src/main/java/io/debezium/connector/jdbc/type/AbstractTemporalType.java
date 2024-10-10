@@ -11,8 +11,8 @@ import java.util.TimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
+import io.debezium.sink.SinkConnectorConfig;
 
 /**
  * An abstract base class for all temporal implementations of {@link Type}.
@@ -26,10 +26,10 @@ public abstract class AbstractTemporalType extends AbstractType {
     private TimeZone databaseTimeZone;
 
     @Override
-    public void configure(JdbcSinkConnectorConfig config, DatabaseDialect dialect) {
+    public void configure(SinkConnectorConfig config, DatabaseDialect dialect) {
         super.configure(config, dialect);
 
-        final String databaseTimeZone = config.getDatabaseTimeZone();
+        final String databaseTimeZone = config.useTimeZone();
         try {
             this.databaseTimeZone = TimeZone.getTimeZone(ZoneId.of(databaseTimeZone));
         }

@@ -10,7 +10,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
-import io.debezium.connector.jdbc.filter.FieldFilterFactory.FieldNameFilter;
+import io.debezium.sink.filter.FieldFilterFactory;
+import io.debezium.sink.filter.FieldFilterFactory.FieldNameFilter;
 
 public class FieldFilterFactoryTest {
 

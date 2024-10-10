@@ -9,9 +9,11 @@ import java.util.List;
 
 import org.apache.kafka.common.config.Config;
 
+import io.debezium.metadata.CollectionId;
+
 public class FilterValidationResults extends ValidationResults {
 
-    public final List<DataCollection> matchingCollections;
+    public final List<CollectionId> matchingCollections;
 
     public FilterValidationResults(Config validatedConfig, MatchingCollectionsParameter matchingCollections) {
         super(validatedConfig);
@@ -30,7 +32,7 @@ public class FilterValidationResults extends ValidationResults {
         /**
          * @return the list of matching tables or collections that match the connector config based filters / filter conditions.
          */
-        List<DataCollection> get();
+        List<CollectionId> get();
     }
 
 }

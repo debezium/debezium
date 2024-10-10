@@ -44,7 +44,7 @@ public abstract class AbstractJdbcSinkSchemaEvolutionTest extends AbstractJdbcSi
         final Map<String, String> config = super.getDefaultSinkConfig();
         final String databaseSchemaName = getDatabaseSchemaName();
         if (!Strings.isNullOrBlank(databaseSchemaName)) {
-            config.put(JdbcSinkConnectorConfig.TABLE_NAME_FORMAT, databaseSchemaName + ".${topic}");
+            config.put(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT, databaseSchemaName + ".${topic}");
         }
         return config;
     }
