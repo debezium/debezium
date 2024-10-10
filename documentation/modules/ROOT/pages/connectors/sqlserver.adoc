@@ -2019,7 +2019,7 @@ GO
 ----
 <.> Specifies the name of the table that you want to capture.
 <.> Specifies a role `MyRole` to which you can add users to whom you want to grant `SELECT` permission on the captured columns of the source table.
-Users in the `sysadmin` or `db_owner` role also have access to the specified change tables. Set the value of `@role_name` to `NULL`, to allow only members in the `sysadmin` or `db_owner` to have full access to captured information.
+Users in the `sysadmin` or `db_owner` role also have access to the specified change tables. If the the value of `@role_name` is explicitly set to `NULL`, no role is used to restrict access to captured information.
 <.> Specifies the `filegroup` where SQL Server places the change table for the captured table.
 The named `filegroup` must already exist.
 It is best not to locate change tables in the same `filegroup` that you use for source tables.
