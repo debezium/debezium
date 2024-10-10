@@ -253,6 +253,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 // We've not yet seen any GTIDs, so that means we have to start reading the binlog from the beginning ...
                 client.setBinlogFilename(effectiveOffsetContext.getSource().binlogFilename());
                 client.setBinlogPosition(effectiveOffsetContext.getSource().binlogPosition());
+                client.setGtidSet("");
                 initializeGtidSet("");
             }
         }
