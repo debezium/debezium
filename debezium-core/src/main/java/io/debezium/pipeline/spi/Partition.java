@@ -6,6 +6,7 @@
 package io.debezium.pipeline.spi;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -14,7 +15,24 @@ import java.util.Set;
  * and provides its representation as a Kafka Connect source partition.
  */
 public interface Partition {
+
+    /**
+     * Get source partition representation in current format, the most recent one.
+     *
+     * @return map being representation of this source partition
+     */
     Map<String, String> getSourcePartition();
+
+    /**
+     * Get all representations of the source partition in all supported formats.
+     * The list includes current format, as the first one - the most preferred, but also
+     * all legacy formats that are still supported, in descending order of preference.
+     *
+     * @return list of maps, each map being representation of this source partition
+     */
+    default List<Map<String, String>> getSupportedFormats() {
+        return Collections.singletonList(getSourcePartition());
+    }
 
     /**
      * Returns the partition representation in the logging context.
