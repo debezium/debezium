@@ -10,6 +10,7 @@ import static org.apache.kafka.clients.CommonClientConfigs.CLIENT_ID_CONFIG;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -58,6 +59,15 @@ public class KafkaConnectUtil {
         final String clientId = "debezium-server";
         final Map<String, Object> adminProps = new HashMap<>(config);
         adminProps.put(CLIENT_ID_CONFIG, clientId + "shared-admin");
+
+        if (Objects.equals(config.get("name"), "kafka")) {
+            String PREFIX = "offset.storage.kafka.producer.";
+            adminProps.forEach((configName, value) -> {
+                if (configName.startsWith(PREFIX)) {
+                    adminProps.put(configName.substring(PREFIX.length()), value);
+                }
+            });
+        }
 
         Stream.of(
                 DistributedConfig.BOOTSTRAP_SERVERS_CONFIG,
