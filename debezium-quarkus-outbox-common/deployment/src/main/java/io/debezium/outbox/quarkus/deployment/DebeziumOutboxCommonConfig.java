@@ -10,7 +10,9 @@ import java.util.Optional;
 import io.debezium.outbox.quarkus.internal.OutboxConstants;
 import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.annotations.ConfigRoot;
+import io.quarkus.runtime.configuration.TrimmedStringConverter;
 import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithConverter;
 import io.smallrye.config.WithDefault;
 import io.smallrye.config.WithName;
 
@@ -68,6 +70,11 @@ public interface DebeziumOutboxCommonConfig {
      * Outbox Tracing configurable attributes
      */
     DebeziumOutboxConfigTracingSpan tracingSpan();
+
+    /**
+     * Outbox dev service configurable attributes
+     */
+    DebeziumOutboxDevServices devservices();
 
     /**
      * OpenTelemetry configuration option
@@ -200,5 +207,14 @@ public interface DebeziumOutboxCommonConfig {
          * The column definition.
          */
         Optional<String> columnDefinition();
+    }
+
+    interface DebeziumOutboxDevServices {
+        /**
+         * The image name.
+         */
+        @WithConverter(TrimmedStringConverter.class)
+        @WithDefault(OutboxConstants.DEBEZIUM_CONNECT_NIGHTLY_IMAGE)
+        String imageName();
     }
 }
