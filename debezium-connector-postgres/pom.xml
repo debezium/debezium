@@ -16,7 +16,7 @@
           Note that the `dockerhost.ip` property is computed from the IP address of DOCKER_HOST, which will
           work on all platforms. We'll set some of these as system properties during integration testing.
       -->
-        <version.postgres.server>15</version.postgres.server>
+        <version.postgres.server>17</version.postgres.server>
         <postgres.host>${docker.host.address}</postgres.host>
         <postgres.port>5432</postgres.port>
         <postgres.user>postgres</postgres.user>
@@ -488,6 +488,12 @@
             <id>postgres-16</id>
             <properties>
                 <version.postgres.server>16</version.postgres.server>
+            </properties>
+        </profile>
+        <profile>
+            <id>postgres-17</id>
+            <properties>
+                <version.postgres.server>17</version.postgres.server>
             </properties>
         </profile>
         <profile>
