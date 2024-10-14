@@ -166,7 +166,7 @@ jobs:
       # Run each PostgreSQL job sequentially
       max-parallel: 1
       matrix:
-        profile: [ "assembly,postgres-12", "assembly,postgres-16,pgoutput-decoder" ]
+        profile: [ "assembly,postgres-12", "assembly,postgres-17,pgoutput-decoder" ]
       fail-fast: false
     name: "PostgreSQL - ${{ matrix.profile }}"
     needs: [ check_style ]
