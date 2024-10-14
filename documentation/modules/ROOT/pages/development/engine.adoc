@@ -82,14 +82,18 @@ Or for the MongoDB connector:
 The remainder of this document describes embedding the MySQL connector in your application.
 Other connectors are used in a similar manner, except with connector-specific configuration, topics, and events.
 
-=== Package you project
-Debezium uses the SPI via the ServiceLoader to load different implementations depending on the connector type or for custom implementations.
+=== Packaging your project
 
-When an interface has multiple implementations — for instance, `io.debezium.snapshot.spi.SnapshotLock`, which has a default implementation in the core and specific ones for each connector — you must explicitly configure your build tools to merge the `META-INF/services files`.
-If this step is missed, Debezium may fail to locate the required implementation.
+{prodname} uses the SPI via the ServiceLoader to load the implementation.
+The implementation can be based on the connector type, or it can be a custom implementation.
 
-To address this, instruct your build tools accordingly. For example, if you are using the https://maven.apache.org/plugins/maven-shade-plugin[Maven shade plugin],
-you need to add the https://maven.apache.org/plugins/maven-shade-plugin/examples/resource-transformers.html#ServicesResourceTransformer[`ServicesResourceTransformer`] transformer:
+Some interfaces have multiple implementations.
+For example, `io.debezium.snapshot.spi.SnapshotLock` has a default implementation in the core, and specific implementations for each connector.
+To ensure that {prodname} can locate the required implementation, you must explicitly configure your build tools to merge the `META-INF/services files`. 
+  
+
+For example, if you are using the https://maven.apache.org/plugins/maven-shade-plugin[Maven shade plugin],
+add the https://maven.apache.org/plugins/maven-shade-plugin/examples/resource-transformers.html#ServicesResourceTransformer[`ServicesResourceTransformer`] transformer, as shown in the following example:
 
 [source,xml]
 ----
@@ -104,7 +108,7 @@ you need to add the https://maven.apache.org/plugins/maven-shade-plugin/examples
 </configuration>
 ----
 
-Alternatively, if using the https://maven.apache.org/plugins/maven-assembly-plugin/index.html[Maven Assembly plug-in] you can utilize the https://maven.apache.org/plugins/maven-assembly-plugin/examples/single/using-container-descriptor-handlers.html[metaInf-services container descriptor handlers].
+Alternatively, if you use the https://maven.apache.org/plugins/maven-assembly-plugin/index.html[Maven Assembly plug-in], you can use the https://maven.apache.org/plugins/maven-assembly-plugin/examples/single/using-container-descriptor-handlers.html[metaInf-services container descriptor handlers].
 
 == In the Code
 
@@ -291,9 +295,11 @@ The two implementations use the same API, and the preceding code sample is valid
 The only exception is the creation of the `DebeziumEngine` instance.
 As was also mentioned in the introduction, by default, the `EmbeddedEngine` implementation is used.
 Therefore, the method `DebeziumEngine.create(Json.class)` results internally in the use of the `EmbeddedEngine` instance.
-If you want to use the new `AsyncEmbeddedEngine` instance instead, use the following method:
+
+If you want to use the new `AsyncEmbeddedEngine` instance instead, use the following method: 
 `DebeziumEngine#create(KeyValueHeaderChangeEventFormat<K, V, H> format, String builderFactory)`
-For example, to create an embedded engine that uses the `AsyncEmbeddedEngine`, and uses JSON as its key, value, and header format, you would use following code:
+
+For example, to create an embedded engine that uses the `AsyncEmbeddedEngine`, and uses JSON as its key, value, and header format, you would use the following code:
 
 [source,java,indent=0]
 ----
