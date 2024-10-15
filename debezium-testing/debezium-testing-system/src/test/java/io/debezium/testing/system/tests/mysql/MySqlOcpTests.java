@@ -27,8 +27,8 @@ import io.debezium.testing.system.tools.kafka.KafkaController;
 
 public abstract class MySqlOcpTests extends MySqlTests {
     public MySqlOcpTests(KafkaController kafkaController, KafkaConnectController connectController, ConnectorConfigBuilder connectorConfig,
-                         KafkaAssertions<?, ?> assertions) {
-        super(kafkaController, connectController, connectorConfig, assertions);
+                         KafkaAssertions<?, ?> assertions, MySqlController dbController) {
+        super(kafkaController, connectController, connectorConfig, assertions, dbController);
     }
 
     @Test
