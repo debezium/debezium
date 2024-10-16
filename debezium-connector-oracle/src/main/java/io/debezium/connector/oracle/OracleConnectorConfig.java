@@ -1015,7 +1015,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         /**
          * Perform a snapshot of the schema but no data upon initial startup of a connector.
          *
-         * @deprecated to be removed in Debezium 3.0, replaced by {{@link #NO_DATA}}
+         * @deprecated to be removed in Debezium 3.0, replaced by {{@link #no_data}}
          */
         SCHEMA_ONLY("schema_only"),
 
