@@ -35,6 +35,7 @@ import io.debezium.config.CommonConnectorConfig.FieldNameAdjustmentMode;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.mongodb.MongoDbFieldName;
+import io.debezium.data.Envelope;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.transforms.AbstractExtractNewRecordState;
@@ -254,18 +255,41 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
     }
 
     private R newRecord(R record, BsonDocument keyDocument, BsonDocument valueDocument) {
-
         TreeMap<String, Map<Object, BsonType>> keyMap = converter.parse(keyDocument);
-        Schema keySchema = converter.buildSchema(keyMap);
+        SchemaBuilder keySchemaBuilder = SchemaBuilder.struct();
+        converter.buildSchema(keyMap, keySchemaBuilder);
+        Schema keySchema = keySchemaBuilder.build();
         Struct keyStruct = new Struct(keySchema);
         converter.buildStruct(keyDocument, keySchema, keyStruct);
 
-        TreeMap<String, Map<Object, BsonType>> valueMap = converter.parse(valueDocument);
-        Schema valueSchema = converter.buildSchema(valueMap);
-        Struct valueStruct = new Struct(valueSchema);
-        converter.buildStruct(valueDocument, valueSchema, valueStruct);
+        String newValueSchemaName;
+        SchemaBuilder valueSchemaBuilder;
+        Schema valueSchema = null;
+        Struct valueStruct = null;
 
-        // to-do handle additional fields
+        if (!valueDocument.isEmpty()) {
+            newValueSchemaName = record.valueSchema().name();
+            if (Envelope.isEnvelopeSchema(newValueSchemaName)) {
+                newValueSchemaName = newValueSchemaName.substring(0, newValueSchemaName.length() - 9);
+            }
+
+            TreeMap<String, Map<Object, BsonType>> valueMap = converter.parse(valueDocument);
+
+            valueSchemaBuilder = SchemaBuilder.struct().name(newValueSchemaName);
+            converter.buildSchema(valueMap, valueSchemaBuilder);
+
+            if (!additionalFields.isEmpty()) {
+                addAdditionalFieldsSchema(additionalFields, record, valueSchemaBuilder);
+            }
+
+            valueSchema = valueSchemaBuilder.build();
+            valueStruct = new Struct(valueSchema);
+            converter.buildStruct(valueDocument, valueSchema, valueStruct);
+
+            if (!additionalFields.isEmpty()) {
+                addFields(additionalFields, record, valueStruct);
+            }
+        }
 
         R newRecord = record.newRecord(record.topic(), record.kafkaPartition(), keySchema, keyStruct, valueSchema,
                 valueStruct, record.timestamp());
