@@ -7,6 +7,7 @@ package io.debezium.connector.mongodb.transforms;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
@@ -15,6 +16,7 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.data.Timestamp;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonType;
@@ -60,7 +62,7 @@ public class MongoDataConverter {
 
         TreeMap<String, Map<Object, BsonType>> map = new TreeMap<>();
 
-        for (Map.Entry<String, BsonValue> entry : document.entrySet()) {
+        for (Entry<String, BsonValue> entry : document.entrySet()) {
             String key = entry.getKey();
             BsonValue value = entry.getValue();
             BsonType type = value.getBsonType();
@@ -80,10 +82,11 @@ public class MongoDataConverter {
         return map;
     }
 
-    public TreeMap<String, Map<Object, BsonType>> traversal(String key, BsonArray document) {
+    public TreeMap<String, Map<Object, BsonType>> traversal(String key, BsonArray array) {
         TreeMap<String, Map<Object, BsonType>> map = new TreeMap<>();
+        List<Object> list = new ArrayList<>();
 
-        for (BsonValue value : document) {
+        for (BsonValue value : array) {
             if (value.getBsonType() == BsonType.ARRAY) {
                 map.put("", Map.of(traversal(key, value.asArray()), value.getBsonType()));
             }
@@ -91,44 +94,47 @@ public class MongoDataConverter {
                 map.putAll(parse(value.asDocument()));
             }
             else {
-                map.put("", Map.of(value, value.getBsonType()));
+                list.add(value);
+                BsonType type = value.getBsonType();
+                map.put("", Map.of(list, type));
             }
         }
 
         return map;
     }
 
-    public SchemaBuilder buildSchema(TreeMap<String, Map<Object, BsonType>> map) {
-        SchemaBuilder builder = SchemaBuilder.struct();
-        for (Map.Entry<String, Map<Object, BsonType>> entry : map.entrySet()) {
+    public void buildSchema(TreeMap<String, Map<Object, BsonType>> map, SchemaBuilder builder) {
+        for (Entry<String, Map<Object, BsonType>> entry : map.entrySet()) {
             String key = fieldNamer.fieldNameFor(entry.getKey());
             schema(key, entry.getValue(), builder);
         }
-        return builder;
     }
 
     public SchemaBuilder schema(String key, Map<Object, BsonType> map, SchemaBuilder builder) {
-        for (Map.Entry<Object, BsonType> entry : map.entrySet()) {
+        for (Entry<Object, BsonType> entry : map.entrySet()) {
             Object value = entry.getKey();
             BsonType type = entry.getValue();
             switch (type) {
                 case ARRAY:
                     if (value == null) {
-                        builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional());
+                        builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
                     }
                     else if (value instanceof Map<?, ?>) {
                         SchemaBuilder arrayBuilder = SchemaBuilder.struct().name(builder.name() + "." + key).optional();
-                        for (Map.Entry<?, ?> doc : ((Map<?, ?>) value).entrySet()) {
-                            String k = doc.getKey().toString();
+                        for (Entry<?, ?> doc : ((Map<?, ?>) value).entrySet()) {
+                            String k = fieldNamer.fieldNameFor(doc.getKey().toString());
                             Object v = doc.getValue();
                             if (v instanceof Map<?, ?>) {
-                                schema(k, (Map<Object, BsonType>) v, arrayBuilder);
-                            }
-                            else {
-                                arrayBuilder.field(k, getType(((BsonValue) v).getBsonType()));
+                                arrayBuilder = schema(k, (Map<Object, BsonType>) v, arrayBuilder);
                             }
                         }
-                        builder.field(key, SchemaBuilder.array(arrayBuilder).optional());
+                        // check if array builder schema is of type array or struct
+                        if (arrayBuilder.schema().type() == Schema.Type.STRUCT) {
+                            builder.field(key, SchemaBuilder.array(arrayBuilder).optional().build());
+                            return SchemaBuilder.array(arrayBuilder).optional();
+                        }
+                        builder.field(key, arrayBuilder.build());
+                        return arrayBuilder;
                     }
                     break;
                 case DOCUMENT:
@@ -138,17 +144,14 @@ public class MongoDataConverter {
                     else {
                         if (value instanceof Map<?, ?>) {
                             SchemaBuilder documentBuilder = SchemaBuilder.struct().name(builder.name() + "." + key).optional();
-                            for (Map.Entry<?, ?> doc : ((Map<?, ?>) value).entrySet()) {
-                                String k = doc.getKey().toString();
+                            for (Entry<?, ?> doc : ((Map<?, ?>) value).entrySet()) {
+                                String k = fieldNamer.fieldNameFor(doc.getKey().toString());
                                 Object v = doc.getValue();
                                 if (v instanceof Map<?, ?>) {
                                     schema(k, (Map<Object, BsonType>) v, documentBuilder);
                                 }
-                                else {
-                                    documentBuilder.field(k, getType(((BsonValue) v).getBsonType()));
-                                }
                             }
-                            builder.field(key, documentBuilder);
+                            builder.field(key, documentBuilder.build());
                         }
                         else {
                             builder.field(key, getType(type));
@@ -157,8 +160,28 @@ public class MongoDataConverter {
                     break;
                 default:
                     if (key.isEmpty()) {
-                        BsonType t = ((BsonValue) value).getBsonType();
-                        return SchemaBuilder.array(getType(t)).optional();
+                        BsonType t = null;
+                        // check if the value is a list of values from an array
+                        if (value instanceof List<?>) {
+                            List<BsonType> types = new ArrayList<>();
+                            for (Object v : (List<Object>) value) {
+                                t = ((BsonValue) v).getBsonType();
+                                types.add(t);
+                            }
+
+                            // check if all the values are of same type
+                            // just handling array.encoding as ARRAY case
+                            if (types.stream().distinct().count() == 1) {
+                                builder = SchemaBuilder.array(getType(t)).optional();
+                            }
+                            else {
+                                throw new RuntimeException("Values in the array are of different types: " + types);
+                            }
+                        }
+                        else {
+                            t = ((BsonValue) value).getBsonType();
+                            builder = SchemaBuilder.array(getType(t)).optional();
+                        }
                     }
                     else {
                         builder.field(key, getType(type));
@@ -187,7 +210,7 @@ public class MongoDataConverter {
                 return Schema.OPTIONAL_INT64_SCHEMA;
             case TIMESTAMP:
             case DATE_TIME:
-                return org.apache.kafka.connect.data.Timestamp.builder().optional().build();
+                return Timestamp.builder().optional().build();
             case BOOLEAN:
                 return Schema.OPTIONAL_BOOLEAN_SCHEMA;
         }
@@ -196,7 +219,7 @@ public class MongoDataConverter {
 
     public Struct buildStruct(BsonDocument document, Schema schema, Struct struct) {
         Object colValue = null;
-        for (Map.Entry<String, BsonValue> entry : document.entrySet()) {
+        for (Entry<String, BsonValue> entry : document.entrySet()) {
             String key = fieldNamer.fieldNameFor(entry.getKey());
             BsonValue value = entry.getValue();
             BsonType type = value.getBsonType();
@@ -288,7 +311,10 @@ public class MongoDataConverter {
                     else {
                         switch (arrayEncoding) {
                             case ARRAY:
-                                colValue = buildArray(value.asArray(), schema.field(key).schema().valueSchema());
+                                Schema arraySchema = schema.field(key).schema().type() == Schema.Type.ARRAY
+                                        ? schema.field(key).schema().valueSchema()
+                                        : schema.field(key).schema();
+                                colValue = buildArray(value.asArray(), arraySchema);
                                 break;
                             case DOCUMENT:
                                 // to-do
@@ -328,6 +354,21 @@ public class MongoDataConverter {
                     break;
                 case DOCUMENT:
                     values.add(buildStruct(value.asDocument(), schema, new Struct(schema)));
+                    break;
+                case DOUBLE:
+                    values.add(value.asDouble().getValue());
+                    break;
+                case STRING:
+                    values.add(value.asString().getValue());
+                    break;
+                case OBJECT_ID:
+                    values.add(value.asObjectId().getValue().toString());
+                    break;
+                case BINARY:
+                    values.add(value.asBinary().getData());
+                    break;
+                case INT32:
+                    values.add(value.asInt32().getValue());
                     break;
                 default:
                     values.add(value.isNull() ? null : value.asString().getValue());
