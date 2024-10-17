@@ -24,6 +24,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.SnapshotType;
 import io.debezium.connector.oracle.antlr.listener.AlterTableParserListener;
 import io.debezium.connector.oracle.antlr.listener.CreateTableParserListener;
 import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
@@ -1646,7 +1647,7 @@ public class OracleSchemaMigrationIT extends AbstractConnectorTest {
     private static void assertSnapshotSchemaChange(SourceRecord record) {
         assertThat(record.topic()).isEqualTo(TestHelper.SERVER_NAME);
         assertThat(((Struct) record.key()).getString("databaseName")).isEqualTo(TestHelper.getDatabaseName());
-        assertThat(record.sourceOffset().get("snapshot")).isEqualTo(true);
+        assertThat(record.sourceOffset().get("snapshot")).isEqualTo(SnapshotType.INITIAL.toString());
         assertThat(((Struct) record.value()).getStruct("source").getString("snapshot")).isEqualTo("true");
     }
 

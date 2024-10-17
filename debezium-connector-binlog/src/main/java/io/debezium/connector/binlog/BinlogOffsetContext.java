@@ -12,7 +12,9 @@ import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
 
+import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.SnapshotType;
 import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -30,7 +32,6 @@ import io.debezium.util.Strings;
  */
 public class BinlogOffsetContext<T extends BinlogSourceInfo> extends CommonOffsetContext<T> {
 
-    public static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
     public static final String EVENTS_TO_SKIP_OFFSET_KEY = "event";
     public static final String TIMESTAMP_KEY = "ts_sec";
     public static final String GTID_SET_KEY = "gtids";
@@ -47,20 +48,19 @@ public class BinlogOffsetContext<T extends BinlogSourceInfo> extends CommonOffse
     private long restartEventsToSkip = 0;
     private long currentEventLengthInBytes = 0;
     private boolean inTransaction = false;
-    private boolean snapshotCompleted;
     private String transactionId = null;
 
-    public BinlogOffsetContext(boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext,
+    public BinlogOffsetContext(SnapshotType snapshot, boolean snapshotCompleted, TransactionContext transactionContext,
                                IncrementalSnapshotContext<TableId> incrementalSnapshotContext, T sourceInfo) {
-        super(sourceInfo);
+        super(sourceInfo, snapshotCompleted);
         this.sourceInfoSchema = sourceInfo.schema();
 
-        this.snapshotCompleted = snapshotCompleted;
         if (this.snapshotCompleted) {
             postSnapshotCompletion();
         }
         else {
-            sourceInfo.setSnapshot(snapshot ? SnapshotRecord.TRUE : SnapshotRecord.FALSE);
+            setSnapshot(snapshot);
+            sourceInfo.setSnapshot(snapshot != null ? SnapshotRecord.TRUE : SnapshotRecord.FALSE);
         }
 
         this.transactionContext = transactionContext;
@@ -70,10 +70,8 @@ public class BinlogOffsetContext<T extends BinlogSourceInfo> extends CommonOffse
     @Override
     public Map<String, ?> getOffset() {
         final Map<String, Object> offset = offsetUsingPosition(restartRowsToSkip);
-        if (sourceInfo.isSnapshot()) {
-            if (!snapshotCompleted) {
-                offset.put(BinlogSourceInfo.SNAPSHOT_KEY, true);
-            }
+        if (getSnapshot().isPresent()) {
+            offset.put(AbstractSourceInfo.SNAPSHOT_KEY, getSnapshot().get().toString());
         }
         else {
             return incrementalSnapshotContext.store(transactionContext.store(offset));
@@ -84,22 +82,6 @@ public class BinlogOffsetContext<T extends BinlogSourceInfo> extends CommonOffse
     @Override
     public Schema getSourceInfoSchema() {
         return sourceInfoSchema;
-    }
-
-    @Override
-    public boolean isSnapshotRunning() {
-        return sourceInfo.isSnapshot() && !snapshotCompleted;
-    }
-
-    @Override
-    public void preSnapshotStart() {
-        sourceInfo.setSnapshot(SnapshotRecord.TRUE);
-        snapshotCompleted = false;
-    }
-
-    @Override
-    public void preSnapshotCompletion() {
-        snapshotCompleted = true;
     }
 
     @Override
