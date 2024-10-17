@@ -31,9 +31,10 @@ import io.fabric8.kubernetes.api.model.apps.DeploymentStrategyBuilder;
 public class OcpMongosModelProvider {
     public static final String DEPLOYMENT_NAME = "mongo-mongos";
 
-    public static Deployment mongosDeployment(String configServersRs) {
+    public static Deployment mongosDeployment(String configServersRs, String project) {
         ObjectMeta metaData = new ObjectMetaBuilder()
                 .withName(DEPLOYMENT_NAME)
+                .withNamespace(project)
                 .withLabels(Map.of("app", "mongo",
                         "deployment", DEPLOYMENT_NAME,
                         "role", OcpMongoShardedConstants.MONGO_MONGOS_ROLE))
@@ -82,12 +83,13 @@ public class OcpMongosModelProvider {
                 .build();
     }
 
-    public static Service mongosService() {
+    public static Service mongosService(String project) {
         return new ServiceBuilder()
                 .withKind("Service")
                 .withApiVersion("v1")
                 .withMetadata(new ObjectMetaBuilder()
                         .withName(DEPLOYMENT_NAME)
+                        .withNamespace(project)
                         .build())
                 .withSpec(new ServiceSpecBuilder()
                         .withSelector(Map.of("app", "mongo",
