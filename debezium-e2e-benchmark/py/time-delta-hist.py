@@ -56,7 +56,7 @@ for i in range(xmin,xmax):
 num_bins = 100
 n, bins, patches = plt.hist(x, num_bins, facecolor='blue', alpha=0.5)
 
-plt.xlabel('milisecond')
+plt.xlabel('millisecond')
 
 
 
