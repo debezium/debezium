@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
+import io.debezium.testing.system.tools.ConfigProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -122,6 +123,9 @@ public class OcpArtifactServerController {
                 "jackson/jackson-module-jaxb-annotations",
                 "jackson/jackson-module-scala_2.13");
         List<String> artifacts = Stream.concat(commonArtifacts.stream(), extraArtifacts.stream()).collect(toList());
+        if (!ConfigProperties.PRODUCT_BUILD) {
+            artifacts.add("jackson/jackson-module-afterburner");
+        }
         return createPlugin("debezium-connector-" + database, artifacts);
     }
 
