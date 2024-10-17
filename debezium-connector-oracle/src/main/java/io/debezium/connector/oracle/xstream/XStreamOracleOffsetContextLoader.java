@@ -7,6 +7,7 @@ package io.debezium.connector.oracle.xstream;
 
 import java.util.Map;
 
+import io.debezium.connector.SnapshotType;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.Scn;
@@ -30,7 +31,7 @@ public class XStreamOracleOffsetContextLoader implements OffsetContext.Loader<Or
 
     @Override
     public OracleOffsetContext load(Map<String, ?> offset) {
-        boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY));
+        final SnapshotType snapshot = loadSnapshot((Map<String, Object>) offset);
         boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(OracleOffsetContext.SNAPSHOT_COMPLETED_KEY));
 
         String lcrPosition = (String) offset.get(SourceInfo.LCR_POSITION_KEY);

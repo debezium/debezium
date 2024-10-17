@@ -32,6 +32,7 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.SnapshotType;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotIsolationMode;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
@@ -142,7 +143,7 @@ public class SnapshotIT extends AbstractConnectorTest {
             assertRecord(key1, expectedKey1);
             assertRecord((Struct) value1.get("after"), expectedRow1);
             assertThat(record1.sourceOffset())
-                    .extracting("snapshot").containsExactly(true);
+                    .extracting("snapshot").containsExactly(SnapshotType.INITIAL.toString());
             assertThat(record1.sourceOffset())
                     .extracting("snapshot_completed").containsExactly(i == INITIAL_RECORDS_PER_TABLE - 1);
             assertNull(value1.get("before"));
@@ -281,7 +282,7 @@ public class SnapshotIT extends AbstractConnectorTest {
             assertRecord(key1, expectedKey1);
             assertRecord((Struct) value1.get("after"), expectedRow1);
             assertThat(record1.sourceOffset())
-                    .extracting("snapshot").containsExactly(true);
+                    .extracting("snapshot").containsExactly(SnapshotType.INITIAL.toString());
             assertThat(record1.sourceOffset())
                     .extracting("snapshot_completed").containsExactly(i == INITIAL_RECORDS_PER_TABLE - 1);
             assertNull(value1.get("before"));

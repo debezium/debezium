@@ -7,6 +7,7 @@ package io.debezium.connector.oracle.olr;
 
 import java.util.Map;
 
+import io.debezium.connector.SnapshotType;
 import io.debezium.connector.oracle.CommitScn;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleOffsetContext;
@@ -31,7 +32,7 @@ public class OpenLogReplicatorOracleOffsetContextLoader implements OffsetContext
 
     @Override
     public OracleOffsetContext load(Map<String, ?> offset) {
-        boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY));
+        final SnapshotType snapshot = loadSnapshot((Map<String, Object>) offset);
         boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(OracleOffsetContext.SNAPSHOT_COMPLETED_KEY));
 
         Scn scn = OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY);

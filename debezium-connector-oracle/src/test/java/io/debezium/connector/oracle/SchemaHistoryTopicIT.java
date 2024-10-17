@@ -19,6 +19,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.SnapshotType;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
@@ -102,7 +103,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         schemaRecords.forEach(record -> {
             assertThat(record.topic()).isEqualTo("server1");
             assertThat(((Struct) record.key()).getString("databaseName")).isEqualTo(TestHelper.getDatabaseName());
-            assertThat(record.sourceOffset().get("snapshot")).isEqualTo(true);
+            assertThat(record.sourceOffset().get("snapshot")).isEqualTo(SnapshotType.INITIAL.toString());
         });
         assertThat(((Struct) schemaRecords.get(0).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
         assertThat(((Struct) schemaRecords.get(1).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
