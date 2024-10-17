@@ -39,7 +39,7 @@ import com.mongodb.client.model.InsertOneOptions;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.testing.testcontainers.MongoDbDeployment;
 import io.debezium.testing.testcontainers.util.DockerUtils;
@@ -52,7 +52,7 @@ import io.debezium.util.Testing;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractMongoConnectorIT extends AbstractConnectorTest {
+public abstract class AbstractMongoConnectorIT extends AbstractAsyncEngineConnectorTest {
 
     // the one and only task we start in the test suite
     private static final int TASK_ID = 0;
