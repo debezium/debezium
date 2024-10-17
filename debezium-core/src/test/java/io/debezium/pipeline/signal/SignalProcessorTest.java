@@ -270,7 +270,7 @@ public class SignalProcessorTest {
         }
 
         @Override
-        public void preSnapshotStart() {
+        public void preSnapshotStart(boolean onDemand) {
 
         }
 

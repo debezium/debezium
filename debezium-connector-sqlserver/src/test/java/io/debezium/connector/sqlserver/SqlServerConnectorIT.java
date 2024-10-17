@@ -57,6 +57,7 @@ import org.junit.rules.TestRule;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.SnapshotType;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.data.Envelope;
@@ -2164,7 +2165,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
         records = records.subList(1, records.size());
         for (Iterator<SourceRecord> it = records.iterator(); it.hasNext();) {
             SourceRecord record = it.next();
-            assertThat(record.sourceOffset().get("snapshot")).as("Snapshot phase").isEqualTo(true);
+            assertThat(record.sourceOffset().get("snapshot")).as("Snapshot phase").isEqualTo(SnapshotType.INITIAL.toString());
             if (it.hasNext()) {
                 assertThat(record.sourceOffset().get("snapshot_completed")).as("Snapshot in progress").isEqualTo(false);
             }
