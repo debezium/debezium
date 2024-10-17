@@ -67,6 +67,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.SnapshotType;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
@@ -260,7 +261,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             assertThat(after1.get("ID")).isEqualTo(1);
             assertThat(after1.get("C1")).isEqualTo(BigDecimal.valueOf(25L));
             assertThat(after1.get("C2")).isEqualTo("Test");
-            assertThat(record1.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+            assertThat(record1.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(SnapshotType.INITIAL.toString());
             assertThat(record1.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(true);
 
             // insert
@@ -304,7 +305,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(after.get("SCORE")).isEqualTo(BigDecimal.valueOf(1234.56));
         assertThat(after.get("REGISTERED")).isEqualTo(toMicroSecondsSinceEpoch(LocalDateTime.of(2018, 2, 22, 0, 0, 0)));
 
-        assertThat(record1.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(record1.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(SnapshotType.INITIAL.toString());
         assertThat(record1.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(false);
 
         Struct source = (Struct) ((Struct) record1.value()).get("source");
@@ -318,7 +319,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(after.get("SCORE")).isEqualTo(BigDecimal.valueOf(2345.67));
         assertThat(after.get("REGISTERED")).isNull();
 
-        assertThat(record2.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(record2.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(SnapshotType.INITIAL.toString());
         assertThat(record2.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(true);
 
         source = (Struct) ((Struct) record2.value()).get("source");
@@ -382,7 +383,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(source.get(SourceInfo.TXID_KEY)).isNull();
         assertThat(source.get(SourceInfo.TIMESTAMP_KEY)).isNotNull();
 
-        assertThat(record1.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(record1.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(SnapshotType.INITIAL.toString());
         assertThat(record1.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(false);
 
         SourceRecord record2 = testTableRecords.get(1);
@@ -390,7 +391,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         after = (Struct) ((Struct) record2.value()).get("after");
         assertThat(after.get("ID")).isEqualTo(2);
 
-        assertThat(record2.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(record2.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(SnapshotType.INITIAL.toString());
         assertThat(record2.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(true);
 
         source = (Struct) ((Struct) record2.value()).get("source");
@@ -457,7 +458,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(source.get(SourceInfo.TXID_KEY)).isNull();
         assertThat(source.get(SourceInfo.TIMESTAMP_KEY)).isNotNull();
 
-        assertThat(record1.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(record1.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(SnapshotType.INITIAL.toString());
         assertThat(record1.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(false);
 
         SourceRecord record2 = testTableRecords.get(1);
@@ -465,7 +466,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         after = (Struct) ((Struct) record2.value()).get("after");
         assertThat(after.get("ID")).isEqualTo(2);
 
-        assertThat(record2.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(record2.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(SnapshotType.INITIAL.toString());
         assertThat(record2.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(true);
 
         expectedRecordCount = 30;

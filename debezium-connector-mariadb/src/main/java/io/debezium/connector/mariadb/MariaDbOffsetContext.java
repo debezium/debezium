@@ -11,10 +11,12 @@ import java.util.Map;
 
 import org.apache.kafka.connect.errors.ConnectException;
 
+import io.debezium.connector.SnapshotType;
 import io.debezium.connector.binlog.BinlogOffsetContext;
 import io.debezium.connector.binlog.BinlogSourceInfo;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
 
@@ -25,14 +27,14 @@ import io.debezium.relational.TableId;
  */
 public class MariaDbOffsetContext extends BinlogOffsetContext<SourceInfo> {
 
-    public MariaDbOffsetContext(boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext,
+    public MariaDbOffsetContext(SnapshotType snapshot, boolean snapshotCompleted, TransactionContext transactionContext,
                                 IncrementalSnapshotContext<TableId> incrementalSnapshotContext, SourceInfo sourceInfo) {
         super(snapshot, snapshotCompleted, transactionContext, incrementalSnapshotContext, sourceInfo);
     }
 
     public static MariaDbOffsetContext initial(MariaDbConnectorConfig config) {
         final MariaDbOffsetContext offset = new MariaDbOffsetContext(
-                false,
+                null,
                 false,
                 new TransactionContext(),
                 config.isReadOnlyConnection()
@@ -59,7 +61,7 @@ public class MariaDbOffsetContext extends BinlogOffsetContext<SourceInfo> {
             final long binlogPosition = longOffsetValue(offset, BinlogSourceInfo.BINLOG_POSITION_OFFSET_KEY);
 
             final MariaDbOffsetContext offsetContext = new MariaDbOffsetContext(
-                    isTrue(offset, BinlogSourceInfo.SNAPSHOT_KEY),
+                    OffsetContext.Loader.loadSnapshot((Map<String, Object>) offset),
                     isTrue(offset, SNAPSHOT_COMPLETED_KEY),
                     TransactionContext.load(offset),
                     connectorConfig.isReadOnlyConnection()
