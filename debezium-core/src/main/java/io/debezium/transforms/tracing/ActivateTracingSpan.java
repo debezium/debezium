@@ -154,15 +154,18 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
     }
 
     public static boolean isOpenTelemetryAvailable() {
+        LOGGER.trace("[OTEL] OpenTelemetry API available {}", OPEN_TELEMETRY_AVAILABLE);
         return OPEN_TELEMETRY_AVAILABLE;
     }
 
     private static boolean resolveOpenTelemetryApiAvailable() {
         try {
+            LOGGER.trace("[OTEL] OpenTelemetry API available");
             GlobalOpenTelemetry.get();
             return true;
         }
         catch (NoClassDefFoundError e) {
+            LOGGER.trace("[OTEL] OpenTelemetry API not available");
             // ignored
         }
         return false;
