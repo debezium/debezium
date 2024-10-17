@@ -109,7 +109,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
             final PostgresValueConverter valueConverter = valueConverterBuilder.build(typeRegistry);
 
             schema = new PostgresSchema(connectorConfig, defaultValueConverter, topicNamingStrategy, valueConverter);
-            this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicNamingStrategy);
+            this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicNamingStrategy, connectorConfig.taskId());
             final Offsets<PostgresPartition, PostgresOffsetContext> previousOffsets = getPreviousOffsets(
                     new PostgresPartition.Provider(connectorConfig, config), new PostgresOffsetContext.Loader(connectorConfig));
             final Clock clock = Clock.system();

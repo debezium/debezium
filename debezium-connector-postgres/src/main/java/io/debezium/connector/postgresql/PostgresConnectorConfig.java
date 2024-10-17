@@ -14,6 +14,7 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.postgresql.snapshot.ParallelSnapshotter;
 import io.debezium.data.Envelope;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.heartbeat.HeartbeatConnectionProvider;
@@ -211,6 +212,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
          * Perform a snapshot and then stop before attempting to receive any logical changes.
          */
         INITIAL_ONLY("initial_only", (c) -> new InitialOnlySnapshotter()),
+
+        /**
+         * Perform a snapshot using parallel tasks.
+         */
+        PARALLEL("parallel", (c) -> new ParallelSnapshotter()),
 
         /**
          * Inject a custom snapshotter, which allows for more control over snapshots.
@@ -983,6 +989,27 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(PostgresSourceInfoStructMaker.class.getName());
 
+    public static final Field TASK_ID = Field.create("task.id")
+            .withDisplayName("ID of the connector task")
+            .withType(Type.INT)
+            .withDefault(0)
+            .withImportance(Importance.LOW)
+            .withDescription("Internal use only");
+
+    public static final Field PRIMARY_KEY_HASH_COLUMNS = Field.create("primary.key.hash.columns")
+            .withDisplayName("Comma separated primary key fields")
+            .withType(Type.STRING)
+            .withImportance(Importance.LOW)
+            .withDescription("A comma separated value having all the hash components of the primary key")
+            .withValidation((config, field, output) -> {
+                if (config.getString(SNAPSHOT_MODE).equalsIgnoreCase("parallel") && config.getString(field, "").isEmpty()) {
+                    output.accept(field, "", "primary.key.hash.columns cannot be empty when snapshot.mode is 'parallel'");
+                    return 1;
+                }
+
+                return 0;
+            });
+
     private final LogicalDecodingMessageFilter logicalDecodingMessageFilter;
     private final HStoreHandlingMode hStoreHandlingMode;
     private final IntervalHandlingMode intervalHandlingMode;
@@ -1108,6 +1135,14 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return flushLsnOnSource;
     }
 
+    public int taskId() {
+        return getConfig().getInteger(TASK_ID);
+    }
+
+    public String primaryKeyHashColumns() {
+        return getConfig().getString(PRIMARY_KEY_HASH_COLUMNS);
+    }
+
     @Override
     public byte[] getUnavailableValuePlaceholder() {
         String placeholder = getConfig().getString(UNAVAILABLE_VALUE_PLACEHOLDER);
@@ -1181,6 +1216,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     SNAPSHOT_MODE,
                     SNAPSHOT_MODE_CLASS,
                     YB_CONSISTENT_SNAPSHOT,
+                    PRIMARY_KEY_HASH_COLUMNS,
                     HSTORE_HANDLING_MODE,
                     BINARY_HANDLING_MODE,
                     SCHEMA_NAME_ADJUSTMENT_MODE,

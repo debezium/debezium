@@ -1117,6 +1117,62 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void shouldFailIfNoPrimaryKeyHashColumnSpecifiedWithSnapshotModeParallel() throws Exception {
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.PARALLEL.getValue())
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test")
+                .with(PostgresConnectorConfig.PRIMARY_KEY_HASH_COLUMNS, "");
+
+        start(YugabyteDBConnector.class, configBuilder.build(), (success, message, error) -> {
+            assertFalse(success);
+            assertThat(message.contains("primary.key.hash.columns cannot be empty when snapshot.mode is 'parallel'")).isTrue();
+        });
+    }
+
+    @Test
+    public void shouldFailIfParallelSnapshotRunWithMultipleTables() throws Exception {
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.PARALLEL.getValue())
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test,public.test2")
+                .with(PostgresConnectorConfig.PRIMARY_KEY_HASH_COLUMNS, "id");
+
+        start(YugabyteDBConnector.class, configBuilder.build(), (success, message, error) -> {
+            assertFalse(success);
+
+            assertThat(error.getMessage().contains("parallel snapshot consumption is only supported with one table at a time")).isTrue();
+        });
+    }
+
+    @Test
+    public void shouldFailWithSnapshotModeParallelIfNoTableIncludeListProvided() throws Exception {
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.PARALLEL.getValue())
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "")
+                .with(PostgresConnectorConfig.PRIMARY_KEY_HASH_COLUMNS, "id");
+
+        start(YugabyteDBConnector.class, configBuilder.build(), (success, message, error) -> {
+            assertFalse(success);
+
+            assertThat(error.getMessage().contains("No table provided, provide a table in the table.include.list")).isTrue();
+        });
+    }
+
+    @Test
+    public void shouldFailIfSnapshotModeParallelHasPublicationAutoCreateModeAllTables() throws Exception {
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.PARALLEL.getValue())
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test")
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.ALL_TABLES)
+                .with(PostgresConnectorConfig.PRIMARY_KEY_HASH_COLUMNS, "id");;
+
+        start(YugabyteDBConnector.class, configBuilder.build(), (success, message, error) -> {
+            assertFalse(success);
+
+            assertThat(error.getMessage().contains("Snapshot mode parallel is not supported with publication.autocreate.mode all_tables")).isTrue();
+        });
+    }
+
+    @Test
     public void shouldResumeSnapshotIfFailingMidstream() throws Exception {
         // insert another set of rows so we can stop at certain point
         CountDownLatch latch = new CountDownLatch(1);
