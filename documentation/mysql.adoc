@@ -1,0 +1,15 @@
+include::.asciidoctorconfig[]
+// enable following to see product docs
+//:product:
+include::attributes.adoc[]
+
+= User guide
+
+:partialsdir: ../../partials/
+
+//connectors
+
+include::modules/ROOT/pages/connectors/mysql.adoc[leveloffset=+1]
+
+
+////
