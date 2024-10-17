@@ -25,7 +25,6 @@ import io.debezium.antlr.DataTypeResolver;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.mariadb.antlr.listener.MariaDbAntlrDdlParserListener;
-import io.debezium.connector.mariadb.jdbc.MariaDbValueConverters;
 import io.debezium.ddl.parser.mariadb.generated.MariaDBLexer;
 import io.debezium.ddl.parser.mariadb.generated.MariaDBParser;
 import io.debezium.ddl.parser.mariadb.generated.MariaDBParser.CharsetNameContext;
@@ -47,30 +46,23 @@ import io.debezium.relational.Tables;
 public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBParser> {
 
     private final ConcurrentHashMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
-    private final MariaDbValueConverters converters;
     private final Tables.TableFilter tableFilter;
     private final BinlogCharsetRegistry charsetRegistry;
 
     @VisibleForTesting
     public MariaDbAntlrDdlParser() {
-        this(null, Tables.TableFilter.includeAll());
+        this(Tables.TableFilter.includeAll());
     }
 
     @VisibleForTesting
-    public MariaDbAntlrDdlParser(MariaDbValueConverters valueConverters) {
-        this(valueConverters, Tables.TableFilter.includeAll());
-    }
-
-    @VisibleForTesting
-    public MariaDbAntlrDdlParser(MariaDbValueConverters valueConverters, Tables.TableFilter tableFilter) {
-        this(true, false, true, valueConverters, tableFilter, null);
+    public MariaDbAntlrDdlParser(Tables.TableFilter tableFilter) {
+        this(true, false, true, tableFilter, null);
     }
 
     public MariaDbAntlrDdlParser(boolean throwWerrorsFromTreeWalk, boolean includeViews, boolean includeComments,
-                                 MariaDbValueConverters valueConverters, Tables.TableFilter tableFilter, BinlogCharsetRegistry charsetRegistry) {
+                                 Tables.TableFilter tableFilter, BinlogCharsetRegistry charsetRegistry) {
         super(throwWerrorsFromTreeWalk, includeViews, includeComments);
         systemVariables = new BinlogSystemVariables();
-        this.converters = valueConverters;
         this.tableFilter = tableFilter;
         this.charsetRegistry = charsetRegistry;
     }
@@ -451,10 +443,6 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
         // Replace backlash+single-quote to a single-quote.
         // Replace double single-quote to a single-quote.
         return option.replaceAll(",", "\\\\,").replaceAll("\\\\'", "'").replace("''", "'");
-    }
-
-    public MariaDbValueConverters getConverters() {
-        return converters;
     }
 
     public Tables.TableFilter getTableFilter() {

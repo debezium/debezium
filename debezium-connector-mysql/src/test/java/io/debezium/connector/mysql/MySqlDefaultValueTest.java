@@ -24,7 +24,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 public class MySqlDefaultValueTest extends BinlogDefaultValueTest<MySqlValueConverters, MySqlAntlrDdlParser> {
     @Override
     protected MySqlAntlrDdlParser getDdlParser(MySqlValueConverters valueConverter) {
-        return new MySqlAntlrDdlParser(valueConverter);
+        return new MySqlAntlrDdlParser();
     }
 
     @Override

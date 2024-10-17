@@ -27,7 +27,6 @@ import io.debezium.antlr.DataTypeResolver.DataTypeEntry;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.mysql.antlr.listener.MySqlAntlrDdlParserListener;
-import io.debezium.connector.mysql.jdbc.MySqlValueConverters;
 import io.debezium.ddl.parser.mysql.generated.MySqlLexer;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser.CharsetNameContext;
@@ -49,30 +48,23 @@ import io.debezium.relational.Tables.TableFilter;
 public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser> {
 
     private final ConcurrentMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
-    private final MySqlValueConverters converters;
     private final TableFilter tableFilter;
     private final BinlogCharsetRegistry charsetRegistry;
 
     @VisibleForTesting
     public MySqlAntlrDdlParser() {
-        this(null, TableFilter.includeAll());
+        this(TableFilter.includeAll());
     }
 
     @VisibleForTesting
-    public MySqlAntlrDdlParser(MySqlValueConverters converters) {
-        this(converters, TableFilter.includeAll());
-    }
-
-    @VisibleForTesting
-    public MySqlAntlrDdlParser(MySqlValueConverters converters, TableFilter tableFilter) {
-        this(true, false, false, converters, tableFilter, null);
+    public MySqlAntlrDdlParser(TableFilter tableFilter) {
+        this(true, false, false, tableFilter, null);
     }
 
     public MySqlAntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, boolean includeComments,
-                               MySqlValueConverters converters, TableFilter tableFilter, BinlogCharsetRegistry charsetRegistry) {
+                               TableFilter tableFilter, BinlogCharsetRegistry charsetRegistry) {
         super(throwErrorsFromTreeWalk, includeViews, includeComments);
         systemVariables = new BinlogSystemVariables();
-        this.converters = converters;
         this.tableFilter = tableFilter;
         this.charsetRegistry = charsetRegistry;
     }
@@ -439,10 +431,6 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         // Replace backlash+single-quote to a single-quote.
         // Replace double single-quote to a single-quote.
         return option.replaceAll(",", "\\\\,").replaceAll("\\\\'", "'").replace("''", "'");
-    }
-
-    public MySqlValueConverters getConverters() {
-        return converters;
     }
 
     public TableFilter getTableFilter() {
