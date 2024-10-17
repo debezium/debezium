@@ -11,8 +11,8 @@ import java.util.Map;
 
 import org.apache.kafka.connect.errors.ConnectException;
 
+import io.debezium.connector.SnapshotType;
 import io.debezium.connector.binlog.BinlogOffsetContext;
-import io.debezium.connector.binlog.BinlogSourceInfo;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
@@ -20,14 +20,14 @@ import io.debezium.relational.TableId;
 
 public class MySqlOffsetContext extends BinlogOffsetContext<SourceInfo> {
 
-    public MySqlOffsetContext(boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext,
+    public MySqlOffsetContext(SnapshotType snapshot, boolean snapshotCompleted, TransactionContext transactionContext,
                               IncrementalSnapshotContext<TableId> incrementalSnapshotContext, SourceInfo sourceInfo) {
         super(snapshot, snapshotCompleted, transactionContext, incrementalSnapshotContext, sourceInfo);
     }
 
     public static MySqlOffsetContext initial(MySqlConnectorConfig config) {
         final MySqlOffsetContext offset = new MySqlOffsetContext(
-                false,
+                null,
                 false,
                 new TransactionContext(),
                 config.isReadOnlyConnection()
@@ -53,9 +53,8 @@ public class MySqlOffsetContext extends BinlogOffsetContext<SourceInfo> {
                 throw new ConnectException("Source offset '" + SourceInfo.BINLOG_FILENAME_OFFSET_KEY + "' parameter is missing");
             }
             long binlogPosition = longOffsetValue(offset, SourceInfo.BINLOG_POSITION_OFFSET_KEY);
-
             final MySqlOffsetContext offsetContext = new MySqlOffsetContext(
-                    isTrue(offset, BinlogSourceInfo.SNAPSHOT_KEY),
+                    loadSnapshot((Map<String, Object>) offset),
                     isTrue(offset, SNAPSHOT_COMPLETED_KEY),
                     TransactionContext.load(offset),
                     connectorConfig.isReadOnlyConnection()

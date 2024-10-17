@@ -552,7 +552,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
     protected void tryStartingSnapshot(RelationalSnapshotContext<P, O> snapshotContext) {
         if (!snapshotContext.offset.isSnapshotRunning()) {
-            snapshotContext.offset.preSnapshotStart();
+            snapshotContext.offset.preSnapshotStart(snapshotContext.onDemand);
         }
     }
 

@@ -160,7 +160,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
         ctx.offset = new SqlServerOffsetContext(
                 connectorConfig,
                 TxLogPosition.valueOf(jdbcConnection.getMaxLsn(ctx.partition.getDatabaseName())),
-                false,
+                null,
                 false);
     }
 
