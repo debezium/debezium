@@ -11,7 +11,9 @@ import java.util.Map;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
+import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.SnapshotType;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
@@ -31,6 +33,18 @@ public interface OffsetContext {
      * Implementations load a connector-specific offset context based on the offset values stored in Kafka.
      */
     interface Loader<O extends OffsetContext> {
+
+        default SnapshotType loadSnapshot(Map<String, Object> offset) {
+
+            Object snapshot = offset.getOrDefault(AbstractSourceInfo.SNAPSHOT_KEY, null);
+            // this is to manage transition from a boolean snapshot to SnapshotType
+            if (Boolean.TRUE.equals(snapshot) || Boolean.TRUE.toString().equals(snapshot)) {
+                return SnapshotType.INITIAL;
+            }
+
+            return snapshot == null ? null : SnapshotType.valueOf((String) snapshot);
+        }
+
         O load(Map<String, ?> offset);
     }
 
@@ -53,8 +67,9 @@ public interface OffsetContext {
 
     /**
      * Signals that a snapshot will begin, which should reflect in an updated offset state.
+     * @param onDemand indicates whether the snapshot is initial or blocking
      */
-    void preSnapshotStart();
+    void preSnapshotStart(boolean onDemand);
 
     /**
      * Signals that a snapshot will complete, which should reflect in an updated offset state.

@@ -163,7 +163,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         try (MongoDbConnection mongo = taskContext.getConnection(dispatcher, snapshotCtx.partition)) {
             initSnapshotStartOffsets(snapshotCtx, mongo);
             SnapshotReceiver<MongoDbPartition> snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
-            snapshotCtx.offset.preSnapshotStart();
+            snapshotCtx.offset.preSnapshotStart(snapshottingTask.isOnDemand());
 
             createDataEvents(sourceCtx, snapshotCtx, snapshotReceiver, mongo, snapshottingTask);
 

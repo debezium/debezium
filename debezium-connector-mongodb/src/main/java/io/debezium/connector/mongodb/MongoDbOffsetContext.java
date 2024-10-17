@@ -29,7 +29,6 @@ import com.mongodb.client.MongoChangeStreamCursor;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.DebeziumException;
-import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor;
 import io.debezium.connector.mongodb.snapshot.MongoDbIncrementalSnapshotContext;
 import io.debezium.pipeline.CommonOffsetContext;
@@ -106,8 +105,8 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
     }
 
     @Override
-    public void preSnapshotStart() {
-        sourceInfo.setSnapshot(SnapshotRecord.TRUE);
+    public void preSnapshotStart(boolean onDemand) {
+        super.preSnapshotStart(onDemand);
     }
 
     @Override

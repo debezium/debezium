@@ -37,6 +37,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.config.Field;
+import io.debezium.connector.SnapshotType;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotMode;
 import io.debezium.connector.binlog.junit.SkipTestDependingOnDatabaseRule;
 import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs;
@@ -187,7 +188,7 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
             String currentRecordTable = ((Struct) record.value()).getStruct("source").getString("table");
             if (i.hasNext()) {
                 final Object snapshotOffsetField = record.sourceOffset().get("snapshot");
-                assertThat(snapshotOffsetField).isEqualTo(true);
+                assertThat(snapshotOffsetField).isEqualTo(SnapshotType.INITIAL.toString());
 
                 if (Objects.equals(snapshotSourceField, "first")) {
                     assertThat(previousRecordTable).isNull();
@@ -833,7 +834,7 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
             final String snapshotSourceField = ((Struct) record.value()).getStruct("source").getString("snapshot");
             if (i.hasNext()) {
                 final Object snapshotOffsetField = record.sourceOffset().get("snapshot");
-                assertThat(snapshotOffsetField).isEqualTo(true);
+                assertThat(snapshotOffsetField).isEqualTo(SnapshotType.INITIAL.toString());
                 assertThat(snapshotSourceField).isEqualTo("true");
             }
             else {

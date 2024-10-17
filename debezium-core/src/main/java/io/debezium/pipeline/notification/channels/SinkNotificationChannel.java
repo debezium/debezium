@@ -144,7 +144,7 @@ public class SinkNotificationChannel implements NotificationChannel, ConnectChan
         }
 
         @Override
-        public void preSnapshotStart() {
+        public void preSnapshotStart(boolean onDemand) {
 
         }
 
