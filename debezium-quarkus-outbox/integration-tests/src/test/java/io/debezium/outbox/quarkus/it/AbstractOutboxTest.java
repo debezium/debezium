@@ -23,7 +23,6 @@ import org.hibernate.persister.entity.EntityPersister;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.outbox.quarkus.internal.OutboxConstants;
-import io.quarkus.test.common.QuarkusTestResource;
 
 /**
  * Abstract base class for the Debezium Outbox extension test suite.  Each subclass implementation can
@@ -31,7 +30,6 @@ import io.quarkus.test.common.QuarkusTestResource;
  *
  * @author Chris Cranford
  */
-@QuarkusTestResource(DatabaseTestResource.class)
 public abstract class AbstractOutboxTest {
     @Inject
     EntityManager entityManager;

@@ -17,6 +17,7 @@ public final class OutboxConstants {
     public static final String OUTBOX_ENTITY_FULLNAME = "io.debezium.outbox.quarkus.internal.OutboxEvent";
 
     public static final String TRACING_SPAN_CONTEXT = "tracingspancontext";
+    public static final String DEBEZIUM_CONNECT_NIGHTLY_IMAGE = "quay.io/debezium/connect:nightly";
 
     private OutboxConstants() {
     }
