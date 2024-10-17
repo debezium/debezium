@@ -14,17 +14,21 @@ import java.util.Map;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
+import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Schema.Type;
 import org.apache.kafka.connect.data.Struct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.bean.StandardBeanNames;
 import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.bean.spi.BeanRegistryAware;
 import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
+import io.debezium.config.EnumeratedValue;
+import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.data.Json;
@@ -73,12 +77,63 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
     private RelationalDatabaseSchema schema;
     private RelationalDatabaseConnectorConfig connectorConfig;
 
+    public static final Field ERROR_HANDLING_MODE = Field.create("reselect.error.handling.mode")
+            .withDisplayName("Error Handling")
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 0))
+            .withEnum(ErrorHandlingMode.class, ErrorHandlingMode.WARN)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Specify how to handle error in case of lookup sql failure or empty reselection: "
+                    + "'warn' only log the error; "
+                    + "'fail' fail the connector with an error message.");
+
+    private ErrorHandlingMode errorHandlingMode;
+
+    public enum ErrorHandlingMode implements EnumeratedValue {
+        /**
+         * Error handling to be used when doing lookup for the value.
+         */
+        WARN("warn"),
+        FAIL("fail");
+
+        private final String value;
+
+        ErrorHandlingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static ErrorHandlingMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (ErrorHandlingMode option : ErrorHandlingMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+    }
+
     @Override
     public void configure(Map<String, ?> properties) {
         final Configuration config = Configuration.from(properties);
         this.reselectUnavailableValues = config.getBoolean(RESELECT_UNAVAILABLE_VALUES, true);
         this.reselectNullValues = config.getBoolean(RESELECT_NULL_VALUES, true);
         this.reselectUseEventKeyFields = config.getBoolean(RESELECT_USE_EVENT_KEY, false);
+        this.errorHandlingMode = ErrorHandlingMode.parse(config.getString(ERROR_HANDLING_MODE));
         this.selector = new ReselectColumnsPredicateBuilder()
                 .includeColumns(config.getString(RESELECT_COLUMNS_INCLUDE_LIST))
                 .excludeColumns(config.getString(RESELECT_COLUMNS_EXCLUDE_LIST))
@@ -167,13 +222,23 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
         try {
             selections = jdbcConnection.reselectColumns(table, requiredColumnSelections, keyColumns, keyValues, source);
             if (selections.isEmpty()) {
-                LOGGER.warn("Failed to find row in table {} with key {}.", tableId, key);
-                return;
+                if (errorHandlingMode == ErrorHandlingMode.FAIL) {
+                    throw new DebeziumException("Failed to find row in table " + tableId + " with key " + key);
+                }
+                else {
+                    LOGGER.warn("Failed to find row in table {} with key {}.", tableId, key);
+                    return;
+                }
             }
         }
         catch (SQLException e) {
-            LOGGER.warn("Failed to re-select row for table {} and key {}", tableId, key, e);
-            return;
+            if (errorHandlingMode == ErrorHandlingMode.FAIL) {
+                throw new DebeziumException("Failed to re-select columns for table " + tableId + " and key " + keyValues, e);
+            }
+            else {
+                LOGGER.warn("Failed to re-select columns for table {} and key {}", tableId, keyValues, e);
+                return;
+            }
         }
 
         // Iterate re-selection columns and override old values
