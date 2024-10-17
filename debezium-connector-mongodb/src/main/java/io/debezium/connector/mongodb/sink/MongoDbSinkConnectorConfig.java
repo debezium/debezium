@@ -17,13 +17,14 @@ import com.mongodb.ConnectionString;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.connector.SinkConnectorConfig;
 import io.debezium.connector.mongodb.shared.SharedMongoDbConnectorConfig;
-import io.debezium.table.ColumnNamingStrategy;
-import io.debezium.table.DefaultColumnNamingStrategy;
-import io.debezium.table.DefaultTableNamingStrategy;
-import io.debezium.table.FieldFilterFactory;
-import io.debezium.table.TableNamingStrategy;
+import io.debezium.sink.SinkConnectorConfig;
+import io.debezium.sink.filter.FieldFilterFactory;
+import io.debezium.sink.filter.FieldFilterFactory.FieldNameFilter;
+import io.debezium.sink.naming.CollectionNamingStrategy;
+import io.debezium.sink.naming.ColumnNamingStrategy;
+import io.debezium.sink.naming.DefaultCollectionNamingStrategy;
+import io.debezium.sink.naming.DefaultColumnNamingStrategy;
 import io.debezium.util.Strings;
 
 public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig, SinkConnectorConfig {
@@ -33,13 +34,9 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
     public static final String ID_FIELD = "_id";
 
     public static final String SINK_DATABASE = "sink.database";
-    public static final String INSERT_MODE = "insert.mode";
-    public static final String DELETE_ENABLED = "delete.enabled";
-    public static final String TRUNCATE_ENABLED = "truncate.enabled";
     public static final String TABLE_NAME_FORMAT = "table.name.format";
     public static final String TABLE_NAMING_STRATEGY = "table.naming.strategy";
     public static final String COLUMN_NAMING_STRATEGY = "column.naming.strategy";
-    public static final String BATCH_SIZE = "batch.size";
     public static final String FIELD_INCLUDE_LIST = "field.include.list";
     public static final String FIELD_EXCLUDE_LIST = "field.exclude.list";
 
@@ -67,8 +64,8 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 2))
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
-            .withDefault(DefaultTableNamingStrategy.class.getName())
-            .withDescription("Name of the strategy class that implements the TableNamingStrategy interface.");
+            .withDefault(DefaultCollectionNamingStrategy.class.getName())
+            .withDescription("Name of the strategy class that implements the CollectionNamingStrategy interface.");
 
     public static final Field COLUMN_NAMING_STRATEGY_FIELD = Field.create(COLUMN_NAMING_STRATEGY)
             .withDisplayName("Name of the strategy class that implements the ColumnNamingStrategy interface")
@@ -78,17 +75,6 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(DefaultColumnNamingStrategy.class.getName())
             .withDescription("Name of the strategy class that implements the ColumnNamingStrategy interface.");
-
-    public static final Field BATCH_SIZE_FIELD = Field.create(BATCH_SIZE)
-            .withDisplayName("Specifies how many records to attempt to batch together into the destination table, when possible. " +
-                    "You can also configure the connector’s underlying consumer’s max.poll.records using consumer.override.max.poll.records in the connector configuration.")
-            .withType(ConfigDef.Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 4))
-            .withWidth(ConfigDef.Width.SHORT)
-            .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDefault(500)
-            .withDescription("Specifies how many records to attempt to batch together into the destination table, when possible. " +
-                    "You can also configure the connector’s underlying consumer’s max.poll.records using consumer.override.max.poll.records in the connector configuration.");
 
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
@@ -117,25 +103,29 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
     private final ConnectionString connectionString;
 
     private final String sinkDatabaseName;
-    private final String tableNameFormat;
-    private final TableNamingStrategy tableNamingStrategy;
+    private final String collectionNameFormat;
+    private final CollectionNamingStrategy collectionNamingStrategy;
     private final ColumnNamingStrategy columnNamingStrategy;
     private FieldFilterFactory.FieldNameFilter fieldsFilter;
     private final int batchSize;
+    private final boolean truncateEnabled;
+    private final boolean deleteEnabled;
 
     public MongoDbSinkConnectorConfig(Configuration config) {
         this.config = config;
         this.connectionString = resolveConnectionString(config);
         this.sinkDatabaseName = config.getString(SINK_DATABASE_NAME);
 
-        this.tableNameFormat = config.getString(TABLE_NAME_FORMAT_FIELD);
-        this.tableNamingStrategy = config.getInstance(TABLE_NAMING_STRATEGY_FIELD, TableNamingStrategy.class);
+        this.collectionNameFormat = config.getString(TABLE_NAME_FORMAT_FIELD);
+        this.collectionNamingStrategy = config.getInstance(TABLE_NAMING_STRATEGY_FIELD, CollectionNamingStrategy.class);
         this.columnNamingStrategy = config.getInstance(COLUMN_NAMING_STRATEGY_FIELD, ColumnNamingStrategy.class);
-        this.batchSize = config.getInteger(BATCH_SIZE_FIELD);
 
         String fieldExcludeList = config.getString(FIELD_EXCLUDE_LIST);
         String fieldIncludeList = config.getString(FIELD_INCLUDE_LIST);
         this.fieldsFilter = FieldFilterFactory.createFieldFilter(fieldIncludeList, fieldExcludeList);
+        this.truncateEnabled = config.getBoolean(SinkConnectorConfig.TRUNCATE_ENABLED_FIELD);
+        this.deleteEnabled = config.getBoolean(DELETE_ENABLED_FIELD);
+        this.batchSize = config.getInteger(BATCH_SIZE_FIELD);
     }
 
     public void validate() {
@@ -170,8 +160,14 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
         return batchSize;
     }
 
-    public TableNamingStrategy getTableNamingStrategy() {
-        return tableNamingStrategy;
+    @Override
+    public CollectionNamingStrategy getCollectionNamingStrategy() {
+        return collectionNamingStrategy;
+    }
+
+    @Override
+    public FieldNameFilter getFieldFilter() {
+        return fieldsFilter;
     }
 
     public ColumnNamingStrategy getColumnNamingStrategy() {
@@ -194,8 +190,26 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
         return sinkDatabaseName;
     }
 
-    public String getTableNameFormat() {
-        return tableNameFormat;
+    public String getCollectionNameFormat() {
+        return collectionNameFormat;
+    }
+
+    @Override
+    public PrimaryKeyMode getPrimaryKeyMode() {
+        return null;
+    }
+
+    public boolean isTruncateEnabled() {
+        return truncateEnabled;
+    }
+
+    public boolean isDeleteEnabled() {
+        return deleteEnabled;
+    }
+
+    @Override
+    public String useTimeZone() {
+        return "UTC";
     }
 
 }

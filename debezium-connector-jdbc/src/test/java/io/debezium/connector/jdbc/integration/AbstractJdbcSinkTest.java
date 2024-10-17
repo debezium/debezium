@@ -23,13 +23,14 @@ import org.slf4j.LoggerFactory;
 
 import com.mchange.v2.c3p0.DataSources;
 
+import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnector;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkTaskTestContext;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
-import io.debezium.connector.jdbc.naming.DefaultTableNamingStrategy;
-import io.debezium.connector.jdbc.naming.TableNamingStrategy;
 import io.debezium.connector.jdbc.util.RandomTableNameGenerator;
+import io.debezium.sink.naming.CollectionNamingStrategy;
+import io.debezium.sink.naming.DefaultCollectionNamingStrategy;
 
 /**
  * Abstract JDBC Sink Connector integration test.
@@ -42,7 +43,7 @@ public abstract class AbstractJdbcSinkTest {
 
     private final Sink sink;
     private final RandomTableNameGenerator randomTableNameGenerator = new RandomTableNameGenerator();
-    private final TableNamingStrategy tableNamingStrategy = new DefaultTableNamingStrategy();
+    private final CollectionNamingStrategy collectionNamingStrategy = new DefaultCollectionNamingStrategy();
 
     private JdbcSinkConnector sinkConnector;
     private SinkTask sinkTask;
@@ -174,7 +175,7 @@ public abstract class AbstractJdbcSinkTest {
     protected String destinationTableName(SinkRecord record) {
         // todo: pass the configuration in from the test
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(getDefaultSinkConfig());
-        return sink.formatTableName(tableNamingStrategy.resolveTableName(config, record));
+        return sink.formatTableName(collectionNamingStrategy.resolveCollectionName(new KafkaDebeziumSinkRecord(record), config.getCollectionNameFormat()));
     }
 
     /**

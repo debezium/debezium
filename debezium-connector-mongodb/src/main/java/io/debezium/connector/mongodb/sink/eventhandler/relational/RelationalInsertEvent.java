@@ -15,7 +15,7 @@ import com.mongodb.client.model.WriteModel;
 import io.debezium.connector.mongodb.sink.converters.SinkDocument;
 import io.debezium.connector.mongodb.sink.eventhandler.EventOperation;
 import io.debezium.data.Envelope.Operation;
-import io.debezium.table.ColumnNamingStrategy;
+import io.debezium.sink.naming.ColumnNamingStrategy;
 
 public class RelationalInsertEvent implements EventOperation {
 

@@ -919,7 +919,7 @@ To prevent the connector from rebalancing, set the total retry time (flush.retry
 By default, the connector uses the field name as the column name.
 |[[jdbc-property-table-naming-strategy]]<<jdbc-property-table-naming-strategy, `+table.naming.strategy+`>>
 |`i.d.c.j.n.DefaultTableNamingStrategy`
-|Specifies the fully-qualified class name of a `TableNamingStrategy` implementation that the connector uses to resolve table names from incoming event topic names. +
+|Specifies the fully-qualified class name of a `CollectionNamingStrategy` implementation that the connector uses to resolve table names from incoming event topic names. +
  +
 The default behavior is to: +
 

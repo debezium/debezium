@@ -11,7 +11,7 @@ import java.util.Optional;
 import io.debezium.util.Strings;
 
 /**
- * A class describing DataCollection for incremental snapshot
+ * A class describing CollectionId for incremental snapshot
  *
  * @author Vivek Wassan
  *
@@ -70,7 +70,7 @@ public class DataCollection<T> {
 
     @Override
     public String toString() {
-        return "DataCollection{" +
+        return "CollectionId{" +
                 "id=" + id +
                 ", additionalCondition=" + additionalCondition +
                 ", surrogateKey=" + surrogateKey +

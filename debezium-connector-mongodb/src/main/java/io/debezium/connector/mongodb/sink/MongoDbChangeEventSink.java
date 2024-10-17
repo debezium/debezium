@@ -9,6 +9,7 @@ import static io.debezium.connector.mongodb.sink.MongoDbSinkConnectorTask.LOGGER
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.stream.Collectors;
 
@@ -26,9 +27,12 @@ import com.mongodb.client.model.WriteModel;
 
 import io.debezium.DebeziumException;
 import io.debezium.dlq.ErrorReporter;
-import io.debezium.pipeline.spi.ChangeEventSink;
+import io.debezium.metadata.CollectionId;
+import io.debezium.sink.AbstractChangeEventSink;
+import io.debezium.sink.DebeziumSinkRecord;
+import io.debezium.sink.spi.ChangeEventSink;
 
-final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
+final class MongoDbChangeEventSink extends AbstractChangeEventSink implements ChangeEventSink, AutoCloseable {
 
     private final MongoDbSinkConnectorConfig sinkConfig;
     private final MongoClient mongoClient;
@@ -38,6 +42,7 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
                            final MongoDbSinkConnectorConfig sinkConfig,
                            final MongoClient mongoClient,
                            final ErrorReporter errorReporter) {
+        super(sinkConfig);
         this.sinkConfig = sinkConfig;
         this.mongoClient = mongoClient;
         this.errorReporter = errorReporter;
@@ -50,6 +55,10 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
             // just using try-with-resources to ensure they all get closed, even in the case of
             // exceptions
         }
+    }
+
+    public Optional<CollectionId> getCollectionId(String collectionName) {
+        return Optional.of(new CollectionId(collectionName));
     }
 
     public void execute(final Collection<SinkRecord> records) {
@@ -115,7 +124,7 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
     }
 
     private void handleTolerableWriteException(
-                                               final List<SinkRecord> batch,
+                                               final List<DebeziumSinkRecord> batch,
                                                final boolean ordered,
                                                final RuntimeException e,
                                                final boolean logErrors,
@@ -136,7 +145,7 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
         }
     }
 
-    private static void log(final Collection<SinkRecord> records, final RuntimeException e) {
+    private static void log(final Collection<DebeziumSinkRecord> records, final RuntimeException e) {
         LOGGER.error("Failed to put into the sink the following records: {}", records, e);
     }
 }
