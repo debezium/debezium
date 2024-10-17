@@ -253,7 +253,18 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 // We've not yet seen any GTIDs, so that means we have to start reading the binlog from the beginning ...
                 client.setBinlogFilename(effectiveOffsetContext.getSource().binlogFilename());
                 client.setBinlogPosition(effectiveOffsetContext.getSource().binlogPosition());
-                initializeGtidSet("");
+                if (purgedServerGtidSet == null || purgedServerGtidSet.isEmpty()) {
+                    LOGGER.info("No GTID stored in the offset, registering binlog reader with empty GTID set.");
+                    client.setGtidSet("");
+                    initializeGtidSet("");
+                }
+                else {
+                    LOGGER.info("No GTID stored in the offset, but there is non-empty purged GTID set. Registering binlog reader with purged GTID set: '{}'",
+                            purgedServerGtidSet.toString());
+                    client.setGtidSet(purgedServerGtidSet.toString());
+                    // We don't have stored any GTID in the offset, so start from empty GTID set.
+                    initializeGtidSet("");
+                }
             }
         }
         else {
