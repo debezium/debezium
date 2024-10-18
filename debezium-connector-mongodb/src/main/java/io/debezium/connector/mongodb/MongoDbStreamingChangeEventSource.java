@@ -8,6 +8,7 @@ package io.debezium.connector.mongodb;
 import java.util.concurrent.TimeUnit;
 
 import org.bson.BsonDocument;
+import org.bson.BsonTimestamp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,7 +83,12 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
         try (MongoDbConnection mongo = taskContext.getConnection(dispatcher, partition)) {
             mongo.execute("Reading change stream", client -> {
-                readChangeStream(client, context, partition);
+                readChangeStream(client,
+                        context,
+                        partition,
+                        connectorConfig.isMultiTaskEnabled(),
+                        connectorConfig.getMultiTaskGen(),
+                        connectorConfig.getMaxTasks());
             });
         }
         catch (Throwable t) {
@@ -96,12 +102,23 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         return effectiveOffset;
     }
 
-    private void readChangeStream(MongoClient client, ChangeEventSourceContext context, MongoDbPartition partition) {
+    private void readChangeStream(MongoClient client, ChangeEventSourceContext context, MongoDbPartition partition, boolean multiTaskEnabled, int multiTaskGen,
+                                  int taskCount) {
         LOGGER.info("Reading change stream");
         final SplitEventHandler<BsonDocument> splitHandler = new SplitEventHandler<>();
-        final ChangeStreamIterable<BsonDocument> stream = initChangeStream(client, effectiveOffset);
 
-        try (var cursor = BufferingChangeStreamCursor.fromIterable(stream, taskContext, streamingMetrics, clock).start()) {
+        MultiTaskWindowHandler multiTaskWindowHandler = getOffsetHandler(effectiveOffset, multiTaskEnabled, taskCount);
+        final ChangeStreamIterable<BsonDocument> stream = initChangeStream(client, effectiveOffset, multiTaskWindowHandler);
+
+        BufferingChangeStreamCursor<BsonDocument> cursor;
+        if (multiTaskEnabled) {
+            cursor = BufferingChangeStreamCursor.fromIterable(stream, multiTaskWindowHandler, taskContext, streamingMetrics, clock);
+        }
+        else {
+            cursor = BufferingChangeStreamCursor.fromIterable(stream, taskContext, streamingMetrics, clock);
+        }
+        try (cursor) {
+            cursor.start();
             while (context.isRunning()) {
                 waitWhenStreamingPaused(context, cursor);
                 var resumableEvent = cursor.tryNext();
@@ -189,7 +206,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
     }
 
-    protected ChangeStreamIterable<BsonDocument> initChangeStream(MongoClient client, MongoDbOffsetContext offsetContext) {
+    protected ChangeStreamIterable<BsonDocument> initChangeStream(MongoClient client, MongoDbOffsetContext offsetContext, MultiTaskWindowHandler offsetHandler) {
         final ChangeStreamIterable<BsonDocument> stream = MongoUtils.openChangeStream(client, taskContext);
 
         if (connectorConfig.getCaptureMode().isFullUpdate()) {
@@ -203,20 +220,44 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         if (connectorConfig.getCaptureMode().isIncludePreImage()) {
             stream.fullDocumentBeforeChange(FullDocumentBeforeChange.WHEN_AVAILABLE);
         }
-        if (offsetContext.lastResumeToken() != null) {
-            LOGGER.info("Resuming streaming from token '{}'", offsetContext.lastResumeToken());
-            stream.resumeAfter(offsetContext.lastResumeTokenDoc());
+        if (offsetHandler == null) {
+            if (offsetContext.lastResumeToken() != null) {
+                LOGGER.info("Resuming streaming from token '{}'", offsetContext.lastResumeToken());
+                stream.resumeAfter(offsetContext.lastResumeTokenDoc());
+            }
+            else if (offsetContext.lastTimestamp() != null) {
+                LOGGER.info("Resuming streaming from operation time '{}'", offsetContext.lastTimestamp());
+                stream.startAtOperationTime(offsetContext.lastTimestamp());
+            }
         }
-        else if (offsetContext.lastTimestamp() != null) {
-            LOGGER.info("Resuming streaming from operation time '{}'", offsetContext.lastTimestamp());
-            stream.startAtOperationTime(offsetContext.lastTimestamp());
+        else if (offsetHandler.started) {
+            stream.startAtOperationTime(offsetHandler.optimizedOplogStart);
         }
-
         if (connectorConfig.getCursorMaxAwaitTime() > 0) {
             stream.maxAwaitTime(connectorConfig.getCursorMaxAwaitTime(), TimeUnit.MILLISECONDS);
         }
 
         return stream;
+    }
+
+    private MultiTaskWindowHandler getOffsetHandler(MongoDbOffsetContext offsetContext, boolean multiTaskEnabled, int taskCount) {
+        if (!multiTaskEnabled) {
+            return null;
+        }
+        MultiTaskWindowHandler multiTaskWindowHandler = new MultiTaskWindowHandler(connectorConfig.getMultiTaskHopSeconds(), taskCount, taskContext.getMongoTaskId());
+        BsonTimestamp startTime = offsetContext.lastResumeTokenTime();
+        if (startTime == null) {
+            startTime = offsetContext.lastTimestamp();
+        }
+        if (startTime != null) {
+            multiTaskWindowHandler = multiTaskWindowHandler.startAtTimestamp(startTime);
+            LOGGER.info("Setting window for stepwise taskId '{}'/'{}' start '{}' stop '{}'.",
+                    multiTaskWindowHandler.taskId,
+                    multiTaskWindowHandler.taskCount,
+                    multiTaskWindowHandler.optimizedOplogStart,
+                    multiTaskWindowHandler.oplogStop);
+        }
+        return multiTaskWindowHandler;
     }
 
     protected MongoDbOffsetContext emptyOffsets(MongoDbConnectorConfig connectorConfig) {
