@@ -191,7 +191,7 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
     public void readsSchemaOnlyForSignaledTables() throws Exception {
         // Testing.Print.enable();
 
-        populateTable(tableNames().get(1).toString());
+        populateTable(tableNames().get(1));
 
         startConnectorWithSnapshot(x -> historizedMutableConfig(false, false));
 
@@ -199,7 +199,7 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
 
         sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(
                 Map.of(tableDataCollectionIds().get(1), String.format("SELECT * FROM %s WHERE aa < 500", tableNames().get(1))), "", BLOCKING,
-                tableDataCollectionIds().get(1).toString());
+                tableDataCollectionIds().get(1));
 
         waitForLogMessage("Snapshot completed", AbstractSnapshotChangeEventSource.class);
 
@@ -275,6 +275,58 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
         signalingRecords = 1;
 
         assertStreamingRecordsArePresent(ROW_COUNT, consumeRecordsByTopic(ROW_COUNT + signalingRecords, 10));
+
+    }
+
+    @FixFor("DBZ-7903")
+    @Test
+    public void aFailedBlockingSnapshotShouldNotCauseInitialSnapshotOnRestart() throws Exception {
+        // Testing.Print.enable();
+
+        populateTable();
+
+        startConnectorWithSnapshot(x -> mutableConfig(false, false));
+
+        waitForSnapshotToBeCompleted(connector(), server(), task(), database());
+
+        SourceRecords consumedRecordsByTopic = consumeRecordsByTopic(ROW_COUNT, 10);
+        List<Integer> expectedValues = IntStream.rangeClosed(0, 999).boxed().collect(Collectors.toList());
+
+        assertRecordsWithValuesPresent(ROW_COUNT, expectedValues, topicName(), consumedRecordsByTopic);
+
+        stopConnector();
+        assertConnectorNotRunning();
+
+        startConnectorWithSnapshot(x -> mutableConfig(false, false)
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, String.join(",", tableDataCollectionIds())));
+
+        sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(
+                Map.of(tableDataCollectionIds().get(0), String.format("SELECT * FROM %s", tableNames().get(0)),
+                        tableDataCollectionIds().get(1), "SELECT failing query"),
+                "", BLOCKING,
+                tableDataCollectionIds().get(0), tableDataCollectionIds().get(1));
+
+        waitForLogMessage("Snapshot was not completed successfully", AbstractSnapshotChangeEventSource.class);
+
+        // Here we expect one record less since the last record (999) is buffered.
+        // This to maintain the same behavior of initial snapshot.
+        // Followup JIRA https://issues.redhat.com/browse/DBZ-8335
+        consumedRecordsByTopic = consumeRecordsByTopic(ROW_COUNT, 10);
+        expectedValues = IntStream.rangeClosed(0, 998).boxed().collect(Collectors.toList());
+
+        assertRecordsWithValuesPresent(ROW_COUNT - 1, expectedValues, topicName(), consumedRecordsByTopic);
+
+        insertRecords(1, ROW_COUNT * 2);
+
+        waitForAvailableRecords();
+
+        assertRecordsWithValuesPresent(1, List.of(2000), topicName(), consumeRecordsByTopic(1, 10));
+
+        stopConnector();
+
+        startConnectorWithSnapshot(x -> mutableConfig(false, false));
+
+        assertNoRecordsToConsume();
 
     }
 
@@ -384,7 +436,7 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
                 recordsByTopic);
     }
 
-    private void assertRecordsWithValuesPresent(int expectedRecords, List<Integer> expectedValues, String topicName, SourceRecords recordsByTopic) {
+    protected void assertRecordsWithValuesPresent(int expectedRecords, List<Integer> expectedValues, String topicName, SourceRecords recordsByTopic) {
 
         List<Integer> actual = recordsByTopic.recordsForTopic(topicName).stream()
                 .map(s -> ((Struct) s.value()).getStruct("after").getInt32(valueFieldName()))
