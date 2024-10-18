@@ -40,7 +40,6 @@ public class MariaDbDatabaseSchema extends BinlogDatabaseSchema<MariaDbPartition
                 true,
                 false,
                 connectorConfig.isSchemaChangesHistoryEnabled(),
-                valueConverter,
                 getTableFilter(),
                 connectorConfig.getServiceRegistry().getService(BinlogCharsetRegistry.class));
     }
