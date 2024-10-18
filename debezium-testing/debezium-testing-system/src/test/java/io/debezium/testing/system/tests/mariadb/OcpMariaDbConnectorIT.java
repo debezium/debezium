@@ -16,6 +16,7 @@ import io.debezium.testing.system.fixtures.connectors.MariaDbConnector;
 import io.debezium.testing.system.fixtures.databases.ocp.OcpMariaDb;
 import io.debezium.testing.system.fixtures.kafka.OcpKafka;
 import io.debezium.testing.system.fixtures.operator.OcpStrimziOperator;
+import io.debezium.testing.system.tools.databases.mariadb.MariaDbController;
 import io.debezium.testing.system.tools.kafka.ConnectorConfigBuilder;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
@@ -38,7 +39,8 @@ public class OcpMariaDbConnectorIT extends MariaDBTests {
     public OcpMariaDbConnectorIT(KafkaController kafkaController,
                                  KafkaConnectController connectController,
                                  ConnectorConfigBuilder connectorConfig,
-                                 KafkaAssertions<?, ?> assertions) {
-        super(kafkaController, connectController, connectorConfig, assertions);
+                                 KafkaAssertions<?, ?> assertions,
+                                 MariaDbController dbController) {
+        super(kafkaController, connectController, connectorConfig, assertions, dbController);
     }
 }
