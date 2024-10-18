@@ -32,7 +32,7 @@ public class RestPrometheusMetricReader implements ConnectorMetricsReader {
     }
 
     public List<String> getMetrics() {
-        LOGGER.info("Retrieving connector metrics");
+        LOGGER.info("Retrieving connector metrics from {}", url);
         OkHttpClient httpClient = new OkHttpClient();
         Request r = new Request.Builder().url(url).get().build();
 

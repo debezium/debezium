@@ -486,7 +486,7 @@
                                                 <outputDirectory>etc/mysql</outputDirectory>
                                             </fileSet>
                                             <fileSet>
-                                                <directory>${project.basedir}/src/test/docker/init</directory>
+                                                <directory>${project.basedir}/src/test/docker/init-percona</directory>
                                                 <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
                                             </fileSet>
                                         </fileSets>

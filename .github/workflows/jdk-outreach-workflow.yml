@@ -107,7 +107,7 @@ jobs:
       - name: Maven Build
         run: >
           ./mvnw clean install -B -pl debezium-bom,debezium-connector-postgres -am 
-          -Passembly,pgoutput-decoder,postgres-16 ${{ matrix.feature.args }} 
+          -Passembly,pgoutput-decoder,postgres-17 ${{ matrix.feature.args }} 
           -Ddebezium.test.records.waittime=5 
           -Dformat.formatter.goal=validate 
           -Dformat.imports.goal=check 

@@ -124,7 +124,7 @@ jobs:
       max-parallel: 2
       matrix:
         profile: [ "mysql-ci", "mysql-ci-gtids", "mysql-ci-percona", "mysql-ci-ssl" ]
-        version-mysql-server: [ "8.0", "8.4", "9.0" ]
+        version-mysql-server: [ "8.0", "8.4", "9.1" ]
       fail-fast: false
     name: "MySQL ${{ matrix.version-mysql-server }} - ${{ matrix.profile }}"
     needs: [ check_style ]
@@ -166,7 +166,7 @@ jobs:
       # Run each PostgreSQL job sequentially
       max-parallel: 1
       matrix:
-        profile: [ "assembly,postgres-12", "assembly,postgres-16,pgoutput-decoder" ]
+        profile: [ "assembly,postgres-12", "assembly,postgres-17,pgoutput-decoder" ]
       fail-fast: false
     name: "PostgreSQL - ${{ matrix.profile }}"
     needs: [ check_style ]
