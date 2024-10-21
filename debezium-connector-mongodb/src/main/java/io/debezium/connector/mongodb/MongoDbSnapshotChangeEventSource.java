@@ -6,13 +6,15 @@
 package io.debezium.connector.mongodb;
 
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.CompletionService;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -20,6 +22,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.kafka.connect.errors.ConnectException;
 import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -33,6 +36,7 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
+import io.debezium.DebeziumException;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
@@ -90,7 +94,8 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     protected SnapshotResult<MongoDbOffsetContext> doExecute(ChangeEventSourceContext context,
                                                              MongoDbOffsetContext prevOffsetCtx,
                                                              SnapshotContext<MongoDbPartition, MongoDbOffsetContext> snapshotContext,
-                                                             SnapshottingTask snapshottingTask) {
+                                                             SnapshottingTask snapshottingTask)
+            throws Exception {
         final MongoDbSnapshotContext mongoDbSnapshotContext = (MongoDbSnapshotContext) snapshotContext;
 
         LOGGER.info("Snapshot step 1 - Preparing");
@@ -107,9 +112,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         }
         catch (Throwable t) {
             LOGGER.error("Snapshot failed", t);
-            errorHandler.setProducerThrowable(t);
-            // TODO: is this correct?
-            return SnapshotResult.aborted();
+            throw new DebeziumException("Snapshot failed", t);
         }
 
         return SnapshotResult.completed(snapshotContext.offset);
@@ -159,7 +162,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     }
 
     private void doSnapshot(ChangeEventSourceContext sourceCtx, MongoDbSnapshotContext snapshotCtx, SnapshottingTask snapshottingTask)
-            throws InterruptedException {
+            throws Throwable {
         try (MongoDbConnection mongo = taskContext.getConnection(dispatcher, snapshotCtx.partition)) {
             initSnapshotStartOffsets(snapshotCtx, mongo);
             SnapshotReceiver<MongoDbPartition> snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
@@ -197,15 +200,18 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
                                   SnapshotReceiver<MongoDbPartition> snapshotReceiver,
                                   MongoDbConnection mongo,
                                   SnapshottingTask snapshottingTask)
-            throws InterruptedException {
+            throws Throwable {
         snapshotContext.lastCollection = false;
         snapshotContext.offset.startInitialSnapshot();
 
         LOGGER.info("Beginning snapshot at {}", snapshotContext.offset.getOffset());
 
         Set<Pattern> dataCollectionPattern = getDataCollectionPattern(snapshottingTask.getDataCollections());
-
-        final List<CollectionId> collections = determineDataCollectionsToBeSnapshotted(mongo.collections(), dataCollectionPattern)
+        // mongo.collections() return a not sorted list and so not deterministic. Forcing the natural order.
+        List<CollectionId> allCollections = mongo.collections().stream()
+                .sorted(Comparator.comparing(CollectionId::name))
+                .collect(Collectors.toList());
+        final List<CollectionId> collections = determineDataCollectionsToBeSnapshotted(allCollections, dataCollectionPattern)
                 .collect(Collectors.toList());
         snapshotProgressListener.monitoredDataCollectionsDetermined(snapshotContext.partition, collections);
 
@@ -217,60 +223,62 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         LOGGER.info("Creating snapshot worker pool with {} worker thread(s)", numThreads);
         final ExecutorService executorService = Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.getServerName(), "snapshot-main",
                 connectorConfig.getSnapshotMaxThreads());
-        final CountDownLatch latch = new CountDownLatch(numThreads);
+
         final AtomicBoolean aborted = new AtomicBoolean(false);
         final AtomicInteger threadCounter = new AtomicInteger(0);
 
         LOGGER.info("Preparing to use {} thread(s) to snapshot {} collection(s): {}", numThreads, collections.size(),
                 Strings.join(", ", collections));
 
+        CompletionService<Void> completionService = new ExecutorCompletionService<>(executorService);
         for (int i = 0; i < numThreads; ++i) {
-            executorService.submit(() -> {
-                taskContext.configureLoggingContext("snapshot" + threadCounter.incrementAndGet());
-                try {
-                    CollectionId id = null;
-                    while (!aborted.get() && (id = collectionsToCopy.poll()) != null) {
-                        if (!sourceContext.isRunning()) {
-                            throw new InterruptedException("Interrupted while snapshotting");
-                        }
-
-                        if (collectionsToCopy.isEmpty()) {
-                            snapshotContext.lastCollection = true;
-                        }
-
-                        createDataEventsForCollection(
-                                sourceContext,
-                                snapshotContext,
-                                snapshotReceiver,
-                                id,
-                                mongo, snapshottingTask.getFilterQueries());
-                    }
-                }
-                catch (Throwable t) {
-                    // Do nothing so that this thread is stopped
-                    LOGGER.error("Snapshot failed", t);
-                    errorHandler.setProducerThrowable(t);
-                    aborted.set(true);
-                }
-                finally {
-                    latch.countDown();
-                }
-            });
+            completionService
+                    .submit(() -> buildCallable(sourceContext, snapshotContext, snapshotReceiver, mongo, snapshottingTask, threadCounter, aborted, collectionsToCopy));
         }
 
-        // wait for all copy threads to finish
         try {
-            latch.await();
-        }
-        catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            aborted.set(true);
+            for (int i = 0; i < numThreads; i++) {
+                completionService.take().get();
+            }
         }
         finally {
             executorService.shutdown();
         }
 
         snapshotContext.offset.stopInitialSnapshot();
+    }
+
+    private Void buildCallable(ChangeEventSourceContext sourceContext, MongoDbSnapshotContext snapshotContext, SnapshotReceiver<MongoDbPartition> snapshotReceiver,
+                               MongoDbConnection mongo, SnapshottingTask snapshottingTask, AtomicInteger threadCounter, AtomicBoolean aborted,
+                               Queue<CollectionId> collectionsToCopy) {
+
+        taskContext.configureLoggingContext("snapshot" + threadCounter.incrementAndGet());
+        CollectionId id = null;
+        try {
+            while (!aborted.get() && (id = collectionsToCopy.poll()) != null) {
+                if (!sourceContext.isRunning()) {
+                    throw new InterruptedException("Interrupted while snapshotting");
+                }
+
+                if (collectionsToCopy.isEmpty()) {
+                    snapshotContext.lastCollection = true;
+                }
+
+                createDataEventsForCollection(
+                        sourceContext,
+                        snapshotContext,
+                        snapshotReceiver,
+                        id,
+                        mongo, snapshottingTask.getFilterQueries());
+            }
+        }
+        catch (Throwable t) {
+            // Do nothing so that this thread is stopped
+            LOGGER.error("Snapshot failed", t);
+            aborted.set(true);
+            throw new ConnectException("Snapshotting of collection " + id + " failed", t);
+        }
+        return null;
     }
 
     @Override
