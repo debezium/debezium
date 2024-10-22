@@ -73,10 +73,8 @@ public class BinlogOffsetContext<T extends BinlogSourceInfo> extends CommonOffse
         if (getSnapshot().isPresent()) {
             offset.put(AbstractSourceInfo.SNAPSHOT_KEY, getSnapshot().get().toString());
         }
-        else {
-            return incrementalSnapshotContext.store(transactionContext.store(offset));
-        }
-        return offset;
+
+        return sourceInfo.isSnapshot() ? offset : incrementalSnapshotContext.store(transactionContext.store(offset));
     }
 
     @Override

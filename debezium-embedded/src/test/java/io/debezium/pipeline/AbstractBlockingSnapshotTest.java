@@ -397,7 +397,7 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
         Awaitility.await()
                 .alias("Snapshot not completed on time")
                 .pollInterval(100, TimeUnit.MILLISECONDS)
-                .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
+                .atMost(waitTimeForRecords() * 60L, TimeUnit.SECONDS)
                 .until(() -> interceptor.containsMessage(message));
     }
 

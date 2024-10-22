@@ -51,6 +51,8 @@ import io.debezium.util.Testing;
 
 public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector> extends AbstractSnapshotTest<T> {
 
+    public static final String SNAPSHOT_FIELD_NAME = "snapshot";
+    public static final String INCREMENTAL = "INCREMENTAL";
     protected static KafkaCluster kafka;
 
     protected String getSignalTypeFieldName() {
@@ -155,10 +157,17 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         sendAdHocSnapshotSignal();
 
         final int expectedRecordCount = ROW_COUNT;
-        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount, sourceRecord -> {
+            assertThat(sourceRecord.stream().map(getSnapshotField()).collect(Collectors.toSet())).containsOnly(INCREMENTAL);
+        });
+
         for (int i = 0; i < expectedRecordCount; i++) {
             assertThat(dbChanges).contains(entry(i + 1, i));
         }
+    }
+
+    private static Function<SourceRecord, String> getSnapshotField() {
+        return s -> s.sourceOffset().get(SNAPSHOT_FIELD_NAME).toString();
     }
 
     @Test
