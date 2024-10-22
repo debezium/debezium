@@ -19,5 +19,10 @@ public enum SnapshotType {
     /**
      * Indicates it is a blocking snapshot.
      */
-    BLOCKING
+    BLOCKING,
+
+    /**
+     * Indicates it is an incremental snapshot.
+     */
+    INCREMENTAL,
 }

@@ -72,6 +72,7 @@ public abstract class CommonOffsetContext<T extends BaseSourceInfo> implements O
     @Override
     public void incrementalSnapshotEvents() {
         sourceInfo.setSnapshot(SnapshotRecord.INCREMENTAL);
+        snapshot = SnapshotType.INCREMENTAL;
     }
 
     public Optional<SnapshotType> getSnapshot() {
