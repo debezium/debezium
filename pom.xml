@@ -157,6 +157,7 @@
         <version.mongo.server>6.0</version.mongo.server>
         <version.cassandra3>3.11.12</version.cassandra3>
         <version.cassandra4>4.0.2</version.cassandra4>
+        <version.cassandra5>5.0.2</version.cassandra5>
 
         <!-- Required in protoc plug-in config, too; can't be in BOM therefore -->
         <version.com.google.protobuf>3.25.2</version.com.google.protobuf>
