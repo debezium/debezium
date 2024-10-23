@@ -1913,6 +1913,30 @@ For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000
 |`16`
 |Positive integer value that specifies the maximum number of failed connection attempts to a replica set primary before an exception occurs and task is aborted. Defaults to 16, which with the defaults for `connect.backoff.initial.delay.ms` and `connect.backoff.max.delay.ms` results in just over 20 minutes of attempts before failing.
 
+|[[mongodb-property-mongodb-ssl-keystore]]<<mongodb-property-ssl-keystore, `+mongodb.ssl.keystore+`>>
+|No Default
+|An optional setting that specifies the location of the key store file. A key store file can be used for two-way authentication between the client and the {connector-name} server.
+
+|[[mongodb-property-mongodb-ssl-keystore-password]]<<mongodb-property-mongodb-ssl-keystore-password, `+mongodb.ssl.keystore.password+`>>
+|No Default
+|The password for the key store file. Specify a password only if the xref:mongodb-property-mongodb-ssl-keystore[`mongodb.ssl.keystore`] is configured.
+
+|[[mongodb-property-mongodb-ssl-keystore-type]]<<mongodb-property-mongodb-ssl-keystore-type, `+mongodb.ssl.keystore.type+`>>
+|No Default
+|The type of key store file. Specify a type only if the xref:mongodb-property-mongodb-ssl-keystore[`mongodb.ssl.keystore`] is configured.
+
+|[[mongodb-property-mongodb-ssl-truststore]]<<mongodb-property-mongodb-ssl-truststore, `+mongodb.ssl.truststore+`>>
+|No Default
+|The location of the trust store file for the server certificate verification.
+
+|[[mongodb-property-mongodb-ssl-truststore-password]]<<mongodb-property-mongodb-ssl-truststore-password, `+mongodb.ssl.truststore.password+`>>
+|No Default
+|The password for the trust store file. Used to check the integrity of the truststore, and unlock the truststore. Specify a password only if the xref:mongodb-property-mongodb-ssl-truststore[`mongodb.ssl.truststore`] is configured.
+
+|[[mongodb-property-mongodb-ssl-truststore-type]]<<mongodb-property-mongodb-ssl-truststore-type, `+mongodb.ssl.truststore.type+`>>
+|No Default
+|The type of trust store file. Specify a type only if the xref:mongodb-property-mongodb-ssl-truststore[`mongodb.ssl.truststore`] is configured.
+
 ifdef::community[]
 |[[mongodb-property-source-struct-version]]<<mongodb-property-source-struct-version, `+source.struct.version+`>>
 |v2
