@@ -52,13 +52,13 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     private final OracleConnection jdbcConnection;
     private final OracleDatabaseSchema databaseSchema;
 
-    public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, MainConnectionProvidingConnectionFactory<OracleConnection> connectionFactory,
+    public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, DualOracleConnectionFactory<OracleConnection> connectionFactory,
                                            OracleDatabaseSchema schema, EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
                                            SnapshotProgressListener<OraclePartition> snapshotProgressListener,
                                            NotificationService<OraclePartition, OracleOffsetContext> notificationService, SnapshotterService snapshotterService) {
         super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService, snapshotterService);
         this.connectorConfig = connectorConfig;
-        this.jdbcConnection = connectionFactory.mainConnection();
+        this.jdbcConnection = connectionFactory.getConnection();
         this.databaseSchema = schema;
     }
 
