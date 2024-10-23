@@ -672,7 +672,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
             .withWidth(Width.LONG)
             .withImportance(Importance.MEDIUM)
             .withDescription("The location of the key store file. "
-                    + "This is optional and can be used for two-way authentication between the client and the MySQL Server.");
+                    + "This is optional and can be used for two-way authentication between the client and the MongoDB Server.");
 
     public static final Field SSL_KEYSTORE_PASSWORD = Field.create("mongodb.ssl.keystore.password")
             .withDisplayName("SSL Keystore Password")
@@ -717,7 +717,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 6))
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
-            .withDescription("The type of key store file. "
+            .withDescription("The type of trust store file. "
                     + "This is optional and only needed if 'mongodb.ssl.truststore' is configured.");
 
     public static final Field CONNECT_TIMEOUT_MS = Field.create("mongodb.connect.timeout.ms")
