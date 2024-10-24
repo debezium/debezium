@@ -6751,6 +6751,7 @@ non_reserved_keywords_pre12c
     | POWERMULTISET_BY_CARDINALITY
     | POWERMULTISET
     | POWER
+    | POSITION
     | PQ_DISTRIBUTE
     | PQ_MAP
     | PQ_NOMAP
