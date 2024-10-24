@@ -199,23 +199,34 @@ public class SqlUtils {
      * @param continuousMining whether to use continuous mining
      * @return statement todo: handle corruption. STATUS (Double) — value of 0 indicates it is executable
      */
-    static String startLogMinerStatement(Scn startScn, Scn endScn, OracleConnectorConfig.LogMiningStrategy strategy, boolean continuousMining) {
-        String miningStrategy;
-        if (strategy.equals(OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO)) {
-            miningStrategy = "DBMS_LOGMNR.DICT_FROM_REDO_LOGS + DBMS_LOGMNR.DDL_DICT_TRACKING ";
+    static String startLogMinerStatement(Scn startScn, Scn endScn, OracleConnectorConfig.LogMiningStrategy strategy, boolean continuousMining, String path) {
+        String miningStrategy = getStrategyString(strategy, continuousMining);
+        StringBuilder sb = new StringBuilder();
+        sb.append("BEGIN sys.dbms_logmnr.start_logmnr(")
+                .append("startScn => '" + startScn + "', ")
+                .append("endScn => '" + endScn + "', ")
+                .append("OPTIONS => ")
+                .append(miningStrategy)
+                .append(" + DBMS_LOGMNR.NO_ROWID_IN_STMT)")
+                .append("\n");
+        if (strategy == OracleConnectorConfig.LogMiningStrategy.DICTIONARY_FROM_FILE){
+            sb.append(", DICTFILENAME => '").append(path);
         }
-        else {
-            miningStrategy = "DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG ";
-        }
-        if (continuousMining) {
+        sb.append("');END;");
+
+        return sb.toString();
+    }
+
+    private static String getStrategyString(OracleConnectorConfig.LogMiningStrategy strategy, boolean continuousMining) {
+        String miningStrategy = switch (strategy) {
+            case CATALOG_IN_REDO -> "DBMS_LOGMNR.DICT_FROM_REDO_LOGS + DBMS_LOGMNR.DDL_DICT_TRACKING ";
+            case ONLINE_CATALOG, HYBRID -> "DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG ";
+            case DICTIONARY_FROM_FILE -> " ";
+        };
+        if(continuousMining){
             miningStrategy += " + DBMS_LOGMNR.CONTINUOUS_MINE ";
         }
-        return "BEGIN sys.dbms_logmnr.start_logmnr(" +
-                "startScn => '" + startScn + "', " +
-                "endScn => '" + endScn + "', " +
-                "OPTIONS => " + miningStrategy +
-                " + DBMS_LOGMNR.NO_ROWID_IN_STMT);" +
-                "END;";
+        return miningStrategy;
     }
 
     static String addLogFileStatement(String option, String fileName) {
