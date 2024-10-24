@@ -17,6 +17,7 @@ import static io.debezium.connector.mongodb.SourceInfo.TXN_NUMBER;
 
 import java.time.Instant;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.apache.kafka.connect.data.Schema;
@@ -44,7 +45,7 @@ import io.debezium.util.Collect;
  *
  * @author Chris Cranford
  */
-public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
+public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> implements Comparable<MongoDbOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbOffsetContext.class);
 
@@ -176,6 +177,13 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
         }
     }
 
+    public BsonTimestamp lastResumeTokenTime() {
+        if (lastResumeToken() == null) {
+            return null;
+        }
+        return ResumeTokens.getTimestamp(lastResumeTokenDoc());
+    }
+
     public BsonTimestamp lastTimestamp() {
         return sourceInfo.lastTimestamp();
     }
@@ -211,6 +219,24 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
                 new SourceInfo(connectorConfig),
                 new TransactionContext(),
                 new MongoDbIncrementalSnapshotContext<>(false));
+    }
+
+    @Override
+    public int compareTo(MongoDbOffsetContext o) {
+        if (o == null) {
+            return 1;
+        }
+
+        BsonTimestamp ts1 = this.lastTimestamp();
+        BsonTimestamp ts2 = o.lastTimestamp();
+        if (this.lastResumeToken() != null) {
+            ts1 = this.lastTimestampOrTokenTime();
+        }
+        if (o.lastResumeToken() != null) {
+            ts2 = o.lastTimestampOrTokenTime();
+        }
+
+        return Objects.compare(ts1, ts2, BsonTimestamp::compareTo);
     }
 
     public static class Loader implements OffsetContext.Loader<MongoDbOffsetContext> {
