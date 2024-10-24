@@ -32,6 +32,7 @@ import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
+import io.debezium.connector.oracle.logminer.parser.DmlParserException;
 import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
@@ -304,11 +305,30 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
                 return;
             }
 
+            final LogMinerEvent event;
+            try {
+                event = eventSupplier.get();
+            }
+            catch (DmlParserException e) {
+                switch (getConfig().getEventProcessingFailureHandlingMode()) {
+                    case FAIL:
+                        LOGGER.error("Failed to parse SQL for event '{}'", row);
+                        throw e;
+                    case WARN:
+                        LOGGER.warn("Failed to parse SQL '{}'. The event '{}' is being ignored and skipped.", row.getRedoSql(), row);
+                        return;
+                    default:
+                        // In this case, we explicitly log the situation in "debug" only and not as an error/warn.
+                        LOGGER.debug("Failed to parse SQL for event '{}'. This event is being ignored and skipped.", row);
+                        return;
+                }
+            }
+
             String eventKey = transaction.getEventId(transaction.getNextEventId());
             if (!getEventCache().containsKey(eventKey)) {
                 // Add new event at eventId offset
                 LOGGER.trace("Transaction {}, adding event reference at key {}", transactionId, eventKey);
-                getEventCache().put(eventKey, eventSupplier.get());
+                getEventCache().put(eventKey, event);
                 metrics.calculateLagFromSource(row.getChangeTime());
                 inMemoryPendingTransactionsCache.putOrIncrement(transaction.getTransactionId());
             }
