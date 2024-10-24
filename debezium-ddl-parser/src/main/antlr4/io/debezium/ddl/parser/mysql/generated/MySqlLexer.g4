@@ -1102,6 +1102,7 @@ ROW_COUNT:                           'ROW_COUNT';
 RPAD:                                'RPAD';
 RTRIM:                               'RTRIM';
 SEC_TO_TIME:                         'SEC_TO_TIME';
+SECONDARY_ENGINE:                    'SECONDARY_ENGINE';
 SECONDARY_ENGINE_ATTRIBUTE:          'SECONDARY_ENGINE_ATTRIBUTE';
 SENSITIVE_VARIABLES_OBSERVER:        'SENSITIVE_VARIABLES_OBSERVER';
 SESSION_USER:                        'SESSION_USER';
