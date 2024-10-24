@@ -1074,7 +1074,15 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      * @throws SQLException if a database exception occurred
      */
     private boolean isStartScnInArchiveLogs(Scn startScn) throws SQLException {
-        List<LogFile> logs = logCollector.getLogs(startScn);
+        final List<LogFile> logs;
+        try {
+            logs = logCollector.getLogs(startScn);
+        }
+        catch (LogFileNotFoundException e) {
+            // In this specific case, it's safe to ignore the error.
+            // This identifies that the check should simply be re-executed.
+            return false;
+        }
         return logs.stream()
                 .anyMatch(l -> l.getFirstScn().compareTo(startScn) <= 0
                         && l.getNextScn().compareTo(startScn) > 0
