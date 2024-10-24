@@ -72,6 +72,9 @@ public class PostgresConnection extends JdbcConnection {
 
     public static final String CONNECTION_STREAMING = "Debezium Streaming";
     public static final String CONNECTION_SLOT_INFO = "Debezium Slot Info";
+
+    public static final String CONNECTION_AURORA_READER_RESELECT = "Debezium Aurora Reader Reselect";
+
     public static final String CONNECTION_DROP_SLOT = "Debezium Drop Slot";
     public static final String CONNECTION_VALIDATE_CONNECTION = "Debezium Validate Connection";
     public static final String CONNECTION_HEARTBEAT = "Debezium Heartbeat";
