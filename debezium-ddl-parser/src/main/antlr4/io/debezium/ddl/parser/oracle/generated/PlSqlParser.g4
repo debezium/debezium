@@ -2178,6 +2178,7 @@ partitioning_storage_clause
       | OVERFLOW (TABLESPACE tablespace)?
       | table_compression
       | key_compression
+      | inmemory_table_clause
       | lob_partitioning_storage
       | VARRAY varray_item STORE AS (BASICFILE | SECUREFILE)? LOB lob_segname
       )+
