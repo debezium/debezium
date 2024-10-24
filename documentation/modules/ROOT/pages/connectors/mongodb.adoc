@@ -1915,7 +1915,7 @@ For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000
 
 |[[mongodb-property-mongodb-ssl-keystore]]<<mongodb-property-ssl-keystore, `+mongodb.ssl.keystore+`>>
 |No Default
-|An optional setting that specifies the location of the key store file. A key store file can be used for two-way authentication between the client and the {connector-name} server.
+|An optional setting that specifies the location of the key store file. A key store file can be used for two-way authentication between the client and the MongoDB server.
 
 |[[mongodb-property-mongodb-ssl-keystore-password]]<<mongodb-property-mongodb-ssl-keystore-password, `+mongodb.ssl.keystore.password+`>>
 |No Default
