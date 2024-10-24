@@ -12,7 +12,6 @@ import org.hibernate.persister.entity.EntityPersister;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.outbox.quarkus.internal.OutboxConstants;
-import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 
@@ -23,7 +22,6 @@ import io.quarkus.test.junit.TestProfile;
  */
 @QuarkusTest
 @TestProfile(OutboxProfiles.OpenTelemetryDisabled.class)
-@QuarkusTestResource(DatabaseTestResource.class)
 public class OutboxWithoutOpenTelemetryTest extends AbstractOutboxTest {
 
     @Test

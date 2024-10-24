@@ -205,6 +205,7 @@
         <module>debezium-quarkus-outbox-common</module>
         <module>debezium-quarkus-outbox</module>
         <module>debezium-quarkus-outbox-reactive</module>
+        <module>debezium-quarkus-test-outbox</module>
         <module>debezium-scripting</module>
         <module>debezium-testing</module>
         <module>debezium-connect-rest-extension</module>

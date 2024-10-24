@@ -27,7 +27,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.outbox.quarkus.internal.OutboxConstants;
-import io.quarkus.test.common.QuarkusTestResource;
 import io.smallrye.mutiny.helpers.test.UniAssertSubscriber;
 
 /**
@@ -36,7 +35,6 @@ import io.smallrye.mutiny.helpers.test.UniAssertSubscriber;
  *
  * @author Chris Cranford
  */
-@QuarkusTestResource(DatabaseTestResource.class)
 public abstract class AbstractOutboxTest {
 
     @Inject
