@@ -96,6 +96,15 @@ public class LogInterceptor extends AppenderBase<ILoggingEvent> {
         return false;
     }
 
+    public boolean messageMatches(String regex) {
+        for (ILoggingEvent event : events) {
+            if (event.getFormattedMessage().toString().matches(regex)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public List<ILoggingEvent> getLoggingEvents(String text) {
         List<ILoggingEvent> matchEvents = new ArrayList<>();
         for (ILoggingEvent event : events) {
