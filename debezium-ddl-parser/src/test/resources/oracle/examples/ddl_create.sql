@@ -741,6 +741,42 @@ STORAGE(
     BUFFER_POOL DEFAULT)
 PARALLEL 1 NOCACHE ENABLE ROW MOVEMENT;
 
+create table TBHSP27E(
+ compid VARCHAR2(20) default '' not null,
+ empno VARCHAR2(20) default '' not null,
+ salarymonth VARCHAR2(10) default '' not null,
+ position VARCHAR2(10) default '' not null,
+ posttype VARCHAR2(10) default '',
+ deptno VARCHAR2(10) default '',
+ startdate VARCHAR2(8) default '',
+ enddate VARCHAR2(8) default '',
+ accounttype VARCHAR2(10) default '',
+ attendrate NUMBER(10,4) default 0,
+ meritscore VARCHAR2(10) default '',
+ excitationfactor NUMBER(20,2) default 0,
+ basesalary NUMBER(20,4) default 0,
+ issuesalary NUMBER(20,4) default 0,
+ createempno VARCHAR2(10) default '',
+ createdate VARCHAR2(8) default '',
+ createtime VARCHAR2(6) default '',
+ updateempno VARCHAR2(10) default '',
+ updatedate VARCHAR2(8) default '',
+ updatetime VARCHAR2(6) default '',
+ tenurerate NUMBER(10,4)
+)
+tablespace ERPDATA
+ pctfree 10
+ initrans 1
+ maxtrans 255
+ storage
+ (
+  initial 64K
+  next 1M
+  minextents 1
+  maxextents unlimited
+ )
+;
+
 -- Create index (Oracle 23+)
 create index hr.name IF NOT EXISTS on hr.table (id,data) tablespace ts;
 -- Create user (Oracle 23+)
