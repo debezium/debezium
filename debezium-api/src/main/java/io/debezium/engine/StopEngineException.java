@@ -5,6 +5,8 @@
  */
 package io.debezium.engine;
 
+import java.io.Serial;
+
 import io.debezium.DebeziumException;
 
 /**
@@ -16,6 +18,7 @@ import io.debezium.DebeziumException;
  */
 public class StopEngineException extends DebeziumException {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     public StopEngineException(String msg) {

@@ -69,7 +69,8 @@ public class SchemaFactory {
     private static final String SCHEMA_HISTORY_CONNECTOR_KEY_SCHEMA_NAME_SUFFIX = ".SchemaChangeKey";
     private static final int SCHEMA_HISTORY_CONNECTOR_KEY_SCHEMA_VERSION = 1;
 
-    private static final String SCHEMA_HISTORY_CONNECTOR_VALUE_SCHEMA_NAME_SUFFIX = ".SchemaChangeValue";
+    public static final String SCHEMA_CHANGE_VALUE = "SchemaChangeValue";
+    private static final String SCHEMA_HISTORY_CONNECTOR_VALUE_SCHEMA_NAME_SUFFIX = "." + SCHEMA_CHANGE_VALUE;
     private static final int SCHEMA_HISTORY_CONNECTOR_VALUE_SCHEMA_VERSION = 1;
 
     private static final String SCHEMA_HISTORY_TABLE_SCHEMA_NAME = "io.debezium.connector.schema.Table";

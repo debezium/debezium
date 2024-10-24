@@ -211,6 +211,7 @@
         <module>debezium-schema-generator</module>
         <module>debezium-storage</module>
         <module>debezium-interceptor</module>
+        <module>debezium-sink</module>
     </modules>
 
     <distributionManagement>

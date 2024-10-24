@@ -32,7 +32,6 @@ import org.postgresql.util.PGobject;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.InsertMode;
-import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
 import io.debezium.connector.jdbc.integration.AbstractJdbcSinkInsertModeTest;
 import io.debezium.connector.jdbc.junit.TestHelper;
@@ -44,6 +43,7 @@ import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.geometry.Geometry;
 import io.debezium.doc.FixFor;
+import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
 
 /**
  * Insert Mode tests for PostgreSQL.

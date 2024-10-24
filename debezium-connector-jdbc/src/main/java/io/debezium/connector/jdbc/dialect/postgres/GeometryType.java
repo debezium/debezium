@@ -13,6 +13,7 @@ import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.AbstractGeoType;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.data.geometry.Geometry;
+import io.debezium.sink.SinkConnectorConfig;
 
 public class GeometryType extends AbstractGeoType {
 
@@ -23,10 +24,14 @@ public class GeometryType extends AbstractGeoType {
     String postgisSchema;
 
     @Override
-    public void configure(JdbcSinkConnectorConfig config, DatabaseDialect dialect) {
+    public void configure(SinkConnectorConfig config, DatabaseDialect dialect) {
         super.configure(config, dialect);
-
-        this.postgisSchema = config.getPostgresPostgisSchema();
+        if (config instanceof JdbcSinkConnectorConfig) {
+            this.postgisSchema = ((JdbcSinkConnectorConfig) config).getPostgresPostgisSchema();
+        }
+        else {
+            this.postgisSchema = "public";
+        }
     }
 
     @Override

@@ -12,11 +12,11 @@ import java.util.Optional;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 
-import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.util.SchemaUtils;
+import io.debezium.sink.SinkConnectorConfig;
 
 /**
  * An abstract implementation of {@link Type}, which all types should extend.
@@ -28,7 +28,7 @@ public abstract class AbstractType implements Type {
     private DatabaseDialect dialect;
 
     @Override
-    public void configure(JdbcSinkConnectorConfig config, DatabaseDialect dialect) {
+    public void configure(SinkConnectorConfig config, DatabaseDialect dialect) {
         this.dialect = dialect;
     }
 
