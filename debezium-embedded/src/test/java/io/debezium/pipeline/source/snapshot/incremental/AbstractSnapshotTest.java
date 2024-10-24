@@ -173,6 +173,11 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
         return consumeMixedWithIncrementalSnapshot(recordCount, topicName());
     }
 
+    protected Map<Integer, Integer> consumeMixedWithIncrementalSnapshot(int recordCount, Consumer<List<SourceRecord>> recordConsumer) throws InterruptedException {
+        return consumeMixedWithIncrementalSnapshot(recordCount, record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()), x -> true,
+                recordConsumer, topicName());
+    }
+
     protected Map<Integer, Integer> consumeMixedWithIncrementalSnapshot(int recordCount, String topicName) throws InterruptedException {
         return consumeMixedWithIncrementalSnapshot(recordCount, record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()), x -> true, null,
                 topicName);

@@ -1920,7 +1920,6 @@ public class FieldRenamesIT extends AbstractMongoConnectorIT {
 
         logInterceptor = new LogInterceptor(FieldRenamesIT.class);
         start(MongoDbConnector.class, config);
-        waitForStreamingRunning("mongodb", SERVER_NAME);
 
         assertNoRecordsToConsume();
         assertDocumentContainsFieldError(fieldName);

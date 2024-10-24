@@ -27,7 +27,7 @@ public class KafkaSchemaHistoryTest extends AbstractKafkaSchemaHistoryTest<Maria
     @Override
     protected MariaDbOffsetContext createOffsetContext(Configuration config) {
         return new MariaDbOffsetContext(
-                false,
+                null,
                 true,
                 new TransactionContext(),
                 new MariaDbReadOnlyIncrementalSnapshotContext<>(),
