@@ -70,9 +70,9 @@ public class LogFileCollector {
      * @param offsetScn minimum system change number to start reading changes from, should not be {@code null}
      * @return list of log file instances that should be added to the mining session, never {@code null}
      * @throws SQLException if there is a database failure during the collection
-     * @throws DebeziumException if we were unable to collect logs due to a non-SQL related failure
+     * @throws LogFileNotFoundException if we were unable to collect logs due to a non-SQL related failure
      */
-    public List<LogFile> getLogs(Scn offsetScn) throws SQLException {
+    public List<LogFile> getLogs(Scn offsetScn) throws SQLException, LogFileNotFoundException {
         LOGGER.debug("Collecting logs based on the read SCN position {}.", offsetScn);
         final DelayStrategy retryStrategy = DelayStrategy.exponential(initialDelay, maxRetryDelay);
         for (int attempt = 0; attempt <= maxAttempts; ++attempt) {
@@ -92,8 +92,7 @@ public class LogFileCollector {
 
             return files;
         }
-        throw new DebeziumException(String.format(
-                "None of the log files contain offset SCN: %s, re-snapshot is required.", offsetScn));
+        throw new LogFileNotFoundException(offsetScn);
     }
 
     @VisibleForTesting
