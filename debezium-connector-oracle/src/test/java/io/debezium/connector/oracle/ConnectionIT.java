@@ -20,7 +20,7 @@ public class ConnectionIT implements Testing {
 
     @Test
     public void shouldDoStuffWithDatabase() throws SQLException {
-
+        int x = 5;
         Configuration config = TestHelper.testConfig().with("database.query.timeout.ms", "1000").build();
 
         try (OracleConnection conn = TestHelper.testConnection(config)) {
