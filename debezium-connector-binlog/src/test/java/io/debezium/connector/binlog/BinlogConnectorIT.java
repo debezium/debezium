@@ -2710,6 +2710,34 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         stopConnector();
     }
 
+    @Test
+    @FixFor("DBZ-8290")
+    public void shouldUpdateTotalRecordsCounter() throws Exception {
+        final LogInterceptor logInterceptor = new LogInterceptor(BinlogStreamingChangeEventSource.class);
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .build();
+
+        start(getConnectorClass(), config);
+        waitForSnapshotToBeCompleted(getConnectorName(), DATABASE.getServerName());
+
+        try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("insert into orders values(1000, '2022-10-09', 1002, 90, 106)");
+                connection.commit();
+            }
+        }
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> changeEvents = records.recordsForTopic(DATABASE.topicForTable("orders"));
+        assertThat(changeEvents.size()).isEqualTo(1);
+
+        // Here we count all the records obtained from binlog, not only records pushed into the sink.
+        // Number of records may vary between MySQL and MariaDB and also between the runs on the same DB.
+        stopConnector(value -> assertThat(logInterceptor.messageMatches("^Stopped reading binlog after [5-9] events(.*)")).isTrue());
+    }
+
     protected String getExpectedQuery(String statement) {
 
         return statement;

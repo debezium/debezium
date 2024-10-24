@@ -506,6 +506,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
     protected void onEvent(O offsetContext, Event event) {
         long ts = 0;
+        totalRecordCounter.incrementAndGet();
 
         if (event.getHeader().getEventType() == EventType.HEARTBEAT) {
             // HEARTBEAT events have no timestamp but are fired only when
@@ -1230,6 +1231,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             // The event row number will be used when processing the first event ...
             LOGGER.info("Connected to binlog at {}:{}, starting at {}",
                     connectorConfig.getHostName(), connectorConfig.getPort(), offsetContext);
+            totalRecordCounter.set(0);
         }
 
         @Override
