@@ -11,11 +11,11 @@ public class PostgresPartitionTest extends AbstractPartitionTest<PostgresPartiti
 
     @Override
     protected PostgresPartition createPartition1() {
-        return new PostgresPartition("server1", "database1");
+        return new PostgresPartition("server1", "database1", 0);
     }
 
     @Override
     protected PostgresPartition createPartition2() {
-        return new PostgresPartition("server2", "database1");
+        return new PostgresPartition("server2", "database1", 0);
     }
 }
