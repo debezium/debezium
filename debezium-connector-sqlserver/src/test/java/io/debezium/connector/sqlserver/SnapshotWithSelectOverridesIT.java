@@ -20,7 +20,7 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Testing;
 
@@ -29,7 +29,7 @@ import io.debezium.util.Testing;
  *
  * @author Gunnar Morling
  */
-public class SnapshotWithSelectOverridesIT extends AbstractConnectorTest {
+public class SnapshotWithSelectOverridesIT extends AbstractAsyncEngineConnectorTest {
 
     private static final int INITIAL_RECORDS_PER_TABLE = 10;
 
