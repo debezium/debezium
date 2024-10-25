@@ -284,3 +284,5 @@ SylvainMarty,Sylvain Marty
 m8719-github,Andrei Leibovski
 cwholmes,Cody Holmes
 ArtDu,Artyom Dubinin
+Kate Galieva,Katerina Galieva
+dongwook-chan,Dongwook Chan
