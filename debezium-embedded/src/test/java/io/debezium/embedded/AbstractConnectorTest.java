@@ -212,6 +212,16 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     /**
+     * Cleanup internal state for this class when engine is terminated in another way than by calling {@code stopConnector()} method,
+     * e.g. when the engine is stopped by throwing an exception. If the state is not cleaned up properly, engine cannot be started again
+     * as {@code start()} method checks this internal state first.
+     */
+    public void cleanupTestFwkState() {
+        engine = null;
+        executor = null;
+    }
+
+    /**
      * Get the maximum number of messages that can be obtained from the connector and held in-memory before they are
      * consumed by test methods using {@link #consumeRecord()}, {@link #consumeRecords(int)}, or
      * {@link #consumeRecords(int, Consumer)}.
