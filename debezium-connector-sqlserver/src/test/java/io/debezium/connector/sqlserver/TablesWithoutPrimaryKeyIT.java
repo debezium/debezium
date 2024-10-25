@@ -16,7 +16,7 @@ import org.junit.Test;
 
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
 /**
@@ -24,7 +24,7 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec (jpechane@redhat.com)
  */
-public class TablesWithoutPrimaryKeyIT extends AbstractConnectorTest {
+public class TablesWithoutPrimaryKeyIT extends AbstractAsyncEngineConnectorTest {
 
     private static final String DDL_STATEMENTS = "CREATE TABLE t1 (pk INT UNIQUE, val INT);" +
             "CREATE TABLE t2 (pk INT UNIQUE, val INT UNIQUE);" +

@@ -21,10 +21,10 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.util.TestHelper;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
-public class SqlServerBinaryModeIT extends AbstractConnectorTest {
+public class SqlServerBinaryModeIT extends AbstractAsyncEngineConnectorTest {
 
     private SqlServerConnection connection;
 

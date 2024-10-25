@@ -19,7 +19,7 @@ import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMo
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -32,7 +32,7 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec
  */
-public class EventProcessingFailureHandlingIT extends AbstractConnectorTest {
+public class EventProcessingFailureHandlingIT extends AbstractAsyncEngineConnectorTest {
 
     private SqlServerConnection connection;
 

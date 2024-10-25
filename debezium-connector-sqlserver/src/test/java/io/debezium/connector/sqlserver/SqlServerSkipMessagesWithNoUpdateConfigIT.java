@@ -20,7 +20,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 
 /**
  * Integration Tests for config skip.messages.without.change
@@ -28,7 +28,7 @@ import io.debezium.embedded.AbstractConnectorTest;
  * @author Ronak Jain
  *
  */
-public class SqlServerSkipMessagesWithNoUpdateConfigIT extends AbstractConnectorTest {
+public class SqlServerSkipMessagesWithNoUpdateConfigIT extends AbstractAsyncEngineConnectorTest {
     private SqlServerConnection connection;
 
     private final Configuration.Builder configBuilder = TestHelper.defaultConfig()

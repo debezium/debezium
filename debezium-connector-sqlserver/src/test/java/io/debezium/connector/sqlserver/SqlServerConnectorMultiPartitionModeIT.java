@@ -18,10 +18,10 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.util.TestHelper;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
-public class SqlServerConnectorMultiPartitionModeIT extends AbstractConnectorTest {
+public class SqlServerConnectorMultiPartitionModeIT extends AbstractAsyncEngineConnectorTest {
 
     private SqlServerConnection connection;
 
