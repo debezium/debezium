@@ -19,7 +19,7 @@ The {prodname} signaling mechanism provides a way to modify the behavior of a co
 To use signals to trigger a connector to perform a specified action, you can configure the connector to use one or more of the following channels:
 
 SourceSignalChannel:: You can issue a SQL command to add a signal message to a specialized signaling data collection.
-The signaling data collection, which you create on the source database, is designated exclusively for communicating with {prodname}.
+The signaling data collection, which you create on the source database, is designated exclusively for communicating with {prodname}. The signaling data collection must be unique to each connector instance.
 KafkaSignalChannel:: You submit signal messages to a configurable Kafka topic.
 JmxSignalChannel:: You submit signals through the JMX `signal` operation.
 FileSignalChannel:: You can use a file to send signals.
