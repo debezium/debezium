@@ -60,8 +60,8 @@ public class MariaDbOffsetContext extends BinlogOffsetContext<SourceInfo> {
             final long binlogPosition = longOffsetValue(offset, BinlogSourceInfo.BINLOG_POSITION_OFFSET_KEY);
 
             final MariaDbOffsetContext offsetContext = new MariaDbOffsetContext(
-                    loadSnapshot((Map<String, Object>) offset),
-                    isTrue(offset, SNAPSHOT_COMPLETED_KEY),
+                    loadSnapshot(offset).orElse(null),
+                    loadSnapshotCompleted(offset),
                     TransactionContext.load(offset),
                     connectorConfig.isReadOnlyConnection()
                             ? MariaDbReadOnlyIncrementalSnapshotContext.load(offset)

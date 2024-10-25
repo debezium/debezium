@@ -265,7 +265,7 @@ public class SignalProcessorTest {
         }
 
         @Override
-        public boolean isSnapshotRunning() {
+        public boolean isInitialSnapshotRunning() {
             return false;
         }
 

@@ -60,7 +60,7 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfoSchema = sourceInfo.schema();
 
         this.lastSnapshotRecord = lastSnapshotRecord;
-        if (this.lastSnapshotRecord) {
+        if (this.lastSnapshotRecord || this.snapshotCompleted) {
             postSnapshotCompletion();
         }
         else {
@@ -207,8 +207,8 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
             final String msgType = (String) offset.getOrDefault(SourceInfo.MSG_TYPE_KEY, null);
             final Operation messageType = msgType == null ? null : Operation.valueOf(msgType);
             final Instant useconds = Conversions.toInstantFromMicros((Long) ((Map<String, Object>) offset).getOrDefault(SourceInfo.TIMESTAMP_USEC_KEY, 0L));
-            final SnapshotType snapshot = loadSnapshot((Map<String, Object>) offset);
-            boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(CommonOffsetContext.SNAPSHOT_COMPLETED_KEY));
+            final SnapshotType snapshot = loadSnapshot(offset).orElse(null);
+            boolean snapshotCompleted = loadSnapshotCompleted(offset);
             final boolean lastSnapshotRecord = (boolean) ((Map<String, Object>) offset).getOrDefault(SourceInfo.LAST_SNAPSHOT_RECORD_KEY, Boolean.FALSE);
             return new PostgresOffsetContext(connectorConfig, lsn,
                     lastCompletelyProcessedLsn, lastCommitLsn, txId, messageType, useconds, snapshot, lastSnapshotRecord,
