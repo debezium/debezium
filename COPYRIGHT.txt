@@ -189,6 +189,7 @@ Felix Eckhardt
 Fintan Bolton
 Frank Koornstra
 Frank Mormino
+Franz Emberger
 Frederic Laurent
 Gabor Andras
 Gagan Agrawal
@@ -219,6 +220,7 @@ Jason Schweier
 Jesse Ehrenzweig
 Jiabao Sun
 Jiri Kulhanek
+Jonas Thelemann
 Jordan Pittier
 Juan Fiallo
 Jun Zhao
@@ -308,6 +310,7 @@ Kevin Rothenberger
 Kewei Shang
 Kosta Kostelnik
 Krizhan Mariampillai
+Kunal Bhatnagar
 Kyley Jex
 Lairen Hightower
 laoflch
@@ -421,6 +424,7 @@ Peter Junos
 Peter Larsson
 Peter Urbanetz
 Philip Sanetra
+Philippe Labat
 Piotr Piastucki
 Plugaru Tudor
 Poonam Meghnani
@@ -621,6 +625,7 @@ Massimo Fortunat
 Vincenzo Santonastaso
 Matan Cohen
 Don Seiler
+Dongwook Chan
 Ahmed Rachid Hazourli
 Pavithrananda Prabhu
 حمود سمبول
