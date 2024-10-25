@@ -2,6 +2,59 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.0.1.Final
+October 25th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12433891)
+
+### New features since 3.0.0.Final
+
+* Support batch write to AWS Kinesis [DBZ-8193](https://issues.redhat.com/browse/DBZ-8193)
+* Support for PostgreSQL 17 [DBZ-8275](https://issues.redhat.com/browse/DBZ-8275)
+* Extend Debezium Server to include support for application.yaml [DBZ-8313](https://issues.redhat.com/browse/DBZ-8313)
+* SQL Server Documentation for CDC on Server table [DBZ-8314](https://issues.redhat.com/browse/DBZ-8314)
+* Add support for MySQL 9.1 [DBZ-8324](https://issues.redhat.com/browse/DBZ-8324)
+* Support Cassandra 5.0 [DBZ-8347](https://issues.redhat.com/browse/DBZ-8347)
+
+
+### Breaking changes since 3.0.0.Final
+
+* Stop publishing of container images into Docker Hub [DBZ-8327](https://issues.redhat.com/browse/DBZ-8327)
+
+
+### Fixes since 3.0.0.Final
+
+* Oracle DDL parsing will fail if the DDL ends with a new line character [DBZ-7040](https://issues.redhat.com/browse/DBZ-7040)
+* Missing documentation for MongoDb SSL configuration [DBZ-7927](https://issues.redhat.com/browse/DBZ-7927)
+* Conditionalization implemented for single-sourcing MySQL/MariaDB content isn't working as expected [DBZ-8094](https://issues.redhat.com/browse/DBZ-8094)
+* Debezium is replaying all events from an older offset [DBZ-8194](https://issues.redhat.com/browse/DBZ-8194)
+* Embedded MySqlConnector "Unable to find minimal snapshot lock mode" since 2.5.4.Final [DBZ-8271](https://issues.redhat.com/browse/DBZ-8271)
+* Reselect Post Processor not working when pkey of type uuid etc. [DBZ-8277](https://issues.redhat.com/browse/DBZ-8277)
+* BinlogStreamingChangeEventSource totalRecordCounter is never updated [DBZ-8290](https://issues.redhat.com/browse/DBZ-8290)
+* Restart Oracle connector when ORA-01001 invalid cursor exception is thrown [DBZ-8292](https://issues.redhat.com/browse/DBZ-8292)
+* Connector uses incorrect partition names when creating offsets [DBZ-8298](https://issues.redhat.com/browse/DBZ-8298)
+* ReselectPostProcessor fails when reselecting columns from Oracle [DBZ-8304](https://issues.redhat.com/browse/DBZ-8304)
+* Debezium MySQL DDL parser: SECONDARY_ENGINE=RAPID does not support [DBZ-8305](https://issues.redhat.com/browse/DBZ-8305)
+* Oracle DDL failure - subpartition list clause does not support in-memory clause [DBZ-8315](https://issues.redhat.com/browse/DBZ-8315)
+* DDL statement couldn't be parsed [DBZ-8316](https://issues.redhat.com/browse/DBZ-8316)
+* Binary Log Client doesn't process the TRANSACTION_ PAYLOAD header [DBZ-8340](https://issues.redhat.com/browse/DBZ-8340)
+* Oracle connector: archive.log.only.mode stop working after reach SYSDATE SCN [DBZ-8345](https://issues.redhat.com/browse/DBZ-8345)
+
+
+### Other changes since 3.0.0.Final
+
+* Provide example for activity monitoring metrics [DBZ-8174](https://issues.redhat.com/browse/DBZ-8174)
+* Write blog post on how detect data mutation patterns with Debezium [DBZ-8256](https://issues.redhat.com/browse/DBZ-8256)
+* Formatting characters render literally in docs [DBZ-8293](https://issues.redhat.com/browse/DBZ-8293)
+* REST tests fail due to unable to execute cp [DBZ-8294](https://issues.redhat.com/browse/DBZ-8294)
+* Create MariaDB systemtests [DBZ-8306](https://issues.redhat.com/browse/DBZ-8306)
+* Refactor MySqlTests and MariaDBTests to share the tests via parent base class [DBZ-8309](https://issues.redhat.com/browse/DBZ-8309)
+* Document how to work with ServiceLoader and bundled jars [DBZ-8318](https://issues.redhat.com/browse/DBZ-8318)
+* Broken system tests for upstream [DBZ-8326](https://issues.redhat.com/browse/DBZ-8326)
+* Upstream system tests are stuck in Retrieving connector metrics [DBZ-8330](https://issues.redhat.com/browse/DBZ-8330)
+* Fix upstream JDBC system tests [DBZ-8331](https://issues.redhat.com/browse/DBZ-8331)
+* Add version for Cassandra 5 to debezium-build-parent [DBZ-8348](https://issues.redhat.com/browse/DBZ-8348)
+
+
+
 ## 3.0.0.Final
 October 2nd 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12431955)
 
