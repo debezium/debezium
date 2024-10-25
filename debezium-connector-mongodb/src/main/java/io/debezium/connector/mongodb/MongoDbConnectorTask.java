@@ -276,7 +276,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                 return;
             }
 
-            if (offset.isSnapshotRunning()) {
+            if (offset.isInitialSnapshotRunning()) {
                 // The last offset was an incomplete snapshot and now the snapshot was disabled
                 if (!snapshotter.shouldSnapshotData(true, true)) {
                     // No snapshots are allowed

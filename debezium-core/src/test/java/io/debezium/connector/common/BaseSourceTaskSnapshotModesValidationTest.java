@@ -54,7 +54,7 @@ public class BaseSourceTaskSnapshotModesValidationTest {
 
         Partition partition = mock(Partition.class);
         OffsetContext offset = mock(OffsetContext.class);
-        when(offset.isSnapshotRunning()).thenReturn(true);
+        when(offset.isInitialSnapshotRunning()).thenReturn(true);
 
         Offsets previousOffsets = Offsets.of(partition, offset);
         DatabaseSchema databaseSchema = mock(DatabaseSchema.class);
@@ -75,7 +75,7 @@ public class BaseSourceTaskSnapshotModesValidationTest {
 
         Partition partition = mock(Partition.class);
         OffsetContext offset = mock(OffsetContext.class);
-        when(offset.isSnapshotRunning()).thenReturn(true);
+        when(offset.isInitialSnapshotRunning()).thenReturn(true);
 
         Offsets previousOffsets = Offsets.of(partition, offset);
         DatabaseSchema databaseSchema = mock(DatabaseSchema.class);
@@ -137,7 +137,7 @@ public class BaseSourceTaskSnapshotModesValidationTest {
 
         Partition partition = mock(Partition.class);
         OffsetContext offset = mock(OffsetContext.class);
-        when(offset.isSnapshotRunning()).thenReturn(false);
+        when(offset.isInitialSnapshotRunning()).thenReturn(false);
 
         Offsets previousOffsets = Offsets.of(partition, offset);
         HistorizedDatabaseSchema databaseSchema = mock(HistorizedDatabaseSchema.class);
@@ -159,7 +159,7 @@ public class BaseSourceTaskSnapshotModesValidationTest {
 
         Partition partition = mock(Partition.class);
         OffsetContext offset = mock(OffsetContext.class);
-        when(offset.isSnapshotRunning()).thenReturn(false);
+        when(offset.isInitialSnapshotRunning()).thenReturn(false);
 
         Offsets previousOffsets = Offsets.of(partition, offset);
         HistorizedDatabaseSchema databaseSchema = mock(HistorizedDatabaseSchema.class);
@@ -182,7 +182,7 @@ public class BaseSourceTaskSnapshotModesValidationTest {
 
         Partition partition = mock(Partition.class);
         OffsetContext offset = mock(OffsetContext.class);
-        when(offset.isSnapshotRunning()).thenReturn(false);
+        when(offset.isInitialSnapshotRunning()).thenReturn(false);
 
         Offsets previousOffsets = Offsets.of(partition, offset);
         HistorizedDatabaseSchema databaseSchema = mock(HistorizedDatabaseSchema.class);
@@ -207,7 +207,7 @@ public class BaseSourceTaskSnapshotModesValidationTest {
 
         Partition partition = mock(Partition.class);
         OffsetContext offset = mock(OffsetContext.class);
-        when(offset.isSnapshotRunning()).thenReturn(false);
+        when(offset.isInitialSnapshotRunning()).thenReturn(false);
 
         Offsets previousOffsets = Offsets.of(partition, offset);
         HistorizedDatabaseSchema databaseSchema = mock(HistorizedDatabaseSchema.class);
@@ -232,7 +232,7 @@ public class BaseSourceTaskSnapshotModesValidationTest {
 
         Partition partition = mock(Partition.class);
         OffsetContext offset = mock(OffsetContext.class);
-        when(offset.isSnapshotRunning()).thenReturn(false);
+        when(offset.isInitialSnapshotRunning()).thenReturn(false);
 
         Offsets previousOffsets = Offsets.of(partition, offset);
         HistorizedDatabaseSchema databaseSchema = mock(HistorizedDatabaseSchema.class);

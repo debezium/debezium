@@ -93,7 +93,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                 return;
             }
 
-            if (offset.isSnapshotRunning()) {
+            if (offset.isInitialSnapshotRunning()) {
                 // The last offset was an incomplete snapshot and now the snapshot was disabled
                 if (!snapshotter.shouldSnapshotData(true, true) &&
                         !snapshotter.shouldSnapshotSchema(true, true)) {
