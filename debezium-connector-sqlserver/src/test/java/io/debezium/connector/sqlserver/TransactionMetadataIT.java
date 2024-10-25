@@ -122,7 +122,6 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
 
         assertEndTransaction(all.get(2 * RECORDS_PER_TABLE + 1), txId, 2 * RECORDS_PER_TABLE,
                 Collect.hashMapOf("testDB1.dbo.tablea", RECORDS_PER_TABLE, "testDB1.dbo.tableb", RECORDS_PER_TABLE));
-        stopConnector();
     }
 
     private void restartInTheMiddleOfTx(boolean restartJustAfterSnapshot, boolean afterStreaming) throws Exception {
@@ -243,7 +242,8 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
         assertRecord((Struct) value.get("after"), expectedLastRow);
         assertRecordTransactionMetadata(lastRecordForOffset, batchTxId, RECORDS_PER_TABLE, RECORDS_PER_TABLE / 2);
 
-        stopConnector();
+        waitForEngineShutdown();
+        cleanupTestFwkState();
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 

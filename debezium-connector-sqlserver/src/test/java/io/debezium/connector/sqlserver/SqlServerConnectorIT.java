@@ -645,7 +645,8 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
                 "UPDATE tableb SET id=100 WHERE id=1");
 
         final SourceRecords records1 = consumeRecordsByTopic(2);
-        stopConnector();
+        waitForEngineShutdown();
+        cleanupTestFwkState();
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
