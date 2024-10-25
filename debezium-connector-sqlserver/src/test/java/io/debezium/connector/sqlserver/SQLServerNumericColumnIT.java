@@ -22,7 +22,7 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.util.Testing;
 
@@ -32,7 +32,7 @@ import io.debezium.util.Testing;
  * @author Pradeep Mamillapalli
  *
  */
-public class SQLServerNumericColumnIT extends AbstractConnectorTest {
+public class SQLServerNumericColumnIT extends AbstractAsyncEngineConnectorTest {
     private SqlServerConnection connection;
 
     /**

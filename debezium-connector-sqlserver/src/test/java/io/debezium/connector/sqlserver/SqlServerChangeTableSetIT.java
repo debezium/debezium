@@ -29,7 +29,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.document.Array;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
@@ -39,7 +39,7 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec
  */
-public class SqlServerChangeTableSetIT extends AbstractConnectorTest {
+public class SqlServerChangeTableSetIT extends AbstractAsyncEngineConnectorTest {
 
     private SqlServerConnection connection;
 

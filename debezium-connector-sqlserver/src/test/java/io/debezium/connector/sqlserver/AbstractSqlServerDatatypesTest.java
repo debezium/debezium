@@ -29,7 +29,7 @@ import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VerifyRecord;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.time.Date;
@@ -46,7 +46,7 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec
  */
-public abstract class AbstractSqlServerDatatypesTest extends AbstractConnectorTest {
+public abstract class AbstractSqlServerDatatypesTest extends AbstractAsyncEngineConnectorTest {
 
     /**
      * Key for schema parameter used to store DECIMAL/NUMERIC columns' precision.
