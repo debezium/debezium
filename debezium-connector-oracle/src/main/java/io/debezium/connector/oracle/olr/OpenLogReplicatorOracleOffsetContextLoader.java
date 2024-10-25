@@ -32,8 +32,8 @@ public class OpenLogReplicatorOracleOffsetContextLoader implements OffsetContext
 
     @Override
     public OracleOffsetContext load(Map<String, ?> offset) {
-        final SnapshotType snapshot = loadSnapshot((Map<String, Object>) offset);
-        boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(OracleOffsetContext.SNAPSHOT_COMPLETED_KEY));
+        final SnapshotType snapshot = loadSnapshot(offset).orElse(null);
+        boolean snapshotCompleted = loadSnapshotCompleted(offset);
 
         Scn scn = OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY);
         Long scnIndex = (Long) offset.get(SourceInfo.SCN_INDEX_KEY);

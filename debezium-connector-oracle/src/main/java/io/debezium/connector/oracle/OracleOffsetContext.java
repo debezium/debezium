@@ -25,7 +25,6 @@ import io.debezium.spi.schema.DataCollectionId;
 
 public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
 
-    public static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
     public static final String SNAPSHOT_PENDING_TRANSACTIONS_KEY = "snapshot_pending_tx";
     public static final String SNAPSHOT_SCN_KEY = "snapshot_scn";
 
