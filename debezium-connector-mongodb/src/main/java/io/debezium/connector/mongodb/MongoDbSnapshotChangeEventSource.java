@@ -99,7 +99,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         final MongoDbSnapshotContext mongoDbSnapshotContext = (MongoDbSnapshotContext) snapshotContext;
 
         LOGGER.info("Snapshot step 1 - Preparing");
-        if (prevOffsetCtx != null && prevOffsetCtx.isSnapshotRunning()) {
+        if (prevOffsetCtx != null && prevOffsetCtx.isInitialSnapshotRunning()) {
             LOGGER.info("Previous snapshot was cancelled before completion; a new snapshot will be taken.");
         }
 
@@ -137,10 +137,10 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         boolean snapshotInProgress = false;
 
         if (offsetExists) {
-            snapshotInProgress = previousOffset.isSnapshotRunning();
+            snapshotInProgress = previousOffset.isInitialSnapshotRunning();
         }
 
-        if (offsetExists && !previousOffset.isSnapshotRunning()) {
+        if (offsetExists && !previousOffset.isInitialSnapshotRunning()) {
             LOGGER.info("A previous offset indicating a completed snapshot has been found.");
         }
 

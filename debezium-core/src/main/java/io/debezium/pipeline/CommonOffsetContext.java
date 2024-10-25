@@ -19,9 +19,28 @@ public abstract class CommonOffsetContext<T extends BaseSourceInfo> implements O
     public static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
 
     protected final T sourceInfo;
-    protected SnapshotType snapshot;
+
     /**
-     * Whether a snapshot has been completed or not.
+     * Indicates the type of in progress snapshot (INITIAL, BLOCKING, INCREMENTAL).
+     * In case of an INITIAL or BLOCKING snapshot it will be used in conjunction with {@link #snapshotCompleted}
+     * to define if it is running or not.
+     * <p>
+     * The following table lists the possible status:
+     * <table border="3">
+     * <tr><th>Status</th><th>snapshot</th><th>snapshotCompleted</th></tr>
+     * <tr><td>incomplete initial snapshot</td><td>initial</td><td>false</td></tr>
+     * <tr><td>completed initial snapshot</td><td>null</td><td>true</td></tr>
+     * <tr><td>incomplete blocking snapshot</td><td>blocking</td><td>false</td></tr>
+     * <tr><td>completed blocking snapshot</td><td>null</td><td>true</td></tr>
+     * <tr><td>running incremental snapshot</td><td>incremental</td><td>true</td></tr>
+     * <tr><td>completed incremental snapshot</td><td>null</td><td>true</td></tr>
+     * </table>
+     *
+     */
+    protected SnapshotType snapshot;
+
+    /**
+     * Whether an initial/blocking snapshot has been completed or not.
      */
     protected boolean snapshotCompleted;
 
@@ -45,7 +64,7 @@ public abstract class CommonOffsetContext<T extends BaseSourceInfo> implements O
     }
 
     @Override
-    public boolean isSnapshotRunning() {
+    public boolean isInitialSnapshotRunning() {
         return getSnapshot().isPresent() &&
                 getSnapshot().get().equals(SnapshotType.INITIAL) &&
                 !snapshotCompleted;

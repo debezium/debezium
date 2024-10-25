@@ -70,10 +70,10 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
         boolean snapshotInProgress = false;
 
         if (offsetExists) {
-            snapshotInProgress = previousOffset.isSnapshotRunning();
+            snapshotInProgress = previousOffset.isInitialSnapshotRunning();
         }
 
-        if (offsetExists && !previousOffset.isSnapshotRunning()) {
+        if (offsetExists && !previousOffset.isInitialSnapshotRunning()) {
             LOGGER.info("A previous offset indicating a completed snapshot has been found.");
         }
 

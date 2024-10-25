@@ -5,8 +5,11 @@
  */
 package io.debezium.pipeline.spi;
 
+import static io.debezium.pipeline.CommonOffsetContext.SNAPSHOT_COMPLETED_KEY;
+
 import java.time.Instant;
 import java.util.Map;
+import java.util.Optional;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -34,15 +37,20 @@ public interface OffsetContext {
      */
     interface Loader<O extends OffsetContext> {
 
-        default SnapshotType loadSnapshot(Map<String, Object> offset) {
+        default Optional<SnapshotType> loadSnapshot(Map<String, ?> offset) {
 
             Object snapshot = offset.getOrDefault(AbstractSourceInfo.SNAPSHOT_KEY, null);
             // this is to manage transition from a boolean snapshot to SnapshotType
             if (Boolean.TRUE.equals(snapshot) || Boolean.TRUE.toString().equals(snapshot)) {
-                return SnapshotType.INITIAL;
+                return Optional.of(SnapshotType.INITIAL);
             }
 
-            return snapshot == null ? null : SnapshotType.valueOf((String) snapshot);
+            return snapshot == null ? Optional.empty() : Optional.of(SnapshotType.valueOf((String) snapshot));
+        }
+
+        default boolean loadSnapshotCompleted(Map<String, ?> offset) {
+
+            return Boolean.TRUE.equals(offset.get(SNAPSHOT_COMPLETED_KEY)) || "true".equals(offset.get(SNAPSHOT_COMPLETED_KEY));
         }
 
         O load(Map<String, ?> offset);
@@ -58,7 +66,7 @@ public interface OffsetContext {
      * Whether this offset indicates that an (uncompleted) snapshot is currently running or not.
      * @return
      */
-    boolean isSnapshotRunning();
+    boolean isInitialSnapshotRunning();
 
     /**
      * Mark the position of the record in the snapshot.

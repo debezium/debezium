@@ -134,7 +134,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             LOGGER.info("Snapshot step 1 - Preparing");
 
-            if (previousOffset != null && previousOffset.isSnapshotRunning()) {
+            if (previousOffset != null && previousOffset.isInitialSnapshotRunning()) {
                 LOGGER.info("Previous snapshot was cancelled before completion; a new snapshot will be taken.");
             }
 
@@ -268,10 +268,10 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         boolean snapshotInProgress = false;
 
         if (offsetExists) {
-            snapshotInProgress = previousOffset.isSnapshotRunning();
+            snapshotInProgress = previousOffset.isInitialSnapshotRunning();
         }
 
-        if (offsetExists && !previousOffset.isSnapshotRunning()) {
+        if (offsetExists && !previousOffset.isInitialSnapshotRunning()) {
             LOGGER.info("A previous offset indicating a completed snapshot has been found.");
         }
 
@@ -551,7 +551,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     protected abstract O copyOffset(RelationalSnapshotContext<P, O> snapshotContext);
 
     protected void tryStartingSnapshot(RelationalSnapshotContext<P, O> snapshotContext) {
-        if (!snapshotContext.offset.isSnapshotRunning()) {
+        if (!snapshotContext.offset.isInitialSnapshotRunning()) {
             snapshotContext.offset.preSnapshotStart(snapshotContext.onDemand);
         }
     }

@@ -31,8 +31,8 @@ public class XStreamOracleOffsetContextLoader implements OffsetContext.Loader<Or
 
     @Override
     public OracleOffsetContext load(Map<String, ?> offset) {
-        final SnapshotType snapshot = loadSnapshot((Map<String, Object>) offset);
-        boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(OracleOffsetContext.SNAPSHOT_COMPLETED_KEY));
+        final SnapshotType snapshot = loadSnapshot(offset).orElse(null);
+        boolean snapshotCompleted = loadSnapshotCompleted(offset);
 
         String lcrPosition = (String) offset.get(SourceInfo.LCR_POSITION_KEY);
 

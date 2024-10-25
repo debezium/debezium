@@ -30,8 +30,8 @@ public class LogMinerOracleOffsetContextLoader implements OffsetContext.Loader<O
 
     @Override
     public OracleOffsetContext load(Map<String, ?> offset) {
-        final SnapshotType snapshot = loadSnapshot((Map<String, Object>) offset);
-        final boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(OracleOffsetContext.SNAPSHOT_COMPLETED_KEY));
+        final SnapshotType snapshot = loadSnapshot(offset).orElse(null);
+        final boolean snapshotCompleted = loadSnapshotCompleted(offset);
 
         Scn scn = OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY);
         CommitScn commitScn = CommitScn.load(offset);

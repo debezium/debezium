@@ -116,8 +116,8 @@ public class SqlServerOffsetContext extends CommonOffsetContext<SourceInfo> {
         public SqlServerOffsetContext load(Map<String, ?> offset) {
             final Lsn changeLsn = Lsn.valueOf((String) offset.get(SourceInfo.CHANGE_LSN_KEY));
             final Lsn commitLsn = Lsn.valueOf((String) offset.get(SourceInfo.COMMIT_LSN_KEY));
-            final SnapshotType snapshot = loadSnapshot((Map<String, Object>) offset);
-            final boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(SNAPSHOT_COMPLETED_KEY));
+            final SnapshotType snapshot = loadSnapshot(offset).orElse(null);
+            final boolean snapshotCompleted = loadSnapshotCompleted(offset);
 
             // only introduced in 0.10.Beta1, so it might be not present when upgrading from earlier versions
             Long eventSerialNo = ((Long) offset.get(SourceInfo.EVENT_SERIAL_NO_KEY));

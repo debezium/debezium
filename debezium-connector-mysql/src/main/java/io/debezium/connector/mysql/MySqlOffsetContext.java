@@ -54,8 +54,8 @@ public class MySqlOffsetContext extends BinlogOffsetContext<SourceInfo> {
             }
             long binlogPosition = longOffsetValue(offset, SourceInfo.BINLOG_POSITION_OFFSET_KEY);
             final MySqlOffsetContext offsetContext = new MySqlOffsetContext(
-                    loadSnapshot((Map<String, Object>) offset),
-                    isTrue(offset, SNAPSHOT_COMPLETED_KEY),
+                    loadSnapshot(offset).orElse(null),
+                    loadSnapshotCompleted(offset),
                     TransactionContext.load(offset),
                     connectorConfig.isReadOnlyConnection()
                             ? MySqlReadOnlyIncrementalSnapshotContext.load(offset)

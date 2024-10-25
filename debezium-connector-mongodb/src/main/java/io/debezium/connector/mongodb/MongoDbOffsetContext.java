@@ -71,14 +71,14 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
         Map<String, Object> offset = Collect.hashMapOf(
                 TIMESTAMP, position.getTime(),
                 ORDER, position.getInc());
-        if (isSnapshotRunning()) {
+        if (isInitialSnapshotRunning()) {
             offset.put(INITIAL_SYNC, true);
         }
 
         addSessionTxnIdToOffset(position, offset);
         addResumeTokenToOffset(position, offset);
 
-        return isSnapshotRunning() ? offset : incrementalSnapshotContext.store(transactionContext.store(offset));
+        return isInitialSnapshotRunning() ? offset : incrementalSnapshotContext.store(transactionContext.store(offset));
     }
 
     private Map<String, Object> addSessionTxnIdToOffset(SourceInfo.Position position, Map<String, Object> offset) {
@@ -100,7 +100,7 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
     }
 
     @Override
-    public boolean isSnapshotRunning() {
+    public boolean isInitialSnapshotRunning() {
         return sourceInfo.isSnapshot() && sourceInfo.isSnapshotRunning();
     }
 
