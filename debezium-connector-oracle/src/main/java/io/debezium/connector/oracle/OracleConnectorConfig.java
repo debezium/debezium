@@ -655,15 +655,14 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
             .withValidation(OracleConnectorConfig::validateDictionaryFromFile)
-            .withDescription("Path to LogMiner dictionary file. This is required when the database is in" +
-                    " a different host than the Debezium connector");
+            .withDescription("This is required when using the connector against a read-only database replica.");
 
     public static final Field LOG_MINING_READONLY_HOSTNAME = Field.create("log.mining.readonly.hostname")
-            .withDisplayName("Read-only hostname for the Oracle RAC cluster.")
+            .withDisplayName("Read-only connector hostname.")
             .withType(Type.STRING)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
-            .withDescription("The readonly hostname for the Oracle RAC cluster. This is used to determine the primary node in the RAC cluster.");
+            .withDescription("The hostname the connector will use to connect and perform read-only operations for the the replica.");
 
     public static final Field OBJECT_ID_CACHE_SIZE = Field.createInternal("object.id.cache.size")
             .withDisplayName("Controls the maximum size of the object ID cache")
@@ -1988,14 +1987,22 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
+     * Return the log mining path to dictionary.
      *
+     * @return the dictionary path
      */
-    public String getLogMiningPathToDictionary() { return logMiningPathToDictionary; }
+    public String getLogMiningPathToDictionary() {
+        return logMiningPathToDictionary;
+    }
 
     /**
+     * Return the read-only database hostname.
      *
+     * @return the read-only hostname
      */
-    public String getReadonlyHostname() { return readonlyHostname; }
+    public String getReadonlyHostname() {
+        return readonlyHostname;
+    }
 
     /**
      * Get the Ehcache buffer configuration, which is all attributes under the configuration prefix

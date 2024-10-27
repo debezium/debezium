@@ -1,3 +1,8 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
 package io.debezium.connector.oracle;
 
 import io.debezium.jdbc.JdbcConfiguration;
@@ -6,8 +11,13 @@ import io.debezium.jdbc.JdbcConnection;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-public class ReadonlyOracleConnection extends OracleConnection{
-    public ReadonlyOracleConnection(JdbcConfiguration config) {
+/**
+ * Read-only connection class, extends the oracle connection, for read-only databases.
+ * @author Lucas Gazire
+ */
+public class ReadOnlyOracleConnection extends OracleConnection {
+
+    public ReadOnlyOracleConnection(JdbcConfiguration config) {
         super(config);
     }
 
@@ -31,7 +41,7 @@ public class ReadonlyOracleConnection extends OracleConnection{
     }
 
     @Override
-    public JdbcConnection executeWithoutCommitting(String... statements) {
-        throw new UnsupportedOperationException("Updates are not allowed for read-only connections");
+    public JdbcConnection executeWithoutCommitting(String... statements) throws SQLException {
+        return super.executeWithoutCommitting(statements);
     }
 }

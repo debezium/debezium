@@ -23,9 +23,7 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.document.DocumentReader;
-import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
@@ -68,7 +66,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         Configuration readonlyConfig = buildReadonlyConfig(jdbcConfig.asMap(), connectorConfig);
         DualOracleConnectionFactory<OracleConnection> dualConnectionFactory = new DualOracleConnectionFactory<>(
                 () -> new OracleConnection(jdbcConfig),
-                () -> new ReadonlyOracleConnection(JdbcConfiguration.adapt(readonlyConfig)),
+                () -> new ReadOnlyOracleConnection(JdbcConfiguration.adapt(readonlyConfig)),
                 connectorConfig
         );
         jdbcConnection = dualConnectionFactory.mainConnection();

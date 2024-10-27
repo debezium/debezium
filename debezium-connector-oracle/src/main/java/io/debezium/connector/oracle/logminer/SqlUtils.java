@@ -197,9 +197,10 @@ public class SqlUtils {
      * @param endScn mine till
      * @param strategy Log Mining strategy
      * @param continuousMining whether to use continuous mining
+     * @param dictionaryFilePath optional path to dictionary flat file, may be {@code null}
      * @return statement todo: handle corruption. STATUS (Double) — value of 0 indicates it is executable
      */
-    static String startLogMinerStatement(Scn startScn, Scn endScn, OracleConnectorConfig.LogMiningStrategy strategy, boolean continuousMining, String path) {
+    static String startLogMinerStatement(Scn startScn, Scn endScn, OracleConnectorConfig.LogMiningStrategy strategy, boolean continuousMining, String dictionaryFilePath) {
         String miningStrategy = getStrategyString(strategy, continuousMining);
         StringBuilder sb = new StringBuilder();
         sb.append("BEGIN sys.dbms_logmnr.start_logmnr(")
@@ -209,8 +210,8 @@ public class SqlUtils {
                 .append(miningStrategy)
                 .append(" + DBMS_LOGMNR.NO_ROWID_IN_STMT)")
                 .append("\n");
-        if (strategy == OracleConnectorConfig.LogMiningStrategy.DICTIONARY_FROM_FILE){
-            sb.append(", DICTFILENAME => '").append(path);
+        if (strategy == OracleConnectorConfig.LogMiningStrategy.DICTIONARY_FROM_FILE) {
+            sb.append(", DICTFILENAME => '").append(dictionaryFilePath);
         }
         sb.append("');END;");
 
@@ -223,7 +224,7 @@ public class SqlUtils {
             case ONLINE_CATALOG, HYBRID -> "DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG ";
             case DICTIONARY_FROM_FILE -> " ";
         };
-        if(continuousMining){
+        if (continuousMining) {
             miningStrategy += " + DBMS_LOGMNR.CONTINUOUS_MINE ";
         }
         return miningStrategy;
