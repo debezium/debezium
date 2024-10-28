@@ -70,13 +70,13 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     private TableSchemaBuilder tableSchemaBuilder;
     private Properties properties;
 
-    protected abstract P getParser(SimpleDdlParserListener listener, V converters);
+    protected abstract P getParser(SimpleDdlParserListener listener);
 
-    protected abstract P getParser(SimpleDdlParserListener listener, V converters, boolean includeViews);
+    protected abstract P getParser(SimpleDdlParserListener listener, boolean includeViews);
 
-    protected abstract P getParser(SimpleDdlParserListener listener, V converters, TableFilter tableFilter);
+    protected abstract P getParser(SimpleDdlParserListener listener, TableFilter tableFilter);
 
-    protected abstract P getParser(SimpleDdlParserListener listener, V converters, boolean includeViews, boolean includeComments);
+    protected abstract P getParser(SimpleDdlParserListener listener, boolean includeViews, boolean includeComments);
 
     protected abstract V getValueConverters();
 
@@ -86,7 +86,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     public void beforeEach() {
         listener = new SimpleDdlParserListener();
         converters = getValueConverters();
-        parser = getParser(listener, converters);
+        parser = getParser(listener);
         tables = new Tables();
         tableSchemaBuilder = new TableSchemaBuilder(
                 converters,
@@ -370,7 +370,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     @Test
     @FixFor("DBZ-4000")
     public void shouldProcessCommentForTable() {
-        parser = getParser(listener, converters, false, true);
+        parser = getParser(listener, false, true);
         parser.parse("CREATE TABLE table1(\n"
                 + "id INT UNSIGNED NOT NULL AUTO_INCREMENT UNIQUE PRIMARY KEY COMMENT 'pk',\n"
                 + "bin_volume DECIMAL(20, 4) COMMENT 'decimal column'\n"
@@ -1364,7 +1364,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
                 + "); " + System.lineSeparator();
         String ddl2 = "CREATE VIEW fooView AS (SELECT * FROM foo)" + System.lineSeparator();
 
-        parser = getParser(listener, converters, true);
+        parser = getParser(listener, true);
         parser.parse(ddl, tables);
         parser.parse(ddl2, tables);
         assertThat(tables.size()).isEqualTo(2);
@@ -1384,7 +1384,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
                 + "); " + System.lineSeparator();
         String ddl2 = "CREATE VIEW fooView AS (SELECT * FROM foo)" + System.lineSeparator();
         String ddl3 = "DROP VIEW fooView";
-        parser = getParser(listener, converters, true);
+        parser = getParser(listener, true);
         parser.parse(ddl, tables);
         parser.parse(ddl2, tables);
         parser.parse(ddl3, tables);
@@ -1400,7 +1400,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
                 + "CREATE TABLE db.t1 (ID INTEGER PRIMARY KEY);"
                 + "ALTER TABLE `t1` RENAME TO `t2`;"
                 + "ALTER TABLE `db`.`t2` RENAME TO `db`.`t3`;";
-        parser = getParser(listener, converters, true);
+        parser = getParser(listener, true);
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
         final Table table = tables.forTable(new TableId(null, "db", "t3"));
@@ -1416,7 +1416,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
                 + "); " + System.lineSeparator();
         String ddl2 = "CREATE VIEW fooView(w1) AS (SELECT c2 as w1 FROM foo)" + System.lineSeparator();
 
-        parser = getParser(listener, converters, true);
+        parser = getParser(listener, true);
         parser.parse(ddl, tables);
         parser.parse(ddl2, tables);
         assertThat(tables.size()).isEqualTo(2);
@@ -1435,7 +1435,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
                 + "); " + System.lineSeparator();
         String ddl2 = "CREATE VIEW fooView(w1) AS (SELECT foo2.c2 as w1 FROM (SELECT c1 as c2 FROM foo) AS foo2)" + System.lineSeparator();
 
-        parser = getParser(listener, converters, true);
+        parser = getParser(listener, true);
         parser.parse(ddl, tables);
         parser.parse(ddl2, tables);
         assertThat(tables.size()).isEqualTo(2);
@@ -1454,7 +1454,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
                 + "); " + System.lineSeparator();
         String ddl2 = "CREATE VIEW fooView(w1) AS (SELECT foo2.c2 as w1 FROM (SELECT c1 as c2 FROM foo) AS foo2)" + System.lineSeparator();
         String ddl3 = "ALTER VIEW fooView AS (SELECT c2 FROM foo)";
-        parser = getParser(listener, converters, true);
+        parser = getParser(listener, true);
         parser.parse(ddl, tables);
         parser.parse(ddl2, tables);
         parser.parse(ddl3, tables);
@@ -1469,7 +1469,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @Test
     public void shouldUseFiltersForAlterTable() {
-        parser = getParser(listener, converters, TableFilter.fromPredicate(x -> !x.table().contains("ignored")));
+        parser = getParser(listener, TableFilter.fromPredicate(x -> !x.table().contains("ignored")));
 
         final String ddl = "CREATE TABLE ok (id int primary key, val smallint);" + System.lineSeparator()
                 + "ALTER TABLE ignored ADD COLUMN(x tinyint)" + System.lineSeparator()
@@ -1495,7 +1495,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     @Test
     @FixFor("DBZ-903")
     public void shouldParseFunctionNamedDatabase() {
-        parser = getParser(listener, converters, TableFilter.fromPredicate(x -> !x.table().contains("ignored")));
+        parser = getParser(listener, TableFilter.fromPredicate(x -> !x.table().contains("ignored")));
 
         final String ddl = "SELECT `table_name` FROM `information_schema`.`TABLES` WHERE `table_schema` = DATABASE()";
         parser.parse(ddl, tables);
@@ -1504,7 +1504,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     @Test
     @FixFor("DBZ-910")
     public void shouldParseConstraintCheck() {
-        parser = getParser(listener, converters, true);
+        parser = getParser(listener, true);
 
         final String ddl = "CREATE TABLE t1 (c1 INTEGER NOT NULL,c2 VARCHAR(22),CHECK (c2 IN ('A', 'B', 'C')));"
                 + "CREATE TABLE t2 (c1 INTEGER NOT NULL,c2 VARCHAR(22),CONSTRAINT c1 CHECK (c2 IN ('A', 'B', 'C')));"
@@ -1543,7 +1543,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     @Test
     @FixFor("DBZ-780")
     public void shouldRenameColumnWithoutDefinition() {
-        parser = getParser(listener, converters, TableFilter.fromPredicate(x -> !x.table().contains("ignored")));
+        parser = getParser(listener, TableFilter.fromPredicate(x -> !x.table().contains("ignored")));
 
         final String ddl = "CREATE TABLE foo (id int primary key, old INT);" + System.lineSeparator()
                 + "ALTER TABLE foo RENAME COLUMN old to new ";
@@ -2675,7 +2675,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         final String ddl = "USE db;"
                 + "CREATE TABLE db.t1 (ID INTEGER PRIMARY KEY, val INTEGER, INDEX myidx(val));"
                 + "ALTER TABLE db.t1 RENAME INDEX myidx to myidx2;";
-        parser = getParser(listener, converters, true);
+        parser = getParser(listener, true);
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
         final Table table = tables.forTable(new TableId(null, "db", "t1"));
@@ -2690,7 +2690,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
                 + "CREATE TABLE db.t1 (ID INTEGER PRIMARY KEY, val INTEGER, INDEX myidx(val));";
         final String ddl2 = "USE db;"
                 + "CREATE OR REPLACE INDEX myidx on db.t1(val);";
-        parser = getParser(listener, converters, true);
+        parser = getParser(listener, true);
         parser.parse(ddl1, tables);
         assertThat(tables.size()).isEqualTo(1);
         final Table table = tables.forTable(new TableId(null, "db", "t1"));
