@@ -49,6 +49,9 @@
         <!-- Blob Storage -->
         <version.azure.blob>12.21.0</version.azure.blob>
 
+        <!-- K8s Config Map Storage -->
+        <version.kubernetes.client>6.13.4</version.kubernetes.client>
+
         <!-- Testing -->
         <version.junit>4.13.1</version.junit>
         <version.junit5>5.9.1</version.junit5>
@@ -509,6 +512,13 @@
                 <version>${version.azure.blob}</version>
             </dependency>
 
+            <!-- K8s Config Map Storage -->
+            <dependency>
+                <groupId>io.fabric8</groupId>
+                <artifactId>kubernetes-client</artifactId>
+                <version>${version.kubernetes.client}</version>
+            </dependency>
+
             <!-- Testing utilities -->
             <dependency>
                 <groupId>org.testcontainers</groupId>
@@ -603,6 +613,12 @@
               <version>${version.okhttp}</version>
             </dependency>
 
+            <dependency>
+                <groupId>io.fabric8</groupId>
+                <artifactId>kube-api-test</artifactId>
+                <version>${version.kubernetes.client}</version>
+            </dependency>
+
             <!-- Code generators -->
             <dependency>
               <groupId>io.smallrye</groupId>
@@ -649,6 +665,11 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-storage-redis</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-storage-configmap</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
