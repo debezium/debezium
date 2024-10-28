@@ -25,5 +25,6 @@
         <module>debezium-storage-rocketmq</module>
         <module>debezium-storage-azure-blob</module>
         <module>debezium-storage-jdbc</module>
+        <module>debezium-storage-configmap</module>
     </modules>
 </project>
