@@ -26,9 +26,13 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.Configuration.Builder;
+import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractSnapshotTest;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
 
@@ -372,8 +376,22 @@ public class IncrementalSnapshotCollationSortOrderMismatchIT extends AbstractSna
     }
 
     @Override
-    protected Configuration.Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
-        throw new UnsupportedOperationException();
+    protected Builder mutableConfig(boolean signalTableOnly, boolean storeOnlyCapturedDdl) {
+        final String tableIncludeList;
+        if (signalTableOnly) {
+            tableIncludeList = "dbo.b";
+        }
+        else {
+            tableIncludeList = "dbo.a,dbo.b";
+        }
+        return TestHelper.defaultConfig()
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.SIGNAL_DATA_COLLECTION, "testDB1.dbo.debezium_signal")
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
+                .with(SqlServerConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250)
+                .with(SqlServerConnectorConfig.INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES, true)
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "dbo.a42:pk1,pk2,pk3,pk4")
+                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl);
     }
 
     @Override

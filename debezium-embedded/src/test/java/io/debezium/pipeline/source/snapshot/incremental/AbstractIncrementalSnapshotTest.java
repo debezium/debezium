@@ -857,6 +857,34 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     }
 
     @Test
+    public void snapshotNewTableWithoutCapturedSchema() throws Exception {
+
+        populateTables();
+
+        // Start connector and only retrieve DDL for captured tables
+        startConnectorWithSnapshot(x -> mutableConfig(true, true));
+        waitForConnectorToStart();
+
+        SourceRecords snapshotRecords = consumeRecordsByTopic(ROW_COUNT);
+
+        stopConnector();
+
+        // Restart connector, specifying to include the populated tables which we have not captured schema for
+        startConnector(x -> mutableConfig(false, true));
+        waitForConnectorToStart();
+
+        sendAdHocSnapshotSignal();
+
+        final int expectedRecordCount = ROW_COUNT;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(expectedRecordCount);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+
+        stopConnector();
+    }
+
+    @Test
     public void testPauseDuringSnapshot() throws Exception {
         startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 50));
         waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());

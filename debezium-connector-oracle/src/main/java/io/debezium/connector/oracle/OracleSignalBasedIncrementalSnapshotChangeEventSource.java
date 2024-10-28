@@ -76,4 +76,12 @@ public class OracleSignalBasedIncrementalSnapshotChangeEventSource extends Signa
             throw new DebeziumException("Failed to close snapshot connection", e);
         }
     }
+
+    @Override
+    protected String getTableDDL(TableId dataCollectionId) throws SQLException {
+        this.connection.setAutoCommit(false);
+        String ddlString = this.connection.getTableMetadataDdl(dataCollectionId);
+        this.connection.setAutoCommit(true);
+        return ddlString;
+    }
 }
