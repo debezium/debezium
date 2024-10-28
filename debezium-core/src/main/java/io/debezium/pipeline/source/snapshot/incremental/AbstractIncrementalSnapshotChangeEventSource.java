@@ -34,6 +34,7 @@ import io.debezium.annotation.NotThreadSafe;
 import io.debezium.data.ValueWrapper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.EventDispatcher;
+import io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
@@ -50,7 +51,9 @@ import io.debezium.relational.SnapshotChangeRecordEmitter;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.TableSchema;
+import io.debezium.relational.Tables;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.ColumnUtils;
@@ -356,18 +359,46 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         final TableId currentTableId = (TableId) context.currentDataCollectionId().getId();
         currentTable = databaseSchema.tableFor(currentTableId);
         if (currentTable == null) {
-            LOGGER.warn("Schema not found for table '{}', known tables {}", currentTableId, databaseSchema.tableIds());
-            notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned, UNKNOWN_SCHEMA);
-            nextDataCollection(partition, offsetContext);
-            return true;
+            LOGGER.info("Schema not found for table '{}', known tables {}. Will attempt to retrieve this schema",
+                    currentTableId, databaseSchema.tableIds());
+            try {
+                retrieveAndRefreshSchema(currentTableId, partition, offsetContext);
+                currentTable = databaseSchema.tableFor(currentTableId);
+                if (currentTable == null) {
+                    warnAndSkip(currentTableId, partition, offsetContext, UNKNOWN_SCHEMA, "Schema retrieval failed to populate the schema as expected for {}");
+                    return true;
+                }
+            }
+            catch (Exception e) {
+                LOGGER.warn("Failed to retrieve schema for {}", currentTableId, e);
+                warnAndSkip(currentTableId, partition, offsetContext, UNKNOWN_SCHEMA, "Schema retrieval failed due to an exception for {}");
+                return true;
+            }
         }
         if (chunkQueryBuilder.getQueryColumns(context, currentTable).isEmpty()) {
-            LOGGER.warn("Incremental snapshot for table '{}' skipped because the table has no primary keys", currentTableId);
-            notificationService.incrementalSnapshotNotificationService().notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned, NO_PRIMARY_KEY);
-            nextDataCollection(partition, offsetContext);
+            warnAndSkip(currentTableId, partition, offsetContext, NO_PRIMARY_KEY, "Incremental snapshot for table '{}' skipped because the table has no primary keys");
             return true;
         }
         return false;
+    }
+
+    private void warnAndSkip(TableId currentTableId, P partition, OffsetContext offsetContext, TableScanCompletionStatus status, String reason) {
+        LOGGER.warn(reason, currentTableId);
+        notificationService.incrementalSnapshotNotificationService()
+                .notifyTableScanCompleted(context, partition, offsetContext, totalRowsScanned, status);
+        nextDataCollection(partition, offsetContext);
+    }
+
+    private void retrieveAndRefreshSchema(TableId tableId, P partition, OffsetContext offsetContext) throws SQLException, InterruptedException {
+        Table newTable = readSchemaForTable(tableId);
+
+        // Create and dispatch schema change event
+        createAndDispatchSchemaChangeEvent(newTable, partition, offsetContext, tableId);
+
+        // Refresh schema and assign to current table
+        databaseSchema.refresh(newTable);
+        currentTable = newTable;
+        LOGGER.info("Schema successfully read and dispatched for table '{}'", tableId);
     }
 
     /**
@@ -708,5 +739,74 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         // since schema changes are not emitted as change events in the same way that they are for
         // connectors like MySQL or Oracle
         return table;
+    }
+
+    /**
+     * Reads the schema for the specified table ID.
+     * This method can be overridden if custom schema retrieval logic is required.
+     */
+    protected Table readSchemaForTable(TableId tableId) throws SQLException {
+        Tables tempTables = new Tables();
+        try {
+            jdbcConnection.readSchema(
+                    tempTables,
+                    null,
+                    tableId.schema(),
+                    Tables.TableFilter.fromPredicate(id -> id.equals(tableId)),
+                    null,
+                    false);
+        }
+        catch (SQLException e) {
+            LOGGER.error("SQL error while reading schema for table '{}'", tableId, e);
+            throw new DebeziumException(e);
+        }
+
+        Table newTable = tempTables.forTable(tableId);
+        if (newTable == null) {
+            throw new DebeziumException("Failed to populate table with schema for " + tableId);
+        }
+        return newTable;
+    }
+
+    /**
+     * Creates and dispatches a schema change event for the given table.
+     * This method can be overridden if custom event creation or dispatching is required.
+     */
+    @SuppressWarnings("unchecked")
+    protected void createAndDispatchSchemaChangeEvent(Table newTable, P partition, OffsetContext offsetContext, TableId tableId)
+            throws SQLException {
+        SchemaChangeEvent schemaChangeEvent = SchemaChangeEvent.ofCreate(
+                partition,
+                offsetContext,
+                newTable.id().catalog(),
+                newTable.id().schema(),
+                getTableDDL(tableId),
+                newTable,
+                true);
+
+        try {
+            dispatcher.dispatchSchemaChangeEvent(
+                    partition,
+                    offsetContext,
+                    (T) tableId,
+                    receiver -> {
+                        try {
+                            receiver.schemaChangeEvent(schemaChangeEvent);
+                        }
+                        catch (Exception e) {
+                            throw new DebeziumException("Error dispatching schema change for table " + tableId, e);
+                        }
+                    });
+        }
+        catch (InterruptedException e) {
+            LOGGER.error("Processing interrupted for table '{}'", tableId);
+            throw new DebeziumException(e);
+        }
+    }
+
+    protected String getTableDDL(TableId tableId) throws SQLException {
+        // default behavior is to return a null value, this allows connectors that require DDL
+        // for a schemaChangeEvent to implement this, such as Oracle
+        return null;
     }
 }
