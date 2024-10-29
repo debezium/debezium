@@ -3317,6 +3317,12 @@ After the next failure, the connector stops, and user intervention is required t
 |`600000` (10 minutes)
 |Specifies the time, in milliseconds, that the connector waits for a query to complete.
 Set the value to `0` (zero) to remove the timeout limit.
+
+|[[sqlserver-property-streaming-fetch-size]]<<sqlserver-property-streaming-fetch-size, `streaming.fetch.size`>>
+|`0`
+|Specifies the maximum number of rows that should be read in one go from each table while streaming.
+The connector will read the table contents in multiple batches of this size. Defaults to `0` which means no limit.
+
 |===
 
 [id="debezium-sqlserver-connector-database-history-configuration-properties"]

@@ -11,7 +11,6 @@ import static org.junit.Assert.assertNull;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -158,16 +157,14 @@ public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
                             final Lsn minLsn = connection.getMinLsn(TestHelper.TEST_DATABASE_1, tableName);
                             final Lsn maxLsn = connection.getMaxLsn(TestHelper.TEST_DATABASE_1);
                             final AtomicReference<Boolean> found = new AtomicReference<>(false);
-                            SqlServerChangeTable[] tables = Collections.singletonList(ct).toArray(new SqlServerChangeTable[]{});
-                            connection.getChangesForTables(TestHelper.TEST_DATABASE_1, tables, minLsn, maxLsn, resultsets -> {
-                                final ResultSet rs = resultsets[0];
+                            try (ResultSet rs = connection.getChangesForTable(ct, minLsn, maxLsn)) {
                                 while (rs.next()) {
                                     if (rs.getInt("id") == -1) {
                                         found.set(true);
                                         break;
                                     }
                                 }
-                            });
+                            }
                             return found.get();
                         }
                         catch (Exception e) {

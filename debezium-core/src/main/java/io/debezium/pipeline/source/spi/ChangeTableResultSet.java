@@ -27,16 +27,18 @@ public abstract class ChangeTableResultSet<C extends ChangeTable, T extends Comp
     private final static Logger LOGGER = LoggerFactory.getLogger(ChangeTableResultSet.class);
 
     private final C changeTable;
-    private final ResultSet resultSet;
+    private ResultSet resultSet;
     private final int columnDataOffset;
+    private final int maxRowsPerResultSet;
+    private int rowsReadPerResultSet;
     private boolean completed = false;
     private T currentChangePosition;
     private T previousChangePosition;
 
-    public ChangeTableResultSet(C changeTable, ResultSet resultSet, int columnDataOffset) {
+    public ChangeTableResultSet(C changeTable, int columnDataOffset, int maxRowsPerResultSet) {
         this.changeTable = changeTable;
-        this.resultSet = resultSet;
         this.columnDataOffset = columnDataOffset;
+        this.maxRowsPerResultSet = maxRowsPerResultSet;
     }
 
     public C getChangeTable() {
@@ -59,15 +61,53 @@ public abstract class ChangeTableResultSet<C extends ChangeTable, T extends Comp
         return (previousChangePosition != null) && previousChangePosition.compareTo(currentChangePosition) > 0;
     }
 
+    public ResultSet getResultSet() {
+        return resultSet;
+    }
+
+    protected abstract ResultSet getNextResultSet(T lastChangePositionSeen) throws SQLException;
+
     public boolean next() throws SQLException {
-        completed = !resultSet.next();
+        if (resultSet == null) {
+            resultSet = getNextResultSet(currentChangePosition);
+            rowsReadPerResultSet = 0;
+        }
+
+        if (resultSet.next()) {
+            rowsReadPerResultSet++;
+        }
+        else {
+            if (maxRowsPerResultSet > 0 && rowsReadPerResultSet > maxRowsPerResultSet) {
+                throw new RuntimeException("Number of rows read from the result set is greater than the configured max rows per a result set");
+            }
+
+            if (maxRowsPerResultSet > 0 && rowsReadPerResultSet == maxRowsPerResultSet) {
+                close();
+                return next();
+            }
+
+            completed = true;
+        }
+
         previousChangePosition = currentChangePosition;
         currentChangePosition = getNextChangePosition(resultSet);
         if (completed) {
-            LOGGER.trace("Closing result set of change tables for table {}", changeTable);
-            resultSet.close();
+            close();
         }
         return !completed;
+    }
+
+    public void close() {
+        LOGGER.trace("Closing result set of change tables for table {}", changeTable);
+        try {
+            if (resultSet != null) {
+                resultSet.close();
+                resultSet = null;
+            }
+        }
+        catch (Exception e) {
+            // ignore
+        }
     }
 
     /**
