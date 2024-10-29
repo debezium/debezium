@@ -312,14 +312,14 @@ public abstract class AbstractInfinispanLogMinerEventProcessor extends AbstractL
             catch (DmlParserException e) {
                 switch (getConfig().getEventProcessingFailureHandlingMode()) {
                     case FAIL:
-                        LOGGER.error("Failed to parse SQL for event '{}'", row);
+                        Loggings.logErrorAndTraceRecord(LOGGER, row, "Failed to parse SQL for event");
                         throw e;
                     case WARN:
-                        LOGGER.warn("Failed to parse SQL '{}'. The event '{}' is being ignored and skipped.", row.getRedoSql(), row);
+                        Loggings.logWarningAndTraceRecord(LOGGER, row, "Failed to parse redo SQL, event is being ignored and skipped.");
                         return;
                     default:
                         // In this case, we explicitly log the situation in "debug" only and not as an error/warn.
-                        LOGGER.debug("Failed to parse SQL for event '{}'. This event is being ignored and skipped.", row);
+                        Loggings.logDebugAndTraceRecord(LOGGER, row, "Failed to parse redo SQL, event is being ignored and skipped.");
                         return;
                 }
             }
