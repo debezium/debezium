@@ -478,6 +478,14 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     + "The value of '" + DataQueryMode.DIRECT.getValue()
                     + "' makes the connector to query the change tables directly.");
 
+    public static final Field STREAMING_FETCH_SIZE = Field.create("streaming.fetch.size")
+            .withDisplayName("Streaming fetch size")
+            .withDefault(0)
+            .withType(Type.INT)
+            .withImportance(Importance.LOW)
+            .withDescription("Specifies the maximum number of rows that should be read in one go from each table while streaming. "
+                    + "The connector will read the table contents in multiple batches of this size. Defaults to 0 which means no limit.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("SQL Server")
             .type(
@@ -498,7 +506,8 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
                     QUERY_FETCH_SIZE,
-                    DATA_QUERY_MODE)
+                    DATA_QUERY_MODE,
+                    STREAMING_FETCH_SIZE)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .excluding(
                     SCHEMA_INCLUDE_LIST,
@@ -525,6 +534,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     private final boolean optionRecompile;
     private final int queryFetchSize;
     private final DataQueryMode dataQueryMode;
+    private final int streamingFetchSize;
 
     public SqlServerConnectorConfig(Configuration config) {
         super(
@@ -568,6 +578,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
         this.dataQueryMode = DataQueryMode.parse(config.getString(DATA_QUERY_MODE), DATA_QUERY_MODE.defaultValueAsString());
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
+        this.streamingFetchSize = config.getInteger(STREAMING_FETCH_SIZE);
     }
 
     public List<String> getDatabaseNames() {
@@ -716,5 +727,9 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
         }
 
         return count;
+    }
+
+    public int getStreamingFetchSize() {
+        return streamingFetchSize;
     }
 }

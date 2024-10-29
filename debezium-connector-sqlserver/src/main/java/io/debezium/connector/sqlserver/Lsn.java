@@ -22,6 +22,8 @@ public class Lsn implements Comparable<Lsn>, Nullable {
 
     public static final Lsn NULL = new Lsn(null);
 
+    public static final Lsn ZERO = valueOf(new byte[10]);
+
     private final byte[] binary;
     private int[] unsignedBinary;
 
