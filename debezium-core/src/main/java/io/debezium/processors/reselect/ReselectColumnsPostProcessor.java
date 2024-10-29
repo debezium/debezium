@@ -225,20 +225,16 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
                 if (errorHandlingMode == ErrorHandlingMode.FAIL) {
                     throw new DebeziumException("Failed to find row in table " + tableId + " with key " + key);
                 }
-                else {
-                    LOGGER.warn("Failed to find row in table {} with key {}.", tableId, key);
-                    return;
-                }
+                LOGGER.warn("Failed to find row in table {} with key {}.", tableId, key);
+                return;
             }
         }
         catch (SQLException e) {
             if (errorHandlingMode == ErrorHandlingMode.FAIL) {
                 throw new DebeziumException("Failed to re-select columns for table " + tableId + " and key " + keyValues, e);
             }
-            else {
-                LOGGER.warn("Failed to re-select columns for table {} and key {}", tableId, keyValues, e);
-                return;
-            }
+            LOGGER.warn("Failed to re-select columns for table {} and key {}", tableId, keyValues, e);
+            return;
         }
 
         // Iterate re-selection columns and override old values

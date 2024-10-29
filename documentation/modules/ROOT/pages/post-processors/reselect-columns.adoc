@@ -110,7 +110,7 @@ To enable the connector to use the `ReselectColumnsPostProcessor`, add the follo
 |Enables or disables reselection based event key field names.
 
 |7
-|Log or fail the connector in  case reselection fail or give empty record.
+|Log a warning or throw an exception when reselection does not find the row or if a database exception is raised.
 
 |===
 
@@ -164,11 +164,11 @@ The post processor then uses the specified key field names as the primary key in
 
 |[[reselect-columns-post-processor-property-reselect-error-handling-mode]]<<reselect-columns-post-processor-property-reselect-error-handling-mode, `+reselect.error.handling.mode+`>>
 |`WARN`
-|Specifies whether the post processor reselects behaviour if reselection fail or give empty record. +
+|Specifies how the reselect post processor reacts to certain conditions. +
  +
-By default, it only logs the error in case reselection fail or empty. +
+By default, the post-processor logs a warning message when the row cannot be found or if there is a database selection error. +
  +
-You can set this property to `FAIL` to fail the connector in case of reselection fail or empty record.
+When set to `FAIL`, the connector will stop processing changes if the row no longer exists at the time of reselection or if there is a database failure when reselecting the row.
 
 
 |===
