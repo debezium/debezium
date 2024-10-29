@@ -57,7 +57,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
                 TemporalPrecisionMode.CONNECT,
                 JdbcValueConverters.BigIntUnsignedMode.LONG,
                 BinaryHandlingMode.BYTES);
-        parser = getDdlParser(converters);
+        parser = getDdlParser();
         tables = new Tables();
         tableSchemaBuilder = new TableSchemaBuilder(
                 converters,
@@ -197,7 +197,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
                 TemporalPrecisionMode.CONNECT,
                 JdbcValueConverters.BigIntUnsignedMode.PRECISE,
                 BinaryHandlingMode.BYTES);
-        final P parser = getDdlParser(converters);
+        final P parser = getDdlParser();
         final TableSchemaBuilder tableSchemaBuilder = new TableSchemaBuilder(
                 converters,
                 getDefaultValueConverter(converters),
@@ -355,7 +355,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
                 TemporalPrecisionMode.CONNECT,
                 JdbcValueConverters.BigIntUnsignedMode.LONG,
                 BinaryHandlingMode.BYTES);
-        final P parser = getDdlParser(converters);
+        final P parser = getDdlParser();
         final TableSchemaBuilder tableSchemaBuilder = new TableSchemaBuilder(
                 converters,
                 getDefaultValueConverter(converters),
@@ -590,7 +590,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
     @Test
     @FixFor("DBZ-5134")
     public void parseNumericAndDecimalToIntDefaultValue() {
-        final P parser = getDdlParser(converters);
+        final P parser = getDdlParser();
         final TableSchemaBuilder tableSchemaBuilder = new TableSchemaBuilder(
                 converters,
                 getDefaultValueConverter(converters),
@@ -622,7 +622,7 @@ public abstract class BinlogDefaultValueTest<V extends BinlogValueConverters, P 
         assertThat(getColumnSchema(schema, "c6").defaultValue()).isEqualTo(1.0);
     }
 
-    protected abstract P getDdlParser(V valueConverter);
+    protected abstract P getDdlParser();
 
     protected abstract V getValueConverter(JdbcValueConverters.DecimalMode decimalMode,
                                            TemporalPrecisionMode temporalPrecisionMode,
