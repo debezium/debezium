@@ -73,11 +73,11 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SourcePipelineInvocationContextProvider.class);
 
-    private static final String MYSQL_IMAGE_NAME = "debezium/example-mysql";
+    private static final String MYSQL_IMAGE_NAME = "quay.io/debezium/example-mysql";
     private static final String MYSQL_USERNAME = "mysqluser";
     private static final String MYSQL_PASSWORD = "debezium";
 
-    private static final String POSTGRES_IMAGE_NAME = "debezium/example-postgres";
+    private static final String POSTGRES_IMAGE_NAME = "quay.io/debezium/example-postgres";
     private static final String POSTGRES_USERNAME = "postgres";
     private static final String POSTGRES_PASSWORD = "postgres";
 
