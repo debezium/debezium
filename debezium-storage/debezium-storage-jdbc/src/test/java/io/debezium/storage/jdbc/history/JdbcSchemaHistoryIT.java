@@ -47,7 +47,7 @@ public class JdbcSchemaHistoryIT extends AbstractConnectorTest {
     private static final String PRIVILEGED_PASSWORD = "mysqlpassword";
     private static final String ROOT_PASSWORD = "debezium";
     private static final String DBNAME = "inventory";
-    private static final String IMAGE = "debezium/example-mysql";
+    private static final String IMAGE = "quay.io/debezium/example-mysql";
     private static final Integer PORT = 3306;
     private static final String TOPIC_PREFIX = "test";
     private static final String TABLE_NAME = "schematest";
