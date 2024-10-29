@@ -24,7 +24,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
  */
 public class DefaultValueTest extends BinlogDefaultValueTest<MariaDbValueConverters, MariaDbAntlrDdlParser> {
     @Override
-    protected MariaDbAntlrDdlParser getDdlParser(MariaDbValueConverters valueConverters) {
+    protected MariaDbAntlrDdlParser getDdlParser() {
         return new MariaDbAntlrDdlParser();
     }
 
