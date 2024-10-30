@@ -541,7 +541,7 @@ JSON logging can be disabled by setting `quarkus.log.console.json=false` in the 
 
 ==== Enabling message filtering
 
-{prodname} Server provides filter STM capability, see xref:transformations/filtering.adoc[Message Filtering] for more details.
+{prodname} Server provides filter SMTs (Single Message Transformations) capability. See xref:transformations/filtering.adoc[Message Filtering] for more details.
 However, for security reasons it's not enabled by default and has to be explicitly enabled when {prodname} Server is started.
 To enable it, set environment variable `ENABLE_DEBEZIUM_SCRIPTING` to `true`.
 This will add `debezium-scripting` jar file and https://jcp.org/en/jsr/detail?id=223[JSR 223] implementations (currently Groovy and graalvm.js) jar files into the server class path.
