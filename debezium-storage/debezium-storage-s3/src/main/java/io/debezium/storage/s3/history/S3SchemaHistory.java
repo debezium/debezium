@@ -101,7 +101,7 @@ public class S3SchemaHistory extends AbstractFileBasedSchemaHistory {
             .withType(Type.STRING)
             .withImportance(Importance.LOW);
 
-    public static final Field.Set ALL_FIELDS = Field.setOf(ACCESS_KEY_ID, SECRET_ACCESS_KEY, REGION, BUCKET, ENDPOINT);
+    public static final Field.Set ALL_FIELDS = Field.setOf(ACCESS_KEY_ID, SECRET_ACCESS_KEY, REGION, BUCKET, OBJECT_NAME, ENDPOINT);
 
     private String bucket;
     private String objectName;
