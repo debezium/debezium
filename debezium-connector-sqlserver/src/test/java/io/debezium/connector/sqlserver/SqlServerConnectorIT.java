@@ -66,11 +66,11 @@ import io.debezium.data.SourceRecordAssert;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.async.RetryingCallable;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
-import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseSchema;
@@ -3325,21 +3325,20 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
                 .with("errors.max.retries", 1)
                 .with(SqlServerConnectorConfig.LOG_POSITION_CHECK_ENABLED, false)
                 .build();
-        final LogInterceptor logInterceptor = new LogInterceptor(ErrorHandler.class);
+        final LogInterceptor logInterceptor1 = new LogInterceptor(RetryingCallable.class);
 
         try {
             start(SqlServerConnector.class, config1);
             assertConnectorIsRunning();
             scenario.run();
 
-            final String message1 = "1 of 1 retries will be attempted";
-            final String message2 = "The maximum number of 1 retries has been attempted";
+            final String message = "Failed with retriable exception, will retry later; attempt #1 out of 1";
             Awaitility.await()
-                    .alias("Checking for maximum restart messages")
+                    .alias("Checking for maximum restart messages1")
                     .pollInterval(100, TimeUnit.MILLISECONDS)
                     .atMost(5, TimeUnit.SECONDS)
                     .ignoreException(InstanceNotFoundException.class)
-                    .until(() -> logInterceptor.containsMessage(message1) && logInterceptor.containsMessage(message2));
+                    .until(() -> logInterceptor1.containsMessage(message));
         }
         finally {
             // Set the database back online, since otherwise, it will be impossible to create it again
