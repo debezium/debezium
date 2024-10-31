@@ -39,7 +39,7 @@ runs:
     - name: Build Debezium MySQL Connector
       shell: ${{ inputs.shell }}
       run: >
-        ./mvnw clean install -B -pl debezium-connector-mysql 
+        ./mvnw clean install -B -pl debezium-connector-binlog,debezium-connector-mysql 
         -Passembly
         -DskipTests=true
         -DskipITs=true
