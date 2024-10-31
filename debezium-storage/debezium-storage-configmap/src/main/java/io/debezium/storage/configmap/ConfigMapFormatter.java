@@ -86,6 +86,8 @@ public class ConfigMapFormatter {
             JsonNode jsonNode = objectMapper.readTree(key.array());
 
             // a valid config key must consist of alphanumeric characters, '-', '_' or '.' (e.g. 'key.name', or 'KEY_NAME', or 'key-name', regex used for validation is '[-._a-zA-Z0-9]+').
+            // Note: offset key is always in a form [namespace, partition].
+            // On Kafka Connect namespace is the connector name, for engine it is the configured engine name.
             StringBuilder keyBuilder = new StringBuilder();
             for (JsonNode node : jsonNode) {
                 if (node.isTextual()) {
