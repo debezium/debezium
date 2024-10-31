@@ -556,9 +556,14 @@ jobs:
           path-core: core
           path-ibmi: ibmi
 
-  # Approx 45m
+  # Approx 45m each
   build_informix:
-    name: "Informix"
+    strategy:
+      # Runs each combination concurrently
+      matrix:
+        profile: [ "assembly,informix12", "assembly,informix14" ]
+      fail-fast: false
+    name: "Informix - ${{ matrix.profile }}"
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
     if: ${{ needs.file_changes.outputs.common-changed == 'true' }}
@@ -586,6 +591,7 @@ jobs:
         with:
           path-core: core
           path-informix: informix
+          profile: ${{ matrix.profile }}
 
   # Approx 20m
   build_vitess:
