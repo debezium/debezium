@@ -12,7 +12,7 @@ import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetricsMXBean;
  *
  * @author Chris Cranford
  */
-public interface MongoDbStreamingChangeEventSourceMetricsMBean extends StreamingChangeEventSourceMetricsMXBean {
+public interface MongoDbStreamingChangeEventSourceMetricsMXBean extends StreamingChangeEventSourceMetricsMXBean {
 
     long getNumberOfDisconnects();
 

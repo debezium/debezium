@@ -22,7 +22,7 @@ import io.debezium.util.Collect;
  */
 @ThreadSafe
 public class MongoDbSnapshotChangeEventSourceMetrics extends DefaultSnapshotChangeEventSourceMetrics<MongoDbPartition>
-        implements MongoDbSnapshotChangeEventSourceMetricsMBean {
+        implements MongoDbSnapshotChangeEventSourceMetricsMXBean {
 
     private final AtomicLong numberOfDisconnects = new AtomicLong();
 
