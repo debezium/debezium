@@ -28,7 +28,7 @@ import io.debezium.util.Collect;
  */
 @ThreadSafe
 public class MongoDbStreamingChangeEventSourceMetrics extends DefaultStreamingChangeEventSourceMetrics<MongoDbPartition>
-        implements MongoDbStreamingChangeEventSourceMetricsMBean {
+        implements MongoDbStreamingChangeEventSourceMetricsMXBean {
 
     private final AtomicLong numberOfPrimaryElections = new AtomicLong();
     private final AtomicLong numberOfDisconnects = new AtomicLong();
