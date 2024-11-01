@@ -1982,7 +1982,7 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
-        waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
+        waitForAvailableRecords(1, TimeUnit.SECONDS);
 
         stopConnector(value -> assertThat(logInterceptor.containsWarnMessage(DatabaseSchema.NO_CAPTURED_DATA_COLLECTIONS_WARNING)).isTrue());
     }
