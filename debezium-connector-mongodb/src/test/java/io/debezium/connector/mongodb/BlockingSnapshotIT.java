@@ -29,6 +29,8 @@ import javax.management.MBeanException;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ReflectionException;
+import javax.management.openmbean.CompositeDataSupport;
+import javax.management.openmbean.TabularDataSupport;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -230,11 +232,14 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
 
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
 
-        Map<String, Object> rowsScanned = (Map<String, Object>) mbeanServer.getAttribute(getSnapshotMetricsObjectName(connector, server, task, database),
+        final var rowsScanned = (TabularDataSupport) mbeanServer.getAttribute(getSnapshotMetricsObjectName(connector, server, task, database),
                 "RowsScanned");
 
-        String unquotedTableName = table.replace("`", "");
-        return (Long) rowsScanned.get(unquotedTableName);
+        final var scannedRowsByCollection = rowsScanned.values().stream().map(c -> ((CompositeDataSupport) c))
+                .collect(Collectors.toMap(compositeDataSupport -> compositeDataSupport.get("key").toString(), compositeDataSupport -> compositeDataSupport.get("value")));
+
+        final var unquotedCollectionName = table.replace("`", "");
+        return (Long) scannedRowsByCollection.get(unquotedCollectionName);
     }
 
     private static List<Integer> getExpectedValues(Long totalSnapshotRecords) {
