@@ -12,6 +12,6 @@ import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetricsMXBean;
  *
  * @author Chris Cranford
  */
-public interface MongoDbSnapshotChangeEventSourceMetricsMBean extends SnapshotChangeEventSourceMetricsMXBean {
+public interface MongoDbSnapshotChangeEventSourceMetricsMXBean extends SnapshotChangeEventSourceMetricsMXBean {
     long getNumberOfDisconnects();
 }
