@@ -30,7 +30,7 @@ import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseVersionResolver;
 import io.debezium.connector.mongodb.junit.MongoDbPlatform;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.testing.testcontainers.MongoDbReplicaSet;
 import io.debezium.testing.testcontainers.util.DockerUtils;
@@ -38,7 +38,7 @@ import io.debezium.testing.testcontainers.util.DockerUtils;
 /**
  * @author Anisha Mohanty
  */
-public class FiltersRestrictedIT extends AbstractConnectorTest {
+public class FiltersRestrictedIT extends AbstractAsyncEngineConnectorTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FiltersRestrictedIT.class);
     public static final String AUTH_DATABASE = "admin";
