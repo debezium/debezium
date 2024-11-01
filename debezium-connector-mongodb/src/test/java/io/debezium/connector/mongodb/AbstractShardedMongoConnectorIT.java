@@ -33,13 +33,13 @@ import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseVersionResolver;
 import io.debezium.connector.mongodb.junit.MongoDbPlatform;
 import io.debezium.data.Envelope;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.testing.testcontainers.MongoDbDeployment;
 import io.debezium.testing.testcontainers.MongoDbShardedCluster;
 import io.debezium.testing.testcontainers.util.DockerUtils;
 import io.debezium.util.Testing;
 
-public class AbstractShardedMongoConnectorIT extends AbstractConnectorTest {
+public class AbstractShardedMongoConnectorIT extends AbstractAsyncEngineConnectorTest {
     protected static final String DEFAULT_DATABASE = "dbit";
 
     protected static final String DEFAULT_COLLECTION = "items";

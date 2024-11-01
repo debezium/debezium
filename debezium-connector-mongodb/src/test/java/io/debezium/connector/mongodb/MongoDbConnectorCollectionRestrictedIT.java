@@ -30,12 +30,12 @@ import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseVersionResolver;
 import io.debezium.connector.mongodb.junit.MongoDbPlatform;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.testing.testcontainers.MongoDbReplicaSet;
 import io.debezium.testing.testcontainers.util.DockerUtils;
 
-public class MongoDbConnectorCollectionRestrictedIT extends AbstractConnectorTest {
+public class MongoDbConnectorCollectionRestrictedIT extends AbstractAsyncEngineConnectorTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnectorCollectionRestrictedIT.class);
     public static final String AUTH_DATABASE = "admin";
     public static final String TEST_DATABASE = "dbit";
