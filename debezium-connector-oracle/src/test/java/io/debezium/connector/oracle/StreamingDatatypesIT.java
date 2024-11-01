@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
+import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -66,7 +67,8 @@ public class StreamingDatatypesIT extends AbstractOracleDatatypesTest {
     }
 
     @Override
-    protected boolean insertRecordsDuringTest() {
+    protected boolean insertRecordsDuringTest() throws SQLException {
+        connection.executeWithoutCommitting("ALTER SESSION SET TIME_ZONE = '00:00'");
         return true;
     }
 }

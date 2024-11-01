@@ -669,10 +669,13 @@ public class OracleValueConverters extends JdbcValueConverters {
                 data = convertHexToRawFunctionToTimestamp(s);
             }
             else {
-                final Matcher toTimestampTzMatcher = TO_TIMESTAMP_TZ.matcher((String) data);
+                final Matcher toTimestampTzMatcher = TO_TIMESTAMP_TZ.matcher(s);
                 if (toTimestampTzMatcher.matches()) {
                     String dateText = toTimestampTzMatcher.group(1);
-                    data = ZonedDateTime.from(TIMESTAMP_TZ_FORMATTER.parse(dateText.trim()));
+                    data = convertToZonedDateTime(dateText);
+                }
+                else {
+                    data = convertToZonedDateTime(s);
                 }
             }
         }
@@ -687,6 +690,17 @@ public class OracleValueConverters extends JdbcValueConverters {
             catch (IllegalArgumentException e) {
             }
         });
+    }
+
+    private static Object convertToZonedDateTime(String dateText) {
+        Object data;
+        if (dateText.trim().startsWith("-")) {
+            data = ZonedDateTime.from(TIMESTAMP_TZ_FORMATTER.parse(dateText.substring(1, dateText.length()))).with(ChronoField.ERA, 0);
+        }
+        else {
+            data = ZonedDateTime.from(TIMESTAMP_TZ_FORMATTER.parse(dateText.substring(1, dateText.length())));
+        }
+        return data;
     }
 
     protected Object convertTimestampWithLocalZone(Column column, Field fieldDefn, Object data) {
