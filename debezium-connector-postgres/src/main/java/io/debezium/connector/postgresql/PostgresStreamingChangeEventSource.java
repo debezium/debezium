@@ -439,6 +439,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             }
         }
         catch (SQLException e) {
+            errorHandler.setProducerThrowable(e);
             throw new ConnectException(e);
         }
     }
