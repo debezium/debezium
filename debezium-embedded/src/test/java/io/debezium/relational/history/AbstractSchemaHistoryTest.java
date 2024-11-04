@@ -15,7 +15,7 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
@@ -28,7 +28,7 @@ import io.debezium.relational.ddl.DdlParser;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractSchemaHistoryTest extends AbstractConnectorTest {
+public abstract class AbstractSchemaHistoryTest extends AbstractAsyncEngineConnectorTest {
 
     private MemorySchemaHistory schemaHistory;
 

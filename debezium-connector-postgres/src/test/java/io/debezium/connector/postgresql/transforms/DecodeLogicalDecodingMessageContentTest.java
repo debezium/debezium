@@ -37,7 +37,7 @@ import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNa
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 
 /**
@@ -45,7 +45,7 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
  *
  * @author Roman Kudryashov
  */
-public class DecodeLogicalDecodingMessageContentTest extends AbstractConnectorTest {
+public class DecodeLogicalDecodingMessageContentTest extends AbstractAsyncEngineConnectorTest {
 
     @Rule
     public final TestRule skipName = new SkipTestDependingOnDecoderPluginNameRule();
