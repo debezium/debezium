@@ -24,12 +24,12 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.data.SchemaAndValueField;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 
 /**
  * Integration test for {@link io.debezium.connector.postgresql.PostgresConnectorConfig.SNAPSHOT_ISOLATION_MODE}
  */
-public class SnapshotIsolationIT extends AbstractConnectorTest {
+public class SnapshotIsolationIT extends AbstractAsyncEngineConnectorTest {
 
     private static final String INSERT_STMT = "INSERT INTO s1.a (aa) VALUES (1);" +
             "INSERT INTO s2.a (aa) VALUES (2);" +

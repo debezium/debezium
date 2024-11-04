@@ -29,10 +29,10 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
-public abstract class AbstractMetricsTest<T extends SourceConnector> extends AbstractConnectorTest {
+public abstract class AbstractMetricsTest<T extends SourceConnector> extends AbstractAsyncEngineConnectorTest {
 
     protected abstract Class<T> getConnectorClass();
 
