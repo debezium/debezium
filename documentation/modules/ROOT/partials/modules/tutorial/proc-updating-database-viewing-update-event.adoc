@@ -58,7 +58,7 @@ Here are the details of the _key_ for the _update_ event (formatted for readabil
   {
     "schema": {
       "type": "struct",
-      "name": "dbserver1.inventory.customers.Key"
+      "name": "dbserver1.inventory.customers.Key",
       "optional": false,
       "fields": [
         {
