@@ -25,14 +25,14 @@ import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
 /**
  * @author Chris Cranford
  */
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Other adapters do not support ROWID data types")
-public class OracleRowIdDataTypeIT extends AbstractConnectorTest {
+public class OracleRowIdDataTypeIT extends AbstractAsyncEngineConnectorTest {
 
     private static OracleConnection connection;
 

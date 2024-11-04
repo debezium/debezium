@@ -28,7 +28,7 @@ import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
 /**
@@ -36,7 +36,7 @@ import io.debezium.util.Testing;
  *
  * @author vjuranek
  */
-public class OracleNumberNegativeScaleIT extends AbstractConnectorTest {
+public class OracleNumberNegativeScaleIT extends AbstractAsyncEngineConnectorTest {
 
     private static final String PRECISION_PARAMETER_KEY = "connect.decimal.precision";
     private static final Schema NUMBER_SCHEMA = Decimal.builder(0).optional().parameter(PRECISION_PARAMETER_KEY, "38").build();
