@@ -31,7 +31,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 
 /**
@@ -39,7 +39,7 @@ import io.debezium.jdbc.JdbcConnection;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractEventRouterTest<T extends SourceConnector> extends AbstractConnectorTest {
+public abstract class AbstractEventRouterTest<T extends SourceConnector> extends AbstractAsyncEngineConnectorTest {
 
     protected EventRouter<SourceRecord> outboxEventRouter;
 
