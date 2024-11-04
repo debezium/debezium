@@ -23,7 +23,7 @@ import io.debezium.connector.oracle.converters.RawToStringConverter;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
 /**
@@ -31,7 +31,7 @@ import io.debezium.util.Testing;
  *
  * @author Chris Cranford
  */
-public class OracleRawToStringIT extends AbstractConnectorTest {
+public class OracleRawToStringIT extends AbstractAsyncEngineConnectorTest {
 
     private OracleConnection connection;
 

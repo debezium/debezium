@@ -41,7 +41,7 @@ import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.time.MicroDuration;
@@ -56,7 +56,7 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec
  */
-public abstract class AbstractOracleDatatypesTest extends AbstractConnectorTest {
+public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineConnectorTest {
 
     /**
      * Key for schema parameter used to store DECIMAL/NUMERIC columns' precision.

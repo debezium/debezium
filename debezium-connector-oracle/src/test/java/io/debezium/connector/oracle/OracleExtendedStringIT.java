@@ -27,7 +27,7 @@ import io.debezium.connector.oracle.junit.SkipTestDependingOnDatabaseParameterRu
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
 /**
@@ -36,7 +36,7 @@ import io.debezium.util.Testing;
  * @author Chris Cranford
  */
 @SkipOnDatabaseParameter(parameterName = "max_string_size", value = "EXTENDED", matches = false, reason = "Requires max_string_size set to EXTENDED")
-public class OracleExtendedStringIT extends AbstractConnectorTest {
+public class OracleExtendedStringIT extends AbstractAsyncEngineConnectorTest {
 
     @Rule
     public TestRule skipOnDatabaseParameter = new SkipTestDependingOnDatabaseParameterRule();
