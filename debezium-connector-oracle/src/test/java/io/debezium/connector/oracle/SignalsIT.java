@@ -22,7 +22,7 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
 import io.debezium.connector.oracle.util.TestHelper;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
@@ -34,7 +34,7 @@ import io.debezium.util.Testing;
  * @author Jiri Pechanec
  */
 @SkipWhenDatabaseVersion(check = EqualityCheck.GREATER_THAN_OR_EQUAL, major = 21, reason = "Not compatible, schema changes cause unexpected 'COL#' columns")
-public class SignalsIT extends AbstractConnectorTest {
+public class SignalsIT extends AbstractAsyncEngineConnectorTest {
 
     private static OracleConnection connection;
 

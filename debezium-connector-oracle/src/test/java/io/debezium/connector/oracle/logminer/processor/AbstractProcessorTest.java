@@ -27,7 +27,7 @@ import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.Testing;
 
@@ -37,7 +37,7 @@ import io.debezium.util.Testing;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractProcessorTest extends AbstractConnectorTest {
+public abstract class AbstractProcessorTest extends AbstractAsyncEngineConnectorTest {
 
     private OracleConnection connection;
 

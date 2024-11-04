@@ -46,7 +46,7 @@ import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
@@ -64,7 +64,7 @@ import oracle.sql.CharacterSet;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventProcessor> extends AbstractConnectorTest {
+public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventProcessor> extends AbstractAsyncEngineConnectorTest {
 
     private static final String TRANSACTION_ID_1 = "1234567890";
     private static final String TRANSACTION_ID_2 = "9876543210";

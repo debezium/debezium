@@ -33,7 +33,7 @@ import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
@@ -48,7 +48,7 @@ import ch.qos.logback.classic.Level;
  *
  * @author Chris Cranford
  */
-public class OracleSchemaMigrationIT extends AbstractConnectorTest {
+public class OracleSchemaMigrationIT extends AbstractAsyncEngineConnectorTest {
 
     private OracleConnection connection;
 

@@ -27,7 +27,7 @@ import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 
 /**
  * Integration tests when LOB is enabled and the primary key changes, to re-select LOB columns
@@ -35,7 +35,7 @@ import io.debezium.embedded.AbstractConnectorTest;
  *
  * @author Chris Cranford
  */
-public class OraclePrimaryKeyLobReselectIT extends AbstractConnectorTest {
+public class OraclePrimaryKeyLobReselectIT extends AbstractAsyncEngineConnectorTest {
 
     @Rule
     public TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
