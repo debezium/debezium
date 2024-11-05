@@ -45,7 +45,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.InsertMode;
-import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
 import io.debezium.connector.jdbc.junit.TestHelper;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
@@ -61,10 +60,11 @@ import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourceConnectorOption
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourcePipelineInvocationContextProvider;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourceType;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.ValueBinder;
-import io.debezium.connector.jdbc.naming.DefaultTableNamingStrategy;
-import io.debezium.connector.jdbc.naming.TableNamingStrategy;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
+import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
+import io.debezium.sink.naming.CollectionNamingStrategy;
+import io.debezium.sink.naming.DefaultCollectionNamingStrategy;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
 import io.debezium.time.MicroDuration;
 import io.debezium.util.HexConverter;
@@ -88,7 +88,7 @@ import io.debezium.util.Strings;
 @SkipExtractNewRecordState
 public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
-    private final TableNamingStrategy tableNamingStrategy = new DefaultTableNamingStrategy();
+    private final CollectionNamingStrategy collectionNamingStrategy = new DefaultCollectionNamingStrategy();
 
     private static final ZoneId SOURCE_ZONE_ID = TimeZone.getTimeZone(TestHelper.getSourceTimeZone()).toZoneId();
     private static final ZoneId SINK_ZONE_ID = TimeZone.getTimeZone(TestHelper.getSinkTimeZone()).toZoneId();
@@ -2851,7 +2851,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     }
 
     private String getSinkTable(SinkRecord record, Sink sink) {
-        final String sinkTableName = tableNamingStrategy.resolveTableName(getCurrentSinkConfig(), record);
+        final String sinkTableName = collectionNamingStrategy.resolveCollectionName(getCurrentSinkConfig(), record);
         // When quoted identifiers is not enabled, PostgreSQL saves table names as lower-case
         return sink.getType().is(SinkType.POSTGRES) ? sinkTableName.toLowerCase() : sinkTableName;
     }
@@ -2861,7 +2861,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         sinkProperties.put(JdbcSinkConnectorConfig.CONNECTION_URL, sink.getJdbcUrl());
         sinkProperties.put(JdbcSinkConnectorConfig.CONNECTION_USER, sink.getUsername());
         sinkProperties.put(JdbcSinkConnectorConfig.CONNECTION_PASSWORD, sink.getPassword());
-        sinkProperties.put(JdbcSinkConnectorConfig.DATABASE_TIME_ZONE, TestHelper.getSinkTimeZone());
+        sinkProperties.put(JdbcSinkConnectorConfig.USE_TIME_ZONE, TestHelper.getSinkTimeZone());
         return sinkProperties;
     }
 

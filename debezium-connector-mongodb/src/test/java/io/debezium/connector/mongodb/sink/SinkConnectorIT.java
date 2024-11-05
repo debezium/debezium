@@ -61,6 +61,7 @@ public interface SinkConnectorIT {
         TestInfrastructureHelper.getDebeziumContainer().ensureConnectorTaskState(SOURCE_CONNECTOR_NAME, 0, Connector.State.RUNNING);
         try {
             TestInfrastructureHelper.getDebeziumContainer().waitForStreamingRunning("mysql", config.getString(CommonConnectorConfig.TOPIC_PREFIX));
+            Thread.sleep(1_000L); // ensure all topics are properly created and filled with data
         }
         catch (InterruptedException e) {
             throw new RuntimeException(e);

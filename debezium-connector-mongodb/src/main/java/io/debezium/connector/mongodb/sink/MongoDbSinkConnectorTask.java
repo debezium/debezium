@@ -29,7 +29,6 @@ public class MongoDbSinkConnectorTask extends SinkTask {
     static final Logger LOGGER = LoggerFactory.getLogger(MongoDbSinkConnectorTask.class);
     private static final String CONNECTOR_TYPE = "sink";
     private MongoDbChangeEventSink mongoSink;
-    private MongoDbConnectionContext connectionContext;
 
     @Override
     public String version() {
@@ -49,8 +48,8 @@ public class MongoDbSinkConnectorTask extends SinkTask {
         final MongoDbSinkConnectorConfig sinkConfig = new MongoDbSinkConnectorConfig(config);
         MongoClient client = null;
         try {
-            this.connectionContext = new MongoDbConnectionContext(config);
-            client = this.connectionContext.getMongoClient();
+            MongoDbConnectionContext connectionContext = new MongoDbConnectionContext(config);
+            client = connectionContext.getMongoClient();
             mongoSink = new MongoDbChangeEventSink(sinkConfig, client, createErrorReporter());
         }
         catch (RuntimeException taskStartingException) {

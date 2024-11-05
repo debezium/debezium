@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.table;
+package io.debezium.sink.naming;
 
 /**
  * The default implementation of the {@link ColumnNamingStrategy} that simply returns the field's

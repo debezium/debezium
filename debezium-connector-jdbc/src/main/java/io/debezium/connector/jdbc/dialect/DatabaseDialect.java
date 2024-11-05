@@ -20,12 +20,11 @@ import io.debezium.connector.jdbc.SinkRecordDescriptor.FieldDescriptor;
 import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
-import io.debezium.connector.jdbc.relational.TableId;
 import io.debezium.connector.jdbc.type.Type;
+import io.debezium.metadata.CollectionId;
 
 /**
  * Represents a dialect of SQL implemented by a particular RDBMS.
- *
  * Subclasses of this contract implement database-specific behavior, should be immutable,
  * and is capable of registering overrides to default behavior where applicable.
  *
@@ -46,7 +45,7 @@ public interface DatabaseDialect {
      * @param tableName the table name.
      * @return the parsed table identifier, never {@code null}.
      */
-    TableId getTableId(String tableName);
+    CollectionId getCollectionId(String tableName);
 
     /**
      * Check whether the specified table exists.
@@ -56,17 +55,17 @@ public interface DatabaseDialect {
      * @return true if the table exists, false otherwise
      * @throws SQLException if a database exception occurs
      */
-    boolean tableExists(Connection connection, TableId tableId) throws SQLException;
+    boolean tableExists(Connection connection, CollectionId tableId) throws SQLException;
 
     /**
      * Read the table structure data from the database.
      *
      * @param connection the database connection to be used, should not be {@code null}.
-     * @param tableId the table identifier, should not be {@code null}.
+     * @param collectionId the table identifier, should not be {@code null}.
      * @return the table relational model if it exists
      * @throws SQLException if the table does not exist or a database exception occurs
      */
-    TableDescriptor readTable(Connection connection, TableId tableId) throws SQLException;
+    TableDescriptor readTable(Connection connection, CollectionId collectionId) throws SQLException;
 
     /**
      * Resolves what fields are missing from the provided table compared against the incoming record.
@@ -81,10 +80,10 @@ public interface DatabaseDialect {
      * Construct a {@code CREATE TABLE} statement specific for this dialect based on the provided record.
      *
      * @param record the current sink record being processed, should not be {@code null}
-     * @param tableId the tableidentifier to be used, should not be {@code null}
+     * @param collectionId the tableidentifier to be used, should not be {@code null}
      * @return the create table SQL statement to be executed, never {@code null}
      */
-    String getCreateTableStatement(SinkRecordDescriptor record, TableId tableId);
+    String getCreateTableStatement(SinkRecordDescriptor record, CollectionId collectionId);
 
     /**
      * Gets the prefix used before adding column-clauses in {@code ALTER TABLE} statements.

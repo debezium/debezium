@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.table;
+package io.debezium.sink.naming;
 
 /**
  * A pluggable strategy contract for defining how column names are resolved from kafka fields.

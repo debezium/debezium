@@ -63,7 +63,7 @@ public class MongoProcessedSinkRecordData {
     private MongoNamespace createNamespace() {
 
         return tryProcess(
-                () -> Optional.of(new MongoNamespace(databaseName, config.getTableNamingStrategy().resolveTableName(config, sinkRecord))))
+                () -> Optional.of(new MongoNamespace(databaseName, config.getCollectionNamingStrategy().resolveCollectionName(config, sinkRecord))))
                 .orElse(null);
     }
 
