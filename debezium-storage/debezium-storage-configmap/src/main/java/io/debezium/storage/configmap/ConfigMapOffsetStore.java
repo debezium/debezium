@@ -24,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
@@ -31,6 +32,7 @@ import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 
+@Incubating
 public class ConfigMapOffsetStore implements OffsetBackingStore {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConfigMapOffsetStore.class);
