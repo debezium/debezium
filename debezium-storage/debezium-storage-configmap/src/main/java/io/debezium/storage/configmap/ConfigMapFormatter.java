@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.DebeziumException;
+import io.debezium.common.annotation.Incubating;
 
 /**
  * This class manage the format of key used for Kubernetes config map
@@ -29,6 +30,7 @@ import io.debezium.DebeziumException;
  *
  * @author Mario Fiore Vitale
  */
+@Incubating
 public class ConfigMapFormatter {
 
     public static final String CONNECTOR_NAME_SEPARATOR = ".";
