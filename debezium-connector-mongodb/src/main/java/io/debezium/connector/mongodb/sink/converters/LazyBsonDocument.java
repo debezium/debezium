@@ -9,6 +9,7 @@ import static java.lang.String.format;
 
 import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
+import java.io.Serial;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
@@ -26,6 +27,7 @@ import com.mongodb.lang.Nullable;
  * A lazy representation of a MongoDB document.
  */
 public class LazyBsonDocument extends BsonDocument {
+    @Serial
     private static final long serialVersionUID = 1L;
 
     private final transient SinkRecord record;

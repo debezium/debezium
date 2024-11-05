@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectResolver;
-import io.debezium.pipeline.spi.ChangeEventSink;
+import io.debezium.sink.spi.ChangeEventSink;
 import io.debezium.util.Stopwatch;
 import io.debezium.util.Strings;
 

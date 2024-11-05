@@ -79,7 +79,7 @@ public class JdbcSinkRetryIT extends AbstractJdbcSinkTest {
         properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
         // rollback after 5 seconds waiting for lock.
         properties.put(JdbcSinkConnectorConfig.CONNECTION_URL, getSink().getJdbcUrl(Map.of("sessionVariables", "innodb_lock_wait_timeout=5")));
-        properties.put(JdbcSinkConnectorConfig.TABLE_NAME_FORMAT, tableName);
+        properties.put(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT, tableName);
         properties.put(JdbcSinkConnectorConfig.FLUSH_MAX_RETRIES, "1");
         properties.put(JdbcSinkConnectorConfig.FLUSH_RETRY_DELAY_MS, "1000");
 
