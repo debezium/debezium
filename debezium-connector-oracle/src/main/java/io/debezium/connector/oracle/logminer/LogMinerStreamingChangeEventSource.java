@@ -573,8 +573,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private void setNlsSessionParameters(OracleConnection connection) throws SQLException {
         final String NLS_SESSION_PARAMETERS = "ALTER SESSION SET "
                 + "  NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS'"
-                + "  NLS_TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF'"
-                + "  NLS_TIMESTAMP_TZ_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF TZH:TZM'"
+                + "  NLS_TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF9'"
+                + "  NLS_TIMESTAMP_TZ_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF9 TZH:TZM'"
                 + "  NLS_NUMERIC_CHARACTERS = '.,'";
 
         connection.executeWithoutCommitting(NLS_SESSION_PARAMETERS);
