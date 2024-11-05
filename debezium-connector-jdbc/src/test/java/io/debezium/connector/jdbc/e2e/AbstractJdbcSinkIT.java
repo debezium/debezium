@@ -71,7 +71,7 @@ public abstract class AbstractJdbcSinkIT {
 
     protected TimeZone getCurrentSinkTimeZone() {
         if (currentSinkTimeZone == null) {
-            currentSinkTimeZone = TimeZone.getTimeZone(currentSinkConfig.getDatabaseTimeZone());
+            currentSinkTimeZone = TimeZone.getTimeZone(currentSinkConfig.useTimeZone());
         }
         return currentSinkTimeZone;
     }

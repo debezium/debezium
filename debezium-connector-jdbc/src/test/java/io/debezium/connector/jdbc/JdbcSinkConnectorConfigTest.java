@@ -20,8 +20,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Field;
-import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.doc.FixFor;
+import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
 
 /**
  * Unit tests for the {@link JdbcSinkConnectorConfig} class.
@@ -79,11 +79,11 @@ public class JdbcSinkConnectorConfigTest {
     @Test
     public void testNonDefaultTableNameFormatProperty() {
         final Map<String, String> properties = new HashMap<>();
-        properties.put(JdbcSinkConnectorConfig.TABLE_NAME_FORMAT, "e2e-${topic}");
+        properties.put(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT, "e2e-${topic}");
 
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
-        assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.TABLE_NAME_FORMAT_FIELD), LOGGER::error)).isTrue();
-        assertThat(config.getTableNameFormat()).isEqualTo("e2e-${topic}");
+        assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT_FIELD), LOGGER::error)).isTrue();
+        assertThat(config.getCollectionNameFormat()).isEqualTo("e2e-${topic}");
     }
 
     @Test
@@ -129,9 +129,9 @@ public class JdbcSinkConnectorConfigTest {
         final Properties ormProperties = config.getHibernateConfiguration().getProperties();
         assertThat(ormProperties).isNotNull();
         assertThat(ormProperties.get(AvailableSettings.CONNECTION_PROVIDER)).isEqualTo("io.debezium.AcmeConnectionProvider");
-        assertThat(ormProperties.get(AvailableSettings.URL)).isEqualTo("jdbc://url");
-        assertThat(ormProperties.get(AvailableSettings.USER)).isEqualTo("user");
-        assertThat(ormProperties.get(AvailableSettings.PASS)).isEqualTo("pass");
+        assertThat(ormProperties.get(AvailableSettings.JAKARTA_JDBC_URL)).isEqualTo("jdbc://url");
+        assertThat(ormProperties.get(AvailableSettings.JAKARTA_JDBC_USER)).isEqualTo("user");
+        assertThat(ormProperties.get(AvailableSettings.JAKARTA_JDBC_PASSWORD)).isEqualTo("pass");
     }
 
     @Test
