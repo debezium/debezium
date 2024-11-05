@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.jdbc.naming;
+package io.debezium.sink.naming;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -14,32 +14,33 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.data.Envelope;
+import io.debezium.sink.SinkConnectorConfig;
 
 /**
- * Default implementation of the {@link TableNamingStrategy} where the table name is driven
+ * Default implementation of the {@link CollectionNamingStrategy} where the table name is driven
  * directly from the topic name, replacing any {@code dot} characters with {@code underscore}
  * and source field in topic.
  *
  * @author Chris Cranford
+ * @author rk3rn3r
  */
-public class DefaultTableNamingStrategy implements TableNamingStrategy {
-    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultTableNamingStrategy.class);
+public class DefaultCollectionNamingStrategy implements CollectionNamingStrategy {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultCollectionNamingStrategy.class);
 
     private final Pattern sourcePattern = Pattern.compile("\\$\\{(source\\.)(.*?)}");
 
     @Override
-    public String resolveTableName(JdbcSinkConnectorConfig config, SinkRecord record) {
+    public String resolveCollectionName(SinkConnectorConfig config, SinkRecord record) {
         // Default behavior is to replace dots with underscores
         final String topicName = record.topic().replace(".", "_");
-        String table = config.getTableNameFormat().replace("${topic}", topicName);
+        String table = config.getCollectionNameFormat().replace("${topic}", topicName);
 
-        table = resolveTableNameBySource(config, record, table);
+        table = resolveCollectionNameBySource(config, record, table);
         return table;
     }
 
-    private String resolveTableNameBySource(JdbcSinkConnectorConfig config, SinkRecord record, String tableFormat) {
+    private String resolveCollectionNameBySource(SinkConnectorConfig config, SinkRecord record, String tableFormat) {
         String table = tableFormat;
         if (table.contains("${source.")) {
             if (isTombstone(record)) {
@@ -58,7 +59,7 @@ public class DefaultTableNamingStrategy implements TableNamingStrategy {
                 }
             }
             catch (DataException e) {
-                LOGGER.error("Failed to resolve table name with format '{}', check source field in topic '{}'", config.getTableNameFormat(), record.topic(), e);
+                LOGGER.error("Failed to resolve table name with format '{}', check source field in topic '{}'", config.getCollectionNameFormat(), record.topic(), e);
                 throw e;
             }
         }
@@ -68,4 +69,5 @@ public class DefaultTableNamingStrategy implements TableNamingStrategy {
     private boolean isTombstone(SinkRecord record) {
         return record.value() == null;
     }
+
 }

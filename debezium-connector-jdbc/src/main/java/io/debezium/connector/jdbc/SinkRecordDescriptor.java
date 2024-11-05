@@ -24,15 +24,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.Immutable;
-import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.filter.FieldFilterFactory;
-import io.debezium.connector.jdbc.filter.FieldFilterFactory.FieldNameFilter;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.connector.jdbc.util.SchemaUtils;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
+import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
+import io.debezium.sink.filter.FieldFilterFactory;
+import io.debezium.sink.filter.FieldFilterFactory.FieldNameFilter;
 
 /**
  * An immutable representation of a {@link SinkRecord}.
@@ -299,7 +299,7 @@ public class SinkRecordDescriptor {
             return this;
         }
 
-        public Builder withFieldFilters(FieldNameFilter fieldFilter) {
+        public Builder withFieldFilter(FieldNameFilter fieldFilter) {
             this.fieldFilter = fieldFilter;
             return this;
         }
@@ -308,7 +308,7 @@ public class SinkRecordDescriptor {
             Objects.requireNonNull(primaryKeyMode, "The primary key mode must be provided.");
             Objects.requireNonNull(sinkRecord, "The sink record must be provided.");
 
-            final boolean flattened = !isTombstone(sinkRecord) && isFlattened(sinkRecord);
+            final boolean flattened = notTombstone(sinkRecord) && isFlattened(sinkRecord);
             final boolean truncated = !flattened && isTruncateEvent(sinkRecord);
             if (!truncated) {
                 readSinkRecordKeyData(sinkRecord, flattened);
@@ -322,13 +322,13 @@ public class SinkRecordDescriptor {
             return record.valueSchema().name() == null || !record.valueSchema().name().contains("Envelope");
         }
 
-        private boolean isTombstone(SinkRecord record) {
+        private boolean notTombstone(SinkRecord record) {
 
-            return record.value() == null && record.valueSchema() == null;
+            return record.value() != null || record.valueSchema() != null;
         }
 
         private boolean isTruncateEvent(SinkRecord record) {
-            return !isTombstone(record)
+            return notTombstone(record)
                     && Operation.TRUNCATE.equals(Operation.forCode(((Struct) record.value()).getString(Envelope.FieldName.OPERATION)));
         }
 

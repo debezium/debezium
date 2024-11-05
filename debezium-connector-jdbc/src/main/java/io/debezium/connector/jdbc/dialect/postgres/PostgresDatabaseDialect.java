@@ -27,8 +27,8 @@ import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
-import io.debezium.connector.jdbc.relational.TableId;
 import io.debezium.connector.jdbc.type.Type;
+import io.debezium.metadata.CollectionId;
 
 /**
  * A {@link DatabaseDialect} implementation for PostgreSQL.
@@ -64,21 +64,21 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
-    public boolean tableExists(Connection connection, TableId tableId) throws SQLException {
+    public boolean tableExists(Connection connection, CollectionId collectionId) throws SQLException {
         if (!getConfig().isQuoteIdentifiers()) {
             // This means that the table will be stored as lower-case
-            tableId = tableId.toLowerCase();
+            collectionId = collectionId.toLowerCase();
         }
-        return super.tableExists(connection, tableId);
+        return super.tableExists(connection, collectionId);
     }
 
     @Override
-    public TableDescriptor readTable(Connection connection, TableId tableId) throws SQLException {
+    public TableDescriptor readTable(Connection connection, CollectionId collectionId) throws SQLException {
         if (!getConfig().isQuoteIdentifiers()) {
             // This means that the table will be stored as lower-case
-            tableId = tableId.toLowerCase();
+            collectionId = collectionId.toLowerCase();
         }
-        return super.readTable(connection, tableId);
+        return super.readTable(connection, collectionId);
     }
 
     @Override

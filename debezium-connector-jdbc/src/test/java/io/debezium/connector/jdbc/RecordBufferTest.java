@@ -6,7 +6,6 @@
 
 package io.debezium.connector.jdbc;
 
-import static io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY;
 import static java.util.function.Predicate.not;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -18,7 +17,6 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -26,6 +24,7 @@ import java.util.stream.IntStream;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.sink.SinkRecord;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -38,9 +37,7 @@ import io.debezium.connector.jdbc.type.Type;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
 
 @Tag("UnitTests")
-class RecordBufferTest {
-
-    private DatabaseDialect dialect;
+class RecordBufferTest extends AbstractRecordBufferTest {
 
     @BeforeEach
     void setUp() {
@@ -50,22 +47,21 @@ class RecordBufferTest {
         when(dialect.getSchemaType(any())).thenReturn(type);
     }
 
+    private static @NotNull JdbcSinkConnectorConfig getJdbcSinkConnectorConfig() {
+        return new JdbcSinkConnectorConfig(Map.of("batch.size", "5"));
+    }
+
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     @DisplayName("When 10 sink records arrives and buffer size is 5 then the buffer will be flushed 2 times")
     void correctlyBuffer(SinkRecordFactory factory) {
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of("batch.size", "5"));
+        JdbcSinkConnectorConfig config = getJdbcSinkConnectorConfig();
 
         RecordBuffer recordBuffer = new RecordBuffer(config);
 
         List<SinkRecordDescriptor> sinkRecords = IntStream.range(0, 10)
-                .mapToObj(i -> SinkRecordDescriptor.builder()
-                        .withSinkRecord(factory.createRecord("topic", (byte) i))
-                        .withDialect(dialect)
-                        .withPrimaryKeyFields(Set.of())
-                        .withPrimaryKeyMode(RECORD_KEY)
-                        .build())
+                .mapToObj(i -> createRecordNoPkFields(factory, (byte) i, config))
                 .collect(Collectors.toList());
 
         List<List<SinkRecordDescriptor>> batches = sinkRecords.stream().map(recordBuffer::add)
@@ -81,17 +77,12 @@ class RecordBufferTest {
     @DisplayName("When key schema changes then the buffer will be flushed")
     void keySchemaChange(SinkRecordFactory factory) {
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of("batch.size", "5"));
+        JdbcSinkConnectorConfig config = getJdbcSinkConnectorConfig();
 
         RecordBuffer recordBuffer = new RecordBuffer(config);
 
         List<SinkRecordDescriptor> sinkRecords = IntStream.range(0, 3)
-                .mapToObj(i -> SinkRecordDescriptor.builder()
-                        .withSinkRecord(factory.createRecord("topic", (byte) i))
-                        .withDialect(dialect)
-                        .withPrimaryKeyFields(Set.of())
-                        .withPrimaryKeyMode(RECORD_KEY)
-                        .build())
+                .mapToObj(i -> createRecordNoPkFields(factory, (byte) i, config))
                 .collect(Collectors.toList());
 
         SinkRecord sinkRecordWithDifferentKeySchema = factory.updateBuilder()
@@ -106,12 +97,7 @@ class RecordBufferTest {
                 .source("ts_ms", (int) Instant.now().getEpochSecond())
                 .build();
 
-        sinkRecords.add(SinkRecordDescriptor.builder()
-                .withSinkRecord(sinkRecordWithDifferentKeySchema)
-                .withDialect(dialect)
-                .withPrimaryKeyFields(Set.of("id"))
-                .withPrimaryKeyMode(RECORD_KEY)
-                .build());
+        sinkRecords.add(createRecord(sinkRecordWithDifferentKeySchema, config));
 
         List<List<SinkRecordDescriptor>> batches = sinkRecords.stream().map(recordBuffer::add)
                 .filter(not(List::isEmpty))
@@ -126,17 +112,12 @@ class RecordBufferTest {
     @DisplayName("When value schema changes then the buffer will be flushed")
     void valueSchemaChange(SinkRecordFactory factory) {
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of("batch.size", "5"));
+        JdbcSinkConnectorConfig config = getJdbcSinkConnectorConfig();
 
         RecordBuffer recordBuffer = new RecordBuffer(config);
 
         List<SinkRecordDescriptor> sinkRecords = IntStream.range(0, 3)
-                .mapToObj(i -> SinkRecordDescriptor.builder()
-                        .withSinkRecord(factory.createRecord("topic", (byte) i))
-                        .withDialect(dialect)
-                        .withPrimaryKeyFields(Set.of("id"))
-                        .withPrimaryKeyMode(RECORD_KEY)
-                        .build())
+                .mapToObj(i -> createRecordPkFieldId(factory, (byte) i, config))
                 .collect(Collectors.toList());
 
         SinkRecord sinkRecordWithDifferentValueSchema = factory.updateBuilder()
@@ -151,12 +132,7 @@ class RecordBufferTest {
                 .source("ts_ms", (int) Instant.now().getEpochSecond())
                 .build();
 
-        sinkRecords.add(SinkRecordDescriptor.builder()
-                .withSinkRecord(sinkRecordWithDifferentValueSchema)
-                .withDialect(dialect)
-                .withPrimaryKeyFields(Set.of("id"))
-                .withPrimaryKeyMode(RECORD_KEY)
-                .build());
+        sinkRecords.add(createRecord(sinkRecordWithDifferentValueSchema, config));
 
         List<List<SinkRecordDescriptor>> batches = sinkRecords.stream().map(recordBuffer::add)
                 .filter(not(List::isEmpty))

@@ -6,8 +6,6 @@
 
 package io.debezium.connector.jdbc;
 
-import static io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode.NONE;
-import static io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY;
 import static java.util.function.Predicate.not;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -19,7 +17,6 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -40,6 +37,8 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
+import io.debezium.sink.SinkConnectorConfig;
+import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
 
 /**
  * Unit tests for the {@link ReducedRecordBuffer} class.
@@ -47,9 +46,7 @@ import io.debezium.connector.jdbc.util.SinkRecordFactory;
  * @author Gaurav Miglani
  */
 @Tag("UnitTests")
-class ReducedRecordBufferTest {
-
-    private DatabaseDialect dialect;
+class ReducedRecordBufferTest extends AbstractRecordBufferTest {
 
     @BeforeEach
     void setUp() {
@@ -59,27 +56,41 @@ class ReducedRecordBufferTest {
         when(dialect.getSchemaType(any())).thenReturn(type);
     }
 
+    protected JdbcSinkConnectorConfig getJdbcConnectorConfig(PrimaryKeyMode primaryKeyMode, String primaryKeyFields) {
+        if (null == primaryKeyFields) {
+            return new JdbcSinkConnectorConfig(
+                    Map.of(
+                            SinkConnectorConfig.BATCH_SIZE, "5",
+                            SinkConnectorConfig.PRIMARY_KEY_MODE, primaryKeyMode.getValue()));
+
+        }
+        return new JdbcSinkConnectorConfig(
+                Map.of(
+                        SinkConnectorConfig.BATCH_SIZE, "5",
+                        SinkConnectorConfig.PRIMARY_KEY_MODE, primaryKeyMode.getValue(),
+                        JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, primaryKeyFields));
+    }
+
+    protected JdbcSinkConnectorConfig getJdbcConnectorConfig() {
+        return getJdbcConnectorConfig(PrimaryKeyMode.RECORD_KEY, "id");
+    }
+
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     @DisplayName("When 10 sink records arrives and buffer size is 5 then the buffer will be flushed 2 times")
     void correctlyBuffer(SinkRecordFactory factory) {
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of("batch.size", "5", "primary.key.mode", "record_key", "primary.key.fields", "id"));
+        JdbcSinkConnectorConfig config = getJdbcConnectorConfig();
 
         ReducedRecordBuffer reducedRecordBuffer = new ReducedRecordBuffer(config);
 
         List<SinkRecordDescriptor> sinkRecords = IntStream.range(0, 10)
-                .mapToObj(i -> SinkRecordDescriptor.builder()
-                        .withSinkRecord(factory.createRecord("topic", (byte) i))
-                        .withDialect(dialect)
-                        .withPrimaryKeyFields(Set.of("id"))
-                        .withPrimaryKeyMode(RECORD_KEY)
-                        .build())
+                .mapToObj(i -> createRecordPkFieldId(factory, (byte) i, config))
                 .collect(Collectors.toList());
 
         List<List<SinkRecordDescriptor>> batches = sinkRecords.stream().map(reducedRecordBuffer::add)
                 .filter(not(List::isEmpty))
-                .collect(Collectors.toList());
+                .toList();
 
         assertThat(batches.size()).isEqualTo(2);
 
@@ -90,17 +101,12 @@ class ReducedRecordBufferTest {
     @DisplayName("When key schema changes then the buffer will be flushed")
     void keySchemaChange(SinkRecordFactory factory) {
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of("batch.size", "5", "primary.key.mode", "record_key", "primary.key.fields", "id"));
+        JdbcSinkConnectorConfig config = getJdbcConnectorConfig();
 
         ReducedRecordBuffer reducedRecordBuffer = new ReducedRecordBuffer(config);
 
         List<SinkRecordDescriptor> sinkRecords = IntStream.range(0, 3)
-                .mapToObj(i -> SinkRecordDescriptor.builder()
-                        .withSinkRecord(factory.createRecord("topic", (byte) i))
-                        .withDialect(dialect)
-                        .withPrimaryKeyFields(Set.of("id"))
-                        .withPrimaryKeyMode(RECORD_KEY)
-                        .build())
+                .mapToObj(i -> createRecordPkFieldId(factory, (byte) i, config))
                 .collect(Collectors.toList());
 
         SinkRecord sinkRecordWithDifferentKeySchema = factory.updateBuilder()
@@ -115,16 +121,11 @@ class ReducedRecordBufferTest {
                 .source("ts_ms", (int) Instant.now().getEpochSecond())
                 .build();
 
-        sinkRecords.add(SinkRecordDescriptor.builder()
-                .withSinkRecord(sinkRecordWithDifferentKeySchema)
-                .withDialect(dialect)
-                .withPrimaryKeyFields(Set.of("id"))
-                .withPrimaryKeyMode(RECORD_KEY)
-                .build());
+        sinkRecords.add(createRecord(sinkRecordWithDifferentKeySchema, config));
 
         List<List<SinkRecordDescriptor>> batches = sinkRecords.stream().map(reducedRecordBuffer::add)
                 .filter(not(List::isEmpty))
-                .collect(Collectors.toList());
+                .toList();
 
         assertThat(batches.size()).isEqualTo(1);
 
@@ -135,17 +136,12 @@ class ReducedRecordBufferTest {
     @DisplayName("When value schema changes then the buffer will be flushed")
     void valueSchemaChange(SinkRecordFactory factory) {
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of("batch.size", "5", "primary.key.mode", "record_key", "primary.key.fields", "id"));
+        JdbcSinkConnectorConfig config = getJdbcConnectorConfig();
 
         ReducedRecordBuffer reducedRecordBuffer = new ReducedRecordBuffer(config);
 
         List<SinkRecordDescriptor> sinkRecords = IntStream.range(0, 3)
-                .mapToObj(i -> SinkRecordDescriptor.builder()
-                        .withSinkRecord(factory.createRecord("topic", (byte) i))
-                        .withDialect(dialect)
-                        .withPrimaryKeyFields(Set.of("id"))
-                        .withPrimaryKeyMode(RECORD_KEY)
-                        .build())
+                .mapToObj(i -> createRecordPkFieldId(factory, (byte) i, config))
                 .collect(Collectors.toList());
 
         SinkRecord sinkRecordWithDifferentValueSchema = factory.updateBuilder()
@@ -160,16 +156,11 @@ class ReducedRecordBufferTest {
                 .source("ts_ms", (int) Instant.now().getEpochSecond())
                 .build();
 
-        sinkRecords.add(SinkRecordDescriptor.builder()
-                .withSinkRecord(sinkRecordWithDifferentValueSchema)
-                .withDialect(dialect)
-                .withPrimaryKeyFields(Set.of("id"))
-                .withPrimaryKeyMode(RECORD_KEY)
-                .build());
+        sinkRecords.add(createRecord(sinkRecordWithDifferentValueSchema, config));
 
         List<List<SinkRecordDescriptor>> batches = sinkRecords.stream().map(reducedRecordBuffer::add)
                 .filter(not(List::isEmpty))
-                .collect(Collectors.toList());
+                .toList();
 
         assertThat(batches.size()).isEqualTo(1);
 
@@ -180,22 +171,17 @@ class ReducedRecordBufferTest {
     @DisplayName("When 10 sink records arrives and buffer size is 5 with every alternate duplicate sink record then the buffer will be flushed 1 time")
     void correctlyBufferWithDuplicate(SinkRecordFactory factory) {
 
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of("batch.size", "5", "primary.key.mode", "record_key", "primary.key.fields", "id"));
+        JdbcSinkConnectorConfig config = getJdbcConnectorConfig();
 
         ReducedRecordBuffer reducedRecordBuffer = new ReducedRecordBuffer(config);
 
         List<SinkRecordDescriptor> sinkRecords = IntStream.range(0, 10)
-                .mapToObj(i -> SinkRecordDescriptor.builder()
-                        .withSinkRecord(factory.createRecord("topic", (byte) (i % 2 == 0 ? i : i - 1)))
-                        .withDialect(dialect)
-                        .withPrimaryKeyFields(Set.of("id"))
-                        .withPrimaryKeyMode(RECORD_KEY)
-                        .build())
+                .mapToObj(i -> createRecordPkFieldId(factory, (byte) (i % 2 == 0 ? i : i - 1), config))
                 .collect(Collectors.toList());
 
         List<List<SinkRecordDescriptor>> batches = sinkRecords.stream().map(reducedRecordBuffer::add)
                 .filter(not(List::isEmpty))
-                .collect(Collectors.toList());
+                .toList();
 
         assertThat(batches.size()).isEqualTo(1);
         assertThat(batches.get(0).size()).isEqualTo(5);
@@ -205,24 +191,18 @@ class ReducedRecordBufferTest {
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     @DisplayName("When primary key mode is none then reduced buffer should raise exception")
     void raiseExceptionWithoutPrimaryKey(SinkRecordFactory factory) {
-
-        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of("batch.size", "5"));
+        JdbcSinkConnectorConfig config = getJdbcConnectorConfig(PrimaryKeyMode.NONE, null);
 
         ReducedRecordBuffer reducedRecordBuffer = new ReducedRecordBuffer(config);
 
         List<SinkRecordDescriptor> sinkRecords = IntStream.range(0, 10)
-                .mapToObj(i -> SinkRecordDescriptor.builder()
-                        .withSinkRecord(factory.createRecord("topic", (byte) i))
-                        .withDialect(dialect)
-                        .withPrimaryKeyFields(Set.of())
-                        .withPrimaryKeyMode(NONE)
-                        .build())
+                .mapToObj(i -> createRecordNoPkFields(factory, (byte) i, config))
                 .collect(Collectors.toList());
 
         Stream<List<SinkRecordDescriptor>> batchesFilter = sinkRecords.stream().map(reducedRecordBuffer::add)
                 .filter(not(List::isEmpty));
 
-        Exception thrown = Assertions.assertThrows(ConnectException.class, () -> batchesFilter.collect(Collectors.toList()));
+        Exception thrown = Assertions.assertThrows(ConnectException.class, batchesFilter::toList);
         assertThat(thrown.getMessage()).isEqualTo("No struct-based primary key defined for record key/value, reduction buffer require struct based primary key");
 
     }

@@ -29,7 +29,7 @@ public abstract class AbstractTemporalType extends AbstractType {
     public void configure(JdbcSinkConnectorConfig config, DatabaseDialect dialect) {
         super.configure(config, dialect);
 
-        final String databaseTimeZone = config.getDatabaseTimeZone();
+        final String databaseTimeZone = config.useTimeZone();
         try {
             this.databaseTimeZone = TimeZone.getTimeZone(ZoneId.of(databaseTimeZone));
         }

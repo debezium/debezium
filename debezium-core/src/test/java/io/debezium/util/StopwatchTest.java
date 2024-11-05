@@ -7,6 +7,8 @@ package io.debezium.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Locale;
+
 import org.junit.Test;
 
 import io.debezium.doc.FixFor;
@@ -16,7 +18,7 @@ public class StopwatchTest {
     @FixFor("DBZ-7436")
     @Test
     public void whenCallingDurationsOnAStartedStopwatchItShouldNotFailWithANPE() {
-
+        Locale.setDefault(new Locale("en", "US"));
         Stopwatch reusable = Stopwatch.reusable();
 
         reusable.start();
