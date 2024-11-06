@@ -147,6 +147,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     "'insert' - the default mode, uses standard SQL insert statements; " +
                     "'upsert' - uses upsert semantics for the database if its supported and requires setting primary.key.mode and primary.key.fields;" +
                     "'update' - uses update semantics for the database if its supported.");
+
     public static final Field DELETE_ENABLED_FIELD = SinkConnectorConfig.DELETE_ENABLED_FIELD
             .withValidation(JdbcSinkConnectorConfig::validateDeleteEnabled);
 

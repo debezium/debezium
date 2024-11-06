@@ -19,12 +19,12 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.json.JsonConverter;
-import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.connector.jdbc.util.DebeziumSinkRecordFactory;
 import io.debezium.connector.jdbc.util.SinkRecordBuilder;
 import io.debezium.testing.system.assertions.JdbcAssertions;
@@ -66,7 +66,7 @@ public abstract class JdbcSinkTests {
     private String createRecord(String fieldName, String fieldValue) {
         DebeziumSinkRecordFactory factory = new DebeziumSinkRecordFactory();
 
-        SinkRecord record = SinkRecordBuilder.update() // TODO: Change to create when fixed in JDBC connector testsuite
+        KafkaDebeziumSinkRecord record = SinkRecordBuilder.update() // TODO: Change to create when fixed in JDBC connector testsuite
                 .flat(false)
                 .name("jdbc-connector-test")
                 .recordSchema(SchemaBuilder.struct().field(fieldName, Schema.STRING_SCHEMA).build())

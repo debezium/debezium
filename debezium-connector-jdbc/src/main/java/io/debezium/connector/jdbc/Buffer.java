@@ -15,18 +15,18 @@ import java.util.List;
 public interface Buffer {
 
     /**
-     * to add a {@link SinkRecordDescriptor} to the internal buffer and
+     * to add a {@link JdbcSinkRecord} to the internal buffer and
      * call the {@link Buffer#flush()} when buffer size >= {@link JdbcSinkConnectorConfig#getBatchSize()}
-     * @param recordDescriptor the Sink record descriptor
+     * @param record the Debezium sink record
      * @return the  buffer  records
      */
-    List<SinkRecordDescriptor> add(SinkRecordDescriptor recordDescriptor);
+    List<JdbcSinkRecord> add(JdbcSinkRecord record);
 
     /**
      * to clear and flush the internal buffer
-     * @return {@link SinkRecordDescriptor} the flushed buffer records.
+     * @return {@link JdbcSinkRecord} the flushed buffer records.
      */
-    List<SinkRecordDescriptor> flush();
+    List<JdbcSinkRecord> flush();
 
     /**
      * to check whether buffer is empty or not.

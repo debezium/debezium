@@ -11,12 +11,12 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
+import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.integration.AbstractJdbcSinkTest;
 import io.debezium.connector.jdbc.junit.jupiter.MySqlSinkDatabaseContextProvider;
@@ -59,7 +59,7 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         buffer.put((byte) 2);
         buffer.put((byte) 3);
 
-        final SinkRecord createRecord = factory.createRecordWithSchemaValue(
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",

@@ -7,7 +7,6 @@ package io.debezium.connector.jdbc.integration.postgres;
 
 import java.util.Map;
 
-import org.apache.kafka.connect.sink.SinkRecord;
 import org.assertj.db.api.TableAssert;
 import org.assertj.db.type.ValueType;
 import org.junit.jupiter.api.Tag;
@@ -15,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
+import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.integration.AbstractJdbcSinkTest;
 import io.debezium.connector.jdbc.junit.TestHelper;
@@ -54,7 +54,7 @@ public class JdbcSinkFieldFilterIT extends AbstractJdbcSinkTest {
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 
-        final SinkRecord createRecord = factory.createRecordNoKey(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordNoKey(topicName);
         consume(createRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
@@ -78,7 +78,7 @@ public class JdbcSinkFieldFilterIT extends AbstractJdbcSinkTest {
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 
-        final SinkRecord createRecord = factory.createRecordNoKey(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordNoKey(topicName);
         consume(createRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
@@ -105,7 +105,7 @@ public class JdbcSinkFieldFilterIT extends AbstractJdbcSinkTest {
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 
-        final SinkRecord createRecord = factory.createRecord(topicName, (byte) 1);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecord(topicName, (byte) 1);
         consume(createRecord);
         consume(factory.createRecord(topicName, (byte) 1));
 
@@ -115,7 +115,7 @@ public class JdbcSinkFieldFilterIT extends AbstractJdbcSinkTest {
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
 
-        final SinkRecord updateRecord = factory.updateRecord(topicName);
+        final KafkaDebeziumSinkRecord updateRecord = factory.updateRecord(topicName);
         consume(updateRecord);
 
         final TableAssert tableAssertForUpdate = TestHelper.assertTable(dataSource(), destinationTableName(updateRecord));
