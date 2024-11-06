@@ -16,12 +16,12 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
+import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.integration.AbstractJdbcSinkTest;
 import io.debezium.connector.jdbc.junit.jupiter.PostgresSinkDatabaseContextProvider;
@@ -81,7 +81,7 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecordWithSchemaValue(
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",
@@ -94,7 +94,7 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
 
         consume(createRecord);
 
-        final SinkRecord updateRecord = factory.updateRecordWithSchemaValue(
+        final KafkaDebeziumSinkRecord updateRecord = factory.updateRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",
@@ -125,7 +125,7 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         buffer.put((byte) 2);
         buffer.put((byte) 3);
 
-        final SinkRecord createRecord = factory.createRecordWithSchemaValue(
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",
@@ -159,7 +159,7 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server2", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecordWithSchemaValue(
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",
@@ -193,7 +193,7 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server2", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecordWithSchemaValue(
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",
@@ -227,7 +227,7 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server2", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecordWithSchemaValue(
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",
@@ -261,7 +261,7 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server2", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecordWithSchemaValue(
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",
@@ -296,7 +296,7 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server2", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecordWithSchemaValue(
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",
@@ -330,7 +330,7 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server2", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecordWithSchemaValue(
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",
@@ -364,7 +364,7 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server2", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecordWithSchemaValue(
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",
@@ -398,7 +398,7 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server2", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecordWithSchemaValue(
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 "data",
@@ -433,7 +433,7 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         final String topicName = topicName("server2", "schema", tableName);
         final List<UUID> uuids = List.of(UUID.randomUUID(), UUID.randomUUID());
 
-        final SinkRecord createRecord = factory.createRecordWithSchemaValue(
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
                 List.of("text_data", "uuid_data"),

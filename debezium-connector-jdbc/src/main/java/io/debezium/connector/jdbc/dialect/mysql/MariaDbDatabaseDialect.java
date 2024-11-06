@@ -14,7 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
-import io.debezium.connector.jdbc.SinkRecordDescriptor;
+import io.debezium.connector.jdbc.JdbcSinkRecord;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
@@ -55,18 +55,18 @@ public class MariaDbDatabaseDialect extends MySqlDatabaseDialect {
      * but not followed by MariaDB yet.
      */
     @Override
-    public String getUpsertStatement(TableDescriptor table, SinkRecordDescriptor record) {
+    public String getUpsertStatement(TableDescriptor table, JdbcSinkRecord record) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("INSERT INTO ");
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" (");
-        builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(), name -> columnNameFromField(name, record));
+        builder.appendLists(", ", record.keyFieldNames(), record.getNonKeyFieldNames(), name -> columnNameFromField(name, record));
         builder.append(") VALUES (");
-        builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(), name -> columnQueryBindingFromField(name, table, record));
+        builder.appendLists(", ", record.keyFieldNames(), record.getNonKeyFieldNames(), name -> columnQueryBindingFromField(name, table, record));
         builder.append(") ");
 
         final List<String> updateColumnNames = record.getNonKeyFieldNames().isEmpty()
-                ? record.getKeyFieldNames()
+                ? record.keyFieldNames()
                 : record.getNonKeyFieldNames();
 
         builder.append("ON DUPLICATE KEY UPDATE ");

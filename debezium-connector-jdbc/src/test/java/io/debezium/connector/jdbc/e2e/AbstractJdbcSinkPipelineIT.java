@@ -42,6 +42,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.InsertMode;
@@ -2851,7 +2852,8 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     }
 
     private String getSinkTable(SinkRecord record, Sink sink) {
-        final String sinkTableName = collectionNamingStrategy.resolveCollectionName(getCurrentSinkConfig(), record);
+        final String sinkTableName = collectionNamingStrategy.resolveCollectionName(new KafkaDebeziumSinkRecord(record),
+                getCurrentSinkConfig().getCollectionNameFormat());
         // When quoted identifiers is not enabled, PostgreSQL saves table names as lower-case
         return sink.getType().is(SinkType.POSTGRES) ? sinkTableName.toLowerCase() : sinkTableName;
     }

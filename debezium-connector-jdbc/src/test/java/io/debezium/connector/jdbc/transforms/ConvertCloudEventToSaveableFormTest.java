@@ -55,7 +55,7 @@ class ConvertCloudEventToSaveableFormTest {
 
             final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
 
-            final SinkRecord createRecord = factory.createRecord("test.topic");
+            final SinkRecord createRecord = factory.createRecord("test.topic").getOriginalKafkaRecord();
             assertThat(createRecord.valueSchema().name()).doesNotEndWith(".CloudEvents.Envelope");
 
             final SinkRecord convertedRecord = transform.apply(createRecord);
@@ -74,7 +74,7 @@ class ConvertCloudEventToSaveableFormTest {
 
             final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
 
-            final SinkRecord cloudEventRecord = factory.cloudEventRecord("test.topic", SerializerType.withName(serializerType), null);
+            final SinkRecord cloudEventRecord = factory.cloudEventRecord("test.topic", SerializerType.withName(serializerType), null).getOriginalKafkaRecord();
             if (serializerType.equals("avro")) {
                 assertThat(cloudEventRecord.valueSchema().name()).endsWith(".CloudEvents.Envelope");
                 assertThat(cloudEventRecord.valueSchema().fields().size()).isEqualTo(7);
@@ -98,7 +98,7 @@ class ConvertCloudEventToSaveableFormTest {
 
             final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
 
-            final SinkRecord cloudEventRecord = factory.cloudEventRecord("test.topic", SerializerType.withName(serializerType), null);
+            final SinkRecord cloudEventRecord = factory.cloudEventRecord("test.topic", SerializerType.withName(serializerType), null).getOriginalKafkaRecord();
             if (serializerType.equals("avro")) {
                 assertThat(cloudEventRecord.valueSchema().name()).endsWith(".CloudEvents.Envelope");
                 assertThat(cloudEventRecord.valueSchema().fields().size()).isEqualTo(7);
@@ -130,7 +130,8 @@ class ConvertCloudEventToSaveableFormTest {
 
             final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
 
-            final SinkRecord cloudEventRecord = factory.cloudEventRecord("test.topic", SerializerType.withName("avro"), "TestCESchemaCustomName");
+            final SinkRecord cloudEventRecord = factory.cloudEventRecord("test.topic", SerializerType.withName("avro"), "TestCESchemaCustomName")
+                    .getOriginalKafkaRecord();
             assertThat(cloudEventRecord.valueSchema().name()).isEqualTo("TestCESchemaCustomName");
             assertThat(cloudEventRecord.valueSchema().fields().size()).isEqualTo(7);
             assertThat(cloudEventRecord.valueSchema().field("id").schema()).isEqualTo(Schema.STRING_SCHEMA);
@@ -156,7 +157,7 @@ class ConvertCloudEventToSaveableFormTest {
 
             final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
 
-            final SinkRecord cloudEventRecord = factory.cloudEventRecord("test.topic", SerializerType.withName("avro"), null);
+            final SinkRecord cloudEventRecord = factory.cloudEventRecord("test.topic", SerializerType.withName("avro"), null).getOriginalKafkaRecord();
             assertThat(cloudEventRecord.valueSchema().name()).isEqualTo("test.test.CloudEvents.Envelope");
             assertThat(cloudEventRecord.valueSchema().fields().size()).isEqualTo(7);
             assertThat(cloudEventRecord.valueSchema().field("id").schema()).isEqualTo(Schema.STRING_SCHEMA);
@@ -182,7 +183,8 @@ class ConvertCloudEventToSaveableFormTest {
 
             final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
 
-            final SinkRecord cloudEventRecord = factory.cloudEventRecord("test.topic", SerializerType.withName("avro"), "TestCESchemaCustomName");
+            final SinkRecord cloudEventRecord = factory.cloudEventRecord("test.topic", SerializerType.withName("avro"), "TestCESchemaCustomName")
+                    .getOriginalKafkaRecord();
             assertThat(cloudEventRecord.valueSchema().name()).isEqualTo("TestCESchemaCustomName");
             assertThat(cloudEventRecord.valueSchema().fields().size()).isEqualTo(7);
             assertThat(cloudEventRecord.valueSchema().field("id").schema()).isEqualTo(Schema.STRING_SCHEMA);
@@ -210,7 +212,7 @@ class ConvertCloudEventToSaveableFormTest {
 
             final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
 
-            final SinkRecord cloudEventRecord = factory.cloudEventRecord("test.topic", SerializerType.withName(serializerType), null);
+            final SinkRecord cloudEventRecord = factory.cloudEventRecord("test.topic", SerializerType.withName(serializerType), null).getOriginalKafkaRecord();
             if (serializerType.equals("avro")) {
                 assertThat(cloudEventRecord.valueSchema().name()).endsWith(".CloudEvents.Envelope");
                 assertThat(cloudEventRecord.valueSchema().fields().size()).isEqualTo(7);
@@ -242,7 +244,7 @@ class ConvertCloudEventToSaveableFormTest {
 
             final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
 
-            final SinkRecord cloudEventRecord = factory.cloudEventRecord("test.topic", SerializerType.withName(serializerType), null);
+            final SinkRecord cloudEventRecord = factory.cloudEventRecord("test.topic", SerializerType.withName(serializerType), null).getOriginalKafkaRecord();
             if (serializerType.equals("avro")) {
                 assertThat(cloudEventRecord.valueSchema().name()).endsWith(".CloudEvents.Envelope");
                 assertThat(cloudEventRecord.valueSchema().fields().size()).isEqualTo(7);

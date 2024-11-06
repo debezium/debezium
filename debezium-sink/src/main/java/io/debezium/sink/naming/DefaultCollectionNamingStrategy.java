@@ -10,12 +10,10 @@ import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
-import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.data.Envelope;
-import io.debezium.sink.SinkConnectorConfig;
+import io.debezium.sink.DebeziumSinkRecord;
 
 /**
  * Default implementation of the {@link CollectionNamingStrategy} where the table name is driven
@@ -28,46 +26,44 @@ import io.debezium.sink.SinkConnectorConfig;
 public class DefaultCollectionNamingStrategy implements CollectionNamingStrategy {
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultCollectionNamingStrategy.class);
 
+    private static final String ENVELOPE_SOURCE_FIELD_NAME = "source";
+
     private final Pattern sourcePattern = Pattern.compile("\\$\\{(source\\.)(.*?)}");
 
     @Override
-    public String resolveCollectionName(SinkConnectorConfig config, SinkRecord record) {
+    public String resolveCollectionName(DebeziumSinkRecord record, String collectionNameFormat) {
         // Default behavior is to replace dots with underscores
-        final String topicName = record.topic().replace(".", "_");
-        String table = config.getCollectionNameFormat().replace("${topic}", topicName);
+        final String topicName = record.topicName().replace(".", "_");
+        String collection = collectionNameFormat.replace("${topic}", topicName);
 
-        table = resolveCollectionNameBySource(config, record, table);
-        return table;
+        collection = resolveCollectionNameBySource(record, collection, collectionNameFormat);
+        return collection;
     }
 
-    private String resolveCollectionNameBySource(SinkConnectorConfig config, SinkRecord record, String tableFormat) {
-        String table = tableFormat;
-        if (table.contains("${source.")) {
-            if (isTombstone(record)) {
+    private String resolveCollectionNameBySource(DebeziumSinkRecord record, String collectionName, String collectionNameFormat) {
+        if (collectionName.contains("${source.")) {
+            if (!record.isDebeziumMessage()) {
                 LOGGER.warn(
-                        "Ignore this record because it seems to be a tombstone that doesn't have source field, then cannot resolve table name in topic '{}', partition '{}', offset '{}'",
-                        record.topic(), record.kafkaPartition(), record.kafkaOffset());
+                        "Ignore this record because it isn't a Debezium record, then cannot resolve a collection name in topic '{}', partition '{}', offset '{}'",
+                        record.topicName(), record.partition(), record.offset());
                 return null;
             }
 
             try {
-                Struct source = ((Struct) record.value()).getStruct(Envelope.FieldName.SOURCE);
-                Matcher matcher = sourcePattern.matcher(table);
+                Struct source = ((Struct) record.value()).getStruct(ENVELOPE_SOURCE_FIELD_NAME);
+                Matcher matcher = sourcePattern.matcher(collectionName);
                 while (matcher.find()) {
                     String target = matcher.group();
-                    table = table.replace(target, source.getString(matcher.group(2)));
+                    collectionName = collectionName.replace(target, source.getString(matcher.group(2)));
                 }
             }
             catch (DataException e) {
-                LOGGER.error("Failed to resolve table name with format '{}', check source field in topic '{}'", config.getCollectionNameFormat(), record.topic(), e);
+                LOGGER.error("Failed to resolve collection name with format '{}', check source field in topic '{}'",
+                        collectionNameFormat, record.topicName(), e);
                 throw e;
             }
         }
-        return table;
-    }
-
-    private boolean isTombstone(SinkRecord record) {
-        return record.value() == null;
+        return collectionName;
     }
 
 }

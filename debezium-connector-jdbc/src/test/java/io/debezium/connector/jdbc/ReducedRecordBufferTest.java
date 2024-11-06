@@ -25,7 +25,6 @@ import java.util.stream.Stream;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -33,6 +32,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
+import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.type.Type;
@@ -84,11 +84,11 @@ class ReducedRecordBufferTest extends AbstractRecordBufferTest {
 
         ReducedRecordBuffer reducedRecordBuffer = new ReducedRecordBuffer(config);
 
-        List<SinkRecordDescriptor> sinkRecords = IntStream.range(0, 10)
+        List<JdbcSinkRecord> sinkRecords = IntStream.range(0, 10)
                 .mapToObj(i -> createRecordPkFieldId(factory, (byte) i, config))
                 .collect(Collectors.toList());
 
-        List<List<SinkRecordDescriptor>> batches = sinkRecords.stream().map(reducedRecordBuffer::add)
+        List<List<JdbcSinkRecord>> batches = sinkRecords.stream().map(reducedRecordBuffer::add)
                 .filter(not(List::isEmpty))
                 .toList();
 
@@ -105,11 +105,11 @@ class ReducedRecordBufferTest extends AbstractRecordBufferTest {
 
         ReducedRecordBuffer reducedRecordBuffer = new ReducedRecordBuffer(config);
 
-        List<SinkRecordDescriptor> sinkRecords = IntStream.range(0, 3)
+        List<JdbcSinkRecord> sinkRecords = IntStream.range(0, 3)
                 .mapToObj(i -> createRecordPkFieldId(factory, (byte) i, config))
                 .collect(Collectors.toList());
 
-        SinkRecord sinkRecordWithDifferentKeySchema = factory.updateBuilder()
+        KafkaDebeziumSinkRecord sinkRecordWithDifferentKeySchema = factory.updateBuilder()
                 .name("prefix")
                 .topic("topic")
                 .keySchema(factory.keySchema(UnaryOperator.identity(), Schema.INT16_SCHEMA))
@@ -123,7 +123,7 @@ class ReducedRecordBufferTest extends AbstractRecordBufferTest {
 
         sinkRecords.add(createRecord(sinkRecordWithDifferentKeySchema, config));
 
-        List<List<SinkRecordDescriptor>> batches = sinkRecords.stream().map(reducedRecordBuffer::add)
+        List<List<JdbcSinkRecord>> batches = sinkRecords.stream().map(reducedRecordBuffer::add)
                 .filter(not(List::isEmpty))
                 .toList();
 
@@ -140,11 +140,11 @@ class ReducedRecordBufferTest extends AbstractRecordBufferTest {
 
         ReducedRecordBuffer reducedRecordBuffer = new ReducedRecordBuffer(config);
 
-        List<SinkRecordDescriptor> sinkRecords = IntStream.range(0, 3)
+        List<JdbcSinkRecord> sinkRecords = IntStream.range(0, 3)
                 .mapToObj(i -> createRecordPkFieldId(factory, (byte) i, config))
                 .collect(Collectors.toList());
 
-        SinkRecord sinkRecordWithDifferentValueSchema = factory.updateBuilder()
+        KafkaDebeziumSinkRecord sinkRecordWithDifferentValueSchema = factory.updateBuilder()
                 .name("prefix")
                 .topic("topic")
                 .keySchema(factory.basicKeySchema())
@@ -158,7 +158,7 @@ class ReducedRecordBufferTest extends AbstractRecordBufferTest {
 
         sinkRecords.add(createRecord(sinkRecordWithDifferentValueSchema, config));
 
-        List<List<SinkRecordDescriptor>> batches = sinkRecords.stream().map(reducedRecordBuffer::add)
+        List<List<JdbcSinkRecord>> batches = sinkRecords.stream().map(reducedRecordBuffer::add)
                 .filter(not(List::isEmpty))
                 .toList();
 
@@ -175,11 +175,11 @@ class ReducedRecordBufferTest extends AbstractRecordBufferTest {
 
         ReducedRecordBuffer reducedRecordBuffer = new ReducedRecordBuffer(config);
 
-        List<SinkRecordDescriptor> sinkRecords = IntStream.range(0, 10)
+        List<JdbcSinkRecord> sinkRecords = IntStream.range(0, 10)
                 .mapToObj(i -> createRecordPkFieldId(factory, (byte) (i % 2 == 0 ? i : i - 1), config))
                 .collect(Collectors.toList());
 
-        List<List<SinkRecordDescriptor>> batches = sinkRecords.stream().map(reducedRecordBuffer::add)
+        List<List<JdbcSinkRecord>> batches = sinkRecords.stream().map(reducedRecordBuffer::add)
                 .filter(not(List::isEmpty))
                 .toList();
 
@@ -195,11 +195,11 @@ class ReducedRecordBufferTest extends AbstractRecordBufferTest {
 
         ReducedRecordBuffer reducedRecordBuffer = new ReducedRecordBuffer(config);
 
-        List<SinkRecordDescriptor> sinkRecords = IntStream.range(0, 10)
+        List<JdbcSinkRecord> sinkRecords = IntStream.range(0, 10)
                 .mapToObj(i -> createRecordNoPkFields(factory, (byte) i, config))
                 .collect(Collectors.toList());
 
-        Stream<List<SinkRecordDescriptor>> batchesFilter = sinkRecords.stream().map(reducedRecordBuffer::add)
+        Stream<List<JdbcSinkRecord>> batchesFilter = sinkRecords.stream().map(reducedRecordBuffer::add)
                 .filter(not(List::isEmpty));
 
         Exception thrown = Assertions.assertThrows(ConnectException.class, batchesFilter::toList);

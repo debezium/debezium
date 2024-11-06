@@ -16,7 +16,6 @@ import javax.xml.bind.DatatypeConverter;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.sink.SinkRecord;
 import org.assertj.db.api.TableAssert;
 import org.assertj.db.type.ValueType;
 import org.junit.jupiter.api.Tag;
@@ -24,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
+import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.InsertMode;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
@@ -83,7 +83,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
                 .put("wkb", Base64.getDecoder().decode("AQEAAAAAAAAAAADwPwAAAAAAAPA/".getBytes()))
                 .put("srid", 3187);
 
-        final SinkRecord createGeometryRecord = factory.createRecordWithSchemaValue(topicName, (byte) 1,
+        final KafkaDebeziumSinkRecord createGeometryRecord = factory.createRecordWithSchemaValue(topicName, (byte) 1,
                 List.of("geometry", "point", "g"), List.of(geometrySchema, pointSchema, geometrySchema), Arrays.asList(new Object[]{ geometryValue, pointValue, null }));
         consume(createGeometryRecord);
 
@@ -121,7 +121,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord recordA = factory.createInsertSchemaAndValue(
+        final KafkaDebeziumSinkRecord recordA = factory.createInsertSchemaAndValue(
                 topicName,
                 List.of(new SchemaAndValueField("id", Schema.STRING_SCHEMA, "12345")),
                 List.of(
@@ -134,14 +134,14 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
                         new SchemaAndValueField("__deleted", Schema.BOOLEAN_SCHEMA, false)),
                 0);
 
-        final SinkRecord recordB = factory.createInsertSchemaAndValue(
+        final KafkaDebeziumSinkRecord recordB = factory.createInsertSchemaAndValue(
                 topicName,
                 List.of(new SchemaAndValueField("id", Schema.STRING_SCHEMA, "23456")),
                 List.of(new SchemaAndValueField("gis_area", Geometry.schema(), null),
                         new SchemaAndValueField("__deleted", Schema.BOOLEAN_SCHEMA, false)),
                 1);
 
-        final SinkRecord recordC = factory.createInsertSchemaAndValue(
+        final KafkaDebeziumSinkRecord recordC = factory.createInsertSchemaAndValue(
                 topicName,
                 List.of(new SchemaAndValueField("id", Schema.STRING_SCHEMA, "23456")),
                 List.of(
@@ -154,7 +154,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
                         new SchemaAndValueField("__deleted", Schema.BOOLEAN_SCHEMA, false)),
                 0);
 
-        final List<SinkRecord> records = List.of(recordA, recordB, recordC);
+        final List<KafkaDebeziumSinkRecord> records = List.of(recordA, recordB, recordC);
         consume(records);
 
         final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(recordA));

@@ -18,6 +18,7 @@ import org.fest.assertions.Index;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
+import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
 import io.debezium.connector.jdbc.junit.TestHelper;
@@ -49,7 +50,7 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecordNoKey(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordNoKey(topicName);
         consume(createRecord);
 
         final String destinationTableName = destinationTableName(createRecord);
@@ -76,7 +77,7 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecordNoKey(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordNoKey(topicName);
         consume(createRecord);
 
         final String destinationTableName = destinationTableName(createRecord);
@@ -106,7 +107,7 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecord(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecord(topicName);
         consume(createRecord);
 
         final String destinationTableName = destinationTableName(createRecord);
@@ -136,7 +137,7 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecord(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecord(topicName);
         consume(createRecord);
 
         final String destinationTableName = destinationTableName(createRecord);
@@ -170,7 +171,7 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecordMultipleKeyColumns(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordMultipleKeyColumns(topicName);
         consume(createRecord);
 
         final String destinationTableName = destinationTableName(createRecord);
@@ -197,10 +198,8 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        SinkRecord createRecord = factory.createRecord(topicName);
-        createRecord = new SinkRecord(createRecord.topic(), createRecord.kafkaPartition(), null, null, createRecord.valueSchema(), createRecord.value(),
-                createRecord.kafkaOffset());
-        createRecord.headers().addInt("id", 1);
+        KafkaDebeziumSinkRecord createRecord = factory.createRecord(topicName);
+        createRecord.getOriginalKafkaRecord().headers().addInt("id", 1);
         consume(createRecord);
 
         final String destinationTableName = destinationTableName(createRecord);
@@ -234,14 +233,15 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        SinkRecord createRecord = factory.createRecordMultipleKeyColumns(topicName);
-        createRecord = new SinkRecord(createRecord.topic(), createRecord.kafkaPartition(), null, null, createRecord.valueSchema(), createRecord.value(),
-                createRecord.kafkaOffset());
-        createRecord.headers().addInt("id1", 1);
-        createRecord.headers().addInt("id2", 10);
-        consume(createRecord);
+        KafkaDebeziumSinkRecord createRecord = factory.createRecordMultipleKeyColumns(topicName);
+        SinkRecord kafkaSinkRecord = new SinkRecord(createRecord.topicName(), createRecord.partition(), null, null, createRecord.valueSchema(), createRecord.value(),
+                createRecord.offset());
+        kafkaSinkRecord.headers().addInt("id1", 1);
+        kafkaSinkRecord.headers().addInt("id2", 10);
+        KafkaDebeziumSinkRecord kafkaSinkRecordWithHeader = new KafkaDebeziumSinkRecord(kafkaSinkRecord);
+        consume(kafkaSinkRecordWithHeader);
 
-        final String destinationTableName = destinationTableName(createRecord);
+        final String destinationTableName = destinationTableName(kafkaSinkRecordWithHeader);
 
         final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(3);
@@ -266,7 +266,7 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecordNoKey(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordNoKey(topicName);
         consume(createRecord);
 
         final String destinationTableName = destinationTableName(createRecord);
@@ -292,7 +292,7 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
 
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
-        final SinkRecord createRecord = factory.createRecordNoKey(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordNoKey(topicName);
         consume(createRecord);
 
         final String destinationTableName = destinationTableName(createRecord);
@@ -320,7 +320,7 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecord(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecord(topicName);
         consume(createRecord);
 
         final String destinationTableName = destinationTableName(createRecord);
@@ -348,7 +348,7 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecordMultipleKeyColumns(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordMultipleKeyColumns(topicName);
         consume(createRecord);
 
         final String destinationTableName = destinationTableName(createRecord);
@@ -376,7 +376,7 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecordMultipleKeyColumns(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordMultipleKeyColumns(topicName);
         consume(createRecord);
 
         final String destinationTableName = destinationTableName(createRecord);

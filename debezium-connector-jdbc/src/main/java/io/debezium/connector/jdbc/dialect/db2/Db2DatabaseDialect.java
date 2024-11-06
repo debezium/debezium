@@ -16,8 +16,8 @@ import org.hibernate.dialect.DB2Dialect;
 import org.hibernate.dialect.Dialect;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
-import io.debezium.connector.jdbc.SinkRecordDescriptor;
-import io.debezium.connector.jdbc.SinkRecordDescriptor.FieldDescriptor;
+import io.debezium.connector.jdbc.JdbcSinkRecord;
+import io.debezium.connector.jdbc.JdbcSinkRecord.FieldDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
@@ -139,31 +139,31 @@ public class Db2DatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
-    public String getUpsertStatement(TableDescriptor table, SinkRecordDescriptor record) {
+    public String getUpsertStatement(TableDescriptor table, JdbcSinkRecord record) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("merge into ");
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" using (values(");
-        builder.appendLists(record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
+        builder.appendLists(record.keyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
         builder.append(")) as DAT(");
-        builder.appendLists(record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnNameFromField(name, record));
+        builder.appendLists(record.keyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnNameFromField(name, record));
         builder.append(") on ");
-        builder.appendList(" AND ", record.getKeyFieldNames(), (name) -> getMergeDatClause(name, table, record));
+        builder.appendList(" AND ", record.keyFieldNames(), (name) -> getMergeDatClause(name, table, record));
         if (!record.getNonKeyFieldNames().isEmpty()) {
             builder.append(" WHEN MATCHED THEN UPDATE SET ");
             builder.appendList(", ", record.getNonKeyFieldNames(), (name) -> getMergeDatClause(name, table, record));
         }
 
         builder.append(" WHEN NOT MATCHED THEN INSERT(");
-        builder.appendLists(",", record.getNonKeyFieldNames(), record.getKeyFieldNames(), (name) -> columnNameFromField(name, record));
+        builder.appendLists(",", record.getNonKeyFieldNames(), record.keyFieldNames(), (name) -> columnNameFromField(name, record));
         builder.append(") values (");
-        builder.appendLists(",", record.getNonKeyFieldNames(), record.getKeyFieldNames(), (name) -> "DAT." + columnNameFromField(name, record));
+        builder.appendLists(",", record.getNonKeyFieldNames(), record.keyFieldNames(), (name) -> "DAT." + columnNameFromField(name, record));
         builder.append(")");
 
         return builder.build();
     }
 
-    private String getMergeDatClause(String fieldName, TableDescriptor table, SinkRecordDescriptor record) {
+    private String getMergeDatClause(String fieldName, TableDescriptor table, JdbcSinkRecord record) {
         final String columnName = columnNameFromField(fieldName, record);
         return toIdentifier(table.getId()) + "." + columnName + "=DAT." + columnName;
     }
