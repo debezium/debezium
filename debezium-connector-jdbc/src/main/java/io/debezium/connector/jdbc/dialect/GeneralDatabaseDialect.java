@@ -46,8 +46,8 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
-import io.debezium.connector.jdbc.SinkRecordDescriptor;
-import io.debezium.connector.jdbc.SinkRecordDescriptor.FieldDescriptor;
+import io.debezium.connector.jdbc.JdbcSinkRecord;
+import io.debezium.connector.jdbc.JdbcSinkRecord.FieldDescriptor;
 import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.naming.ColumnNamingStrategy;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
@@ -222,10 +222,10 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
-    public Set<String> resolveMissingFields(SinkRecordDescriptor record, TableDescriptor table) {
+    public Set<String> resolveMissingFields(JdbcSinkRecord record, TableDescriptor table) {
 
         final Set<String> missingFields = new HashSet<>();
-        for (FieldDescriptor field : record.getFields().values()) {
+        for (FieldDescriptor field : record.allFields().values()) {
             String columnName = resolveColumnName(field);
             if (!table.hasColumn(columnName)) {
                 missingFields.add(field.getName());
@@ -251,15 +251,15 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
-    public String getCreateTableStatement(SinkRecordDescriptor record, CollectionId collectionId) {
+    public String getCreateTableStatement(JdbcSinkRecord record, CollectionId collectionId) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("CREATE TABLE ");
         builder.append(getQualifiedTableName(collectionId));
         builder.append(" (");
 
         // First handle key columns
-        builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> {
-            final FieldDescriptor field = record.getFields().get(name);
+        builder.appendLists(", ", record.keyFieldNames(), record.getNonKeyFieldNames(), (name) -> {
+            final FieldDescriptor field = record.allFields().get(name);
             final String columnName = toIdentifier(resolveColumnName(field));
 
             final String columnType = field.getTypeName();
@@ -278,10 +278,10 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
             return columnSpec.toString();
         });
 
-        if (!record.getKeyFieldNames().isEmpty()) {
+        if (!record.keyFieldNames().isEmpty()) {
             builder.append(", PRIMARY KEY(");
-            builder.appendList(", ", record.getKeyFieldNames(), (name) -> {
-                final FieldDescriptor field = record.getFields().get(name);
+            builder.appendList(", ", record.keyFieldNames(), (name) -> {
+                final FieldDescriptor field = record.allFields().get(name);
                 return toIdentifier(columnNamingStrategy.resolveColumnName(field.getColumnName()));
             });
             builder.append(")");
@@ -318,14 +318,14 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
-    public String getAlterTableStatement(TableDescriptor table, SinkRecordDescriptor record, Set<String> missingFields) {
+    public String getAlterTableStatement(TableDescriptor table, JdbcSinkRecord record, Set<String> missingFields) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("ALTER TABLE ");
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" ");
         builder.append(getAlterTablePrefix());
         builder.appendList(getAlterTableColumnDelimiter(), missingFields, (name) -> {
-            final FieldDescriptor field = record.getFields().get(name);
+            final FieldDescriptor field = record.allFields().get(name);
             final StringBuilder addColumnSpec = new StringBuilder();
             addColumnSpec.append(getAlterTableColumnPrefix());
             addColumnSpec.append(" ");
@@ -342,18 +342,18 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
-    public String getInsertStatement(TableDescriptor table, SinkRecordDescriptor record) {
+    public String getInsertStatement(TableDescriptor table, JdbcSinkRecord record) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("INSERT INTO ");
 
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" (");
 
-        builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnNameFromField(name, record));
+        builder.appendLists(", ", record.keyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnNameFromField(name, record));
 
         builder.append(") VALUES (");
 
-        builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
+        builder.appendLists(", ", record.keyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
 
         builder.append(")");
 
@@ -361,35 +361,35 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
-    public String getUpsertStatement(TableDescriptor table, SinkRecordDescriptor record) {
+    public String getUpsertStatement(TableDescriptor table, JdbcSinkRecord record) {
         throw new UnsupportedOperationException("Upsert configurations are not supported for this dialect");
     }
 
     @Override
-    public String getUpdateStatement(TableDescriptor table, SinkRecordDescriptor record) {
+    public String getUpdateStatement(TableDescriptor table, JdbcSinkRecord record) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("UPDATE ");
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" SET ");
         builder.appendList(", ", record.getNonKeyFieldNames(), (name) -> columnNameEqualsBinding(name, table, record));
 
-        if (!record.getKeyFieldNames().isEmpty()) {
+        if (!record.keyFieldNames().isEmpty()) {
             builder.append(" WHERE ");
-            builder.appendList(" AND ", record.getKeyFieldNames(), (name) -> columnNameEqualsBinding(name, table, record));
+            builder.appendList(" AND ", record.keyFieldNames(), (name) -> columnNameEqualsBinding(name, table, record));
         }
 
         return builder.build();
     }
 
     @Override
-    public String getDeleteStatement(TableDescriptor table, SinkRecordDescriptor record) {
+    public String getDeleteStatement(TableDescriptor table, JdbcSinkRecord record) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("DELETE FROM ");
         builder.append(getQualifiedTableName(table.getId()));
 
-        if (!record.getKeyFieldNames().isEmpty()) {
+        if (!record.keyFieldNames().isEmpty()) {
             builder.append(" WHERE ");
-            builder.appendList(" AND ", record.getKeyFieldNames(), (name) -> columnNameEqualsBinding(name, table, record));
+            builder.appendList(" AND ", record.keyFieldNames(), (name) -> columnNameEqualsBinding(name, table, record));
         }
 
         return builder.build();
@@ -687,8 +687,8 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         }
     }
 
-    protected String columnQueryBindingFromField(String fieldName, TableDescriptor table, SinkRecordDescriptor record) {
-        final FieldDescriptor field = record.getFields().get(fieldName);
+    protected String columnQueryBindingFromField(String fieldName, TableDescriptor table, JdbcSinkRecord record) {
+        final FieldDescriptor field = record.allFields().get(fieldName);
         final String columnName = resolveColumnName(field);
         final ColumnDescriptor column = table.getColumnByName(columnName);
 
@@ -699,10 +699,10 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         else {
             value = getColumnValueFromKeyField(fieldName, record, columnName);
         }
-        return record.getFields().get(fieldName).getQueryBinding(column, value);
+        return record.allFields().get(fieldName).getQueryBinding(column, value);
     }
 
-    private Object getColumnValueFromKeyField(String fieldName, SinkRecordDescriptor record, String columnName) {
+    private Object getColumnValueFromKeyField(String fieldName, JdbcSinkRecord record, String columnName) {
         Object value;
         if (connectorConfig.getPrimaryKeyMode() == JdbcSinkConnectorConfig.PrimaryKeyMode.KAFKA) {
             value = getColumnValueForKafkaKeyMode(columnName, record);
@@ -714,29 +714,25 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         return value;
     }
 
-    private Object getColumnValueFromValueField(String fieldName, SinkRecordDescriptor record) {
-        return record.getAfterStruct().get(fieldName);
+    private Object getColumnValueFromValueField(String fieldName, JdbcSinkRecord record) {
+        return record.getPayload().get(fieldName);
     }
 
-    private Object getColumnValueForKafkaKeyMode(String columnName, SinkRecordDescriptor record) {
-        switch (columnName) {
-            case "__connect_topic":
-                return record.getTopicName();
-            case "__connect_partition":
-                return record.getPartition();
-            case "__connect_offset":
-                return record.getOffset();
-            default:
-                return null;
-        }
+    private Object getColumnValueForKafkaKeyMode(String columnName, JdbcSinkRecord record) {
+        return switch (columnName) {
+            case "__connect_topic" -> record.topicName();
+            case "__connect_partition" -> record.partition();
+            case "__connect_offset" -> record.offset();
+            default -> null;
+        };
     }
 
-    protected String columnNameFromField(String fieldName, SinkRecordDescriptor record) {
-        final FieldDescriptor field = record.getFields().get(fieldName);
+    protected String columnNameFromField(String fieldName, JdbcSinkRecord record) {
+        final FieldDescriptor field = record.allFields().get(fieldName);
         return toIdentifier(resolveColumnName(field));
     }
 
-    protected String columnNameFromField(String fieldName, String prefix, SinkRecordDescriptor record) {
+    protected String columnNameFromField(String fieldName, String prefix, JdbcSinkRecord record) {
         return prefix + columnNameFromField(fieldName, record);
     }
 
@@ -780,11 +776,11 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         return toIdentifier(collectionId.name());
     }
 
-    private String columnNameEqualsBinding(String fieldName, TableDescriptor table, SinkRecordDescriptor record) {
-        final FieldDescriptor field = record.getFields().get(fieldName);
+    private String columnNameEqualsBinding(String fieldName, TableDescriptor table, JdbcSinkRecord record) {
+        final FieldDescriptor field = record.allFields().get(fieldName);
         final String columnName = resolveColumnName(field);
         final ColumnDescriptor column = table.getColumnByName(columnName);
-        return toIdentifier(columnName) + "=" + field.getQueryBinding(column, record.getAfterStruct());
+        return toIdentifier(columnName) + "=" + field.getQueryBinding(column, record.getPayload());
     }
 
     private static boolean isColumnNullable(String columnName, Collection<String> primaryKeyColumnNames, int nullability) {

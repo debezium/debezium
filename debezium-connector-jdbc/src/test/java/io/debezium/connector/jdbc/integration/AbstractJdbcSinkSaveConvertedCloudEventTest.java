@@ -12,13 +12,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.apache.kafka.connect.sink.SinkRecord;
 import org.assertj.db.api.TableAssert;
 import org.assertj.db.type.ValueType;
 import org.fest.assertions.Index;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
+import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
 import io.debezium.connector.jdbc.junit.TestHelper;
@@ -59,8 +59,8 @@ public abstract class AbstractJdbcSinkSaveConvertedCloudEventTest extends Abstra
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("json"), null);
-        final SinkRecord convertedRecord = transform.apply(cloudEventRecord);
+        final KafkaDebeziumSinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("json"), null);
+        final KafkaDebeziumSinkRecord convertedRecord = new KafkaDebeziumSinkRecord(transform.apply(cloudEventRecord.getOriginalKafkaRecord()));
         consume(convertedRecord);
 
         final String destinationTableName = destinationTableName(convertedRecord);
@@ -96,8 +96,8 @@ public abstract class AbstractJdbcSinkSaveConvertedCloudEventTest extends Abstra
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("avro"), null);
-        final SinkRecord convertedRecord = transform.apply(cloudEventRecord);
+        final KafkaDebeziumSinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("avro"), null);
+        final KafkaDebeziumSinkRecord convertedRecord = new KafkaDebeziumSinkRecord(transform.apply(cloudEventRecord.getOriginalKafkaRecord()));
         consume(convertedRecord);
 
         final String destinationTableName = destinationTableName(convertedRecord);
@@ -134,8 +134,8 @@ public abstract class AbstractJdbcSinkSaveConvertedCloudEventTest extends Abstra
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("avro"), "TestCESchemaCustomName");
-        final SinkRecord convertedRecord = transform.apply(cloudEventRecord);
+        final KafkaDebeziumSinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("avro"), "TestCESchemaCustomName");
+        final KafkaDebeziumSinkRecord convertedRecord = new KafkaDebeziumSinkRecord(transform.apply(cloudEventRecord.getOriginalKafkaRecord()));
         consume(convertedRecord);
 
         final String destinationTableName = destinationTableName(convertedRecord);

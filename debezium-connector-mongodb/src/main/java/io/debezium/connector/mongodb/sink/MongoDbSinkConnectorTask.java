@@ -21,9 +21,11 @@ import org.slf4j.LoggerFactory;
 import com.mongodb.client.MongoClient;
 import com.mongodb.internal.VisibleForTesting;
 
+import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
 import io.debezium.dlq.ErrorReporter;
+import io.debezium.sink.DebeziumSinkRecord;
 
 public class MongoDbSinkConnectorTask extends SinkTask {
     static final Logger LOGGER = LoggerFactory.getLogger(MongoDbSinkConnectorTask.class);
@@ -117,7 +119,11 @@ public class MongoDbSinkConnectorTask extends SinkTask {
             try {
                 ErrantRecordReporter errantRecordReporter = context.errantRecordReporter();
                 if (errantRecordReporter != null) {
-                    result = errantRecordReporter::report;
+                    result = (DebeziumSinkRecord record, Exception e) -> {
+                        if (record instanceof KafkaDebeziumSinkRecord kafkaRecord) {
+                            errantRecordReporter.report(kafkaRecord.getOriginalKafkaRecord(), e);
+                        }
+                    };
                 }
                 else {
                     LOGGER.info("Errant record reporter not configured.");

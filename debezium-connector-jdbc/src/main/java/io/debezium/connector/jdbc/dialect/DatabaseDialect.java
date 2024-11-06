@@ -15,8 +15,8 @@ import org.apache.kafka.connect.data.Schema;
 import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.engine.jdbc.Size;
 
-import io.debezium.connector.jdbc.SinkRecordDescriptor;
-import io.debezium.connector.jdbc.SinkRecordDescriptor.FieldDescriptor;
+import io.debezium.connector.jdbc.JdbcSinkRecord;
+import io.debezium.connector.jdbc.JdbcSinkRecord.FieldDescriptor;
 import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
@@ -74,7 +74,7 @@ public interface DatabaseDialect {
      * @param table the relational table model, should not be {@code null}
      * @return a collection of field names that are missing from the database table, can be {@code empty}.
      */
-    Set<String> resolveMissingFields(SinkRecordDescriptor record, TableDescriptor table);
+    Set<String> resolveMissingFields(JdbcSinkRecord record, TableDescriptor table);
 
     /**
      * Construct a {@code CREATE TABLE} statement specific for this dialect based on the provided record.
@@ -83,7 +83,7 @@ public interface DatabaseDialect {
      * @param collectionId the tableidentifier to be used, should not be {@code null}
      * @return the create table SQL statement to be executed, never {@code null}
      */
-    String getCreateTableStatement(SinkRecordDescriptor record, CollectionId collectionId);
+    String getCreateTableStatement(JdbcSinkRecord record, CollectionId collectionId);
 
     /**
      * Gets the prefix used before adding column-clauses in {@code ALTER TABLE} statements.
@@ -129,7 +129,7 @@ public interface DatabaseDialect {
      * @return the alter table SQL statement to be executed, never {@code null}
      * @throws IllegalArgumentException if called with an empty set of missing fields
      */
-    String getAlterTableStatement(TableDescriptor table, SinkRecordDescriptor record, Set<String> missingFields);
+    String getAlterTableStatement(TableDescriptor table, JdbcSinkRecord record, Set<String> missingFields);
 
     /**
      * Construct a {@code INSERT INTO} statement specific for this dialect.
@@ -138,7 +138,7 @@ public interface DatabaseDialect {
      * @param record the current sink record being processed, should not be {@code null}
      * @return the insert SQL statement to be executed, never {@code null}
      */
-    String getInsertStatement(TableDescriptor table, SinkRecordDescriptor record);
+    String getInsertStatement(TableDescriptor table, JdbcSinkRecord record);
 
     /**
      * Construct a {@code UPSERT} statement specific for this dialect.
@@ -147,7 +147,7 @@ public interface DatabaseDialect {
      * @param record the current sink record being processed, should not be {@code null}
      * @return the upsert SQL statement to be executed, never {@code null}
      */
-    String getUpsertStatement(TableDescriptor table, SinkRecordDescriptor record);
+    String getUpsertStatement(TableDescriptor table, JdbcSinkRecord record);
 
     /**
      * Construct a {@code UPDATE} statement specific for this dialect.
@@ -156,7 +156,7 @@ public interface DatabaseDialect {
      * @param record the current sink record being processed, should not be {@code null}
      * @return the update SQL statement to be executed, never {@code null}
      */
-    String getUpdateStatement(TableDescriptor table, SinkRecordDescriptor record);
+    String getUpdateStatement(TableDescriptor table, JdbcSinkRecord record);
 
     /**
      * Construct a {@code DELETE} statement specific for this dialect.
@@ -165,7 +165,7 @@ public interface DatabaseDialect {
      * @param record the current sink record being processed, should not be {@code null}
      * @return the delete SQL statement to be executed, never {@code null}
      */
-    String getDeleteStatement(TableDescriptor table, SinkRecordDescriptor record);
+    String getDeleteStatement(TableDescriptor table, JdbcSinkRecord record);
 
     /**
      * Construct a {@code TRUNCATE} statement specific for this dialect.

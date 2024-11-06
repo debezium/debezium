@@ -28,6 +28,7 @@ import com.mongodb.client.model.WriteModel;
 import io.debezium.DebeziumException;
 import io.debezium.dlq.ErrorReporter;
 import io.debezium.metadata.CollectionId;
+import io.debezium.sink.DebeziumSinkRecord;
 import io.debezium.sink.spi.ChangeEventSink;
 
 final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
@@ -121,7 +122,7 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
     }
 
     private void handleTolerableWriteException(
-                                               final List<SinkRecord> batch,
+                                               final List<DebeziumSinkRecord> batch,
                                                final boolean ordered,
                                                final RuntimeException e,
                                                final boolean logErrors,
@@ -142,7 +143,7 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
         }
     }
 
-    private static void log(final Collection<SinkRecord> records, final RuntimeException e) {
+    private static void log(final Collection<DebeziumSinkRecord> records, final RuntimeException e) {
         LOGGER.error("Failed to put into the sink the following records: {}", records, e);
     }
 }

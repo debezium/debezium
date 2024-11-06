@@ -5,8 +5,8 @@
  */
 package io.debezium.dlq;
 
-import org.apache.kafka.connect.sink.SinkRecord;
+import io.debezium.sink.DebeziumSinkRecord;
 
 public interface ErrorReporter {
-    void report(SinkRecord record, Exception e);
+    void report(DebeziumSinkRecord record, Exception e);
 }
