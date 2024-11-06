@@ -18,7 +18,7 @@ import org.hibernate.dialect.Dialect;
 import org.hibernate.dialect.OracleDialect;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
-import io.debezium.connector.jdbc.SinkRecordDescriptor;
+import io.debezium.connector.jdbc.JdbcSinkRecord;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
@@ -94,24 +94,24 @@ public class OracleDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
-    public String getUpsertStatement(TableDescriptor table, SinkRecordDescriptor record) {
+    public String getUpsertStatement(TableDescriptor table, JdbcSinkRecord record) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("MERGE INTO ");
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" USING (SELECT ");
-        builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(),
+        builder.appendLists(", ", record.keyFieldNames(), record.getNonKeyFieldNames(),
                 (name) -> columnQueryBindingFromField(name, table, record) + " " + columnNameFromField(name, record));
         builder.append(" FROM dual) ").append("INCOMING ON (");
-        builder.appendList(" AND ", record.getKeyFieldNames(), (name) -> getUpsertIncomingClause(name, table, record));
+        builder.appendList(" AND ", record.keyFieldNames(), (name) -> getUpsertIncomingClause(name, table, record));
         builder.append(")");
         if (!record.getNonKeyFieldNames().isEmpty()) {
             builder.append(" WHEN MATCHED THEN UPDATE SET ");
             builder.appendList(",", record.getNonKeyFieldNames(), (name) -> getUpsertIncomingClause(name, table, record));
         }
         builder.append(" WHEN NOT MATCHED THEN INSERT (");
-        builder.appendLists(",", record.getNonKeyFieldNames(), record.getKeyFieldNames(), (name) -> columnNameFromField(name, record));
+        builder.appendLists(",", record.getNonKeyFieldNames(), record.keyFieldNames(), (name) -> columnNameFromField(name, record));
         builder.append(") VALUES (");
-        builder.appendLists(",", record.getNonKeyFieldNames(), record.getKeyFieldNames(), (name) -> columnNameFromField(name, "INCOMING.", record));
+        builder.appendLists(",", record.getNonKeyFieldNames(), record.keyFieldNames(), (name) -> columnNameFromField(name, "INCOMING.", record));
         builder.append(")");
         return builder.build();
     }
@@ -176,7 +176,7 @@ public class OracleDatabaseDialect extends GeneralDatabaseDialect {
         return columnName;
     }
 
-    private String getUpsertIncomingClause(String fieldName, TableDescriptor table, SinkRecordDescriptor record) {
+    private String getUpsertIncomingClause(String fieldName, TableDescriptor table, JdbcSinkRecord record) {
         final String columnName = columnNameFromField(fieldName, record);
         return toIdentifier(table.getId()) + "." + columnName + "=INCOMING." + columnName;
     }

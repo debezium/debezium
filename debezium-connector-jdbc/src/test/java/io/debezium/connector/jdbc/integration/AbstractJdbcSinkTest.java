@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import com.mchange.v2.c3p0.DataSources;
 
+import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnector;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkTaskTestContext;
@@ -151,7 +152,7 @@ public abstract class AbstractJdbcSinkTest {
     /**
      * Consumes the provided {@link SinkRecord} by the JDBC sink connector task.
      */
-    protected void consume(SinkRecord record) {
+    protected void consume(KafkaDebeziumSinkRecord record) {
         if (record != null) {
             consume(Collections.singletonList(record));
         }
@@ -160,8 +161,9 @@ public abstract class AbstractJdbcSinkTest {
     /**
      * Consumes the provided collection of {@link SinkRecord} by the JDBC sink connector task.
      */
-    protected void consume(List<SinkRecord> records) {
-        sinkTask.put(records);
+    protected void consume(List<KafkaDebeziumSinkRecord> records) {
+        List<SinkRecord> kafkaRecords = records.stream().map(KafkaDebeziumSinkRecord::getOriginalKafkaRecord).toList();
+        sinkTask.put(kafkaRecords);
     }
 
     /**
@@ -171,10 +173,10 @@ public abstract class AbstractJdbcSinkTest {
         return randomTableNameGenerator.randomName();
     }
 
-    protected String destinationTableName(SinkRecord record) {
+    protected String destinationTableName(KafkaDebeziumSinkRecord record) {
         // todo: pass the configuration in from the test
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(getDefaultSinkConfig());
-        return sink.formatTableName(collectionNamingStrategy.resolveCollectionName(config, record));
+        return sink.formatTableName(collectionNamingStrategy.resolveCollectionName(record, config.getCollectionNameFormat()));
     }
 
     /**

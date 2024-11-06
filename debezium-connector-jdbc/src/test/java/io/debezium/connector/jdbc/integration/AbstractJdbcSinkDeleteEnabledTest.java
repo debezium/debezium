@@ -9,12 +9,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.kafka.connect.sink.SinkRecord;
 import org.assertj.db.api.TableAssert;
 import org.assertj.db.type.ValueType;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
+import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
 import io.debezium.connector.jdbc.junit.TestHelper;
@@ -48,7 +48,7 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecord(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecord(topicName);
         consume(createRecord);
         consume(factory.deleteRecord(topicName));
 
@@ -73,7 +73,7 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecord(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecord(topicName);
         consume(createRecord);
         consume(factory.deleteRecord(topicName));
 
@@ -99,7 +99,7 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecordMultipleKeyColumns(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordMultipleKeyColumns(topicName);
         consume(createRecord);
         consume(factory.deleteRecordMultipleKeyColumns(topicName));
 
@@ -124,7 +124,7 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord deleteRecord = factory.deleteRecord(topicName);
+        final KafkaDebeziumSinkRecord deleteRecord = factory.deleteRecord(topicName);
         consume(deleteRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(deleteRecord));
@@ -149,7 +149,7 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord deleteRecord = factory.deleteRecordMultipleKeyColumns(topicName);
+        final KafkaDebeziumSinkRecord deleteRecord = factory.deleteRecordMultipleKeyColumns(topicName);
         consume(deleteRecord);
 
         final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(deleteRecord));
@@ -175,7 +175,7 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord deleteRecord = factory.deleteRecord(topicName);
+        final KafkaDebeziumSinkRecord deleteRecord = factory.deleteRecord(topicName);
         // Switching the normal order for test purpose.
         // If the delete record is not processed mean that the tombstone generated an error
         consume(factory.tombstoneRecord(topicName));
@@ -202,7 +202,7 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecord(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecord(topicName);
         consume(createRecord);
         consume(factory.truncateRecord(topicName));
 
@@ -228,7 +228,7 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord createRecord = factory.createRecord(topicName);
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecord(topicName);
         consume(createRecord);
         consume(factory.truncateRecord(topicName));
 
@@ -259,9 +259,9 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        SinkRecord firstRecord = factory.createRecord(topicName, (byte) 1);
-        SinkRecord truncateRecord = factory.truncateRecord(topicName);
-        SinkRecord secondRecord = factory.createRecord(topicName, (byte) 2);
+        KafkaDebeziumSinkRecord firstRecord = factory.createRecord(topicName, (byte) 1);
+        KafkaDebeziumSinkRecord truncateRecord = factory.truncateRecord(topicName);
+        KafkaDebeziumSinkRecord secondRecord = factory.createRecord(topicName, (byte) 2);
 
         consume(firstRecord);
         consume(truncateRecord);
@@ -292,8 +292,8 @@ public abstract class AbstractJdbcSinkDeleteEnabledTest extends AbstractJdbcSink
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final SinkRecord deleteRecord = factory.deleteRecord(topicName);
-        List<SinkRecord> records = new ArrayList<SinkRecord>();
+        final KafkaDebeziumSinkRecord deleteRecord = factory.deleteRecord(topicName);
+        List<KafkaDebeziumSinkRecord> records = new ArrayList<>();
 
         records.add(factory.createRecord(topicName, (byte) 2));
         records.add(factory.createRecord(topicName, (byte) 1));

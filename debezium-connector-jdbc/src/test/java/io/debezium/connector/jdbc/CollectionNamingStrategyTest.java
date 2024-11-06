@@ -10,7 +10,6 @@ import static org.fest.assertions.Assertions.assertThat;
 import java.util.Map;
 
 import org.apache.kafka.connect.errors.DataException;
-import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -28,12 +27,13 @@ import io.debezium.sink.naming.DefaultCollectionNamingStrategy;
  */
 @Tag("UnitTests")
 public class CollectionNamingStrategyTest {
+
     @Test
     public void testDefaultTableNamingStrategy() {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of());
         final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
         final DefaultCollectionNamingStrategy strategy = new DefaultCollectionNamingStrategy();
-        assertThat(strategy.resolveCollectionName(config, factory.createRecord("database.schema.table")))
+        assertThat(strategy.resolveCollectionName(factory.createRecord("database.schema.table"), config.getCollectionNameFormat()))
                 .isEqualTo("database_schema_table");
     }
 
@@ -42,7 +42,7 @@ public class CollectionNamingStrategyTest {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT, "kafka_${topic}"));
         final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
         final DefaultCollectionNamingStrategy strategy = new DefaultCollectionNamingStrategy();
-        assertThat(strategy.resolveCollectionName(config, factory.createRecord("database.schema.table")))
+        assertThat(strategy.resolveCollectionName(factory.createRecord("database.schema.table"), config.getCollectionNameFormat()))
                 .isEqualTo("kafka_database_schema_table");
     }
 
@@ -52,7 +52,7 @@ public class CollectionNamingStrategyTest {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT, "SYS.${topic}"));
         final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
         final DefaultCollectionNamingStrategy strategy = new DefaultCollectionNamingStrategy();
-        assertThat(strategy.resolveCollectionName(config, factory.createRecord("database.schema.table")))
+        assertThat(strategy.resolveCollectionName(factory.createRecord("database.schema.table"), config.getCollectionNameFormat()))
                 .isEqualTo("SYS.database_schema_table");
     }
 
@@ -62,8 +62,8 @@ public class CollectionNamingStrategyTest {
                 Map.of(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT, "source_${source.db}_${source.schema}_${source.table}"));
         final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
         final DefaultCollectionNamingStrategy strategy = new DefaultCollectionNamingStrategy();
-        SinkRecord record = factory.createRecord("database.schema.table", (byte) 1, "database1", "schema1", "table1");
-        assertThat(strategy.resolveCollectionName(config, record))
+        assertThat(strategy.resolveCollectionName(factory.createRecord("database.schema.table", (byte) 1, "database1", "schema1", "table1"),
+                config.getCollectionNameFormat()))
                 .isEqualTo("source_database1_schema1_table1");
     }
 
@@ -72,8 +72,8 @@ public class CollectionNamingStrategyTest {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT, "source_${source.invalid}"));
         final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
         final DefaultCollectionNamingStrategy strategy = new DefaultCollectionNamingStrategy();
-        SinkRecord record = factory.createRecord("database.schema.table", (byte) 1, "database1", "schema1", "table1");
-        Assertions.assertThrows(DataException.class, () -> strategy.resolveCollectionName(config, record));
+        Assertions.assertThrows(DataException.class, () -> strategy
+                .resolveCollectionName(factory.createRecord("database.schema.table", (byte) 1, "database1", "schema1", "table1"), config.getCollectionNameFormat()));
     }
 
     @Test
@@ -82,8 +82,7 @@ public class CollectionNamingStrategyTest {
                 Map.of(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT, "source_${source.db}_${source.schema}_${source.table}"));
         final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
         final DefaultCollectionNamingStrategy strategy = new DefaultCollectionNamingStrategy();
-        SinkRecord record = factory.tombstoneRecord("database.schema.table");
-        assertThat(strategy.resolveCollectionName(config, record)).isNull();
+        assertThat(strategy.resolveCollectionName(factory.tombstoneRecord("database.schema.table"), config.getCollectionNameFormat())).isNull();
     }
 
     @Test
@@ -91,7 +90,7 @@ public class CollectionNamingStrategyTest {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT, "kafka_${topic}"));
         final SinkRecordFactory factory = new DebeziumSinkRecordFactory();
         final DefaultCollectionNamingStrategy strategy = new DefaultCollectionNamingStrategy();
-        SinkRecord record = factory.tombstoneRecord("database.schema.table");
-        assertThat(strategy.resolveCollectionName(config, record)).isEqualTo("kafka_database_schema_table");
+        assertThat(strategy.resolveCollectionName(factory.tombstoneRecord("database.schema.table"), config.getCollectionNameFormat()))
+                .isEqualTo("kafka_database_schema_table");
     }
 }

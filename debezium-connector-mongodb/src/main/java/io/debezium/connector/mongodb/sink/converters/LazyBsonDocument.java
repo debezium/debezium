@@ -17,11 +17,12 @@ import java.util.function.BiFunction;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.DataException;
-import org.apache.kafka.connect.sink.SinkRecord;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
 
 import com.mongodb.lang.Nullable;
+
+import io.debezium.sink.DebeziumSinkRecord;
 
 /**
  * A lazy representation of a MongoDB document.
@@ -30,7 +31,7 @@ public class LazyBsonDocument extends BsonDocument {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    private final transient SinkRecord record;
+    private final transient DebeziumSinkRecord record;
     private final transient Type dataType;
     private final transient BiFunction<Schema, Object, BsonDocument> converter;
 
@@ -48,7 +49,7 @@ public class LazyBsonDocument extends BsonDocument {
      * @param converter the converter for the sink record
      */
     public LazyBsonDocument(
-                            final SinkRecord record,
+                            final DebeziumSinkRecord record,
                             final Type dataType,
                             final BiFunction<Schema, Object, BsonDocument> converter) {
         if (record == null) {
