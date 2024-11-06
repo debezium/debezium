@@ -344,14 +344,13 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     public void updatesWithRestart() throws Exception {
         // Testing.Print.enable();
 
-        populateTable();
         final Configuration config = config().build();
         startAndConsumeTillEnd(connectorClass(), config);
-        waitForConnectorToStart();
+        waitForStreamingRunning(connector(), server());
 
-        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
-        // there shouldn't be any snapshot records
-        assertNoRecordsToConsume();
+        populateTable();
+        consumeRecords(ROW_COUNT);
+        consumedLines.clear();
 
         sendAdHocSnapshotSignal();
 
@@ -414,14 +413,13 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     public void snapshotOnlyWithRestart() throws Exception {
         // Testing.Print.enable();
 
-        populateTable();
         final Configuration config = config().build();
         startAndConsumeTillEnd(connectorClass(), config);
-        waitForConnectorToStart();
+        waitForStreamingRunning(connector(), server());
 
-        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
-        // there shouldn't be any snapshot records
-        assertNoRecordsToConsume();
+        populateTable();
+        consumeRecords(ROW_COUNT);
+        consumedLines.clear();
 
         sendAdHocSnapshotSignal();
 
@@ -449,16 +447,15 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     public void whenSnapshotMultipleTablesAndConnectorRestartsThenOnlyNotAlreadyProcessedTableMustBeProcessed() throws Exception {
         // Testing.Print.enable();
 
-        populateTables();
         final Configuration config = config()
                 .with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 200)
                 .build();
         startAndConsumeTillEnd(connectorClass(), config);
-        waitForConnectorToStart();
+        waitForStreamingRunning(connector(), server());
 
-        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
-        // there shouldn't be any snapshot records
-        assertNoRecordsToConsume();
+        populateTables();
+        consumeRecords(ROW_COUNT * 2);
+        consumedLines.clear();
 
         sendAdHocSnapshotSignal(tableDataCollectionIds().toArray(new String[0]));
 
@@ -861,13 +858,12 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
     @Test
     public void testPauseDuringSnapshot() throws Exception {
-        populateTable();
         startConnector(x -> x.with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 50));
-        waitForConnectorToStart();
+        waitForStreamingRunning(connector(), server());
 
-        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
-        // there shouldn't be any snapshot records
-        assertNoRecordsToConsume();
+        populateTable();
+        consumeRecords(ROW_COUNT);
+        consumedLines.clear();
 
         sendAdHocSnapshotSignal();
 
@@ -903,17 +899,16 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     public void snapshotWithAdditionalCondition() throws Exception {
         // Testing.Print.enable();
 
+        final Configuration config = config().build();
+        startAndConsumeTillEnd(connectorClass(), config);
+        waitForStreamingRunning(connector(), server());
+
         int expectedCount = 10, expectedValue = 12345678;
         populateTable();
         populateTableWithSpecificValue(2000, expectedCount, expectedValue);
         waitForCdcTransactionPropagation(3);
-        final Configuration config = config().build();
-        startAndConsumeTillEnd(connectorClass(), config);
-        waitForConnectorToStart();
-
-        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
-        // there shouldn't be any snapshot records
-        assertNoRecordsToConsume();
+        consumeRecords(ROW_COUNT + expectedCount);
+        consumedLines.clear();
 
         sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(Map.of(tableDataCollectionId(), String.format("aa = %s", expectedValue)), "",
                 tableDataCollectionId());
@@ -929,17 +924,16 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     public void snapshotWithNewAdditionalConditionsField() throws Exception {
         // Testing.Print.enable();
 
+        final Configuration config = config().build();
+        startAndConsumeTillEnd(connectorClass(), config);
+        waitForStreamingRunning(connector(), server());
+
         int expectedCount = 10, expectedValue = 12345678;
         populateTable();
         populateTableWithSpecificValue(2000, expectedCount, expectedValue);
         waitForCdcTransactionPropagation(3);
-        final Configuration config = config().build();
-        startAndConsumeTillEnd(connectorClass(), config);
-        waitForConnectorToStart();
-
-        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
-        // there shouldn't be any snapshot records
-        assertNoRecordsToConsume();
+        consumeRecords(ROW_COUNT + expectedCount);
+        consumedLines.clear();
 
         sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(Map.of(tableDataCollectionId(), String.format("aa = %s", expectedValue)), "",
                 tableDataCollectionId());
@@ -971,17 +965,16 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     public void snapshotWithAdditionalConditionWithRestart() throws Exception {
         // Testing.Print.enable();
 
-        int expectedCount = 1000, expectedValue = 12345678;
+        final Configuration config = config().build();
+        startAndConsumeTillEnd(connectorClass(), config);
+        waitForStreamingRunning(connector(), server());
+
+        int expectedCount = 10, expectedValue = 12345678;
         populateTable();
         populateTableWithSpecificValue(2000, expectedCount, expectedValue);
         waitForCdcTransactionPropagation(3);
-        final Configuration config = config().build();
-        startAndConsumeTillEnd(connectorClass(), config);
-        waitForConnectorToStart();
-
-        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
-        // there shouldn't be any snapshot records
-        assertNoRecordsToConsume();
+        consumeRecords(ROW_COUNT + expectedCount);
+        consumedLines.clear();
 
         sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(Map.of(tableDataCollectionId(), String.format("aa = %s", expectedValue)), "",
                 tableDataCollectionId());
@@ -1023,17 +1016,16 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
     public void snapshotWithAdditionalConditionWithSurrogateKey() throws Exception {
         // Testing.Print.enable();
 
+        final Configuration config = config().build();
+        startAndConsumeTillEnd(connectorClass(), config);
+        waitForStreamingRunning(connector(), server());
+
         int expectedCount = 10, expectedValue = 12345678;
         populateTable();
         populateTableWithSpecificValue(2000, expectedCount, expectedValue);
         waitForCdcTransactionPropagation(3);
-        final Configuration config = config().build();
-        startAndConsumeTillEnd(connectorClass(), config);
-        waitForConnectorToStart();
-
-        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
-        // there shouldn't be any snapshot records
-        assertNoRecordsToConsume();
+        consumeRecords(ROW_COUNT + expectedCount);
+        consumedLines.clear();
 
         sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(Map.of(tableDataCollectionId(), String.format("aa = %s", expectedValue)), "\"aa\"",
                 tableDataCollectionId());
