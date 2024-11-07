@@ -1468,12 +1468,24 @@ public abstract class CommonConnectorConfig {
         return eventConvertingFailureHandlingMode;
     }
 
+    public static final Field INCLUDE_SCHEMA_CHANGES = Field.create("include.schema.changes")
+            .withDisplayName("Include database schema changes")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 0))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Whether the connector should publish changes in the database schema to a Kafka topic with "
+                    + "the same name as the database server ID. Each schema change will be recorded using a key that "
+                    + "contains the database name and whose value include logical description of the new schema and optionally the DDL statement(s). "
+                    + "The default is 'true'. This is independent of how the connector internally records database schema history.")
+            .withDefault(false);
+
     /**
      * @return true if the connector should emit messages about schema changes into a public facing
      * topic.
      */
     public boolean isSchemaChangesHistoryEnabled() {
-        return false;
+        return getConfig().getBoolean(INCLUDE_SCHEMA_CHANGES);
     }
 
     /**
