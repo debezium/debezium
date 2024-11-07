@@ -445,7 +445,9 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withDescription("The maximum number of millis to wait for table locks at the beginning of a snapshot. If locks cannot be acquired in this " +
                     "time frame, the snapshot will be aborted. Defaults to 10 seconds");
 
-    // The default value must be true (CommonConnectorConfig defaults to false)
+    // TODO - belongs to HistorizedRelationalDatabaseConnectorConfig but should be move there
+    // after MySQL rewrite
+    // Note: The default value must be true (CommonConnectorConfig defaults to false)
     public static final Field INCLUDE_SCHEMA_CHANGES = Field.create("include.schema.changes")
             .withDisplayName("Include database schema changes")
             .withType(Type.BOOLEAN)
