@@ -108,7 +108,7 @@ public class MultiTaskWindowHandlerTest {
 
         long t = bt.getTime();
         assertThat(t).isEqualTo(expectedSeconds);
-        assertThat(m.oplogStart.getTime()).isEqualTo(expectedSeconds);
+        assertThat(m.windowStart.getTime()).isEqualTo(expectedSeconds);
 
         return m;
     }
@@ -120,7 +120,7 @@ public class MultiTaskWindowHandlerTest {
 
         long t = bt.getTime();
         assertThat(t).isEqualTo(expectedSeconds);
-        assertThat(m.optimizedOplogStart.getTime()).isEqualTo(expectedSeconds);
+        assertThat(m.optimizedWindowStart.getTime()).isEqualTo(expectedSeconds);
 
     }
 
@@ -130,7 +130,7 @@ public class MultiTaskWindowHandlerTest {
 
         long t = bt.getTime();
         assertThat(t).isEqualTo(expectedSeconds);
-        assertThat(m.oplogStop.getTime()).isEqualTo(expectedSeconds);
+        assertThat(m.windowStop.getTime()).isEqualTo(expectedSeconds);
     }
 
     private void testGetStepwiseWindowNextStart(int expectedSeconds, int windowStopInSeconds, int hopSize, int taskCount, MultiTaskWindowHandler m) {
@@ -141,7 +141,7 @@ public class MultiTaskWindowHandlerTest {
 
         long t = bt.getTime();
         assertThat(t).isEqualTo(expectedSeconds);
-        assertThat(m.oplogStart.getTime()).isEqualTo(expectedSeconds);
-        assertThat(m.optimizedOplogStart.getTime()).isEqualTo(expectedSeconds);
+        assertThat(m.windowStart.getTime()).isEqualTo(expectedSeconds);
+        assertThat(m.optimizedWindowStart.getTime()).isEqualTo(expectedSeconds);
     }
 }

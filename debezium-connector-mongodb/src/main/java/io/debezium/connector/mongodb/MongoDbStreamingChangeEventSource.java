@@ -23,6 +23,8 @@ import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor.ResumableChangeStreamEvent;
 import io.debezium.connector.mongodb.events.SplitEventHandler;
+import io.debezium.connector.mongodb.events.StreamManager;
+import io.debezium.connector.mongodb.events.StreamManagerFactory;
 import io.debezium.connector.mongodb.metrics.MongoDbStreamingChangeEventSourceMetrics;
 import io.debezium.connector.mongodb.recordemitter.MongoDbChangeRecordEmitter;
 import io.debezium.function.BlockingRunnable;
@@ -85,10 +87,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             mongo.execute("Reading change stream", client -> {
                 readChangeStream(client,
                         context,
-                        partition,
-                        connectorConfig.isMultiTaskEnabled(),
-                        connectorConfig.getMultiTaskGen(),
-                        connectorConfig.getMaxTasks());
+                        partition);
             });
         }
         catch (Throwable t) {
@@ -102,22 +101,16 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         return effectiveOffset;
     }
 
-    private void readChangeStream(MongoClient client, ChangeEventSourceContext context, MongoDbPartition partition, boolean multiTaskEnabled, int multiTaskGen,
-                                  int taskCount) {
+    private void readChangeStream(MongoClient client, ChangeEventSourceContext context, MongoDbPartition partition) {
         LOGGER.info("Reading change stream");
         final SplitEventHandler<BsonDocument> splitHandler = new SplitEventHandler<>();
 
-        MultiTaskWindowHandler multiTaskWindowHandler = getOffsetHandler(effectiveOffset, multiTaskEnabled, taskCount);
-        final ChangeStreamIterable<BsonDocument> stream = initChangeStream(client, effectiveOffset, multiTaskWindowHandler);
+        final ChangeStreamIterable<BsonDocument> stream = initChangeStream(client);
+        StreamManager<BsonDocument> streamManager = StreamManagerFactory.create(effectiveOffset, connectorConfig, taskContext);
+        streamManager.initStream(stream);
 
-        BufferingChangeStreamCursor<BsonDocument> cursor;
-        if (multiTaskEnabled) {
-            cursor = BufferingChangeStreamCursor.fromIterable(stream, multiTaskWindowHandler, taskContext, streamingMetrics, clock);
-        }
-        else {
-            cursor = BufferingChangeStreamCursor.fromIterable(stream, taskContext, streamingMetrics, clock);
-        }
-        try (cursor) {
+        try (BufferingChangeStreamCursor<BsonDocument> cursor = BufferingChangeStreamCursor.fromIterable(stream,
+                streamManager, taskContext, streamingMetrics, clock)) {
             cursor.start();
             while (context.isRunning()) {
                 waitWhenStreamingPaused(context, cursor);
@@ -206,7 +199,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
     }
 
-    protected ChangeStreamIterable<BsonDocument> initChangeStream(MongoClient client, MongoDbOffsetContext offsetContext, MultiTaskWindowHandler offsetHandler) {
+    protected ChangeStreamIterable<BsonDocument> initChangeStream(MongoClient client) {
         final ChangeStreamIterable<BsonDocument> stream = MongoUtils.openChangeStream(client, taskContext);
 
         if (connectorConfig.getCaptureMode().isFullUpdate()) {
@@ -219,19 +212,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
         if (connectorConfig.getCaptureMode().isIncludePreImage()) {
             stream.fullDocumentBeforeChange(FullDocumentBeforeChange.WHEN_AVAILABLE);
-        }
-        if (offsetHandler == null) {
-            if (offsetContext.lastResumeToken() != null) {
-                LOGGER.info("Resuming streaming from token '{}'", offsetContext.lastResumeToken());
-                stream.resumeAfter(offsetContext.lastResumeTokenDoc());
-            }
-            else if (offsetContext.lastTimestamp() != null) {
-                LOGGER.info("Resuming streaming from operation time '{}'", offsetContext.lastTimestamp());
-                stream.startAtOperationTime(offsetContext.lastTimestamp());
-            }
-        }
-        else if (offsetHandler.started) {
-            stream.startAtOperationTime(offsetHandler.optimizedOplogStart);
         }
         if (connectorConfig.getCursorMaxAwaitTime() > 0) {
             stream.maxAwaitTime(connectorConfig.getCursorMaxAwaitTime(), TimeUnit.MILLISECONDS);
@@ -254,8 +234,8 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             LOGGER.info("Setting window for stepwise taskId '{}'/'{}' start '{}' stop '{}'.",
                     multiTaskWindowHandler.taskId,
                     multiTaskWindowHandler.taskCount,
-                    multiTaskWindowHandler.optimizedOplogStart,
-                    multiTaskWindowHandler.oplogStop);
+                    multiTaskWindowHandler.optimizedWindowStart,
+                    multiTaskWindowHandler.windowStop);
         }
         return multiTaskWindowHandler;
     }

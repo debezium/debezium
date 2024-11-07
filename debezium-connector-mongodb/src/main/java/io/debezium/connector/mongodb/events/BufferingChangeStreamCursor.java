@@ -22,7 +22,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.bson.BsonDocument;
-import org.bson.BsonTimestamp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,8 +36,6 @@ import io.debezium.annotation.Immutable;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.mongodb.MongoDbConnector;
 import io.debezium.connector.mongodb.MongoDbTaskContext;
-import io.debezium.connector.mongodb.MultiTaskWindowHandler;
-import io.debezium.connector.mongodb.ResumeTokens;
 import io.debezium.connector.mongodb.metrics.MongoDbStreamingChangeEventSourceMetrics;
 import io.debezium.util.Clock;
 import io.debezium.util.DelayStrategy;
@@ -117,71 +114,6 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
     }
 
     /**
-     * Interface allowing implementers to update the change stream in response to an event
-     * @param <TResult>
-     */
-    public interface StreamManager<TResult> {
-        ChangeStreamIterable<TResult> updateStream(ChangeStreamIterable<TResult> stream);
-
-        boolean shouldUpdateStream(ResumableChangeStreamEvent<TResult> event);
-    }
-
-    public static class DefaultStreamManager<TResult> implements StreamManager<TResult> {
-        @Override
-        public ChangeStreamIterable<TResult> updateStream(ChangeStreamIterable<TResult> stream) {
-            return stream;
-        }
-
-        @Override
-        public boolean shouldUpdateStream(ResumableChangeStreamEvent<TResult> event) {
-            return false;
-        }
-    }
-
-    public static class MultiTaskStreamManager<TResult> implements StreamManager<TResult> {
-
-        private MultiTaskWindowHandler windowHandler;
-        BsonTimestamp lastTimestamp;
-
-        public MultiTaskStreamManager(MultiTaskWindowHandler windowHandler) {
-            this.windowHandler = windowHandler;
-        }
-
-        @Override
-        public ChangeStreamIterable<TResult> updateStream(ChangeStreamIterable<TResult> stream) {
-            windowHandler = windowHandler.nextHop(lastTimestamp);
-            LOGGER.info("task {} jump to next hop [{}-{}]",
-                    windowHandler.taskId,
-                    windowHandler.oplogStart.getTime(),
-                    windowHandler.oplogStop.getTime());
-            return stream.startAtOperationTime(windowHandler.optimizedOplogStart);
-        }
-
-        @Override
-        public boolean shouldUpdateStream(ResumableChangeStreamEvent<TResult> document) {
-            if (!windowHandler.started) {
-                windowHandler = windowHandler.startAtTimestamp(ResumeTokens.getTimestamp(document.resumeToken));
-                LOGGER.info("Setting window for stepwise taskId '{}'/'{}' start '{}' stop '{}'.",
-                        windowHandler.taskId,
-                        windowHandler.taskCount,
-                        windowHandler.optimizedOplogStart,
-                        windowHandler.oplogStop);
-            }
-            if (document.isEmpty()) {
-                return false;
-            }
-            ChangeStreamDocument<TResult> event = document.document.get();
-            BsonTimestamp timestamp = event.getClusterTime();
-            if (timestamp.getTime() >= windowHandler.oplogStop.getTime()) {
-                LOGGER.debug("Event timestamp found {} compared to window stop timestamp {}", timestamp.getTime(), windowHandler.oplogStop.getTime());
-                lastTimestamp = timestamp;
-                return true;
-            }
-            return false;
-        }
-    }
-
-    /**
      * Runnable responsible for fetching events from {@link ChangeStreamIterable} and buffering them in provided queue;
      * <p>
      * This utilises standard cursors returned by {@link ChangeStreamIterable#cursor()}
@@ -226,20 +158,12 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
         }
 
         public EventFetcher(ChangeStreamIterable<TResult> stream,
+                            StreamManager streamManager,
                             int capacity,
                             MongoDbStreamingChangeEventSourceMetrics metrics,
                             Clock clock,
                             Duration throttleMaxSleep) {
-            this(stream, new DefaultStreamManager<>(), capacity, metrics, clock, DelayStrategy.constant(throttleMaxSleep));
-        }
-
-        public EventFetcher(ChangeStreamIterable<TResult> stream,
-                            MultiTaskWindowHandler multiTaskWindowHandler,
-                            int capacity,
-                            MongoDbStreamingChangeEventSourceMetrics metrics,
-                            Clock clock,
-                            Duration throttleMaxSleep) {
-            this(stream, new MultiTaskStreamManager<>(multiTaskWindowHandler), capacity, metrics, clock, DelayStrategy.constant(throttleMaxSleep));
+            this(stream, streamManager, capacity, metrics, clock, DelayStrategy.constant(throttleMaxSleep));
         }
 
         /**
@@ -421,28 +345,15 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
 
     public static <TResult> BufferingChangeStreamCursor<TResult> fromIterable(
                                                                               ChangeStreamIterable<TResult> stream,
+                                                                              StreamManager<TResult> streamManager,
                                                                               MongoDbTaskContext taskContext,
                                                                               MongoDbStreamingChangeEventSourceMetrics metrics,
                                                                               Clock clock) {
         var config = taskContext.getConnectorConfig();
 
+        String threadName = "replicator-fetcher-" + taskContext.getMongoTaskId();
         return new BufferingChangeStreamCursor<>(
-                new EventFetcher<>(stream, config.getMaxBatchSize(), metrics, clock, config.getPollInterval()),
-                Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.getServerName(), "replicator-fetcher", 1),
-                config.getPollInterval());
-    }
-
-    public static <TResult> BufferingChangeStreamCursor<TResult> fromIterable(
-                                                                              ChangeStreamIterable<TResult> stream,
-                                                                              MultiTaskWindowHandler windowHandler,
-                                                                              MongoDbTaskContext taskContext,
-                                                                              MongoDbStreamingChangeEventSourceMetrics metrics,
-                                                                              Clock clock) {
-        var config = taskContext.getConnectorConfig();
-
-        String threadName = "replicator-fetcher-" + windowHandler.taskId;
-        return new BufferingChangeStreamCursor<>(
-                new EventFetcher<>(stream, windowHandler, config.getMaxBatchSize(), metrics, clock, config.getPollInterval()),
+                new EventFetcher<>(stream, streamManager, config.getMaxBatchSize(), metrics, clock, config.getPollInterval()),
                 Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.getServerName(), threadName, 1),
                 config.getPollInterval());
     }

@@ -40,9 +40,9 @@ public class MultiTaskWindowHandler {
     public int hopSizeSeconds;
     public int taskCount;
     public int taskId;
-    public BsonTimestamp oplogStart;
-    public BsonTimestamp oplogStop;
-    public BsonTimestamp optimizedOplogStart;
+    public BsonTimestamp windowStart;
+    public BsonTimestamp windowStop;
+    public BsonTimestamp optimizedWindowStart;
 
     public boolean started;
 
@@ -81,28 +81,28 @@ public class MultiTaskWindowHandler {
      * @return this
      */
     public MultiTaskWindowHandler startAtTimestamp(BsonTimestamp start) {
-        oplogStart = getStepwiseWindowStart(start, hopSizeSeconds, taskCount, taskId);
-        oplogStop = getStepwiseWindowStop(oplogStart, hopSizeSeconds);
-        optimizedOplogStart = optimizeStepwiseWindowStart(start, oplogStart);
+        windowStart = getStepwiseWindowStart(start, hopSizeSeconds, taskCount, taskId);
+        windowStop = getStepwiseWindowStop(windowStart, hopSizeSeconds);
+        optimizedWindowStart = optimizeStepwiseWindowStart(start, windowStart);
         started = true;
         return this;
     }
 
     /**
-     * Update {@link #oplogStart} and {@link #oplogStop} to the next window.
+     * Update {@link #windowStart} and {@link #windowStop} to the next window.
      * @return this
      */
     public MultiTaskWindowHandler nextHop() {
         if (started) {
-            oplogStart = getStepwiseWindowNextStart(oplogStop, hopSizeSeconds, taskCount);
-            oplogStop = getStepwiseWindowStop(oplogStart, hopSizeSeconds);
-            optimizedOplogStart = oplogStart;
+            windowStart = getStepwiseWindowNextStart(windowStop, hopSizeSeconds, taskCount);
+            windowStop = getStepwiseWindowStop(windowStart, hopSizeSeconds);
+            optimizedWindowStart = windowStart;
         }
         return this;
     }
 
     /**
-     * Update {@link #oplogStart} and {@link #oplogStop} to the next window. If the next window does not contain any
+     * Update {@link #windowStart} and {@link #windowStop} to the next window. If the next window does not contain any
      * timestamp greater than or equal to minTime, update to the next window that does.
      * @param minTime the minimum timestamp that the next window must contain
      * @return this
@@ -114,12 +114,12 @@ public class MultiTaskWindowHandler {
         if (minTime == null) {
             return nextHop();
         }
-        oplogStart = getStepwiseWindowNextStart(oplogStop, hopSizeSeconds, taskCount);
-        if (Objects.compare(oplogStart, minTime, BsonTimestamp::compareTo) < 0) {
-            oplogStart = getStepwiseWindowStart(minTime, hopSizeSeconds, taskCount, taskId);
+        windowStart = getStepwiseWindowNextStart(windowStop, hopSizeSeconds, taskCount);
+        if (Objects.compare(windowStart, minTime, BsonTimestamp::compareTo) < 0) {
+            windowStart = getStepwiseWindowStart(minTime, hopSizeSeconds, taskCount, taskId);
         }
-        oplogStop = getStepwiseWindowStop(oplogStart, hopSizeSeconds);
-        optimizedOplogStart = optimizeStepwiseWindowStart(minTime, oplogStart);
+        windowStop = getStepwiseWindowStop(windowStart, hopSizeSeconds);
+        optimizedWindowStart = optimizeStepwiseWindowStart(minTime, windowStart);
         return this;
     }
 
