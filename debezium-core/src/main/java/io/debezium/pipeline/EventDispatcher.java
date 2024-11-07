@@ -677,7 +677,9 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
         @Override
         public void schemaChangeEvent(SchemaChangeEvent event) throws InterruptedException {
-            historizedSchema.applySchemaChange(event);
+            if (historizedSchema != null) {
+                historizedSchema.applySchemaChange(event);
+            }
 
             if (connectorConfig.isSchemaChangesHistoryEnabled()) {
                 final String topicName = topicNamingStrategy.schemaChangeTopic();
