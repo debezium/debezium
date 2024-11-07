@@ -24,7 +24,7 @@ import org.hibernate.dialect.MySQLDialect;
 import org.hibernate.exception.LockAcquisitionException;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
-import io.debezium.connector.jdbc.SinkRecordDescriptor;
+import io.debezium.connector.jdbc.JdbcSinkRecord;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
@@ -161,18 +161,18 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
-    public String getUpsertStatement(TableDescriptor table, SinkRecordDescriptor record) {
+    public String getUpsertStatement(TableDescriptor table, JdbcSinkRecord record) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
         builder.append("INSERT INTO ");
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" (");
-        builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnNameFromField(name, record));
+        builder.appendLists(", ", record.keyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnNameFromField(name, record));
         builder.append(") VALUES (");
-        builder.appendLists(", ", record.getKeyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
+        builder.appendLists(", ", record.keyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
         builder.append(") ");
 
         final List<String> updateColumnNames = record.getNonKeyFieldNames().isEmpty()
-                ? record.getKeyFieldNames()
+                ? record.keyFieldNames()
                 : record.getNonKeyFieldNames();
 
         if (getDatabaseVersion().isSameOrAfter(8, 0, 20)) {
@@ -200,7 +200,7 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
-    protected void addColumnDefaultValue(SinkRecordDescriptor.FieldDescriptor field, StringBuilder columnSpec) {
+    protected void addColumnDefaultValue(JdbcSinkRecord.FieldDescriptor field, StringBuilder columnSpec) {
         final String fieldType = field.getTypeName();
         if (!Strings.isNullOrBlank(fieldType)) {
             if (NO_DEFAULT_VALUE_TYPES.contains(fieldType.toLowerCase())) {

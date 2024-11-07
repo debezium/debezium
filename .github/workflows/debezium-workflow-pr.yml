@@ -74,6 +74,7 @@ jobs:
         uses: tj-actions/changed-files@v45.0.3
         with:
           files: |
+            debezium-sink/**
             debezium-connector-mongodb/**
 
       - name: Get modified files (MySQL)
@@ -118,6 +119,7 @@ jobs:
         uses: tj-actions/changed-files@v45.0.3
         with:
           files: |
+            debezium-sink/**
             debezium-connector-jdbc/**
 
       - name: Get modified files (Quarkus Outbox)

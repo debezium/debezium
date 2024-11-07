@@ -8,7 +8,6 @@ package io.debezium.connector.mongodb.sink;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-import org.apache.kafka.connect.sink.SinkRecord;
 import org.bson.BsonDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,19 +18,20 @@ import com.mongodb.client.model.WriteModel;
 import io.debezium.connector.mongodb.sink.converters.SinkDocument;
 import io.debezium.connector.mongodb.sink.converters.SinkRecordConverter;
 import io.debezium.connector.mongodb.sink.eventhandler.relational.RelationalEventHandler;
+import io.debezium.sink.DebeziumSinkRecord;
 
 public class MongoProcessedSinkRecordData {
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoProcessedSinkRecordData.class);
     private final MongoDbSinkConnectorConfig config;
     private final MongoNamespace namespace;
-    private final SinkRecord sinkRecord;
+    private final DebeziumSinkRecord sinkRecord;
     private final SinkDocument sinkDocument;
     private final WriteModel<BsonDocument> writeModel;
 
     private Exception exception;
     private final String databaseName;
 
-    MongoProcessedSinkRecordData(final SinkRecord sinkRecord, final MongoDbSinkConnectorConfig sinkConfig) {
+    MongoProcessedSinkRecordData(final DebeziumSinkRecord sinkRecord, final MongoDbSinkConnectorConfig sinkConfig) {
         this.sinkRecord = sinkRecord;
         this.databaseName = sinkConfig.getSinkDatabaseName();
         this.config = sinkConfig;
@@ -48,7 +48,7 @@ public class MongoProcessedSinkRecordData {
         return namespace;
     }
 
-    public SinkRecord getSinkRecord() {
+    public DebeziumSinkRecord getSinkRecord() {
         return sinkRecord;
     }
 
@@ -61,9 +61,10 @@ public class MongoProcessedSinkRecordData {
     }
 
     private MongoNamespace createNamespace() {
-
         return tryProcess(
-                () -> Optional.of(new MongoNamespace(databaseName, config.getTableNamingStrategy().resolveTableName(config, sinkRecord))))
+                () -> Optional.of(new MongoNamespace(
+                        databaseName,
+                        config.getCollectionNamingStrategy().resolveCollectionName(sinkRecord, config.getCollectionNameFormat()))))
                 .orElse(null);
     }
 
