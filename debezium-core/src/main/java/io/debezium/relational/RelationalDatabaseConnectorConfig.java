@@ -447,7 +447,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
 
     // TODO - belongs to HistorizedRelationalDatabaseConnectorConfig but should be move there
     // after MySQL rewrite
-    // Note: The default value must be true (CommonConnectorConfig defaults to false)
     public static final Field INCLUDE_SCHEMA_CHANGES = Field.create("include.schema.changes")
             .withDisplayName("Include database schema changes")
             .withType(Type.BOOLEAN)
