@@ -830,7 +830,7 @@ The following options are available:
 `basic`:: Specifies that basic evolution occurs.
 The connector adds missing columns to the table by comparing the incoming event's record schema to the database table structure.
 
-|[[jdbc-property-table-name-format]]<<jdbc-property-table-name-format, `+table.name.format+`>>
+|[[jdbc-property-collection-name-format]]<<jdbc-property-collection-name-format, `+collection.name.format+`>>
 |`+${topic}+`
 |Specifies a string pattern that the connector uses to construct the names of destination tables. +
 When the property is set to its default value, `+${topic}+`, after the connector reads an event from Kafka, it writes the event record to a destination table with a name that matches the name of the source topic. +
@@ -917,13 +917,13 @@ To prevent the connector from rebalancing, set the total retry time (flush.retry
 |Specifies the fully-qualified class name of a `ColumnNamingStrategy` implementation that the connector uses to resolve column names from event field names. +
  +
 By default, the connector uses the field name as the column name.
-|[[jdbc-property-table-naming-strategy]]<<jdbc-property-table-naming-strategy, `+table.naming.strategy+`>>
-|`i.d.c.j.n.DefaultTableNamingStrategy`
+|[[jdbc-property-collection-naming-strategy]]<<jdbc-property-collection-naming-strategy, `+collection.naming.strategy+`>>
+|`i.d.c.j.n.DefaultCollectionNamingStrategy`
 |Specifies the fully-qualified class name of a `CollectionNamingStrategy` implementation that the connector uses to resolve table names from incoming event topic names. +
  +
 The default behavior is to: +
 
-* Replace the `+${topic}+` placeholder in the xref:jdbc-property-table-name-format[`table.name.format`] configuration property with the event's topic.
+* Replace the `+${topic}+` placeholder in the xref:jdbc-property-collection-name-format[`collection.name.format`] configuration property with the event's topic.
 * Sanitize the table name by replacing dots (`.`) with underscores (`_`).
 
 |===
@@ -963,8 +963,8 @@ For details about how this type system resolves a specific field's schema defini
 If you want to apply a different data type mapping, define the table manually to explicitly obtain the preferred column type.
 
 *How do you specify a prefix or a suffix to the table name without changing the Kafka topic name?*::
-In order to add a prefix or a suffix to the destination table name, adjust the xref:jdbc-property-table-name-format[table.name.format] connector configuration property to apply the prefix or suffix that you want.
-For example, to prefix all table names with `jdbc_`, specify the `table.name.format` configuration property with a value of `+jdbc_${topic}+`.
+In order to add a prefix or a suffix to the destination table name, adjust the xref:jdbc-property-collection-name-format[collection.name.format] connector configuration property to apply the prefix or suffix that you want.
+For example, to prefix all table names with `jdbc_`, specify the `collection.name.format` configuration property with a value of `+jdbc_${topic}+`.
 If the connector is subscribed to a topic called `orders`, the resulting table is created as `jdbc_orders`.
 
 *Why are some columns automatically quoted, even though identifier quoting is not enabled?*::

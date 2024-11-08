@@ -1079,7 +1079,18 @@ public interface Configuration {
      *         such key-value pair in the configuration
      */
     default String getString(Field field) {
-        return getString(field.name(), field.defaultValueAsString());
+        if (hasKey(field)) {
+            return getString(field.name(), field.defaultValueAsString());
+        }
+        if (!field.deprecatedAliases().isEmpty()) {
+            for (String alias : field.deprecatedAliases()) {
+                String aliasString = getString(alias);
+                if (aliasString != null) {
+                    return aliasString;
+                }
+            }
+        }
+        return field.defaultValueAsString();
     }
 
     /**
@@ -1453,6 +1464,17 @@ public interface Configuration {
      * @return the configuration value, or the {@code defaultValue} if there is no such key-value pair in the configuration
      */
     default String getString(Field field, Supplier<String> defaultValueSupplier) {
+        if (hasKey(field)) {
+            return getString(field.name(), defaultValueSupplier);
+        }
+        if (field.deprecatedAliases() != null && !field.deprecatedAliases().isEmpty()) {
+            for (String alias : field.deprecatedAliases()) {
+                String aliasString = getString(alias);
+                if (aliasString != null) {
+                    return aliasString;
+                }
+            }
+        }
         return getString(field.name(), defaultValueSupplier);
     }
 
