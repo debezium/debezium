@@ -220,26 +220,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         return stream;
     }
 
-    private MultiTaskWindowHandler getOffsetHandler(MongoDbOffsetContext offsetContext, boolean multiTaskEnabled, int taskCount) {
-        if (!multiTaskEnabled) {
-            return null;
-        }
-        MultiTaskWindowHandler multiTaskWindowHandler = new MultiTaskWindowHandler(connectorConfig.getMultiTaskHopSeconds(), taskCount, taskContext.getMongoTaskId());
-        BsonTimestamp startTime = offsetContext.lastResumeTokenTime();
-        if (startTime == null) {
-            startTime = offsetContext.lastTimestamp();
-        }
-        if (startTime != null) {
-            multiTaskWindowHandler = multiTaskWindowHandler.startAtTimestamp(startTime);
-            LOGGER.info("Setting window for stepwise taskId '{}'/'{}' start '{}' stop '{}'.",
-                    multiTaskWindowHandler.taskId,
-                    multiTaskWindowHandler.taskCount,
-                    multiTaskWindowHandler.optimizedWindowStart,
-                    multiTaskWindowHandler.windowStop);
-        }
-        return multiTaskWindowHandler;
-    }
-
     protected MongoDbOffsetContext emptyOffsets(MongoDbConnectorConfig connectorConfig) {
         LOGGER.info("Initializing empty Offset context");
         return MongoDbOffsetContext.empty(connectorConfig);
