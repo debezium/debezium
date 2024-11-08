@@ -375,7 +375,6 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     private final boolean useReductionBuffer;
 
     public JdbcSinkConnectorConfig(Map<String, String> props) {
-        super();
         config = Configuration.from(props);
         this.insertMode = InsertMode.parse(config.getString(INSERT_MODE));
         this.deleteEnabled = config.getBoolean(DELETE_ENABLED_FIELD);

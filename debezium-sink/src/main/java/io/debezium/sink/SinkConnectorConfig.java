@@ -78,6 +78,7 @@ public interface SinkConnectorConfig {
     }
 
     String COLLECTION_NAME_FORMAT = "collection.name.format";
+    String DEPRECATED_TABLE_NAME_FORMAT = "table.name.format";
     Field COLLECTION_NAME_FORMAT_FIELD = Field.create(COLLECTION_NAME_FORMAT)
             .withDisplayName("A format string for the collection name")
             .withType(ConfigDef.Type.STRING)
@@ -85,9 +86,11 @@ public interface SinkConnectorConfig {
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.MEDIUM)
             .withDefault("${topic}")
-            .withDescription("A format string for the table, which may contain '${topic}' as a placeholder for the original topic name.");
+            .withDescription("A format string for the table, which may contain '${topic}' as a placeholder for the original topic name.")
+            .withDeprecatedAliases(DEPRECATED_TABLE_NAME_FORMAT);
 
     String COLLECTION_NAMING_STRATEGY = "collection.naming.strategy";
+    String DEPRECATED_TABLE_NAMING_STRATEGY = "table.naming.strategy";
     Field COLLECTION_NAMING_STRATEGY_FIELD = Field.create(COLLECTION_NAMING_STRATEGY)
             .withDisplayName("Name of the strategy class that implements the CollectionNamingStrategy interface")
             .withType(ConfigDef.Type.CLASS)
@@ -95,7 +98,8 @@ public interface SinkConnectorConfig {
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(DefaultCollectionNamingStrategy.class.getName())
-            .withDescription("Name of the strategy class that implements the CollectionNamingStrategy interface.");
+            .withDescription("Name of the strategy class that implements the CollectionNamingStrategy interface.")
+            .withDeprecatedAliases(DEPRECATED_TABLE_NAMING_STRATEGY);
 
     String FIELD_INCLUDE_LIST = "field.include.list";
     Field FIELD_INCLUDE_LIST_FIELD = Field.create(FIELD_INCLUDE_LIST)
@@ -150,13 +154,15 @@ public interface SinkConnectorConfig {
 
     String DEFAULT_TIME_ZONE = "UTC";
     String USE_TIME_ZONE = "use.time.zone";
+    String DEPRECATED_DATABASE_TIME_ZONE = "database.time_zone";
     Field USE_TIME_ZONE_FIELD = Field.create(USE_TIME_ZONE)
             .withDisplayName("The timezone used when inserting temporal values.")
             .withDefault(DEFAULT_TIME_ZONE)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 6))
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDescription("The timezone used when inserting temporal values. Defaults to UTC.");
+            .withDescription("The timezone used when inserting temporal values. Defaults to UTC.")
+            .withDeprecatedAliases(DEPRECATED_DATABASE_TIME_ZONE);
 
     String BATCH_SIZE = "batch.size";
     Field BATCH_SIZE_FIELD = Field.create(BATCH_SIZE)
