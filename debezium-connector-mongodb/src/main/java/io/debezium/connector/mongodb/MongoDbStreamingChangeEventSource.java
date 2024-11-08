@@ -8,7 +8,6 @@ package io.debezium.connector.mongodb;
 import java.util.concurrent.TimeUnit;
 
 import org.bson.BsonDocument;
-import org.bson.BsonTimestamp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,9 +84,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
         try (MongoDbConnection mongo = taskContext.getConnection(dispatcher, partition)) {
             mongo.execute("Reading change stream", client -> {
-                readChangeStream(client,
-                        context,
-                        partition);
+                readChangeStream(client, context, partition);
             });
         }
         catch (Throwable t) {
@@ -110,8 +107,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         streamManager.initStream(stream);
 
         try (BufferingChangeStreamCursor<BsonDocument> cursor = BufferingChangeStreamCursor.fromIterable(stream,
-                streamManager, taskContext, streamingMetrics, clock)) {
-            cursor.start();
+                streamManager, taskContext, streamingMetrics, clock).start()) {
             while (context.isRunning()) {
                 waitWhenStreamingPaused(context, cursor);
                 var resumableEvent = cursor.tryNext();
