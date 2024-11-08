@@ -23,7 +23,6 @@ import io.debezium.sink.filter.FieldFilterFactory;
 import io.debezium.sink.filter.FieldFilterFactory.FieldNameFilter;
 import io.debezium.sink.naming.CollectionNamingStrategy;
 import io.debezium.sink.naming.ColumnNamingStrategy;
-import io.debezium.sink.naming.DefaultCollectionNamingStrategy;
 import io.debezium.sink.naming.DefaultColumnNamingStrategy;
 import io.debezium.util.Strings;
 
@@ -34,8 +33,6 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
     public static final String ID_FIELD = "_id";
 
     public static final String SINK_DATABASE = "sink.database";
-    public static final String TABLE_NAME_FORMAT = "table.name.format";
-    public static final String TABLE_NAMING_STRATEGY = "table.naming.strategy";
     public static final String COLUMN_NAMING_STRATEGY = "column.naming.strategy";
     public static final String FIELD_INCLUDE_LIST = "field.include.list";
     public static final String FIELD_EXCLUDE_LIST = "field.exclude.list";
@@ -48,24 +45,6 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
             .withImportance(ConfigDef.Importance.HIGH)
             .withDescription("The name of the MongoDB database to which the connector writes to.")
             .required();
-
-    public static final Field TABLE_NAME_FORMAT_FIELD = Field.create(TABLE_NAME_FORMAT)
-            .withDisplayName("A format string for the table")
-            .withType(ConfigDef.Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 3))
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDefault("${topic}")
-            .withDescription("A format string for the table, which may contain '${topic}' as a placeholder for the original topic name.");
-
-    public static final Field TABLE_NAMING_STRATEGY_FIELD = Field.create(TABLE_NAMING_STRATEGY)
-            .withDisplayName("Name of the strategy class that implements the TablingNamingStrategy interface")
-            .withType(ConfigDef.Type.CLASS)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 2))
-            .withWidth(ConfigDef.Width.LONG)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDefault(DefaultCollectionNamingStrategy.class.getName())
-            .withDescription("Name of the strategy class that implements the CollectionNamingStrategy interface.");
 
     public static final Field COLUMN_NAMING_STRATEGY_FIELD = Field.create(COLUMN_NAMING_STRATEGY)
             .withDisplayName("Name of the strategy class that implements the ColumnNamingStrategy interface")
@@ -80,7 +59,7 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
             .connector(
                     SINK_DATABASE_NAME,
                     CONNECTION_STRING,
-                    TABLE_NAMING_STRATEGY_FIELD,
+                    COLLECTION_NAME_FORMAT_FIELD,
                     COLUMN_NAMING_STRATEGY_FIELD,
                     BATCH_SIZE_FIELD)
             .create();
@@ -116,8 +95,8 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
         this.connectionString = resolveConnectionString(config);
         this.sinkDatabaseName = config.getString(SINK_DATABASE_NAME);
 
-        this.collectionNameFormat = config.getString(TABLE_NAME_FORMAT_FIELD);
-        this.collectionNamingStrategy = config.getInstance(TABLE_NAMING_STRATEGY_FIELD, CollectionNamingStrategy.class);
+        this.collectionNameFormat = config.getString(COLLECTION_NAME_FORMAT_FIELD);
+        this.collectionNamingStrategy = config.getInstance(COLLECTION_NAMING_STRATEGY_FIELD, CollectionNamingStrategy.class);
         this.columnNamingStrategy = config.getInstance(COLUMN_NAMING_STRATEGY_FIELD, ColumnNamingStrategy.class);
 
         String fieldExcludeList = config.getString(FIELD_EXCLUDE_LIST);
