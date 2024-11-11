@@ -291,6 +291,59 @@ The following image shows an example of how to use JConsole to send a signal:
 
 image::jmx-signal-operation.png[Using JConsole to send an `execute-snapshot` signal]
 
+== Enabling a File Signal Channel
+
+You can enable the File signaling channel by adding `file` to the `signal.enabled.channels` property in the connector configuration.
+After you enable the signaling channel, you must configure the connector to read signals from a file.
+The default file name is `file-signals.txt`.
+If you want to use a different file, you can specify the file name by setting the `signal.file` property in the connector configuration.
+
+=== Message format
+
+File contains a JSON object with `id`, `type` and `data` fields.
+
+The `id` field is a unique identifier for the signal, usually a UUID string.
+
+When the signal type is set to `execute-snapshot`, the `data` field must include the fields that are listed in the following table:
+
+.Execute snapshot data fields
+[cols="2,2,6a",options="header"]
+|===
+|Field | Default | Value
+
+|`type`
+|`incremental`
+| The type of the snapshot to run.
+Currently {prodname} supports the `incremental` and `blocking` types.
+
+|`data-collections`
+|_N/A_
+| An array of comma-separated regular expressions that match the fully qualified names of the data collections to include in the snapshot. +
+The xref:format-for-specifying-fully-qualified-names-for-data-collections[naming format] depends on the database.
+
+|`additional-conditions`
+|_N/A_
+| An optional array that specifies a set of additional conditions that the connector evaluates to determine the subset of records to include in a snapshot. +
+Each additional condition is an object that specifies the criteria for filtering the data that an ad hoc snapshot captures.
+You can set the following properties for each additional condition:
+
+`data-collection`:: The fully-qualified name of the data collection that the filter applies to.
+You can apply different filters to each data collection.
+`filter`:: Specifies column values that must be present in a database record for the snapshot to include it, for example,  `"color='blue'"`. +
+The snapshot process evaluates records in the data collection against the `filter` value and captures only records that contain matching values. +
+ +
+The specific values that you assign to the `filter` property depend on the type of ad hoc snapshot:
+
+* For incremental snapshots, you specify a search condition fragment, such as `"color='blue'"`, that the snapshot appends to the condition clause of a query.
+* For blocking snapshots, you specify a full `SELECT` statement, such as the one that you might set in the `snapshot.select.statement.overrides` property.
+|===
+
+The following example shows a typical `execute-snapshot` message in the file:
+
+----
+{"id":"d139b9b7-7777-4547-917d-111111111111", "type":"execute-snapshot", "data":{"data-collections": ["public.MyFirstTable", "public.MySecondTable"]}}
+----
+
 ifdef::community[]
 //   Type: concept
 [id="debezium-custom-signaling-channel"]
