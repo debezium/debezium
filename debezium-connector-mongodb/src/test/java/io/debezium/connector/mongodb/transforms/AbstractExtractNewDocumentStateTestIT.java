@@ -108,7 +108,10 @@ public abstract class AbstractExtractNewDocumentStateTestIT extends AbstractMong
                 .with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME);
     }
 
-    protected void restartConnectorWithConfig(Configuration config) {
+    protected void restartConnectorWithConfig(Configuration config) throws InterruptedException {
+        // make sure connector is fully running
+        waitForStreamingRunning();
+
         // stop connector
         afterEach();
 
