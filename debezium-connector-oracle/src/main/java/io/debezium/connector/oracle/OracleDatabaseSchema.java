@@ -165,6 +165,13 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                     return table.id();
                 }
             }
+
+            // The computeIfAbsent function doesn't mutate the map if the computed value is null,
+            // which this branch of the code does. The null value must be inserted to avoid the
+            // expensive look-up across the table schemas in future calls, so explicitly insert
+            // null here.
+            objectIdToTableId.put(tableObjectId, null);
+
             LOGGER.debug("Table lookup for object id {} did not find a match.", tableObjectId);
             return null;
         });
