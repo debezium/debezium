@@ -301,7 +301,7 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
                 .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, String.join(",", tableDataCollectionIds())));
 
         sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(
-                Map.of(tableDataCollectionIds().get(0), String.format("SELECT * FROM %s", tableNames().get(0)),
+                Map.of(tableDataCollectionIds().get(0), String.format("SELECT * FROM %s ORDER BY PK ASC", tableNames().get(0)),
                         tableDataCollectionIds().get(1), "SELECT failing query"),
                 "", BLOCKING,
                 tableDataCollectionIds().get(0), tableDataCollectionIds().get(1));
