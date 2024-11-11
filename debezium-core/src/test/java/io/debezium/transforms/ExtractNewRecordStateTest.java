@@ -945,4 +945,18 @@ public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
         }
     }
 
+
+    @Test
+    @FixFor("DBZ-8393")
+    public void testAddHeadersForNonEnvelopeRecord() {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(ADD_HEADERS, "op,source.lsn");
+            transform.configure(props);
+
+            final SourceRecord heartbeatRecord = createHeartbeatRecord();
+            final SourceRecord unwrapped = transform.apply(heartbeatRecord);
+            assertThat(unwrapped).isEqualTo(heartbeatRecord);
+        }
+    }
 }
