@@ -945,7 +945,6 @@ public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
         }
     }
 
-
     @Test
     @FixFor("DBZ-8393")
     public void testAddHeadersForNonEnvelopeRecord() {
