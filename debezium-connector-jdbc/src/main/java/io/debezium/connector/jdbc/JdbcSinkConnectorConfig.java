@@ -25,6 +25,7 @@ import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.jdbc.naming.ColumnNamingStrategy;
 import io.debezium.connector.jdbc.naming.DefaultColumnNamingStrategy;
+import io.debezium.connector.jdbc.naming.TemporaryBackwardCompatibleCollectionNamingStrategyProxy;
 import io.debezium.sink.SinkConnectorConfig;
 import io.debezium.sink.filter.FieldFilterFactory;
 import io.debezium.sink.filter.FieldFilterFactory.FieldNameFilter;
@@ -384,7 +385,8 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         this.primaryKeyFields = Strings.setOf(config.getString(PRIMARY_KEY_FIELDS_FIELD), String::new);
         this.schemaEvolutionMode = SchemaEvolutionMode.parse(config.getString(SCHEMA_EVOLUTION));
         this.quoteIdentifiers = config.getBoolean(QUOTE_IDENTIFIERS_FIELD);
-        this.collectionNamingStrategy = config.getInstance(COLLECTION_NAMING_STRATEGY_FIELD, CollectionNamingStrategy.class);
+        this.collectionNamingStrategy = new TemporaryBackwardCompatibleCollectionNamingStrategyProxy(
+                config.getInstance(COLLECTION_NAMING_STRATEGY_FIELD, CollectionNamingStrategy.class), this);
         this.columnNamingStrategy = config.getInstance(COLUMN_NAMING_STRATEGY_FIELD, ColumnNamingStrategy.class);
         this.databaseTimezone = config.getString(USE_TIME_ZONE_FIELD);
         this.postgresPostgisSchema = config.getString(POSTGRES_POSTGIS_SCHEMA_FIELD);

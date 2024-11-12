@@ -208,7 +208,7 @@ public interface DatabaseDialect {
 
     /**
      * Returns whether the user has specified a time zone JDBC property or whether the connector
-     * configuration property {@code database.time_zone} has been specified.
+     * configuration property {@code use.time.zone} has been specified.
      *
      * @return true if the properties have been specified; false otherwise.
      */
