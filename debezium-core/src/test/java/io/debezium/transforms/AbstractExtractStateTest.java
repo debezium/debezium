@@ -15,13 +15,13 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
-import io.debezium.connector.AbstractSourceInfo;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
 
+import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.util.Collect;
@@ -155,27 +155,27 @@ public abstract class AbstractExtractStateTest {
 
     protected SourceRecord createHeartbeatRecord() {
         Schema valueSchema = SchemaBuilder.struct()
-            .name("io.debezium.connector.common.Heartbeat")
-            .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
-            .build();
+                .name("io.debezium.connector.common.Heartbeat")
+                .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
+                .build();
 
         Struct value = new Struct(valueSchema);
 
         Schema keySchema = SchemaBuilder.struct()
-            .name("op.with.heartbeat.Key")
-            .field("id", Schema.STRING_SCHEMA)
-            .build();
+                .name("op.with.heartbeat.Key")
+                .field("id", Schema.STRING_SCHEMA)
+                .build();
 
         Struct key = new Struct(keySchema).put("id", "123");
 
         return new SourceRecord(
-            new HashMap<>(),
-            new HashMap<>(),
-            "op.with.heartbeat",
-            keySchema,
-            key,
-            valueSchema,
-            value);
+                new HashMap<>(),
+                new HashMap<>(),
+                "op.with.heartbeat",
+                keySchema,
+                key,
+                valueSchema,
+                value);
     }
 
     protected SourceRecord createCreateRecordWithOptionalNull() {
