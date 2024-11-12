@@ -206,7 +206,7 @@ public class ConnectorFactories {
                 .put("insert.mode", "upsert")
                 .put("primary.key.mode", "kafka")
                 .put("schema.evolution", "basic")
-                .put("database.time_zone", "UTC")
+                .put("use.time.zone", "UTC")
                 .put("topics", "jdbc_sink_test");
     }
 }
