@@ -293,6 +293,12 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
         } else {
             LOGGER.info("Skipping setting snapshot time, snapshot data will not be consistent");
         }
+
+        // Regardless of whether consistent snapshot is enabled or not, we need to set the
+        // transaction isolation level.
+        String transactionIsolationLevelStatement = "SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL SERIALIZABLE, READ ONLY, DEFERRABLE;";
+        LOGGER.info("Setting transaction isolation levels with statement {}", transactionIsolationLevelStatement);
+        jdbcConnection.executeWithoutCommitting(transactionIsolationLevelStatement);
     }
 
     /**
