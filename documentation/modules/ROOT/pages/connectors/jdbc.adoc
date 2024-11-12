@@ -332,12 +332,12 @@ The following examples show representative structures of primitive and logical d
 .Logical field schema
 [source,json]
 ----
-[
+{
   "schema": {
     "type": "INT64",
     "name": "org.apache.kafka.connect.data.Date"
   }
-]
+}
 ----
 
 Kafka Connect is not the only source for these complex, logical types.
@@ -589,7 +589,7 @@ The following example shows a JSON request for registering an instance of the {p
         "delete.enabled": "true",  // <8>
         "primary.key.mode": "record_key",  // <9>
         "schema.evolution": "basic",  // <10>
-        "database.time_zone": "UTC",  // <11>
+        "use.time.zone": "UTC",  // <11>
         "topics": "orders" // <12>
     }
 }
@@ -749,7 +749,7 @@ Do not use this property in combination with the xref:jdbc-property-connection-t
 |===
 |Property |Default |Description
 
-|[[jdbc-property-database-time-zone]]<<jdbc-property-database-time-zone, `+database.time_zone+`>>
+|[[jdbc-property-use-time-zone]]<<jdbc-property-use-time-zone, `+use.time.zone+`>>
 |`UTC`
 |Specifies the timezone used when inserting JDBC temporal values.
 
@@ -933,7 +933,7 @@ The default behavior is to: +
 
 Kafka Connect supports passthrough configuration, enabling you to modify the behavior of an underlying system by passing certain properties directly from the connector configuration.
 By default, some Hibernate properties are exposed via the JDBC connector xref:jdbc-connector-properties-connection[connection properties] (for example, `connection.url`, `connection.username`, and `connection.pool.*_size`),
-and through the connector's xref:jdbc-connector-properties-runtime[runtime properties] (for example, `database.time_zone`, `quote.identifiers`).
+and through the connector's xref:jdbc-connector-properties-runtime[runtime properties] (for example, `use.time.zone`, `quote.identifiers`).
 
 If you want to customize other Hibernate behavior, you can take advantage of the passthrough mechanism by adding properties that use the `hibernate.*` namespace to the connector configuration.
 For example, to assist Hibernate in resolving the type and version of the target database, you can add the `hibernate.dialect` property and set it to the fully qualified class name of the database, for example, `org.hibernate.dialect.MariaDBDialect`.

@@ -6,12 +6,15 @@
 package io.debezium.connector.jdbc;
 
 import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.hibernate.cfg.AvailableSettings;
 import org.junit.jupiter.api.Tag;
@@ -20,8 +23,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Field;
+import io.debezium.connector.jdbc.naming.DefaultTableNamingStrategy;
+import io.debezium.connector.jdbc.naming.TableNamingStrategy;
+import io.debezium.connector.jdbc.naming.TemporaryBackwardCompatibleCollectionNamingStrategyProxy;
+import io.debezium.connector.jdbc.util.DebeziumSinkRecordFactory;
 import io.debezium.doc.FixFor;
 import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
+import io.debezium.sink.naming.CollectionNamingStrategy;
 
 /**
  * Unit tests for the {@link JdbcSinkConnectorConfig} class.
@@ -147,6 +155,62 @@ public class JdbcSinkConnectorConfigTest {
 
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
         assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.INSERT_MODE_FIELD), LOGGER::error)).isTrue();
+    }
+
+    @Test
+    public void testDeprecatedDatabaseTimeZone() {
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of(JdbcSinkConnectorConfig.DEPRECATED_DATABASE_TIME_ZONE, "CEST"));
+        AtomicReference<String> errorMessage = new AtomicReference<>();
+        assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.USE_TIME_ZONE_FIELD), errorMessage::set)).isTrue();
+        assertEquals(
+                "The 'use.time.zone' value is invalid: Warning: Using deprecated config option \"database.time_zone\".",
+                errorMessage.get());
+        assertEquals("CEST", config.useTimeZone());
+    }
+
+    @Test
+    public void testDeprecatedTableNamingStrategy() {
+        var properties = Map.of(
+                JdbcSinkConnectorConfig.DEPRECATED_TABLE_NAMING_STRATEGY, DefaultTableNamingStrategy.class.getName(),
+                JdbcSinkConnectorConfig.DEPRECATED_TABLE_NAME_FORMAT, "kafkadepdep_${topic}");
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+
+        AtomicReference<String> errorMessage = new AtomicReference<>();
+        assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.COLLECTION_NAMING_STRATEGY_FIELD), errorMessage::set)).isTrue();
+        assertEquals(
+                "The 'collection.naming.strategy' value is invalid: Warning: Using deprecated config option \"table.naming.strategy\".",
+                errorMessage.get());
+        assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT_FIELD), errorMessage::set)).isTrue();
+        assertEquals("The 'collection.name.format' value is invalid: Warning: Using deprecated config option \"table.name.format\".",
+                errorMessage.get());
+
+        // testing the proxy
+        TemporaryBackwardCompatibleCollectionNamingStrategyProxy collectionNamingStrategyProxy = (TemporaryBackwardCompatibleCollectionNamingStrategyProxy) config
+                .getCollectionNamingStrategy();
+        assertThat(collectionNamingStrategyProxy.resolveCollectionName(new DebeziumSinkRecordFactory().createRecord("database.schema.deptable"),
+                config.getCollectionNameFormat()))
+                .isEqualTo("kafkadepdep_database_schema_deptable");
+
+        // testing the original strategy as CollectionNamingStrategy instance
+        var originalCollectionNamingStrategy = collectionNamingStrategyProxy.getOriginalStrategy();
+        assertThat(originalCollectionNamingStrategy).isInstanceOf(CollectionNamingStrategy.class);
+        assertThat(
+                originalCollectionNamingStrategy.resolveCollectionName(
+                        new DebeziumSinkRecordFactory().createRecord("database.schema.deptable"),
+                        config.getCollectionNameFormat()))
+                .isEqualTo("kafkadepdep_database_schema_deptable");
+
+        // testing the original strategy as TableNamingStrategy instance
+        assertThat(originalCollectionNamingStrategy).isInstanceOf(TableNamingStrategy.class);
+        final TableNamingStrategy tableNamingStrategy;
+        if (originalCollectionNamingStrategy instanceof TableNamingStrategy) {
+            tableNamingStrategy = (TableNamingStrategy) originalCollectionNamingStrategy;
+            assertThat(tableNamingStrategy.resolveTableName(config, new DebeziumSinkRecordFactory().createRecord("database.schema.deptable").getOriginalKafkaRecord()))
+                    .isEqualTo("kafkadepdep_database_schema_deptable");
+        }
+        else {
+            fail("originalStrategy in the proxy must be instance of TableNamingStrategy");
+        }
     }
 
     // @Test
