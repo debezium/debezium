@@ -71,6 +71,7 @@ asciidoc:
     link-db2-plugin-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-db2&v=LATEST&c=plugin&e=tar.gz'
     link-cassandra-3-plugin-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-cassandra-3&v=LATEST&c=plugin&e=tar.gz'
     link-cassandra-4-plugin-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-cassandra-4&v=LATEST&c=plugin&e=tar.gz'
+    link-cassandra-5-plugin-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-cassandra-5&v=LATEST&c=plugin&e=tar.gz'
     link-vitess-plugin-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-vitess&v=LATEST&c=plugin&e=tar.gz'
     link-spanner-plugin-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-spanner&v=LATEST&c=plugin&e=tar.gz'
     link-jdbc-plugin-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-jdbc&v=LATEST&c=plugin&e=tar.gz'
