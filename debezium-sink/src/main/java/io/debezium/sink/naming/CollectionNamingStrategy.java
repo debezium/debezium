@@ -13,12 +13,14 @@ import io.debezium.sink.DebeziumSinkRecord;
  * @author Chris Cranford
  */
 public interface CollectionNamingStrategy {
+
     /**
-     * Resolves the logical table name from the sink record.
+     * Resolves the logical collection name from the Debezium sink record.
      *
      * @param record Debezium sink record, should not be {@code null}
      * @param collectionNameFormat the format string for the collection name (mapped from the topic name)
-     * @return the resolved logical table name; if {@code null} the record should not be processed
+     * @return the resolved logical collection name; if {@code null} the record should not be processed
      */
     String resolveCollectionName(DebeziumSinkRecord record, String collectionNameFormat);
+
 }
