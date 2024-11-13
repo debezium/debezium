@@ -1876,8 +1876,7 @@ public class SqlServerConnectorIT extends AbstractConnectorTest {
                 new SchemaAndValueField("colb", Schema.OPTIONAL_STRING_SCHEMA, "b"));
         assertRecord((Struct) value.get("after"), expectedLastRow);
 
-        waitForEngineShutdown();
-        cleanupTestFwkState();
+        stopConnector();
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
