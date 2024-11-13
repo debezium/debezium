@@ -1902,11 +1902,66 @@ public class LogFileCollectorTest {
                 .build();
 
         files.clear();
+        files.add(createArchiveLog("archive", 14339070179726L, 14339074283016L, 138698, 2));
         files.add(createRedoLog("group_6.274.1086113795", 14339074283016L, 138699, 2));
         files.add(createRedoLog("group_2.270.1086113793", 14339038343718L, 164492, 1));
 
         collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
         assertThat(collector.isLogFileListConsistent(Scn.valueOf(14339074282971L), files, redoThreadState)).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-8389")
+    public void testOpenRedoThreadLogSwitchMissingArchiveLogGapWithImmediateCheckpoint() throws Exception {
+        RedoThreadState redoThreadState = RedoThreadState.builder()
+                .thread()
+                .threadId(1)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .enabledScn(Scn.valueOf(1918873))
+                .checkpointScn(Scn.valueOf(14338976116101L))
+                .lastRedoScn(Scn.valueOf(14339038344586L))
+                .lastRedoSequenceNumber(164492L)
+                .build()
+                .build();
+
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createRedoLog("group_2.270.1086113793", 14339038343718L, 164492, 1));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(redoThreadState);
+
+        // Logs should be consistent
+        LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
+        assertThat(collector.isLogFileListConsistent(Scn.valueOf(14339038344480L), files, redoThreadState)).isTrue();
+
+        // Now roll the redo log to the archive but exclude the archive log from the log list.
+        // This mimics the ARC process being slow. We'll also apply a checkpoint on the thread
+        // state, which should no longer matter and be treated as consistent.
+        redoThreadState = RedoThreadState.builder()
+                .thread()
+                .threadId(1)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .enabledScn(Scn.valueOf(1918873))
+                .checkpointScn(Scn.valueOf(14339038344490L))
+                .lastRedoScn(Scn.valueOf(143390383445686L))
+                .lastRedoSequenceNumber(164493L)
+                .build()
+                .build();
+
+        files.clear();
+        files.add(createRedoLog("group_2.271.1086113794", 14339038344718L, 164493, 1));
+
+        collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
+        assertThat(collector.isLogFileListConsistent(Scn.valueOf(14339038344580L), files, redoThreadState)).isFalse();
+
+        // Now add the archive log
+        // This simulates the ARC process catching up and having no gaps
+        files.add(createArchiveLog("archive", 14339038343718L, 14339038344718L, 164492, 1));
+
+        collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
+        assertThat(collector.isLogFileListConsistent(Scn.valueOf(14339038344580L), files, redoThreadState)).isTrue();
     }
 
     private static LogFile createRedoLog(String name, long startScn, int sequence, int threadId) {

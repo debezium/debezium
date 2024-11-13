@@ -262,16 +262,20 @@ public class LogFileCollector {
             LOGGER.debug("Redo Thread {} is consistent after enabled SCN {} ({}).", threadId, enabledScn, thread.getStatus());
         }
         else {
-            // If thread is open and read position is after enabled position, then redo thread should
-            // have a log with the read position within its bounds; otherwise it's inconsistent.
-            if (startScn.compareTo(thread.getCheckpointScn()) >= 0) {
-                // Read position is after last checkpoint for open redo-thread, we should have a log with SCN
-                if (threadLogs.stream().noneMatch(log -> log.isScnInLogFileRange(startScn))) {
-                    logException(String.format("Redo Thread %d is inconsistent; does not have a log that contains scn %s", threadId, startScn));
+            // Check whether the redo logs have the read position
+            if (threadLogs.stream().noneMatch(log -> log.isScnInLogFileRange(startScn))) {
+                // None of the thread logs have the read position.
+                // In this case, we need to guarantee that the last archive log based on the redo thread log
+                // set exists and that there are no gaps.
+                final BigInteger sequence = getMinRedoThreadLogSequence(threadLogs);
+                if (connection.getArchiveLogFile(threadId, sequence.longValue() - 1) == null) {
+                    logException(String.format("Redo Thread %d is inconsistent; failed to find archive log with sequence %d",
+                            threadId, sequence.longValue() - 1));
                     return false;
                 }
             }
 
+            // Make sure the thread logs from the read position until now have no gaps
             final Optional<Long> missingSequence = getFirstLogMissingSequence(threadLogs);
             if (missingSequence.isPresent()) {
                 logException(String.format("Redo Thread %d is inconsistent; failed to find log with sequence %d",
@@ -475,6 +479,19 @@ public class LogFileCollector {
             max = Math.max(logFile.getSequence().longValue(), max);
         }
         return new SequenceRange(min, max);
+    }
+
+    /**
+     * Get the minimum sequence from a list of redo thread logs.
+     *
+     * @param redoThreadLogs the redo logs collection, should not be {@code empty} or {@code null}.
+     * @return the minimum sequence
+     */
+    private BigInteger getMinRedoThreadLogSequence(List<LogFile> redoThreadLogs) {
+        if (redoThreadLogs == null || redoThreadLogs.isEmpty()) {
+            throw new DebeziumException("Cannot calculate minimum sequence on a null or empty list of logs");
+        }
+        return redoThreadLogs.stream().map(LogFile::getSequence).min(BigInteger::compareTo).get();
     }
 
     private static void logException(String message) {
