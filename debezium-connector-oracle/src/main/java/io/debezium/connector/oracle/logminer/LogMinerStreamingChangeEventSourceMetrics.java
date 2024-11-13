@@ -174,7 +174,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
         if (Objects.isNull(oldestScnTime.get())) {
             return 0L;
         }
-        return Duration.between(Instant.now(), oldestScnTime.get()).toMillis();
+        return Duration.between(oldestScnTime.get(), Instant.now()).abs().toMillis();
     }
 
     @Override
