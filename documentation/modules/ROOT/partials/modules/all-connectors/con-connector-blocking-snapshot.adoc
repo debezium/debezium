@@ -16,10 +16,11 @@ After the snapshot completes, the streaming is resumed.
 
 You can set the following properties in the `data` component of a signal:
 
- * data-collections: to specify which {data-collection}s must be snapshot
+ * data-collections: to specify which {data-collection}s must be snapshot.
+   As for `table.include.list`, it is a comma-separated list of regular expressions that match fully-qualified {data-collection} identifiers.
  * additional-conditions: You can specify different filters for different {data-collection}. +
- ** The `data-collection` property is the fully-qualified name of the {data-collection} for which the filter will be applied.
- ** The `filter` property will have the same value used in the  `snapshot.select.statement.overrides`
+ ** The `data-collection` property is the fully-qualified name of the {data-collection} for which the filter will be applied. Depending on the database it can be case-sensitive or case-insensitive.
+ ** The `filter` property will have the same value used in the  `snapshot.select.statement.overrides`, so it is the fully-qualified name of the {data-collection} taking attention to the case sensitivity for {data-collection} names.
 
 For example:
 [source,json]
