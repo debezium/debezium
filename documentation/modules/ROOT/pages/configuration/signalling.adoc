@@ -295,12 +295,13 @@ image::jmx-signal-operation.png[Using JConsole to send an `execute-snapshot` sig
 
 You can enable the File signaling channel by adding `file` to the `signal.enabled.channels` property in the connector configuration.
 After you enable the signaling channel, you must configure the connector to read signals from a file.
-The default file name is `file-signals.txt`.
-If you want to use a different file, you can specify the file name by setting the `signal.file` property in the connector configuration.
+By default, the signals file is created in the root of the connector's classpath, and has the name `file-signals.txt`.
+If you want to use a different file, set the `signal.file` property in the connector configuration, and specify the file name and path.
+The file path must be available to the connector environment.
 
 === Message format
 
-File contains a JSON object with `id`, `type` and `data` fields.
+Signals in the signal file are expressed as JSON objects that are composed of `id`, `type`, and `data` fields.
 
 The `id` field is a unique identifier for the signal, usually a UUID string.
 
