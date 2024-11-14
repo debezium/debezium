@@ -74,6 +74,10 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     // This flag will ensure that LSN is flushed only if we are really in message processing mode.
     private volatile boolean lsnFlushingAllowed = false;
 
+    // Offset commit is executed in a different thread.
+    // In case of failure we are going to terminate the processing gracefully from the current thread.
+    private volatile boolean commitOffsetFailure = false;
+
     /**
      * The minimum of (number of event received since the last event sent to Kafka,
      * number of event received since last WAL growing warning issued).
@@ -81,7 +85,6 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     private long numberOfEventsSinceLastEventSentOrWalGrowingWarning = 0;
     private Lsn lastCompletelyProcessedLsn;
     private PostgresOffsetContext effectiveOffset;
-    private boolean CommitOffsetFaulted = false;
 
     public PostgresStreamingChangeEventSource(PostgresConnectorConfig connectorConfig, SnapshotterService snapshotterService,
                                               PostgresConnection connection, PostgresEventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
@@ -205,7 +208,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                         connection.commit();
                     }
                     replicationConnection.close();
-                } catch (Exception e) {
+                }
+                catch (Exception e) {
                     LOGGER.debug("Exception while closing the connection", e);
                 }
             }
@@ -222,9 +226,9 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             throws SQLException, InterruptedException {
         LOGGER.info("Processing messages");
         int noMessageIterations = 0;
-        while (
-                context.isRunning() && !CommitOffsetFaulted && !hasStreamingStoppingLsn(offsetContext, lastCompletelyProcessedLsn)
-        ) {
+        while (context.isRunning()
+                && !hasStreamingStoppingLsn(offsetContext, lastCompletelyProcessedLsn)
+                && !commitOffsetFailure) {
             boolean receivedMessage = stream.readPending(message -> processReplicationMessages(partition, offsetContext, stream, message));
 
             probeConnectionIfNeeded();
@@ -453,7 +457,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             throw new ConnectException(e);
         }
         finally {
-            CommitOffsetFaulted = true;
+            commitOffsetFailure = true;
             cleanUpStreamingOnStop(null);
         }
     }
