@@ -282,7 +282,12 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
      * @param stateBeforeStop {@link State} of the engine when the shutdown was requested.
      */
     private void close(final State stateBeforeStop) {
-        stopConnector(tasks, stateBeforeStop);
+        try {
+            stopConnector(tasks, stateBeforeStop);
+        }
+        catch (Exception e) {
+            LOGGER.warn("Failed to stop connector properly: ", e);
+        }
         if (headerConverter != null) {
             try {
                 headerConverter.close();
