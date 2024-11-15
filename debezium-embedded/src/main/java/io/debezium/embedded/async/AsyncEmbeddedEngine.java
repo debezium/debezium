@@ -336,7 +336,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
      */
     private void finishShutDown(Throwable exitError) {
         try {
-            shutDownLatch.await();
+            shutDownLatch.await(config.getLong(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS), TimeUnit.MILLISECONDS);
         }
         catch (InterruptedException e) {
             LOGGER.warn("Interrupted while waiting for shutdown to finish.");
