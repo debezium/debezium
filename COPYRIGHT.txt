@@ -129,6 +129,7 @@ Cyril Scetbon
 Daan Gerits
 Daan Roosen
 Daniel Petisme
+dario
 Dave Cramer
 Dave Cumberland
 David Beck
@@ -302,6 +303,7 @@ Kanthi Subramanian
 Katerina Galieva
 Kaushik Iyer
 Kaustuv Chakrabarti
+Kavya Ramaiah
 Kazuki MATSUDA / 松田一樹
 Keith Barber
 Keri Harris
@@ -350,6 +352,7 @@ Mark Lambert
 Martin Medek
 Martin Sillence
 Martin Tosney
+Martin Vlk
 Masazumi Kobayashi
 Mathijs van den Worm
 Matt Beary
@@ -412,6 +415,7 @@ Ori Popowski
 Orr Ganani
 Oscar Romero
 Oskar Polak
+P. Aum
 Patrick Chu
 Pavel Strashkin
 Paul Cheung
@@ -499,6 +503,7 @@ Shuguang Xiang
 Shuran Zhang
 SiuFay
 Siddhant Agnihotry
+Stanislav Deviatov
 Stanley Shyiko
 Stathis Souris
 Stavros Champilomatis
@@ -578,6 +583,7 @@ Yanjie Wang
 yangrong688
 yangsanity
 Yashashree Chopada
+Yevhenii Lopatenko
 Yilong Chang
 Yiming Liu
 Yingying Tang
