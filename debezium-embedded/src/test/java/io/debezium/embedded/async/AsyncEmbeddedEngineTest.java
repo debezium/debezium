@@ -353,6 +353,66 @@ public class AsyncEmbeddedEngineTest {
     }
 
     @Test
+    @FixFor("DBZ-8414")
+    public void testErrorInConnectorCallbackDoesNotBlockShutdown() throws Exception {
+        final Properties props = new Properties();
+        props.put(ConnectorConfig.NAME_CONFIG, "debezium-engine");
+        props.put(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.put(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
+        props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.put(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
+        props.put(FileStreamSourceConnector.FILE_CONFIG, TEST_FILE_PATH.toAbsolutePath().toString());
+        props.put(FileStreamSourceConnector.TOPIC_CONFIG, "testTopic");
+
+        appendLinesToSource(NUMBER_OF_LINES);
+        AtomicInteger recordsSent = new AtomicInteger();
+        CountDownLatch recordsLatch = new CountDownLatch(1);
+
+        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder<>();
+        engine = builder
+                .using(props)
+                .using(new TestEngineConnectorCallback() {
+                    @Override
+                    public void connectorStopped() {
+                        super.connectorStopped();
+                        throw new RuntimeException("User connector callback exception, enjoy");
+                    }
+                })
+                .notifying((records, committer) -> {
+                    for (SourceRecord r : records) {
+                        committer.markProcessed(r);
+                        recordsSent.getAndIncrement();
+                    }
+                    committer.markBatchFinished();
+                    recordsLatch.countDown();
+                }).build();
+
+        // Start engine and make sure it's running.
+        engineExecSrv.submit(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+            engine.run();
+        });
+        recordsLatch.await(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
+        assertThat(recordsSent.get()).isEqualTo(NUMBER_OF_LINES);
+
+        // Stop engine in another thread to avoid blocking the main thread if it gets stuck.
+        CountDownLatch shutdownLatch = new CountDownLatch(1);
+        Executors.newSingleThreadExecutor().submit(() -> {
+            try {
+                engine.close();
+                shutdownLatch.countDown();
+            }
+            catch (IOException e) {
+                // pass
+            }
+        });
+
+        // Assert that latch was counted down, i.e. closing the engine hasn't blocked forever.
+        shutdownLatch.await(1, TimeUnit.SECONDS);
+        assertThat(shutdownLatch.getCount()).isEqualTo(0);
+    }
+
+    @Test
     @FixFor("DBZ-2534")
     public void testCannotStopWhileTasksAreStarting() throws Exception {
         final Properties props = new Properties();
