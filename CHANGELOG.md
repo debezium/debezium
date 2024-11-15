@@ -2,6 +2,72 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.0.2.Final
+November 15th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12435057)
+
+### New features since 3.0.1.Final
+
+* Add file signal channel documentation to the signal channel chapter [DBZ-7245](https://issues.redhat.com/browse/DBZ-7245)
+* Improve blocking snapshot reliability in case of restart [DBZ-7903](https://issues.redhat.com/browse/DBZ-7903)
+* Allow skipping exceptions related to DML parser errors [DBZ-8208](https://issues.redhat.com/browse/DBZ-8208)
+* Ability to enable DS REST API in Operator CR [DBZ-8234](https://issues.redhat.com/browse/DBZ-8234)
+* Add feature to download and stream the Pipeline logs from UI [DBZ-8239](https://issues.redhat.com/browse/DBZ-8239)
+* Add support for vitess-connector to send DDL events [DBZ-8325](https://issues.redhat.com/browse/DBZ-8325)
+* Vstream table filter to match full table names [DBZ-8354](https://issues.redhat.com/browse/DBZ-8354)
+* RowsScanned JMX metric for MongoDB differs from relational connectors [DBZ-8359](https://issues.redhat.com/browse/DBZ-8359)
+* Refactor CassandraTypeProvider to not contain getClusterName method [DBZ-8373](https://issues.redhat.com/browse/DBZ-8373)
+* Possibility for Debezium Oracle Connector to accept NLS Time Format (For Date and Timestamp Columns) [DBZ-8379](https://issues.redhat.com/browse/DBZ-8379)
+* Provide config to allow for sending schema change events without historized schemas [DBZ-8392](https://issues.redhat.com/browse/DBZ-8392)
+* Implement new config map offset store in DS [DBZ-8351](https://issues.redhat.com/browse/DBZ-8351)
+
+
+### Breaking changes since 3.0.1.Final
+
+None
+
+
+### Fixes since 3.0.1.Final
+
+* Race condition in stop-snapshot signal [DBZ-8303](https://issues.redhat.com/browse/DBZ-8303)
+* Debezium shifts binlog offset despite RabbitMQ Timeout and unconfirmed messages [DBZ-8307](https://issues.redhat.com/browse/DBZ-8307)
+* Debezium server with eventhubs sink type and eventhubs emulator connection string fails [DBZ-8357](https://issues.redhat.com/browse/DBZ-8357)
+* Filter for snapshot using signal doesn't seem to work [DBZ-8358](https://issues.redhat.com/browse/DBZ-8358)
+* JDBC storage module does not use quay.io images [DBZ-8362](https://issues.redhat.com/browse/DBZ-8362)
+* Failure on offset store call to configure/start is logged at DEBUG level [DBZ-8364](https://issues.redhat.com/browse/DBZ-8364)
+* Object name is not in the list of S3 schema history fields [DBZ-8366](https://issues.redhat.com/browse/DBZ-8366)
+* Faulty "Failed to load mandatory config" error message [DBZ-8367](https://issues.redhat.com/browse/DBZ-8367)
+* Upgrade protobuf dependencies to avoid potential vulnerability [DBZ-8371](https://issues.redhat.com/browse/DBZ-8371)
+* Tests in IncrementalSnapshotIT may fail randomly [DBZ-8386](https://issues.redhat.com/browse/DBZ-8386)
+* ExtractNewRecordState transform: NPE when processing non-envelope records  [DBZ-8393](https://issues.redhat.com/browse/DBZ-8393)
+* Oracle LogMiner metric OldestScnAgeInMilliseconds can be negative [DBZ-8395](https://issues.redhat.com/browse/DBZ-8395)
+* SqlServerConnectorIT.restartInTheMiddleOfTxAfterCompletedTx fails randomly [DBZ-8396](https://issues.redhat.com/browse/DBZ-8396)
+* ExtractNewDocumentStateTestIT fails randomly [DBZ-8397](https://issues.redhat.com/browse/DBZ-8397)
+* BlockingSnapshotIT fails on Oracle [DBZ-8398](https://issues.redhat.com/browse/DBZ-8398)
+* Oracle OBJECT_ID lookup and cause high CPU and latency in Hybrid mining mode [DBZ-8399](https://issues.redhat.com/browse/DBZ-8399)
+* Protobuf plugin does not compile for PostgreSQL 17 on Debian [DBZ-8403](https://issues.redhat.com/browse/DBZ-8403)
+
+
+### Other changes since 3.0.1.Final
+
+* Clarify signal data collection should be unique per connector [DBZ-6837](https://issues.redhat.com/browse/DBZ-6837)
+* Use DebeziumSinkRecord instead of Kafka Connect's SinkRecord inside Debezium sink connectors [DBZ-8346](https://issues.redhat.com/browse/DBZ-8346)
+* Migrate SQL server testsuite to async engine [DBZ-8353](https://issues.redhat.com/browse/DBZ-8353)
+* Remove unnecessary converter code from parsers [DBZ-8360](https://issues.redhat.com/browse/DBZ-8360)
+* Deduplicate Cassandra Debezium tests [DBZ-8363](https://issues.redhat.com/browse/DBZ-8363)
+* Migrate MongoDB testsuite to async engine [DBZ-8369](https://issues.redhat.com/browse/DBZ-8369)
+* Migrate Oracle testsuite to async engine [DBZ-8370](https://issues.redhat.com/browse/DBZ-8370)
+* Add transform page to provide a single place to list the already configured transform plus UI to add a new transform [DBZ-8374](https://issues.redhat.com/browse/DBZ-8374)
+* Migrate rest of Debezium testsuite to async engine [DBZ-8375](https://issues.redhat.com/browse/DBZ-8375)
+* Migrate DB2 testsuite to async engine [DBZ-8380](https://issues.redhat.com/browse/DBZ-8380)
+* Migrate IBM i testsuite to async engine [DBZ-8382](https://issues.redhat.com/browse/DBZ-8382)
+* Upgrade Kafka to 3.8.1 [DBZ-8385](https://issues.redhat.com/browse/DBZ-8385)
+* Add Transform Edit and delete support. [DBZ-8388](https://issues.redhat.com/browse/DBZ-8388)
+* Log SCN existence check may throw ORA-01291 if a recent checkpoint occurred [DBZ-8389](https://issues.redhat.com/browse/DBZ-8389)
+* Upgrade Kafka to 3.9.0 [DBZ-8400](https://issues.redhat.com/browse/DBZ-8400)
+* Update Quarkus Outbox Extension to Quarkus 3.16.3 [DBZ-8409](https://issues.redhat.com/browse/DBZ-8409)
+
+
+
 ## 3.0.1.Final
 October 25th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12433891)
 
