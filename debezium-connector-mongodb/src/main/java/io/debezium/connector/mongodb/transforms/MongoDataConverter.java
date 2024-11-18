@@ -7,6 +7,7 @@ package io.debezium.connector.mongodb.transforms;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -117,24 +118,53 @@ public class MongoDataConverter {
             switch (type) {
                 case ARRAY:
                     if (value == null) {
-                        builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
+                        if (sanitizeValue) {
+                            return builder;
+                        }
+                        switch (arrayEncoding) {
+                            case ARRAY:
+                                builder.field(key, SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
+                                break;
+                            case DOCUMENT:
+                                builder.field(key, SchemaBuilder.struct().name(builder.name() + "." + key).optional().build());
+                                break;
+                        }
                     }
                     else if (value instanceof Map<?, ?>) {
-                        SchemaBuilder arrayBuilder = SchemaBuilder.struct().name(builder.name() + "." + key).optional();
-                        for (Entry<?, ?> doc : ((Map<?, ?>) value).entrySet()) {
-                            String k = fieldNamer.fieldNameFor(doc.getKey().toString());
-                            Object v = doc.getValue();
-                            if (v instanceof Map<?, ?>) {
-                                arrayBuilder = schema(k, (Map<Object, BsonType>) v, arrayBuilder);
-                            }
+                        switch (arrayEncoding) {
+                            case ARRAY:
+                                SchemaBuilder arrayBuilder = SchemaBuilder.struct().name(builder.name() + "." + key).optional();
+                                for (Entry<?, ?> doc : ((Map<?, ?>) value).entrySet()) {
+                                    String k = fieldNamer.fieldNameFor(doc.getKey().toString());
+                                    Object v = doc.getValue();
+                                    if (v instanceof Map<?, ?>) {
+                                        arrayBuilder = schema(k, (Map<Object, BsonType>) v, arrayBuilder);
+                                    }
+                                }
+                                // check if array builder schema is of type array or struct
+                                if (arrayBuilder.schema().type() == Schema.Type.STRUCT) {
+                                    builder.field(key, SchemaBuilder.array(arrayBuilder).optional().build());
+                                    return SchemaBuilder.array(arrayBuilder).optional();
+                                }
+                                builder.field(key, arrayBuilder.build());
+                                return arrayBuilder;
+                            case DOCUMENT:
+                                final BsonArray array = (BsonArray) value;
+                                final SchemaBuilder arrayStructBuilder = SchemaBuilder.struct().name(builder.name() + "." + key).optional();
+                                final Map<String, BsonValue> convertedArray = new HashMap<>();
+                                for (int i = 0; i < array.size(); i++) {
+                                    convertedArray.put(arrayElementStructName(i), array.get(i));
+                                }
+
+                                SchemaBuilder finalBuilder = builder;
+                                convertedArray.forEach((k, v) -> {
+                                    final SchemaBuilder elementSchema = SchemaBuilder.struct().name(finalBuilder.name() + "." + key + "." + k).optional();
+                                    schema(k, Map.of(v, v.getBsonType()),
+                                            arrayStructBuilder.field(k, elementSchema));
+                                });
+                                builder.field(key, arrayStructBuilder.build());
+                                break;
                         }
-                        // check if array builder schema is of type array or struct
-                        if (arrayBuilder.schema().type() == Schema.Type.STRUCT) {
-                            builder.field(key, SchemaBuilder.array(arrayBuilder).optional().build());
-                            return SchemaBuilder.array(arrayBuilder).optional();
-                        }
-                        builder.field(key, arrayBuilder.build());
-                        return arrayBuilder;
                     }
                     break;
                 case DOCUMENT:
@@ -184,7 +214,10 @@ public class MongoDataConverter {
                         }
                     }
                     else {
-                        builder.field(key, getType(type));
+                        Schema fieldType = getType(type);
+                        if (fieldType != null) {
+                            builder.field(key, fieldType);
+                        }
                     }
                     break;
             }
@@ -213,6 +246,8 @@ public class MongoDataConverter {
                 return Timestamp.builder().optional().build();
             case BOOLEAN:
                 return Schema.OPTIONAL_BOOLEAN_SCHEMA;
+            default:
+                break;
         }
         return null;
     }
@@ -317,7 +352,20 @@ public class MongoDataConverter {
                                 colValue = buildArray(value.asArray(), arraySchema);
                                 break;
                             case DOCUMENT:
-                                // to-do
+                                final BsonArray array = value.asArray();
+                                final Map<String, BsonValue> convertedArray = new HashMap<>();
+                                final Schema arraySchemaForDocument = schema.field(key).schema();
+                                final Struct arrayStruct = new Struct(arraySchemaForDocument);
+                                for (int i = 0; i < array.size(); i++) {
+                                    convertedArray.put(arrayElementStructName(i), array.get(i));
+                                }
+                                convertedArray.forEach((key1, value1) -> {
+                                    final Schema elementSchema = schema.field(key).schema();
+                                    buildStruct(value1.asDocument(), elementSchema, arrayStruct);
+                                });
+                                colValue = arrayStruct;
+                                LOGGER.info("Column value after document encoding is: {}", colValue);
+                                break;
                         }
                     }
                     break;
@@ -341,6 +389,10 @@ public class MongoDataConverter {
             struct.put(key, value.isNull() ? null : colValue);
         }
         return struct;
+    }
+
+    protected String arrayElementStructName(int i) {
+        return "_" + i;
     }
 
     private Object buildArray(BsonArray array, Schema schema) {
