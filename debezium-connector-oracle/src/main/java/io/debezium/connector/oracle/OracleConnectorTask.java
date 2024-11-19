@@ -63,9 +63,12 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
         JdbcConfiguration jdbcConfig = connectorConfig.getJdbcConfig();
-        MainConnectionProvidingConnectionFactory<OracleConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
-                () -> new OracleConnection(jdbcConfig));
-        jdbcConnection = connectionFactory.mainConnection();
+        Configuration readonlyConfig = buildReadonlyConfig(jdbcConfig.asMap(), connectorConfig);
+        DualOracleConnectionFactory<OracleConnection> dualConnectionFactory = new DualOracleConnectionFactory<>(
+                () -> new OracleConnection(jdbcConfig),
+                () -> new ReadOnlyOracleConnection(JdbcConfiguration.adapt(readonlyConfig)),
+                connectorConfig);
+        jdbcConnection = dualConnectionFactory.mainConnection();
 
         final boolean extendedStringsSupported = jdbcConnection.hasExtendedStringSupport();
 
@@ -80,7 +83,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         // The bean registry JDBC connection should always be pinned to the PDB
         // when the connector is configured to use a pluggable database
-        beanRegistryJdbcConnection = connectionFactory.newConnection();
+        beanRegistryJdbcConnection = dualConnectionFactory.newReadonlyConnection();
         if (!Strings.isNullOrEmpty(connectorConfig.getPdbName())) {
             beanRegistryJdbcConnection.setSessionToPdb(connectorConfig.getPdbName());
         }
@@ -167,7 +170,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 errorHandler,
                 OracleConnector.class,
                 connectorConfig,
-                new OracleChangeEventSourceFactory(connectorConfig, connectionFactory, errorHandler, dispatcher, clock, schema, jdbcConfig, taskContext,
+                new OracleChangeEventSourceFactory(connectorConfig, dualConnectionFactory, errorHandler, dispatcher, clock, schema, jdbcConfig, taskContext,
                         streamingMetrics, snapshotterService),
                 new OracleChangeEventSourceMetricsFactory(streamingMetrics),
                 dispatcher,
@@ -177,6 +180,14 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         coordinator.start(taskContext, this.queue, metadataProvider);
 
         return coordinator;
+    }
+
+    private Configuration buildReadonlyConfig(Map<String, String> config, OracleConnectorConfig connectorConfig) {
+        config.put("hostname", connectorConfig.getReadonlyHostname());
+        Configuration.Builder builder = Configuration.create();
+        config.forEach(
+                (k, v) -> builder.with(k.toString(), v));
+        return builder.build();
     }
 
     private void checkArchiveLogDestination(OracleConnection connection, String destinationName) {
