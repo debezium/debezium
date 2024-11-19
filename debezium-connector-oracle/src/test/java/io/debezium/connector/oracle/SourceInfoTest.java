@@ -7,6 +7,7 @@ package io.debezium.connector.oracle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.math.BigInteger;
 import java.time.Instant;
 
 import org.apache.kafka.connect.data.Schema;
@@ -74,5 +75,24 @@ public class SourceInfoTest {
                 .build();
 
         VerifyRecord.assertConnectSchemasAreEqual(null, source.schema(), schema);
+    }
+
+    @Test
+    public void sequenceMapCorrectlyMetadata() {
+        final String scn = "1234567890";
+        final Instant sourceTime = Instant.now();
+        source.setScn(new Scn(new BigInteger(scn)));
+        source.setSourceTime(sourceTime);
+
+        String sequence = source.sequence();
+
+        assertThat(sequence).isEqualTo(String.format("[%s, %s]", scn, sourceTime.toEpochMilli()));
+    }
+
+    @Test
+    public void sequenceMustShowNullValues() {
+        source.setSourceTime(null);
+        String sequence = source.sequence();
+        assertThat(sequence).isEqualTo("[null, null]");
     }
 }

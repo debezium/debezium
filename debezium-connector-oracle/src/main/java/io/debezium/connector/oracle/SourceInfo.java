@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle;
 
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -187,5 +188,14 @@ public class SourceInfo extends BaseSourceInfo {
     @Override
     protected String database() {
         return (tableIds != null) ? tableIds.iterator().next().catalog() : null;
+    }
+
+    @Override
+    protected String sequence() {
+        return Arrays.asList(
+            this.scn,
+            this.sourceTime != null ? this.sourceTime.toEpochMilli() : null
+        )
+        .toString();
     }
 }
