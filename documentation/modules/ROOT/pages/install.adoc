@@ -55,7 +55,7 @@ ifeval::['{page-version}' != 'master']
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra-5/{debezium-version}/debezium-connector-cassandra-5-{debezium-version}-plugin.tar.gz[Cassandra 5.x plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-vitess/{debezium-version}/debezium-connector-vitess-{debezium-version}-plugin.tar.gz[Vitess plugin archive] (incubating)
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-spanner/{debezium-version}/debezium-connector-spanner-{debezium-version}-plugin.tar.gz[Spanner plugin archive] (incubating)
-* https://repo1.maven.org/maven2/io/debezium/debezium-connector-jdbc/{debezium-version}/debezium-connector-jdbc-{debezium-version}-plugin.tar.gz[JDBC sink plugin archive] (incubating)
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-jdbc/{debezium-version}/debezium-connector-jdbc-{debezium-version}-plugin.tar.gz[JDBC sink plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-informix/{debezium-version}/debezium-connector-informix-{debezium-version}-plugin.tar.gz[Informix plugin archive] (incubating)
 endif::[]
 
