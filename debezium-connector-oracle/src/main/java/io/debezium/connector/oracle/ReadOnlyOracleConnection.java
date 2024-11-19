@@ -5,11 +5,11 @@
  */
 package io.debezium.connector.oracle;
 
-import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.jdbc.JdbcConnection;
-
 import java.sql.Connection;
 import java.sql.SQLException;
+
+import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.jdbc.JdbcConnection;
 
 /**
  * Read-only connection class, extends the oracle connection, for read-only databases.

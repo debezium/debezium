@@ -200,7 +200,8 @@ public class SqlUtils {
      * @param dictionaryFilePath optional path to dictionary flat file, may be {@code null}
      * @return statement todo: handle corruption. STATUS (Double) — value of 0 indicates it is executable
      */
-    static String startLogMinerStatement(Scn startScn, Scn endScn, OracleConnectorConfig.LogMiningStrategy strategy, boolean continuousMining, String dictionaryFilePath) {
+    static String startLogMinerStatement(Scn startScn, Scn endScn, OracleConnectorConfig.LogMiningStrategy strategy, boolean continuousMining,
+                                         String dictionaryFilePath) {
         String miningStrategy = getStrategyString(strategy, continuousMining);
         StringBuilder sb = new StringBuilder();
         sb.append("BEGIN sys.dbms_logmnr.start_logmnr(")

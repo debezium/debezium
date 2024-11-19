@@ -8,7 +8,6 @@ package io.debezium.connector.oracle;
 import java.util.Optional;
 
 import io.debezium.config.Configuration;
-import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;

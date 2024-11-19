@@ -30,7 +30,7 @@ public class DualOracleConnectionFactory<T extends JdbcConnection> implements Ma
         this.isLogMiningReadonly = config.isLogMiningReadOnly();
     }
 
-    public T getConnection(){
+    public T getConnection() {
         return this.isLogMiningReadonly ? this.readOnlyConnection : this.mainConnection;
     }
 

@@ -67,8 +67,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         DualOracleConnectionFactory<OracleConnection> dualConnectionFactory = new DualOracleConnectionFactory<>(
                 () -> new OracleConnection(jdbcConfig),
                 () -> new ReadOnlyOracleConnection(JdbcConfiguration.adapt(readonlyConfig)),
-                connectorConfig
-        );
+                connectorConfig);
         jdbcConnection = dualConnectionFactory.mainConnection();
 
         final boolean extendedStringsSupported = jdbcConnection.hasExtendedStringSupport();
@@ -177,12 +176,11 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         return coordinator;
     }
 
-    private Configuration buildReadonlyConfig(Map<String,String> config, OracleConnectorConfig connectorConfig) {
+    private Configuration buildReadonlyConfig(Map<String, String> config, OracleConnectorConfig connectorConfig) {
         config.put("hostname", connectorConfig.getReadonlyHostname());
         Configuration.Builder builder = Configuration.create();
         config.forEach(
-                (k, v) -> builder.with(k.toString(), v)
-        );
+                (k, v) -> builder.with(k.toString(), v));
         return builder.build();
     }
 

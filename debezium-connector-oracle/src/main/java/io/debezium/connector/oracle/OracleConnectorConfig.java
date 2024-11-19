@@ -2090,8 +2090,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     public static int validateDictionaryFromFile(Configuration config, Field field, ValidationOutput problems) {
-        //Validates that the field is required but only when the LogMiner strategy is set to DICTIONARY_FROM_FILE
-        if(LogMiningStrategy.DICTIONARY_FROM_FILE.equals(LogMiningStrategy.parse(config.getString(LOG_MINING_STRATEGY)))){
+        // Validates that the field is required but only when the LogMiner strategy is set to DICTIONARY_FROM_FILE
+        if (LogMiningStrategy.DICTIONARY_FROM_FILE.equals(LogMiningStrategy.parse(config.getString(LOG_MINING_STRATEGY)))) {
             return Field.isRequired(config, field, problems);
         }
         return 0;
