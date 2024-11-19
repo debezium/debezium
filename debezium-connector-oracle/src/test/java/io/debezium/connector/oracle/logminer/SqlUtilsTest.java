@@ -39,12 +39,12 @@ public class SqlUtilsTest {
         expected = "SELECT 'KEY', LOG_GROUP_TYPE FROM ALL_LOG_GROUPS WHERE OWNER=? AND TABLE_NAME=?";
         assertThat(result).isEqualTo(expected);
 
-        result = SqlUtils.startLogMinerStatement(Scn.valueOf(10L), Scn.valueOf(20L), OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG, true);
+        result = SqlUtils.startLogMinerStatement(Scn.valueOf(10L), Scn.valueOf(20L), OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG, true, null);
         expected = "BEGIN sys.dbms_logmnr.start_logmnr(startScn => '10', endScn => '20', " +
                 "OPTIONS => DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG  + DBMS_LOGMNR.CONTINUOUS_MINE  + DBMS_LOGMNR.NO_ROWID_IN_STMT);END;";
         assertThat(result).isEqualTo(expected);
 
-        result = SqlUtils.startLogMinerStatement(Scn.valueOf(10L), Scn.valueOf(20L), OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO, false);
+        result = SqlUtils.startLogMinerStatement(Scn.valueOf(10L), Scn.valueOf(20L), OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO, false, null);
         expected = "BEGIN sys.dbms_logmnr.start_logmnr(startScn => '10', endScn => '20', " +
                 "OPTIONS => DBMS_LOGMNR.DICT_FROM_REDO_LOGS + DBMS_LOGMNR.DDL_DICT_TRACKING  + DBMS_LOGMNR.NO_ROWID_IN_STMT);END;";
         assertThat(result).isEqualTo(expected);
