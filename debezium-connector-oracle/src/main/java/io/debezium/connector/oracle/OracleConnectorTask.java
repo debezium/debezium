@@ -198,11 +198,6 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 (k, v) -> builder.with(k.toString(), v));
         return builder.build();
     }
-    
-    @Override
-    protected String connectorName() {
-        return Module.name();
-    }
 
     private void checkArchiveLogDestination(OracleConnection connection, String destinationName) {
         try {
