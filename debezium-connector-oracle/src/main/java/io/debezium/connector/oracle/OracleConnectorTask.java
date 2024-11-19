@@ -87,7 +87,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         // The bean registry JDBC connection should always be pinned to the PDB
         // when the connector is configured to use a pluggable database
-        beanRegistryJdbcConnection = dualConnectionFactory.mainConnection();
+        beanRegistryJdbcConnection = dualConnectionFactory.newReadonlyConnection();
         if (!Strings.isNullOrEmpty(connectorConfig.getPdbName())) {
             beanRegistryJdbcConnection.setSessionToPdb(connectorConfig.getPdbName());
         }
