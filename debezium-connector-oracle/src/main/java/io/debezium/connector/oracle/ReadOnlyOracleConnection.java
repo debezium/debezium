@@ -22,15 +22,8 @@ public class ReadOnlyOracleConnection extends OracleConnection {
     }
 
     @Override
-    public Connection connection() throws SQLException {
-        Connection conn = super.connection();
-        conn.setReadOnly(true);
-        return conn;
-    }
-
-    @Override
-    public synchronized Connection connection(boolean executOnConnect) throws SQLException {
-        Connection conn = super.connection(executOnConnect);
+    public synchronized Connection connection(boolean executeOnConnect) throws SQLException {
+        Connection conn = super.connection(executeOnConnect);
         conn.setReadOnly(true);
         return conn;
     }
@@ -40,8 +33,4 @@ public class ReadOnlyOracleConnection extends OracleConnection {
         throw new UnsupportedOperationException("Updates are not allowed for read-only connections");
     }
 
-    @Override
-    public JdbcConnection executeWithoutCommitting(String... statements) throws SQLException {
-        return super.executeWithoutCommitting(statements);
-    }
 }
