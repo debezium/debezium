@@ -386,6 +386,21 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
     }
 
     @Test
+    @FixFor("DBZ-6387")
+    public void shouldProcessNotNullColumnsAdaptiveIsoStringTypes() throws Exception {
+        final Struct before = testProcessNotNullColumns(TemporalPrecisionMode.ISOSTRING);
+        if (before != null) {
+            assertThat(before.get("created_at")).isEqualTo("1970-01-01T00:00:00Z");
+            assertThat(before.get("created_at_tz")).isEqualTo("1970-01-01T00:00:00Z");
+            assertThat(before.get("ctime")).isEqualTo("1970-01-01Z");
+            assertThat(before.get("ctime_tz")).isEqualTo("00:00:00Z");
+            assertThat(before.get("cdate")).isEqualTo("00:00:00Z");
+            assertThat(before.get("cmoney")).isEqualTo(new BigDecimal("0.00"));
+            assertThat(before.get("cbits")).isEqualTo(new byte[0]);
+        }
+    }
+
+    @Test
     @FixFor("DBZ-1141")
     public void shouldProcessNotNullColumnsAdaptiveDateTypes() throws Exception {
         final Struct before = testProcessNotNullColumns(TemporalPrecisionMode.ADAPTIVE);
