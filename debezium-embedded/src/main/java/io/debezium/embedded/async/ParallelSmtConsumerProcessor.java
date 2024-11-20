@@ -46,7 +46,10 @@ public class ParallelSmtConsumerProcessor extends AbstractRecordProcessor<Source
         LOGGER.trace("Calling user consumer.");
         recordsIterator = records.iterator();
         for (int i = 0; recordsIterator.hasNext(); i++) {
-            consumer.accept(recordFutures[i].get());
+            SourceRecord record = recordFutures[i].get();
+            if (record != null) {
+                consumer.accept(record);
+            }
             committer.markProcessed(recordsIterator.next());
         }
 
