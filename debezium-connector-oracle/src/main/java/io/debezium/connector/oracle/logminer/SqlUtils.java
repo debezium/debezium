@@ -6,7 +6,10 @@
 package io.debezium.connector.oracle.logminer;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 
+import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.util.Strings;
 
@@ -213,6 +216,55 @@ public class SqlUtils {
     }
 
     // ***** LogMiner methods ***
+    /**
+     * This returns statement to build LogMiner view for online redo log files
+     * @param startScn mine from
+     * @param endScn mine till
+     * @param strategy Log Mining strategy
+     * @param continuousMining whether to use continuous mining
+     * @param dictionaryFilePath optional path to dictionary flat file, may be {@code null}
+     * @return statement todo: handle corruption. STATUS (Double) — value of 0 indicates it is executable
+     */
+    static String startLogMinerStatement(Scn startScn, Scn endScn, OracleConnectorConfig.LogMiningStrategy strategy, boolean continuousMining,
+                                         String dictionaryFilePath) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("BEGIN sys.dbms_logmnr.start_logmnr(")
+                .append("startScn => '" + startScn + "', ")
+                .append("endScn => '" + endScn + "', ")
+                .append("OPTIONS => ")
+                .append(getMiningOptions(strategy, continuousMining));
+        if (strategy == OracleConnectorConfig.LogMiningStrategy.DICTIONARY_FROM_FILE) {
+            sb.append(", DICTFILENAME => '").append(dictionaryFilePath).append("'");
+        }
+        sb.append(");END;");
+
+        return sb.toString();
+    }
+
+    private static String getMiningOptions(OracleConnectorConfig.LogMiningStrategy strategy, boolean continuousMining) {
+        final List<String> options = new ArrayList<>();
+        switch (strategy) {
+            case CATALOG_IN_REDO -> {
+                options.add("DBMS_LOGMNR.DICT_FROM_REDO_LOGS");
+                options.add("DBMS_LOGMNR.DDL_DICT_TRACKING");
+            }
+            case ONLINE_CATALOG, HYBRID -> options.add("DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG");
+        }
+        if (continuousMining) {
+            options.add("DBMS_LOGMNR.CONTINUOUS_MINE");
+        }
+        options.add("DBMS_LOGMNR.NO_ROWID_IN_STMT");
+        return String.join(" + ", options);
+    }
+
+    static String addLogFileStatement(String option, String fileName) {
+        return "BEGIN sys.dbms_logmnr.add_logfile(LOGFILENAME => '" + fileName + "', OPTIONS => " + option + ");END;";
+    }
+
+    static String deleteLogFileStatement(String fileName) {
+        return "BEGIN SYS.DBMS_LOGMNR.REMOVE_LOGFILE(LOGFILENAME => '" + fileName + "');END;";
+    }
+
     public static String getScnByTimeDeltaQuery(Scn scn, Duration duration) {
         if (scn == null) {
             return null;
