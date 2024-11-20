@@ -94,11 +94,12 @@ public class RowValueConstructorChunkQueryBuilderTest {
                 .addColumn(val1)
                 .addColumn(val2)
                 .setPrimaryKeyNames("pk1").create();
-        assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo("SELECT * FROM \"s1\".\"table1\" ORDER BY \"pk1\" LIMIT 1024");
+        assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
+                "SELECT \"pk1\", \"val1\", \"val2\" FROM \"s1\".\"table1\" ORDER BY \"pk1\" LIMIT 1024");
         context.nextChunkPosition(new Object[]{ 1 });
         context.maximumKey(new Object[]{ 10 });
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
-                "SELECT * FROM \"s1\".\"table1\" WHERE \"pk1\" > ? AND \"pk1\" <= ? ORDER BY \"pk1\" LIMIT 1024");
+                "SELECT \"pk1\", \"val1\", \"val2\" FROM \"s1\".\"table1\" WHERE \"pk1\" > ? AND \"pk1\" <= ? ORDER BY \"pk1\" LIMIT 1024");
     }
 
     @Test
@@ -115,11 +116,11 @@ public class RowValueConstructorChunkQueryBuilderTest {
                 .addColumn(val2)
                 .setPrimaryKeyNames("pk1").create();
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.of("\"val1\"=foo")))
-                .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE \"val1\"=foo ORDER BY \"pk1\" LIMIT 1024");
+                .isEqualTo("SELECT \"pk1\", \"val1\", \"val2\" FROM \"s1\".\"table1\" WHERE \"val1\"=foo ORDER BY \"pk1\" LIMIT 1024");
         context.nextChunkPosition(new Object[]{ 1 });
         context.maximumKey(new Object[]{ 10 });
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.of("\"val1\"=foo"))).isEqualTo(
-                "SELECT * FROM \"s1\".\"table1\" WHERE \"pk1\" > ? AND \"pk1\" <= ? AND \"val1\"=foo ORDER BY \"pk1\" LIMIT 1024");
+                "SELECT \"pk1\", \"val1\", \"val2\" FROM \"s1\".\"table1\" WHERE \"pk1\" > ? AND \"pk1\" <= ? AND \"val1\"=foo ORDER BY \"pk1\" LIMIT 1024");
     }
 
     @Test
@@ -139,11 +140,11 @@ public class RowValueConstructorChunkQueryBuilderTest {
                 .setPrimaryKeyNames("pk1", "pk2").create();
         context.addDataCollectionNamesToSnapshot("12345", List.of(table.id().toString()), List.of(), "pk2");
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.of("\"val1\"=foo")))
-                .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE \"val1\"=foo ORDER BY \"pk2\" LIMIT 1024");
+                .isEqualTo("SELECT \"pk1\", \"pk2\", \"val1\", \"val2\" FROM \"s1\".\"table1\" WHERE \"val1\"=foo ORDER BY \"pk2\" LIMIT 1024");
         context.nextChunkPosition(new Object[]{ 1 });
         context.maximumKey(new Object[]{ 10 });
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.of("\"val1\"=foo"))).isEqualTo(
-                "SELECT * FROM \"s1\".\"table1\" WHERE \"pk2\" > ? AND \"pk2\" <= ? AND \"val1\"=foo ORDER BY \"pk2\" LIMIT 1024");
+                "SELECT \"pk1\", \"pk2\", \"val1\", \"val2\" FROM \"s1\".\"table1\" WHERE \"pk2\" > ? AND \"pk2\" <= ? AND \"val1\"=foo ORDER BY \"pk2\" LIMIT 1024");
     }
 
     @Test
@@ -164,11 +165,11 @@ public class RowValueConstructorChunkQueryBuilderTest {
                 .addColumn(val2)
                 .setPrimaryKeyNames("pk1", "pk2", "pk3").create();
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
-                "SELECT * FROM \"s1\".\"table1\" ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
+                "SELECT \"pk1\", \"pk2\", \"pk3\", \"val1\", \"val2\" FROM \"s1\".\"table1\" ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
         context.nextChunkPosition(new Object[]{ 1, 5, 3 });
         context.maximumKey(new Object[]{ 10, 50, 30 });
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
-                "SELECT * FROM \"s1\".\"table1\" WHERE ROW(\"pk1\", \"pk2\", \"pk3\") > ROW(?, ?, ?) AND ROW(\"pk1\", \"pk2\", \"pk3\") <= ROW(?, ?, ?) ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
+                "SELECT \"pk1\", \"pk2\", \"pk3\", \"val1\", \"val2\" FROM \"s1\".\"table1\" WHERE ROW(\"pk1\", \"pk2\", \"pk3\") > ROW(?, ?, ?) AND ROW(\"pk1\", \"pk2\", \"pk3\") <= ROW(?, ?, ?) ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
     }
 
     @Test
@@ -189,11 +190,12 @@ public class RowValueConstructorChunkQueryBuilderTest {
                 .addColumn(val2)
                 .setPrimaryKeyNames("pk1", "pk2", "pk3").create();
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.of("\"val1\"=foo")))
-                .isEqualTo("SELECT * FROM \"s1\".\"table1\" WHERE \"val1\"=foo ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
+                .isEqualTo(
+                        "SELECT \"pk1\", \"pk2\", \"pk3\", \"val1\", \"val2\" FROM \"s1\".\"table1\" WHERE \"val1\"=foo ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
         context.nextChunkPosition(new Object[]{ 1, 5, 3 });
         context.maximumKey(new Object[]{ 10, 50, 30 });
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.of("\"val1\"=foo"))).isEqualTo(
-                "SELECT * FROM \"s1\".\"table1\" WHERE ROW(\"pk1\", \"pk2\", \"pk3\") > ROW(?, ?, ?) AND ROW(\"pk1\", \"pk2\", \"pk3\") <= ROW(?, ?, ?) AND \"val1\"=foo ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
+                "SELECT \"pk1\", \"pk2\", \"pk3\", \"val1\", \"val2\" FROM \"s1\".\"table1\" WHERE ROW(\"pk1\", \"pk2\", \"pk3\") > ROW(?, ?, ?) AND ROW(\"pk1\", \"pk2\", \"pk3\") <= ROW(?, ?, ?) AND \"val1\"=foo ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
     }
 
     @Test
@@ -236,14 +238,14 @@ public class RowValueConstructorChunkQueryBuilderTest {
                 .create();
 
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
-                "SELECT * FROM \"s1\".\"table1\" ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
+                "SELECT \"pk1\", \"pk2\", \"pk3\", \"val1\" FROM \"s1\".\"table1\" ORDER BY \"pk1\", \"pk2\", \"pk3\" LIMIT 1024");
 
         // Next chunk position and maximum key are both completely NOT NULL
         context.nextChunkPosition(new Object[]{ 1, 5, 3 });
         context.maximumKey(new Object[]{ 10, 50, 30 });
         assertThat(chunkQueryBuilder.buildChunkQuery(context, table, Optional.empty())).isEqualTo(
                 // chunk end
-                "SELECT * FROM \"s1\".\"table1\" WHERE " +
+                "SELECT \"pk1\", \"pk2\", \"pk3\", \"val1\" FROM \"s1\".\"table1\" WHERE " +
                         "(((\"pk1\" > ? AND \"pk1\" IS NOT NULL)) " +
                         "OR (\"pk1\" = ? AND (\"pk2\" > ? AND \"pk2\" IS NOT NULL)) " +
                         "OR (\"pk1\" = ? AND \"pk2\" = ? AND \"pk3\" > ?)) " +
