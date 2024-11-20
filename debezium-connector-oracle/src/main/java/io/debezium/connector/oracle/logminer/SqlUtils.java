@@ -6,6 +6,8 @@
 package io.debezium.connector.oracle.logminer;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
@@ -202,33 +204,34 @@ public class SqlUtils {
      */
     static String startLogMinerStatement(Scn startScn, Scn endScn, OracleConnectorConfig.LogMiningStrategy strategy, boolean continuousMining,
                                          String dictionaryFilePath) {
-        String miningStrategy = getStrategyString(strategy, continuousMining);
         StringBuilder sb = new StringBuilder();
         sb.append("BEGIN sys.dbms_logmnr.start_logmnr(")
                 .append("startScn => '" + startScn + "', ")
                 .append("endScn => '" + endScn + "', ")
                 .append("OPTIONS => ")
-                .append(miningStrategy)
-                .append(" + DBMS_LOGMNR.NO_ROWID_IN_STMT)")
-                .append("\n");
+                .append(getMiningOptions(strategy, continuousMining));
         if (strategy == OracleConnectorConfig.LogMiningStrategy.DICTIONARY_FROM_FILE) {
-            sb.append(", DICTFILENAME => '").append(dictionaryFilePath);
+            sb.append(", DICTFILENAME => '").append(dictionaryFilePath).append("'");
         }
-        sb.append("');END;");
+        sb.append(");END;");
 
         return sb.toString();
     }
 
-    private static String getStrategyString(OracleConnectorConfig.LogMiningStrategy strategy, boolean continuousMining) {
-        String miningStrategy = switch (strategy) {
-            case CATALOG_IN_REDO -> "DBMS_LOGMNR.DICT_FROM_REDO_LOGS + DBMS_LOGMNR.DDL_DICT_TRACKING ";
-            case ONLINE_CATALOG, HYBRID -> "DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG ";
-            case DICTIONARY_FROM_FILE -> " ";
-        };
-        if (continuousMining) {
-            miningStrategy += " + DBMS_LOGMNR.CONTINUOUS_MINE ";
+    private static String getMiningOptions(OracleConnectorConfig.LogMiningStrategy strategy, boolean continuousMining) {
+        final List<String> options = new ArrayList<>();
+        switch (strategy) {
+            case CATALOG_IN_REDO -> {
+                options.add("DBMS_LOGMNR.DICT_FROM_REDO_LOGS");
+                options.add("DBMS_LOGMNR.DDL_DICT_TRACKING");
+            }
+            case ONLINE_CATALOG, HYBRID -> options.add("DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG");
         }
-        return miningStrategy;
+        if (continuousMining) {
+            options.add("DBMS_LOGMNR.CONTINUOUS_MINE");
+        }
+        options.add("DBMS_LOGMNR.NO_ROWID_IN_STMT");
+        return String.join(" + ", options);
     }
 
     static String addLogFileStatement(String option, String fileName) {
