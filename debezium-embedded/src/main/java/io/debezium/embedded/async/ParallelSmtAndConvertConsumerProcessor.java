@@ -49,7 +49,10 @@ public class ParallelSmtAndConvertConsumerProcessor<R> extends AbstractRecordPro
         LOGGER.trace("Calling user consumer.");
         recordsIterator = records.iterator();
         for (int i = 0; recordsIterator.hasNext(); i++) {
-            consumer.accept(recordFutures[i].get());
+            R record = recordFutures[i].get();
+            if (record != null) {
+                consumer.accept(record);
+            }
             committer.markProcessed(recordsIterator.next());
         }
 

@@ -36,6 +36,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ch.qos.logback.classic.Level;
 import io.debezium.DebeziumException;
 import io.debezium.connector.simple.SimpleSourceConnector;
 import io.debezium.doc.FixFor;
@@ -43,14 +44,15 @@ import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.Connect;
 import io.debezium.embedded.ConvertingEngineBuilder;
 import io.debezium.embedded.DebeziumEngineTestUtils;
+import io.debezium.embedded.EmbeddedEngineChangeEvent;
 import io.debezium.embedded.EmbeddedEngineConfig;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.format.Json;
+import io.debezium.engine.format.KeyValueHeaderChangeEventFormat;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Testing;
-
-import ch.qos.logback.classic.Level;
 
 /**
  * Tests for {@link AsyncEmbeddedEngine} implementation of {@link DebeziumEngine}.
@@ -775,6 +777,97 @@ public class AsyncEmbeddedEngineTest {
         engine.close();
     }
 
+    @Test
+    @FixFor("DBZ-8434")
+    public void testSmtReturnsNullToProcessor() throws Exception {
+        final Properties props = new Properties();
+        props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
+        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
+        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
+        props.setProperty(FileStreamSourceConnector.FILE_CONFIG, TEST_FILE_PATH.toAbsolutePath().toString());
+        props.setProperty(FileStreamSourceConnector.TOPIC_CONFIG, "testTopic");
+        props.setProperty("transforms", "null");
+        props.setProperty("transforms.null.type", "io.debezium.embedded.async.AsyncEmbeddedEngineTest$OddIsNullTransform");
+
+        final int numRecords = NUMBER_OF_LINES / 2;
+        CountDownLatch recordsLatch = new CountDownLatch(numRecords);
+        AtomicBoolean receivedNull = new AtomicBoolean(false);
+
+        DebeziumEngine.Builder<SourceRecord> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder<>();
+        engine = builder
+                .using(props)
+                .using(new TestEngineConnectorCallback())
+                .notifying(record -> {
+                    if (record == null) {
+                        receivedNull.set(true);
+                    }
+                    else {
+                        recordsLatch.countDown();
+                    }
+                })
+                .build();
+
+        engineExecSrv.submit(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+            engine.run();
+        });
+        appendLinesToSource(numRecords * 2);
+
+        recordsLatch.await(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
+        stopEngine();
+
+        assertThat(recordsLatch.getCount()).isEqualTo(0);
+        assertThat(receivedNull.get()).isFalse();
+    }
+
+    @Test
+    @FixFor("DBZ-8434")
+    public void testSmtReturnsNullToProcessorAndConvertor() throws Exception {
+        final Properties props = new Properties();
+        props.setProperty(ConnectorConfig.NAME_CONFIG, "debezium-engine");
+        props.setProperty(ConnectorConfig.TASKS_MAX_CONFIG, "1");
+        props.setProperty(ConnectorConfig.CONNECTOR_CLASS_CONFIG, FileStreamSourceConnector.class.getName());
+        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.setProperty(WorkerConfig.OFFSET_COMMIT_INTERVAL_MS_CONFIG, "0");
+        props.setProperty(FileStreamSourceConnector.FILE_CONFIG, TEST_FILE_PATH.toAbsolutePath().toString());
+        props.setProperty(FileStreamSourceConnector.TOPIC_CONFIG, "testTopic");
+        props.setProperty("transforms", "null");
+        props.setProperty("transforms.null.type", "io.debezium.embedded.async.AsyncEmbeddedEngineTest$OddIsNullTransform");
+
+        final int numRecords = NUMBER_OF_LINES / 2;
+        CountDownLatch recordsLatch = new CountDownLatch(numRecords);
+        AtomicBoolean receivedNull = new AtomicBoolean(false);
+
+        DebeziumEngine.Builder<EmbeddedEngineChangeEvent> builder = new AsyncEmbeddedEngine.AsyncEngineBuilder<>(
+                KeyValueHeaderChangeEventFormat.of(Json.class, Json.class, Json.class));
+        DebeziumEngine<EmbeddedEngineChangeEvent> embeddedEngine = builder
+                .using(props)
+                .using(new TestEngineConnectorCallback())
+                .notifying(record -> {
+                    if (record == null) {
+                        receivedNull.set(true);
+                    }
+                    else {
+                        recordsLatch.countDown();
+                    }
+                })
+                .build();
+
+        engineExecSrv.submit(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "", "engine");
+            embeddedEngine.run();
+        });
+        appendLinesToSource(numRecords * 2);
+
+        recordsLatch.await(AbstractConnectorTest.waitTimeForEngine(), TimeUnit.SECONDS);
+        embeddedEngine.close();
+
+        assertThat(recordsLatch.getCount()).isEqualTo(0);
+        assertThat(receivedNull.get()).isFalse();
+    }
+
     private void runEngineBasicLifecycleWithConsumer(final Properties props) throws IOException, InterruptedException {
 
         final LogInterceptor interceptor = new LogInterceptor(AsyncEmbeddedEngine.class);
@@ -932,4 +1025,29 @@ public class AsyncEmbeddedEngineTest {
         }
     }
 
+    public static class OddIsNullTransform implements Transformation<SourceRecord> {
+
+        public static int counter = 0;
+
+        @Override
+        public SourceRecord apply(SourceRecord record) {
+            return (++counter % 2 == 0) ? record : null;
+        }
+
+        @Override
+        public ConfigDef config() {
+            // Nothing to do.
+            return null;
+        }
+
+        @Override
+        public void close() {
+            // Nothing to do.
+        }
+
+        @Override
+        public void configure(Map<String, ?> map) {
+            // Nothing to do.
+        }
+    }
 }
