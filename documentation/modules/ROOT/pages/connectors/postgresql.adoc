@@ -3277,55 +3277,71 @@ If you select this option, to prevent the connector from emitting and processing
 
 |[[postgresql-replica-autoset-type]]<<postgresql-replica-autoset-type, `+replica.identity.autoset.values+`>>
 |_empty string_
-|The setting determines the value for link:https://www.postgresql.org/docs/current/sql-altertable.html#SQL-ALTERTABLE-REPLICA-IDENTITY[replica identity] at table level. +
- +
-This option will overwrite the existing value in database.
-A comma-separated list of regular expressions that match fully-qualified tables and replica identity value to be used in the table.
-The changes will be applied only to captured tables.
-If the expressions match also tables which are not captured, these tables will be skipped. +
- +
-Each expression must match the pattern '<fully-qualified table name>:<replica identity>', where the table name could be defined as (`SCHEMA_NAME.TABLE_NAME`), and the replica identity values are: +
- +
-`DEFAULT` - Records the old values of the columns of the primary key, if any. This is the default for non-system tables. +
- +
-`INDEX index_name` - Records the old values of the columns covered by the named index, that must be unique, not partial, not deferrable, and include only columns marked NOT NULL. If this index is dropped, the behavior is the same as NOTHING. +
- +
-`FULL` - Records the old values of all columns in the row. +
- +
-`NOTHING` - Records no information about the old row. This is the default for system tables. +
- +
-For example,
+|Set this option to to apply specific link:https://www.postgresql.org/docs/current/sql-altertable.html#SQL-ALTERTABLE-REPLICA-IDENTITY[replica identity] settings to the tables that a connector captures, based on the table name.
+The replica identity value that you set overwrites the replica identity value that is set in the database. +
+
+Changes to the replica identity of a table are applied only to tables that the connector is configured to capture, as specified by the xref:postgresql-property-table-include-list[`table.include.list`] and xref:postgresql-property-table-exclude-list[`table.exclude.list`] properties.
+Uncaptured tables are not affected.
+
+The property accepts a comma-separated list of key-value pairs.
+Each key is a regular expression that matches fully-qualified table names; the corresponding value specifies a replica identity type.
+For example:
+
+`__<fqTableNameA>__:__<replicaIdentity1>__,__<fqTableNameB>__:__<replicaIdentity2>__,__<fqTableNameC>__:__<replicaIdentity3>__`
+
+The fully qualified table name could be defined as `SCHEMA_NAME.TABLE_NAME`, and the replica identity can be set to one of the following values:
+
+`DEFAULT`:: Records the value, if one existed, that was set for the primary key column before the change event.
+This is the default setting for non-system tables.
+
+`INDEX _indexName_`:: Records the values that were set for all columns defined for a specified index before the change event.
+The index must be unique, not partial, not deferrable, and must include only columns marked `NOT NULL`.
+If the specified index is dropped, the resulting behavior is the same as if you set the value to `NOTHING`.
+
+`FULL`:: Records the values that were set for all columns in the row before the change event.
+
+`NOTHING`:: Records no information about the row state before the change event.
+This is the default value for system tables.
+
+.Example:
 
  schema1.*:FULL,schema2.table2:NOTHING,schema2.table3:INDEX idx_name
 
 
 |[[postgresql-property-binary-handling-mode]]<<postgresql-property-binary-handling-mode, `+binary.handling.mode+`>>
 |bytes
-|Specifies how binary (`bytea`) columns should be represented in change events: +
- +
-`bytes` represents binary data as  byte array. +
- +
-`base64` represents binary data as base64-encoded strings. +
- +
-`base64-url-safe` represents binary data as base64-url-safe-encoded strings. +
- +
-`hex` represents binary data as hex-encoded (base16) strings.
+|Specifies how binary (`bytea`) columns should be represented in change events.
+Specify one of the following values:
+
+`bytes`:: Represents binary data as a byte array.
+
+`base64`:: Represents binary data as base64-encoded strings.
+
+`base64-url-safe`:: Represents binary data as base64-url-safe-encoded strings.
+
+`hex`:: Represents binary data as hex-encoded (base16) strings.
 
 |[[postgresql-property-schema-name-adjustment-mode]]<<postgresql-property-schema-name-adjustment-mode,`+schema.name.adjustment.mode+`>>
 |none
-|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+|Specifies how schema names should be adjusted for compatibility with the message converter used by the connector.
+Set one of the following values:
 
-* `none` does not apply any adjustment. +
-* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
-* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+`none`:: Does not apply any adjustment.
+`avro`:: Replaces the characters that cannot be used in the Avro type name with underscore.
+`avro_unicode`:: Replaces the underscore or characters that cannot be used in the Avro type name with corresponding Unicode characters, such as `_uxxxx`.
+
+NOTE: In the preceding example, the underscore character (`_`) represents an escape sequence, equivalent to a backslash in Java.
 
 |[[postgresql-property-field-name-adjustment-mode]]<<postgresql-property-field-name-adjustment-mode,`+field.name.adjustment.mode+`>>
 |none
-|Specifies how field names should be adjusted for compatibility with the message converter used by the connector. Possible settings:  +
+|Specifies how field names should be adjusted for compatibility with the message converter used by the connector.
+Specify one of the following values:
 
-* `none` does not apply any adjustment. +
-* `avro` replaces the characters that cannot be used in the Avro type name with underscore. +
-* `avro_unicode` replaces the underscore or characters that cannot be used in the Avro type name with corresponding unicode like _uxxxx. Note: _ is an escape sequence like backslash in Java +
+`none`:: Do not apply any adjustment.
+`avro`:: Replace characters that cannot be used in Avro type names with underscores.
+`avro_unicode`:: Replace the underscore or characters that cannot be used in Avro type names with the corresponding Unicode characters, such as `_uxxxx`.
+
+NOTE: In the preceding example, the underscore character (`_`) represents an escape sequence, equivalent to a backslash in Java.
 
 For more information, see {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming].
 
