@@ -118,6 +118,14 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         }
     }
 
+    protected DebeziumEngine.Builder<SourceRecord> createEngineBuilder() {
+        return new EmbeddedEngine.EngineBuilder();
+    }
+
+    protected TestingDebeziumEngine<SourceRecord> createEngine(DebeziumEngine.Builder<SourceRecord> builder) {
+        return new TestingEmbeddedEngine((EmbeddedEngine) builder.build());
+    }
+
     @Before
     public void beforeEach() throws Exception {
         nextConsumedLineNumber = 1;
