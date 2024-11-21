@@ -3277,11 +3277,11 @@ If you select this option, to prevent the connector from emitting and processing
 
 |[[postgresql-replica-autoset-type]]<<postgresql-replica-autoset-type, `+replica.identity.autoset.values+`>>
 |_empty string_
-|Set this option to to apply specific link:https://www.postgresql.org/docs/current/sql-altertable.html#SQL-ALTERTABLE-REPLICA-IDENTITY[replica identity] settings to the tables that a connector captures, based on the table name.
-The replica identity value that you set overwrites the replica identity value that is set in the database. +
+|Set this property to apply specific link:https://www.postgresql.org/docs/current/sql-altertable.html#SQL-ALTERTABLE-REPLICA-IDENTITY[replica identity] settings to a subset of the tables that a connector captures, based on the table name.
+The replica identity values that the property sets overwrite the replica identity values that are set in the database.
 
-Changes to the replica identity of a table are applied only to tables that the connector is configured to capture, as specified by the xref:postgresql-property-table-include-list[`table.include.list`] and xref:postgresql-property-table-exclude-list[`table.exclude.list`] properties.
-Uncaptured tables are not affected.
+This property applies changes to the replica identity of a table only if the connector is configured to capture the table, based on settings in the xref:postgresql-property-table-include-list[`table.include.list`] and xref:postgresql-property-table-exclude-list[`table.exclude.list`] properties.
+The replica identities of other tables are not affected.
 
 The property accepts a comma-separated list of key-value pairs.
 Each key is a regular expression that matches fully-qualified table names; the corresponding value specifies a replica identity type.
@@ -3289,7 +3289,10 @@ For example:
 
 `__<fqTableNameA>__:__<replicaIdentity1>__,__<fqTableNameB>__:__<replicaIdentity2>__,__<fqTableNameC>__:__<replicaIdentity3>__`
 
-The fully qualified table name could be defined as `SCHEMA_NAME.TABLE_NAME`, and the replica identity can be set to one of the following values:
+Use the following format to specify the fully qualified table name: +
+`_SchemaName_._TableName_`
+
+Set the replica identity to one of the following values:
 
 `DEFAULT`:: Records the value, if one existed, that was set for the primary key column before the change event.
 This is the default setting for non-system tables.
