@@ -69,6 +69,20 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         LOGGER.info("Database version {}.{}.{}", version.getMajor(), version.getMinor(), version.getMicro());
     }
 
+    public void bufferDelete(JdbcSinkRecord record, final CollectionId collectionId,
+                             final Map<CollectionId, Buffer> upsertBufferByTable, final Map<CollectionId, Buffer> deleteBufferByTable) {
+        if (upsertBufferByTable.get(collectionId) != null && !upsertBufferByTable.get(collectionId).isEmpty()) {
+            // When a delete event arrives, update buffer must be flushed to avoid losing the delete
+            // for the same record after its update.
+
+            flushBufferWithRetries(collectionId, upsertBufferByTable.get(collectionId).flush());
+        }
+
+        Buffer tableIdBuffer = resolveBuffer(deleteBufferByTable, collectionId, record);
+        List<JdbcSinkRecord> toFlush = tableIdBuffer.add(record);
+        flushBufferWithRetries(collectionId, toFlush);
+    }
+
     public void execute(Collection<SinkRecord> records) {
         final Map<CollectionId, Buffer> upsertBufferByTable = new LinkedHashMap<>();
         final Map<CollectionId, Buffer> deleteBufferByTable = new LinkedHashMap<>();
@@ -88,13 +102,19 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 continue;
             }
 
+            final CollectionId collectionId = optionalCollectionId.get();
+
             if (record.isTombstone()) {
-                // Skip only Debezium Envelope tombstone not the one produced by ExtractNewRecordState SMT
-                LOGGER.debug("Skipping tombstone record {}", record);
+                LOGGER.debug("processing tombstone record {}", record);
+
+                if (!config.isDeleteEnabled()) {
+                    LOGGER.debug("Deletes are not enabled, skipping delete for topic '{}'", record.topicName());
+                    continue;
+                }
+                bufferDelete(record, collectionId, upsertBufferByTable, deleteBufferByTable);
+                flushBuffers(deleteBufferByTable);
                 continue;
             }
-
-            final CollectionId collectionId = optionalCollectionId.get();
 
             if (record.isTruncate()) {
                 if (!config.isTruncateEnabled()) {
@@ -122,16 +142,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     continue;
                 }
 
-                if (upsertBufferByTable.get(collectionId) != null && !upsertBufferByTable.get(collectionId).isEmpty()) {
-                    // When a delete event arrives, update buffer must be flushed to avoid losing the delete
-                    // for the same record after its update.
-
-                    flushBufferWithRetries(collectionId, upsertBufferByTable.get(collectionId).flush());
-                }
-
-                Buffer tableIdBuffer = resolveBuffer(deleteBufferByTable, collectionId, record);
-                List<JdbcSinkRecord> toFlush = tableIdBuffer.add(record);
-                flushBufferWithRetries(collectionId, toFlush);
+                bufferDelete(record, collectionId, upsertBufferByTable, deleteBufferByTable);
             }
             else {
                 if (deleteBufferByTable.get(collectionId) != null && !deleteBufferByTable.get(collectionId).isEmpty()) {
