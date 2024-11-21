@@ -224,6 +224,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.INT4RANGE_OID:
             case PgOid.NUM_RANGE_OID:
             case PgOid.INT8RANGE_OID:
+            case PgOid.BPCHAR:
                 return SchemaBuilder.string();
             case PgOid.UUID:
                 return Uuid.builder();
@@ -468,6 +469,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.INT4RANGE_OID:
             case PgOid.NUM_RANGE_OID:
             case PgOid.INT8RANGE_OID:
+            case PgOid.BPCHAR:
                 return data -> convertString(column, fieldDefn, data);
             case PgOid.POINT:
                 return data -> convertPoint(column, fieldDefn, data);
