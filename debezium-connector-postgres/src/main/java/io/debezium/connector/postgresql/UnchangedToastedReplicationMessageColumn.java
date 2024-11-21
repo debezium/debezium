@@ -71,6 +71,8 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
             case "_text":
             case "character varying[]":
             case "_varchar":
+            case "character[]":
+            case "_bpchar":
             case "json[]":
             case "_json":
             case "jsonb[]":

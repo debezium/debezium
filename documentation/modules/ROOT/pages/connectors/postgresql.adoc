@@ -1439,6 +1439,10 @@ The `length` schema parameter contains an integer that represents the number of 
 |`STRING`
 |n/a
 
+|`BPCHAR[(M)]`
+|`STRING`
+|n/a
+
 |`CHARACTER VARYING[(M)]`
 |`STRING`
 |n/a
