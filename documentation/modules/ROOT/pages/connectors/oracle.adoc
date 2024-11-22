@@ -3930,26 +3930,28 @@ See xref:oracle-transaction-metadata[Transaction Metadata] for additional detail
 |[[oracle-property-log-mining-strategy]]<<oracle-property-log-mining-strategy, `+log.mining.strategy+`>>
 |`online_catalog`
 |Specifies the mining strategy that controls how Oracle LogMiner builds and uses a given data dictionary for resolving table and column ids to names. +
- +
+Set one of the following options:
+
 `redo_log_catalog`:: Writes the data dictionary to the online redo logs causing more archive logs to be generated over time.
-This also enables tracking DDL changes against captured tables, so if the schema changes frequently this is the ideal choice. +
- +
+This also enables tracking DDL changes against captured tables, so if the schema changes frequently this is the ideal choice.
+
 `online_catalog`:: Uses the database's current data dictionary to resolve object ids and does not write any extra information to the online redo logs.
 This allows LogMiner to mine substantially faster but at the expense that DDL changes cannot be tracked.
-If the captured table(s) schema changes infrequently or never, this is the ideal choice. +
- +
+If the captured table(s) schema changes infrequently or never, this is the ideal choice.
+
 `hybrid`:: Uses a combination of the database's current data dictionary and the {prodname} in-memory schema model to resole table and column names seamlessly.
 This mode performs at the level of the `online_catalog` LogMiner strategy with the schema tracking resilience of the `redo_log_catalog` strategy while not incurring the overhead of archive log generation and performance costs of the `redo_log_catalog` strategy.
 
 |[[oracle-property-log-mining-query-filter-mode]]<<oracle-property-log-mining-query-filter-mode, `+log.mining.query.filter.mode+`>>
 |`none`
 |Specifies the mining query mode that controls how the Oracle LogMiner query is built. +
- +
-`none`:: The query is generated without doing any schema, table, or username filtering in the query. +
- +
+Set one of the following options:
+
+`none`:: The query is generated without doing any schema, table, or username filtering in the query.
+
 `in`:: The query is generated using a standard SQL in-clause to filter schema, table, and usernames on the database side.
-The schema, table, and username configuration include/exclude lists should not specify any regular expressions as the query is built using the values directly. +
- +
+The schema, table, and username configuration include/exclude lists should not specify any regular expressions as the query is built using the values directly.
+
 `regex`:: The query is generated using Oracle's `REGEXP_LIKE` operator to filter schema and table names on the database side, along with usernames using a SQL in-clause.
 The schema and table configuration include/exclude lists can safely specify regular expressions.
 
