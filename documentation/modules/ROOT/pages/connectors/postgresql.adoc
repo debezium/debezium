@@ -3281,7 +3281,7 @@ If you select this option, to prevent the connector from emitting and processing
  +
 This option will overwrite the existing value in database.
 A comma-separated list of regular expressions that match fully-qualified tables and replica identity value to be used in the table.
-The changes will be applied only to captured tables.
+The changes will be applied only to captured tables (those which match `schema.include.list` or `table.include.list`).
 If the expressions match also tables which are not captured, these tables will be skipped. +
  +
 Each expression must match the pattern '<fully-qualified table name>:<replica identity>', where the table name could be defined as (`SCHEMA_NAME.TABLE_NAME`), and the replica identity values are: +
