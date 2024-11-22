@@ -3280,9 +3280,6 @@ If you select this option, to prevent the connector from emitting and processing
 |Set this property to apply specific link:https://www.postgresql.org/docs/current/sql-altertable.html#SQL-ALTERTABLE-REPLICA-IDENTITY[replica identity] settings to a subset of the tables that a connector captures, based on the table name.
 The replica identity values that the property sets overwrite the replica identity values that are set in the database.
 
-This property applies changes to the replica identity of a table only if the connector is configured to capture the table, based on settings in the xref:postgresql-property-table-include-list[`table.include.list`] and xref:postgresql-property-table-exclude-list[`table.exclude.list`] properties.
-The replica identities of other tables are not affected.
-
 The property accepts a comma-separated list of key-value pairs.
 Each key is a regular expression that matches fully-qualified table names; the corresponding value specifies a replica identity type.
 For example:
@@ -3310,6 +3307,17 @@ This is the default value for system tables.
 
  schema1.*:FULL,schema2.table2:NOTHING,schema2.table3:INDEX idx_name
 
+[IMPORTANT]
+====
+The `replica.identity.autoset.values` property applies only to tables that the connector captures.
+Other tables are ignored, even if they match the specified expression.
+Use the following connector properties to designate the tables to capture:
+
+* xref:postgresql-property-table-include-list[`table.include.list`]
+* xref:postgresql-property-table-exclude-list[`table.exclude.list`]
+* xref:postgresql-property-schema-include-list[`schema.include.list`]
+* xref:postgresql-property-schema-exclude-list[`schema.exclude.list`]
+====
 
 |[[postgresql-property-binary-handling-mode]]<<postgresql-property-binary-handling-mode, `+binary.handling.mode+`>>
 |bytes
