@@ -2,6 +2,44 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.0.3.Final
+November 25th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12436708)
+
+### New features since 3.0.2.Final
+
+* Add support for bpchar datatype [DBZ-8416](https://issues.redhat.com/browse/DBZ-8416)
+* Allow parts of DS resource to reference values from primary in configuration [DBZ-8431](https://issues.redhat.com/browse/DBZ-8431)
+
+
+### Breaking changes since 3.0.2.Final
+
+None
+
+
+### Fixes since 3.0.2.Final
+
+* Spanner tests fail randomly [DBZ-8410](https://issues.redhat.com/browse/DBZ-8410)
+* Engine shutdown may get stuck when error is thrown during connector stop [DBZ-8414](https://issues.redhat.com/browse/DBZ-8414)
+* JdbcOffsetBackingStore does not release lock of debezium_offset_storage gracefully [DBZ-8423](https://issues.redhat.com/browse/DBZ-8423)
+* Installation documentation typo on download link [DBZ-8429](https://issues.redhat.com/browse/DBZ-8429)
+* Asycn engine fails with NPE when transformation returns null [DBZ-8434](https://issues.redhat.com/browse/DBZ-8434)
+* Snapshot completed flag not correctly saved on offsets [DBZ-8449](https://issues.redhat.com/browse/DBZ-8449)
+* Formatting characters render in descriptions of Oracle `log.mining` properties [DBZ-8450](https://issues.redhat.com/browse/DBZ-8450)
+* Prevent data corruption from netty version 4.1.111.Final  [DBZ-8438](https://issues.redhat.com/browse/DBZ-8438)
+
+
+### Other changes since 3.0.2.Final
+
+* Support config map offset store in the DS Operator [DBZ-8352](https://issues.redhat.com/browse/DBZ-8352)
+* Migrate Vitess testsuite to async engine [DBZ-8377](https://issues.redhat.com/browse/DBZ-8377)
+* Migrate Spanner testsuite to async engine [DBZ-8381](https://issues.redhat.com/browse/DBZ-8381)
+* Do not build images for unsupported database versions [DBZ-8413](https://issues.redhat.com/browse/DBZ-8413)
+* Update PatternFly version in UI from 6.beta to final 6.0 [DBZ-8415](https://issues.redhat.com/browse/DBZ-8415)
+* Fix the UI build issue  [DBZ-8435](https://issues.redhat.com/browse/DBZ-8435)
+* Make AbstractConnectorTest#createEngine method abstract [DBZ-8441](https://issues.redhat.com/browse/DBZ-8441)
+
+
+
 ## 3.0.2.Final
 November 15th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12435057)
 
