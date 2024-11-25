@@ -318,6 +318,16 @@
                 <artifactId>js-scriptengine</artifactId>
                 <version>${version.graalvm.js}</version>
             </dependency>
+            <dependency>
+                <groupId>com.dylibso.chicory</groupId>
+                <artifactId>runtime</artifactId>
+                <version>${version.chicory}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dylibso.chicory</groupId>
+                <artifactId>wasm</artifactId>
+                <version>${version.chicory}</version>
+            </dependency>
 
             <!-- OpenTelemetry Integration -->
             <dependency>
