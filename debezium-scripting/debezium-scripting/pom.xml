@@ -35,11 +35,17 @@
             <artifactId>connect-transforms</artifactId>
             <scope>provided</scope>
         </dependency>	
-	<dependency>
+	    <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-scripting-languages</artifactId>
-	    <type>pom</type>
+	        <type>pom</type>
             <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.dylibso.chicory</groupId>
+            <artifactId>host-module-annotations-experimental</artifactId>
+            <scope>provided</scope>
+            <version>${version.chicory}</version>
         </dependency>
 
         <!-- Testing -->
@@ -84,6 +90,22 @@
                 </includes>
             </resource>
         </resources>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>com.dylibso.chicory</groupId>
+                            <artifactId>host-module-processor-experimental</artifactId>
+                            <version>${version.chicory}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+        </plugins>
     </build>
 
     <profiles>

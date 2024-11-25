@@ -175,6 +175,9 @@
 
         <!-- RocketMQ version for RocketMQ storage and Server sink -->
         <version.rocketmq>5.1.4</version.rocketmq>
+
+        <!-- Chicory version for Wasm transformations -->
+        <version.chicory>1.0.0</version.chicory>
     </properties>
 
     <modules>
