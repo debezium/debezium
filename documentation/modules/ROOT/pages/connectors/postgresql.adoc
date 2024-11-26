@@ -3746,7 +3746,12 @@ For more information, see xref:postgresql-transaction-metadata[Transaction metad
 
 |[[postgresql-property-flush-lsn-source]]<<postgresql-property-flush-lsn-source, `+flush.lsn.source+`>>
 |`true`
-|Determines whether the connector should commit the LSN of the processed records in the source postgres database so that the WAL logs can be deleted. Specify `false` if you don't want the connector to do this. Please note that if set to `false` LSN will not be acknowledged by Debezium and as a result WAL logs will not be cleared which might result in disk space issues. User is expected to handle the acknowledgement of LSN outside Debezium.
+|Determines whether the connector should commit the LSN of the processed records in the source PostgreSQL database so that the WAL logs can be deleted.
+Specify `false` if you do not want the connector to commit the LSN of processed records.
+
+NOTE: If you set the value of this property to `false`, {prodname} does not acknowledge the LSN.
+Failure to acknowledge the LSN can lead to uncontrolled growth of the WAL logs, which stresses storage capacity, and could result degraded performance, and even data loss.
+To maintain normal service, if you set this property to `false`, you must configure some other mechanism to commit the LSN.
 
 |[[postgresql-property-retriable-restart-connector-wait-ms]]<<postgresql-property-retriable-restart-connector-wait-ms, `+retriable.restart.connector.wait.ms+`>> +
 |10000 (10 seconds)
