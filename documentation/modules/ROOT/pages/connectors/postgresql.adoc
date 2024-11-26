@@ -3233,7 +3233,7 @@ However, it's best to use the minimum number that are required to specify a uniq
 ====
 If the expressions that you specify for this property match columns that are not part of the table's primary key,
 set the `REPLICA IDENTITY` of the table to `FULL`.
-If you set `REPLICA IDENTITY` to another value, such as `DEFAULT`, after a delete event, the connector fails to create tombstone events properly.
+If you set `REPLICA IDENTITY` to another value, such as `DEFAULT`, after delete operations, the connector fails to generate tombstone events with the expected `null` values.
 ====
 
 |[[postgresql-publication-autocreate-mode]]<<postgresql-publication-autocreate-mode, `+publication.autocreate.mode+`>>
