@@ -3229,7 +3229,7 @@ For the `purchaseorders` tables in any schema, the columns `pk3` and `pk4` serve
 There is no limit to the number of columns that you use to create custom message keys.
 However, it's best to use the minimum number that are required to specify a unique key.
 
-[NOTE]
+[IMPORTANT]
 ====
 If the expressions that you specify for this property match columns that are not part of the table's primary key,
 set the `REPLICA IDENTITY` of the table to `FULL`.
@@ -3241,7 +3241,8 @@ If you set `REPLICA IDENTITY` to another value, such as `DEFAULT`, after a delet
 |Specifies whether and how the connector creates a link:https://www.postgresql.org/docs/current/logical-replication-publication.html[publication].
 This setting applies only when the connector streams changes by using the link:https://www.postgresql.org/docs/current/sql-createpublication.html[`pgoutput` plug-in].
 
-NOTE: To create publications, the connector must access PostgreSQL through a database account that has specific permissions.
+[NOTE]
+To create publications, the connector must access PostgreSQL through a database account that has specific permissions.
 For more information, see xref:postgresql-replication-user-privileges[Setting privileges to enable {prodname} to create PostgreSQL publications].
 
 Specify one of the following values:
