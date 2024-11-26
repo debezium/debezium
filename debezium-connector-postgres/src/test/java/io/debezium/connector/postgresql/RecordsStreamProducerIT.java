@@ -2709,7 +2709,8 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
             VerifyRecord.isValidInsert(record, PK_FIELD, i + 2);
         }
 
-        stopConnector();
+        waitForEngineShutdown();
+        cleanupTestFwkState();
 
         startConnector(Function.identity(), false);
         consumer.expects(expectSecondRun);

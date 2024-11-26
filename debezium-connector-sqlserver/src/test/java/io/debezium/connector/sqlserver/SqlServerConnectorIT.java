@@ -764,7 +764,8 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         final SourceRecords records1 = consumeRecordsByTopic(14);
 
-        stopConnector();
+        waitForEngineShutdown();
+        cleanupTestFwkState();
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
