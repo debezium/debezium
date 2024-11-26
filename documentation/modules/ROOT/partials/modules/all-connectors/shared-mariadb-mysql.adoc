@@ -1757,28 +1757,33 @@ a|Mandatory string that describes the type of operation. The `op` field value is
 a|Optional field that displays the time at which the connector processed the event.
 The time is based on the system clock in the JVM running the Kafka Connect task.  +
  +
-In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+In the `source` object, `ts_ms` indicates the time that the change was made in the database.
+By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |4
 |`ts_us`
-a|Optional field that displays the time at which the connector processed the event, in microseconds. The time is based on the system clock in the JVM running the Kafka Connect task.
+a|Optional field that displays the time at which the connector processed the event, in microseconds.
+The time is based on the system clock in the JVM running the Kafka Connect task.
 
 |5
 |`ts_ns`
-a|Optional field that displays the time at which the connector processed the event, in nanoseconds. The time is based on the system clock in the JVM running the Kafka Connect task.
+a|Optional field that displays the time at which the connector processed the event, in nanoseconds.
+The time is based on the system clock in the JVM running the Kafka Connect task.
 
 |===
 
-In case a single `TRUNCATE` statement applies to multiple tables,
-one _truncate_ change event record for each truncated table will be emitted.
+If a single `TRUNCATE` statement applies to multiple tables, the connector emits one _truncate_ change event record for each truncated table.
 
 [NOTE]
 ====
-A _truncate_ event represents a change that applies to an entire table, and it does not have a message key.
-In topics that span multiple partition, the order of change events that apply to an entire table is is not guaranteed.
-That is, there is no ordering guarantee for (_create_, _update_, etc.), or for the _truncate_ events for that table.
-When a consumer reads events from different partition, it might read an _update_ event for a table from one partition only after it reads a _truncate_ event for the same table from a second partition.
+A _truncate_ event represents a change that is made to an entire table and it has no message key.
+As a result, for topics with multiple partitions, there is no ordering guarantee for the change events (_create_, _update_, and so forth), or _truncate_ events that pertain to a table.
+For example, if a consumer reads events for a table from multiple partitions, it might receive an _update_ event for a table from one partition after it receives a _truncate_ event that deletes all of the data in the table from another partition.
+Ordering is guaranteed only for topics that use a single partition.
 ====
+
+If you do not want the connector to capture _truncate_ events, use the xref:{context}-property-skipped-operations[`skipped.operations`] option to filter them out.
+
 end::truncate-events[]
 
 
