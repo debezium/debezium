@@ -1218,11 +1218,12 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 In case a single `TRUNCATE` statement applies to multiple tables,
 one _truncate_ change event record for each truncated table will be emitted.
 
-Note that since _truncate_ events represent a change made to an entire table and don't have a message key,
-unless you're working with topics with a single partition,
-there are no ordering guarantees for the change events pertaining to a table (_create_, _update_, etc.) and _truncate_ events for that table.
-For instance a consumer may receive an _update_ event only after a _truncate_ event for that table,
-when those events are read from different partitions.
+[NOTE]
+====
+A _truncate_ event represents a change that is made to an entire table and it has no message key.
+As a result, for topics with multiple partitions, there are no ordering guarantees for the change events (_create_, _update_, and so forth), or _truncate_ events that pertain to a table.
+For example, when a consumer reads events for a table from multiple partitions, it might receive an _update_ event for a table only after it receives a _truncate_ event that deletes all of the data in the table.
+====
 
 // Type: continue
 [[postgresql-message-events]]
@@ -3033,7 +3034,8 @@ If you include this property in the configuration, do not set the `column.includ
 |`false`
 | Specifies whether to skip publishing messages when there is no change in included columns. This would essentially filter messages if there is no change in columns included as per `column.include.list` or `column.exclude.list` properties.
 
-Note: Only works when REPLICA IDENTITY of the table is set to FULL
+[NOTE]
+This property is applied only when the REPLICA IDENTITY of the table is set to `FULL`.
 
 
 |[[postgresql-property-time-precision-mode]]<<postgresql-property-time-precision-mode, `+time.precision.mode+`>>
