@@ -3223,14 +3223,18 @@ The following example sets the message key for the tables `inventory.customers` 
  +
 `inventory.customers:pk1,pk2;(.*).purchaseorders:pk3,pk4` +
  +
-For the table `inventory.customer`, the columns `pk1` and `pk2` are specified as the message key.
-For the `purchaseorders` tables in any schema, the columns `pk3` and `pk4` server as the message key.
+In the example, the columns `pk1` and `pk2` are specified as the message key for the table `inventory.customer`.
+For the `purchaseorders` tables in any schema, the columns `pk3` and `pk4` serve as the message key.
 
 There is no limit to the number of columns that you use to create custom message keys.
 However, it's best to use the minimum number that are required to specify a unique key.
 
-Note that having this property set and `REPLICA IDENTITY` set to `DEFAULT` on the tables, will cause the tombstone events to not be created properly if the key columns are not part of the primary key of the table. +
-Setting `REPLICA IDENTITY` to `FULL` is the only solution.
+[NOTE]
+====
+If the expressions that you specify for this property match columns that are not part of the table's primary key,
+set the `REPLICA IDENTITY` of the table to `FULL`.
+If you set `REPLICA IDENTITY` to another value, such as `DEFAULT`, after a delete event, the connector fails to create tombstone events properly.
+====
 
 |[[postgresql-publication-autocreate-mode]]<<postgresql-publication-autocreate-mode, `+publication.autocreate.mode+`>>
 |_all_tables_
