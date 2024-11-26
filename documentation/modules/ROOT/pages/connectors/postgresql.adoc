@@ -1211,19 +1211,22 @@ a|Mandatory string that describes the type of operation. The `op` field value is
 a|Optional field that displays the time at which the connector processed the event.
 The time is based on the system clock in the JVM running the Kafka Connect task.  +
  +
-In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+In the `source` object, `ts_ms` indicates the time that the change was made in the database.
+By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
 
 |===
 
-In case a single `TRUNCATE` statement applies to multiple tables,
-one _truncate_ change event record for each truncated table will be emitted.
+If a single `TRUNCATE` operation affects multiple tables, the connector emits one _truncate_ change event record for each truncated table.
 
 [NOTE]
 ====
 A _truncate_ event represents a change that is made to an entire table and it has no message key.
-As a result, for topics with multiple partitions, there are no ordering guarantees for the change events (_create_, _update_, and so forth), or _truncate_ events that pertain to a table.
-For example, when a consumer reads events for a table from multiple partitions, it might receive an _update_ event for a table only after it receives a _truncate_ event that deletes all of the data in the table.
+As a result, for topics with multiple partitions, there is no ordering guarantee for the change events (_create_, _update_, and so forth), or _truncate_ events that pertain to a table.
+For example, if a consumer reads events for a table from multiple partitions, it might receive an _update_ event for a table from one partition after it receives a _truncate_ event that deletes all of the data in the table from another partition.
+Ordering is guaranteed only for topics that use a single partition.
 ====
+
+If you do not want the connector to capture _truncate_ events, use the xref:postgresql-property-skipped-operations[`skipped.operations`] option to filter them out.
 
 // Type: continue
 [[postgresql-message-events]]
@@ -3759,9 +3762,15 @@ To maintain normal service, if you set this property to `false`, you must config
 
 |[[postgresql-property-skipped-operations]]<<postgresql-property-skipped-operations, `+skipped.operations+`>>
 |`t`
-|A comma-separated list of operation types that will be skipped during streaming.
-The operations include: `c` for inserts/create, `u` for updates, `d` for deletes, `t` for truncates, and `none` to not skip any operations.
-By default, truncate operations are skipped.
+|A comma-separated list of the operation types that you want the connector to skip during streaming.
+You can configure the connector to skip the following types of operations:
+
+* `c` (insert/create)
+* `u` (update)
+* `d` (delete)
+* `t` (truncate)
+
+Set the value to `none` if you do not want the connector to skip any operations.
 
 |[[postgresql-property-signal-data-collection]]<<postgresql-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value
