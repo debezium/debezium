@@ -89,7 +89,9 @@ public abstract class AbstractExtractNewDocumentStateTestIT extends AbstractMong
         transformation.close();
     }
 
-    protected void restartConnectorWithoutEmittingTombstones() {
+    protected void restartConnectorWithoutEmittingTombstones() throws InterruptedException {
+        // make sure connector is fully running
+        waitForStreamingRunning();
         // stop connector
         afterEach();
 
