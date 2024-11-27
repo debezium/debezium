@@ -5,7 +5,8 @@
  */
 package io.debezium.transforms.scripting.wasm;
 
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -30,7 +31,7 @@ import io.debezium.transforms.scripting.RecordHeader;
 public class ChicoryEngine {
 
     private final Instance instance;
-    private final Map<Integer, Object> objects = new HashMap();
+    private final List<Object> objects = new ArrayList<>();
 
     private ChicoryEngine(boolean aot, WasmModule module, int memoryMax) {
         var imports = ImportValues.builder()
@@ -105,24 +106,20 @@ public class ChicoryEngine {
     }
 
     public Object eval(Object proxyObject) {
-        registerProxyObject(proxyObject);
-        var result = (int) instance.export("process").apply(proxyObject.hashCode())[0];
-        return objects.get(result);
-    }
-
-    public int registerProxyObject(Object proxyObjext) {
-        if (proxyObjext == null) {
-            objects.put(Integer.MAX_VALUE, null);
-            return Integer.MAX_VALUE;
+        try {
+            var rootObjPtr = registerProxyObject(proxyObject);
+            var resultPtr = (int) instance.export("process").apply(rootObjPtr)[0];
+            return objects.get(resultPtr);
         }
-        else {
-            objects.put(proxyObjext.hashCode(), proxyObjext);
-            return proxyObjext.hashCode();
+        finally {
+            objects.clear();
         }
     }
 
-    public void clearReferences() {
-        objects.clear();
+    private int registerProxyObject(Object proxyObjext) {
+        var index = objects.size();
+        objects.add(proxyObjext);
+        return index;
     }
 
     // TODO: verify all the types that can go forth and back
@@ -163,19 +160,18 @@ public class ChicoryEngine {
         free(fieldNamePtr);
 
         var split = fieldName.split("\\.");
+        if (split.length == 0) {
+            throw new DebeziumException("Guest module performed a Get on an empty path");
+        }
 
         var proxyObject = objects.get(proxyObjectRef);
-        int result = Integer.MIN_VALUE;
         for (int i = 0; i < split.length; i++) {
             proxyObject = resolveField(proxyObject, split[i]);
-            result = registerProxyObject(proxyObject);
+            if (i == split.length - 1) {
+                return registerProxyObject(proxyObject);
+            }
         }
-        if (result != Integer.MIN_VALUE) {
-            return result;
-        }
-        else {
-            throw new DebeziumException("Guest module performed a Get on an unknown path");
-        }
+        throw new DebeziumException("Failed to resolve guest module Get on path: " + fieldName);
     }
 
     @WasmExport
@@ -220,30 +216,26 @@ public class ChicoryEngine {
     @WasmExport
     public int setBool(int boolRef) {
         var result = (instance.memory().read(boolRef) == 1) ? Boolean.TRUE : Boolean.FALSE;
-        registerProxyObject(result);
         free(boolRef);
-        return result.hashCode();
+        return registerProxyObject(result);
     }
 
     @WasmExport
     public int setInt(int intRef) {
         var result = Integer.valueOf(instance.memory().readInt(intRef));
-        registerProxyObject(result);
         free(intRef);
-        return result.hashCode();
+        return registerProxyObject(result);
     }
 
     @WasmExport
     public int setString(int stringRef) {
         var result = instance.memory().readCString(stringRef);
-        registerProxyObject(result);
         free(stringRef);
-        return result.hashCode();
+        return registerProxyObject(result);
     }
 
     @WasmExport
     public int setNull() {
-        objects.put(Integer.MAX_VALUE, null);
-        return Integer.MAX_VALUE;
+        return registerProxyObject(null);
     }
 }

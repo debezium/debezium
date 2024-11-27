@@ -94,7 +94,6 @@ public class WasmEngine implements Engine {
     @Override
     public <T> T eval(ConnectRecord<?> record, Class<T> type) {
         Map<String, Object> bindings = getBindings(record);
-        engine.registerProxyObject(bindings);
 
         try {
             final Object result = engine.eval(bindings);
@@ -107,9 +106,6 @@ public class WasmEngine implements Engine {
         }
         catch (Exception e) {
             throw new DebeziumException("Error while evaluating wasm file '" + expression + "' for record '" + record + "'", e);
-        }
-        finally {
-            engine.clearReferences();
         }
     }
 }
