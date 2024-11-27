@@ -3142,12 +3142,15 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
         List<SourceRecord> s1recs = actualRecords.recordsForTopic("server1.testDB1.dbo.tablea");
         List<SourceRecord> s2recs = actualRecords.recordsForTopic("server1.testDB1.dbo.tableb");
 
+        assertThat(s1recs.size()).isEqualTo(1);
         if (s2recs != null) { // Sometimes the record is processed by the stream so filtering it out
             s2recs = s2recs.stream().filter(r -> "r".equals(((Struct) r.value()).get("op")))
                     .collect(Collectors.toList());
+            assertThat(s2recs).isEmpty();
         }
-        assertThat(s1recs.size()).isEqualTo(1);
-        assertThat(s2recs).isEmpty();
+        else {
+            assertThat(s2recs).isNull();
+        }
 
         SourceRecord record = s1recs.get(0);
         VerifyRecord.isValidRead(record, pkField, 1);
