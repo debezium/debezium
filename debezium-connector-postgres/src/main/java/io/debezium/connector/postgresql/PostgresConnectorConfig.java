@@ -654,6 +654,16 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "Whether or not to drop the logical replication slot when the connector finishes orderly. " +
                             "By default the replication is kept so that on restart progress can resume from the last recorded location");
 
+    public static final Field CREATE_FAIL_OVER_SLOT = Field.create("slot.failover")
+            .withDisplayName("Create failover slot")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 11))
+            .withDefault(false)
+            .withImportance(Importance.MEDIUM)
+            .withDescription(
+                    "Whether or not to create a failover slot. This is only supported when connecting to a primary server of a Postgres cluster, version 17 or newer. " +
+                            "When not specified, or when not connecting to a Postgres 17+ primary, no failover slot will be created.");
+
     public static final Field SLOT_SEEK_TO_KNOWN_OFFSET = Field.createInternal("slot.seek.to.known.offset.on.start")
             .withDisplayName("Seek to last known offset on the replication slot")
             .withType(Type.BOOLEAN)
@@ -1128,11 +1138,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     }
 
     protected boolean dropSlotOnStop() {
-        if (getConfig().hasKey(DROP_SLOT_ON_STOP.name())) {
-            return getConfig().getBoolean(DROP_SLOT_ON_STOP);
-        }
-        // Return default value
         return getConfig().getBoolean(DROP_SLOT_ON_STOP);
+    }
+
+    protected boolean createFailOverSlot() {
+        return getConfig().getBoolean(CREATE_FAIL_OVER_SLOT);
     }
 
     public boolean slotSeekToKnownOffsetOnStart() {
@@ -1258,6 +1268,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     PUBLICATION_AUTOCREATE_MODE,
                     REPLICA_IDENTITY_AUTOSET_VALUES,
                     DROP_SLOT_ON_STOP,
+                    CREATE_FAIL_OVER_SLOT,
                     STREAM_PARAMS,
                     ON_CONNECT_STATEMENTS,
                     SSL_MODE,

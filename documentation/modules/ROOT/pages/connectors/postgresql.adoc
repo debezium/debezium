@@ -86,9 +86,7 @@ The connector is tolerant of failures. As the connector reads changes and produc
 The connector relies on and reflects the PostgreSQL logical decoding feature, which has the following limitations:
 
 * Logical decoding does not support DDL changes. This means that the connector is unable to report DDL change events back to consumers.
-* Logical decoding replication slots are supported on only `primary` servers. When there is a cluster of PostgreSQL servers, the connector can run on only the active `primary` server. It cannot run on `hot` or `warm` standby replicas. If the `primary` server fails or is demoted, the connector stops. After the `primary` server has recovered, you can restart the connector. If a different PostgreSQL server has been promoted to `primary`, adjust the connector configuration before restarting the connector.
 * Because logical decoding replication slots publish changes during commit -- and not post commit -- undesirable side-effects can occur. There are two main scenarios when clients can observe inconsistent states. First, publishing uncommitted changes when the master dies before replication completes. Second, publishing changes that cannot be read (i.e., read-after-write consistency) temporarily because they are being replicated. For example, an EmbeddedEngine consumer receives a notification of a row that was created but it cannot be read by a transaction.
-
 
 Additionally, the `pgoutput` logical decoding output plug-in does not capture values for generated columns, resulting in missing data for these columns in the connector's output.
 
@@ -2187,6 +2185,13 @@ For more information about configuring streaming replication, see the link:https
 Replication slots are guaranteed to retain all WAL segments required for {prodname} even during {prodname} outages. For this reason, it is important to closely monitor replication slots to avoid too much disk consumption and other conditions that can happen such as catalog bloat if a replication slot stays unused for too long.
 For more information, see the link:https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS[PostgreSQL streaming replication documentation].
 
+When connecting to a Postgres primary (i.e. not a read replica) and the version of Postgres is 17 or later,
+{prodname} will create a replication slot enabled for https://www.postgresql.org/docs/current/logical-replication-failover.html[failover].
+This means {prodname} can continue to read changes from a replica promoted to primary in case of a failure,
+without missing any events.
+This requires the state of the slot to be synchronized from primary to replica server;
+refer to the Postgres documentation for the details.
+
 If you are working with a `synchronous_commit` setting other than `on`,
 the recommendation is to set `wal_writer_delay` to a value such as 10 milliseconds to achieve a low latency of change events.
 Otherwise, its default value is applied, which adds a latency of about 200 milliseconds.
@@ -2334,7 +2339,18 @@ ifdef::community[]
 
 The PostgreSQL connector can be used with a standalone PostgreSQL server or with a cluster of PostgreSQL servers.
 
-As mentioned xref:postgresql-limitations[in the beginning], PostgreSQL (for all versions <= 12) supports logical replication slots on only `primary` servers. This means that a replica in a PostgreSQL cluster cannot be configured for logical replication, and consequently that the {prodname} PostgreSQL connector can connect and communicate with only the primary server. Should this server fail, the connector stops. When the cluster is repaired, if the original primary server is once again promoted to `primary`, you can restart the connector. However, if a different PostgreSQL server _with the plug-in and proper configuration_ is promoted to `primary`, you must change the connector configuration to point to the new `primary` server and then you can restart the connector.
+PostgreSQL (for all versions <= 16) supports logical replication slots on only `primary` servers. This means that a replica in a PostgreSQL cluster cannot be configured for logical replication, and consequently that the {prodname} PostgreSQL connector can connect and communicate with only the primary server. Should this server fail, the connector stops. When the cluster is repaired, if the original primary server is once again promoted to `primary`, you can restart the connector. However, if a different PostgreSQL server _with the plug-in and proper configuration_ is promoted to `primary`, you must change the connector configuration to point to the new `primary` server and then you can restart the connector.
+
+When using PostgreSQL 16 or newer, you can set up logical replication slots also on replica servers,
+and {prodname} does not need to connect to your primary server for ingesting change events.
+In comparison to connecting to the primary,
+connecting to a replica will yield slightly increased latencies, though.
+
+When using PostgreSQL 17 or newer, you can set up logical replication slots on primary serves which are enabled for failover.
+The state of such a failover slot can automatically be propagated to one or more replica servers,
+allowing {prodname} to continue to ingest changes from a replica promoted to primary after a failure,
+without missing any events.
+
 endif::community[]
 
 // Type: concept
@@ -2905,6 +2921,12 @@ Slot names must conform to link:https://www.postgresql.org/docs/current/static/w
 |Whether or not to delete the logical replication slot when the connector stops in a graceful, expected way. The default behavior is that the replication slot remains configured for the connector when the connector stops. When the connector restarts, having the same replication slot enables the connector to start processing where it left off.
 
 Set to `true` in only testing or development environments. Dropping the slot allows the database to discard WAL segments. When the connector restarts it performs a new snapshot or it can continue from a persistent offset in the Kafka Connect offsets topic.
+
+|[[postgresql-property-slot-failover]]<<postgresql-property-slot-failover, `+slot.failover+`>>
+|`false`
+|Whether or not to create a failover slot. When not specified, or when not connecting to a Postgres 17+ primary, no failover slot will be created.
+
+When using failover slots, make sure to add the physical replication slot(s) used for updating read replicas in the cluster to the `synchronized_standby_slots` configuration setting of the Postgres primary.
 
 |[[postgresql-property-publication-name]]<<postgresql-property-publication-name, `+publication.name+`>>
 |`dbz_publication`
@@ -4006,9 +4028,16 @@ For information about failure cases in which a slot has been removed, see the ne
 [id="postgresql-cluster-failures"]
 === Cluster failures
 
-As of release 12, PostgreSQL allows logical replication slots _only on primary servers_. This means that you can point a {prodname} PostgreSQL connector to only the active primary server of a database cluster.
+Prior to version 16, PostgreSQL allows logical replication slots _only on primary servers_. This means that you can point a {prodname} PostgreSQL connector to only the active primary server of a database cluster.
 Also, replication slots themselves are not propagated to replicas.
 If the primary server goes down, a new primary must be promoted.
+
+When using version 16 or newer, you can create logical replication slots also on replicas, but you need to take care of keeping them in sync with the corresponding slot on the primary server yourself.
+
+When using version 17 or newer, replication slots on a primary can be enabled for automatic failover.
+In this case Postgres itself can take care of synchronizing a slot from primary to replica automatically,
+allowing {prodname} to continue reading from that slot after promoting a replica to new primary,
+without missing any change events.
 
 [NOTE]
 ====
@@ -4023,23 +4052,14 @@ ifdef::product[]
 The new primary must have a replication slot that is configured for use by the `pgoutput` plug-in and the database in which you want to capture changes. Only then can you point the connector to the new server and restart the connector.
 endif::product[]
 
-There are important caveats when failovers occur and you should pause {prodname} until you can verify that you have an intact replication slot that has not lost data. After a failover:
+When not using failover replication slots, as supported by Postgres 17 and newer,
+there are important caveats when failovers occur and you should pause {prodname} until you can verify that you have an intact replication slot that has not lost data. After a failover:
 
 * There must be a process that re-creates the {prodname} replication slot before allowing the application to write to the *new* primary. This is crucial. Without this process, your application can miss change events.
 
 * You might need to verify that {prodname} was able to read all changes in the slot **before the old primary failed**.
 
 One reliable method of recovering and verifying whether any changes were lost is to recover a backup of the failed primary to the point immediately before it failed. While this can be administratively difficult, it allows you to inspect the replication slot for any unconsumed changes.
-
-ifdef::community[]
-
-[NOTE]
-====
-There are discussions in the PostgreSQL community around a feature called `failover slots` that would help mitigate this problem, but as of PostgreSQL 12, they have not been implemented.  However, there is active development for PostgreSQL 13 to support logical decoding on standbys, which is a major requirement to make failover possible. You can find more about this in this link:https://www.postgresql.org/message-id/CAJ3gD9fE%3D0w50sRagcs%2BjrktBXuJAWGZQdSTMa57CCY%2BDh-xbg%40mail.gmail.com[community thread].
-
-More about the concept of failover slots is in link:http://blog.2ndquadrant.com/failover-slots-postgresql[this blog post].
-====
-endif::community[]
 
 [id="postgresql-kafka-connect-process-stops-gracefully"]
 === Kafka Connect process stops gracefully
