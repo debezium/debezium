@@ -69,6 +69,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private final PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode;
     private final PostgresConnectorConfig.LogicalDecoder plugin;
     private final boolean dropSlotOnClose;
+    private final boolean createFailOverSlot;
     private final PostgresConnectorConfig connectorConfig;
     private final Duration statusUpdateInterval;
     private final MessageDecoder messageDecoder;
@@ -80,7 +81,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private SlotCreationResult slotCreationInfo;
     private boolean hasInitedSlot;
 
-    private Optional<ReplicaIdentityMapper> replicaIdentityMapper;
+    private final Optional<ReplicaIdentityMapper> replicaIdentityMapper;
 
     /**
      * Creates a new replication connection with the given params.
@@ -92,6 +93,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @param publicationAutocreateMode the mode for publication autocreation; may not be null
      * @param plugin                    decoder matching the server side plug-in used for streaming changes; may not be null
      * @param dropSlotOnClose           whether the replication slot should be dropped once the connection is closed
+     * @param createFailOverSlot        whether to create a failover slot (on a PG 17+ primary node)
      * @param statusUpdateInterval      the interval at which the replication connection should periodically send status
      * @param jdbcConnection            general PostgreSQL JDBC connection
      * @param typeRegistry              registry with PostgreSQL types
@@ -105,6 +107,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                           PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode,
                                           PostgresConnectorConfig.LogicalDecoder plugin,
                                           boolean dropSlotOnClose,
+                                          boolean createFailOverSlot,
                                           Duration statusUpdateInterval,
                                           PostgresConnection jdbcConnection,
                                           TypeRegistry typeRegistry,
@@ -119,6 +122,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         this.publicationAutocreateMode = publicationAutocreateMode;
         this.plugin = plugin;
         this.dropSlotOnClose = dropSlotOnClose;
+        this.createFailOverSlot = createFailOverSlot;
         this.statusUpdateInterval = statusUpdateInterval;
         this.messageDecoder = plugin.messageDecoder(new MessageDecoderContext(config, schema), jdbcConnection);
         this.jdbcConnection = jdbcConnection;
@@ -369,6 +373,33 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     /**
+     * Creating failover slots when a) enabled, b) on PG >= 17, and c) connecting to a primary.
+     */
+    private boolean useFailOverSlot() throws SQLException {
+        if (!createFailOverSlot) {
+            return false;
+        }
+
+        if (!pgConnection().haveMinimumServerVersion(ServerVersion.from("17"))) {
+            LOGGER.debug("Can't create a failover slot on Postgres before version 17. Continuing to create a non-failover slot");
+            return false;
+        }
+
+        AtomicBoolean isPrimary = new AtomicBoolean();
+        query("select pg_is_in_recovery()", rs -> {
+            if (rs.next()) {
+                isPrimary.set(!rs.getBoolean(1));
+            }
+        });
+
+        if (!isPrimary.get()) {
+            LOGGER.debug("Can't create a failover on a replica server. Continuing to create a non-failover slot");
+        }
+
+        return isPrimary.get();
+    }
+
+    /**
      * creating a replication connection and starting to stream involves a few steps:
      * 1. we create the connection and ensure that
      * a. the slot exists
@@ -522,6 +553,14 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             tempPart = "TEMPORARY";
         }
 
+        String failOverPart = "";
+        if (useFailOverSlot()) {
+            // Braces need to around the entire set of options, should we have to add
+            // others later on; see here for the syntax:
+            // https://www.postgresql.org/docs/current/protocol-replication.html#PROTOCOL-REPLICATION-CREATE-REPLICATION-SLOT
+            failOverPart = "( FAILOVER )";
+        }
+
         // See https://www.postgresql.org/docs/current/logical-replication-quick-setup.html
         // For pgoutput specifically, the publication must be created prior to the slot.
         initPublication();
@@ -529,10 +568,11 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         try (Statement stmt = pgConnection().createStatement()) {
             stmt.setQueryTimeout(toIntExact(connectorConfig.createSlotCommandTimeout()));
             String createCommand = String.format(
-                    "CREATE_REPLICATION_SLOT \"%s\" %s LOGICAL %s",
+                    "CREATE_REPLICATION_SLOT \"%s\" %s LOGICAL %s %s",
                     slotName,
                     tempPart,
-                    plugin.getPostgresPluginName());
+                    plugin.getPostgresPluginName(),
+                    failOverPart);
             LOGGER.info("Creating replication slot with command {}", createCommand);
 
             final int maxRetries = connectorConfig.maxRetries();
@@ -842,6 +882,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         private PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode = PostgresConnectorConfig.AutoCreateMode.ALL_TABLES;
         private PostgresConnectorConfig.LogicalDecoder plugin = PostgresConnectorConfig.LogicalDecoder.DECODERBUFS;
         private boolean dropSlotOnClose = DEFAULT_DROP_SLOT_ON_CLOSE;
+        private boolean createFailOverSlot = DEFAULT_CREATE_FAIL_OVER_SLOT;
         private Duration statusUpdateIntervalVal;
         private TypeRegistry typeRegistry;
         private PostgresSchema schema;
@@ -895,6 +936,12 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
 
         @Override
+        public ReplicationConnectionBuilder createFailOverSlot(final boolean createFailOverSlot) {
+            this.createFailOverSlot = createFailOverSlot;
+            return this;
+        }
+
+        @Override
         public ReplicationConnectionBuilder streamParams(final String slotStreamParams) {
             if (slotStreamParams != null && !slotStreamParams.isEmpty()) {
                 this.slotStreamParams = new Properties();
@@ -928,7 +975,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         public ReplicationConnection build() {
             assert plugin != null : "Decoding plugin name is not set";
             return new PostgresReplicationConnection(config, slotName, publicationName, tableFilter,
-                    publicationAutocreateMode, plugin, dropSlotOnClose, statusUpdateIntervalVal,
+                    publicationAutocreateMode, plugin, dropSlotOnClose, createFailOverSlot, statusUpdateIntervalVal,
                     jdbcConnection, typeRegistry, slotStreamParams, schema);
         }
 

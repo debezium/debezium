@@ -112,6 +112,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
                 .withPublicationAutocreateMode(config().publicationAutocreateMode())
                 .withPlugin(config().plugin())
                 .dropSlotOnClose(dropSlotOnStop)
+                .createFailOverSlot(config().createFailOverSlot())
                 .streamParams(config().streamParams())
                 .statusUpdateInterval(config().statusUpdateInterval())
                 .withTypeRegistry(jdbcConnection.getTypeRegistry())

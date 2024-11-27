@@ -2326,6 +2326,58 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 17, reason = "Failover slots only supported on PG 17+")
+    @FixFor("DBZ-8412")
+    public void shouldNotCreateFailOverSlotByDefault() {
+        start(PostgresConnector.class, TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SLOT_NAME, "non_failover_slot")
+                .with(PostgresConnectorConfig.PLUGIN_NAME, "pgoutput")
+                .build());
+
+        assertConnectorIsRunning();
+
+        try (PostgresConnection conn = TestHelper.create()) {
+            assertThat(existsAndHasExpectedFailOverState("non_failover_slot", false, conn)).isTrue();
+        }
+
+        stopConnector();
+    }
+
+    @Test
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 17, reason = "Failover slots only supported on PG 17+")
+    @FixFor("DBZ-8412")
+    public void shouldCreateFailOverSlot() {
+        start(PostgresConnector.class, TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.CREATE_FAIL_OVER_SLOT, true)
+                .with(PostgresConnectorConfig.SLOT_NAME, "failover_slot")
+                .with(PostgresConnectorConfig.PLUGIN_NAME, "pgoutput")
+                .build());
+
+        assertConnectorIsRunning();
+
+        try (PostgresConnection conn = TestHelper.create()) {
+            assertThat(existsAndHasExpectedFailOverState("failover_slot", true, conn)).isTrue();
+        }
+
+        stopConnector();
+    }
+
+    private boolean existsAndHasExpectedFailOverState(String slotName, boolean isFailOverSlot, PostgresConnection connection) {
+        try {
+            return connection.queryAndMap("select failover from pg_replication_slots where slot_name = '" + slotName + "'", rs -> {
+                if (!rs.next()) {
+                    return false;
+                }
+
+                return rs.getBoolean(1) == isFailOverSlot;
+            });
+        }
+        catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
     @FixFor("DBZ-1015")
     public void shouldRewriteIdentityKey() throws InterruptedException {
         TestHelper.execute(SETUP_TABLES_STMT);
