@@ -235,7 +235,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
             });
         }
         catch (Exception e) {
-            handleEventProcessingFailure(e, changeRecordEmitter);
+            handleEventProcessingFailure(e, changeRecordEmitter.getOffset());
         }
     }
 
@@ -327,24 +327,22 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
             return handled;
         }
         catch (Exception e) {
-            handleEventProcessingFailure(e, changeRecordEmitter);
+            handleEventProcessingFailure(e, changeRecordEmitter.getOffset());
             return false;
         }
     }
 
-    private void handleEventProcessingFailure(Exception e, ChangeRecordEmitter<P> changeRecordEmitter) {
-        switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
-            case FAIL:
-                throw new ConnectException("Error while processing event at offset " + changeRecordEmitter.getOffset().getOffset(), e);
-            case WARN:
-                LOGGER.warn(
-                        "Error while processing event at offset {}",
-                        changeRecordEmitter.getOffset().getOffset(), e);
-                break;
-            case SKIP:
-                LOGGER.debug(
-                        "Error while processing event at offset {}",
-                        changeRecordEmitter.getOffset().getOffset(), e);
+    private void handleEventProcessingFailure(Exception e, OffsetContext offsetContext) {
+            switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
+                case FAIL:
+                    throw new ConnectException("Error while processing event at offset " + offsetContext.getOffset(), e);
+                case WARN:
+                    LOGGER.warn(
+                            "Error while processing event at offset {}", offsetContext.getOffset(), e);
+                    break;
+                case SKIP:
+                    LOGGER.debug(
+                            "Error while processing event at offset {}", offsetContext.getOffset(), e);
                 break;
             default:
                 LOGGER.debug(
