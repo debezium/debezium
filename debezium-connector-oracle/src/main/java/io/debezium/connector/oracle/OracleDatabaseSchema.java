@@ -44,6 +44,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
     public static final String ATTRIBUTE_OBJECT_ID = "OBJECT_ID";
     public static final String ATTRIBUTE_DATA_OBJECT_ID = "DATA_OBJECT_ID";
+    private static final TableId NO_SUCH_TABLE = new TableId(null, null, "__NULL");
 
     private final OracleDdlParser ddlParser;
     private final ConcurrentMap<TableId, List<Column>> lobColumnsByTableId = new ConcurrentHashMap<>();
@@ -149,7 +150,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         // Internally we cache this using a bounded cache for performance reasons, particularly when a
         // transaction may refer to the same table for consecutive DML events. This avoids the need to
         // iterate the list of tables on each DML event observed.
-        return objectIdToTableId.computeIfAbsent(objectId, (tableObjectId) -> {
+        TableId cachedTableId = objectIdToTableId.computeIfAbsent(objectId, (tableObjectId) -> {
             for (TableId tableId : tableIds()) {
                 final Table table = tableFor(tableId);
                 final Attribute attribute = table.attributeWithName(ATTRIBUTE_OBJECT_ID);
@@ -165,16 +166,26 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                     return table.id();
                 }
             }
-
-            // The computeIfAbsent function doesn't mutate the map if the computed value is null,
-            // which this branch of the code does. The null value must be inserted to avoid the
-            // expensive look-up across the table schemas in future calls, so explicitly insert
-            // null here.
-            objectIdToTableId.put(tableObjectId, null);
-
             LOGGER.debug("Table lookup for object id {} did not find a match.", tableObjectId);
             return null;
         });
+
+        if (cachedTableId == null) {
+            // The computeIfAbsent function doesn't mutate the map if the computed value is null, and
+            // it's also executed when the stored value is null.
+            // A non-null placeholder must be inserted for non-existing value to avoid the expensive
+            // look-up across the table schemas in future calls, so inserting explicitly non-existing
+            // placeholder here.
+            objectIdToTableId.put(objectId, NO_SUCH_TABLE);
+        }
+
+        if (NO_SUCH_TABLE.equals(cachedTableId)) {
+            // There is not any table for this object ID, so we have to convert back the placeholder
+            // and return null.
+            cachedTableId = null;
+        }
+
+        return cachedTableId;
     }
 
     /**
