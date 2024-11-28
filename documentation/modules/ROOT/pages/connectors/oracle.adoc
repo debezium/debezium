@@ -5444,20 +5444,20 @@ This is not recommended.
 *What's the difference between the various mining strategies?*::
 The {prodname} Oracle connector provides three options for `log.mining.strategy`.
 +
-The default is `redo_in_catalog`, and this instructs the connector to write the Oracle data dictionary to the redo logs everytime a log switch is detected.
-This data dictionary is necessary for Oracle LogMiner to track schema changes effectively when parsing the redo and archive logs.
-This option will generate more than usual numbers of archive logs but allows tables being captured to be manipulated in real-time without any impact on capturing data changes.
-This option generally requires more Oracle database memory and will cause the Oracle LogMiner session and process to take slightly longer to start after each log switch.
-+
-The second option, `online_catalog`, does not write the data dictionary to the redo logs.
+The default is `online_catalog`, and this instructs the connector not write the data dictionary to the redo logs.
 Instead, Oracle LogMiner will always use the online data dictionary that contains the current state of the table's structure.
 This also means that if a table's structure changes and no longer matches the online data dictionary, Oracle LogMiner will be unable to resolve table or column names if the table's structure is changed.
 This mining strategy option should not be used if the tables being captured are subject to frequent schema changes.
 It's important that all data changes be lock-stepped with the schema change such that all changes have been captured from the logs for the table, stop the connector, apply the schema change, and restart the connector and resume data changes on the table.
 This option requires less Oracle database memory and Oracle LogMiner sessions generally start substantially faster since the data dictionary does not need to be loaded or primed by the LogMiner process.
 +
+The second option, `redo_log_catalog`, writes the Oracle data dictionary to the redo logs everytime a log switch is detected.
+This data dictionary is necessary for Oracle LogMiner to track schema changes effectively when parsing the redo and archive logs.
+This option will generate more than usual numbers of archive logs but allows tables being captured to be manipulated in real-time without any impact on capturing data changes.
+This option generally requires more Oracle database memory and will cause the Oracle LogMiner session and process to take slightly longer to start after each log switch.
++
 The final option, `hybrid`, combines the strengths of the above two strategies with none of their weaknesses.
-This strategy harnesses the performance of the `online_catalog` with the resilience in schema tracking of the `redo_in_catalog` while also avoiding the overhead and performance costs with the higher than normal archive log generation.
+This strategy harnesses the performance of the `online_catalog` with the resilience in schema tracking of the `redo_log_catalog` while also avoiding the overhead and performance costs with the higher than normal archive log generation.
 This mode utilizes a fallback mode where if LogMiner fails to reconstruct the SQL for a database change, the {prodname} connector will rely on the in-memory schema model maintained by the connector to reconstruct the SQL in-flight.
 The intent is that this mode will eventually transition to the default, and likely only mode of operation in the future.
 
