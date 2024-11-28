@@ -246,6 +246,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                 withMaskedSensitiveOptions(config).forEach((propName, propValue) -> {
                     configLogBuilder.append("\n   ").append(propName).append(" = ").append(propValue);
                 });
+                configLogBuilder.append("\n");
                 LOGGER.info(configLogBuilder.toString());
             }
             try {
