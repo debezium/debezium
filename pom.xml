@@ -178,6 +178,9 @@
 
         <!-- MySQL server image name -->
         <mysql.server.image.source>container-registry.oracle.com/mysql/community-server</mysql.server.image.source>
+
+        <!-- Chicory version for Wasm transformations -->
+        <version.chicory>1.0.0-M2</version.chicory>
     </properties>
 
     <modules>

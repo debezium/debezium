@@ -62,6 +62,21 @@
             <groupId>org.graalvm.js</groupId>
             <artifactId>js-scriptengine</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.dylibso.chicory</groupId>
+            <artifactId>runtime</artifactId>
+            <version>${version.chicory}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.dylibso.chicory</groupId>
+            <artifactId>wasm</artifactId>
+            <version>${version.chicory}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.dylibso.chicory</groupId>
+            <artifactId>aot-experimental</artifactId>
+            <version>${version.chicory}</version>
+        </dependency>
     </dependencies>
     <build>
         <resources>
