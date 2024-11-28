@@ -2,6 +2,34 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+November 28th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12438823)
+
+### New features since 3.0.3.Final
+
+* Update the UI to pass on the backend URL at runtime from ENV Var while running the container image [DBZ-8424](https://issues.redhat.com/browse/DBZ-8424)
+* Add support for mysql_clear_password in mysql-binlog-connector [DBZ-8445](https://issues.redhat.com/browse/DBZ-8445)
+
+
+### Breaking changes since 3.0.3.Final
+
+None
+
+
+### Fixes since 3.0.3.Final
+
+* Debezium db2i CDC source connector does not seem to pickup JOURNAL_ENTRY_TYPES => 'DR' records [DBZ-8453](https://issues.redhat.com/browse/DBZ-8453)
+* Randomly failing tests after migration to async engine [DBZ-8461](https://issues.redhat.com/browse/DBZ-8461)
+* Invalid label used for API service discriminator [DBZ-8464](https://issues.redhat.com/browse/DBZ-8464)
+
+
+### Other changes since 3.0.3.Final
+
+* Migrate rest of the testsuite to async engine [DBZ-7977](https://issues.redhat.com/browse/DBZ-7977)
+* Update QOSDK to version 6.9.1 [DBZ-8452](https://issues.redhat.com/browse/DBZ-8452)
+* Add JDBC storage module in Debezium Server [DBZ-8460](https://issues.redhat.com/browse/DBZ-8460)
+
+
+
 ## 3.0.3.Final
 November 25th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12436708)
 
