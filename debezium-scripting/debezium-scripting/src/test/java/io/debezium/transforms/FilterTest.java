@@ -5,21 +5,18 @@
  */
 package io.debezium.transforms;
 
+import static io.debezium.transforms.TransformsUtils.createDeleteCustomerRecord;
+import static io.debezium.transforms.TransformsUtils.createDeleteRecord;
+import static io.debezium.transforms.TransformsUtils.createNullRecord;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Test;
 
 import io.debezium.DebeziumException;
-import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 
 /**
@@ -27,25 +24,10 @@ import io.debezium.doc.FixFor;
  */
 public class FilterTest {
 
-    private static final String TOPIC_REGEX = "topic.regex";
-    private static final String LANGUAGE = "language";
-    private static final String EXPRESSION = "condition";
-    private static final String NULL_HANDLING = "null.handling.mode";
-
-    final Schema recordSchema = SchemaBuilder.struct()
-            .field("id", SchemaBuilder.int8())
-            .field("name", SchemaBuilder.string())
-            .build();
-
-    final Schema sourceSchema = SchemaBuilder.struct()
-            .field("lsn", SchemaBuilder.int32())
-            .build();
-
-    final Envelope envelope = Envelope.defineSchema()
-            .withName("dummy.Envelope")
-            .withRecord(recordSchema)
-            .withSource(sourceSchema)
-            .build();
+    public static final String TOPIC_REGEX = "topic.regex";
+    public static final String LANGUAGE = "language";
+    public static final String EXPRESSION = "condition";
+    public static final String NULL_HANDLING = "null.handling.mode";
 
     @Test(expected = DebeziumException.class)
     public void testLanguageRequired() {
@@ -177,62 +159,6 @@ public class FilterTest {
             final SourceRecord record = createNullRecord();
             transform.apply(record);
         }
-    }
-
-    private SourceRecord createDeleteRecord(int id) {
-        final Schema deleteSourceSchema = SchemaBuilder.struct()
-                .field("lsn", SchemaBuilder.int32())
-                .field("version", SchemaBuilder.string())
-                .build();
-
-        Envelope deleteEnvelope = Envelope.defineSchema()
-                .withName("dummy.Envelope")
-                .withRecord(recordSchema)
-                .withSource(deleteSourceSchema)
-                .build();
-
-        final Struct before = new Struct(recordSchema);
-        final Struct source = new Struct(deleteSourceSchema);
-
-        before.put("id", (byte) id);
-        before.put("name", "myRecord");
-        source.put("lsn", 1234);
-        source.put("version", "version!");
-        final Struct payload = deleteEnvelope.delete(before, source, Instant.now());
-        final ConnectHeaders headers = new ConnectHeaders();
-        headers.addInt("idh", id);
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy" + id, 0,
-                null, null,
-                envelope.schema(), payload,
-                (long) id,
-                headers);
-    }
-
-    private SourceRecord createDeleteCustomerRecord(int id) {
-        final Schema deleteSourceSchema = SchemaBuilder.struct()
-                .field("lsn", SchemaBuilder.int32())
-                .field("version", SchemaBuilder.string())
-                .build();
-
-        Envelope deleteEnvelope = Envelope.defineSchema()
-                .withName("customer.Envelope")
-                .withRecord(recordSchema)
-                .withSource(deleteSourceSchema)
-                .build();
-
-        final Struct before = new Struct(recordSchema);
-        final Struct source = new Struct(deleteSourceSchema);
-
-        before.put("id", (byte) id);
-        before.put("name", "myRecord");
-        source.put("lsn", 1234);
-        source.put("version", "version!");
-        final Struct payload = deleteEnvelope.delete(before, source, Instant.now());
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "customer", envelope.schema(), payload);
-    }
-
-    private SourceRecord createNullRecord() {
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "dummy", null, null, null, null);
     }
 
     @Test
