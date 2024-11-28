@@ -2,6 +2,7 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.0.4.Final
 November 28th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12438823)
 
 ### New features since 3.0.3.Final
