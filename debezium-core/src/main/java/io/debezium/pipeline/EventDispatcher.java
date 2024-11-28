@@ -206,32 +206,37 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     public void dispatchSnapshotEvent(P partition, T dataCollectionId, ChangeRecordEmitter<P> changeRecordEmitter,
                                       SnapshotReceiver<P> receiver)
             throws InterruptedException {
-        // TODO Handle Heartbeat
 
-        DataCollectionSchema dataCollectionSchema = schema.schemaFor(dataCollectionId);
+        try {
+            // TODO Handle Heartbeat
+            DataCollectionSchema dataCollectionSchema = schema.schemaFor(dataCollectionId);
 
-        // TODO handle as per inconsistent schema info option
-        if (dataCollectionSchema == null) {
-            errorOnMissingSchema(partition, dataCollectionId, changeRecordEmitter);
-        }
-
-        changeRecordEmitter.emitChangeRecords(dataCollectionSchema, new Receiver<P>() {
-
-            @Override
-            public void changeRecord(P partition,
-                                     DataCollectionSchema schema,
-                                     Operation operation,
-                                     Object key, Struct value,
-                                     OffsetContext offset,
-                                     ConnectHeaders headers)
-                    throws InterruptedException {
-
-                LOGGER.trace("Received change record {} for {} operation on key {} with context {}", value, operation, key, offset);
-
-                eventListener.onEvent(partition, dataCollectionSchema.id(), offset, key, value, operation);
-                receiver.changeRecord(partition, dataCollectionSchema, operation, key, value, offset, headers);
+            // TODO handle as per inconsistent schema info option
+            if (dataCollectionSchema == null) {
+                errorOnMissingSchema(partition, dataCollectionId, changeRecordEmitter);
             }
-        });
+
+            changeRecordEmitter.emitChangeRecords(dataCollectionSchema, new Receiver<P>() {
+
+                @Override
+                public void changeRecord(P partition,
+                                         DataCollectionSchema schema,
+                                         Operation operation,
+                                         Object key, Struct value,
+                                         OffsetContext offset,
+                                         ConnectHeaders headers)
+                        throws InterruptedException {
+
+                    LOGGER.trace("Received change record {} for {} operation on key {} with context {}", value, operation, key, offset);
+
+                    eventListener.onEvent(partition, dataCollectionSchema.id(), offset, key, value, operation);
+                    receiver.changeRecord(partition, dataCollectionSchema, operation, key, value, offset, headers);
+                }
+            });
+        }
+        catch (Exception e) {
+            handleEventProcessingFailure(e, changeRecordEmitter);
+        }
     }
 
     public SnapshotReceiver<P> getSnapshotChangeEventReceiver() {
@@ -322,21 +327,30 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
             return handled;
         }
         catch (Exception e) {
-            switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
-                case FAIL:
-                    throw new ConnectException("Error while processing event at offset " + changeRecordEmitter.getOffset().getOffset(), e);
-                case WARN:
-                    LOGGER.warn(
-                            "Error while processing event at offset {}",
-                            changeRecordEmitter.getOffset().getOffset(), e);
-                    break;
-                case SKIP:
-                    LOGGER.debug(
-                            "Error while processing event at offset {}",
-                            changeRecordEmitter.getOffset().getOffset(), e);
-                    break;
-            }
+            handleEventProcessingFailure(e, changeRecordEmitter);
             return false;
+        }
+    }
+
+    private void handleEventProcessingFailure(Exception e, ChangeRecordEmitter<P> changeRecordEmitter) {
+        switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
+            case FAIL:
+                throw new ConnectException("Error while processing event at offset " + changeRecordEmitter.getOffset().getOffset(), e);
+            case WARN:
+                LOGGER.warn(
+                        "Error while processing event at offset {}",
+                        changeRecordEmitter.getOffset().getOffset(), e);
+                break;
+            case SKIP:
+                LOGGER.debug(
+                        "Error while processing event at offset {}",
+                        changeRecordEmitter.getOffset().getOffset(), e);
+                break;
+            default:
+                LOGGER.debug(
+                        "Error while processing event with EventProcessingFailureHandlingMode not supported: {}",
+                        connectorConfig.getEventConvertingFailureHandlingMode(), e);
+                break;
         }
     }
 
