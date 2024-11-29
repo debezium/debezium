@@ -19,9 +19,12 @@ import io.debezium.util.Collect;
  * @author Gunnar Morling
  */
 public class PostgresErrorHandler extends ErrorHandler {
+    protected final PostgresConnectorConfig connectorConfig;
+
 
     public PostgresErrorHandler(PostgresConnectorConfig connectorConfig, ChangeEventQueue<?> queue, ErrorHandler replacedErrorHandler) {
         super(YugabyteDBConnector.class, connectorConfig, queue, replacedErrorHandler);
+        this.connectorConfig = connectorConfig;
     }
 
     @Override
@@ -39,5 +42,9 @@ public class PostgresErrorHandler extends ErrorHandler {
     protected boolean isCustomRetriable(Throwable throwable) {
         // YB Note: Yes, all the errors are custom retriable.
         return true;
+    }
+
+    protected boolean isRetryRemaining() {
+        return (connectorConfig.getMaxRetriesOnError() == -1) || getRetries() <= connectorConfig.getMaxRetriesOnError();
     }
 }

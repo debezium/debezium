@@ -46,6 +46,7 @@ import java.util.stream.IntStream;
 
 import javax.management.InstanceNotFoundException;
 
+import io.debezium.embedded.EmbeddedEngineConfig;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
@@ -1141,6 +1142,29 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
 
             assertThat(error.getMessage().contains("parallel snapshot consumption is only supported with one table at a time")).isTrue();
         });
+    }
+
+
+    @Test
+    public void shouldFailAfterConfiguredRetries() throws Exception {
+        // We will intentionally not let the connector start and see if it retries.
+        PostgresConnectorTask.TEST_THROW_ERROR_BEFORE_COORDINATOR_STARTUP = true;
+
+        // We have to set the errors max retries for the embedded engine as well otherwise it would
+        // keep retrying indefinitely. Specifying a 0 means it will never retry on any error.
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+            .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "public.test")
+            .with(EmbeddedEngineConfig.ERRORS_MAX_RETRIES, 0)
+            .with(PostgresConnectorConfig.ERRORS_MAX_RETRIES, 0)
+            .with(PostgresConnectorConfig.RETRIABLE_RESTART_WAIT, 12000);
+
+        start(YugabyteDBConnector.class, configBuilder.build());
+
+        TestHelper.waitFor(Duration.ofSeconds(80));
+
+        assertConnectorNotRunning();
+
+        PostgresConnectorTask.TEST_THROW_ERROR_BEFORE_COORDINATOR_STARTUP = false;
     }
 
     @Test

@@ -67,8 +67,10 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
     private volatile PostgresConnection beanRegistryJdbcConnection;
     private volatile ReplicationConnection replicationConnection = null;
 
-    private volatile ErrorHandler errorHandler;
+    private volatile PostgresErrorHandler errorHandler;
     private volatile PostgresSchema schema;
+
+    public static boolean TEST_THROW_ERROR_BEFORE_COORDINATOR_STARTUP = false;
 
     @Override
     public ChangeEventSourceCoordinator<PostgresPartition, PostgresOffsetContext> start(Configuration config) {
@@ -257,6 +259,10 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                         signalProcessor,
                         notificationService);
 
+                if (TEST_THROW_ERROR_BEFORE_COORDINATOR_STARTUP) {
+                    throw new RuntimeException("[Test Only] Throwing error before starting coordinator");
+                }
+
                 coordinator.start(taskContext, this.queue, metadataProvider);
 
                 return coordinator;
@@ -268,7 +274,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
             LOGGER.warn("Received exception, will be setting producer throwable", exception);
             errorHandler.setProducerThrowable(new RetriableException(exception));
 
-            if (errorHandler.getRetries() == connectorConfig.getMaxRetriesOnError()) {
+            if (!errorHandler.isRetryRemaining()) {
                 throw new ConnectException("Maximum number of retries attempted, manually restart "
                     + "the connector after fixing the error", exception);
             } else {
