@@ -542,6 +542,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 10_240;
     protected static final int DEFAULT_MAX_RETRIES = 6;
     public static final Pattern YB_HOSTNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9-_.,:]+$");
+    public static final int YB_DEFAULT_ERRORS_MAX_RETRIES = 60;
+    public static final long YB_DEFAULT_RETRIABLE_RESTART_WAIT = 30000L;
 
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
@@ -627,6 +629,28 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withImportance(Importance.LOW)
             .withDescription("Whether or not to take a consistent snapshot of the tables." +
                            "Disabling this option may result in duplication of some already snapshot data in the streaming phase.");
+
+    public static final Field MAX_RETRIES_ON_ERROR = Field.create(ERRORS_MAX_RETRIES)
+            .withDisplayName("The maximum number of retries")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 24))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDefault(YB_DEFAULT_ERRORS_MAX_RETRIES)
+            .withValidation(Field::isInteger)
+            .withDescription(
+                    "The maximum number of retries on connection errors before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).");
+
+    public static final Field RETRIABLE_RESTART_WAIT = Field.create("retriable.restart.connector.wait.ms")
+            .withDisplayName("Retriable restart wait (ms)")
+            .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 18))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDefault(YB_DEFAULT_RETRIABLE_RESTART_WAIT)
+            .withDescription(
+                    "Time to wait before restarting connector after retriable exception occurs. Defaults to " + YB_DEFAULT_RETRIABLE_RESTART_WAIT + "ms.")
+            .withValidation(Field::isPositiveLong);
 
     public enum AutoCreateMode implements EnumeratedValue {
         /**

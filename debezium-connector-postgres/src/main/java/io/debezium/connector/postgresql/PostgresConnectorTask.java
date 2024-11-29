@@ -72,8 +72,18 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
     @Override
     public ChangeEventSourceCoordinator<PostgresPartition, PostgresOffsetContext> start(Configuration config) {
+        final PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config);
+        queue = new ChangeEventQueue.Builder<DataChangeEvent>()
+                .pollInterval(connectorConfig.getPollInterval())
+                .maxBatchSize(connectorConfig.getMaxBatchSize())
+                .maxQueueSize(connectorConfig.getMaxQueueSize())
+                .maxQueueSizeInBytes(connectorConfig.getMaxQueueSizeInBytes())
+                .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
+                .build();
+
+        errorHandler = new PostgresErrorHandler(connectorConfig, queue, errorHandler);
+
         try {
-            final PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config);
             final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
             final Snapshotter snapshotter = connectorConfig.getSnapshotter();
             final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
@@ -182,16 +192,6 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     throw new DebeziumException(e);
                 }
 
-                queue = new ChangeEventQueue.Builder<DataChangeEvent>()
-                        .pollInterval(connectorConfig.getPollInterval())
-                        .maxBatchSize(connectorConfig.getMaxBatchSize())
-                        .maxQueueSize(connectorConfig.getMaxQueueSize())
-                        .maxQueueSizeInBytes(connectorConfig.getMaxQueueSizeInBytes())
-                        .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
-                        .build();
-
-                errorHandler = new PostgresErrorHandler(connectorConfig, queue, errorHandler);
-
                 final PostgresEventMetadataProvider metadataProvider = new PostgresEventMetadataProvider();
 
                 SignalProcessor<PostgresPartition, PostgresOffsetContext> signalProcessor = new SignalProcessor<>(
@@ -265,11 +265,16 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
             }
         }
         catch (Exception exception) {
-            // YB Note: Catch all the exceptions and retry.
-            LOGGER.warn("Received exception, will be retrying", exception);
-            throw new RetriableException(exception);
-        }
+            LOGGER.warn("Received exception, will be setting producer throwable", exception);
+            errorHandler.setProducerThrowable(new RetriableException(exception));
 
+            if (errorHandler.getRetries() == connectorConfig.getMaxRetriesOnError()) {
+                throw new ConnectException("Maximum number of retries attempted, manually restart "
+                    + "the connector after fixing the error", exception);
+            } else {
+                throw new RetriableException(exception);
+            }
+        }
     }
 
     public ReplicationConnection createReplicationConnection(PostgresTaskContext taskContext, int maxRetries, Duration retryDelay)
