@@ -158,11 +158,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
 
         // There is not any table for this object ID, so we have to convert back the placeholder
         // and return null.
-        if (cachedTableId == NO_SUCH_TABLE) {
-            cachedTableId = null;
-        }
-
-        return cachedTableId;
+        return (cachedTableId == NO_SUCH_TABLE) ? null : cachedTableId;
     }
 
     /**
@@ -286,8 +282,6 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                 return table.id();
             }
         }
-        // The putIfAbsent function doesn't mutate the map if the computed value is null, and
-        // it's also executed when the stored value is null.
         // A non-null placeholder must be inserted for non-existing value to avoid the expensive
         // look-up across the table schemas in future calls, so inserting explicitly non-existing
         // placeholder here.
