@@ -180,7 +180,6 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                 getAvailableSignalChannels(),
                 DocumentReader.defaultReader(),
                 previousOffsets);
-        resetOffset(connectorConfig, previousOffset, signalProcessor);
 
         final Configuration heartbeatConfig = config;
         final EventDispatcher<MariaDbPartition, TableId> dispatcher = new EventDispatcher<>(
@@ -270,12 +269,6 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
     protected List<SourceRecord> doPoll() throws InterruptedException {
         final List<DataChangeEvent> records = queue.poll();
         return records.stream().map(DataChangeEvent::getRecord).collect(Collectors.toList());
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    protected Long getReadOnlyIncrementalSnapshotSignalOffset(MariaDbOffsetContext previousOffset) {
-        return ((MariaDbReadOnlyIncrementalSnapshotContext<TableId>) previousOffset.getIncrementalSnapshotContext()).getSignalOffset();
     }
 
     private MariaDbValueConverters getValueConverters(MariaDbConnectorConfig connectorConfig) {
