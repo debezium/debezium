@@ -43,6 +43,15 @@ You can specify which channel is enabled by setting the `signal.enabled.channels
 The `source` channel is enabled by default, because it is required for incremental snapshot signals.
 
 
+[id="debezium-signaling-error-handling"]
+=== Error handling
+
+With the exception of the `source` channel, {prodname} signaling channels do not implement retry policies.
+After you initiate a signal, be sure to verify whether it completes successfully.
+
+You can enable a connector to automatically report on the progress of incremental or blocking snapshots by configuring it to send {link-prefix}:{link-notification}[notifications].
+
+
 // Type: procedure
 // Title: Enabling {prodname} source signaling channel
 [id="debezium-signaling-enabling-source-signaling-channel"]
