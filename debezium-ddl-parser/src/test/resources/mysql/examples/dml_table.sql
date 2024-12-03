@@ -10,6 +10,3 @@ TABLE t LIMIT 3;
 #begin
 TABLE t ORDER BY b LIMIT 3;
 #end
-
-
-
