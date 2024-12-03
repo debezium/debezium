@@ -120,25 +120,6 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
     }
 
     @Test
-    public void givenOffsetCommitDisabledAndASignalSentWithConnectorDown_whenConnectorComesBackUp_thenNoSignalsProcessed()
-            throws ExecutionException, InterruptedException {
-
-        final String signalTopic = "signals_topic-2";
-        final LogInterceptor logInterceptor = new LogInterceptor(ExecuteSnapshot.class);
-        sendExecuteSnapshotKafkaSignal("b", signalTopic);
-        Thread.sleep(5000);
-        startConnector(x -> x.with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
-                .with(KafkaSignalChannel.SIGNAL_TOPIC, signalTopic)
-                .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafka.brokerList()));
-        assertConnectorIsRunning();
-        waitForAvailableRecords(1000, TimeUnit.MILLISECONDS);
-
-        final SourceRecords records = consumeRecordsByTopic(2);
-        assertThat(records.allRecordsInOrder()).hasSize(0);
-        assertThat(logInterceptor.countOccurrences("Requested 'INCREMENTAL' snapshot of data collections '[b]'")).isEqualTo(0);
-    }
-
-    @Test
     public void givenOffsetCommitEnabledAndASignalSentWithConnectorRunning_whenConnectorComesBackUp_thenAllSignalsAreCorrectlyProcessed()
             throws ExecutionException, InterruptedException {
 
@@ -146,7 +127,6 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
         final LogInterceptor logInterceptor = new LogInterceptor(ExecuteSnapshot.class);
         startConnector(x -> x.with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
                 .with(KafkaSignalChannel.SIGNAL_TOPIC, signalTopic)
-                .with(KafkaSignalChannel.SIGNAL_CONSUMER_OFFSET_COMMIT_ENABLED, true)
                 .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafka.brokerList()));
         assertConnectorIsRunning();
         sendExecuteSnapshotKafkaSignal("b", signalTopic);
@@ -164,7 +144,6 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
         sendExecuteSnapshotKafkaSignal("b", signalTopic);
         startConnector(x -> x.with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
                 .with(KafkaSignalChannel.SIGNAL_TOPIC, signalTopic)
-                .with(KafkaSignalChannel.SIGNAL_CONSUMER_OFFSET_COMMIT_ENABLED, true)
                 .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafka.brokerList()));
         assertConnectorIsRunning();
         waitForAvailableRecords(1000, TimeUnit.MILLISECONDS);
@@ -174,7 +153,6 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
         sendExecuteSnapshotKafkaSignal("c", signalTopic);
         startConnector(x -> x.with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
                 .with(KafkaSignalChannel.SIGNAL_TOPIC, signalTopic)
-                .with(KafkaSignalChannel.SIGNAL_CONSUMER_OFFSET_COMMIT_ENABLED, true)
                 .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafka.brokerList()));
 
         assertConnectorIsRunning();
@@ -194,7 +172,6 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
         sendExecuteSnapshotKafkaSignal("b", signalTopic);
         startConnector(x -> x.with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
                 .with(KafkaSignalChannel.SIGNAL_TOPIC, signalTopic)
-                .with(KafkaSignalChannel.SIGNAL_CONSUMER_OFFSET_COMMIT_ENABLED, true)
                 .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafka.brokerList()));
         assertConnectorIsRunning();
 

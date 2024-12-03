@@ -19,7 +19,6 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
-import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
@@ -142,13 +141,11 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
             throws InterruptedException {
         final Map<String, Object> additionalData = signalPayload.additionalData;
         super.addDataCollectionNamesToSnapshot(signalPayload, snapshotConfiguration);
-        getContext().setSignalOffset((Long) additionalData.get(KafkaSignalChannel.CHANNEL_OFFSET));
     }
 
     @Override
     public void requestStopSnapshot(P partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds) {
         super.requestStopSnapshot(partition, offsetContext, additionalData, dataCollectionIds);
-        getContext().setSignalOffset((Long) additionalData.get(KafkaSignalChannel.CHANNEL_OFFSET));
     }
 
     private BinlogReadOnlyIncrementalSnapshotContext<TableId> getContext() {

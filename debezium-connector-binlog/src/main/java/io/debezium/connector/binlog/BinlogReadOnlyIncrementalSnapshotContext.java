@@ -19,26 +19,12 @@ import io.debezium.pipeline.spi.OffsetContext;
  */
 public abstract class BinlogReadOnlyIncrementalSnapshotContext<T> extends AbstractIncrementalSnapshotContext<T> {
 
-    public static final String SIGNAL_OFFSET = INCREMENTAL_SNAPSHOT_KEY + "_signal_offset";
-
-    private Long signalOffset;
-
     public BinlogReadOnlyIncrementalSnapshotContext(boolean useCatalogBeforeSchema) {
         super(useCatalogBeforeSchema);
     }
 
-    public Long getSignalOffset() {
-        return signalOffset;
-    }
-
-    public void setSignalOffset(Long signalOffset) {
-        this.signalOffset = signalOffset;
-    }
-
     public Map<String, Object> store(Map<String, Object> offset) {
-        Map<String, Object> snapshotOffset = super.store(offset);
-        snapshotOffset.put(SIGNAL_OFFSET, signalOffset);
-        return snapshotOffset;
+        return super.store(offset);
     }
 
     public String getCurrentGtid(OffsetContext offsetContext) {
@@ -100,8 +86,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotContext<T> extends Abstra
     protected static <U> IncrementalSnapshotContext<U> init(BinlogReadOnlyIncrementalSnapshotContext<U> context,
                                                             Map<String, ?> offsets) {
         AbstractIncrementalSnapshotContext.init(context, offsets);
-        final Long signalOffset = (Long) offsets.get(SIGNAL_OFFSET);
-        context.setSignalOffset(signalOffset);
+
         return context;
     }
 }
