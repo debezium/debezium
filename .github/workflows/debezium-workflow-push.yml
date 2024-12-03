@@ -103,7 +103,7 @@ jobs:
       # Run each MongoDB job sequentially
       max-parallel: 1
       matrix:
-        version-mongo-server: [ "5.0", "7.0", "8.0" ]
+        version-mongo-server: [ "5.0", "8.0" ]
       fail-fast: false
     name: "MongoDB ${{ matrix.version-mongo-server }}"
     needs: [ check_style ]
