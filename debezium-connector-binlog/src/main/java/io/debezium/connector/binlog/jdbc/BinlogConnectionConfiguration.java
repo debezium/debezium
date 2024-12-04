@@ -71,17 +71,6 @@ public abstract class BinlogConnectionConfiguration implements ConnectionConfigu
     }
 
     @Override
-    public BinlogConnectorConfig.SecureConnectionMode sslMode() {
-        final String sslMode = configuration.getString(BinlogConnectorConfig.SSL_MODE);
-        return BinlogConnectorConfig.SecureConnectionMode.parse(sslMode);
-    }
-
-    @Override
-    public boolean sslModeEnabled() {
-        return sslMode() != BinlogConnectorConfig.SecureConnectionMode.DISABLED;
-    }
-
-    @Override
     public String sslKeyStore() {
         return configuration.getString(BinlogConnectorConfig.SSL_KEYSTORE);
     }

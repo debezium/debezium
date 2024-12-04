@@ -20,6 +20,7 @@ import com.github.shyiko.mysql.binlog.event.Event;
 import com.github.shyiko.mysql.binlog.event.EventData;
 import com.github.shyiko.mysql.binlog.event.EventType;
 import com.github.shyiko.mysql.binlog.event.MariadbGtidEventData;
+import com.github.shyiko.mysql.binlog.network.SSLMode;
 
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogStreamingChangeEventSource;
@@ -158,6 +159,23 @@ public class MariaDbStreamingChangeEventSource extends BinlogStreamingChangeEven
     @Override
     protected void initializeGtidSet(String value) {
         this.gtidSet = new MariadbGtidSet(value);
+    }
+
+    @Override
+    protected SSLMode sslModeFor(BinlogConnectorConfig.SecureConnectionMode mode) {
+        switch ((MariaDbConnectorConfig.MariaDbSecureConnectionMode) mode) {
+            case DISABLED:
+                return SSLMode.DISABLED;
+            case PREFERRED:
+                return SSLMode.PREFERRED;
+            case REQUIRED:
+                return SSLMode.REQUIRED;
+            case VERIFY_CA:
+                return SSLMode.VERIFY_CA;
+            case VERIFY_IDENTITY:
+                return SSLMode.VERIFY_IDENTITY;
+        }
+        return null;
     }
 
     private static TableId getSignalDataCollectionId(MariaDbConnectorConfig connectorConfig) {
