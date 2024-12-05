@@ -137,29 +137,21 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
 
     public enum MariaDbSecureConnectionMode implements SecureConnectionMode, EnumeratedValue {
         /**
-         * Establish an unencrypted connection.
+         * Do not use SSL/TLS.
          */
-        DISABLED("disabled"),
+        DISABLE("disable"),
         /**
-         * Establish a secure (encrypted) connection if the server supports secure connections.
-         * Fall back to an unencrypted connection otherwise.
+         * Only use SSL/TLS for encryption. Do not perform certificate or hostname verification.
          */
-        PREFERRED("preferred"),
+        TRUST("trust"),
         /**
-         * Establish a secure connection if the server supports secure connections.
-         * The connection attempt fails if a secure connection cannot be established.
+         * Use SSL/TLS for encryption and perform certificates verification, but do not perform hostname verification.
          */
-        REQUIRED("required"),
+        VERIFY_CA("verify-ca"),
         /**
-         * Like REQUIRED, but additionally verify the server TLS certificate against the configured Certificate Authority
-         * (CA) certificates. The connection attempt fails if no valid matching CA certificates are found.
+         * Use SSL/TLS for encryption, certificate verification, and hostname verification. This is the standard TLS behavior.
          */
-        VERIFY_CA("verify_ca"),
-        /**
-         * Like VERIFY_CA, but additionally verify that the server certificate matches the host to which the connection is
-         * attempted.
-         */
-        VERIFY_IDENTITY("verify_identity");
+        VERIFY_FULL("verify-full");
 
         private final String value;
 
@@ -246,19 +238,16 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
 
     public static final Field SSL_MODE = Field.create("database.ssl.mode")
             .withDisplayName("SSL mode")
-            .withEnum(MariaDbSecureConnectionMode.class, MariaDbSecureConnectionMode.PREFERRED)
+            .withEnum(MariaDbSecureConnectionMode.class, MariaDbSecureConnectionMode.DISABLE)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.MEDIUM)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 0))
             .withDescription("Whether to use an encrypted connection to the database. Options include: "
-                    + "'disabled' to use an unencrypted connection; "
-                    + "'preferred' (the default) to establish a secure (encrypted) connection if the server supports "
-                    + "secure connections, but fall back to an unencrypted connection otherwise; "
-                    + "'required' to use a secure (encrypted) connection, and fail if one cannot be established; "
-                    + "'verify_ca' like 'required' but additionally verify the server TLS certificate against the "
-                    + "configured Certificate Authority (CA) certificates, or fail if no valid matching CA certificates are found; or "
-                    + "'verify_identity' like 'verify_ca' but additionally verify that the server certificate matches "
-                    + "the host to which the connection is attempted.");
+                    + "'disable' to use an unencrypted connection; "
+                    + "'trust' to use a secure (encrypted) connection, but not perform certificate or hostname verification; "
+                    + "'verify_ca' to use a secure (encrypted) connection, and perform certificates verification, but do not "
+                    + "perform hostname verification; "
+                    + "'verify_identity' to use a secure (encrypted) connection, and perform certificate verification, and hostname verification.");
 
     private static final ConfigDefinition CONFIG_DEFINITION = BinlogConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MariaDB")
@@ -352,7 +341,7 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
 
     @Override
     public boolean isSslModeEnabled() {
-        return secureConnectionMode != MariaDbSecureConnectionMode.DISABLED;
+        return secureConnectionMode != MariaDbSecureConnectionMode.DISABLE;
     }
 
     /**
