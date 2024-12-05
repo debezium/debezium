@@ -38,9 +38,9 @@ public class MariaDbUniqueDatabase extends UniqueDatabase {
     @Override
     public Configuration.Builder defaultJdbcConfigBuilder() {
         Configuration.Builder builder = super.defaultJdbcConfigBuilder();
-        String sslMode = System.getProperty("database.ssl.mode", "preferred");
-        if (sslMode.equals("disabled")) {
-            builder.with(MariaDbConnectorConfig.SSL_MODE, MariaDbConnectorConfig.MariaDbSecureConnectionMode.DISABLED);
+        String sslMode = System.getProperty("database.ssl.mode", "disable");
+        if (sslMode.equals("disable")) {
+            builder.with(MariaDbConnectorConfig.SSL_MODE, MariaDbConnectorConfig.MariaDbSecureConnectionMode.DISABLE);
         }
         else {
             URL trustStoreFile = UniqueDatabase.class.getClassLoader().getResource("ssl/truststore");

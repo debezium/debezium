@@ -53,6 +53,6 @@ public class MariaDbConnectionConfiguration extends BinlogConnectionConfiguratio
 
     @Override
     public boolean sslModeEnabled() {
-        return sslMode() != MariaDbConnectorConfig.MariaDbSecureConnectionMode.DISABLED;
+        return sslMode() != MariaDbConnectorConfig.MariaDbSecureConnectionMode.DISABLE;
     }
 }

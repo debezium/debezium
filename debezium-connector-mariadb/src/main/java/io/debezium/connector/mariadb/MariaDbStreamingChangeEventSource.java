@@ -164,15 +164,13 @@ public class MariaDbStreamingChangeEventSource extends BinlogStreamingChangeEven
     @Override
     protected SSLMode sslModeFor(BinlogConnectorConfig.SecureConnectionMode mode) {
         switch ((MariaDbConnectorConfig.MariaDbSecureConnectionMode) mode) {
-            case DISABLED:
+            case DISABLE:
                 return SSLMode.DISABLED;
-            case PREFERRED:
-                return SSLMode.PREFERRED;
-            case REQUIRED:
+            case TRUST:
                 return SSLMode.REQUIRED;
             case VERIFY_CA:
                 return SSLMode.VERIFY_CA;
-            case VERIFY_IDENTITY:
+            case VERIFY_FULL:
                 return SSLMode.VERIFY_IDENTITY;
         }
         return null;
