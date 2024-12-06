@@ -44,6 +44,9 @@ import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
 import io.debezium.relational.ValueConverterProvider;
 import io.debezium.time.Date;
+import io.debezium.time.IsoDate;
+import io.debezium.time.IsoTime;
+import io.debezium.time.IsoTimestamp;
 import io.debezium.time.MicroTime;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.NanoTime;
@@ -97,6 +100,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
     private final String fallbackTimeWithTimeZone;
     protected final boolean adaptiveTimePrecisionMode;
     protected final boolean adaptiveTimeMicrosecondsPrecisionMode;
+    protected final boolean adaptiveTimeIsoString;
+    protected final boolean adaptiveTimeMicroseconds;
+    protected final boolean adaptiveTimeNanoseconds;
     protected final DecimalMode decimalMode;
     protected final TemporalAdjuster adjuster;
     protected final BigIntUnsignedMode bigIntUnsignedMode;
@@ -132,6 +138,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
         this.defaultOffset = defaultOffset != null ? defaultOffset : ZoneOffset.UTC;
         this.adaptiveTimePrecisionMode = temporalPrecisionMode.equals(TemporalPrecisionMode.ADAPTIVE);
         this.adaptiveTimeMicrosecondsPrecisionMode = temporalPrecisionMode.equals(TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS);
+        this.adaptiveTimeIsoString = temporalPrecisionMode.equals(TemporalPrecisionMode.ISOSTRING);
+        this.adaptiveTimeMicroseconds = temporalPrecisionMode.equals(TemporalPrecisionMode.MICROSECONDS);
+        this.adaptiveTimeNanoseconds = temporalPrecisionMode.equals(TemporalPrecisionMode.NANOSECONDS);
         this.decimalMode = decimalMode != null ? decimalMode : DecimalMode.PRECISE;
         this.adjuster = adjuster;
         this.bigIntUnsignedMode = bigIntUnsignedMode != null ? bigIntUnsignedMode : BigIntUnsignedMode.PRECISE;
@@ -218,8 +227,11 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 return Xml.builder();
             // Date and time values
             case Types.DATE:
-                if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
+                if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode || adaptiveTimeMicroseconds || adaptiveTimeNanoseconds) {
                     return Date.builder();
+                }
+                if (adaptiveTimeIsoString) {
+                    return IsoDate.builder();
                 }
                 return org.apache.kafka.connect.data.Date.builder();
             case Types.TIME:
@@ -235,6 +247,15 @@ public class JdbcValueConverters implements ValueConverterProvider {
                     }
                     return NanoTime.builder();
                 }
+                if (adaptiveTimeIsoString) {
+                    return IsoTime.builder();
+                }
+                if (adaptiveTimeMicroseconds) {
+                    return MicroTime.builder();
+                }
+                if (adaptiveTimeNanoseconds) {
+                    return NanoTime.builder();
+                }
                 return org.apache.kafka.connect.data.Time.builder();
             case Types.TIMESTAMP:
                 if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
@@ -244,6 +265,15 @@ public class JdbcValueConverters implements ValueConverterProvider {
                     if (getTimePrecision(column) <= 6) {
                         return MicroTimestamp.builder();
                     }
+                    return NanoTimestamp.builder();
+                }
+                if (adaptiveTimeIsoString) {
+                    return IsoTimestamp.builder();
+                }
+                if (adaptiveTimeMicroseconds) {
+                    return MicroTimestamp.builder();
+                }
+                if (adaptiveTimeNanoseconds) {
                     return NanoTimestamp.builder();
                 }
                 return org.apache.kafka.connect.data.Timestamp.builder();
@@ -325,23 +355,11 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
             // Date and time values
             case Types.DATE:
-                if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
-                    return (data) -> convertDateToEpochDays(column, fieldDefn, data);
-                }
-                return (data) -> convertDateToEpochDaysAsDate(column, fieldDefn, data);
+                return (data) -> convertDate(column, fieldDefn, data);
             case Types.TIME:
                 return (data) -> convertTime(column, fieldDefn, data);
             case Types.TIMESTAMP:
-                if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
-                    if (getTimePrecision(column) <= 3) {
-                        return data -> convertTimestampToEpochMillis(column, fieldDefn, data);
-                    }
-                    if (getTimePrecision(column) <= 6) {
-                        return data -> convertTimestampToEpochMicros(column, fieldDefn, data);
-                    }
-                    return (data) -> convertTimestampToEpochNanos(column, fieldDefn, data);
-                }
-                return (data) -> convertTimestampToEpochMillisAsDate(column, fieldDefn, data);
+                return (data) -> convertTimestamp(column, fieldDefn, data);
             case Types.TIME_WITH_TIMEZONE:
                 return (data) -> convertTimeWithZone(column, fieldDefn, data);
             case Types.TIMESTAMP_WITH_TIMEZONE:
@@ -424,8 +442,30 @@ public class JdbcValueConverters implements ValueConverterProvider {
         });
     }
 
+    protected Object convertDate(Column column, Field fieldDefn, Object data) {
+        if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
+            return convertDateToEpochDays(column, fieldDefn, data);
+        }
+        if (adaptiveTimeIsoString) {
+            return convertDateToUtcIsoString(column, fieldDefn, data);
+        }
+        return convertDateToEpochDaysAsDate(column, fieldDefn, data);
+    }
+
     protected Object convertTime(Column column, Field fieldDefn, Object data) {
+        if (adaptiveTimeIsoString) {
+            return convertTimeToUtcIsoString(column, fieldDefn, data);
+        }
+        if (adaptiveTimeMicroseconds) {
+            return convertTimeToMicrosPastMidnight(column, fieldDefn, data);
+        }
+        if (adaptiveTimeNanoseconds) {
+            return convertTimeToNanosPastMidnight(column, fieldDefn, data);
+        }
         if (adaptiveTimeMicrosecondsPrecisionMode) {
+            // @TODO ? THIS IS INCONSISTEND WITH Timestamp
+            // @TODO HERE ITS FIXED TO Micros! SHOULDN'T WE CHECK THE getTimePrecision()??
+            // @TODO FOR TIMESTAMP ITS NOT FIXED TO Micros, ITS ADAPTIVE!
             return convertTimeToMicrosPastMidnight(column, fieldDefn, data);
         }
         if (adaptiveTimePrecisionMode) {
@@ -441,6 +481,28 @@ public class JdbcValueConverters implements ValueConverterProvider {
         else {
             return convertTimeToMillisPastMidnightAsDate(column, fieldDefn, data);
         }
+    }
+
+    protected Object convertTimestamp(Column column, Field fieldDefn, Object data) {
+        if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
+            if (getTimePrecision(column) <= 3) {
+                return convertTimestampToEpochMillis(column, fieldDefn, data);
+            }
+            if (getTimePrecision(column) <= 6) {
+                return convertTimestampToEpochMicros(column, fieldDefn, data);
+            }
+            return convertTimestampToEpochNanos(column, fieldDefn, data);
+        }
+        if (adaptiveTimeIsoString) {
+            return convertTimestampToUtcIsoString(column, fieldDefn, data);
+        }
+        if (adaptiveTimeMicroseconds) {
+            return convertTimestampToEpochMicros(column, fieldDefn, data);
+        }
+        if (adaptiveTimeNanoseconds) {
+            return convertTimestampToEpochNanos(column, fieldDefn, data);
+        }
+        return convertTimestampToEpochMillisAsDate(column, fieldDefn, data);
     }
 
     /**
@@ -670,6 +732,78 @@ public class JdbcValueConverters implements ValueConverterProvider {
             catch (IllegalArgumentException e) {
                 logger.warn("Unexpected JDBC DATE value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
                         fieldDefn.schema(), data.getClass(), data);
+            }
+        });
+    }
+
+    /**
+     * Converts a value object of various date-related types to its representation as a UTC ISO 8601 string.
+     * <p>
+     * This method attempts to convert the provided data object, which can be of types like
+     * {@link java.sql.Date}, {@link java.util.Date}, {@link java.time.LocalDate}, or
+     * {@link java.time.LocalDateTime}, to a String representing the date in UTC ISO 8601 format (e.g., "2023-11-21Z").
+     *
+     * @param column the column definition describing the {@code data} value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted into a UTC ISO 8601 String; can be null
+     * @return the converted UTC ISO 8601 String representation of the date,
+     * or "1970-01-01Z", the fallback value, if the column is non-null and no default value is provided
+     * @throws IllegalArgumentException if the conversion fails and the column does not allow nulls
+     */
+    protected Object convertDateToUtcIsoString(Column column, Field fieldDefn, Object data) {
+        return convertValue(column, fieldDefn, data, "1970-01-01Z", (r) -> {
+            try {
+                r.deliver(IsoDate.toIsoString(data, adjuster));
+            }
+            catch (IllegalArgumentException e) {
+                logger.warn("Unexpected JDBC DATE value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
+                        fieldDefn.schema(), data.getClass(), data);
+            }
+        });
+    }
+
+    /**
+     * Converts a value object of various time-related types to its representation as a UTC ISO 8601 string.
+     * <p>
+     * This method handles conversion of time-related values such as {@link java.sql.Time},
+     * {@link java.util.Date}, {@link java.time.LocalTime}, and {@link java.time.LocalDateTime} to a
+     * UTC ISO 8601 string format (e.g., "00:00:00Z").
+
+     * @param column the column definition describing the data value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted; can be null
+     * @return the converted UTC ISO 8601 string representation of the time, or "00:00:00Z" if necessary
+     */
+    protected Object convertTimeToUtcIsoString(Column column, Field fieldDefn, Object data) {
+        // epoch is the fallback value
+        return convertValue(column, fieldDefn, data, "00:00:00Z", (r) -> {
+            try {
+                r.deliver(IsoTime.toIsoString(data, supportsLargeTimeValues()));
+            }
+            catch (IllegalArgumentException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    /**
+     * Converts a value object of various timestamp-related types to its representation as a UTC ISO 8601 string.
+     * <p>
+     * This method handles conversion of timestamp-related values such as {@link java.sql.Timestamp},
+     * {@link java.util.Date}, {@link java.time.LocalDateTime}, and {@link java.time.Instant} to a
+     * UTC ISO 8601 string format (e.g., "2023-11-21T12:34:56Z").
+
+     * @param column the column definition describing the data value; never null
+     * @param fieldDefn the field definition; never null
+     * @param data the data object to be converted; can be null
+     * @return the converted UTC ISO 8601 string representation of the timestamp, or "1970-01-01T00:00:00Z" if necessary
+     */
+    protected Object convertTimestampToUtcIsoString(Column column, Field fieldDefn, Object data) {
+        return convertValue(column, fieldDefn, data, "1970-01-01T00:00:00Z", (r) -> {
+            try {
+                r.deliver(IsoTimestamp.toIsoString(data, adjuster));
+            }
+            catch (IllegalArgumentException e) {
             }
         });
     }
@@ -1339,7 +1473,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
     }
 
     private boolean supportsLargeTimeValues() {
-        return adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode;
+        return adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode || adaptiveTimeNanoseconds || adaptiveTimeMicroseconds;
     }
 
     private byte[] toByteArray(char[] chars) {

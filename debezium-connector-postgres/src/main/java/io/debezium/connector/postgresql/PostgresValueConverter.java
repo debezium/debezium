@@ -267,7 +267,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.BOOL_ARRAY:
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA);
             case PgOid.DATE_ARRAY:
-                if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
+                if (adaptiveTimeIsoString) {
+                    return SchemaBuilder.array(io.debezium.time.IsoDate.builder().optional().build());
+                }
+                if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode || adaptiveTimeMicroseconds || adaptiveTimeNanoseconds) {
                     return SchemaBuilder.array(io.debezium.time.Date.builder().optional().build());
                 }
                 return SchemaBuilder.array(org.apache.kafka.connect.data.Date.builder().optional().build());
@@ -277,10 +280,28 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.JSON_ARRAY:
                 return SchemaBuilder.array(Json.builder().optional().build());
             case PgOid.TIME_ARRAY:
+                if (adaptiveTimeIsoString) {
+                    return SchemaBuilder.array(io.debezium.time.IsoTime.builder().optional().build());
+                }
+                if (adaptiveTimeMicroseconds) {
+                    return SchemaBuilder.array(io.debezium.time.MicroTime.builder().optional().build());
+                }
+                if (adaptiveTimeNanoseconds) {
+                    return SchemaBuilder.array(io.debezium.time.NanoTime.builder().optional().build());
+                }
                 return SchemaBuilder.array(MicroTime.builder().optional().build());
             case PgOid.TIMETZ_ARRAY:
                 return SchemaBuilder.array(ZonedTime.builder().optional().build());
             case PgOid.TIMESTAMP_ARRAY:
+                if (adaptiveTimeIsoString) {
+                    return SchemaBuilder.array(io.debezium.time.IsoTimestamp.builder().optional().build());
+                }
+                if (adaptiveTimeMicroseconds) {
+                    return SchemaBuilder.array(io.debezium.time.MicroTimestamp.builder().optional().build());
+                }
+                if (adaptiveTimeNanoseconds) {
+                    return SchemaBuilder.array(io.debezium.time.NanoTimestamp.builder().optional().build());
+                }
                 if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
                     if (getTimePrecision(column) <= 3) {
                         return SchemaBuilder.array(io.debezium.time.Timestamp.builder().optional().build());
