@@ -30,6 +30,7 @@
 
         <!-- Tracing -->
         <version.opentelemetry>1.23.0</version.opentelemetry>
+        <version.opentelemetry.testing>2.10.0</version.opentelemetry.testing>
 
         <!-- HTTP client -->
         <version.okhttp>4.8.1</version.okhttp>
@@ -611,6 +612,18 @@
               <groupId>com.squareup.okhttp3</groupId>
               <artifactId>logging-interceptor</artifactId>
               <version>${version.okhttp}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.opentelemetry.javaagent</groupId>
+                <artifactId>opentelemetry-testing-common</artifactId>
+                <version>${version.opentelemetry.testing}-alpha</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.opentelemetry.javaagent</groupId>
+                <artifactId>opentelemetry-agent-for-testing</artifactId>
+                <version>${version.opentelemetry.testing}-alpha</version>
+                <scope>test</scope>
             </dependency>
 
             <dependency>
