@@ -1207,7 +1207,6 @@ public class JdbcConnection implements AutoCloseable {
                 else {
                     TableId tableId = new TableId(catalogName, schemaName, tableName);
                     viewIds.add(tableId);
-                    attributesByTable.putAll(getAttributeDetails(tableId, tableType));
                 }
             }
         }
