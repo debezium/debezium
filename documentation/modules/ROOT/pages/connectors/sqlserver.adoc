@@ -3165,6 +3165,7 @@ You can configure the connector to skip the following types of operations:
 * `t` (truncate)
 
 Set the value to `none` if you do not want the connector to skip any operations.
+Because the {prodname} SQL Server connector does not support `truncate` change events, setting the default `t` value has the same effect as setting the value to `none`.
 
 |[[sqlserver-property-signal-data-collection]]<<sqlserver-property-signal-data-collection,`+signal.data.collection+`>>
 |No default value
