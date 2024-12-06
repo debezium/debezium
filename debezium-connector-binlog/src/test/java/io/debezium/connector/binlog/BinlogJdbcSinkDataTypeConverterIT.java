@@ -24,7 +24,6 @@ import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.data.Envelope;
-import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 
@@ -58,11 +57,6 @@ public abstract class BinlogJdbcSinkDataTypeConverterIT<C extends SourceConnecto
     @Test
     @FixFor("DBZ-6225")
     public void testBooleanDataTypeMapping() throws Exception {
-        // TODO: remove once we upgrade Apicurio version (DBZ-7357)
-        if (VerifyRecord.isApucurioAvailable()) {
-            skipAvroValidation();
-        }
-
         final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("booleanit", "boolean_test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
         DATABASE.createAndInitialize();
         Files.delete(SCHEMA_HISTORY_PATH);
