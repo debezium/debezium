@@ -57,6 +57,7 @@ public class ConnectRecordUtil {
         Map<String, String> delegateConfig = new HashMap<>();
         delegateConfig.put("static.field", field);
         delegateConfig.put("static.value", value);
+        delegateConfig.put("replace.null.with.default", "false");
         insertDelegate.configure(delegateConfig);
         return insertDelegate;
     }
