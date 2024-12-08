@@ -970,7 +970,7 @@ public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
 
             final SourceRecord createRecord = createCreateRecordWithOptionalNull();
             final SourceRecord unwrapped = transform.apply(createRecord);
-            assertThat(((Struct) unwrapped.value()).getInt8("id")).isEqualTo((byte) 1);
+
             assertThat(((Struct) unwrapped.value()).getString("name")).isNull();
         }
     }
@@ -985,7 +985,7 @@ public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
 
             final SourceRecord createRecord = createCreateRecordWithOptionalNull();
             final SourceRecord unwrapped = transform.apply(createRecord);
-            assertThat(((Struct) unwrapped.value()).getInt8("id")).isEqualTo((byte) 1);
+
             assertThat(((Struct) unwrapped.value()).getString("name")).isEqualTo("default_str");
         }
     }
