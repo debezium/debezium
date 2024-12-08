@@ -965,6 +965,7 @@ public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
         try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(HANDLE_TOMBSTONE_DELETES, "rewrite");
+            props.put(REPLACE_NULL_WITH_DEFAULT, "false");
             transform.configure(props);
 
             final SourceRecord createRecord = createCreateRecordWithOptionalNull();

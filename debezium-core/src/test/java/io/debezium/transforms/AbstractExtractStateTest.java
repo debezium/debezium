@@ -45,6 +45,7 @@ public abstract class AbstractExtractStateTest {
     protected static final String DROP_FIELDS_HEADER_NAME = "drop.fields.header.name";
     protected static final String DROP_FIELDS_FROM_KEY = "drop.fields.from.key";
     protected static final String DROP_FIELDS_KEEP_SCHEMA_COMPATIBLE = "drop.fields.keep.schema.compatible";
+    protected static final String REPLACE_NULL_WITH_DEFAULT = "replace.null.with.default";
 
     Schema idSchema = SchemaBuilder
             .int8()
