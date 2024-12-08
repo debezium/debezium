@@ -21,6 +21,8 @@ import io.debezium.time.ZonedTimestamp;
 public class ZonedTimestampType extends DebeziumZonedTimestampType {
 
     public static final ZonedTimestampType INSTANCE = new ZonedTimestampType();
+    public static final String MINIMUM_TIMESTAMP = "-4712-01-01T00:00:00+00:00";
+    public static final String MAXIMUM_TIMESTAMP = "9999-12-31T23:59:59+00:00";
 
     protected List<ValueBindDescriptor> infinityTimestampValue(int index, Object value) {
         final ZonedDateTime zdt;
