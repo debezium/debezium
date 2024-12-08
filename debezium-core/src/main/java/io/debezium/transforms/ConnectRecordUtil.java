@@ -52,12 +52,12 @@ public class ConnectRecordUtil {
         return extractField;
     }
 
-    public static <R extends ConnectRecord<R>> InsertField<R> insertStaticValueDelegate(String field, String value) {
+    public static <R extends ConnectRecord<R>> InsertField<R> insertStaticValueDelegate(String field, String value, boolean replaceNullWithDefault) {
         InsertField<R> insertDelegate = new InsertField.Value<>();
         Map<String, String> delegateConfig = new HashMap<>();
         delegateConfig.put("static.field", field);
         delegateConfig.put("static.value", value);
-        delegateConfig.put("replace.null.with.default", "false");
+        delegateConfig.put("replace.null.with.default", replaceNullWithDefault ? "true" : "false");
         insertDelegate.configure(delegateConfig);
         return insertDelegate;
     }

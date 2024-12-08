@@ -23,7 +23,8 @@ public class DefaultDeleteHandlingStrategy<R extends ConnectRecord<R>> extends A
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultDeleteHandlingStrategy.class);
     private final DeleteTombstoneHandling deleteTombstoneHandling;
 
-    public DefaultDeleteHandlingStrategy(DeleteTombstoneHandling deleteTombstoneHandling) {
+    public DefaultDeleteHandlingStrategy(DeleteTombstoneHandling deleteTombstoneHandling, boolean replaceNullWithDefault) {
+        super(replaceNullWithDefault);
         this.deleteTombstoneHandling = deleteTombstoneHandling;
     }
 
