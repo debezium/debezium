@@ -14,7 +14,15 @@ import static io.debezium.data.Envelope.FieldName.TRANSACTION;
 import static io.debezium.pipeline.txmetadata.TransactionStructMaker.DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY;
 import static io.debezium.pipeline.txmetadata.TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY;
 import static io.debezium.pipeline.txmetadata.TransactionStructMaker.DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY;
-import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.*;
+import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.ADD_FIELDS;
+import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.ADD_FIELDS_PREFIX;
+import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.ADD_HEADERS;
+import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.ADD_HEADERS_PREFIX;
+import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES;
+import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.HANDLE_DELETES;
+import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.HANDLE_TOMBSTONE_DELETES;
+import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.REPLACE_NULL_WITH_DEFAULT;
+import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.ROUTE_BY_FIELD;
 
 import java.util.Arrays;
 import java.util.Collections;
