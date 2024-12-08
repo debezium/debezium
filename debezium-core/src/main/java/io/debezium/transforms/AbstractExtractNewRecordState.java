@@ -14,14 +14,7 @@ import static io.debezium.data.Envelope.FieldName.TRANSACTION;
 import static io.debezium.pipeline.txmetadata.TransactionStructMaker.DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY;
 import static io.debezium.pipeline.txmetadata.TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY;
 import static io.debezium.pipeline.txmetadata.TransactionStructMaker.DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY;
-import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.ADD_FIELDS;
-import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.ADD_FIELDS_PREFIX;
-import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.ADD_HEADERS;
-import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.ADD_HEADERS_PREFIX;
-import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES;
-import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.HANDLE_DELETES;
-import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.HANDLE_TOMBSTONE_DELETES;
-import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.ROUTE_BY_FIELD;
+import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.*;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -100,13 +93,13 @@ public abstract class AbstractExtractNewRecordState<R extends ConnectRecord<R>> 
         // handle deleted records
         if (!Strings.isNullOrBlank(config.getString(HANDLE_TOMBSTONE_DELETES))) {
             DeleteTombstoneHandling deleteTombstoneHandling = DeleteTombstoneHandling.parse(config.getString(HANDLE_TOMBSTONE_DELETES));
-            extractRecordStrategy = new DefaultDeleteHandlingStrategy<>(deleteTombstoneHandling);
+            extractRecordStrategy = new DefaultDeleteHandlingStrategy<>(deleteTombstoneHandling, config.getBoolean(REPLACE_NULL_WITH_DEFAULT));
         }
         else {
             // will be removed in further release
             boolean dropTombstones = config.getBoolean(DROP_TOMBSTONES);
             DeleteHandling handleDeletes = DeleteHandling.parse(config.getString(HANDLE_DELETES));
-            extractRecordStrategy = new LegacyDeleteHandlingStrategy<>(handleDeletes, dropTombstones);
+            extractRecordStrategy = new LegacyDeleteHandlingStrategy<>(handleDeletes, dropTombstones, config.getBoolean(REPLACE_NULL_WITH_DEFAULT));
             LOGGER.warn(
                     "The deleted record handling configs \"drop.tombstones\" and \"delete.handling.mode\" have been deprecated, " +
                             "please use \"delete.tombstone.handling.mode\" instead.");
