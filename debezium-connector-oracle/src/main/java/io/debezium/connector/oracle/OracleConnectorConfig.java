@@ -649,6 +649,21 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("(Deprecated) if true, CONTINUOUS_MINE option will be added to the log mining session. " +
                     "This will manage log files switches seamlessly.");
 
+    public static final Field LOG_MINING_PATH_DICTIONARY = Field.create("log.mining.path.dictionary")
+            .withDisplayName("Defines the dictionary path for the mining session")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateDictionaryFromFile)
+            .withDescription("This is required when using the connector against a read-only database replica.");
+
+    public static final Field LOG_MINING_READONLY_HOSTNAME = Field.create("log.mining.readonly.hostname")
+            .withDisplayName("Read-only connector hostname.")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("The hostname the connector will use to connect and perform read-only operations for the the replica.");
+
     public static final Field OBJECT_ID_CACHE_SIZE = Field.createInternal("object.id.cache.size")
             .withDisplayName("Controls the maximum size of the object ID cache")
             .withType(Type.INT)
@@ -735,7 +750,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG,
                     LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG,
                     LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG,
-                    OBJECT_ID_CACHE_SIZE)
+                    OBJECT_ID_CACHE_SIZE,
+                    LOG_MINING_PATH_DICTIONARY,
+                    LOG_MINING_READONLY_HOSTNAME)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .create();
 
@@ -806,6 +823,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Boolean logMiningIncludeRedoSql;
     private final boolean logMiningContinuousMining;
     private final Configuration logMiningEhCacheConfiguration;
+    private final String logMiningPathToDictionary;
+    private final String readonlyHostname;
 
     private final String openLogReplicatorSource;
     private final String openLogReplicatorHostname;
@@ -876,6 +895,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningSchemaChangesUsernameExcludes = Strings.setOf(config.getString(LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST), String::new);
         this.logMiningIncludeRedoSql = config.getBoolean(LOG_MINING_INCLUDE_REDO_SQL);
         this.logMiningContinuousMining = config.getBoolean(LOG_MINING_CONTINUOUS_MINE);
+        this.logMiningPathToDictionary = config.getString(LOG_MINING_PATH_DICTIONARY);
+        this.readonlyHostname = config.getString(LOG_MINING_READONLY_HOSTNAME);
 
         this.logMiningEhCacheConfiguration = config.subset("log.mining.buffer.ehcache", false);
 
@@ -1366,6 +1387,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
          * This is default value
          */
         CATALOG_IN_REDO("redo_log_catalog"),
+
+        /**
+         * This strategy uses LogMiner with data dictionary located in ORACLE read-only server.
+         * This option need the path location of the dictionary file.
+         * This option is a combination with the {@code redo_log_catalog} strategy.
+         */
+        DICTIONARY_FROM_FILE("dictionary_from_file"),
 
         /**
          * This strategy combines the performance of {@code online_catalog} with the schema capture capabilities of
@@ -1959,6 +1987,24 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
+     * Return the log mining path to dictionary.
+     *
+     * @return the dictionary path
+     */
+    public String getLogMiningPathToDictionary() {
+        return logMiningPathToDictionary;
+    }
+
+    /**
+     * Return the read-only database hostname.
+     *
+     * @return the read-only hostname
+     */
+    public String getReadonlyHostname() {
+        return readonlyHostname;
+    }
+
+    /**
      * Get the Ehcache buffer configuration, which is all attributes under the configuration prefix
      * "log.mining.buffer.ehcache" namespace, with the prefix removed.
      *
@@ -2041,6 +2087,14 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             }
         }
         return errors;
+    }
+
+    public static int validateDictionaryFromFile(Configuration config, Field field, ValidationOutput problems) {
+        // Validates that the field is required but only when the LogMiner strategy is set to DICTIONARY_FROM_FILE
+        if (LogMiningStrategy.DICTIONARY_FROM_FILE.equals(LogMiningStrategy.parse(config.getString(LOG_MINING_STRATEGY)))) {
+            return Field.isRequired(config, field, problems);
+        }
+        return 0;
     }
 
     private static int validateLogMiningBufferType(Configuration config, Field field, ValidationOutput problems) {

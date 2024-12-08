@@ -81,6 +81,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private final String archiveDestinationName;
     private final LogFileCollector logCollector;
     private final boolean continuousMining;
+    private final String pathToDictionary;
 
     private Scn startScn; // startScn is the **exclusive** lower bound for mining
     private Scn endScn = Scn.NULL;
@@ -112,6 +113,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         this.currentBatchSize = connectorConfig.getLogMiningBatchSizeDefault();
         this.currentSleepTime = connectorConfig.getLogMiningSleepTimeDefault().toMillis();
         this.continuousMining = connectorConfig.isLogMiningContinuousMining();
+        this.pathToDictionary = connectorConfig.getLogMiningPathToDictionary();
 
         this.snapshotterService = snapshotterService;
 
@@ -612,7 +614,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             Instant start = Instant.now();
             // NOTE: we treat startSCN as the _exclusive_ lower bound for mining,
             // whereas START_LOGMNR takes an _inclusive_ lower bound, hence the increment.
-            connection.executeWithoutCommitting(SqlUtils.startLogMinerStatement(startScn.add(Scn.ONE), endScn, strategy, continuousMining));
+            connection.executeWithoutCommitting(SqlUtils.startLogMinerStatement(startScn.add(Scn.ONE), endScn, strategy, continuousMining, pathToDictionary));
             streamingMetrics.setLastMiningSessionStartDuration(Duration.between(start, Instant.now()));
             return true;
         }
