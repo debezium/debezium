@@ -958,4 +958,19 @@ public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
             assertThat(unwrapped).isEqualTo(heartbeatRecord);
         }
     }
+
+    @Test
+    @FixFor("DBZ-7094")
+    public void testUnwrapCreateRecordRewriteWithOptionalDefaultValue() {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(HANDLE_TOMBSTONE_DELETES, "rewrite");
+            transform.configure(props);
+
+            final SourceRecord createRecord = createCreateRecordWithOptionalNull();
+            final SourceRecord unwrapped = transform.apply(createRecord);
+            assertThat(((Struct) unwrapped.value()).getInt8("id")).isEqualTo((byte) 1);
+            assertThat(((Struct) unwrapped.value()).getString("name")).isNull();
+        }
+    }
 }
