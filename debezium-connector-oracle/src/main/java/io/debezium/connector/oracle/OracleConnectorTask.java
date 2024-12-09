@@ -80,8 +80,14 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         Offsets<OraclePartition, OracleOffsetContext> previousOffsets = getPreviousOffsets(new OraclePartition.Provider(connectorConfig),
                 connectorConfig.getAdapter().getOffsetContextLoader());
 
-        // Manual Bean Registration
+        // The bean registry JDBC connection should always be pinned to the PDB
+        // when the connector is configured to use a pluggable database
         beanRegistryJdbcConnection = connectionFactory.newConnection();
+        if (!Strings.isNullOrEmpty(connectorConfig.getPdbName())) {
+            beanRegistryJdbcConnection.setSessionToPdb(connectorConfig.getPdbName());
+        }
+
+        // Manual Bean Registration
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
