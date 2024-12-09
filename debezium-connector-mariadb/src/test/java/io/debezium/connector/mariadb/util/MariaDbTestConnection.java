@@ -17,7 +17,7 @@ import io.debezium.jdbc.JdbcConnection;
  */
 public class MariaDbTestConnection extends BinlogTestConnection {
 
-    protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory("jdbc:mariadb://${hostname}:${port}/${dbname}");
+    protected static ConnectionFactory FACTORY = JdbcConnection.patternBasedFactory("jdbc:mariadb://${hostname}:${port}/${dbname}?sslMode=${ssl.mode}");
 
     /**
      * Create a new instance with the given configuration.
