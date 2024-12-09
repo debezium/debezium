@@ -69,12 +69,14 @@ public class MySqlConnectorIT extends BinlogConnectorIT<MySqlConnector, MySqlPar
     protected void assertInvalidConfiguration(Config result) {
         super.assertInvalidConfiguration(result);
         assertNoConfigurationErrors(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE);
+        assertNoConfigurationErrors(result, MySqlConnectorConfig.SSL_MODE);
     }
 
     @Override
     protected void assertValidConfiguration(Config result) {
         super.assertValidConfiguration(result);
         validateConfigField(result, MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.MINIMAL);
+        validateConfigField(result, MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.MySqlSecureConnectionMode.PREFERRED);
     }
 
     @Override

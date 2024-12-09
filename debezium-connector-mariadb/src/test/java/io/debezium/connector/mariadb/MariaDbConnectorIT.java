@@ -31,12 +31,14 @@ public class MariaDbConnectorIT extends BinlogConnectorIT<MariaDbConnector, Mari
     protected void assertInvalidConfiguration(Config result) {
         super.assertInvalidConfiguration(result);
         assertNoConfigurationErrors(result, MariaDbConnectorConfig.SNAPSHOT_LOCKING_MODE);
+        assertNoConfigurationErrors(result, MariaDbConnectorConfig.SSL_MODE);
     }
 
     @Override
     protected void assertValidConfiguration(Config result) {
         super.assertValidConfiguration(result);
         validateConfigField(result, MariaDbConnectorConfig.SNAPSHOT_LOCKING_MODE, SnapshotLockingMode.MINIMAL);
+        validateConfigField(result, MariaDbConnectorConfig.SSL_MODE, MariaDbConnectorConfig.MariaDbSecureConnectionMode.DISABLE);
     }
 
     @Override

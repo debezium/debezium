@@ -239,22 +239,6 @@ public abstract class UniqueDatabase {
 
         builder = applyConnectorDefaultJdbcConfiguration(builder);
 
-        String sslMode = System.getProperty("database.ssl.mode", "preferred");
-
-        if (sslMode.equals("disabled")) {
-            builder.with(BinlogConnectorConfig.SSL_MODE, BinlogConnectorConfig.SecureConnectionMode.DISABLED);
-        }
-        else {
-            URL trustStoreFile = UniqueDatabase.class.getClassLoader().getResource("ssl/truststore");
-            URL keyStoreFile = UniqueDatabase.class.getClassLoader().getResource("ssl/keystore");
-
-            builder.with(BinlogConnectorConfig.SSL_MODE, sslMode)
-                    .with(BinlogConnectorConfig.SSL_TRUSTSTORE, System.getProperty("database.ssl.truststore", trustStoreFile.getPath()))
-                    .with(BinlogConnectorConfig.SSL_TRUSTSTORE_PASSWORD, System.getProperty("database.ssl.truststore.password", "debezium"))
-                    .with(BinlogConnectorConfig.SSL_KEYSTORE, System.getProperty("database.ssl.keystore", keyStoreFile.getPath()))
-                    .with(BinlogConnectorConfig.SSL_KEYSTORE_PASSWORD, System.getProperty("database.ssl.keystore.password", "debezium"));
-        }
-
         if (dbHistoryPath != null) {
             builder.with(FileSchemaHistory.FILE_PATH, dbHistoryPath);
         }

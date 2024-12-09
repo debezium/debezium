@@ -71,17 +71,6 @@ public abstract class BinlogConnectionConfiguration implements ConnectionConfigu
     }
 
     @Override
-    public BinlogConnectorConfig.SecureConnectionMode sslMode() {
-        final String sslMode = configuration.getString(BinlogConnectorConfig.SSL_MODE);
-        return BinlogConnectorConfig.SecureConnectionMode.parse(sslMode);
-    }
-
-    @Override
-    public boolean sslModeEnabled() {
-        return sslMode() != BinlogConnectorConfig.SecureConnectionMode.DISABLED;
-    }
-
-    @Override
     public String sslKeyStore() {
         return configuration.getString(BinlogConnectorConfig.SSL_KEYSTORE);
     }
@@ -125,6 +114,8 @@ public abstract class BinlogConnectionConfiguration implements ConnectionConfigu
             }
             if (!Objects.isNull(sslTrustStorePassword())) {
                 builder.with("trustCertificateKeyStorePassword", String.valueOf(sslTrustStorePassword()));
+                // TODO: remove once https://jira.mariadb.org/browse/CONJ-1217 is fixed
+                builder.with("trustStorePassword", String.valueOf(sslTrustStorePassword()));
             }
             if (!Strings.isNullOrBlank(sslKeyStore())) {
                 builder.with("clientCertificateKeyStoreUrl", "file:" + sslKeyStore());

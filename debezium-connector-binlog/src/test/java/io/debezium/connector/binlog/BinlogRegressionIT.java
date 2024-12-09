@@ -32,11 +32,15 @@ import org.apache.kafka.connect.source.SourceConnector;
 import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotMode;
 import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
+import io.debezium.connector.binlog.junit.SkipTestDependingOnDatabaseRule;
+import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
@@ -61,6 +65,9 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
     private static final TemporalAdjuster ADJUSTER = BinlogValueConverters::adjustTemporal;
 
     private Configuration config;
+
+    @Rule
+    public TestRule skipRule = new SkipTestDependingOnDatabaseRule();
 
     @Before
     public void beforeEach() {
@@ -645,6 +652,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
     }
 
     @Test
+    @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "MariaDB JDBC driver issue CONJ-1226")
     public void shouldConsumeAllEventsFromDatabaseUsingSnapshot() throws SQLException, InterruptedException {
         // Use the DB configuration to define the connector's configuration ...
         config = DATABASE.defaultConfig()
