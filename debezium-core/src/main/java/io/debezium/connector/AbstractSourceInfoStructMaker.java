@@ -6,6 +6,7 @@
 package io.debezium.connector;
 
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Objects;
 
 import org.apache.kafka.connect.data.Schema;
@@ -24,7 +25,9 @@ import io.debezium.data.Enum;
  */
 public abstract class AbstractSourceInfoStructMaker<T extends AbstractSourceInfo> implements SourceInfoStructMaker<T> {
 
-    public static final Schema SNAPSHOT_RECORD_SCHEMA = Enum.builder("true,last,false,incremental").defaultValue("false").optional().build();
+    public static final Schema SNAPSHOT_RECORD_SCHEMA = Enum.builder(
+            String.join(",", Arrays.stream(SnapshotRecord.values()).map(java.lang.Enum::name).map(String::toLowerCase).toList()))
+            .defaultValue(SnapshotRecord.FALSE.name().toLowerCase()).optional().build();
 
     private String version;
     private String connector;
