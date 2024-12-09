@@ -1266,21 +1266,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         }
     }
 
-    private SSLMode sslModeFor(SecureConnectionMode mode) {
-        switch (mode) {
-            case DISABLED:
-                return SSLMode.DISABLED;
-            case PREFERRED:
-                return SSLMode.PREFERRED;
-            case REQUIRED:
-                return SSLMode.REQUIRED;
-            case VERIFY_CA:
-                return SSLMode.VERIFY_CA;
-            case VERIFY_IDENTITY:
-                return SSLMode.VERIFY_IDENTITY;
-        }
-        return null;
-    }
+    protected abstract SSLMode sslModeFor(SecureConnectionMode mode);
 
     private SSLSocketFactory getBinlogSslSocketFactory(BinlogConnectorConfig connectorConfig, BinlogConnectorConnection connection) {
         String acceptedTlsVersion = connection.getSessionVariableForSslVersion();
