@@ -851,4 +851,12 @@ public class TestHelper {
         patchConnectorConfigurationForContainer(config, oracleContainer);
         return config;
     }
+
+    public static long getUndoRetentionSeconds() throws SQLException {
+        try (OracleConnection admin = adminConnection(false)) {
+            return admin.queryAndMap(
+                    "SELECT VALUE from V$PARAMETER WHERE NAME = 'undo_retention'",
+                    admin.singleResultMapper(rs -> rs.getLong(1), "Failed to get undo retention parameter"));
+        }
+    }
 }
