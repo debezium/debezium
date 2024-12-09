@@ -119,33 +119,18 @@ public class OracleConnection extends JdbcConnection {
     }
 
     public void setSessionToPdb(String pdbName) {
-        Statement statement = null;
-
-        try {
-            statement = connection().createStatement();
-            statement.execute("alter session set container=" + pdbName);
-        }
-        catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-        finally {
-            if (statement != null) {
-                try {
-                    statement.close();
-                }
-                catch (SQLException e) {
-                    LOGGER.error("Couldn't close statement", e);
-                }
-            }
-        }
+        setContainerAs(pdbName);
     }
 
     public void resetSessionToCdb() {
-        Statement statement = null;
+        setContainerAs("cdb$root");
+    }
 
+    private void setContainerAs(String containerName) {
+        Statement statement = null;
         try {
             statement = connection().createStatement();
-            statement.execute("alter session set container=cdb$root");
+            statement.execute("alter session set container=" + containerName);
         }
         catch (SQLException e) {
             throw new RuntimeException(e);
@@ -654,35 +639,36 @@ public class OracleConnection extends JdbcConnection {
     public Map<String, Object> reselectColumns(Table table, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source)
             throws SQLException {
         final TableId oracleTableId = new TableId(null, table.id().schema(), table.id().table());
-        final String commitScn = source.getString(SourceInfo.COMMIT_SCN_KEY);
-        if (Strings.isNullOrEmpty(commitScn)) {
-            final String query = String.format("SELECT %s FROM %s WHERE %s",
-                    columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
-                    quotedTableIdString(oracleTableId),
-                    keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
-            return optionallyDoInContainer(() -> reselectColumns(query, oracleTableId, columns, keyValues));
+        if (source != null) {
+            final String commitScn = source.getString(SourceInfo.COMMIT_SCN_KEY);
+            if (!Strings.isNullOrEmpty(commitScn)) {
+                final String query = String.format("SELECT %s FROM (SELECT * FROM %s AS OF SCN ?) WHERE %s",
+                        columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
+                        quotedTableIdString(oracleTableId),
+                        keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
+                final List<Object> bindValues = new ArrayList<>(keyValues.size() + 1);
+                bindValues.add(commitScn);
+                bindValues.addAll(keyValues);
+                try {
+                    return reselectColumns(query, oracleTableId, columns, bindValues);
+                }
+                catch (SQLException e) {
+                    // Check if the exception is about a flashback area error with an aged SCN
+                    if (!(e.getErrorCode() == 1555 || e.getMessage().startsWith("ORA-01555"))) {
+                        throw e;
+                    }
+                    LOGGER.warn("Failed to re-select row for table {} and key columns {} with values {}. " +
+                            "Trying to perform re-selection without flashback.", table.id(), keyColumns, keyValues);
+                }
+            }
         }
 
-        final String query = String.format("SELECT %s FROM (SELECT * FROM %s AS OF SCN ?) WHERE %s",
+        final String query = String.format("SELECT %s FROM %s WHERE %s",
                 columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
                 quotedTableIdString(oracleTableId),
                 keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
-        final List<Object> bindValues = new ArrayList<>(keyValues.size() + 1);
-        bindValues.add(commitScn);
-        bindValues.addAll(keyValues);
-        return optionallyDoInContainer(() -> {
-            try {
-                return reselectColumns(query, oracleTableId, columns, bindValues);
-            }
-            catch (SQLException e) {
-                if (e.getErrorCode() == 1555 || e.getMessage().startsWith("ORA-01555")) {
-                    LOGGER.warn("Failed to re-select row for table {} and key columns {} with values {}. " +
-                            "Trying to perform re-selection without flashback.", table.id(), keyColumns, keyValues);
-                    return super.reselectColumns(table, columns, keyColumns, keyValues, source);
-                }
-                throw e;
-            }
-        });
+
+        return reselectColumns(query, oracleTableId, columns, keyValues);
     }
 
     @Override
@@ -712,23 +698,6 @@ public class OracleConnection extends JdbcConnection {
             }
             consumer.apply(rs.getLong(1), rs.getLong(2));
         });
-    }
-
-    private <T> T optionallyDoInContainer(ContainerWork<T> work) throws SQLException {
-        boolean swapped = false;
-        try {
-            final String pdbName = config().getString("pdb.name");
-            if (!Strings.isNullOrEmpty(pdbName)) {
-                setSessionToPdb(pdbName);
-                swapped = true;
-            }
-            return work.execute();
-        }
-        finally {
-            if (swapped) {
-                resetSessionToCdb();
-            }
-        }
     }
 
     public Long getTableObjectId(TableId tableId) throws SQLException {
@@ -909,11 +878,6 @@ public class OracleConnection extends JdbcConnection {
     private static Instant readTimestampAsInstant(ResultSet rs, String columnName) throws SQLException {
         final Timestamp value = rs.getTimestamp(columnName);
         return value == null ? null : value.toInstant();
-    }
-
-    @FunctionalInterface
-    interface ContainerWork<T> {
-        T execute() throws SQLException;
     }
 
     @FunctionalInterface
