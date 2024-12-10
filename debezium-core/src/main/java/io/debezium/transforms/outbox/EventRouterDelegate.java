@@ -329,6 +329,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
     }
 
     public void configure(Map<String, ?> configMap) {
+        LOGGER.debug("[OTEL] OpenTelemetry.isOpenTelemetryAvailable {}", ActivateTracingSpan.isOpenTelemetryAvailable());
         if (ActivateTracingSpan.isOpenTelemetryAvailable()) {
             tracingSmt.configure(configMap);
             if (!configMap.containsKey(ActivateTracingSpan.TRACING_CONTEXT_FIELD_REQUIRED.name())) {
