@@ -24,14 +24,14 @@ import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.AbstractConnectorTest;
 
 /**
  * Integration tests for config skip.messages.without.change
  *
  * @author Ronak Jain
  */
-public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractAsyncEngineConnectorTest {
+public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTest {
 
     @Rule
     public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();

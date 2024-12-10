@@ -23,7 +23,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Testing;
 
 /**
@@ -31,7 +31,7 @@ import io.debezium.util.Testing;
  *
  * @author Chris Cranford
  */
-public class SnapshotSelectOverridesIT extends AbstractAsyncEngineConnectorTest {
+public class SnapshotSelectOverridesIT extends AbstractConnectorTest {
 
     private static final int INITIAL_RECORDS_PER_TABLE = 10;
 

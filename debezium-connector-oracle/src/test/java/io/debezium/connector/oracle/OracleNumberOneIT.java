@@ -23,7 +23,7 @@ import io.debezium.connector.oracle.converters.NumberOneToBooleanConverter;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Testing;
 
 /**
@@ -31,7 +31,7 @@ import io.debezium.util.Testing;
  *
  * @author Chris Cranford
  */
-public class OracleNumberOneIT extends AbstractAsyncEngineConnectorTest {
+public class OracleNumberOneIT extends AbstractConnectorTest {
 
     private OracleConnection connection;
 

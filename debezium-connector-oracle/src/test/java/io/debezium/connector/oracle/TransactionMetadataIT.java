@@ -25,7 +25,7 @@ import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
@@ -34,7 +34,7 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec
  */
-public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
+public class TransactionMetadataIT extends AbstractConnectorTest {
 
     private static OracleConnection connection;
 

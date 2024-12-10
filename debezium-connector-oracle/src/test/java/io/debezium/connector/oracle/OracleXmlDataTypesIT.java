@@ -36,7 +36,7 @@ import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
 
@@ -50,7 +50,7 @@ import oracle.xml.parser.v2.XMLDocument;
  * @author Chris Cranford
  */
 @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Hybrid does not support XML")
-public class OracleXmlDataTypesIT extends AbstractAsyncEngineConnectorTest {
+public class OracleXmlDataTypesIT extends AbstractConnectorTest {
 
     // Short XML files
     private static final String XML_DATA = Testing.Files.readResourceAsString("data/test_xml_data_short.xml");

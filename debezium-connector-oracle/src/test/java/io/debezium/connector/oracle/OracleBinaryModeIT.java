@@ -26,14 +26,14 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnStrategyRule;
 import io.debezium.connector.oracle.junit.SkipWhenLogMiningStrategyIs;
 import io.debezium.connector.oracle.util.TestHelper;
-import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Testing;
 
 /**
  * @author Chris Cranford
  */
 @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Hybrid does not support BLOB")
-public class OracleBinaryModeIT extends AbstractAsyncEngineConnectorTest {
+public class OracleBinaryModeIT extends AbstractConnectorTest {
 
     @Rule
     public final TestRule skipStrategyRule = new SkipTestDependingOnStrategyRule();

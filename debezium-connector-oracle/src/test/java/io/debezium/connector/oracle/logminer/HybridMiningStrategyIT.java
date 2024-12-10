@@ -51,9 +51,9 @@ import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.doc.FixFor;
+import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.EmbeddedEngineConfig;
 import io.debezium.embedded.KafkaConnectUtil;
-import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.junit.SkipLongRunning;
 import io.debezium.junit.SkipTestRule;
@@ -76,7 +76,7 @@ import io.debezium.util.Testing;
  * @author Chris Cranford
  */
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Only applies to LogMiner")
-public class HybridMiningStrategyIT extends AbstractAsyncEngineConnectorTest {
+public class HybridMiningStrategyIT extends AbstractConnectorTest {
 
     @Rule
     public final TestRule skipApicurioRule = new SkipTestWhenRunWithApicurioRule();

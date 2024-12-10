@@ -33,7 +33,7 @@ import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
@@ -43,7 +43,7 @@ import io.debezium.util.Testing;
  * @author Chris Cranford
  */
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "LogMiner specific")
-public class LogFileCollectorIT extends AbstractAsyncEngineConnectorTest {
+public class LogFileCollectorIT extends AbstractConnectorTest {
 
     @Rule
     public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();

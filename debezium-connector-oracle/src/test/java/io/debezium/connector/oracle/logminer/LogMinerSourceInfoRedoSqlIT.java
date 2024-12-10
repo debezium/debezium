@@ -31,7 +31,7 @@ import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Testing;
 
 /**
@@ -40,7 +40,7 @@ import io.debezium.util.Testing;
  * @author Chris Cranford
  */
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Requires LogMiner")
-public class LogMinerSourceInfoRedoSqlIT extends AbstractAsyncEngineConnectorTest {
+public class LogMinerSourceInfoRedoSqlIT extends AbstractConnectorTest {
 
     @Rule
     public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();

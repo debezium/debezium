@@ -41,7 +41,7 @@ import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.Testing;
 
@@ -53,7 +53,7 @@ import ch.qos.logback.classic.Level;
  * @author Chris Cranford
  */
 @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Hybrid does not support CLOB")
-public class OracleClobDataTypeIT extends AbstractAsyncEngineConnectorTest {
+public class OracleClobDataTypeIT extends AbstractConnectorTest {
 
     private static final String JSON_DATA = Testing.Files.readResourceAsString("data/test_lob_data.json");
     private static final String JSON_DATA2 = Testing.Files.readResourceAsString("data/test_lob_data2.json");

@@ -40,7 +40,7 @@ import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.IoUtil;
 import io.debezium.util.Testing;
@@ -53,7 +53,7 @@ import ch.qos.logback.classic.Level;
  * @author Chris Cranford
  */
 @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "BLOB not supported by this mine mode")
-public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
+public class OracleBlobDataTypesIT extends AbstractConnectorTest {
 
     private static final byte[] BIN_DATA = readBinaryData("data/test_lob_data.json");
 

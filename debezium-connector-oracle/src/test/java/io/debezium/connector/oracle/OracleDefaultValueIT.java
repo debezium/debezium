@@ -27,7 +27,7 @@ import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.time.Interval;
 import io.debezium.time.MicroDuration;
@@ -39,7 +39,7 @@ import io.debezium.util.Testing;
  *
  * @author Chris Cranford
  */
-public class OracleDefaultValueIT extends AbstractAsyncEngineConnectorTest {
+public class OracleDefaultValueIT extends AbstractConnectorTest {
 
     private OracleConnection connection;
     private Consumer<Configuration.Builder> configUpdater;

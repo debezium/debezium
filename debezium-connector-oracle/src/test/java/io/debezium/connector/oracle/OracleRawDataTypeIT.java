@@ -28,14 +28,14 @@ import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.AbstractConnectorTest;
 
 /**
  * Integration tests for RAW data type support.
  *
  * @author Chris Cranford
  */
-public class OracleRawDataTypeIT extends AbstractAsyncEngineConnectorTest {
+public class OracleRawDataTypeIT extends AbstractConnectorTest {
 
     private static final int RAW_LENGTH = 2000;
 

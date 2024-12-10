@@ -92,8 +92,8 @@ import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
+import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.EmbeddedEngineConfig;
-import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
@@ -111,7 +111,7 @@ import ch.qos.logback.classic.Level;
  *
  * @author Gunnar Morling
  */
-public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
+public class OracleConnectorIT extends AbstractConnectorTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleConnectorIT.class);
 
     private static final long MICROS_PER_SECOND = TimeUnit.SECONDS.toMicros(1);

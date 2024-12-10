@@ -21,10 +21,10 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.VerifyRecord;
-import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.util.Testing;
 
-public class CustomSnapshotterIT extends AbstractAsyncEngineConnectorTest {
+public class CustomSnapshotterIT extends AbstractConnectorTest {
 
     private static OracleConnection connection;
 
