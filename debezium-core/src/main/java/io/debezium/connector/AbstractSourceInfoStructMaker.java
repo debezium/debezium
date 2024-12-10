@@ -6,15 +6,13 @@
 package io.debezium.connector;
 
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.Objects;
 
-import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.config.CommonConnectorConfig;
-import io.debezium.data.Enum;
+import io.debezium.schema.SchemaFactory;
 
 /**
  * Common information provided by all connectors in either source field or offsets.
@@ -24,10 +22,6 @@ import io.debezium.data.Enum;
  * @author Jiri Pechanec
  */
 public abstract class AbstractSourceInfoStructMaker<T extends AbstractSourceInfo> implements SourceInfoStructMaker<T> {
-
-    public static final Schema SNAPSHOT_RECORD_SCHEMA = Enum.builder(
-            String.join(",", Arrays.stream(SnapshotRecord.values()).map(java.lang.Enum::name).map(String::toLowerCase).toList()))
-            .defaultValue(SnapshotRecord.FALSE.name().toLowerCase()).optional().build();
 
     private String version;
     private String connector;
@@ -41,16 +35,7 @@ public abstract class AbstractSourceInfoStructMaker<T extends AbstractSourceInfo
     }
 
     protected SchemaBuilder commonSchemaBuilder() {
-        return SchemaBuilder.struct()
-                .field(AbstractSourceInfo.DEBEZIUM_VERSION_KEY, Schema.STRING_SCHEMA)
-                .field(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY, Schema.STRING_SCHEMA)
-                .field(AbstractSourceInfo.SERVER_NAME_KEY, Schema.STRING_SCHEMA)
-                .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
-                .field(AbstractSourceInfo.SNAPSHOT_KEY, SNAPSHOT_RECORD_SCHEMA)
-                .field(AbstractSourceInfo.DATABASE_NAME_KEY, Schema.STRING_SCHEMA)
-                .field(AbstractSourceInfo.SEQUENCE_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(AbstractSourceInfo.TIMESTAMP_US_KEY, Schema.OPTIONAL_INT64_SCHEMA)
-                .field(AbstractSourceInfo.TIMESTAMP_NS_KEY, Schema.OPTIONAL_INT64_SCHEMA);
+        return SchemaFactory.get().sourceInfoSchemaBuilder();
     }
 
     protected Struct commonStruct(T sourceInfo) {
