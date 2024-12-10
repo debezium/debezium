@@ -124,17 +124,6 @@ public abstract class AbstractConnectorTest implements Testing {
     @Rule
     public TestRule logTestName = new TestLogger(logger);
 
-    /**
-     * Creates instance of {@link DebeziumEngine} which should be used for testing across the testsuite.
-     */
-    protected abstract TestingDebeziumEngine<SourceRecord> createEngine(DebeziumEngine.Builder<SourceRecord> builder);
-
-    /**
-     * Creates instance of {@link DebeziumEngine.Builder} which corresponds to the {@link DebeziumEngine} provided
-     * by the {@link #createEngine(DebeziumEngine.Builder)} method.
-     */
-    protected abstract DebeziumEngine.Builder<SourceRecord> createEngineBuilder();
-
     @Before
     public final void initializeConnectorTestFramework() {
         LoggingContext.forConnector(getClass().getSimpleName(), "", "test");
@@ -463,6 +452,14 @@ public abstract class AbstractConnectorTest implements Testing {
                 fail("Interrupted while waiting for engine startup");
             }
         }
+    }
+
+    protected DebeziumEngine.Builder<SourceRecord> createEngineBuilder() {
+        return new EmbeddedEngine.EngineBuilder();
+    }
+
+    protected TestingDebeziumEngine<SourceRecord> createEngine(DebeziumEngine.Builder<SourceRecord> builder) {
+        return new TestingEmbeddedEngine((EmbeddedEngine) builder.build());
     }
 
     protected Consumer<SourceRecord> getConsumer(Predicate<SourceRecord> isStopRecord, Consumer<SourceRecord> recordArrivedListener, boolean ignoreRecordsAfterStop) {
