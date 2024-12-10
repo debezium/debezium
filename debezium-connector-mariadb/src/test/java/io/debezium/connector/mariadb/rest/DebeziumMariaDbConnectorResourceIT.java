@@ -246,7 +246,7 @@ public class DebeziumMariaDbConnectorResourceIT {
                 .with(KafkaSchemaHistory.TOPIC.name(), "dbhistory.inventory")
                 .with(MariaDbConnectorConfig.SERVER_ID.name(), Long.valueOf(5555 + id - 1))
                 // basic container does not support SSL out of the box
-                .with(MariaDbConnectorConfig.SSL_MODE.name(), "disabled");
+                .with(MariaDbConnectorConfig.SSL_MODE.name(), "disable");
 
         if (options != null && options.length > 0) {
             for (int i = 0; i < options.length; i += 2) {
