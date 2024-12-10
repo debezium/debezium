@@ -92,7 +92,6 @@ ddlStatement:
     | dropTrigger
     | dropView
     | dropRole
-    | dropSequence
     | setRole
     | renameTable
     | truncateTable
@@ -835,12 +834,6 @@ setRole:
     | SET ROLE roleOption
 ;
 
-dropSequence:
-    DROP TEMPORARY? SEQUENCE ifExists? COMMENT_INPUT? fullId (
-        ',' fullId
-    )*
-;
-
 //    Other DDL statements
 
 renameTable:
@@ -1344,6 +1337,7 @@ stringMasterOption:
     | MASTER_SSL_CIPHER
     | MASTER_TLS_VERSION
 ;
+
 decimalMasterOption:
     MASTER_PORT
     | MASTER_CONNECT_RETRY
@@ -2107,7 +2101,9 @@ indexColumnName: (
 ;
 
 simpleUserName: STRING_LITERAL | ID | ADMIN | keywordsCanBeId;
+
 hostName: (LOCAL_ID | HOST_IP_ADDRESS | '@');
+
 userName:
     simpleUserName
     | simpleUserName hostName
@@ -2390,6 +2386,7 @@ defaultValue:
     | unaryOperator? constant
     | currentTimestamp (ON UPDATE currentTimestamp)?
     | '(' expression ')'
+    | '(' fullId ')'
 ;
 
 currentTimestamp: (
