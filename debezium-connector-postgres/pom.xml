@@ -31,6 +31,7 @@
         <docker.initimage>ln -fs /usr/share/zoneinfo/US/Samoa /etc/localtime &amp;&amp; echo timezone=US/Samoa &gt;&gt; ${postgres.config.file}</docker.initimage>
 
         <protobuf.output.directory>${project.basedir}/generated-sources</protobuf.output.directory>
+        <protoc.artifact>com.google.protobuf:protoc:3.21.1</protoc.artifact>
 
         <!-- We're tracking the API changes of the SPI. -->
         <revapi.skip>false</revapi.skip>
@@ -132,7 +133,7 @@
                             <goal>run</goal>
                         </goals>
                         <configuration>
-                            <protocVersion>${version.com.google.protobuf}</protocVersion> <!-- 2.4.1, 2.5.0, 2.6.1, 3.0.0 -->
+                            <protocArtifact>${protoc.artifact}</protocArtifact>
                             <outputDirectory>${protobuf.output.directory}</outputDirectory>
                             <inputDirectories>
                                 <include>src/main/proto</include>

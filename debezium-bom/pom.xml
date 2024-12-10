@@ -27,7 +27,7 @@
         <version.cassandra.driver>3.11.0</version.cassandra.driver>
 
         <!-- Connectors -->
-        <version.com.google.protobuf>3.8.0</version.com.google.protobuf>
+        <version.com.google.protobuf>3.11.4</version.com.google.protobuf>
         <version.dropwizard>4.0.1</version.dropwizard>
         <version.guava>30.0-jre</version.guava>
         <version.jaxb>2.3.1</version.jaxb>
