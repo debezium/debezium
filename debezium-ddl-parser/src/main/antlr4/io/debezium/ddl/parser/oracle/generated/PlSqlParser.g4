@@ -2332,6 +2332,7 @@ et_oracle_datapump
       // Undocumented, internal DATAPUMP operations used by Oracle
       | DEBUG '=' '(' UNSIGNED_INTEGER ',' UNSIGNED_INTEGER ')'
       | DATAPUMP INTERNAL TABLE tableview_name
+      | TEMPLATE_TABLE tableview_name
       | JOB '(' schema_name ',' tableview_name ',' UNSIGNED_INTEGER ')'
       | WORKERID UNSIGNED_INTEGER
       | PARALLEL UNSIGNED_INTEGER
@@ -7317,6 +7318,7 @@ non_reserved_keywords_pre12c
     | TBLORIDXPARTNUM
     | TEMPFILE
     | TEMPLATE
+    | TEMPLATE_TABLE
     | TEMPORARY
     | TEMP_TABLE
     | TEST
