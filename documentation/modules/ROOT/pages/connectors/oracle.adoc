@@ -4565,6 +4565,10 @@ endif::community[]
 |`long`
 |The number of rolled back transactions in the transaction buffer.
 
+|[[oracle-straeming-metrics-number-of-partial-rollback-count]]<<oracle-streaming-metrics-number-of-partial-rollback-count, `+NumberOfPartialRollbackCount+`>>
+|`long`
+|The number of events rolled back in a committed transaction, which implies constraint violations in most use cases.
+
 |[[oracle-streaming-metrics-commit-throughput]]<<oracle-streaming-metrics-commit-throughput, `+CommitThroughput+`>>
 |`long`
 |The average number of committed transactions per second in the transaction buffer.
