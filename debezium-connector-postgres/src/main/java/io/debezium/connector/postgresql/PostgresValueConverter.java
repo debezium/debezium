@@ -74,9 +74,6 @@ import io.debezium.relational.ValueConverter;
 import io.debezium.time.Conversions;
 import io.debezium.time.Interval;
 import io.debezium.time.MicroDuration;
-import io.debezium.time.MicroTime;
-import io.debezium.time.MicroTimestamp;
-import io.debezium.time.NanoTime;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.NumberConversions;
@@ -267,51 +264,18 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.BOOL_ARRAY:
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_BOOLEAN_SCHEMA);
             case PgOid.DATE_ARRAY:
-                if (adaptiveTimeIsoString) {
-                    return SchemaBuilder.array(io.debezium.time.IsoDate.builder().optional().build());
-                }
-                if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode || adaptiveTimeMicroseconds || adaptiveTimeNanoseconds) {
-                    return SchemaBuilder.array(io.debezium.time.Date.builder().optional().build());
-                }
-                return SchemaBuilder.array(org.apache.kafka.connect.data.Date.builder().optional().build());
+                return SchemaBuilder.array(temporalPrecisionMode.getDateBuilder().optional().build());
             case PgOid.UUID_ARRAY:
                 return SchemaBuilder.array(Uuid.builder().optional().build());
             case PgOid.JSONB_ARRAY:
             case PgOid.JSON_ARRAY:
                 return SchemaBuilder.array(Json.builder().optional().build());
             case PgOid.TIME_ARRAY:
-                if (adaptiveTimeIsoString) {
-                    return SchemaBuilder.array(io.debezium.time.IsoTime.builder().optional().build());
-                }
-                if (adaptiveTimeMicroseconds) {
-                    return SchemaBuilder.array(io.debezium.time.MicroTime.builder().optional().build());
-                }
-                if (adaptiveTimeNanoseconds) {
-                    return SchemaBuilder.array(io.debezium.time.NanoTime.builder().optional().build());
-                }
-                return SchemaBuilder.array(MicroTime.builder().optional().build());
+                return SchemaBuilder.array(temporalPrecisionMode.getTimeBuilder(getTimePrecision(column)).optional().build());
             case PgOid.TIMETZ_ARRAY:
                 return SchemaBuilder.array(ZonedTime.builder().optional().build());
             case PgOid.TIMESTAMP_ARRAY:
-                if (adaptiveTimeIsoString) {
-                    return SchemaBuilder.array(io.debezium.time.IsoTimestamp.builder().optional().build());
-                }
-                if (adaptiveTimeMicroseconds) {
-                    return SchemaBuilder.array(io.debezium.time.MicroTimestamp.builder().optional().build());
-                }
-                if (adaptiveTimeNanoseconds) {
-                    return SchemaBuilder.array(io.debezium.time.NanoTimestamp.builder().optional().build());
-                }
-                if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
-                    if (getTimePrecision(column) <= 3) {
-                        return SchemaBuilder.array(io.debezium.time.Timestamp.builder().optional().build());
-                    }
-                    if (getTimePrecision(column) <= 6) {
-                        return SchemaBuilder.array(MicroTimestamp.builder().optional().build());
-                    }
-                    return SchemaBuilder.array(NanoTime.builder().optional().build());
-                }
-                return SchemaBuilder.array(org.apache.kafka.connect.data.Timestamp.builder().optional().build());
+                return SchemaBuilder.array(temporalPrecisionMode.getTimestampBuilder(getTimePrecision(column)).optional().build());
             case PgOid.TIMESTAMPTZ_ARRAY:
                 return SchemaBuilder.array(ZonedTimestamp.builder().optional().build());
             case PgOid.BYTEA_ARRAY:
