@@ -76,6 +76,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
     private final AtomicLong oversizedTransactionCount = new AtomicLong();
     private final AtomicLong changesCount = new AtomicLong();
     private final AtomicLong scnFreezeCount = new AtomicLong();
+    private final AtomicLong partialRollbackCount = new AtomicLong();
 
     private final DurationHistogramMetric batchProcessingDuration = new DurationHistogramMetric();
     private final DurationHistogramMetric fetchQueryDuration = new DurationHistogramMetric();
@@ -123,6 +124,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
         rolledBackTransactionCount.set(0);
         oversizedTransactionCount.set(0);
         scnFreezeCount.set(0);
+        partialRollbackCount.set(0);
 
         fetchQueryDuration.reset();
         batchProcessingDuration.reset();
@@ -379,6 +381,11 @@ public class LogMinerStreamingChangeEventSourceMetrics
     @Override
     public long getAbandonedTransactionCount() {
         return abandonedTransactionIds.getAll().size();
+    }
+
+    @Override
+    public long getNumberOfPartialRollbackCount() {
+        return partialRollbackCount.get();
     }
 
     @Override
@@ -681,6 +688,13 @@ public class LogMinerStreamingChangeEventSourceMetrics
                     .minusSeconds(databaseZoneOffset.get().getTotalSeconds());
             lagFromSourceDuration.set(Duration.between(adjustedTime, clock.instant()).abs());
         }
+    }
+
+    /**
+     * Increases the number of partial rollback events detected.
+     */
+    public void increasePartialRollbackCount() {
+        partialRollbackCount.addAndGet(1);
     }
 
     @Override

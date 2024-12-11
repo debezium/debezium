@@ -2041,6 +2041,11 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
     }
 
     private void removeEvents(LogMinerEventRow row, List<String> eventKeys) {
+        // This metric won't necessarily be accurate when LOB is enabled, it will scale based on the
+        // number of times a given transaction is re-mined.
+        metrics.increasePartialRollbackCount();
+        counters.partialRollbackCount++;
+
         for (String eventKey : eventKeys) {
             final LogMinerEvent event = getEventCache().get(eventKey);
             if (event != null && event.getRowId().equals(row.getRowId())) {
@@ -2081,6 +2086,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         public int rollbackCount;
         public int tableMetadataCount;
         public long rows;
+        public long partialRollbackCount;
 
         public void reset() {
             dmlCount = 0;
@@ -2092,6 +2098,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
             rollbackCount = 0;
             tableMetadataCount = 0;
             rows = 0;
+            partialRollbackCount = 0;
         }
 
         @Override
@@ -2107,6 +2114,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                     ", commitCount=" + commitCount +
                     ", rollbackCount=" + rollbackCount +
                     ", tableMetadataCount=" + tableMetadataCount +
+                    ", partialRollbackCount=" + partialRollbackCount +
                     '}';
         }
     }
