@@ -2,6 +2,74 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 2.7.4.Final
+December 11st 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12433595)
+
+### New features since 2.7.3.Final
+
+* Allow skipping exceptions related to DML parser errors [DBZ-8208](https://issues.redhat.com/browse/DBZ-8208)
+* Support int/bigint arrays in reselect colums postprocessors [DBZ-8212](https://issues.redhat.com/browse/DBZ-8212)
+* Log the record key when debezium fails to send the record to Kafka [DBZ-8282](https://issues.redhat.com/browse/DBZ-8282)
+* RowsScanned JMX metric for MongoDB differs from relational connectors [DBZ-8359](https://issues.redhat.com/browse/DBZ-8359)
+
+
+### Breaking changes since 2.7.3.Final
+
+None
+
+
+### Fixes since 2.7.3.Final
+
+* Oracle DDL parsing will fail if the DDL ends with a new line character [DBZ-7040](https://issues.redhat.com/browse/DBZ-7040)
+* Custom convert (all to strings) and SQLServer default '0' type issue [DBZ-7045](https://issues.redhat.com/browse/DBZ-7045)
+* Missing documentation for MongoDb SSL configuration [DBZ-7927](https://issues.redhat.com/browse/DBZ-7927)
+* Conditionalization implemented for single-sourcing MySQL/MariaDB content isn't working as expected [DBZ-8094](https://issues.redhat.com/browse/DBZ-8094)
+* Error writing data to target database. (Caused by: java.lang.RuntimeException: org.postgresql.util.PSQLException: The column index is out of range: 140, number of columns: 139.) [DBZ-8221](https://issues.redhat.com/browse/DBZ-8221)
+* Debezium Server messages not being sent to Pub/Sub after restart [DBZ-8236](https://issues.redhat.com/browse/DBZ-8236)
+* JDBC Sink truncate event also add event to updateBufferByTable [DBZ-8247](https://issues.redhat.com/browse/DBZ-8247)
+* Performance Regression in Debezium Server Kafka after DBZ-7575 fix [DBZ-8251](https://issues.redhat.com/browse/DBZ-8251)
+* Error Prone library included in MySQL connector [DBZ-8258](https://issues.redhat.com/browse/DBZ-8258)
+* Debezium.text.ParsingException: DDL statement couldn't be parsed [DBZ-8259](https://issues.redhat.com/browse/DBZ-8259)
+* DDL statement couldn't be parsed. 'mismatched input 'NOCACHE' expecting {'AS', 'USAGE', ';'} [DBZ-8262](https://issues.redhat.com/browse/DBZ-8262)
+* journal processing loops after journal offset reset [DBZ-8265](https://issues.redhat.com/browse/DBZ-8265)
+* Embedded MySqlConnector "Unable to find minimal snapshot lock mode" since 2.5.4.Final [DBZ-8271](https://issues.redhat.com/browse/DBZ-8271)
+* Reselect Post Processor not working when pkey of type uuid etc. [DBZ-8277](https://issues.redhat.com/browse/DBZ-8277)
+* BinlogStreamingChangeEventSource totalRecordCounter is never updated [DBZ-8290](https://issues.redhat.com/browse/DBZ-8290)
+* Race condition in stop-snapshot signal [DBZ-8303](https://issues.redhat.com/browse/DBZ-8303)
+* ReselectPostProcessor fails when reselecting columns from Oracle [DBZ-8304](https://issues.redhat.com/browse/DBZ-8304)
+* Debezium MySQL DDL parser: SECONDARY_ENGINE=RAPID does not support [DBZ-8305](https://issues.redhat.com/browse/DBZ-8305)
+* Oracle DDL failure - subpartition list clause does not support in-memory clause [DBZ-8315](https://issues.redhat.com/browse/DBZ-8315)
+* DDL statement couldn't be parsed [DBZ-8316](https://issues.redhat.com/browse/DBZ-8316)
+* Oracle connector: archive.log.only.mode stop working after reach SYSDATE SCN [DBZ-8345](https://issues.redhat.com/browse/DBZ-8345)
+* Object name is not in the list of S3 schema history fields [DBZ-8366](https://issues.redhat.com/browse/DBZ-8366)
+* Upgrade protobuf dependencies to avoid potential vulnerability [DBZ-8371](https://issues.redhat.com/browse/DBZ-8371)
+* ExtractNewRecordState transform: NPE when processing non-envelope records  [DBZ-8393](https://issues.redhat.com/browse/DBZ-8393)
+* Oracle LogMiner metric OldestScnAgeInMilliseconds can be negative [DBZ-8395](https://issues.redhat.com/browse/DBZ-8395)
+* ExtractNewDocumentStateTestIT fails randomly [DBZ-8397](https://issues.redhat.com/browse/DBZ-8397)
+* Oracle OBJECT_ID lookup and cause high CPU and latency in Hybrid mining mode [DBZ-8399](https://issues.redhat.com/browse/DBZ-8399)
+* Engine shutdown may get stuck when error is thrown during connector stop [DBZ-8414](https://issues.redhat.com/browse/DBZ-8414)
+* JdbcOffsetBackingStore does not release lock of debezium_offset_storage gracefully [DBZ-8423](https://issues.redhat.com/browse/DBZ-8423)
+* Installation documentation typo on download link [DBZ-8429](https://issues.redhat.com/browse/DBZ-8429)
+* Asycn engine fails with NPE when transformation returns null [DBZ-8434](https://issues.redhat.com/browse/DBZ-8434)
+* Formatting characters render in descriptions of Oracle `log.mining` properties [DBZ-8450](https://issues.redhat.com/browse/DBZ-8450)
+
+
+### Other changes since 2.7.3.Final
+
+* Fix conditionalization in shared MariaDB/MySQL file [DBZ-8254](https://issues.redhat.com/browse/DBZ-8254)
+* Add Oracle FUTC license [DBZ-8260](https://issues.redhat.com/browse/DBZ-8260)
+* Remove Oracle libs from product assembly package [DBZ-8261](https://issues.redhat.com/browse/DBZ-8261)
+* debezium-connector-binlog does not need MariaDB dependency [DBZ-8263](https://issues.redhat.com/browse/DBZ-8263)
+* Provide subset package for Debezium Server [DBZ-8264](https://issues.redhat.com/browse/DBZ-8264)
+* BlockingSnapshotIT streamingMetricsResumeAfterBlockingSnapshot fails after backport [DBZ-8267](https://issues.redhat.com/browse/DBZ-8267)
+* Correct description of the `all_tables` option for the PG `publication.autocreate.mode` property [DBZ-8268](https://issues.redhat.com/browse/DBZ-8268)
+* Test docs for productization and fix broken links and rendering errors  [DBZ-8284](https://issues.redhat.com/browse/DBZ-8284)
+* Formatting characters render literally in docs [DBZ-8293](https://issues.redhat.com/browse/DBZ-8293)
+* Backport two fixes to binlog client version 0.31.x [DBZ-8387](https://issues.redhat.com/browse/DBZ-8387)
+* Log SCN existence check may throw ORA-01291 if a recent checkpoint occurred [DBZ-8389](https://issues.redhat.com/browse/DBZ-8389)
+
+
+
 ## 2.7.3.Final
 September 20th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12432883)
 

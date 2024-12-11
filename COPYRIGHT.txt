@@ -120,6 +120,7 @@ Claus Guttesen
 Claus Ibsen
 Clément Loiselet
 Cliff Wheadon
+Cody Holmes
 Collin Van Dyck
 Connor Szczepaniak
 Cory Harper
@@ -128,6 +129,7 @@ Cyril Scetbon
 Daan Gerits
 Daan Roosen
 Daniel Petisme
+dario
 Dave Cramer
 Dave Cumberland
 David Beck
@@ -188,6 +190,7 @@ Felix Eckhardt
 Fintan Bolton
 Frank Koornstra
 Frank Mormino
+Franz Emberger
 Frederic Laurent
 Gabor Andras
 Gagan Agrawal
@@ -218,6 +221,7 @@ Jason Schweier
 Jesse Ehrenzweig
 Jiabao Sun
 Jiri Kulhanek
+Jonas Thelemann
 Jordan Pittier
 Juan Fiallo
 Jun Zhao
@@ -299,6 +303,7 @@ Kanthi Subramanian
 Katerina Galieva
 Kaushik Iyer
 Kaustuv Chakrabarti
+Kavya Ramaiah
 Kazuki MATSUDA / 松田一樹
 Keith Barber
 Keri Harris
@@ -307,6 +312,7 @@ Kevin Rothenberger
 Kewei Shang
 Kosta Kostelnik
 Krizhan Mariampillai
+Kunal Bhatnagar
 Kyley Jex
 Lairen Hightower
 laoflch
@@ -329,7 +335,6 @@ Lukas Krejci
 Lukas Langegger
 Lukasz Korzeniowski
 lyidataminr
-moyq5
 M Sazzadul Hoque
 Maciej Bryński
 Mans Singh
@@ -347,6 +352,7 @@ Mark Lambert
 Martin Medek
 Martin Sillence
 Martin Tosney
+Martin Vlk
 Masazumi Kobayashi
 Mathijs van den Worm
 Matt Beary
@@ -376,6 +382,7 @@ Mohamed Pudukulathan
 Mohammad Yousuf Minhaj Zia
 Moira Tagle
 Mostafa Ghadimi
+moyq5
 Muhammad Sufyian
 My Lang Pangzi
 Nancy Xu
@@ -408,6 +415,7 @@ Ori Popowski
 Orr Ganani
 Oscar Romero
 Oskar Polak
+P. Aum
 Patrick Chu
 Pavel Strashkin
 Paul Cheung
@@ -420,6 +428,7 @@ Peter Junos
 Peter Larsson
 Peter Urbanetz
 Philip Sanetra
+Philippe Labat
 Piotr Piastucki
 Plugaru Tudor
 Poonam Meghnani
@@ -494,6 +503,7 @@ Shuguang Xiang
 Shuran Zhang
 SiuFay
 Siddhant Agnihotry
+Stanislav Deviatov
 Stanley Shyiko
 Stathis Souris
 Stavros Champilomatis
@@ -522,6 +532,7 @@ Thomas Thornton
 Tim Loes
 tisonkun
 Timo Roeseler
+Timo Schmidt
 Timo Wilhelm
 Tin Nguyen
 Tom Bentley
@@ -573,6 +584,7 @@ Yanjie Wang
 yangrong688
 yangsanity
 Yashashree Chopada
+Yevhenii Lopatenko
 Yilong Chang
 Yiming Liu
 Yingying Tang
@@ -620,6 +632,7 @@ Massimo Fortunat
 Vincenzo Santonastaso
 Matan Cohen
 Don Seiler
+Dongwook Chan
 Ahmed Rachid Hazourli
 Pavithrananda Prabhu
 حمود سمبول

@@ -280,5 +280,12 @@ ashishbinu,Ashish Binu
 wltmlx,Lukas Langegger
 GitHubSergei,Sergey Kazakov
 shaer,Mohamed El Shaer
+SylvainMarty,Sylvain Marty
 m8719-github,Andrei Leibovski
+cwholmes,Cody Holmes
 ArtDu,Artyom Dubinin
+Kate Galieva,Katerina Galieva
+dongwook-chan,Dongwook Chan
+paumr,P. Aum
+yevhenii-lopatenko,Yevhenii Lopatenko
+kavyaramaiah1991,Kavya Ramaiah
