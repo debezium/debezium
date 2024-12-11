@@ -30,13 +30,12 @@ import io.debezium.relational.ValueConverter;
  */
 public class JdbcValueConvertersTemporalPrecisionTest {
     JdbcValueConverters converters = new JdbcValueConverters(null, TemporalPrecisionMode.ISOSTRING, ZoneOffset.UTC, null, null, null);
-    //
     final Column dateCol = Column.editor().name("c1").type("DATE").optional(false).jdbcType(Types.DATE).create();
     final Field dateField = new Field(dateCol.name(), -1, converters.schemaBuilder(dateCol).build());
     final ValueConverter dateValConverter = converters.converter(dateCol, dateField);
-    //
+
     final Column timeCol = Column.editor().name("c2").type("TIME").optional(false).jdbcType(Types.TIME).create();
-    //
+
     final Column timestampCol = Column.editor().name("c2").type("TIMESTAMP").optional(false).jdbcType(Types.TIMESTAMP).create();
 
     @Test
@@ -62,8 +61,9 @@ public class JdbcValueConvertersTemporalPrecisionTest {
     public void testIsoDate() throws ParseException {
         assertThat(dateCol.isOptional()).isEqualTo(false);
 
+        // should return default value
         assertThat(dateValConverter.convert(null)).isEqualTo("1970-01-01Z");
-        //
+
         Object val = dateValConverter.convert(LocalDate.parse("2005-05-12"));
         assertThat(val).isEqualTo("2005-05-12Z");
         // LocalDateTime
@@ -85,7 +85,7 @@ public class JdbcValueConvertersTemporalPrecisionTest {
     public void testIsoTime() {
         Field timeField = new Field("tc1", -1, converters.schemaBuilder(timeCol).build());
         ValueConverter timeValConverter = converters.converter(timeCol, timeField);
-        //
+        // should return default value
         assertThat(timeCol.isOptional()).isEqualTo(false);
         assertThat(timeValConverter.convert(null)).isEqualTo("00:00:00Z");
         // java.util.Date
@@ -107,7 +107,7 @@ public class JdbcValueConvertersTemporalPrecisionTest {
     public void testIsoTimestamp() {
         Field tsField = new Field("tsc1", -1, converters.schemaBuilder(timestampCol).build());
         ValueConverter tSValConverter = converters.converter(timestampCol, tsField);
-        //
+        // should return default value
         assertThat(timestampCol.isOptional()).isEqualTo(false);
         assertThat(tSValConverter.convert(null)).isEqualTo("1970-01-01T00:00:00Z");
         // LocalDateTime
@@ -127,7 +127,7 @@ public class JdbcValueConvertersTemporalPrecisionTest {
         Field timeField = new Field("time_col", -1, converters.schemaBuilder(timeCol).build());
         ValueConverter timeMicroValConverter = convertersMicro.converter(timeCol, timeField);
         ValueConverter timeNanoValConverter = convertersNano.converter(timeCol, timeField);
-        // null
+        // should return default value
         assertThat(timeCol.isOptional()).isEqualTo(false);
         assertThat(timeMicroValConverter.convert(null)).isEqualTo(0L);
         assertThat(timeNanoValConverter.convert(null)).isEqualTo(0L);

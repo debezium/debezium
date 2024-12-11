@@ -20,8 +20,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
@@ -35,7 +33,6 @@ import io.debezium.util.Testing;
  * @author Ismail Simsek
  */
 public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConnectorTest {
-    private static final Logger LOGGER = LoggerFactory.getLogger(PostgresTemporalPrecisionHandlingIT.class);
 
     static String TOPIC_NAME = topicName("temporaltype.test_data_types");
 
@@ -172,10 +169,7 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
         assertEquals(TOPIC_NAME, insertRecord.topic());
         VerifyRecord.isValidInsert(insertRecord, "c_id", 3);
         after = getAfter(insertRecord);
-        LOGGER.error("KEY:{}", insertRecord.key());
-        LOGGER.error("RECORD:{}", insertRecord);
-        LOGGER.error("AFTER:{}", after);
-        //
+        // validate right record received
         assertEquals(after.get("c_id"), 3);
         stopConnector();
     }
@@ -230,7 +224,7 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
 
         assertEquals(after.get("c_id"), 2);
         // '2017-09-15'::DATE
-        // assertEquals(after.get("c_date"), "2017-09-15Z");
+        assertEquals(after.get("c_date"), 17424);
         // '2019-07-09 02:28:57+01' ,
         assertEquals(after.get("c_timestamp0"), 1562639337000000L);
         // '2019-07-09 02:28:57.1+01'
@@ -260,10 +254,7 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
         assertEquals(TOPIC_NAME, insertRecord.topic());
         VerifyRecord.isValidInsert(insertRecord, "c_id", 3);
         after = getAfter(insertRecord);
-        LOGGER.error("KEY:{}", insertRecord.key());
-        LOGGER.error("RECORD:{}", insertRecord);
-        LOGGER.error("AFTER:{}", after);
-        //
+        // validate right record received
         assertEquals(after.get("c_id"), 3);
         stopConnector();
     }
@@ -274,7 +265,6 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
         final PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.INCLUDE_UNKNOWN_DATATYPES, true)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "temporaltype")
-                // .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.NANOSECONDS)
                 .build());
         start(PostgresConnector.class, config.getConfig());
@@ -318,7 +308,7 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
 
         assertEquals(after.get("c_id"), 2);
         // '2017-09-15'::DATE
-        // assertEquals(after.get("c_date"), "2017-09-15Z");
+        assertEquals(after.get("c_date"), 17424);
         // '2019-07-09 02:28:57+01' ,
         assertEquals(after.get("c_timestamp0"), 1562639337000000000L);
         // '2019-07-09 02:28:57.1+01'
@@ -348,10 +338,7 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
         assertEquals(TOPIC_NAME, insertRecord.topic());
         VerifyRecord.isValidInsert(insertRecord, "c_id", 3);
         after = getAfter(insertRecord);
-        LOGGER.error("KEY:{}", insertRecord.key());
-        LOGGER.error("RECORD:{}", insertRecord);
-        LOGGER.error("AFTER:{}", after);
-        //
+
         assertEquals(after.get("c_id"), 3);
         stopConnector();
     }
@@ -373,7 +360,6 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
         SourceRecord insertRecord = records.recordsForTopic("test_server.public.time_table").get(0);
         VerifyRecord.isValidRead(insertRecord, "pk", 1);
         Struct after = getAfter(insertRecord);
-        LOGGER.error("{}", after);
         // somehow on github pipeline it gets +292278994-08-16Z vs +292278994-08-17Z
         assertTrue(after.get("date_pinf").toString().contains("+292278994-08-"));
         // somehow on github pipeline it fails expected:<+292269055-12-02Z> but was:<+292269055-12-03Z>
@@ -405,7 +391,6 @@ public class PostgresTemporalPrecisionHandlingIT extends AbstractAsyncEngineConn
         Struct after = getAfter(insertRecord);
         assertEquals(after.get("tsrange_array").toString(), "[[\"2019-03-31 15:30:00\",infinity), [\"2019-03-31 15:30:00\",\"2019-04-30 15:30:00\"]]");
         assertEquals(after.get("daterange_array").toString(), "[[2019-03-31,infinity), [2019-03-31,2019-04-30)]");
-        LOGGER.error("ARRAY: {}", after);
     }
 
 }

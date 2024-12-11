@@ -15,8 +15,6 @@ import java.time.temporal.TemporalAdjuster;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 
-// Fixed javadoc descriptions!
-
 /**
  * A utility for converting various Java temporal object representations into a UTC ISO 8601 string representation,
  * specifically focusing on dates (without time or timezone information).
