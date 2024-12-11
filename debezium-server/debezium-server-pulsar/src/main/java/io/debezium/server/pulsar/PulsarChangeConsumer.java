@@ -31,6 +31,7 @@ import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.RecordCommitter;
 import io.debezium.server.BaseChangeConsumer;
+import io.debezium.util.Strings;
 
 /**
  * Implementation of the consumer that delivers the messages into a Pulsar destination.
@@ -63,8 +64,12 @@ public class PulsarChangeConsumer extends BaseChangeConsumer implements Debezium
     void connect() {
         final Config config = ConfigProvider.getConfig();
         try {
+            Map<String, Object> pulsarClientConfig = getConfigSubset(config, PROP_CLIENT_PREFIX);
+            Map<String, Object> camelCaseConfig = new HashMap<>();
+            pulsarClientConfig.forEach((key, value) -> camelCaseConfig.put(Strings.convertToCamelCase(key), value));
+
             pulsarClient = PulsarClient.builder()
-                    .loadConf(getConfigSubset(config, PROP_CLIENT_PREFIX))
+                    .loadConf(camelCaseConfig)
                     .build();
         }
         catch (PulsarClientException e) {

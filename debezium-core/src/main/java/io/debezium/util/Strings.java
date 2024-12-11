@@ -26,6 +26,7 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import java.util.stream.Collectors;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.text.ParsingException;
@@ -1098,4 +1099,25 @@ public final class Strings {
             tokens.addToken(input.position(tokenStart), tokenStart, input.index() + 1);
         }
     }
+
+    /**
+     * Converts a given string to camel case format.
+     * The input string can use '.' or '_' as delimiters to separate words.
+     * The method capitalizes the first letter of each word after the first
+     * delimiter and removes the delimiters.
+     * Examples:
+     * - "example.string.input" becomes "ExampleStringInput"
+     * - "another_example_input" becomes "AnotherExampleInput"
+     *
+     * @param input the input string to be converted, containing words separated by '.' or '_'.
+     * @return the converted string in camel case format.
+     *
+     * @throws NullPointerException if the input string is null.
+     */
+    public static String convertToCamelCase(String input) {
+        return Arrays.stream(input.split("[._]"))
+                .map(word -> Character.toUpperCase(word.charAt(0)) + word.substring(1))
+                .collect(Collectors.joining());
+    }
+
 }
