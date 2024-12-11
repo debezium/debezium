@@ -25,7 +25,8 @@ public class LegacyDeleteHandlingStrategy<R extends ConnectRecord<R>> extends Ab
     private final DeleteHandling deleteHandling;
     private final boolean dropTombstones;
 
-    public LegacyDeleteHandlingStrategy(DeleteHandling deleteHandling, boolean dropTombstones) {
+    public LegacyDeleteHandlingStrategy(DeleteHandling deleteHandling, boolean dropTombstones, boolean replaceNullWithDefault) {
+        super(replaceNullWithDefault);
         this.deleteHandling = deleteHandling;
         this.dropTombstones = dropTombstones;
     }

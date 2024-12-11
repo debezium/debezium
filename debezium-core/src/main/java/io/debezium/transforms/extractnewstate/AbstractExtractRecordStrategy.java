@@ -30,15 +30,11 @@ public abstract class AbstractExtractRecordStrategy<R extends ConnectRecord<R>> 
     // for mongodb
     protected ExtractField<R> updateDescriptionDelegate;
 
-    public AbstractExtractRecordStrategy() {
-        init();
-    }
-
-    private void init() {
+    public AbstractExtractRecordStrategy(boolean replaceNullWithDefault) {
         afterDelegate = ConnectRecordUtil.extractAfterDelegate();
         beforeDelegate = ConnectRecordUtil.extractBeforeDelegate();
-        removedDelegate = ConnectRecordUtil.insertStaticValueDelegate(DELETED_FIELD, "true");
-        updatedDelegate = ConnectRecordUtil.insertStaticValueDelegate(DELETED_FIELD, "false");
+        removedDelegate = ConnectRecordUtil.insertStaticValueDelegate(DELETED_FIELD, "true", replaceNullWithDefault);
+        updatedDelegate = ConnectRecordUtil.insertStaticValueDelegate(DELETED_FIELD, "false", replaceNullWithDefault);
         updateDescriptionDelegate = ConnectRecordUtil.extractUpdateDescriptionDelegate();
     }
 

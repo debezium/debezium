@@ -353,4 +353,8 @@ If you specify a field that is not in the change event record, the SMT does not 
  +
 By default, the SMT only removes fields that are marked `optional`.
 
+|[[replace-null-with-default]]xref:replace-null-with-default[`replace.null.with.default`]
+|`true`
+|Specifies whether you want the SMT to replace record's null values with source-defined default.
+
 |===
