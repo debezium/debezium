@@ -782,7 +782,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         }
 
         // Retrieve the redo thread state and get the minimum flushed SCN across all open redo threads
-        final Scn minOpenRedoThreadLastScn = jdbcConnection.getRedoThreadState()
+        Scn minOpenRedoThreadLastScn = jdbcConnection.getRedoThreadState()
                 .getThreads()
                 .stream()
                 .filter(RedoThread::isOpen)
@@ -794,6 +794,11 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         // assigned maximum read position, we should attempt to cap the maximum read position based
         // on the redo thread data.
         if (!minOpenRedoThreadLastScn.isNull()) {
+            // LogMiner takes the range we provide and subtracts 1 from the start and adds 1 to the upper bounds
+            // to create a non-inclusive range from our inclusive range. If we supply the last flushed SCN, the
+            // non-inclusive range will specify an SCN beyond what is in the logs, leading to LogMiner failure.
+            minOpenRedoThreadLastScn = minOpenRedoThreadLastScn.subtract(Scn.ONE);
+
             if (minOpenRedoThreadLastScn.compareTo(result) < 0) {
                 // There are situations where on first start-up that the startScn may be higher
                 // than the last flushed redo thread SCN, in which case we should delay by one
