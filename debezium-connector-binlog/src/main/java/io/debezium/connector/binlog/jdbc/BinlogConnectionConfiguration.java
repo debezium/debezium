@@ -114,6 +114,8 @@ public abstract class BinlogConnectionConfiguration implements ConnectionConfigu
             }
             if (!Objects.isNull(sslTrustStorePassword())) {
                 builder.with("trustCertificateKeyStorePassword", String.valueOf(sslTrustStorePassword()));
+                // TODO: remove once https://jira.mariadb.org/browse/CONJ-1217 is fixed
+                builder.with("trustStorePassword", String.valueOf(sslTrustStorePassword()));
             }
             if (!Strings.isNullOrBlank(sslKeyStore())) {
                 builder.with("clientCertificateKeyStoreUrl", "file:" + sslKeyStore());
