@@ -5,6 +5,9 @@
  */
 package io.debezium.pipeline.signal.actions.snapshotting;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.signal.actions.AbstractSnapshotSignal;
@@ -12,6 +15,8 @@ import io.debezium.pipeline.spi.Partition;
 import io.debezium.spi.schema.DataCollectionId;
 
 public class PauseIncrementalSnapshot<P extends Partition> extends AbstractSnapshotSignal<P> {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(PauseIncrementalSnapshot.class);
 
     public static final String NAME = "pause-snapshot";
 
@@ -23,6 +28,7 @@ public class PauseIncrementalSnapshot<P extends Partition> extends AbstractSnaps
 
     @Override
     public boolean arrived(SignalPayload<P> signalPayload) throws InterruptedException {
+        LOGGER.info("Request to pause incremental snapshot");
         dispatcher.getIncrementalSnapshotChangeEventSource().pauseSnapshot(signalPayload.partition, signalPayload.offsetContext);
         return true;
     }
