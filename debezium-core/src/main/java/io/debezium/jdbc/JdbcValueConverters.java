@@ -394,6 +394,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
             case ISOSTRING:
                 return convertDateToUtcIsoString(column, fieldDefn, data);
             case ADAPTIVE_TIME_MICROSECONDS:
+            case NANOSECONDS:
+            case MICROSECONDS:
             case ADAPTIVE:
                 return convertDateToEpochDays(column, fieldDefn, data);
             default:
@@ -410,9 +412,6 @@ public class JdbcValueConverters implements ValueConverterProvider {
             case NANOSECONDS:
                 return convertTimeToNanosPastMidnight(column, fieldDefn, data);
             case ADAPTIVE_TIME_MICROSECONDS:
-                // @TODO ? THIS IS INCONSISTEND WITH Timestamp
-                // @TODO HERE ITS FIXED TO Micros! SHOULDN'T WE CHECK THE getTimePrecision()??
-                // @TODO FOR TIMESTAMP ITS NOT FIXED TO Micros, ITS ADAPTIVE!
                 return convertTimeToMicrosPastMidnight(column, fieldDefn, data);
             case ADAPTIVE:
                 if (getTimePrecision(column) <= 3) {
@@ -719,13 +718,13 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * @return the converted UTC ISO 8601 string representation of the time, or "00:00:00Z" if necessary
      */
     protected Object convertTimeToUtcIsoString(Column column, Field fieldDefn, Object data) {
-        // epoch is the fallback value
         return convertValue(column, fieldDefn, data, "00:00:00Z", (r) -> {
             try {
                 r.deliver(IsoTime.toIsoString(data, supportsLargeTimeValues()));
             }
             catch (IllegalArgumentException e) {
-                e.printStackTrace();
+                logger.warn("Unexpected JDBC Time value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
+                        fieldDefn.schema(), data.getClass(), data);
             }
         });
     }
@@ -748,6 +747,8 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 r.deliver(IsoTimestamp.toIsoString(data, adjuster));
             }
             catch (IllegalArgumentException e) {
+                logger.warn("Unexpected JDBC Timestamp value for field {} with schema {}: class={}, value={}", fieldDefn.name(),
+                        fieldDefn.schema(), data.getClass(), data);
             }
         });
     }
