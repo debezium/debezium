@@ -475,7 +475,7 @@
                         <database.replica.port>${mariadb.replica.port}</database.replica.port>
                         <!-- Specifies which driver to use for the tests -->
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
-                        <database.ssl.mode>disabled</database.ssl.mode>
+                        <database.ssl.mode>disable</database.ssl.mode>
                     </systemPropertyVariables>
                     <runOrder>${runOrder}</runOrder>
                 </configuration>
@@ -618,7 +618,7 @@
                                 <database.replica.password>${mariadb.replica.password}</database.replica.password>
                                 <database.port>${mariadb.port}</database.port>
                                 <database.replica.port>${mariadb.port}</database.replica.port>
-                                <database.ssl.mode>disabled</database.ssl.mode>
+                                <database.ssl.mode>disable</database.ssl.mode>
                                 <!-- Specifies which driver to use for the tests -->
                                 <skipLongRunningTests>false</skipLongRunningTests>
                                 <isAssemblyProfileActive>true</isAssemblyProfileActive>
@@ -661,7 +661,7 @@
                                 </goals>
                                 <configuration>
                                     <systemPropertyVariables>
-                                        <database.ssl.mode>verify_ca</database.ssl.mode>
+                                        <database.ssl.mode>verify-ca</database.ssl.mode>
                                         <database.ssl.truststore>${project.basedir}/src/test/resources/ssl/truststore</database.ssl.truststore>
                                         <database.ssl.truststore.password>debezium</database.ssl.truststore.password>
                                         <database.ssl.keystore>${project.basedir}/src/test/resources/ssl/keystore</database.ssl.keystore>
@@ -862,7 +862,7 @@
                                 <database.replica.password>${mariadb.replica.password}</database.replica.password>
                                 <database.port>${mariadb.port}</database.port>
                                 <database.replica.port>${mariadb.port}</database.replica.port>
-                                <database.ssl.mode>disabled</database.ssl.mode>
+                                <database.ssl.mode>disable</database.ssl.mode>
                                 <!-- Specifies which driver to use for the tests -->
                                 <skipLongRunningTests>false</skipLongRunningTests>
                                 <isAssemblyProfileActive>true</isAssemblyProfileActive>
@@ -940,7 +940,7 @@
                                 <database.replica.password>${mariadb.replica.password}</database.replica.password>
                                 <database.port>${mariadb.gtid.port}</database.port>
                                 <database.replica.port>${mariadb.gtid.replica.port}</database.replica.port>
-                                <database.ssl.mode>disabled</database.ssl.mode>
+                                <database.ssl.mode>disable</database.ssl.mode>
                                 <!-- Specifies which driver to use for the tests -->
                                 <skipLongRunningTests>false</skipLongRunningTests>
                                 <isAssemblyProfileActive>true</isAssemblyProfileActive>
@@ -1016,7 +1016,7 @@
                                 <database.replica.password>${mariadb.replica.password}</database.replica.password>
                                 <database.port>${mariadb.port}</database.port>
                                 <database.replica.port>${mariadb.port}</database.replica.port>
-                                <database.ssl.mode>verify_ca</database.ssl.mode>
+                                <database.ssl.mode>verify-ca</database.ssl.mode>
                                 <!-- Specifies which driver to use for the tests -->
                                 <skipLongRunningTests>false</skipLongRunningTests>
                                 <isAssemblyProfileActive>true</isAssemblyProfileActive>

@@ -333,7 +333,7 @@ jobs:
     strategy:
       # Runs each combination concurrently
       matrix:
-        profile: [ 'mariadb-ci', 'mariadb-ci-gtids' ]
+        profile: [ 'mariadb-ci', 'mariadb-ci-gtids', 'mariadb-ci-ssl']
       fail-fast: false
     name: "MariaDB - ${{ matrix.profile }}"
     needs: [ check_style, file_changes ]

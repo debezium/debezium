@@ -20,7 +20,9 @@ import com.github.shyiko.mysql.binlog.event.EventData;
 import com.github.shyiko.mysql.binlog.event.EventType;
 import com.github.shyiko.mysql.binlog.event.GtidEventData;
 import com.github.shyiko.mysql.binlog.event.RowsQueryEventData;
+import com.github.shyiko.mysql.binlog.network.SSLMode;
 
+import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogStreamingChangeEventSource;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.pipeline.ErrorHandler;
@@ -145,6 +147,23 @@ public class MySqlStreamingChangeEventSource extends BinlogStreamingChangeEventS
     @Override
     protected void initializeGtidSet(String value) {
         this.gtidSet = new GtidSet(value);
+    }
+
+    @Override
+    protected SSLMode sslModeFor(BinlogConnectorConfig.SecureConnectionMode mode) {
+        switch ((MySqlConnectorConfig.MySqlSecureConnectionMode) mode) {
+            case DISABLED:
+                return SSLMode.DISABLED;
+            case PREFERRED:
+                return SSLMode.PREFERRED;
+            case REQUIRED:
+                return SSLMode.REQUIRED;
+            case VERIFY_CA:
+                return SSLMode.VERIFY_CA;
+            case VERIFY_IDENTITY:
+                return SSLMode.VERIFY_IDENTITY;
+        }
+        return null;
     }
 
 }
