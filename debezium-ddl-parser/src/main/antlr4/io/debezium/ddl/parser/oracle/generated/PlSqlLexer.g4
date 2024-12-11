@@ -2046,6 +2046,7 @@ TAN:                          'TAN';
 TBLORIDXPARTNUM:              'TBL$OR$IDX$PART$NUM';
 TEMPFILE:                     'TEMPFILE';
 TEMPLATE:                     'TEMPLATE';
+TEMPLATE_TABLE:               'TEMPLATE_TABLE';
 TEMPORARY:                    'TEMPORARY';
 TEMP_TABLE:                   'TEMP_TABLE';
 TERMINATED:                   'TERMINATED';
