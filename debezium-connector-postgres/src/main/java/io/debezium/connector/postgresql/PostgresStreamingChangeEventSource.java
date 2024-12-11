@@ -74,6 +74,10 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     // This flag will ensure that LSN is flushed only if we are really in message processing mode.
     private volatile boolean lsnFlushingAllowed = false;
 
+    // Offset commit is executed in a different thread.
+    // In case of failure we are going to terminate the processing gracefully from the current thread.
+    private volatile boolean commitOffsetFailure = false;
+
     /**
      * The minimum of (number of event received since the last event sent to Kafka,
      * number of event received since last WAL growing warning issued).
@@ -182,17 +186,23 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             errorHandler.setProducerThrowable(e);
         }
         finally {
-            if (replicationConnection != null) {
-                LOGGER.debug("stopping streaming...");
-                // stop the keep alive thread, this also shuts down the
-                // executor pool
-                ReplicationStream stream = replicationStream.get();
-                if (stream != null) {
-                    stream.stopKeepAlive();
-                }
-                // TODO author=Horia Chiorean date=08/11/2016 description=Ideally we'd close the stream, but it's not reliable atm (see javadoc)
-                // replicationStream.close();
-                // close the connection - this should also disconnect the current stream even if it's blocking
+            cleanUpStreamingOnStop(offsetContext);
+        }
+    }
+
+    private void cleanUpStreamingOnStop(PostgresOffsetContext offsetContext) {
+        if (replicationConnection != null) {
+            LOGGER.debug("stopping streaming...");
+            // stop the keep alive thread, this also shuts down the
+            // executor pool
+            ReplicationStream stream = replicationStream.get();
+            if (stream != null) {
+                stream.stopKeepAlive();
+            }
+            // TODO author=Horia Chiorean date=08/11/2016 description=Ideally we'd close the stream, but it's not reliable atm (see javadoc)
+            // replicationStream.close();
+            // close the connection - this should also disconnect the current stream even if it's blocking
+            if (offsetContext != null) {
                 try {
                     if (!isInPreSnapshotCatchUpStreaming(offsetContext)) {
                         connection.commit();
@@ -202,18 +212,23 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 catch (Exception e) {
                     LOGGER.debug("Exception while closing the connection", e);
                 }
-                replicationStream.set(null);
             }
+            replicationStream.set(null);
         }
+    }
+
+    private boolean hasStreamingStoppingLsn(PostgresOffsetContext offsetContext, Lsn lastCompletelyProcessedLsn) {
+        return offsetContext.getStreamingStoppingLsn() == null ||
+                (lastCompletelyProcessedLsn.compareTo(offsetContext.getStreamingStoppingLsn()) < 0);
     }
 
     private void processMessages(ChangeEventSourceContext context, PostgresPartition partition, PostgresOffsetContext offsetContext, final ReplicationStream stream)
             throws SQLException, InterruptedException {
         LOGGER.info("Processing messages");
         int noMessageIterations = 0;
-        while (context.isRunning() && (offsetContext.getStreamingStoppingLsn() == null ||
-                (lastCompletelyProcessedLsn.compareTo(offsetContext.getStreamingStoppingLsn()) < 0))) {
-
+        while (context.isRunning()
+                && !hasStreamingStoppingLsn(offsetContext, lastCompletelyProcessedLsn)
+                && !commitOffsetFailure) {
             boolean receivedMessage = stream.readPending(message -> processReplicationMessages(partition, offsetContext, stream, message));
 
             probeConnectionIfNeeded();
@@ -440,6 +455,10 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         }
         catch (SQLException e) {
             throw new ConnectException(e);
+        }
+        finally {
+            commitOffsetFailure = true;
+            cleanUpStreamingOnStop(null);
         }
     }
 

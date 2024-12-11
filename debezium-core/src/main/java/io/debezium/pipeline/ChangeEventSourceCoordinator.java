@@ -341,8 +341,13 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     }
 
     public void commitOffset(Map<String, ?> partition, Map<String, ?> offset) {
-        if (!commitOffsetLock.isLocked() && streamingSource != null && offset != null) {
-            streamingSource.commitOffset(partition, offset);
+        try {
+            if (!commitOffsetLock.isLocked() && streamingSource != null && offset != null) {
+                streamingSource.commitOffset(partition, offset);
+            }
+        }
+        catch (Throwable e) {
+            errorHandler.setProducerThrowable(e);
         }
     }
 
