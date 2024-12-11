@@ -1427,16 +1427,58 @@ To prevent the connector from rebalancing, set the total retry time (flush.retry
 |[[jdbc-property-column-naming-strategy]]<<jdbc-property-column-naming-strategy, `+column.naming.strategy+`>>
 |`i.d.c.j.n.DefaultColumnNamingStrategy`
 |Specifies the fully-qualified class name of a `ColumnNamingStrategy` implementation that the connector uses to resolve column names from event field names. +
- +
+
+Supported values: +
+
+* `i.d.c.j.n.DefaultColumnNamingStrategy` (default) +
+* `i.d.c.j.n.CustomColumnNamingStrategy` +
++
 By default, the connector uses the field name as the column name.
+
+|[[jdbc-property-column-naming-prefix]]<<jdbc-property-column-naming-prefix, `+column.naming.prefix+`>>
+|_empty string_
+|Specifies a prefix to prepend to column names when using `CustomColumnNamingStrategy`. Optional.
+
+|[[jdbc-property-column-naming-suffix]]<<jdbc-property-column-naming-suffix, `+column.naming.suffix+`>>
+|_empty string_
+|Specifies a suffix to append to column names when using `CustomColumnNamingStrategy`. Optional.
+
+|[[jdbc-property-column-naming-style]]<<jdbc-property-column-naming-style, `+column.naming.style+`>>
+|`default`
+|Specifies the naming style to apply to column names when using `CustomColumnNamingStrategy`. Supported values are: +
+
+* `snake_case` +
+* `camel_case` +
+* `upper_case` +
+* `lower_case` +
+* `default` (no transformation). Optional.
+
 |[[jdbc-property-collection-naming-strategy]]<<jdbc-property-collection-naming-strategy, `+collection.naming.strategy+`>>
 |`i.d.c.j.n.DefaultCollectionNamingStrategy`
 |Specifies the fully-qualified class name of a `CollectionNamingStrategy` implementation that the connector uses to resolve table names from incoming event topic names. +
- +
-The default behavior is to: +
+Supported values: +
 
-* Replace the `+${topic}+` placeholder in the xref:jdbc-property-collection-name-format[`collection.name.format`] configuration property with the event's topic.
-* Sanitize the table name by replacing dots (`.`) with underscores (`_`).
+* `i.d.c.j.n.DefaultCollectionNamingStrategy` (default) +
+* `i.d.c.j.n.CustomCollectionNamingStrategy` +
+
+The default behavior is to replace the `+${topic}+` placeholder in the `collection.name.format` configuration property with the event's topic and sanitize the table name by replacing dots (`.`) with underscores (`_`).
+
+|[[jdbc-property-collection-naming-prefix]]<<jdbc-property-collection-naming-prefix, `+collection.naming.prefix+`>>
+|_empty string_
+|Specifies a prefix to prepend to table names when using `CustomCollectionNamingStrategy`. Optional.
+
+|[[jdbc-property-collection-naming-suffix]]<<jdbc-property-collection-naming-suffix, `+collection.naming.suffix+`>>
+|_empty string_
+|Specifies a suffix to append to table names when using `CustomCollectionNamingStrategy`. Optional.
+
+|[[jdbc-property-collection-naming-style]]<<jdbc-property-collection-naming-style, `+collection.naming.style+`>>
+|`default`
+|Specifies the naming style to apply to table names when using `CustomCollectionNamingStrategy`. Supported values are: +
+* `snake_case` +
+* `camel_case` +
+* `upper_case` +
+* `lower_case` +
+* `default` (no transformation). Optional.
 
 |===
 
