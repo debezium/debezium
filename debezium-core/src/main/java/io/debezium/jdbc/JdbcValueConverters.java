@@ -98,11 +98,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
      * Fallback value for TIME WITH TZ is 00:00
      */
     private final String fallbackTimeWithTimeZone;
-    protected final boolean adaptiveTimePrecisionMode;
-    protected final boolean adaptiveTimeMicrosecondsPrecisionMode;
-    protected final boolean adaptiveTimeIsoString;
-    protected final boolean adaptiveTimeMicroseconds;
-    protected final boolean adaptiveTimeNanoseconds;
+    protected final TemporalPrecisionMode temporalPrecisionMode;
     protected final DecimalMode decimalMode;
     protected final TemporalAdjuster adjuster;
     protected final BigIntUnsignedMode bigIntUnsignedMode;
@@ -136,11 +132,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
     public JdbcValueConverters(DecimalMode decimalMode, TemporalPrecisionMode temporalPrecisionMode, ZoneOffset defaultOffset,
                                TemporalAdjuster adjuster, BigIntUnsignedMode bigIntUnsignedMode, BinaryHandlingMode binaryMode) {
         this.defaultOffset = defaultOffset != null ? defaultOffset : ZoneOffset.UTC;
-        this.adaptiveTimePrecisionMode = temporalPrecisionMode.equals(TemporalPrecisionMode.ADAPTIVE);
-        this.adaptiveTimeMicrosecondsPrecisionMode = temporalPrecisionMode.equals(TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS);
-        this.adaptiveTimeIsoString = temporalPrecisionMode.equals(TemporalPrecisionMode.ISOSTRING);
-        this.adaptiveTimeMicroseconds = temporalPrecisionMode.equals(TemporalPrecisionMode.MICROSECONDS);
-        this.adaptiveTimeNanoseconds = temporalPrecisionMode.equals(TemporalPrecisionMode.NANOSECONDS);
+        this.temporalPrecisionMode = temporalPrecisionMode;
         this.decimalMode = decimalMode != null ? decimalMode : DecimalMode.PRECISE;
         this.adjuster = adjuster;
         this.bigIntUnsignedMode = bigIntUnsignedMode != null ? bigIntUnsignedMode : BigIntUnsignedMode.PRECISE;
@@ -227,56 +219,11 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 return Xml.builder();
             // Date and time values
             case Types.DATE:
-                if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode || adaptiveTimeMicroseconds || adaptiveTimeNanoseconds) {
-                    return Date.builder();
-                }
-                if (adaptiveTimeIsoString) {
-                    return IsoDate.builder();
-                }
-                return org.apache.kafka.connect.data.Date.builder();
+                return temporalPrecisionMode.getDateBuilder();
             case Types.TIME:
-                if (adaptiveTimeMicrosecondsPrecisionMode) {
-                    return MicroTime.builder();
-                }
-                if (adaptiveTimePrecisionMode) {
-                    if (getTimePrecision(column) <= 3) {
-                        return Time.builder();
-                    }
-                    if (getTimePrecision(column) <= 6) {
-                        return MicroTime.builder();
-                    }
-                    return NanoTime.builder();
-                }
-                if (adaptiveTimeIsoString) {
-                    return IsoTime.builder();
-                }
-                if (adaptiveTimeMicroseconds) {
-                    return MicroTime.builder();
-                }
-                if (adaptiveTimeNanoseconds) {
-                    return NanoTime.builder();
-                }
-                return org.apache.kafka.connect.data.Time.builder();
+                return temporalPrecisionMode.getTimeBuilder(getTimePrecision(column));
             case Types.TIMESTAMP:
-                if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
-                    if (getTimePrecision(column) <= 3) {
-                        return Timestamp.builder();
-                    }
-                    if (getTimePrecision(column) <= 6) {
-                        return MicroTimestamp.builder();
-                    }
-                    return NanoTimestamp.builder();
-                }
-                if (adaptiveTimeIsoString) {
-                    return IsoTimestamp.builder();
-                }
-                if (adaptiveTimeMicroseconds) {
-                    return MicroTimestamp.builder();
-                }
-                if (adaptiveTimeNanoseconds) {
-                    return NanoTimestamp.builder();
-                }
-                return org.apache.kafka.connect.data.Timestamp.builder();
+                return temporalPrecisionMode.getTimestampBuilder(getTimePrecision(column));
             case Types.TIME_WITH_TIMEZONE:
                 return ZonedTime.builder();
             case Types.TIMESTAMP_WITH_TIMEZONE:
@@ -443,66 +390,63 @@ public class JdbcValueConverters implements ValueConverterProvider {
     }
 
     protected Object convertDate(Column column, Field fieldDefn, Object data) {
-        if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
-            return convertDateToEpochDays(column, fieldDefn, data);
+        switch (temporalPrecisionMode) {
+            case ISOSTRING:
+                return convertDateToUtcIsoString(column, fieldDefn, data);
+            case ADAPTIVE_TIME_MICROSECONDS:
+            case ADAPTIVE:
+                return convertDateToEpochDays(column, fieldDefn, data);
+            default:
+                return convertDateToEpochDaysAsDate(column, fieldDefn, data);
         }
-        if (adaptiveTimeIsoString) {
-            return convertDateToUtcIsoString(column, fieldDefn, data);
-        }
-        return convertDateToEpochDaysAsDate(column, fieldDefn, data);
     }
 
     protected Object convertTime(Column column, Field fieldDefn, Object data) {
-        if (adaptiveTimeIsoString) {
-            return convertTimeToUtcIsoString(column, fieldDefn, data);
-        }
-        if (adaptiveTimeMicroseconds) {
-            return convertTimeToMicrosPastMidnight(column, fieldDefn, data);
-        }
-        if (adaptiveTimeNanoseconds) {
-            return convertTimeToNanosPastMidnight(column, fieldDefn, data);
-        }
-        if (adaptiveTimeMicrosecondsPrecisionMode) {
-            // @TODO ? THIS IS INCONSISTEND WITH Timestamp
-            // @TODO HERE ITS FIXED TO Micros! SHOULDN'T WE CHECK THE getTimePrecision()??
-            // @TODO FOR TIMESTAMP ITS NOT FIXED TO Micros, ITS ADAPTIVE!
-            return convertTimeToMicrosPastMidnight(column, fieldDefn, data);
-        }
-        if (adaptiveTimePrecisionMode) {
-            if (getTimePrecision(column) <= 3) {
-                return convertTimeToMillisPastMidnight(column, fieldDefn, data);
-            }
-            if (getTimePrecision(column) <= 6) {
+        switch (temporalPrecisionMode) {
+            case ISOSTRING:
+                return convertTimeToUtcIsoString(column, fieldDefn, data);
+            case MICROSECONDS:
                 return convertTimeToMicrosPastMidnight(column, fieldDefn, data);
-            }
-            return convertTimeToNanosPastMidnight(column, fieldDefn, data);
-        }
-        // "connect" mode
-        else {
-            return convertTimeToMillisPastMidnightAsDate(column, fieldDefn, data);
+            case NANOSECONDS:
+                return convertTimeToNanosPastMidnight(column, fieldDefn, data);
+            case ADAPTIVE_TIME_MICROSECONDS:
+                // @TODO ? THIS IS INCONSISTEND WITH Timestamp
+                // @TODO HERE ITS FIXED TO Micros! SHOULDN'T WE CHECK THE getTimePrecision()??
+                // @TODO FOR TIMESTAMP ITS NOT FIXED TO Micros, ITS ADAPTIVE!
+                return convertTimeToMicrosPastMidnight(column, fieldDefn, data);
+            case ADAPTIVE:
+                if (getTimePrecision(column) <= 3) {
+                    return convertTimeToMillisPastMidnight(column, fieldDefn, data);
+                }
+                else if (getTimePrecision(column) <= 6) {
+                    return convertTimeToMicrosPastMidnight(column, fieldDefn, data);
+                }
+                return convertTimeToNanosPastMidnight(column, fieldDefn, data);
+            default:
+                return convertTimeToMillisPastMidnightAsDate(column, fieldDefn, data);
         }
     }
 
     protected Object convertTimestamp(Column column, Field fieldDefn, Object data) {
-        if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
-            if (getTimePrecision(column) <= 3) {
-                return convertTimestampToEpochMillis(column, fieldDefn, data);
-            }
-            if (getTimePrecision(column) <= 6) {
+        switch (temporalPrecisionMode) {
+            case ADAPTIVE:
+            case ADAPTIVE_TIME_MICROSECONDS:
+                if (getTimePrecision(column) <= 3) {
+                    return convertTimestampToEpochMillis(column, fieldDefn, data);
+                }
+                else if (getTimePrecision(column) <= 6) {
+                    return convertTimestampToEpochMicros(column, fieldDefn, data);
+                }
+                return convertTimestampToEpochNanos(column, fieldDefn, data);
+            case ISOSTRING:
+                return convertTimestampToUtcIsoString(column, fieldDefn, data);
+            case MICROSECONDS:
                 return convertTimestampToEpochMicros(column, fieldDefn, data);
-            }
-            return convertTimestampToEpochNanos(column, fieldDefn, data);
+            case NANOSECONDS:
+                return convertTimestampToEpochNanos(column, fieldDefn, data);
+            default:
+                return convertTimestampToEpochMillisAsDate(column, fieldDefn, data);
         }
-        if (adaptiveTimeIsoString) {
-            return convertTimestampToUtcIsoString(column, fieldDefn, data);
-        }
-        if (adaptiveTimeMicroseconds) {
-            return convertTimestampToEpochMicros(column, fieldDefn, data);
-        }
-        if (adaptiveTimeNanoseconds) {
-            return convertTimestampToEpochNanos(column, fieldDefn, data);
-        }
-        return convertTimestampToEpochMillisAsDate(column, fieldDefn, data);
     }
 
     /**
@@ -1473,7 +1417,10 @@ public class JdbcValueConverters implements ValueConverterProvider {
     }
 
     private boolean supportsLargeTimeValues() {
-        return adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode || adaptiveTimeNanoseconds || adaptiveTimeMicroseconds;
+        return temporalPrecisionMode == TemporalPrecisionMode.ADAPTIVE
+                || temporalPrecisionMode == TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS
+                || temporalPrecisionMode == TemporalPrecisionMode.MICROSECONDS
+                || temporalPrecisionMode == TemporalPrecisionMode.NANOSECONDS;
     }
 
     private byte[] toByteArray(char[] chars) {
