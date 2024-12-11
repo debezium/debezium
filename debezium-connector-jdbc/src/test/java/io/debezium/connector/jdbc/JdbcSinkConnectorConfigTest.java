@@ -7,7 +7,7 @@ package io.debezium.connector.jdbc;
 
 import static org.fest.assertions.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -23,13 +23,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Field;
-import io.debezium.connector.jdbc.naming.DefaultTableNamingStrategy;
-import io.debezium.connector.jdbc.naming.TableNamingStrategy;
+import io.debezium.connector.jdbc.naming.ColumnNamingStrategy;
+import io.debezium.connector.jdbc.naming.CustomCollectionNamingStrategy;
+import io.debezium.connector.jdbc.naming.CustomColumnNamingStrategy;
 import io.debezium.connector.jdbc.naming.TemporaryBackwardCompatibleCollectionNamingStrategyProxy;
-import io.debezium.connector.jdbc.util.DebeziumSinkRecordFactory;
 import io.debezium.doc.FixFor;
 import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.sink.naming.CollectionNamingStrategy;
+import io.debezium.sink.naming.DefaultCollectionNamingStrategy;
 
 /**
  * Unit tests for the {@link JdbcSinkConnectorConfig} class.
@@ -171,46 +172,69 @@ public class JdbcSinkConnectorConfigTest {
     @Test
     public void testDeprecatedTableNamingStrategy() {
         var properties = Map.of(
-                JdbcSinkConnectorConfig.DEPRECATED_TABLE_NAMING_STRATEGY, DefaultTableNamingStrategy.class.getName(),
-                JdbcSinkConnectorConfig.DEPRECATED_TABLE_NAME_FORMAT, "kafkadepdep_${topic}");
+                JdbcSinkConnectorConfig.DEPRECATED_TABLE_NAMING_STRATEGY, "table.naming.strategy",
+                JdbcSinkConnectorConfig.COLLECTION_NAMING_STRATEGY, JdbcSinkConnectorConfig.DEPRECATED_TABLE_NAMING_STRATEGY);
+
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
 
+        Field.Set fields = Field.setOf(JdbcSinkConnectorConfig.COLLECTION_NAMING_STRATEGY_FIELD);
+
         AtomicReference<String> errorMessage = new AtomicReference<>();
-        assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.COLLECTION_NAMING_STRATEGY_FIELD), errorMessage::set)).isTrue();
+        boolean isValid = config.validateAndRecord(fields, errorMessage::set);
+        assertTrue(isValid, "Validation should pass.");
         assertEquals(
-                "The 'collection.naming.strategy' value is invalid: Warning: Using deprecated config option \"table.naming.strategy\".",
+                "The 'collection.naming.strategy' value 'table.naming.strategy' is invalid: Warning: Using deprecated config option \"table.naming.strategy\".",
                 errorMessage.get());
-        assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT_FIELD), errorMessage::set)).isTrue();
-        assertEquals("The 'collection.name.format' value is invalid: Warning: Using deprecated config option \"table.name.format\".",
-                errorMessage.get());
+    }
 
-        // testing the proxy
-        TemporaryBackwardCompatibleCollectionNamingStrategyProxy collectionNamingStrategyProxy = (TemporaryBackwardCompatibleCollectionNamingStrategyProxy) config
-                .getCollectionNamingStrategy();
-        assertThat(collectionNamingStrategyProxy.resolveCollectionName(new DebeziumSinkRecordFactory().createRecord("database.schema.deptable"),
-                config.getCollectionNameFormat()))
-                .isEqualTo("kafkadepdep_database_schema_deptable");
+    @Test
+    public void testProxyWithDeprecatedTableNamingStrategy() {
+        Map<String, String> props = Map.of(
+                JdbcSinkConnectorConfig.DEPRECATED_TABLE_NAMING_STRATEGY, "deprecated_table_strategy",
+                JdbcSinkConnectorConfig.COLLECTION_NAMING_STRATEGY, DefaultCollectionNamingStrategy.class.getName());
 
-        // testing the original strategy as CollectionNamingStrategy instance
-        var originalCollectionNamingStrategy = collectionNamingStrategyProxy.getOriginalStrategy();
-        assertThat(originalCollectionNamingStrategy).isInstanceOf(CollectionNamingStrategy.class);
-        assertThat(
-                originalCollectionNamingStrategy.resolveCollectionName(
-                        new DebeziumSinkRecordFactory().createRecord("database.schema.deptable"),
-                        config.getCollectionNameFormat()))
-                .isEqualTo("kafkadepdep_database_schema_deptable");
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(props);
 
-        // testing the original strategy as TableNamingStrategy instance
-        assertThat(originalCollectionNamingStrategy).isInstanceOf(TableNamingStrategy.class);
-        final TableNamingStrategy tableNamingStrategy;
-        if (originalCollectionNamingStrategy instanceof TableNamingStrategy) {
-            tableNamingStrategy = (TableNamingStrategy) originalCollectionNamingStrategy;
-            assertThat(tableNamingStrategy.resolveTableName(config, new DebeziumSinkRecordFactory().createRecord("database.schema.deptable").getOriginalKafkaRecord()))
-                    .isEqualTo("kafkadepdep_database_schema_deptable");
-        }
-        else {
-            fail("originalStrategy in the proxy must be instance of TableNamingStrategy");
-        }
+        CollectionNamingStrategy strategy = config.getCollectionNamingStrategy();
+        assertTrue(strategy instanceof TemporaryBackwardCompatibleCollectionNamingStrategyProxy,
+                "Expected a proxy for backward compatibility");
+    }
+
+    @Test
+    public void testCustomColumnNamingStrategyIntegration() {
+        final Map<String, String> properties = new HashMap<>();
+        properties.put(JdbcSinkConnectorConfig.COLUMN_NAMING_STRATEGY, CustomColumnNamingStrategy.class.getName());
+        properties.put("column.naming.style", "snake_case");
+        properties.put("column.naming.prefix", "pre_");
+        properties.put("column.naming.suffix", "_suf");
+
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+
+        ColumnNamingStrategy strategy = config.getColumnNamingStrategy();
+        assertThat(strategy).isInstanceOf(CustomColumnNamingStrategy.class);
+
+        String resolvedName = strategy.resolveColumnName("testColumn");
+        assertThat(resolvedName).isEqualTo("pre_test_column_suf");
+    }
+
+    @Test
+    public void testCustomCollectionNamingStrategyIntegration() {
+        final Map<String, String> properties = new HashMap<>();
+        properties.put(JdbcSinkConnectorConfig.COLLECTION_NAMING_STRATEGY, CustomCollectionNamingStrategy.class.getName());
+        properties.put("collection.naming.style", "snake_case");
+        properties.put("collection.naming.prefix", "tbl_");
+        properties.put("collection.naming.suffix", "_table");
+
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        CollectionNamingStrategy strategy = config.getCollectionNamingStrategy();
+
+        assertThat(strategy).isInstanceOf(TemporaryBackwardCompatibleCollectionNamingStrategyProxy.class);
+
+        CollectionNamingStrategy actualStrategy = ((TemporaryBackwardCompatibleCollectionNamingStrategyProxy) strategy).getOriginalStrategy();
+        assertThat(actualStrategy).isInstanceOf(CustomCollectionNamingStrategy.class);
+
+        String resolvedName = strategy.resolveCollectionName(null, "TestCollection");
+        assertThat(resolvedName).isEqualTo("tbl_test_collection_table");
     }
 
     @Test

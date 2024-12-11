@@ -5,6 +5,8 @@
  */
 package io.debezium.sink.naming;
 
+import java.util.Map;
+
 import io.debezium.sink.DebeziumSinkRecord;
 
 /**
@@ -22,5 +24,9 @@ public interface CollectionNamingStrategy {
      * @return the resolved logical collection name; if {@code null} the record should not be processed
      */
     String resolveCollectionName(DebeziumSinkRecord record, String collectionNameFormat);
+
+    default void configure(Map<String, String> properties) {
+
+    }
 
 }
