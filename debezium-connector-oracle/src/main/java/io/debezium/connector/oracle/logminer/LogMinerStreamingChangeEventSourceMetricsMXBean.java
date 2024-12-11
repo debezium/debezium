@@ -360,6 +360,11 @@ public interface LogMinerStreamingChangeEventSourceMetricsMXBean
     long getAbandonedTransactionCount();
 
     /**
+     * @return the number of events that were partially rolled back in committed transactions
+     */
+    long getNumberOfPartialRollbackCount();
+
+    /**
      * @return most recent transaction identifiers that were rolled back
      */
     Set<String> getRolledBackTransactionIds();
