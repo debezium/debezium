@@ -22,7 +22,7 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.ContainerConfig;
 
-public class ConnectorConfigurationTest {
+public class ConnectorConfigurationIT {
 
     private ObjectMapper mapper = new ObjectMapper();
 
@@ -45,7 +45,7 @@ public class ConnectorConfigurationTest {
 
     @Test
     public void shouldLoadConnectorConfigurationFromFile() throws IOException {
-        final InputStream configFile = ConnectorConfigurationTest.class.getClassLoader().getResourceAsStream("config.json");
+        final InputStream configFile = ConnectorConfigurationIT.class.getClassLoader().getResourceAsStream("config.json");
         final Connector connector = Connector.fromJson(configFile);
 
         final String json = connector.toJson();
@@ -74,7 +74,7 @@ public class ConnectorConfigurationTest {
         when(jdbcDatabaseContainer.getExposedPorts()).thenReturn(Arrays.asList(9090));
         when(jdbcDatabaseContainer.getContainerInfo()).thenReturn(inspectContainerResponse);
 
-        final InputStream configFile = ConnectorConfigurationTest.class.getClassLoader().getResourceAsStream("config.json");
+        final InputStream configFile = ConnectorConfigurationIT.class.getClassLoader().getResourceAsStream("config.json");
         final Connector connector = Connector.fromJson(configFile);
 
         connector.appendOrOverrideConfiguration(ConnectorConfiguration.forJdbcContainer(jdbcDatabaseContainer));

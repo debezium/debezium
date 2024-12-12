@@ -44,9 +44,9 @@ import io.debezium.testing.testcontainers.util.PooledPortResolver;
 /**
  * @see <a href="https://issues.redhat.com/browse/DBZ-5857">DBZ-5857</a>
  */
-public class MongoDbReplicaSetTest {
+public class MongoDbReplicaSetContainerIT {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbReplicaSetTest.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbReplicaSetContainerIT.class);
 
     public static final String MONGO_DOCKER_DESKTOP_PORT_PROPERTY = "mongodb.docker.desktop.ports";
 

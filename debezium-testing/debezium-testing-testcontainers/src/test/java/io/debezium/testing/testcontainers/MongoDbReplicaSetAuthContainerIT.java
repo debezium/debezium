@@ -28,9 +28,9 @@ import io.debezium.testing.testcontainers.util.DockerUtils;
  * @see <a href="https://issues.redhat.com/browse/DBZ-5857">DBZ-5857</a>
  */
 @Flaky("DBZ-7507")
-public class MongoDbReplicaSetAuthTest {
+public class MongoDbReplicaSetAuthContainerIT {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbReplicaSetAuthTest.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbReplicaSetAuthContainerIT.class);
 
     public static final String AUTH_DATABASE = "admin";
     public static final String TEST_DATABASE_1 = "fstDB";

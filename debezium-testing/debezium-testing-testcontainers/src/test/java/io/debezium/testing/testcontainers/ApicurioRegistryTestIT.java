@@ -51,9 +51,9 @@ import io.debezium.doc.FixFor;
  *
  * @author Jiri Pechanec
  */
-public class ApicurioRegistryTest {
+public class ApicurioRegistryTestIT {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ApicurioRegistryTest.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ApicurioRegistryTestIT.class);
 
     private static final List<String> capturedLogs = Collections.synchronizedList(new ArrayList<>());
 
@@ -75,7 +75,7 @@ public class ApicurioRegistryTest {
             .withNetwork(network)
             .withKafka(kafkaContainer)
             .withLogConsumer(new Slf4jLogConsumer(LOGGER))
-            .withLogConsumer(ApicurioRegistryTest::captureMatchingLog)
+            .withLogConsumer(ApicurioRegistryTestIT::captureMatchingLog)
             .enableApicurioConverters()
             .dependsOn(kafkaContainer);
 

@@ -44,9 +44,9 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-public class DebeziumContainerTest {
+public class DebeziumContainerIT {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumContainerTest.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumContainerIT.class);
 
     private static final Network network = Network.newNetwork();
 

@@ -33,9 +33,9 @@ import io.debezium.testing.testcontainers.util.DockerUtils;
  * @see <a href="https://issues.redhat.com/browse/DBZ-5857">DBZ-5857</a>
  */
 @Disabled
-public class MongoDbShardedClusterTest {
+public class MongoDbShardedClusterContainerIT {
 
-    private final static Logger LOGGER = LoggerFactory.getLogger(MongoDbShardedClusterTest.class);
+    private final static Logger LOGGER = LoggerFactory.getLogger(MongoDbShardedClusterContainerIT.class);
 
     @BeforeAll
     static void setupAll() {
