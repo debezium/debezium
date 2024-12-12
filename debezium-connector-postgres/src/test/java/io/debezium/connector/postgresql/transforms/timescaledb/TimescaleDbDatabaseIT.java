@@ -29,9 +29,9 @@ import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.testing.testcontainers.ImageNames;
 import io.debezium.util.Testing;
 
-public class TimescaleDbDatabaseTest extends AbstractAsyncEngineConnectorTest {
+public class TimescaleDbDatabaseIT extends AbstractAsyncEngineConnectorTest {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(TimescaleDbDatabaseTest.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(TimescaleDbDatabaseIT.class);
 
     private static final org.testcontainers.containers.Network network = org.testcontainers.containers.Network.newNetwork();
 
