@@ -25,6 +25,7 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import java.util.stream.Collectors;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.text.ParsingException;
@@ -1252,5 +1253,42 @@ public final class Strings {
             }
             tokens.addToken(input.position(tokenStart), tokenStart, input.index() + 1);
         }
+    }
+
+    /**
+     * Converts a string with separators (e.g., dots, underscores) into camelCase format using Stream API.
+     *
+     * @param input the input string containing separators such as dots or underscores
+     * @return the converted string in camelCase format, or an empty string if the input is null or empty
+     */
+    public static String convertDotAndUnderscoreStringToCamelCase(String input) {
+        if (input == null || input.isEmpty()) {
+            return "";
+        }
+
+        String[] words = input.split("[._]+");
+        if (words.length == 0) {
+            return ""; // Handle edge case where input contains only separators
+        }
+
+        return java.util.stream.IntStream.range(0, words.length)
+                .filter(i -> !words[i].isEmpty()) // Skip empty segments caused by consecutive separators
+                .mapToObj(i -> i == 0
+                        ? words[i].toLowerCase() // Ensure the first word starts with lowercase
+                        : capitalizeFirstLetter(words[i])) // Capitalize the first letter of subsequent words
+                .collect(java.util.stream.Collectors.joining());
+    }
+
+    /**
+     * Capitalizes the first letter of a word and converts the rest to lowercase.
+     *
+     * @param word the word to capitalize
+     * @return the word with the first letter capitalized
+     */
+    private static String capitalizeFirstLetter(String word) {
+        if (word.isEmpty()) {
+            return "";
+        }
+        return Character.toUpperCase(word.charAt(0)) + word.substring(1).toLowerCase();
     }
 }
