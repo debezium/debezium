@@ -8,6 +8,6 @@ package io.debezium.outbox.quarkus.it;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 
 @QuarkusIntegrationTest
-class OutboxIT extends OutboxTest {
+class OutboxIT extends OutboxTestIT {
 
 }
