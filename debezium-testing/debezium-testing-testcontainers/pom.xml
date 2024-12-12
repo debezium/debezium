@@ -144,6 +144,24 @@
           </systemPropertyVariables>
         </configuration>
       </plugin>
+      <plugin>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <configuration>
+          <argLine>--add-opens java.base/java.net=ALL-UNNAMED</argLine>
+          <skipTests>${skipITs}</skipTests>
+          <systemPropertyVariables>
+            <version.mongo.server>${version.mongo.server}</version.mongo.server>
+          </systemPropertyVariables>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 </project>
