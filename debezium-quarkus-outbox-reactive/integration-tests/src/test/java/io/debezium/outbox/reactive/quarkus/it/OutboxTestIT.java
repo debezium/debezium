@@ -33,7 +33,7 @@ import io.smallrye.mutiny.helpers.test.UniAssertSubscriber;
  */
 @QuarkusTest
 @TestProfile(OutboxProfiles.Default.class)
-public class OutboxTest extends AbstractOutboxTest {
+public class OutboxTestIT extends AbstractOutboxTest {
     @Inject
     MyService myService;
 
