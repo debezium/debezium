@@ -24,7 +24,7 @@ import io.quarkus.test.junit.TestProfile;
 @QuarkusTest
 @TestProfile(OutboxProfiles.OpenTelemetryDisabled.class)
 @QuarkusTestResource(DatabaseTestResource.class)
-public class OutboxWithoutOpenTelemetryTest extends AbstractOutboxTest {
+public class OutboxWithoutOpenTelemetryIT extends AbstractOutboxTest {
 
     @Test
     public void testOutboxEntityMetamodelDoesntHaveTracingSpanColumn() throws Exception {
