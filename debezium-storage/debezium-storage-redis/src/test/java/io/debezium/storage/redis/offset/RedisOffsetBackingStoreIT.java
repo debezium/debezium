@@ -28,7 +28,7 @@ import io.debezium.storage.redis.RedisClientConnectionException;
 import io.debezium.storage.redis.RedisConnection;
 
 @Testcontainers
-class RedisOffsetBackingStoreTest {
+class RedisOffsetBackingStoreIT {
     @Container
     public GenericContainer redis = new GenericContainer(DockerImageName.parse(REDIS_CONTAINER_IMAGE))
             .withExposedPorts(6379);
