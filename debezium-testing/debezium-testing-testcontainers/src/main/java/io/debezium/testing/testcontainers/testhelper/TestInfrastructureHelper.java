@@ -37,6 +37,7 @@ import io.debezium.testing.testcontainers.util.MoreStartables;
 
 public class TestInfrastructureHelper {
 
+    public static final String ADD_SOMETHING = "kafka-dbz";
     public static final String KAFKA_HOSTNAME = "kafka-dbz";
     public static final int CI_CONTAINER_STARTUP_TIME = 90;
     private static final String DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST = "latest";
@@ -57,7 +58,6 @@ public class TestInfrastructureHelper {
     private static final Network NETWORK = Network.newNetwork();
 
     private static final Pattern VERSION_PATTERN = Pattern.compile("^[1-9]\\d*\\.\\d+");
-
 
     private static final GenericContainer<?> KAFKA_CONTAINER = new GenericContainer<>(
             DockerImageName.parse("quay.io/debezium/kafka:" + DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST).asCompatibleSubstituteFor("kafka"))
