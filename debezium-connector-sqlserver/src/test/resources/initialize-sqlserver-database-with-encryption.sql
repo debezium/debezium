@@ -1,10 +1,15 @@
 CREATE DATABASE testDB
 CREATE DATABASE testDB2
-USE testDB2
 
--- Transparent Data Encryption SQL Server
+-- Transparent Data Encryption SQL Server Master Key and certificate
+USE MASTER
 CREATE MASTER KEY ENCRYPTION BY PASSWORD = 'MasterKeyPassword'
 CREATE CERTIFICATE TDECert WITH SUBJECT = 'TDE Certificate'
+--
+
+USE testDB2
+
+-- Activate Encryption to testDB2 database
 CREATE DATABASE ENCRYPTION KEY WITH ALGORITHM = AES_256 ENCRYPTION BY SERVER CERTIFICATE TDECert;
 ALTER DATABASE testDB2 set ENCRYPTION ON
 --
