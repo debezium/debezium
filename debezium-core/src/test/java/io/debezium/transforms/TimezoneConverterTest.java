@@ -549,18 +549,18 @@ public class TimezoneConverterTest {
         otherSource.put("ts_ms", 123456789);
 
         final Envelope otherEnvelope = Envelope.defineSchema()
-            .withName("dummy.Envelope")
-            .withRecord(recordSchema)
-            .withSource(sourceSchema)
-            .build();
+                .withName("dummy.Envelope")
+                .withRecord(recordSchema)
+                .withSource(sourceSchema)
+                .build();
 
         final Struct otherPayload = otherEnvelope.create(otherBefore, otherSource, Instant.now());
         SourceRecord otherRecord = new SourceRecord(
-            new HashMap<>(),
-            new HashMap<>(),
-            "db.server1.other",
-            otherEnvelope.schema(),
-            otherPayload);
+                new HashMap<>(),
+                new HashMap<>(),
+                "db.server1.other",
+                otherEnvelope.schema(),
+                otherPayload);
 
         VerifyRecord.isValid(otherRecord);
         final SourceRecord transformedOtherRecord = converter.apply(otherRecord);
