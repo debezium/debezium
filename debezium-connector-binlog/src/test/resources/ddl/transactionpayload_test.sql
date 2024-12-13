@@ -30,4 +30,5 @@ CREATE TABLE orders (
                         FOREIGN KEY ordered_product (product_id) REFERENCES products(id)
 ) AUTO_INCREMENT = 10001;
 
-CREATE DATABASE IF NOT EXISTS transactionpayload_test;
+DROP DATABASE IF EXISTS transactionpayload_test;
+CREATE DATABASE transactionpayload_test;
