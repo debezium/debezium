@@ -113,7 +113,8 @@ public class TestInfrastructureHelper {
             .withStartupCheckStrategy(new MinimumDurationRunningStartupCheckStrategy(Duration.ofSeconds(10)))
             .withConnectTimeoutSeconds(300);
 
-    private static final MSSQLServerContainer<?> SQL_SERVER_CONTAINER_WITH_TDE_ENCRYPTION = new MSSQLServerContainer<>(DockerImageName.parse("mcr.microsoft.com/mssql/server:2019-latest"))
+    private static final MSSQLServerContainer<?> SQL_SERVER_CONTAINER_WITH_TDE_ENCRYPTION = new MSSQLServerContainer<>(
+            DockerImageName.parse("mcr.microsoft.com/mssql/server:2019-latest"))
             .withNetwork(NETWORK)
             .withNetworkAliases("sqlserver")
             .withEnv("SA_PASSWORD", "Password!")
@@ -170,7 +171,8 @@ public class TestInfrastructureHelper {
     }
 
     public static void stopContainers() {
-        Stream<Startable> containers = Stream.of(DEBEZIUM_CONTAINER, ORACLE_CONTAINER, SQL_SERVER_CONTAINER, SQL_SERVER_CONTAINER_WITH_TDE_ENCRYPTION, MONGODB_REPLICA, MYSQL_CONTAINER, POSTGRES_CONTAINER,
+        Stream<Startable> containers = Stream.of(DEBEZIUM_CONTAINER, ORACLE_CONTAINER, SQL_SERVER_CONTAINER, SQL_SERVER_CONTAINER_WITH_TDE_ENCRYPTION, MONGODB_REPLICA,
+                MYSQL_CONTAINER, POSTGRES_CONTAINER,
                 MARIADB_CONTAINER,
                 KAFKA_CONTAINER);
         MoreStartables.deepStopSync(containers);
