@@ -153,12 +153,10 @@ public class TestInfrastructureHelper {
         if (null != dbStartable) {
             return () -> Stream.of(KAFKA_CONTAINER, dbStartable, DEBEZIUM_CONTAINER);
         }
-        else {
-            if (DATABASE.DEBEZIUM_ONLY.equals(database)) {
-                return () -> Stream.of(DEBEZIUM_CONTAINER);
-            }
-            return () -> Stream.of(KAFKA_CONTAINER, DEBEZIUM_CONTAINER);
+        if (DATABASE.DEBEZIUM_ONLY.equals(database)) {
+            return () -> Stream.of(DEBEZIUM_CONTAINER);
         }
+        return () -> Stream.of(KAFKA_CONTAINER, DEBEZIUM_CONTAINER);
     }
 
     public static String parseDebeziumVersion(String connectorVersion) {
