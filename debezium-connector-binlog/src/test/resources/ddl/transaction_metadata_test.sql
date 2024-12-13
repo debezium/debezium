@@ -29,4 +29,5 @@ CREATE TABLE orders (
   FOREIGN KEY ordered_product (product_id) REFERENCES products(id)
 ) AUTO_INCREMENT = 10001;
 
-CREATE DATABASE IF NOT EXISTS emptydb;
+DROP DATABASE IF EXISTS emptydb;
+CREATE DATABASE emptydb;

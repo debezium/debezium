@@ -2,4 +2,5 @@
 -- DATABASE:  converting_failure_ro
 -- ----------------------------------------------------------------------------------------------------------------
 
-CREATE DATABASE IF NOT EXISTS emptydb;
+DROP DATABASE IF EXISTS emptydb;
+CREATE DATABASE emptydb;

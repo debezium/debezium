@@ -18,4 +18,5 @@ CREATE TABLE debezium_signal (
   data varchar(2048)
 );
 
-CREATE DATABASE IF NOT EXISTS emptydb;
+DROP DATABASE IF EXISTS emptydb;
+CREATE DATABASE emptydb;
