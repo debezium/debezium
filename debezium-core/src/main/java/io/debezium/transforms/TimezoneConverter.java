@@ -519,9 +519,6 @@ public class TimezoneConverter<R extends ConnectRecord<R>> implements Transforma
                 handleStructs(value, Type.ALL, matchName, fields);
             }
         }
-        else {
-            handleStructs(value, Type.ALL, table, Collections.emptySet());
-        }
     }
 
     private void handleExclude(Struct value, String table, String topic) {
