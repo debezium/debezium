@@ -535,6 +535,41 @@ public class TimezoneConverterTest {
         final Struct transformedOrdersAfter = transformedOrdersValue.getStruct(Envelope.FieldName.AFTER);
         assertThat(transformedOrdersAfter.get("order_date_zoned_timestamp")).isEqualTo("2023-08-01T14:50:45+03:00");
         assertThat(transformedOrdersAfter.get("shipping_date_zoned_timestamp")).isEqualTo("2023-09-01T14:55:30+03:00");
+
+        final Struct otherBefore = new Struct(recordSchema);
+        final Struct otherSource = new Struct(sourceSchema);
+
+        otherBefore.put("id", (byte) 1);
+        otherBefore.put("name", "John Doe");
+        otherBefore.put("order_date_zoned_timestamp", "2023-08-01T11:50:45+00:00");
+        otherBefore.put("shipping_date_zoned_timestamp", "2023-09-01T11:55:30+00:00");
+
+        otherSource.put("table", "other1");
+        otherSource.put("lsn", 1);
+        otherSource.put("ts_ms", 123456789);
+
+        final Envelope otherEnvelope = Envelope.defineSchema()
+            .withName("dummy.Envelope")
+            .withRecord(recordSchema)
+            .withSource(sourceSchema)
+            .build();
+
+        final Struct otherPayload = otherEnvelope.create(otherBefore, otherSource, Instant.now());
+        SourceRecord otherRecord = new SourceRecord(
+            new HashMap<>(),
+            new HashMap<>(),
+            "db.server1.other",
+            otherEnvelope.schema(),
+            otherPayload);
+
+        VerifyRecord.isValid(otherRecord);
+        final SourceRecord transformedOtherRecord = converter.apply(otherRecord);
+        VerifyRecord.isValid(transformedOtherRecord);
+
+        final Struct transformedOtherValue = (Struct) transformedOtherRecord.value();
+        final Struct transformedOtherAfter = transformedOtherValue.getStruct(Envelope.FieldName.AFTER);
+        assertThat(transformedOtherAfter.get("order_date_zoned_timestamp")).isEqualTo("2023-08-01T11:50:45+00:00"); // Should not be transformed as it does not match include list
+        assertThat(transformedOtherAfter.get("shipping_date_zoned_timestamp")).isEqualTo("2023-09-01T11:55:30+00:00"); // Should not be transformed as it does not match include list
     }
 
     @Test
