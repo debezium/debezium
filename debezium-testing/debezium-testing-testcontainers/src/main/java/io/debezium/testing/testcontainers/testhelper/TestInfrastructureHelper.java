@@ -58,6 +58,7 @@ public class TestInfrastructureHelper {
 
     private static final Pattern VERSION_PATTERN = Pattern.compile("^[1-9]\\d*\\.\\d+");
 
+
     private static final GenericContainer<?> KAFKA_CONTAINER = new GenericContainer<>(
             DockerImageName.parse("quay.io/debezium/kafka:" + DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST).asCompatibleSubstituteFor("kafka"))
             .withNetworkAliases(KAFKA_HOSTNAME)
