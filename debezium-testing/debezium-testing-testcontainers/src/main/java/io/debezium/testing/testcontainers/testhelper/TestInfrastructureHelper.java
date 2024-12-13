@@ -104,7 +104,7 @@ public class TestInfrastructureHelper {
             .withEnv("MSSQL_AGENT_ENABLED", "true")
             .withPassword("Password!")
             .withFileSystemBind("/path/on/host","/var/opt/mssql/data")
-            .withInitScript("initialize-sqlserver-database.sql")
+            .withInitScript("initialize-sqlserver-database.sqlz")
             .acceptLicense()
             .waitingFor(new LogMessageWaitStrategy()
                     .withRegEx(".*SQL Server is now ready for client connections\\..*\\s")
