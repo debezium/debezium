@@ -302,7 +302,7 @@ jobs:
         version-mysql-server: [ "8.0", "8.4", "9.1" ]
       fail-fast: false
     name: "MySQL ${{ matrix.version-mysql-server }} - ${{ matrix.profile }}"
-    needs: [ check_style, file_changes ]
+    needs: [ file_changes ]
     runs-on: ubuntu-latest
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     steps:
@@ -318,7 +318,7 @@ jobs:
   # Approx 1h 45m
   build_sqlserver:
     name: "SQL Server"
-    needs: [ check_style, file_changes ]
+    needs: [ file_changes ]
     runs-on: ubuntu-latest
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     steps:
