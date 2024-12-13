@@ -42,7 +42,7 @@ public class DebeziumSqlServerConnectorResourceIT {
     @Before
     public void start() throws URISyntaxException {
         TestInfrastructureHelper.setupDebeziumContainer(Module.version(), DebeziumSqlServerConnectRestExtension.class.getName());
-        TestInfrastructureHelper.startContainers(DATABASE.SQLSERVER);
+        TestInfrastructureHelper.startContainers(DATABASE.ENCRYPTED_SQLSERVER);
     }
 
     @After
