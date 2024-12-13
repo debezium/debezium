@@ -45,6 +45,7 @@ public class TestInfrastructureHelper {
         POSTGRES,
         MYSQL,
         SQLSERVER,
+        ENCRYPTED_SQLSERVER,
         MONGODB,
         ORACLE,
         MARIADB,
@@ -112,6 +113,22 @@ public class TestInfrastructureHelper {
             .withStartupCheckStrategy(new MinimumDurationRunningStartupCheckStrategy(Duration.ofSeconds(10)))
             .withConnectTimeoutSeconds(300);
 
+    private static final MSSQLServerContainer<?> SQL_SERVER_CONTAINER_WITH_TDE_ENCRYPTION = new MSSQLServerContainer<>(DockerImageName.parse("mcr.microsoft.com/mssql/server:2019-latest"))
+            .withNetwork(NETWORK)
+            .withNetworkAliases("sqlserver")
+            .withEnv("SA_PASSWORD", "Password!")
+            .withEnv("MSSQL_PID", "Standard")
+            .withEnv("MSSQL_AGENT_ENABLED", "true")
+            .withPassword("Password!")
+            .withInitScript("initialize-sqlserver-database-with-encryption.sql")
+            .acceptLicense()
+            .waitingFor(new LogMessageWaitStrategy()
+                    .withRegEx(".*SQL Server is now ready for client connections\\..*\\s")
+                    .withTimes(1)
+                    .withStartupTimeout(Duration.of(CI_CONTAINER_STARTUP_TIME * 3, ChronoUnit.SECONDS)))
+            .withStartupCheckStrategy(new MinimumDurationRunningStartupCheckStrategy(Duration.ofSeconds(10)))
+            .withConnectTimeoutSeconds(300);
+
     private static final OracleContainer ORACLE_CONTAINER = (OracleContainer) new OracleContainer()
             .withNetwork(NETWORK)
             .withNetworkAliases("oracledb")
@@ -122,32 +139,16 @@ public class TestInfrastructureHelper {
     }
 
     private static Supplier<Stream<Startable>> getContainers(DATABASE database) {
-        final Startable dbStartable;
-        switch (database) {
-            case POSTGRES:
-                dbStartable = POSTGRES_CONTAINER;
-                break;
-            case MYSQL:
-                dbStartable = MYSQL_CONTAINER;
-                break;
-            case MONGODB:
-                dbStartable = MONGODB_REPLICA;
-                break;
-            case SQLSERVER:
-                dbStartable = SQL_SERVER_CONTAINER;
-                break;
-            case ORACLE:
-                dbStartable = ORACLE_CONTAINER;
-                break;
-            case MARIADB:
-                dbStartable = MARIADB_CONTAINER;
-                break;
-            case NONE:
-            case DEBEZIUM_ONLY:
-            default:
-                dbStartable = null;
-                break;
-        }
+        final Startable dbStartable = switch (database) {
+            case POSTGRES -> POSTGRES_CONTAINER;
+            case MYSQL -> MYSQL_CONTAINER;
+            case MONGODB -> MONGODB_REPLICA;
+            case SQLSERVER -> SQL_SERVER_CONTAINER;
+            case ORACLE -> ORACLE_CONTAINER;
+            case MARIADB -> MARIADB_CONTAINER;
+            case ENCRYPTED_SQLSERVER -> SQL_SERVER_CONTAINER_WITH_TDE_ENCRYPTION;
+            default -> null;
+        };
 
         if (null != dbStartable) {
             return () -> Stream.of(KAFKA_CONTAINER, dbStartable, DEBEZIUM_CONTAINER);
@@ -171,7 +172,7 @@ public class TestInfrastructureHelper {
     }
 
     public static void stopContainers() {
-        Stream<Startable> containers = Stream.of(DEBEZIUM_CONTAINER, ORACLE_CONTAINER, SQL_SERVER_CONTAINER, MONGODB_REPLICA, MYSQL_CONTAINER, POSTGRES_CONTAINER,
+        Stream<Startable> containers = Stream.of(DEBEZIUM_CONTAINER, ORACLE_CONTAINER, SQL_SERVER_CONTAINER, SQL_SERVER_CONTAINER_WITH_TDE_ENCRYPTION, MONGODB_REPLICA, MYSQL_CONTAINER, POSTGRES_CONTAINER,
                 MARIADB_CONTAINER,
                 KAFKA_CONTAINER);
         MoreStartables.deepStopSync(containers);
