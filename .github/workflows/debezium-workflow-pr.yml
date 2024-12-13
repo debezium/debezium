@@ -274,47 +274,6 @@ jobs:
           -DskipTests=true
           -DskipITs=true
 
-  build_mongodb:
-    strategy:
-      # Runs each combination concurrently
-      matrix:
-        version-mongo-server: [ "5.0", "8.0" ]
-      fail-fast: false
-    name: "MongoDB ${{ matrix.version-mongo-server }}"
-    needs: [ file_changes ]
-    runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mongodb-changed == 'true' || needs.file_changes.outputs.debezium-testing-mongodb-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
-    steps:
-      - name: Checkout Action
-        uses: actions/checkout@v4
-
-      - uses: ./.github/actions/build-debezium-mongodb
-        with:
-          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
-          version-mongo-server: ${{ matrix.version-mongo-server }}
-
-  # Approx 40m each
-  build_mysql:
-    strategy:
-      # Runs each combination concurrently
-      matrix:
-        profile: [ "mysql-ci", "mysql-ci-gtids", "mysql-ci-percona", "mysql-ci-ssl" ]
-        version-mysql-server: [ "8.0", "8.4", "9.1" ]
-      fail-fast: false
-    name: "MySQL ${{ matrix.version-mysql-server }} - ${{ matrix.profile }}"
-    needs: [ file_changes ]
-    runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
-    steps:
-      - name: Checkout Action
-        uses: actions/checkout@v4
-
-      - uses: ./.github/actions/build-debezium-mysql
-        with:
-          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
-          version-mysql-server: ${{ matrix.version-mysql-server }}
-          profile: ${{ matrix.profile }}
-
   # Approx 1h 45m
   build_sqlserver:
     name: "SQL Server"
@@ -326,5 +285,19 @@ jobs:
         uses: actions/checkout@v4
 
       - uses: ./.github/actions/build-debezium-sqlserver
+        with:
+          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+
+  # Approx 5m
+  build_debezium_testing:
+    name: "Testing Module"
+    needs: [ file_changes ]
+    runs-on: ubuntu-latest
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-debezium-testing
         with:
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}

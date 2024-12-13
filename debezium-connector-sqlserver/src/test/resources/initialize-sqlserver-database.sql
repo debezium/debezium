@@ -2,6 +2,11 @@ CREATE DATABASE testDB
 CREATE DATABASE testDB2
 USE testDB2
 
+CREATE MASTER KEY ENCRYPTION BY PASSWORD = 'YourMasterKeyPassword'
+
+CREATE CERTIFICATE TDECert WITH SUBJECT = 'TDE Certificate'
+ALTER DATABASE testDB2 set ENCRYPTION ON
+
 -- Gives the SQL Server Agent time to start before applying CDC operations
 -- If the Agent isn't running, a CDC operation will fail and the container won't start
 WAITFOR DELAY '00:00:30'
