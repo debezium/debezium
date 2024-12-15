@@ -27,6 +27,7 @@ import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.startupcheck.MinimumDurationRunningStartupCheckStrategy;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
+import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.lifecycle.Startable;
 import org.testcontainers.utility.DockerImageName;
 
@@ -35,7 +36,6 @@ import io.debezium.testing.testcontainers.DebeziumContainer;
 import io.debezium.testing.testcontainers.MongoDbReplicaSet;
 import io.debezium.testing.testcontainers.OracleContainer;
 import io.debezium.testing.testcontainers.util.MoreStartables;
-import org.testcontainers.images.builder.Transferable;
 
 public class TestInfrastructureHelper {
 
