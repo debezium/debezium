@@ -12,6 +12,7 @@ import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.startsWith;
 
+import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Locale;
 import java.util.Map;
@@ -40,9 +41,10 @@ public class DebeziumSqlServerConnectorResourceIT {
     }
 
     @Before
-    public void start() throws URISyntaxException {
+    public void start() throws URISyntaxException, IOException, InterruptedException {
         TestInfrastructureHelper.setupDebeziumContainer(Module.version(), DebeziumSqlServerConnectRestExtension.class.getName());
-        TestInfrastructureHelper.startContainers(DATABASE.ENCRYPTED_SQLSERVER);
+        TestInfrastructureHelper.startContainers(DATABASE.SQLSERVER);
+        TestInfrastructureHelper.setupSqlServerTDEncryption();
     }
 
     @After

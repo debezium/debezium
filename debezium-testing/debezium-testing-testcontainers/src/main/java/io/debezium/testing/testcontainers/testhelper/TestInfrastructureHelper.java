@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.testcontainers.testhelper;
 
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
@@ -34,6 +35,7 @@ import io.debezium.testing.testcontainers.DebeziumContainer;
 import io.debezium.testing.testcontainers.MongoDbReplicaSet;
 import io.debezium.testing.testcontainers.OracleContainer;
 import io.debezium.testing.testcontainers.util.MoreStartables;
+import org.testcontainers.images.builder.Transferable;
 
 public class TestInfrastructureHelper {
 
@@ -45,7 +47,6 @@ public class TestInfrastructureHelper {
         POSTGRES,
         MYSQL,
         SQLSERVER,
-        ENCRYPTED_SQLSERVER,
         MONGODB,
         ORACLE,
         MARIADB,
@@ -98,6 +99,7 @@ public class TestInfrastructureHelper {
             .build();
 
     private static final MSSQLServerContainer<?> SQL_SERVER_CONTAINER = new MSSQLServerContainer<>(DockerImageName.parse("mcr.microsoft.com/mssql/server:2019-latest"))
+            .withCopyToContainer(Transferable.of(readBytesFromResource("/setup-sqlserver-database-with-encryption.sql")), "/opt/mssql-tools18/bin/setup-sqlserver-database-with-encryption.sql")
             .withNetwork(NETWORK)
             .withNetworkAliases("sqlserver")
             .withEnv("SA_PASSWORD", "Password!")
@@ -105,23 +107,6 @@ public class TestInfrastructureHelper {
             .withEnv("MSSQL_AGENT_ENABLED", "true")
             .withPassword("Password!")
             .withInitScript("initialize-sqlserver-database.sql")
-            .acceptLicense()
-            .waitingFor(new LogMessageWaitStrategy()
-                    .withRegEx(".*SQL Server is now ready for client connections\\..*\\s")
-                    .withTimes(1)
-                    .withStartupTimeout(Duration.of(CI_CONTAINER_STARTUP_TIME * 3, ChronoUnit.SECONDS)))
-            .withStartupCheckStrategy(new MinimumDurationRunningStartupCheckStrategy(Duration.ofSeconds(10)))
-            .withConnectTimeoutSeconds(300);
-
-    private static final MSSQLServerContainer<?> SQL_SERVER_CONTAINER_WITH_TDE_ENCRYPTION = new MSSQLServerContainer<>(
-            DockerImageName.parse("mcr.microsoft.com/mssql/server:2019-latest"))
-            .withNetwork(NETWORK)
-            .withNetworkAliases("sqlserver")
-            .withEnv("SA_PASSWORD", "Password!")
-            .withEnv("MSSQL_PID", "Standard")
-            .withEnv("MSSQL_AGENT_ENABLED", "true")
-            .withPassword("Password!")
-            .withInitScript("initialize-sqlserver-database-with-encryption.sql")
             .acceptLicense()
             .waitingFor(new LogMessageWaitStrategy()
                     .withRegEx(".*SQL Server is now ready for client connections\\..*\\s")
@@ -147,7 +132,6 @@ public class TestInfrastructureHelper {
             case SQLSERVER -> SQL_SERVER_CONTAINER;
             case ORACLE -> ORACLE_CONTAINER;
             case MARIADB -> MARIADB_CONTAINER;
-            case ENCRYPTED_SQLSERVER -> SQL_SERVER_CONTAINER_WITH_TDE_ENCRYPTION;
             default -> null;
         };
 
@@ -171,7 +155,7 @@ public class TestInfrastructureHelper {
     }
 
     public static void stopContainers() {
-        Stream<Startable> containers = Stream.of(DEBEZIUM_CONTAINER, ORACLE_CONTAINER, SQL_SERVER_CONTAINER, SQL_SERVER_CONTAINER_WITH_TDE_ENCRYPTION, MONGODB_REPLICA,
+        Stream<Startable> containers = Stream.of(DEBEZIUM_CONTAINER, ORACLE_CONTAINER, SQL_SERVER_CONTAINER, MONGODB_REPLICA,
                 MYSQL_CONTAINER, POSTGRES_CONTAINER,
                 MARIADB_CONTAINER,
                 KAFKA_CONTAINER);
@@ -248,6 +232,17 @@ public class TestInfrastructureHelper {
                 .dependsOn(KAFKA_CONTAINER);
     }
 
+    public static void setupSqlServerTDEncryption() throws IOException, InterruptedException {
+        SQL_SERVER_CONTAINER.execInContainer(
+                "/opt/mssql-tools18/bin/sqlcmd",
+                "-S", "localhost",
+                "-U", "SA",
+                "-P", "Password!",
+                "-i", "/opt/mssql-tools18/bin/setup-sqlserver-database-with-encryption.sql",
+                "-N", "-C"
+        );
+    }
+
     public static void defaultDebeziumContainer() {
         defaultDebeziumContainer(null);
     }
@@ -290,5 +285,14 @@ public class TestInfrastructureHelper {
                 // retries on certain failure conditions with a 10s between them.
                 .atMost(120, TimeUnit.SECONDS)
                 .until(() -> TestInfrastructureHelper.getDebeziumContainer().getConnectorTaskState(connectorName, taskNumber) == state);
+    }
+
+    private static byte[] readBytesFromResource(String path) {
+        try {
+            return TestInfrastructureHelper.class.getResourceAsStream(path).readAllBytes();
+        }
+        catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
