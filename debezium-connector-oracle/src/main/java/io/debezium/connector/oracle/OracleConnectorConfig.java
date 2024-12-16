@@ -659,6 +659,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("The connector maintains a least-recently used cache of database table object ID to name mappings. "
                     + "This controls the maximum capacity of this cache.");
 
+    public static final Field LOG_MINING_SQL_RELAXED_QUOTE_DETECTION = Field.createInternal("log.mining.sql.relaxed.quote.detection")
+            .withDisplayName("Controls whether single-quote detection is relaxed")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withDefault(false)
+            .withImportance(Importance.LOW)
+            .withDescription("When Oracle is configured to use EXTENDED string sizes, there are some use cases where LogMiner will " +
+                    "not escape single quotes within a column value, which will lead to value truncation.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -735,7 +744,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG,
                     LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG,
                     LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG,
-                    OBJECT_ID_CACHE_SIZE)
+                    OBJECT_ID_CACHE_SIZE,
+                    LOG_MINING_SQL_RELAXED_QUOTE_DETECTION)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .create();
 
@@ -806,6 +816,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Boolean logMiningIncludeRedoSql;
     private final boolean logMiningContinuousMining;
     private final Configuration logMiningEhCacheConfiguration;
+    private final boolean logMiningUseSqlRelaxedQuoteDetection;
 
     private final String openLogReplicatorSource;
     private final String openLogReplicatorHostname;
@@ -876,6 +887,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningSchemaChangesUsernameExcludes = Strings.setOf(config.getString(LOG_MINING_SCHEMA_CHANGES_USERNAME_EXCLUDE_LIST), String::new);
         this.logMiningIncludeRedoSql = config.getBoolean(LOG_MINING_INCLUDE_REDO_SQL);
         this.logMiningContinuousMining = config.getBoolean(LOG_MINING_CONTINUOUS_MINE);
+        this.logMiningUseSqlRelaxedQuoteDetection = config.getBoolean(LOG_MINING_SQL_RELAXED_QUOTE_DETECTION);
 
         this.logMiningEhCacheConfiguration = config.subset("log.mining.buffer.ehcache", false);
 
@@ -1975,6 +1987,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public int getObjectIdToTableIdCacheSize() {
         return objectIdToTableIdCacheSize;
+    }
+
+    /**
+     * Return whether the DML parser should use relaxed quote detection.
+     *
+     * @return true to use relaxed quote detection, false uses strict parsing rules
+     */
+    public boolean getLogMiningUseSqlRelaxedQuoteDetection() {
+        return logMiningUseSqlRelaxedQuoteDetection;
     }
 
     @Override

@@ -136,8 +136,8 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         this.metrics = metrics;
         this.tableFilter = connectorConfig.getTableFilters().dataCollectionFilter();
         this.counters = new Counters();
-        this.dmlParser = new LogMinerDmlParser();
-        this.reconstructColumnDmlParser = new LogMinerColumnResolverDmlParser();
+        this.dmlParser = new LogMinerDmlParser(connectorConfig);
+        this.reconstructColumnDmlParser = new LogMinerColumnResolverDmlParser(connectorConfig);
         this.selectLobParser = new SelectLobParser();
         this.extendedStringParser = new ExtendedStringParser();
         this.xmlBeginParser = new XmlBeginParser();

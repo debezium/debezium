@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle.logminer.parser;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.logminer.LogMinerHelper;
 import io.debezium.relational.Table;
 
@@ -61,6 +62,12 @@ public class LogMinerDmlParser implements DmlParser {
     private static final int VALUES_LENGTH = VALUES.length();
     private static final int SET_LENGTH = SET.length();
     private static final int WHERE_LENGTH = WHERE.length();
+
+    private final OracleConnectorConfig connectorConfig;
+
+    public LogMinerDmlParser(OracleConnectorConfig connectorConfig) {
+        this.connectorConfig = connectorConfig;
+    }
 
     @Override
     public LogMinerDmlEntry parse(String sql, Table table) {
@@ -379,6 +386,7 @@ public class LogMinerDmlParser implements DmlParser {
         for (; index < sql.length(); ++index) {
             char c = sql.charAt(index);
             char lookAhead = (index + 1 < sql.length()) ? sql.charAt(index + 1) : 0;
+            char lookAhead2 = (index + 2 < sql.length()) ? sql.charAt(index + 2) : 0;
 
             if (inSingleQuote) {
                 if (c != '\'') {
@@ -429,6 +437,22 @@ public class LogMinerDmlParser implements DmlParser {
                 if (inSingleQuote && lookAhead == '\'') {
                     index += 1;
                     continue;
+                }
+                if (connectorConfig.getLogMiningUseSqlRelaxedQuoteDetection() && inSingleQuote && nested == 0) {
+                    if (lookAhead == ',' && lookAhead2 == ' ') {
+                        // reached end of value
+                    }
+                    else if (lookAhead == ' ' && lookAhead2 == 'w' && sql.substring(index + 1).startsWith(" where ")) {
+                        // reached each of set clause and moving onto where condition
+                    }
+                    else if (lookAhead == ';' && lookAhead2 == 0) {
+                        // reached end of the SQL
+                    }
+                    else {
+                        // found a solo single quote, treat it as part of value
+                        collectedValue.append(c);
+                        continue;
+                    }
                 }
                 // Set clause single-quoted column value
                 if (inSingleQuote) {

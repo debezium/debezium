@@ -7,11 +7,15 @@ package io.debezium.connector.oracle.logminer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Properties;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 
+import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
@@ -40,8 +44,8 @@ public class LogMinerDmlParserTest {
 
     @Before
     public void beforeEach() throws Exception {
-        fastDmlParser = new LogMinerDmlParser();
-        columnResolverDmlParser = new LogMinerColumnResolverDmlParser();
+        fastDmlParser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.empty()));
+        columnResolverDmlParser = new LogMinerColumnResolverDmlParser(new OracleConnectorConfig(Configuration.empty()));
     }
 
     // Oracle's generated SQL avoids common spacing patterns such as spaces between column values or values
@@ -621,5 +625,55 @@ public class LogMinerDmlParserTest {
         assertThat(entry.getOldValues()[0]).isEqualTo("HEXTORAW('a')");
         assertThat(entry.getOldValues()[1]).isEqualTo("HEXTORAW('b')");
         assertThat(entry.getNewValues()).isEmpty();
+    }
+
+    @Test
+    @FixFor("DBZ-8200")
+    public void shouldParseUpdateStatementWithUnescapedQuotes() throws Exception {
+        final Properties properties = new Properties();
+        properties.put("internal.log.mining.sql.relaxed.quote.detection", "true");
+        fastDmlParser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.from(properties)));
+
+        final Table table = Table.editor()
+                .tableId(TableId.parse("HEVPROD.FALLDOSSIER"))
+                .addColumn(Column.editor().name("UNFALLBESCHREIBUNG").create())
+                .addColumn(Column.editor().name("PKEY").create())
+                .create();
+
+        String sql = "update \"HEVPROD\".\"FALLDOSSIER\" set \"UNFALLBESCHREIBUNG\" = '\" je suis sortie de la piscine et j'ai gliss?e sur le sol mouill?. Je suis tomb?e en arri?re en me tapant fortement l'arri?re du cr?ne, l'?paule droite et la fesse droite. Je me suis par la suite repos?e mais durant la nuit j'ai du faire appel ? un m?decin sur place ? l'h?tel directement car j'ai eu des naus?es/vomissements et des douleurs qui ne passaient pas du tout malgr? le Dafalgan et Irfen\"' where \"PKEY\" = '2310822';";
+        LogMinerDmlEntry entry = fastDmlParser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues()[0]).isNull(); // not provided
+        assertThat(entry.getOldValues()[1]).isEqualTo("2310822");
+        assertThat(entry.getNewValues()).hasSize(2);
+        assertThat(entry.getNewValues()[0]).isEqualTo(
+                "\" je suis sortie de la piscine et j'ai gliss?e sur le sol mouill?. Je suis tomb?e en arri?re en me tapant fortement l'arri?re du cr?ne, l'?paule droite et la fesse droite. Je me suis par la suite repos?e mais durant la nuit j'ai du faire appel ? un m?decin sur place ? l'h?tel directement car j'ai eu des naus?es/vomissements et des douleurs qui ne passaient pas du tout malgr? le Dafalgan et Irfen\"");
+        assertThat(entry.getNewValues()[1]).isEqualTo("2310822");
+    }
+
+    @Test
+    @FixFor("DBZ-8034")
+    public void shouldParseUpdateStatementWithUnescapedQuotesDuex() throws Exception {
+        final Properties properties = new Properties();
+        properties.put("internal.log.mining.sql.relaxed.quote.detection", "true");
+        fastDmlParser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.from(properties)));
+
+        final Table table = Table.editor()
+                .tableId(TableId.parse("HEVPROD.FALLDOSSIER"))
+                .addColumn(Column.editor().name("UNFALLBESCHREIBUNG").create())
+                .addColumn(Column.editor().name("PKEY").create())
+                .create();
+
+        String sql = "update \"ASEDBUSR\".\"FALLDOSSIER\" set \"UNFALLBESCHREIBUNG\" = '\"Le Livreur était entrain de rouler sur la route. Le casque du livreur s'est détendu à cause du vent et le livreur a voulu le remettre correctement sur la têtê. En même temps, la selle du vélo à bouge ce qui a déséquilibrer le livreur qui est tombé. En freinant, le livreur a été projeté par dessus le vélo. Le livreur était en descente mais roulait à une vitesse raisonable.\"' where \"PKEY\" = '3228569776';";
+        LogMinerDmlEntry entry = fastDmlParser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues()[0]).isNull(); // not provided
+        assertThat(entry.getOldValues()[1]).isEqualTo("3228569776");
+        assertThat(entry.getNewValues()).hasSize(2);
+        assertThat(entry.getNewValues()[0]).isEqualTo(
+                "\"Le Livreur était entrain de rouler sur la route. Le casque du livreur s'est détendu à cause du vent et le livreur a voulu le remettre correctement sur la têtê. En même temps, la selle du vélo à bouge ce qui a déséquilibrer le livreur qui est tombé. En freinant, le livreur a été projeté par dessus le vélo. Le livreur était en descente mais roulait à une vitesse raisonable.\"");
+        assertThat(entry.getNewValues()[1]).isEqualTo("3228569776");
     }
 }
