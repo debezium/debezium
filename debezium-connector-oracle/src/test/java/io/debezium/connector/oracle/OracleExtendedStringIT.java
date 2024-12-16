@@ -309,7 +309,7 @@ public class OracleExtendedStringIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor({"DBZ-8034", "DBZ-8200"})
+    @FixFor({ "DBZ-8034", "DBZ-8200" })
     public void testRelaxedQuoteDetectionForExtendedStrings() throws Exception {
         TestHelper.dropTable(connection, "dbz8034");
         try {
