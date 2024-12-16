@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle.logminer.parser;
 
+import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.relational.Table;
 
 /**
@@ -18,6 +19,11 @@ import io.debezium.relational.Table;
  * @author Chris Cranford
  */
 public class LogMinerColumnResolverDmlParser extends LogMinerDmlParser {
+
+    public LogMinerColumnResolverDmlParser(OracleConnectorConfig connectorConfig) {
+        super(connectorConfig);
+    }
+
     @Override
     protected int getColumnIndexByName(String columnName, Table table) {
         if (columnName.matches("COL \\d*")) {

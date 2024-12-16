@@ -308,6 +308,69 @@ public class OracleExtendedStringIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
+    @Test
+    @FixFor({"DBZ-8034", "DBZ-8200"})
+    public void testRelaxedQuoteDetectionForExtendedStrings() throws Exception {
+        TestHelper.dropTable(connection, "dbz8034");
+        try {
+            // Creates a table with extended string support
+            connection.execute("CREATE TABLE dbz8034 (id numeric(9,0) primary key, data1 varchar2(8000), data2 numeric(9,0))");
+            TestHelper.streamTable(connection, "dbz8034");
+
+            final String snapshotData = "C'est une belle journée.";
+            connection.prepareUpdate("INSERT INTO dbz8034 (id,data1,data2) values (0,?,10)", ps -> ps.setString(1, snapshotData));
+            connection.commit();
+
+            final Configuration config = defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8034")
+                    .with(OracleConnectorConfig.LOG_MINING_SQL_RELAXED_QUOTE_DETECTION, "true")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            final String insertData = "C'est une belle journée.";
+            connection.prepareUpdate("INSERT INTO dbz8034 (id,data1,data2) values (1,?,10)", ps -> ps.setString(1, insertData));
+            connection.commit();
+
+            final String updateData = "C'est mon livre préféré.";
+            connection.prepareUpdate("UPDATE dbz8034 SET data1=?, data2=20 WHERE id=1", ps -> ps.setString(1, updateData));
+            connection.commit();
+
+            connection.execute("DELETE FROM dbz8034 WHERE id=1");
+
+            List<SourceRecord> records = consumeRecordsByTopic(5).recordsForTopic(topicName("DBZ8034"));
+            assertThat(records).hasSize(5);
+
+            SourceRecord record = records.get(0);
+            VerifyRecord.isValidRead(record, "ID", 0);
+            assertThat(getAfter(record).get("DATA1")).isEqualTo(snapshotData);
+
+            record = records.get(1);
+            VerifyRecord.isValidInsert(record, "ID", 1);
+            assertThat(getAfter(record).get("DATA1")).isEqualTo(insertData);
+
+            // note: this exists because in this use case, the transaction commit consumer cannot
+            // merge the two UPDATE redo entries due to insufficient content in the entries to
+            // know it's safe to merge them.
+            record = records.get(2);
+            VerifyRecord.isValidUpdate(record, "ID", 1);
+            assertThat(getAfter(record).get("DATA1")).isEqualTo("__debezium_unavailable_value");
+
+            record = records.get(3);
+            VerifyRecord.isValidUpdate(record, "ID", 1);
+            assertThat(getAfter(record).get("DATA1")).isEqualTo(updateData);
+
+            record = records.get(4);
+            VerifyRecord.isValidDelete(record, "ID", 1);
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz8034");
+        }
+    }
+
     private static Configuration.Builder defaultConfig() {
         return TestHelper.defaultConfig().with(OracleConnectorConfig.LOB_ENABLED, Boolean.TRUE);
     }
