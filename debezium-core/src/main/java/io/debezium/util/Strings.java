@@ -25,7 +25,6 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
-import java.util.stream.Collectors;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.text.ParsingException;
