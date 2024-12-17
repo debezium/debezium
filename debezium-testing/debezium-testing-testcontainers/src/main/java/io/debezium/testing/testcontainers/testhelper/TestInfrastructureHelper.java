@@ -99,8 +99,6 @@ public class TestInfrastructureHelper {
             .build();
 
     private static final MSSQLServerContainer<?> SQL_SERVER_CONTAINER = new MSSQLServerContainer<>(DockerImageName.parse("mcr.microsoft.com/mssql/server:2019-latest"))
-            .withCopyToContainer(Transferable.of(readBytesFromResource("/setup-sqlserver-database-with-encryption.sql")),
-                    "/opt/mssql-tools18/bin/setup-sqlserver-database-with-encryption.sql")
             .withNetwork(NETWORK)
             .withNetworkAliases("sqlserver")
             .withEnv("SA_PASSWORD", "Password!")
@@ -234,6 +232,8 @@ public class TestInfrastructureHelper {
     }
 
     public static void setupSqlServerTDEncryption() throws IOException, InterruptedException {
+        SQL_SERVER_CONTAINER.withCopyToContainer(Transferable.of(readBytesFromResource("/setup-sqlserver-database-with-encryption.sql")),
+                "/opt/mssql-tools18/bin/setup-sqlserver-database-with-encryption.sql");
         SQL_SERVER_CONTAINER.execInContainer(
                 "/opt/mssql-tools18/bin/sqlcmd",
                 "-S", "localhost",

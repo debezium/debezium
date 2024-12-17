@@ -317,7 +317,7 @@ jobs:
     name: "MySQL ${{ matrix.version-mysql-server }} - ${{ matrix.profile }}"
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v4
@@ -338,7 +338,7 @@ jobs:
     name: "MariaDB - ${{ matrix.profile }}"
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mariadb-changed == 'true' || needs.file_changes.outputs.mariadb-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mariadb-changed == 'true' || needs.file_changes.outputs.mariadb-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v4
@@ -387,7 +387,7 @@ jobs:
     name: "Oracle"
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.oracle-changed == 'true' || needs.file_changes.outputs.oracle-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.oracle-changed == 'true' || needs.file_changes.outputs.oracle-ddl-parser-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v4
@@ -415,7 +415,7 @@ jobs:
     name: "REST Extension"
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.rest-extension-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.rest-extension-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v4
@@ -471,7 +471,7 @@ jobs:
     name: "Cassandra"
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action (Debezium Core)
         uses: actions/checkout@v4
@@ -502,7 +502,7 @@ jobs:
     name: "Db2"
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action (Debezium Core)
         uses: actions/checkout@v4
@@ -532,7 +532,7 @@ jobs:
     name: "IBMi"
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action (Debezium Core)
         uses: actions/checkout@v4
@@ -568,7 +568,7 @@ jobs:
     name: "Informix - ${{ matrix.profile }}"
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action (Debezium Core)
         uses: actions/checkout@v4
@@ -600,7 +600,7 @@ jobs:
     name: "Vitess"
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action (Debezium Core)
         uses: actions/checkout@v4
@@ -631,7 +631,7 @@ jobs:
     name: "Spanner"
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action (Debezium Core)
         uses: actions/checkout@v4
@@ -675,7 +675,7 @@ jobs:
     name: "Debezium Server"
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action (Debezium Core)
         uses: actions/checkout@v4
