@@ -454,11 +454,9 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             }
         }
         catch (SQLException e) {
-            throw new ConnectException(e);
-        }
-        finally {
             commitOffsetFailure = true;
             cleanUpStreamingOnStop(null);
+            throw new ConnectException(e);
         }
     }
 
