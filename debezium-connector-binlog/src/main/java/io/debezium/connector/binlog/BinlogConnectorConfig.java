@@ -349,9 +349,6 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     public static final Field TABLES_IGNORE_BUILTIN = RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN
             .withDependents(DATABASE_INCLUDE_LIST_NAME);
 
-    public static final Field STORE_ONLY_CAPTURED_DATABASES_DDL = HistorizedRelationalDatabaseConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL
-            .withDefault(true);
-
     public static final Field ON_CONNECT_STATEMENTS = Field.create("database.initial.statements")
             .withDisplayName("Initial statements")
             .withType(ConfigDef.Type.STRING)
@@ -667,8 +664,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     SCHEMA_INCLUDE_LIST,
                     SCHEMA_EXCLUDE_LIST,
                     RelationalDatabaseConnectorConfig.TIME_PRECISION_MODE,
-                    RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
-                    HistorizedRelationalDatabaseConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL)
+                    RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN)
             .type(
                     HOSTNAME,
                     PORT,
@@ -697,8 +693,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     SCHEMA_NAME_ADJUSTMENT_MODE,
                     ROW_COUNT_FOR_STREAMING_RESULT_SETS,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
-                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
-                    STORE_ONLY_CAPTURED_DATABASES_DDL)
+                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
             .events(
                     INCLUDE_SQL_QUERY,
                     TABLES_IGNORE_BUILTIN,
