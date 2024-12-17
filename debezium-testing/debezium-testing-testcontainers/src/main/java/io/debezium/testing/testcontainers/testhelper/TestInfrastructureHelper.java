@@ -175,6 +175,21 @@ public class TestInfrastructureHelper {
         MoreStartables.deepStartSync(containers.get());
     }
 
+    public static void copyIntoContainer(DATABASE database, String filePathToTransfer, String containerPath) {
+        final Supplier<Stream<Startable>> containers = getContainers(database);
+
+        if ("true".equals(System.getenv("CI"))) {
+            containers.get().forEach(container -> {
+                if (container instanceof GenericContainer<?>) {
+                    if (((GenericContainer<?>) container).isRunning()) {
+                        LOGGER.warn("Container {} is running. Copy into is not permitted", ((GenericContainer<?>) container).getContainerName());
+                    }
+                    ((GenericContainer<?>) container).withCopyToContainer(Transferable.of(readBytesFromResource(filePathToTransfer)), containerPath);
+                }
+            });
+        }
+    }
+
     public static void setupDebeziumContainer(String connectorVersion, String restExtensionClassses) {
         setupDebeziumContainer(connectorVersion, restExtensionClassses, DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST);
     }
@@ -232,8 +247,7 @@ public class TestInfrastructureHelper {
     }
 
     public static void setupSqlServerTDEncryption() throws IOException, InterruptedException {
-        SQL_SERVER_CONTAINER.withCopyToContainer(Transferable.of(readBytesFromResource("/setup-sqlserver-database-with-encryption.sql")),
-                "/opt/mssql-tools18/bin/setup-sqlserver-database-with-encryption.sql");
+
         SQL_SERVER_CONTAINER.execInContainer(
                 "/opt/mssql-tools18/bin/sqlcmd",
                 "-S", "localhost",

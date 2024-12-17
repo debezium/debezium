@@ -43,6 +43,9 @@ public class DebeziumSqlServerConnectorResourceIT {
     @Before
     public void start() throws URISyntaxException, IOException, InterruptedException {
         TestInfrastructureHelper.setupDebeziumContainer(Module.version(), DebeziumSqlServerConnectRestExtension.class.getName());
+        TestInfrastructureHelper.copyIntoContainer(DATABASE.SQLSERVER,
+                "/setup-sqlserver-database-with-encryption.sql",
+                "/opt/mssql-tools18/bin/setup-sqlserver-database-with-encryption.sql");
         TestInfrastructureHelper.startContainers(DATABASE.SQLSERVER);
         TestInfrastructureHelper.setupSqlServerTDEncryption();
     }
