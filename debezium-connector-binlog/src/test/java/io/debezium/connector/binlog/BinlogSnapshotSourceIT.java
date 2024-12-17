@@ -57,7 +57,6 @@ import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.SnapshotTablesRowCountOrder;
 import io.debezium.relational.history.MemorySchemaHistory;
-import io.debezium.relational.history.SchemaHistory;
 
 /**
  * @author Randall Hauch
@@ -155,7 +154,7 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
                     .with(BinlogConnectorConfig.USER, "cloud")
                     .with(BinlogConnectorConfig.PASSWORD, "cloudpass")
                     .with(BinlogConnectorConfig.TEST_DISABLE_GLOBAL_LOCKING, "true")
-                    .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedTables);
+                    .with(BinlogConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedTables);
         }
         if (!data) {
             builder.with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA);
@@ -226,7 +225,7 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
                     .isEqualTo(schemaEventsCount);
             assertThat(schemaChanges.ddlRecordsForDatabaseOrEmpty("").size()
                     + schemaChanges.ddlRecordsForDatabaseOrEmpty(OTHER_DATABASE.getDatabaseName()).size())
-                    .isEqualTo(useGlobalLock ? 1 : 5);
+                    .isEqualTo(1);
         }
 
         if (!useGlobalLock) {
