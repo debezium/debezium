@@ -38,7 +38,7 @@ A directory named `debezium-server` will be created with these contents:
 ----
 debezium-server/
 |-- CHANGELOG.md
-|-- conf
+|-- config
 |-- CONTRIBUTE.md
 |-- COPYRIGHT.txt
 |-- debezium-server-{debezium-version}-runner.jar
@@ -49,7 +49,7 @@ debezium-server/
 `-- run.sh
 ----
 
-The server is started using `run.sh` script, dependencies are stored in the `lib` directory, and the directory `conf` contains configuration files.
+The server is started using `run.sh` script, dependencies are stored in the `lib` directory, and the directory `config` contains configuration files.
 [NOTE]
 ====
 In case of using the Oracle connector you will have to add to the `lib` directory the ORACLE JDBC driver (if using XStream also the XStream API files),
@@ -61,7 +61,7 @@ explained here: xref:{link-oracle-connector}#obtaining-oracle-jdbc-driver-and-xs
 {prodname} Server uses https://github.com/eclipse/microprofile-config[MicroProfile Configuration] for configuration.
 This means that the application can be configured from disparate sources like configuration files, environment variables, system properties etc.
 
-The main configuration file is _conf/application.properties_.
+The main configuration file is _config/application.properties_.
 There are multiple sections configured:
 
 * `debezium.source` is for source connector configuration; each instance of {prodname} Server runs exactly one connector
@@ -537,7 +537,7 @@ The most frequent used are:
 
 |===
 
-JSON logging can be disabled by setting `quarkus.log.console.json=false` in the _conf/application.properties_ file, as demonstrated in the _conf/application.properties.example_ file.
+JSON logging can be disabled by setting `quarkus.log.console.json=false` in the _config/application.properties_ file, as demonstrated in the _config/application.properties.example_ file.
 
 ==== Enabling message filtering
 
