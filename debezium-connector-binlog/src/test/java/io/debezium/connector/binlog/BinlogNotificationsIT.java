@@ -19,6 +19,7 @@ import io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotMode;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.pipeline.notification.AbstractNotificationsIT;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 
 /**
  * @author Chris Cranford
@@ -60,7 +61,9 @@ public abstract class BinlogNotificationsIT<C extends SourceConnector> extends A
 
     @Override
     protected Configuration.Builder config() {
-        return DATABASE.defaultConfig().with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue());
+        return DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
+                .with(RelationalDatabaseConnectorConfig.INCLUDE_SCHEMA_CHANGES, false);
     }
 
     @Override
