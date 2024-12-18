@@ -183,6 +183,7 @@ Fabio Cantarini
 Fahim Farook
 Fai Ho Fu
 Faizan
+Fan Yang
 Farid Uyar
 Fatih Güçlü Akkaya
 Fándly Gergő
@@ -206,6 +207,7 @@ Guillaume Rosauro
 Guillaume Smet
 Gunnar Morling
 Gurnaaz Randhawa
+Gustavo Lira
 Guy Korland
 Guy Pascarella
 Grzegorz Kołakowski
@@ -224,6 +226,7 @@ Jiri Kulhanek
 Jonas Thelemann
 Jordan Pittier
 Juan Fiallo
+Juanma Barea
 Jun Zhao
 Hady Willi
 Hang Ruan
@@ -267,6 +270,7 @@ Jan Uyttenhove
 JapuDCret
 Jaromir Hamala
 Javier Holguera
+Jean Vintache
 Jeremy Finzel
 Jeremy Ford
 Jeremy Vigny
@@ -287,6 +291,7 @@ Jordan Bragg
 Jork Zijlstra
 Jorn Argelo
 Jos Huiting
+Jose Carvajal Hilario
 Jose Luis
 Jose Luis Sánchez
 Josh Arenberg
@@ -353,6 +358,7 @@ Martin Medek
 Martin Sillence
 Martin Tosney
 Martin Vlk
+Martin Walsh
 Masazumi Kobayashi
 Mathijs van den Worm
 Matt Beary
@@ -404,6 +410,7 @@ Nishant Singh
 Nitin Agarwal
 Nitin Chhabra
 Olavi Mustanoja
+Ole-Martin Bratteng
 Oliver Weiler
 Olivier Boudet
 Olivier Jacquemart

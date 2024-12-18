@@ -289,4 +289,5 @@ dongwook-chan,Dongwook Chan
 paumr,P. Aum
 yevhenii-lopatenko,Yevhenii Lopatenko
 kavyaramaiah1991,Kavya Ramaiah
-kmos, Giovanni Panice
+gpanice,Giovanni Panice
+AndreiLeib,Andrei Leibovski
