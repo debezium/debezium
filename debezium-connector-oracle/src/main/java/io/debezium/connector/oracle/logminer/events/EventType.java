@@ -20,6 +20,7 @@ public enum EventType {
     SELECT_LOB_LOCATOR(9),
     LOB_WRITE(10),
     LOB_TRIM(11),
+    REPLICATION_MARKER(27),
     LOB_ERASE(29),
     MISSING_SCN(34),
     ROLLBACK(36),
