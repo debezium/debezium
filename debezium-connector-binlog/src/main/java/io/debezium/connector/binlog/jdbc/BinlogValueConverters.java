@@ -279,7 +279,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
                 logger.warn("Using UTF-8 charset by default for column without charset: {}", column);
                 return (data) -> convertString(column, fieldDefn, StandardCharsets.UTF_8, data);
             case Types.TIME:
-                if (adaptiveTimeMicrosecondsPrecisionMode) {
+                if (temporalPrecisionMode == TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS) {
                     return data -> convertDurationToMicroseconds(column, fieldDefn, data);
                 }
             case Types.TIMESTAMP:
