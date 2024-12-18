@@ -545,6 +545,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
             case DELETE:
                 handleDataEvent(row);
                 break;
+            case REPLICATION_MARKER:
+                handleReplicationMarker(row);
+                break;
             case UNSUPPORTED:
                 handleUnsupportedEvent(row);
                 break;
@@ -1406,6 +1409,22 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         });
 
         metrics.incrementTotalChangesCount();
+    }
+
+    protected void handleReplicationMarker(LogMinerEventRow row) {
+        // GoldenGate creates replication markers in the redo logs periodically and these entries can lead to
+        // the construction of a transaction in the buffer that never has a COMMIT or ROLLBACK. When this is
+        // done by Oracle, we should automatically discard the transaction from the buffer to avoid the low
+        // watermark from advancing safely.
+        final String transactionId = row.getTransactionId();
+        final T transaction = getTransactionCache().get(transactionId);
+        if (transaction != null) {
+            LOGGER.debug("Skipping GoldenGate replication marker for transaction {} with SCN {}", transactionId, row.getScn());
+            removeEventsWithTransaction(transaction);
+            getTransactionCache().remove(transactionId);
+        }
+        // It should not exist in this cache, but in case.
+        getAbandonedTransactionsCache().remove(transactionId);
     }
 
     protected void handleUnsupportedEvent(LogMinerEventRow row) {
