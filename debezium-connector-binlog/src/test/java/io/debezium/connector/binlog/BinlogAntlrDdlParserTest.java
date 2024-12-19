@@ -255,7 +255,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     @Test
     @FixFor("DBZ-5424")
     public void shouldProcessNoPrimaryKeyForTable() {
-        String ddl = "create table tbl_without_pk(\n"
+        String ddl = "create table if not exists tbl_without_pk(\n"
                 + "id bigint(20) NOT Null,\n"
                 + "c1 bigint not null,\n"
                 + "c2 int not null,\n"
@@ -268,7 +268,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         assertThat(table.primaryKeyColumnNames().size()).isEqualTo(0);
 
         String createTable = "drop table if exists tbl_without_pk;\n"
-                + "create table tbl_without_pk(\n"
+                + "create table if not exists tbl_without_pk(\n"
                 + "id bigint(20) NOT Null,\n"
                 + "c1 bigint not null,\n"
                 + "c2 int not null\n"
@@ -289,7 +289,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     @Test
     @FixFor("DBZ-4583")
     public void shouldProcessLargeColumn() {
-        String ddl = "create table tbl_large_col(\n"
+        String ddl = "create table if not exists tbl_large_col(\n"
                 + "`id` bigint(20) NOT NULL AUTO_INCREMENT,\n"
                 + "c1 blob(4294967295) NOT NULL,\n"
                 + "PRIMARY KEY (`id`)\n"
@@ -307,7 +307,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     @Test
     @FixFor({ "DBZ-4497", "DBZ-6185" })
     public void shouldProcessMultipleSignedUnsignedForTable() {
-        String ddl = "create table tbl_signed_unsigned(\n"
+        String ddl = "create table if not exists tbl_signed_unsigned(\n"
                 + "`id` bigint(20) ZEROFILL signed UNSIGNED signed ZEROFILL unsigned ZEROFILL NOT NULL AUTO_INCREMENT COMMENT 'ID',\n"
                 + "c1 int signed unsigned default '',\n"
                 + "c2 decimal(10, 2) SIGNED UNSIGNED ZEROFILL,\n"
@@ -346,13 +346,13 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     @FixFor("DBZ-3023")
     public void shouldProcessDefaultCharsetForTable() {
         parser.parse("SET character_set_server='latin2'", tables);
-        parser.parse("CREATE SCHEMA `database2`", tables);
-        parser.parse("CREATE SCHEMA `database1` CHARACTER SET='windows-1250'", tables);
-        parser.parse("CREATE TABLE `database1`.`table1` (\n"
+        parser.parse("CREATE SCHEMA IF NOT EXISTS `database2`", tables);
+        parser.parse("CREATE SCHEMA IF NOT EXISTS `database1` CHARACTER SET='windows-1250'", tables);
+        parser.parse("CREATE TABLE IF NOT EXISTS `database1`.`table1` (\n"
                 + "`created` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n"
                 + "`x1` VARCHAR NOT NULL\n"
                 + ") CHARACTER SET = DEFAULT;", tables);
-        parser.parse("CREATE TABLE `database2`.`table2` (\n"
+        parser.parse("CREATE TABLE IF NOT EXISTS `database2`.`table2` (\n"
                 + "`created` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n"
                 + "`x1` VARCHAR NOT NULL\n"
                 + ") CHARACTER SET = DEFAULT;", tables);
@@ -757,7 +757,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         assertThat(parser.getParsingExceptionsFromWalker().size()).isEqualTo(0);
         assertThat(tables.size()).isEqualTo(1);
 
-        parser.parse("CREATE TABLE mytable (id INT PRIMARY KEY, val1 INT, val2 INT)", tables);
+        parser.parse("CREATE TABLE IF NOT EXISTS mytable (id INT PRIMARY KEY, val1 INT, val2 INT)", tables);
         assertThat(parser.getParsingExceptionsFromWalker().size()).isEqualTo(0);
         assertThat(tables.size()).isEqualTo(1);
 
@@ -853,6 +853,89 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     public void shouldSupportCreateIndexBothAlgoAndLock() {
         parser.parse("CREATE INDEX `idx` ON `db`.`table` (created_at) COMMENT '' ALGORITHM DEFAULT LOCK DEFAULT", tables);
         parser.parse("DROP INDEX `idx` ON `db`.`table` LOCK DEFAULT ALGORITHM DEFAULT", tables);
+        assertThat(parser.getParsingExceptionsFromWalker().size()).isEqualTo(0);
+    }
+
+    @Test
+    @FixFor("DBZ-4841")
+    public void shouldProcessMariadbCreateIndex() {
+        String createIndexDdl = "CREATE INDEX IF NOT EXISTS DX_DT_LAST_UPDATE ON patient(DT_LAST_UPDATE)\n"
+                + "WAIT 100\n"
+                + "KEY_BLOCK_SIZE=1024M\n"
+                + "CLUSTERING =YES\n"
+                + "USING RTREE\n"
+                + "NOT IGNORED\n"
+                + "ALGORITHM = NOCOPY\n"
+                + "LOCK EXCLUSIVE";
+        parser.parse(createIndexDdl, tables);
+        assertThat(parser.getParsingExceptionsFromWalker().size()).isEqualTo(0);
+    }
+
+    @Test
+    @FixFor("DBZ-4661")
+    public void shouldSupportCreateTableWithEcrytion() {
+        parser.parse(
+                "CREATE TABLE `t_test_encrypted_test1` " +
+                        "(`id` int(11) NOT NULL AUTO_INCREMENT) " +
+                        "ENGINE=InnoDB DEFAULT CHARSET=utf8 `ENCRYPTED`=YES COMMENT 'MariaDb encrypted table'",
+                tables);
+        parser.parse(
+                "CREATE TABLE `t_test_encrypted_test2` " +
+                        "(`id` int(11) NOT NULL AUTO_INCREMENT) " +
+                        "ENGINE=InnoDB DEFAULT CHARSET=utf8 `encrypted`=yes COMMENT 'MariaDb encrypted table'",
+                tables);
+        parser.parse(
+                "CREATE TABLE `t_test_encrypted_test3` " +
+                        "(`id` int(11) NOT NULL AUTO_INCREMENT) " +
+                        "ENGINE=InnoDB DEFAULT CHARSET=utf8 ENCRYPTED=yes COMMENT 'MariaDb encrypted table'",
+                tables);
+        parser.parse(
+                "CREATE TABLE `t_test_encrypted_test` " +
+                        "(`id` int(11) NOT NULL AUTO_INCREMENT) " +
+                        "ENGINE=InnoDB DEFAULT CHARSET=utf8 `encrypted`=YES COMMENT 'MariaDb encrypted table'",
+                tables);
+        parser.parse("CREATE TABLE `t_test_encryption` " +
+                "(`id` int(11) NOT NULL AUTO_INCREMENT) " +
+                "ENGINE=InnoDB DEFAULT CHARSET=utf8 ENCRYPTION='Y' COMMENT 'Mysql encrypted table';", tables);
+        assertThat(parser.getParsingExceptionsFromWalker().size()).isEqualTo(0);
+    }
+
+    @Test
+    @FixFor("DBZ-4675")
+    public void shouldSupportCreateTableWithCompressed() {
+        parser.parse(
+                "CREATE TABLE `my_table_page_compressed1` (\n" +
+                        "`column1` bigint(20) NOT NULL,\n" +
+                        "`column2` bigint(20) NOT NULL,\n" +
+                        "`column3` bigint(20) NOT NULL,\n" +
+                        "`column4` bigint(20) NOT NULL,\n" +
+                        "`column5` bigint(20) NOT NULL,\n" +
+                        "`column6` bigint(20) NOT NULL,\n" +
+                        "`column7` bigint(20) NOT NULL,\n" +
+                        "`column8` blob,\n" +
+                        "`column9` varchar(64) DEFAULT NULL,\n" +
+                        "PRIMARY KEY (`column1`),\n" +
+                        "KEY `idx_my_index_column2` (`column2`)\n" +
+                        ") ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED `encrypted`=yes `page_compressed`=0",
+                tables);
+        parser.parse(
+                "CREATE TABLE `my_table_page_compressed2` (\n" +
+                        "`column1` bigint(20) NOT NULL" +
+                        ") ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED " +
+                        "`encrypted`=yes `page_compressed`=1 `PAGE_COMPRESSION_LEVEL`=0",
+                tables);
+        parser.parse(
+                "CREATE TABLE `my_table_page_compressed3` (\n" +
+                        "`column1` bigint(20) NOT NULL" +
+                        ") ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED " +
+                        "`encrypted`=yes page_compressed=1 `page_compression_level`=3",
+                tables);
+        parser.parse(
+                "CREATE TABLE `my_table_page_compressed4` (\n" +
+                        "`column1` bigint(20) NOT NULL" +
+                        ") ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED " +
+                        "`encrypted`=yes `page_compressed`=0 PAGE_COMPRESSION_LEVEL=3",
+                tables);
         assertThat(parser.getParsingExceptionsFromWalker().size()).isEqualTo(0);
     }
 
@@ -1760,7 +1843,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
     @Test
     public void shouldParseCreateUserTable() {
-        String ddl = "CREATE TABLE user ( Host char(60) binary DEFAULT '' NOT NULL, User char(32) binary DEFAULT '' NOT NULL, Select_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Insert_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Update_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Delete_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Drop_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Reload_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Shutdown_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Process_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, File_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Grant_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, References_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Index_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Alter_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Show_db_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Super_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_tmp_table_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Lock_tables_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Execute_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Repl_slave_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Repl_client_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_view_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Show_view_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_routine_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Alter_routine_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_user_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Event_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Trigger_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_tablespace_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, ssl_type enum('','ANY','X509', 'SPECIFIED') COLLATE utf8_general_ci DEFAULT '' NOT NULL, ssl_cipher BLOB NOT NULL, x509_issuer BLOB NOT NULL, x509_subject BLOB NOT NULL, max_questions int(11) unsigned DEFAULT 0  NOT NULL, max_updates int(11) unsigned DEFAULT 0  NOT NULL, max_connections int(11) unsigned DEFAULT 0  NOT NULL, max_user_connections int(11) unsigned DEFAULT 0  NOT NULL, plugin char(64) DEFAULT 'mysql_native_password' NOT NULL, authentication_string TEXT, password_expired ENUM('N', 'Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, password_last_changed timestamp NULL DEFAULT NULL, password_lifetime smallint unsigned NULL DEFAULT NULL, account_locked ENUM('N', 'Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, PRIMARY KEY Host (Host,User) ) engine=MyISAM CHARACTER SET utf8 COLLATE utf8_bin comment='Users and global privileges';";
+        String ddl = "CREATE TABLE IF NOT EXISTS user (   Host char(60) binary DEFAULT '' NOT NULL, User char(32) binary DEFAULT '' NOT NULL, Select_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Insert_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Update_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Delete_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Drop_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Reload_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Shutdown_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Process_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, File_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Grant_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, References_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Index_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Alter_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Show_db_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Super_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_tmp_table_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Lock_tables_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Execute_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Repl_slave_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Repl_client_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_view_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Show_view_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_routine_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Alter_routine_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_user_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Event_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Trigger_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, Create_tablespace_priv enum('N','Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, ssl_type enum('','ANY','X509', 'SPECIFIED') COLLATE utf8_general_ci DEFAULT '' NOT NULL, ssl_cipher BLOB NOT NULL, x509_issuer BLOB NOT NULL, x509_subject BLOB NOT NULL, max_questions int(11) unsigned DEFAULT 0  NOT NULL, max_updates int(11) unsigned DEFAULT 0  NOT NULL, max_connections int(11) unsigned DEFAULT 0  NOT NULL, max_user_connections int(11) unsigned DEFAULT 0  NOT NULL, plugin char(64) DEFAULT 'mysql_native_password' NOT NULL, authentication_string TEXT, password_expired ENUM('N', 'Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, password_last_changed timestamp NULL DEFAULT NULL, password_lifetime smallint unsigned NULL DEFAULT NULL, account_locked ENUM('N', 'Y') COLLATE utf8_general_ci DEFAULT 'N' NOT NULL, PRIMARY KEY Host (Host,User) ) engine=MyISAM CHARACTER SET utf8 COLLATE utf8_bin comment='Users and global privileges';";
         parser.parse(ddl, tables);
         assertThat(tables.size()).isEqualTo(1);
         Table foo = tables.forTable(new TableId(null, null, "user"));
@@ -2606,7 +2689,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         final String ddl1 = "USE db;"
                 + "CREATE TABLE db.t1 (ID INTEGER PRIMARY KEY, val INTEGER, INDEX myidx(val));";
         final String ddl2 = "USE db;"
-                + "CREATE INDEX myidx on db.t1(val);";
+                + "CREATE OR REPLACE INDEX myidx on db.t1(val);";
         parser = getParser(listener, true);
         parser.parse(ddl1, tables);
         assertThat(tables.size()).isEqualTo(1);
@@ -2779,7 +2862,7 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
     @FixFor("DBZ-419")
     @Test
     public void shouldParseCreateTableWithUnnamedPrimaryKeyConstraint() {
-        final String ddl = "CREATE TABLE tables_exception (table_name VARCHAR(100), create_date TIMESTAMP DEFAULT NOW(), enabled INT(1), retention int(1) default 30, CONSTRAINT PRIMARY KEY (table_name));";
+        final String ddl = "CREATE TABLE IF NOT EXISTS tables_exception (table_name VARCHAR(100), create_date TIMESTAMP DEFAULT NOW(), enabled INT(1), retention int(1) default 30, CONSTRAINT PRIMARY KEY (table_name));";
 
         parser.parse(ddl, tables);
         Testing.print(tables);
@@ -3414,6 +3497,21 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
 
         assertThat(table.columnWithName("ts_col").hasDefaultValue()).isEqualTo(true);
         assertThat(getColumnSchema(table, "ts_col").defaultValue()).isEqualTo(toIsoString("2020-01-02 03:04:05"));
+    }
+
+    @Test
+    @FixFor("DBZ-5201")
+    public void shouldSupportMariaDbCurrentTimestamp() {
+        String ddl = "CREATE TABLE data(id INT, bi BIGINT(20) NOT NULL DEFAULT unix_timestamp(), PRIMARY KEY (id))";
+        parser.parse(ddl, tables);
+
+        Table table = tables.forTable(new TableId(null, null, "data"));
+        assertThat(table.columnWithName("id").isOptional()).isFalse();
+        assertThat(table.columnWithName("id").hasDefaultValue()).isFalse();
+
+        assertThat(table.columnWithName("bi").isOptional()).isFalse();
+        assertThat(table.columnWithName("bi").hasDefaultValue()).isTrue();
+        assertThat(getColumnSchema(table, "bi").defaultValue()).isNull();
     }
 
     @Test
