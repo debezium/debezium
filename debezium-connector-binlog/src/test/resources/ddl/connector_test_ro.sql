@@ -110,5 +110,4 @@ VALUES (
         '-00:00:00.000000'  -- DBZ-7594
         );
 
-DROP DATABASE IF EXISTS emptydb;
-CREATE DATABASE emptydb;
+CREATE DATABASE IF NOT EXISTS emptydb;

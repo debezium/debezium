@@ -192,7 +192,7 @@ public abstract class BinlogJsonIT<C extends SourceConnector> extends AbstractBi
 
         try (BinlogTestConnection conn = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
             conn.execute(
-                    "CREATE TABLE deals ( id int(11) unsigned NOT NULL AUTO_INCREMENT, company_id int(11) unsigned DEFAULT NULL, title varchar(255) DEFAULT NULL, custom_fields json DEFAULT NULL, PRIMARY KEY (id), KEY idx_company_id (company_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8",
+                    "CREATE TABLE IF NOT EXISTS deals ( id int(11) unsigned NOT NULL AUTO_INCREMENT, company_id int(11) unsigned DEFAULT NULL, title varchar(255) DEFAULT NULL, custom_fields json DEFAULT NULL, PRIMARY KEY (id), KEY idx_company_id (company_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8",
                     "INSERT INTO deals (title, custom_fields) VALUES ('test', '"
                             + "{"
                             + "\"17fc9889474028063990914001f6854f6b8b5784\":\"test_field_for_remove_fields_behaviour_2\","
