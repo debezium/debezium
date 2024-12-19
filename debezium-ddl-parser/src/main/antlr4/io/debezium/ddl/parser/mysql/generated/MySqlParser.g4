@@ -45,13 +45,21 @@ sqlStatements: (
 ;
 
 sqlStatement:
-    ddlStatement
-    | dmlStatement
-    | transactionStatement
-    | replicationStatement
-    | preparedStatement
-    | administrationStatement
-    | utilityStatement
+    setStatementFor? (
+        ddlStatement
+        | dmlStatement
+        | transactionStatement // setStatementFor is MariaDB-specific only
+        | replicationStatement
+        | preparedStatement
+        | administrationStatement
+        | utilityStatement
+    )
+;
+
+setStatementFor: // setStatementFor is MariaDB-specific only
+    SET STATEMENT ID EQUAL_SYMBOL constant (
+        COMMA ID EQUAL_SYMBOL constant
+    )* FOR
 ;
 
 emptyStatement: SEMI;
@@ -70,6 +78,7 @@ ddlStatement:
     | createTrigger
     | createView
     | createRole
+    | createSequence
     | alterDatabase
     | alterEvent
     | alterFunction
@@ -80,6 +89,7 @@ ddlStatement:
     | alterTable
     | alterTablespace
     | alterView
+    | alterSequence
     | dropDatabase
     | dropEvent
     | dropIndex
@@ -209,26 +219,32 @@ utilityStatement:
 //    Create statements
 
 createDatabase:
-    CREATE dbFormat = (DATABASE | SCHEMA) uid createDatabaseOption*
+    CREATE dbFormat = (DATABASE | SCHEMA) ifNotExists? uid createDatabaseOption*
 ;
 
 createEvent:
-    CREATE ownerStatement? EVENT fullId ON SCHEDULE scheduleExpression (
+    CREATE ownerStatement? EVENT ifNotExists? fullId ON SCHEDULE scheduleExpression (
         ON COMPLETION NOT? PRESERVE
     )? enableType? (COMMENT STRING_LITERAL)? DO routineBody
 ;
 
 createIndex:
-    CREATE intimeAction = (ONLINE | OFFLINE)? indexCategory = (
+    CREATE orReplace? // orReplace is MariaDB-specific only
+    intimeAction = (ONLINE | OFFLINE)? indexCategory = (
         UNIQUE
         | FULLTEXT
         | SPATIAL
-    )? INDEX uid indexType? ON tableName indexColumnNames indexOption* (
+    )? INDEX ifNotExists? // ifNotExists is MariaDB-specific only
+    uid indexType? ON tableName indexColumnNames waitNowaitClause?
+    // waitNowaitClause is MariaDB-specific only
+    indexOption* (
         ALGORITHM EQUAL_SYMBOL? algType = (
             DEFAULT
             | INPLACE
             | COPY
-        )
+            | NOCOPY
+            | INSTANT
+        ) // NOCOPY, INSTANT are MariaDB-specific only
         | LOCK EQUAL_SYMBOL? lockType = (
             DEFAULT
             | NONE
@@ -249,21 +265,22 @@ createLogfileGroup:
 ;
 
 createProcedure:
-    CREATE PROCEDURE fullId '(' procedureParameter? (
+    CREATE orReplace? ownerStatement? // orReplace is MariaDB-specific only
+    PROCEDURE fullId '(' procedureParameter? (
         ',' procedureParameter
     )* ')' routineOption* routineBody
 ;
 
 createFunction:
-    CREATE ownerStatement? AGGREGATE? FUNCTION fullId '(' functionParameter? (
-        ',' functionParameter
-    )* ')' RETURNS dataType routineOption* (
+    CREATE orReplace? ownerStatement? AGGREGATE? // orReplace is MariaDB-specific only
+    FUNCTION ifNotExists? fullId // ifNotExists is MariaDB-specific only
+    '(' functionParameter? (',' functionParameter)* ')' RETURNS dataType routineOption* (
         routineBody
         | returnStatement
     )
 ;
 
-createRole: CREATE ROLE roleName (',' roleName)*;
+createRole: CREATE ROLE ifNotExists? roleName (',' roleName)*;
 
 createServer:
     CREATE SERVER uid FOREIGN DATA WRAPPER wrapperName = (
@@ -273,16 +290,18 @@ createServer:
 ;
 
 createTable:
-    CREATE TEMPORARY? TABLE tableName (
+    CREATE orReplace? TEMPORARY? TABLE ifNotExists? // orReplace is MariaDB-specific only
+    tableName (
         LIKE tableName
         | '(' LIKE parenthesisTable = tableName ')'
     ) # copyCreateTable
-    | CREATE TEMPORARY? TABLE tableName createDefinitions? (
+    | CREATE orReplace? TEMPORARY? TABLE ifNotExists? // orReplace is MariaDB-specific only
+    tableName createDefinitions? (
         tableOption (','? tableOption)*
     )? partitionDefinitions? keyViolate = (IGNORE | REPLACE)? AS? selectStatement # queryCreateTable
-    | CREATE TEMPORARY? TABLE tableName createDefinitions (
-        tableOption (','? tableOption)*
-    )? partitionDefinitions? # columnCreateTable
+    | CREATE orReplace? TEMPORARY? TABLE ifNotExists? // orReplace is MariaDB-specific only
+    tableName createDefinitions (tableOption (','? tableOption)*)? partitionDefinitions? #
+        columnCreateTable
 ;
 
 createTablespaceInnodb:
@@ -302,7 +321,8 @@ createTablespaceNdb:
 ;
 
 createTrigger:
-    CREATE ownerStatement? TRIGGER thisTrigger = fullId triggerTime = (
+    CREATE orReplace? ownerStatement? // orReplace is MariaDB-specific only
+    TRIGGER ifNotExists? thisTrigger = fullId triggerTime = (
         BEFORE
         | AFTER
     ) triggerEvent = (INSERT | UPDATE | DELETE) ON tableName FOR EACH ROW (
@@ -323,9 +343,8 @@ cteName: uid;
 cteColumnName: uid;
 
 createView:
-    CREATE (
-        ALGORITHM '=' algType = (UNDEFINED | MERGE | TEMPTABLE)
-    )? ownerStatement? (
+    CREATE orReplace? // orReplace is MariaDB-specific only
+    (ALGORITHM '=' algType = (UNDEFINED | MERGE | TEMPTABLE))? ownerStatement? (
         SQL SECURITY secContext = (DEFINER | INVOKER)
     )? VIEW fullId ('(' uidList ')')? AS (
         '(' withClause? selectStatement ')'
@@ -333,6 +352,27 @@ createView:
             WITH checkOption = (CASCADED | LOCAL)? CHECK OPTION
         )?
     )
+;
+
+createSequence:
+    CREATE orReplace? TEMPORARY? SEQUENCE ifNotExists? fullId // orReplace is MariaDB-specific only
+    (sequenceSpec | tableOption)*
+;
+
+sequenceSpec:
+    INCREMENT (BY | '=')? decimalLiteral
+    | MINVALUE '='? decimalLiteral
+    | NO MINVALUE
+    | NOMINVALUE
+    | MAXVALUE '='? decimalLiteral
+    | NO MAXVALUE
+    | NOMAXVALUE
+    | START (WITH | '=')? decimalLiteral
+    | CACHE '='? decimalLiteral
+    | NOCACHE
+    | CYCLE
+    | NOCYCLE
+    | RESTART (WITH | '=')? decimalLiteral // use for alter sequence statment
 ;
 
 // details
@@ -348,7 +388,13 @@ charSet: CHARACTER SET | CHARSET | CHAR SET;
 
 currentUserExpression: CURRENT_USER ( '(' ')')?;
 
-ownerStatement: DEFINER '=' ( userName | currentUserExpression);
+ownerStatement:
+    DEFINER '=' (
+        userName
+        | currentUserExpression
+        | CURRENT_ROLE
+    ) // CURRENT_ROLE is MariaDB-specific only
+;
 
 scheduleExpression:
     AT timestampValue intervalExpr* # preciseSchedule
@@ -392,7 +438,9 @@ intervalType:
 
 enableType: ENABLE | DISABLE | DISABLE ON SLAVE;
 
-indexType: USING (BTREE | HASH);
+indexType:
+    USING (BTREE | HASH | RTREE) // RTREE is MariaDB-specific only
+;
 
 indexOption:
     KEY_BLOCK_SIZE EQUAL_SYMBOL? fileSizeLiteral
@@ -402,6 +450,8 @@ indexOption:
     | (VISIBLE | INVISIBLE)
     | ENGINE_ATTRIBUTE EQUAL_SYMBOL? STRING_LITERAL
     | SECONDARY_ENGINE_ATTRIBUTE EQUAL_SYMBOL? STRING_LITERAL
+    | CLUSTERING EQUAL_SYMBOL (YES | NO) // MariaDB-specific only
+    | (IGNORED | NOT IGNORED) // MariaDB-specific only
 ;
 
 procedureParameter:
@@ -526,6 +576,7 @@ tableOption:
     | (DATA | INDEX) DIRECTORY '='? STRING_LITERAL                  # tableOptionDataDirectory
     | DELAY_KEY_WRITE '='? boolValue = ('0' | '1')                  # tableOptionDelay
     | ENCRYPTION '='? STRING_LITERAL                                # tableOptionEncryption
+    | encryptedLiteral '='? (YES | NO)                              # tableOptionEncrypted
     | (PAGE_COMPRESSED | STRING_LITERAL) '='? ('0' | '1')           # tableOptionPageCompressed
     | (PAGE_COMPRESSION_LEVEL | STRING_LITERAL) '='? decimalLiteral # tableOptionPageCompressionLevel
     | ENCRYPTION_KEY_ID '='? decimalLiteral                         # tableOptionEncryptionKeyId
@@ -557,6 +608,7 @@ tableOption:
     | tablespaceStorage                                           # tableOptionTablespace
     | TRANSACTIONAL '='? ('0' | '1')                              # tableOptionTransactional
     | UNION '='? '(' tables ')'                                   # tableOptionUnion
+    | WITH SYSTEM VERSIONING                                      # tableOptionWithSystemVersioning // MariaDB-specific only
 ;
 
 tableType: MYSQL | ODBC;
@@ -579,6 +631,21 @@ partitionFunctionDefinition:
     // Optional uidList for MySQL only
     | RANGE ('(' expression ')' | COLUMNS '(' uidList ')') # partitionFunctionRange
     | LIST ('(' expression ')' | COLUMNS '(' uidList ')')  # partitionFunctionList
+    | SYSTEM_TIME (expression | LIMIT expression) (
+        STARTS (TIMESTAMP timestampValue | timestampValue)
+    )? AUTO? partitionSystemVersionDefinitions? # partitionSystemVersion // MariaDB-specific
+;
+
+// MariaDB-specific
+partitionSystemVersionDefinitions:
+    '(' partitionSystemVersionDefinition (
+        ',' partitionSystemVersionDefinition
+    )* ')'
+;
+
+// MariaDB-specific
+partitionSystemVersionDefinition:
+    PARTITION uid (HISTORY | CURRENT)
 ;
 
 subpartitionFunctionDefinition:
@@ -661,9 +728,9 @@ alterServer:
 ;
 
 alterTable:
-    ALTER intimeAction = (ONLINE | OFFLINE)? IGNORE? TABLE tableName (
-        alterSpecification (',' alterSpecification)*
-    )? partitionDefinitions?
+    ALTER intimeAction = (ONLINE | OFFLINE)? IGNORE? TABLE ifExists? tableName waitNowaitClause?
+    // ifExists is MariaDB-specific
+    (alterSpecification (',' alterSpecification)*)? partitionDefinitions?
 ;
 
 alterTablespace:
@@ -682,18 +749,26 @@ alterView:
     )?
 ;
 
+alterSequence:
+    ALTER SEQUENCE ifExists? fullId sequenceSpec+ // MariaDB-specific only
+;
+
 // details
 
 alterSpecification:
-    tableOption (','? tableOption)*                         # alterByTableOption
-    | ADD COLUMN? uid columnDefinition (FIRST | AFTER uid)? # alterByAddColumn
-    | ADD COLUMN? '(' uid columnDefinition (
-        ',' uid columnDefinition
-    )* ')'                                                                          # alterByAddColumns
-    | ADD indexFormat = (INDEX | KEY) uid? indexType? indexColumnNames indexOption* # alterByAddIndex
+    tableOption (','? tableOption)* # alterByTableOption
+    | ADD COLUMN? ifNotExists? uid columnDefinition (
+        FIRST
+        | AFTER uid
+    )? # alterByAddColumn // ifNotExists is MariaDB-specific only
+    | ADD COLUMN? ifNotExists? // ifNotExists is MariaDB-specific only
+    '(' uid columnDefinition (',' uid columnDefinition)* ')' # alterByAddColumns
+    | ADD indexFormat = (INDEX | KEY) ifNotExists? uid? indexType?
+    // ifNotExists is MariaDB-specific only
+    indexColumnNames indexOption* # alterByAddIndex
     | ADD (CONSTRAINT name = uid?)? PRIMARY KEY index = uid? indexType? indexColumnNames indexOption
         * # alterByAddPrimaryKey
-    | ADD (CONSTRAINT name = uid?)? UNIQUE indexFormat = (
+    | ADD (CONSTRAINT name = uid?)? UNIQUE ifNotExists? indexFormat = (
         INDEX
         | KEY
     )? indexName = uid? indexType? indexColumnNames indexOption* # alterByAddUniqueKey
@@ -701,8 +776,8 @@ alterSpecification:
         INDEX
         | KEY
     )? uid? indexColumnNames indexOption* # alterByAddSpecialIndex
-    | ADD (CONSTRAINT name = uid?)? FOREIGN KEY indexName = uid? indexColumnNames
-        referenceDefinition # alterByAddForeignKey
+    | ADD (CONSTRAINT name = uid?)? FOREIGN KEY ifNotExists? // ifNotExists is MariaDB-specific only
+    indexName = uid? indexColumnNames referenceDefinition # alterByAddForeignKey
     | ADD (CONSTRAINT name = uid?)? CHECK (
         uid
         | stringLiteral
@@ -718,27 +793,34 @@ alterSpecification:
         | INSTANT
         | INPLACE
         | COPY
-    )                                                             # alterBySetAlgorithm
+        | NOCOPY
+    )                                                             # alterBySetAlgorithm // here NOCOPY is MariaDB-specific only
     | ALTER COLUMN? uid (SET DEFAULT defaultValue | DROP DEFAULT) # alterByChangeDefault
-    | CHANGE COLUMN? oldColumn = uid newColumn = uid columnDefinition (
+    | CHANGE COLUMN? ifExists? oldColumn = uid // here ifExists is MariaDB-specific only
+    newColumn = uid columnDefinition (
         FIRST
         | AFTER afterColumn = uid
     )?                                                           # alterByChangeColumn
     | RENAME COLUMN oldColumn = uid TO newColumn = uid           # alterByRenameColumn
     | LOCK '='? lockType = (DEFAULT | NONE | SHARED | EXCLUSIVE) # alterByLock
-    | MODIFY COLUMN? uid columnDefinition (FIRST | AFTER uid)?   # alterByModifyColumn
-    | DROP COLUMN? uid RESTRICT?                                 # alterByDropColumn
-    | DROP (CONSTRAINT | CHECK) uid                              # alterByDropConstraintCheck
-    | DROP PRIMARY KEY                                           # alterByDropPrimaryKey
-    | DROP indexFormat = (INDEX | KEY) uid                       # alterByDropIndex
-    | RENAME indexFormat = (INDEX | KEY) uid TO uid              # alterByRenameIndex
+    | MODIFY COLUMN? ifExists? // here ifExists is MariaDB-specific only
+    uid columnDefinition (FIRST | AFTER uid)? # alterByModifyColumn
+    | DROP COLUMN? ifExists? uid RESTRICT?    # alterByDropColumn
+    // here ifExists is MariaDB-specific only
+    | DROP (CONSTRAINT | CHECK) ifExists? uid # alterByDropConstraintCheck
+    // here ifExists is MariaDB-specific only
+    | DROP PRIMARY KEY                               # alterByDropPrimaryKey
+    | DROP indexFormat = (INDEX | KEY) ifExists? uid # alterByDropIndex
+    // here ifExists is MariaDB-specific only
+    | RENAME indexFormat = (INDEX | KEY) uid TO uid # alterByRenameIndex
     | ALTER COLUMN? uid (
         SET DEFAULT (stringLiteral | '(' expression ')')
         | SET (VISIBLE | INVISIBLE)
         | DROP DEFAULT
-    )                                                 # alterByAlterColumnDefault
-    | ALTER INDEX uid (VISIBLE | INVISIBLE)           # alterByAlterIndexVisibility
-    | DROP FOREIGN KEY uid dottedId?                  # alterByDropForeignKey
+    )                                          # alterByAlterColumnDefault
+    | ALTER INDEX uid (VISIBLE | INVISIBLE)    # alterByAlterIndexVisibility
+    | DROP FOREIGN KEY ifExists? uid dottedId? # alterByDropForeignKey
+    // here ifExists and dottedId is MariaDB-specific only
     | DISABLE KEYS                                    # alterByDisableKeys
     | ENABLE KEYS                                     # alterByEnableKeys
     | RENAME renameFormat = (TO | AS)? (uid | fullId) # alterByRename
@@ -748,20 +830,21 @@ alterSpecification:
     )? # alterByConvertCharset
     | DEFAULT? CHARACTER SET '=' charsetName (
         COLLATE '=' collationName
-    )?                                                             # alterByDefaultCharset
-    | DISCARD TABLESPACE                                           # alterByDiscardTablespace
-    | IMPORT TABLESPACE                                            # alterByImportTablespace
-    | FORCE                                                        # alterByForce
-    | validationFormat = (WITHOUT | WITH) VALIDATION               # alterByValidate
-    | ADD COLUMN? '(' createDefinition (',' createDefinition)* ')' # alterByAddDefinitions
-    | alterPartitionSpecification                                  # alterPartition
+    )?                                               # alterByDefaultCharset
+    | DISCARD TABLESPACE                             # alterByDiscardTablespace
+    | IMPORT TABLESPACE                              # alterByImportTablespace
+    | FORCE                                          # alterByForce
+    | validationFormat = (WITHOUT | WITH) VALIDATION # alterByValidate
+    | ADD COLUMN? ifNotExists? // ifNotExists is MariaDB-specific only
+    '(' createDefinition (',' createDefinition)* ')' # alterByAddDefinitions
+    | alterPartitionSpecification                    # alterPartition
 ;
 
 alterPartitionSpecification:
-    ADD PARTITION '(' partitionDefinition (
-        ',' partitionDefinition
-    )* ')'                                         # alterByAddPartition
-    | DROP PARTITION uidList                       # alterByDropPartition
+    ADD PARTITION ifNotExists? // ifNotExists is MariaDB-specific only
+    '(' partitionDefinition (',' partitionDefinition)* ')' # alterByAddPartition
+    | DROP PARTITION ifExists? uidList                     # alterByDropPartition
+    // here ifExists is MariaDB-specific only
     | DISCARD PARTITION (uidList | ALL) TABLESPACE # alterByDiscardPartition
     | IMPORT PARTITION (uidList | ALL) TABLESPACE  # alterByImportPartition
     | TRUNCATE PARTITION (uidList | ALL)           # alterByTruncatePartition
@@ -788,7 +871,9 @@ dropDatabase: DROP dbFormat = (DATABASE | SCHEMA) ifExists? uid;
 dropEvent: DROP EVENT ifExists? fullId;
 
 dropIndex:
-    DROP INDEX intimeAction = (ONLINE | OFFLINE)? uid ON tableName (
+    DROP INDEX ifExists? intimeAction = (ONLINE | OFFLINE)?
+    // here ifExists is MariaDB-specific only
+    uid ON tableName (
         ALGORITHM '='? algType = (DEFAULT | INPLACE | COPY)
         | LOCK '='? lockType = (
             DEFAULT
@@ -796,7 +881,7 @@ dropIndex:
             | SHARED
             | EXCLUSIVE
         )
-    )*
+    )* waitNowaitClause?
 ;
 
 dropLogfileGroup: DROP LOGFILE GROUP uid ENGINE '=' engineName;
@@ -808,7 +893,7 @@ dropFunction: DROP FUNCTION ifExists? fullId;
 dropServer: DROP SERVER ifExists? uid;
 
 dropTable:
-    DROP TEMPORARY? TABLE ifExists? tables dropType = (
+    DROP TEMPORARY? TABLE ifExists? tables waitNowaitClause? dropType = (
         RESTRICT
         | CASCADE
     )?
@@ -847,9 +932,9 @@ renameTable:
     RENAME TABLE renameTableClause (',' renameTableClause)*
 ;
 
-renameTableClause: tableName TO tableName;
+renameTableClause: tableName waitNowaitClause? TO tableName;
 
-truncateTable: TRUNCATE TABLE? tableName;
+truncateTable: TRUNCATE TABLE? tableName waitNowaitClause?;
 
 // Data Manipulation Language
 
@@ -973,7 +1058,7 @@ updatedElement: fullColumnName '=' (expression | DEFAULT);
 
 assignmentField: uid | LOCAL_ID;
 
-lockClause: (FOR UPDATE | LOCK IN SHARE MODE);
+lockClause: (FOR UPDATE | LOCK IN SHARE MODE) lockOption?;
 
 //    Detailed DML Statements
 
@@ -1241,7 +1326,7 @@ rollbackStatement: ROLLBACK WORK? TO SAVEPOINT? uid;
 releaseStatement: RELEASE SAVEPOINT uid;
 
 lockTables:
-    LOCK (TABLE | TABLES) lockTableElement (',' lockTableElement)*
+    LOCK (TABLE | TABLES) lockTableElement (',' lockTableElement)* waitNowaitClause?
 ;
 
 unlockTables: UNLOCK TABLES;
@@ -1521,14 +1606,14 @@ alterUser:
 
 createUser:
     CREATE USER userAuthOption (',' userAuthOption)* # createUserMysqlV56
-    | CREATE USER userAuthOption (',' userAuthOption)* (
-        DEFAULT ROLE roleOption
-    )? (REQUIRE (tlsNone = NONE | tlsOption (AND? tlsOption)*))? (
-        WITH userResourceOption+
-    )? (userPasswordOption | userLockOption)* (
-        COMMENT STRING_LITERAL
-        | ATTRIBUTE STRING_LITERAL
-    )? # createUserMysqlV80
+    | CREATE USER ifNotExists? userAuthOption (
+        ',' userAuthOption
+    )* (DEFAULT ROLE roleOption)? (
+        REQUIRE (tlsNone = NONE | tlsOption (AND? tlsOption)*)
+    )? (WITH userResourceOption+)? (
+        userPasswordOption
+        | userLockOption
+    )* (COMMENT STRING_LITERAL | ATTRIBUTE STRING_LITERAL)? # createUserMysqlV80
 ;
 
 dropUser: DROP USER ifExists? userName (',' userName)*;
@@ -1603,8 +1688,12 @@ userAuthOption:
     userName IDENTIFIED BY PASSWORD hashed = STRING_LITERAL   # hashAuthOption
     | userName IDENTIFIED BY RANDOM PASSWORD authOptionClause # randomAuthOption
     | userName IDENTIFIED BY STRING_LITERAL authOptionClause  # stringAuthOption
-    | userName IDENTIFIED WITH authenticationRule             # moduleAuthOption
-    | userName                                                # simpleAuthOption
+    | userName IDENTIFIED (
+        WITH
+        | VIA
+    ) // VIA is MariaDB-specific only
+    authenticationRule (OR authenticationRule)* # moduleAuthOption // OR is MariaDB-specific only
+    | userName                                  # simpleAuthOption
 ;
 
 authOptionClause: (REPLACE STRING_LITERAL)? (
@@ -1615,8 +1704,8 @@ authOptionClause: (REPLACE STRING_LITERAL)? (
 authenticationRule:
     authPlugin (
         (BY | USING | AS) (STRING_LITERAL | RANDOM PASSWORD) authOptionClause
-    )?                                        # module
-    | authPlugin USING passwordFunctionClause # passwordModuleOption
+    )?                                               # module
+    | authPlugin (USING | AS) passwordFunctionClause # passwordModuleOption // MariaDB
 ;
 
 tlsOption:
@@ -1662,12 +1751,12 @@ privilege:
         | TABLESPACE
         | ROLE
     )?
-    | DELETE
+    | DELETE (HISTORY)?
     | DROP (ROLE)?
     | EVENT
     | EXECUTE
     | FILE
-    | GRANT OPTION
+    | GRANT OPTION // HISTORY is MariaDB-specific
     | INDEX
     | INSERT
     | LOCK TABLES
@@ -1675,7 +1764,7 @@ privilege:
     | PROXY
     | REFERENCES
     | RELOAD
-    | REPLICATION (CLIENT | SLAVE | MASTER) ADMIN?
+    | REPLICATION (CLIENT | SLAVE | REPLICA | MASTER) ADMIN? // REPLICA is MariaDB-specific
     | SELECT
     | SHOW (VIEW | DATABASES | SCHEMAS)
     | SHUTDOWN
@@ -1725,6 +1814,23 @@ privilege:
     | TP_CONNECTION_ADMIN
     | VERSION_TOKEN_ADMIN
     | XA_RECOVER_ADMIN
+    // MariaDB
+    | BINLOG_MONITOR
+    | BINLOG_REPLAY
+    | FEDERATED_ADMIN
+    | READ_ONLY_ADMIN
+    | REPLICATION_MASTER_ADMIN
+    | BINLOG (ADMIN | MONITOR | REPLAY)
+    | FEDERATED ADMIN
+    | (READ ONLY | READ_ONLY) ADMIN
+    | ADMIN OPTION
+    | CONNECTION ADMIN
+    | DELETE HISTORY
+    | REPLICA MONITOR
+    | GRANT OPTION
+    | SET USER
+    | SLAVE MONITOR
+
     // MySQL on Amazon RDS
     | LOAD FROM S3
     | SELECT INTO S3
@@ -1765,7 +1871,7 @@ optimizeTable:
     OPTIMIZE actionOption = (NO_WRITE_TO_BINLOG | LOCAL)? (
         TABLE
         | TABLES
-    ) tables
+    ) tables waitNowaitClause?
 ;
 
 repairTable:
@@ -1786,12 +1892,8 @@ checkTableOption:
 //    Plugin and udf statements
 
 createUdfunction:
-    CREATE AGGREGATE? FUNCTION uid RETURNS returnType = (
-        STRING
-        | INTEGER
-        | REAL
-        | DECIMAL
-    ) SONAME STRING_LITERAL
+    CREATE orReplace? AGGREGATE? FUNCTION ifNotExists? uid // or replace is MariaDB-specific
+    RETURNS returnType = (STRING | INTEGER | REAL | DECIMAL) SONAME STRING_LITERAL
 ;
 
 installPlugin: INSTALL PLUGIN uid SONAME STRING_LITERAL;
@@ -1825,8 +1927,8 @@ showStatement:
     | SHOW FULL? columnsFormat = (COLUMNS | FIELDS) tableFormat = (
         FROM
         | IN
-    ) tableName (schemaFormat = (FROM | IN) uid)? showFilter? # showColumns
-    | SHOW CREATE schemaFormat = (DATABASE | SCHEMA) uid      # showCreateDb
+    ) tableName (schemaFormat = (FROM | IN) uid)? showFilter?         # showColumns
+    | SHOW CREATE schemaFormat = (DATABASE | SCHEMA) ifNotExists? uid # showCreateDb
     | SHOW CREATE namedEntity = (
         EVENT
         | FUNCTION
@@ -1858,6 +1960,13 @@ showStatement:
         LIMIT (offset = decimalLiteral ',')? rowCount = decimalLiteral
     )                                                 # showProfile
     | SHOW SLAVE STATUS (FOR CHANNEL STRING_LITERAL)? # showSlaveStatus
+    // MariaDB userstat plugin
+    | SHOW (
+        USER_STATISTICS
+        | CLIENT_STATISTICS
+        | INDEX_STATISTICS
+        | TABLE_STATISTICS
+    ) # showUserstatPlugin
 ;
 
 // details
@@ -1925,6 +2034,13 @@ flushStatement:
     FLUSH flushFormat = (NO_WRITE_TO_BINLOG | LOCAL)? flushOption (
         ',' flushOption
     )*
+    // MariaDB userstat plugin
+    | FLUSH (
+        USER_STATISTICS
+        | CLIENT_STATISTICS
+        | INDEX_STATISTICS
+        | TABLE_STATISTICS
+    )
     // Specific for Azure Database for MySQL Single Server instance.
     | FLUSH FIREWALL_RULES
 ;
@@ -2143,6 +2259,9 @@ engineNameBase:
     | TOKUDB
 ;
 
+// MariaDB
+encryptedLiteral: ENCRYPTED | STRING_LITERAL;
+
 uuidSet:
     decimalLiteral '-' decimalLiteral '-' decimalLiteral '-' decimalLiteral '-' decimalLiteral (
         ':' decimalLiteral '-' decimalLiteral
@@ -2321,6 +2440,7 @@ dataType:
         COLLATE collationName
     )?               # longVarcharDataType // LONG VARCHAR is the same as LONG
     | LONG VARBINARY # longVarbinaryDataType
+    | UUID           # uuidDataType // MariaDB-specific only
 ;
 
 collectionOptions:
@@ -2390,12 +2510,21 @@ defaultValue:
     | unaryOperator? constant
     | currentTimestamp (ON UPDATE currentTimestamp)?
     | '(' expression ')'
+    | (LASTVAL | NEXTVAL) '(' fullId ')' // MariaDB
+    | '(' (PREVIOUS | NEXT) VALUE FOR fullId ')' // MariaDB
+    | expression // MariaDB
 ;
 
-currentTimestamp: (
-        (CURRENT_TIMESTAMP | LOCALTIME | LOCALTIMESTAMP) (
-            '(' decimalLiteral? ')'
-        )?
+currentTimestamp:
+    (
+        (
+            CURRENT_TIMESTAMP
+            | LOCALTIME
+            | LOCALTIMESTAMP
+            | CURDATE
+            | CURTIME
+        ) // MariaDB-specific
+        ('(' decimalLiteral? ')')?
         | NOW '(' decimalLiteral? ')'
     )
 ;
@@ -2403,6 +2532,16 @@ currentTimestamp: (
 expressionOrDefault: expression | DEFAULT;
 
 ifExists: IF EXISTS;
+
+// Mariadb-specific
+
+ifNotExists: IF NOT EXISTS;
+
+orReplace: OR REPLACE;
+
+waitNowaitClause: WAIT decimalLiteral | NOWAIT;
+
+lockOption: waitNowaitClause | SKIP_ LOCKED;
 
 //    Functions
 
@@ -2419,6 +2558,8 @@ specificFunction: (
         CURRENT_DATE
         | CURRENT_TIME
         | CURRENT_TIMESTAMP
+        | CURDATE
+        | CURTIME // MariaDB-specific only
         | LOCALTIME
         | UTC_TIMESTAMP
         | SCHEMA
@@ -3194,6 +3335,44 @@ keywordsCanBeId:
     | XA_RECOVER_ADMIN
     | XML
     | YES
+    // MariaDB-specific only
+    | BINLOG_MONITOR
+    | BINLOG_REPLAY
+    | CURRENT_ROLE
+    | CYCLE
+    | ENCRYPTED
+    | ENCRYPTION_KEY_ID
+    | FEDERATED_ADMIN
+    | INCREMENT
+    | LASTVAL
+    | LOCKED
+    | MAXVALUE
+    | MINVALUE
+    | NEXTVAL
+    | NOCACHE
+    | NOCYCLE
+    | NOMAXVALUE
+    | NOMINVALUE
+    | PERSISTENT
+    | PREVIOUS
+    | READ_ONLY_ADMIN
+    | REPLICA
+    | REPLICATION_MASTER_ADMIN
+    | RESTART
+    | SEQUENCE
+    | SETVAL
+    | SKIP_
+    | STATEMENT
+    | UUID
+    | VIA
+    | MONITOR
+    | READ_ONLY
+    | REPLAY
+    | USER_STATISTICS
+    | CLIENT_STATISTICS
+    | INDEX_STATISTICS
+    | TABLE_STATISTICS
+    | FIREWALL_RULES
 ;
 
 functionNameBase:
@@ -3564,4 +3743,8 @@ functionNameBase:
     | JSON_STORAGE_SIZE
     | JSON_ARRAYAGG
     | JSON_OBJECTAGG
+    // MariaDB
+    | LASTVAL
+    | NEXTVAL
+    | SETVAL
 ;
