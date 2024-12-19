@@ -249,7 +249,7 @@ createLogfileGroup:
 ;
 
 createProcedure:
-    CREATE ownerStatement? PROCEDURE fullId '(' procedureParameter? (
+    CREATE PROCEDURE fullId '(' procedureParameter? (
         ',' procedureParameter
     )* ')' routineOption* routineBody
 ;
@@ -3564,5 +3564,4 @@ functionNameBase:
     | JSON_STORAGE_SIZE
     | JSON_ARRAYAGG
     | JSON_OBJECTAGG
-    | STATEMENT
 ;
