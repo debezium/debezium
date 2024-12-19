@@ -2,6 +2,30 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.0.6.Final
+December 19th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12441350)
+
+### New features since 3.0.5.Final
+
+None
+
+
+### Breaking changes since 3.0.5.Final
+
+None
+
+
+### Fixes since 3.0.5.Final
+
+* Revert MySQL grammar changes [DBZ-8539](https://issues.redhat.com/browse/DBZ-8539)
+
+
+### Other changes since 3.0.5.Final
+
+None
+
+
+
 ## 3.0.5.Final
 December 18th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12439150)
 
