@@ -6,7 +6,9 @@
 package io.debezium.connector.mariadb.jdbc;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.jdbc.BinlogConnectionConfiguration;
+import io.debezium.connector.mariadb.MariaDbConnectorConfig;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.util.Strings;
 
@@ -41,5 +43,16 @@ public class MariaDbConnectionConfiguration extends BinlogConnectionConfiguratio
     @Override
     public String getUrlPattern() {
         return URL_PATTERN;
+    }
+
+    @Override
+    public BinlogConnectorConfig.SecureConnectionMode sslMode() {
+        final String sslMode = originalConfig().getString(MariaDbConnectorConfig.SSL_MODE);
+        return MariaDbConnectorConfig.MariaDbSecureConnectionMode.parse(sslMode);
+    }
+
+    @Override
+    public boolean sslModeEnabled() {
+        return sslMode() != MariaDbConnectorConfig.MariaDbSecureConnectionMode.DISABLE;
     }
 }

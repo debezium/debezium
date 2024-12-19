@@ -40,7 +40,6 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
-import io.debezium.connector.binlog.BinlogConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotMode;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
@@ -169,7 +168,6 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         assertNoConfigurationErrors(result, BinlogConnectorConfig.SCHEMA_HISTORY);
         assertNoConfigurationErrors(result, BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES);
         assertNoConfigurationErrors(result, BinlogConnectorConfig.SNAPSHOT_MODE);
-        assertNoConfigurationErrors(result, BinlogConnectorConfig.SSL_MODE);
         assertNoConfigurationErrors(result, BinlogConnectorConfig.SSL_KEYSTORE);
         assertNoConfigurationErrors(result, BinlogConnectorConfig.SSL_KEYSTORE_PASSWORD);
         assertNoConfigurationErrors(result, BinlogConnectorConfig.SSL_TRUSTSTORE);
@@ -206,7 +204,6 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         validateConfigField(result, BinlogConnectorConfig.SCHEMA_HISTORY, "io.debezium.storage.kafka.history.KafkaSchemaHistory");
         validateConfigField(result, BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, Boolean.TRUE);
         validateConfigField(result, BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL);
-        validateConfigField(result, BinlogConnectorConfig.SSL_MODE, SecureConnectionMode.PREFERRED);
         validateConfigField(result, BinlogConnectorConfig.SSL_KEYSTORE, null);
         validateConfigField(result, BinlogConnectorConfig.SSL_KEYSTORE_PASSWORD, null);
         validateConfigField(result, BinlogConnectorConfig.SSL_TRUSTSTORE, null);
