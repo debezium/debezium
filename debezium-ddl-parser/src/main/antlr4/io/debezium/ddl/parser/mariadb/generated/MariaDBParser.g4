@@ -573,7 +573,6 @@ tableOption
     | tablespaceStorage                                           # tableOptionTablespace
     | TRANSACTIONAL '='? ('0' | '1')                              # tableOptionTransactional
     | UNION '='? '(' tables ')'                                   # tableOptionUnion
-    | WITH SYSTEM VERSIONING                                      # tableOptionWithSystemVersioning // MariaDB-specific only
     ;
 
 tableType
@@ -596,19 +595,6 @@ partitionFunctionDefinition
     | LINEAR? KEY (ALGORITHM '=' algType = ('1' | '2'))? '(' uidList ')' # partitionFunctionKey
     | RANGE ('(' expression ')' | COLUMNS '(' uidList ')')               # partitionFunctionRange
     | LIST ('(' expression ')' | COLUMNS '(' uidList ')')                # partitionFunctionList
-    | SYSTEM_TIME (expression | LIMIT expression) (
-        STARTS (TIMESTAMP timestampValue | timestampValue)
-    )? AUTO? partitionSystemVersionDefinitions? # partitionSystemVersion // MariaDB-specific
-    ;
-
-// MariaDB-specific
-partitionSystemVersionDefinitions
-    : '(' partitionSystemVersionDefinition (',' partitionSystemVersionDefinition)* ')'
-    ;
-
-// MariaDB-specific
-partitionSystemVersionDefinition
-    : PARTITION uid (HISTORY | CURRENT)
     ;
 
 subpartitionFunctionDefinition
@@ -1677,7 +1663,7 @@ privilege
     : ALL PRIVILEGES?
     | ALTER ROUTINE?
     | CREATE (TEMPORARY TABLES | ROUTINE | VIEW | USER | TABLESPACE | ROLE)?
-    | DELETE (HISTORY)? // HISTORY is MariaDB-specific
+    | DELETE
     | DROP (ROLE)?
     | EVENT
     | EXECUTE
@@ -2319,7 +2305,6 @@ dataType
     )                                                                                  # spatialDataType
     | typeName = LONG VARCHAR? BINARY? (charSet charsetName)? (COLLATE collationName)? # longVarcharDataType // LONG VARCHAR is the same as LONG
     | LONG VARBINARY                                                                   # longVarbinaryDataType
-    | UUID                                                                             # uuidDataType // MariaDB-specific only
     ;
 
 collectionOptions
@@ -3247,7 +3232,6 @@ keywordsCanBeId
     | SETVAL
     | SKIP_
     | STATEMENT
-    | UUID
     | VIA
     | MONITOR
     | READ_ONLY
