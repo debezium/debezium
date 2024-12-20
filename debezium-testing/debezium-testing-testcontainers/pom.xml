@@ -165,4 +165,18 @@
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>quick</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>quick</name>
+                </property>
+            </activation>
+            <properties>
+                <skipITs>true</skipITs>
+            </properties>
+        </profile>
+    </profiles>
 </project>
