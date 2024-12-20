@@ -135,6 +135,70 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
         }
     }
 
+    public enum MariaDbSecureConnectionMode implements SecureConnectionMode, EnumeratedValue {
+        /**
+         * Do not use SSL/TLS.
+         */
+        DISABLE("disable"),
+        /**
+         * Only use SSL/TLS for encryption. Do not perform certificate or hostname verification.
+         */
+        TRUST("trust"),
+        /**
+         * Use SSL/TLS for encryption and perform certificates verification, but do not perform hostname verification.
+         */
+        VERIFY_CA("verify-ca"),
+        /**
+         * Use SSL/TLS for encryption, certificate verification, and hostname verification. This is the standard TLS behavior.
+         */
+        VERIFY_FULL("verify-full");
+
+        private final String value;
+
+        MariaDbSecureConnectionMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static BinlogConnectorConfig.SecureConnectionMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (MariaDbSecureConnectionMode option : MariaDbSecureConnectionMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static BinlogConnectorConfig.SecureConnectionMode parse(String value, String defaultValue) {
+            BinlogConnectorConfig.SecureConnectionMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+    }
+
     public static final Field SNAPSHOT_LOCKING_MODE = Field.create(SNAPSHOT_LOCKING_MODE_PROPERTY_NAME)
             .withDisplayName("Snapshot locking mode")
             .withEnum(SnapshotLockingMode.class, SnapshotLockingMode.MINIMAL)
@@ -172,11 +236,25 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
             .withDescription("The source domain IDs used to exclude GTID ranges when determining the starting "
                     + "position in the MariaDB server's binlog.");
 
+    public static final Field SSL_MODE = Field.create("database.ssl.mode")
+            .withDisplayName("SSL mode")
+            .withEnum(MariaDbSecureConnectionMode.class, MariaDbSecureConnectionMode.DISABLE)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 0))
+            .withDescription("Whether to use an encrypted connection to the database. Options include: "
+                    + "'disable' to use an unencrypted connection; "
+                    + "'trust' to use a secure (encrypted) connection, but not perform certificate or hostname verification; "
+                    + "'verify_ca' to use a secure (encrypted) connection, and perform certificates verification, but do not "
+                    + "perform hostname verification; "
+                    + "'verify_identity' to use a secure (encrypted) connection, and perform certificate verification, and hostname verification.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = BinlogConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MariaDB")
             .excluding(
                     BinlogConnectorConfig.GTID_SOURCE_INCLUDES,
                     BinlogConnectorConfig.GTID_SOURCE_EXCLUDES)
+            .type(SSL_MODE)
             .connector(SNAPSHOT_LOCKING_MODE)
             .events(
                     GTID_SOURCE_INCLUDES,
@@ -197,10 +275,13 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
     private final Predicate<String> gtidSourceFilter;
     private final SnapshotLockingMode snapshotLockingMode;
     private final SnapshotLockingStrategy snapshotLockingStrategy;
+    private final SecureConnectionMode secureConnectionMode;
 
     public MariaDbConnectorConfig(Configuration config) {
         super(MariaDbConnector.class, config, DEFAULT_NON_STREAMING_FETCH_SIZE);
         this.gtidSetFactory = new MariaDbGtidSetFactory();
+
+        this.secureConnectionMode = MariaDbSecureConnectionMode.parse(config.getString(SSL_MODE));
 
         final String gtidIncludes = config.getString(GTID_SOURCE_INCLUDES);
         final String gtidExcludes = config.getString(GTID_SOURCE_EXCLUDES);
@@ -251,6 +332,16 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
     @Override
     public Optional<SnapshotLockingMode> getSnapshotLockingMode() {
         return Optional.of(snapshotLockingMode);
+    }
+
+    @Override
+    public SecureConnectionMode getSslMode() {
+        return secureConnectionMode;
+    }
+
+    @Override
+    public boolean isSslModeEnabled() {
+        return secureConnectionMode != MariaDbSecureConnectionMode.DISABLE;
     }
 
     /**
