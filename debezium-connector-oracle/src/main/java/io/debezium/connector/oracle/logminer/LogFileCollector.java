@@ -264,15 +264,9 @@ public class LogFileCollector {
         else {
             // Check whether the redo logs have the read position
             if (threadLogs.stream().noneMatch(log -> log.isScnInLogFileRange(startScn))) {
-                // None of the thread logs have the read position.
-                // In this case, we need to guarantee that the last archive log based on the redo thread log
-                // set exists and that there are no gaps.
-                final BigInteger sequence = getMinRedoThreadLogSequence(threadLogs);
-                if (connection.getArchiveLogFile(threadId, sequence.longValue() - 1) == null) {
-                    logException(String.format("Redo Thread %d is inconsistent; failed to find archive log with sequence %d",
-                            threadId, sequence.longValue() - 1));
-                    return false;
-                }
+                logException(String.format("Redo Thread %d is inconsistent; does not have a log that contains scn %s." +
+                        "A recent log switch may not have been archived by the Oracle ARC process yet.", threadId, startScn));
+                return false;
             }
 
             // Make sure the thread logs from the read position until now have no gaps
