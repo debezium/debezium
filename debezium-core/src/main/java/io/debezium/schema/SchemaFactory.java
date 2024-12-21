@@ -5,6 +5,7 @@
  */
 package io.debezium.schema;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -13,6 +14,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.SnapshotRecord;
 import io.debezium.data.Bits;
 import io.debezium.data.Enum;
 import io.debezium.data.EnumSet;
@@ -36,6 +38,13 @@ import io.debezium.relational.history.HistoryRecord;
  */
 
 public class SchemaFactory {
+
+    /*
+     * Source info schemas
+     */
+    private static final int SNAPSHOT_RECORD_SCHEMA_VERSION = 1;
+
+    public static final int SOURCE_INFO_DEFAULT_SCHEMA_VERSION = 1;
 
     /*
      * Heartbeat schemas
@@ -115,6 +124,27 @@ public class SchemaFactory {
                     schema.name().endsWith(SCHEMA_HISTORY_CONNECTOR_KEY_SCHEMA_NAME_SUFFIX);
         }
         return false;
+    }
+
+    public Schema snapshotRecordSchema() {
+        return Enum.builder(
+                Arrays.stream(SnapshotRecord.values()).map(java.lang.Enum::name).map(String::toLowerCase).toList())
+                .version(SNAPSHOT_RECORD_SCHEMA_VERSION)
+                .defaultValue(SnapshotRecord.FALSE.name().toLowerCase()).optional().build();
+    }
+
+    public SchemaBuilder sourceInfoSchemaBuilder() {
+        return SchemaBuilder.struct()
+                .version(SOURCE_INFO_DEFAULT_SCHEMA_VERSION)
+                .field(AbstractSourceInfo.DEBEZIUM_VERSION_KEY, Schema.STRING_SCHEMA)
+                .field(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY, Schema.STRING_SCHEMA)
+                .field(AbstractSourceInfo.SERVER_NAME_KEY, Schema.STRING_SCHEMA)
+                .field(AbstractSourceInfo.TIMESTAMP_KEY, Schema.INT64_SCHEMA)
+                .field(AbstractSourceInfo.SNAPSHOT_KEY, snapshotRecordSchema())
+                .field(AbstractSourceInfo.DATABASE_NAME_KEY, Schema.STRING_SCHEMA)
+                .field(AbstractSourceInfo.SEQUENCE_KEY, Schema.OPTIONAL_STRING_SCHEMA)
+                .field(AbstractSourceInfo.TIMESTAMP_US_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                .field(AbstractSourceInfo.TIMESTAMP_NS_KEY, Schema.OPTIONAL_INT64_SCHEMA);
     }
 
     public Schema heartbeatKeySchema(SchemaNameAdjuster adjuster) {

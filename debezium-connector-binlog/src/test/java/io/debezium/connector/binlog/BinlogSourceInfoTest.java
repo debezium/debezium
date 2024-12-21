@@ -26,11 +26,11 @@ import org.junit.Test;
 import io.confluent.connect.avro.AvroData;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.connector.AbstractSourceInfoStructMaker;
 import io.debezium.connector.binlog.history.BinlogHistoryRecordComparator;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.document.Document;
+import io.debezium.schema.SchemaFactory;
 
 /**
  * @author Chris Cranford
@@ -653,10 +653,11 @@ public abstract class BinlogSourceInfoTest<S extends BinlogSourceInfo, O extends
         final Schema schema = SchemaBuilder.struct()
                 .name(String.format("io.debezium.connector.%s.Source", getModuleName()))
                 .field("version", Schema.STRING_SCHEMA)
+                .version(SchemaFactory.SOURCE_INFO_DEFAULT_SCHEMA_VERSION)
                 .field("connector", Schema.STRING_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
                 .field("ts_ms", Schema.INT64_SCHEMA)
-                .field("snapshot", AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA)
+                .field("snapshot", SchemaFactory.get().snapshotRecordSchema())
                 .field("db", Schema.STRING_SCHEMA)
                 .field("sequence", Schema.OPTIONAL_STRING_SCHEMA)
                 .field("ts_us", Schema.OPTIONAL_INT64_SCHEMA)
