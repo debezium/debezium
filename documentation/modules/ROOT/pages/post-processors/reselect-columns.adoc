@@ -85,6 +85,7 @@ To enable the connector to use the `ReselectColumnsPostProcessor`, add the follo
   "reselector.reselect.unavailable.values": "true", // <4>
   "reselector.reselect.null.values": "true" // <5>
   "reselector.reselect.use.event.key": "false" // <6>
+  "reselector.reselect.error.handling.mode": "WARN" // <7>
 ----
 [cols="1,7",options="header"]
 |===
@@ -107,6 +108,9 @@ To enable the connector to use the `ReselectColumnsPostProcessor`, add the follo
 
 |6
 |Enables or disables reselection based event key field names.
+
+|7
+|Log a warning or throw an exception when reselection does not find the row or if a database exception is raised.
 
 |===
 
@@ -158,4 +162,14 @@ By default, the reselection query is based on the relational table's primary key
 For tables that do not have a primary key, set this property to `true`, and configure the `message.key.columns` property in the connector configuration to specify a custom key for the connector to use when it creates events.
 The post processor then uses the specified key field names as the primary key in the SQL reselection query.
 
+|[[reselect-columns-post-processor-property-reselect-error-handling-mode]]<<reselect-columns-post-processor-property-reselect-error-handling-mode, `+reselect.error.handling.mode+`>>
+|`WARN`
+|Specifies how the reselect post processor reacts to certain conditions. +
+ +
+By default, the post-processor logs a warning message when the row cannot be found or if there is a database selection error. +
+ +
+When set to `FAIL`, the connector will stop processing changes if the row no longer exists at the time of reselection or if there is a database failure when reselecting the row.
+
+
 |===
+
