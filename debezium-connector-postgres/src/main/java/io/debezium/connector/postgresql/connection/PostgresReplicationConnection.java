@@ -680,6 +680,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             private int warningCheckCounter = CHECK_WARNINGS_AFTER_COUNT;
             private ExecutorService keepAliveExecutor = null;
             private AtomicBoolean keepAliveRunning;
+            private volatile Exception keepAliveException = null;
             private final Metronome metronome = Metronome.sleeper(statusUpdateInterval, Clock.SYSTEM);
 
             // make sure this is volatile since multiple threads may be interested in this value
@@ -687,6 +688,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
             @Override
             public void read(ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
+                checkKeepAliveException();
                 processWarnings(false);
                 ByteBuffer read = stream.read();
                 final Lsn lastReceiveLsn = Lsn.valueOf(stream.getLastReceiveLSN());
@@ -699,6 +701,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
             @Override
             public boolean readPending(ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
+                checkKeepAliveException();
                 processWarnings(false);
                 ByteBuffer read = stream.readPending();
                 final Lsn lastReceiveLsn = Lsn.valueOf(stream.getLastReceiveLSN());
@@ -758,14 +761,25 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                             try {
                                 LOGGER.trace("Forcing status update with replication stream");
                                 stream.forceUpdateStatus();
-                                metronome.pause();
                             }
                             catch (Exception exp) {
-                                throw new RuntimeException("received unexpected exception will perform keep alive", exp);
+                                LOGGER.error(
+                                        "received unexpected exception will perform keep alive",
+                                        exp);
+                                keepAliveException = exp;
+                            }
+
+                            try {
+                                metronome.pause();
+                            }
+                            catch (InterruptedException e) {
+                                LOGGER.warn(
+                                        "Keep alive thread has already be shutdown.");
                             }
                         }
                     });
                 }
+
             }
 
             @Override
@@ -774,6 +788,12 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                     keepAliveRunning.set(false);
                     keepAliveExecutor.shutdownNow();
                     keepAliveExecutor = null;
+                }
+            }
+
+            private void checkKeepAliveException() {
+                if (keepAliveException != null) {
+                    throw new RuntimeException("received unexpected exception will perform keep alive", keepAliveException);
                 }
             }
 
