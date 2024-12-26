@@ -62,6 +62,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     public static final String USE_REDUCTION_BUFFER = "use.reduction.buffer";
     public static final String FLUSH_MAX_RETRIES = "flush.max.retries";
     public static final String FLUSH_RETRY_DELAY_MS = "flush.retry.delay.ms";
+    public static final String ORACLE_INFINITY_CONVERTER_ENABLE = "oracle.infinity.converter.enable";
 
     // todo add support for the ValueConverter contract
 
@@ -264,6 +265,15 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     FLUSH_RETRY_DELAY_MS_FIELD)
             .create();
 
+    public static final Field ORACLE_INFINITY_CONVERTER_ENABLE_FIELD = Field.create(ORACLE_INFINITY_CONVERTER_ENABLE)
+            .withDisplayName("Enable Oracle Infinity Converter")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 9))
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(false)
+            .withDescription("Enable Oracle Infinity Converter");
+
     /**
      * The set of {@link Field}s defined as part of this configuration.
      */
@@ -374,6 +384,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     private final FieldNameFilter fieldsFilter;
     private final int batchSize;
     private final boolean useReductionBuffer;
+    private final boolean oracleInfinityConverterEnable;
 
     public JdbcSinkConnectorConfig(Map<String, String> props) {
         config = Configuration.from(props);
@@ -395,6 +406,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         this.useReductionBuffer = config.getBoolean(USE_REDUCTION_BUFFER_FIELD);
         this.flushMaxRetries = config.getInteger(FLUSH_MAX_RETRIES_FIELD);
         this.flushRetryDelayMs = config.getLong(FLUSH_RETRY_DELAY_MS_FIELD);
+        this.oracleInfinityConverterEnable = config.getBoolean(ORACLE_INFINITY_CONVERTER_ENABLE_FIELD);
 
         String fieldIncludeList = config.getString(FIELD_INCLUDE_LIST_FIELD);
         String fieldExcludeList = config.getString(FIELD_EXCLUDE_LIST_FIELD);
@@ -500,6 +512,10 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
 
     public long getFlushRetryDelayMs() {
         return flushRetryDelayMs;
+    }
+
+    public boolean isOracleInfinityConverterEnable() {
+        return oracleInfinityConverterEnable;
     }
 
     /** makes {@link org.hibernate.cfg.Configuration} from connector config
