@@ -16,7 +16,7 @@
         <version.s3mock>3.10.0</version.s3mock>
 
     <!-- Azurite -->
-        <version.azurite>3.22.0</version.azurite>
+        <version.azurite>3.33.0</version.azurite>
     </properties>
 
     <dependencyManagement>
