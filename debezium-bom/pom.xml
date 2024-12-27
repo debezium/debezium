@@ -45,10 +45,13 @@
         <version.jedis>4.1.1</version.jedis>
 
         <!-- S3 -->
-        <version.s3>2.17.241</version.s3>
+        <version.s3>2.26.30</version.s3>
 
         <!-- Blob Storage -->
-        <version.azure.blob>12.21.0</version.azure.blob>
+        <version.azure.blob>12.29.0</version.azure.blob>
+
+        <!-- Azure Identity -->
+        <version.azure.identity>1.14.1</version.azure.identity>
 
         <!-- K8s Config Map Storage -->
         <version.kubernetes.client>6.13.4</version.kubernetes.client>
@@ -511,6 +514,13 @@
                 <groupId>com.azure</groupId>
                 <artifactId>azure-storage-blob</artifactId>
                 <version>${version.azure.blob}</version>
+            </dependency>
+
+            <!-- Azure Identity -->
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-identity</artifactId>
+                <version>${version.azure.identity}</version>
             </dependency>
 
             <!-- K8s Config Map Storage -->
