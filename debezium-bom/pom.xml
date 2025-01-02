@@ -68,7 +68,7 @@
         <version.org.reflections>0.9.12</version.org.reflections>
         <version.cassandra.unit>3.5.0.1</version.cassandra.unit>
         <version.rest-assured>4.3.3</version.rest-assured>
-        <version.logback>1.2.13</version.logback>
+        <version.logback>1.5.15</version.logback>
         <version.rest-assured>5.3.2</version.rest-assured>
     </properties>
 
