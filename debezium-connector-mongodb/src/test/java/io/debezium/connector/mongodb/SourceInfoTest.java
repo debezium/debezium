@@ -103,6 +103,7 @@ public class SourceInfoTest {
                 null, // txnNumber
                 null, // lsid
                 null, // wallTime
+                null, // spiltEvent
                 null // extraElements
         );
 
