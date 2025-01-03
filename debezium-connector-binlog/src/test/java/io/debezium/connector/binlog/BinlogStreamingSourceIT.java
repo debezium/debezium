@@ -6,7 +6,6 @@
 package io.debezium.connector.binlog;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
-import static io.debezium.junit.EqualityCheck.LESS_THAN_OR_EQUAL;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -22,9 +21,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -44,7 +41,6 @@ import org.junit.rules.TestRule;
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
-import io.debezium.connector.binlog.BinlogConnectorConfig.SecureConnectionMode;
 import io.debezium.connector.binlog.junit.SkipTestDependingOnDatabaseRule;
 import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs;
 import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs.Type;
@@ -75,13 +71,11 @@ import io.debezium.util.Testing;
 @SkipWhenDatabaseIs(value = Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6"))
 public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends AbstractBinlogConnectorIT<C> {
 
-    private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-binlog.txt").toAbsolutePath();
-    private final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("logical_server_name", "connector_test_ro")
+    protected static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-binlog.txt").toAbsolutePath();
+    protected final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase("logical_server_name", "connector_test_ro")
             .withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
-    private static final String SET_TLS_PROTOCOLS = "database.enabledTLSProtocols";
-
-    private Configuration config;
+    protected Configuration config;
     private KeyValueStore store;
     private SchemaChangeHistory schemaChanges;
 
@@ -534,55 +528,6 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
     @Test
     public void shouldIgnoreOnSchemaInconsistency() throws Exception {
         inconsistentSchema(EventProcessingFailureHandlingMode.SKIP);
-    }
-
-    @Test
-    @FixFor("DBZ-1208")
-    @SkipWhenDatabaseIs(value = Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 5, minor = 6, reason = "MySQL 5.6 does not support SSL"))
-    @SkipWhenDatabaseIs(value = Type.MARIADB, reason = "MariaDB does not support SSL by default")
-    public void shouldFailOnUnknownTlsProtocol() {
-        final UniqueDatabase REGRESSION_DATABASE = TestHelper.getUniqueDatabase("logical_server_name", "regression_test")
-                .withDbHistoryPath(SCHEMA_HISTORY_PATH);
-        REGRESSION_DATABASE.createAndInitialize();
-
-        config = simpleConfig()
-                .with(BinlogConnectorConfig.SSL_MODE, SecureConnectionMode.REQUIRED)
-                .with(SET_TLS_PROTOCOLS, "TLSv1.7")
-                .build();
-
-        // Start the connector ...
-        Map<String, Object> result = new HashMap<>();
-        start(getConnectorClass(), config, (success, message, error) -> {
-            result.put("success", success);
-            result.put("message", message);
-        });
-
-        assertEquals(false, result.get("success"));
-        assertEquals(
-                "Connector configuration is not valid. Unable to connect: Specified list of TLS versions only contains non valid TLS protocols. Accepted values are TLSv1.2 and TLSv1.3.",
-                result.get("message").toString());
-    }
-
-    @Test
-    @FixFor("DBZ-1208")
-    @SkipWhenDatabaseIs(value = Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 5, minor = 6, reason = "MySQL 5.6 does not support SSL"))
-    @SkipWhenDatabaseIs(value = Type.MARIADB, reason = "MariaDB does not support SSL by default")
-    public void shouldAcceptTls12() throws Exception {
-        final UniqueDatabase REGRESSION_DATABASE = TestHelper.getUniqueDatabase("logical_server_name", "regression_test")
-                .withDbHistoryPath(SCHEMA_HISTORY_PATH);
-        REGRESSION_DATABASE.createAndInitialize();
-
-        config = simpleConfig()
-                .with(BinlogConnectorConfig.SSL_MODE, SecureConnectionMode.REQUIRED)
-                .with(SET_TLS_PROTOCOLS, "TLSv1.2")
-                .build();
-
-        // Start the connector ...
-        AtomicReference<Throwable> exception = new AtomicReference<>();
-        start(getConnectorClass(), config, (success, message, error) -> exception.set(error));
-
-        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), "streaming");
-        assertThat(exception.get()).isNull();
     }
 
     @Test()

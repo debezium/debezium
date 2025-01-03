@@ -145,7 +145,7 @@ jobs:
       # Run each MariaDB job sequentially
       max-parallel: 1
       matrix:
-        profile: [ 'mariadb-ci', 'mariadb-ci-gtids' ]
+        profile: [ 'mariadb-ci', 'mariadb-ci-gtids', 'mariadb-ci-ssl' ]
       fail-fast: false
     name: "MariaDB - ${{ matrix.profile }}"
     needs: [ check_style ]
