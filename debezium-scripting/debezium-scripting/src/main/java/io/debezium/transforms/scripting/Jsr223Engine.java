@@ -69,7 +69,7 @@ public class Jsr223Engine implements Engine {
         bindings.put("keySchema", record.keySchema());
         bindings.put("valueSchema", record.valueSchema());
         bindings.put("topic", record.topic());
-        bindings.put("header", headers(record));
+        bindings.put("headers", headers(record));
 
         return bindings;
     }

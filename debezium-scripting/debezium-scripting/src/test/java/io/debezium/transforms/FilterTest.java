@@ -117,7 +117,7 @@ public class FilterTest {
     public void shouldProcessHeader() {
         try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(EXPRESSION, "header.idh.value == 1");
+            props.put(EXPRESSION, "headers.idh.value == 1");
             props.put(LANGUAGE, "jsr223.groovy");
             transform.configure(props);
             final SourceRecord record = createDeleteRecord(1);
@@ -253,7 +253,7 @@ public class FilterTest {
     public void shouldRunJavaScriptWithHeaderAndTopic() {
         try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(EXPRESSION, "header.idh.value == 1 && topic.startsWith('dummy')");
+            props.put(EXPRESSION, "headers.idh.value == 1 && topic.startsWith('dummy')");
             props.put(LANGUAGE, "jsr223.graal.js");
             transform.configure(props);
             final SourceRecord record = createDeleteRecord(1);
