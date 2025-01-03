@@ -64,7 +64,7 @@ ALTER TABLE MMR_RESOURCES
     -- View for obtaining the features by metaclass
     -- (don't use parenthesis)
 
-    CREATE OR REPLACE VIEW MMR_FEATURES AS 
+    CREATE VIEW MMR_FEATURES AS
     SELECT MMR_MODELS.NAMESPACE AS NAMESPACE, 
            PARENTS.NAME AS CLASS_NAME, 
            MMR_OBJECTS.NAME AS FEATURE_NAME, 
