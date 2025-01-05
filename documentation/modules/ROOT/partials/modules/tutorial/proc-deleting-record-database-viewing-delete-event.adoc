@@ -120,7 +120,7 @@ except that the values of the `ts_sec` and `pos` fields have changed.
 In some circumstances, the `file` value might also change.
 
 |4
-|he `op` field value is now `d`,
+|The `op` field value is now `d`,
 indicating that the record was deleted.
 
 |5
