@@ -25,8 +25,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-
-
+// $antlr-format alignTrailingComments true, columnLimit 150, minEmptyLines 1, maxEmptyLinesToKeep 1, reflowComments false, useTab false
+// $antlr-format allowShortRulesOnASingleLine false, allowShortBlocksOnASingleLine true, alignSemicolons hanging, alignColons hanging
 
 parser grammar MySqlParser;
 
@@ -36,28 +36,33 @@ options {
 
 // Top Level Description
 
-root: sqlStatements? (MINUS MINUS)? EOF;
+root
+    : sqlStatements? (MINUS MINUS)? EOF
+    ;
 
-sqlStatements: (
-        sqlStatement (MINUS MINUS)? SEMI?
+sqlStatements
+    : (sqlStatement (MINUS MINUS)? SEMI? | emptyStatement)* (
+        sqlStatement ((MINUS MINUS)? SEMI)?
         | emptyStatement
-    )* (sqlStatement ((MINUS MINUS)? SEMI)? | emptyStatement)
-;
+    )
+    ;
 
-sqlStatement:
-    ddlStatement
+sqlStatement
+    : ddlStatement
     | dmlStatement
     | transactionStatement
     | replicationStatement
     | preparedStatement
     | administrationStatement
     | utilityStatement
-;
+    ;
 
-emptyStatement: SEMI;
+emptyStatement
+    : SEMI
+    ;
 
-ddlStatement:
-    createDatabase
+ddlStatement
+    : createDatabase
     | createEvent
     | createIndex
     | createLogfileGroup
@@ -96,10 +101,10 @@ ddlStatement:
     | setRole
     | renameTable
     | truncateTable
-;
+    ;
 
-dmlStatement:
-    selectStatement
+dmlStatement
+    : selectStatement
     | insertStatement
     | updateStatement
     | deleteStatement
@@ -112,10 +117,10 @@ dmlStatement:
     | valuesStatement
     | withStatement
     | tableStatement
-;
+    ;
 
-transactionStatement:
-    startTransaction
+transactionStatement
+    : startTransaction
     | beginWork
     | commitWork
     | rollbackWork
@@ -124,10 +129,10 @@ transactionStatement:
     | releaseStatement
     | lockTables
     | unlockTables
-;
+    ;
 
-replicationStatement:
-    changeMaster
+replicationStatement
+    : changeMaster
     | changeReplicationFilter
     | purgeBinaryLogs
     | resetMaster
@@ -142,18 +147,18 @@ replicationStatement:
     | xaCommitWork
     | xaRollbackWork
     | xaRecoverWork
-;
+    ;
 
-preparedStatement:
-    prepareStatement
+preparedStatement
+    : prepareStatement
     | executeStatement
     | deallocatePrepare
-;
+    ;
 
 // remark: NOT INCLUDED IN sqlStatement, but include in body
 //  of routine's statements
-compoundStatement:
-    blockStatement
+compoundStatement
+    : blockStatement
     | caseStatement
     | ifStatement
     | leaveStatement
@@ -164,10 +169,10 @@ compoundStatement:
     | returnStatement
     | cursorStatement
     | withStatement dmlStatement
-;
+    ;
 
-administrationStatement:
-    alterUser
+administrationStatement
+    : alterUser
     | createUser
     | dropUser
     | grantStatement
@@ -192,146 +197,131 @@ administrationStatement:
     | loadIndexIntoCache
     | resetStatement
     | shutdownStatement
-;
+    ;
 
-utilityStatement:
-    simpleDescribeStatement
+utilityStatement
+    : simpleDescribeStatement
     | fullDescribeStatement
     | helpStatement
     | useStatement
     | signalStatement
     | resignalStatement
     | diagnosticsStatement
-;
+    ;
 
 // Data Definition Language
 
 //    Create statements
 
-createDatabase:
-    CREATE dbFormat = (DATABASE | SCHEMA) ifNotExists? uid createDatabaseOption*
-;
+createDatabase
+    : CREATE dbFormat = (DATABASE | SCHEMA) ifNotExists? uid createDatabaseOption*
+    ;
 
-createEvent:
-    CREATE ownerStatement? EVENT ifNotExists? fullId ON SCHEDULE scheduleExpression (
+createEvent
+    : CREATE ownerStatement? EVENT ifNotExists? fullId ON SCHEDULE scheduleExpression (
         ON COMPLETION NOT? PRESERVE
     )? enableType? (COMMENT STRING_LITERAL)? DO routineBody
-;
+    ;
 
-createIndex:
-    CREATE
-    intimeAction = (ONLINE | OFFLINE)? indexCategory = (
+createIndex
+    : CREATE intimeAction = (ONLINE | OFFLINE)? indexCategory = (
         UNIQUE
         | FULLTEXT
         | SPATIAL
-    )? INDEX
-    uid indexType? ON tableName indexColumnNames
-    indexOption* (
-        ALGORITHM EQUAL_SYMBOL? algType = (
-            DEFAULT
-            | INPLACE
-            | COPY
-        )
-        | LOCK EQUAL_SYMBOL? lockType = (
-            DEFAULT
-            | NONE
-            | SHARED
-            | EXCLUSIVE
-        )
+    )? INDEX uid indexType? ON tableName indexColumnNames indexOption* (
+        ALGORITHM EQUAL_SYMBOL? algType = (DEFAULT | INPLACE | COPY)
+        | LOCK EQUAL_SYMBOL? lockType = (DEFAULT | NONE | SHARED | EXCLUSIVE)
     )*
-;
+    ;
 
-createLogfileGroup:
-    CREATE LOGFILE GROUP uid ADD UNDOFILE undoFile = STRING_LITERAL (
+createLogfileGroup
+    : CREATE LOGFILE GROUP uid ADD UNDOFILE undoFile = STRING_LITERAL (
         INITIAL_SIZE '='? initSize = fileSizeLiteral
     )? (UNDO_BUFFER_SIZE '='? undoSize = fileSizeLiteral)? (
         REDO_BUFFER_SIZE '='? redoSize = fileSizeLiteral
-    )? (NODEGROUP '='? uid)? WAIT? (
-        COMMENT '='? comment = STRING_LITERAL
-    )? ENGINE '='? engineName
-;
+    )? (NODEGROUP '='? uid)? WAIT? (COMMENT '='? comment = STRING_LITERAL)? ENGINE '='? engineName
+    ;
 
-createProcedure:
-    CREATE ownerStatement?
-    PROCEDURE fullId '(' procedureParameter? (
+createProcedure
+    : CREATE ownerStatement? PROCEDURE fullId '(' procedureParameter? (
         ',' procedureParameter
     )* ')' routineOption* routineBody
-;
+    ;
 
-createFunction:
-    CREATE ownerStatement? AGGREGATE?
-    FUNCTION fullId
-    '(' functionParameter? (',' functionParameter)* ')' RETURNS dataType routineOption* (
-        routineBody
-        | returnStatement
-    )
-;
+createFunction
+    : CREATE ownerStatement? AGGREGATE? FUNCTION fullId '(' functionParameter? (
+        ',' functionParameter
+    )* ')' RETURNS dataType routineOption* (routineBody | returnStatement)
+    ;
 
-createRole: CREATE ROLE ifNotExists? roleName (',' roleName)*;
+createRole
+    : CREATE ROLE ifNotExists? roleName (',' roleName)*
+    ;
 
-createServer:
-    CREATE SERVER uid FOREIGN DATA WRAPPER wrapperName = (
-        MYSQL
-        | STRING_LITERAL
-    ) OPTIONS '(' serverOption (',' serverOption)* ')'
-;
+createServer
+    : CREATE SERVER uid FOREIGN DATA WRAPPER wrapperName = (MYSQL | STRING_LITERAL) OPTIONS '(' serverOption (
+        ',' serverOption
+    )* ')'
+    ;
 
-createTable:
-    CREATE TEMPORARY? TABLE ifNotExists?
-    tableName (
+createTable
+    : CREATE TEMPORARY? TABLE ifNotExists? tableName (
         LIKE tableName
         | '(' LIKE parenthesisTable = tableName ')'
     ) # copyCreateTable
-    | CREATE TEMPORARY? TABLE ifNotExists?
-    tableName createDefinitions? (
+    | CREATE TEMPORARY? TABLE ifNotExists? tableName createDefinitions? (
         tableOption (','? tableOption)*
     )? partitionDefinitions? keyViolate = (IGNORE | REPLACE)? AS? selectStatement # queryCreateTable
-    | CREATE TEMPORARY? TABLE ifNotExists?
-    tableName createDefinitions (tableOption (','? tableOption)*)? partitionDefinitions? #
-        columnCreateTable
-;
+    | CREATE TEMPORARY? TABLE ifNotExists? tableName createDefinitions (
+        tableOption (','? tableOption)*
+    )? partitionDefinitions? # columnCreateTable
+    ;
 
-createTablespaceInnodb:
-    CREATE TABLESPACE uid ADD DATAFILE datafile = STRING_LITERAL (
+createTablespaceInnodb
+    : CREATE TABLESPACE uid ADD DATAFILE datafile = STRING_LITERAL (
         FILE_BLOCK_SIZE '=' fileBlockSize = fileSizeLiteral
     )? (ENGINE '='? engineName)?
-;
+    ;
 
-createTablespaceNdb:
-    CREATE TABLESPACE uid ADD DATAFILE datafile = STRING_LITERAL USE LOGFILE GROUP uid (
+createTablespaceNdb
+    : CREATE TABLESPACE uid ADD DATAFILE datafile = STRING_LITERAL USE LOGFILE GROUP uid (
         EXTENT_SIZE '='? extentSize = fileSizeLiteral
     )? (INITIAL_SIZE '='? initialSize = fileSizeLiteral)? (
         AUTOEXTEND_SIZE '='? autoextendSize = fileSizeLiteral
-    )? (MAX_SIZE '='? maxSize = fileSizeLiteral)? (
-        NODEGROUP '='? uid
-    )? WAIT? (COMMENT '='? comment = STRING_LITERAL)? ENGINE '='? engineName
-;
+    )? (MAX_SIZE '='? maxSize = fileSizeLiteral)? (NODEGROUP '='? uid)? WAIT? (
+        COMMENT '='? comment = STRING_LITERAL
+    )? ENGINE '='? engineName
+    ;
 
-createTrigger:
-    CREATE ownerStatement?
-    TRIGGER ifNotExists? thisTrigger = fullId triggerTime = (
+createTrigger
+    : CREATE ownerStatement? TRIGGER ifNotExists? thisTrigger = fullId triggerTime = (
         BEFORE
         | AFTER
     ) triggerEvent = (INSERT | UPDATE | DELETE) ON tableName FOR EACH ROW (
         triggerPlace = (FOLLOWS | PRECEDES) otherTrigger = fullId
     )? routineBody
-;
+    ;
 
-withClause: WITH RECURSIVE? commonTableExpressions;
+withClause
+    : WITH RECURSIVE? commonTableExpressions
+    ;
 
-commonTableExpressions:
-    cteName ('(' cteColumnName (',' cteColumnName)* ')')? AS '(' dmlStatement ')' (
+commonTableExpressions
+    : cteName ('(' cteColumnName (',' cteColumnName)* ')')? AS '(' dmlStatement ')' (
         ',' commonTableExpressions
     )?
-;
+    ;
 
-cteName: uid;
+cteName
+    : uid
+    ;
 
-cteColumnName: uid;
+cteColumnName
+    : uid
+    ;
 
-createView:
-    CREATE
-    (ALGORITHM '=' algType = (UNDEFINED | MERGE | TEMPTABLE))? ownerStatement? (
+createView
+    : CREATE (ALGORITHM '=' algType = (UNDEFINED | MERGE | TEMPTABLE))? ownerStatement? (
         SQL SECURITY secContext = (DEFINER | INVOKER)
     )? VIEW fullId ('(' uidList ')')? AS (
         '(' withClause? selectStatement ')'
@@ -339,15 +329,14 @@ createView:
             WITH checkOption = (CASCADED | LOCAL)? CHECK OPTION
         )?
     )
-;
+    ;
 
-createSequence:
-    CREATE TEMPORARY? SEQUENCE ifNotExists? fullId
-    (sequenceSpec | tableOption)*
-;
+createSequence
+    : CREATE TEMPORARY? SEQUENCE ifNotExists? fullId (sequenceSpec | tableOption)*
+    ;
 
-sequenceSpec:
-    INCREMENT (BY | '=')? decimalLiteral
+sequenceSpec
+    : INCREMENT (BY | '=')? decimalLiteral
     | MINVALUE '='? decimalLiteral
     | NO MINVALUE
     | NOMINVALUE
@@ -360,54 +349,51 @@ sequenceSpec:
     | CYCLE
     | NOCYCLE
     | RESTART (WITH | '=')? decimalLiteral // use for alter sequence statment
-;
+    ;
 
 // details
 
-createDatabaseOption:
-    DEFAULT? charSet '='? (charsetName | DEFAULT)
+createDatabaseOption
+    : DEFAULT? charSet '='? (charsetName | DEFAULT)
     | DEFAULT? COLLATE '='? collationName
     | DEFAULT? ENCRYPTION '='? STRING_LITERAL
     | READ ONLY '='? (DEFAULT | ZERO_DECIMAL | ONE_DECIMAL)
-;
+    ;
 
-charSet: CHARACTER SET | CHARSET | CHAR SET;
+charSet
+    : CHARACTER SET
+    | CHARSET
+    | CHAR SET
+    ;
 
-currentUserExpression: CURRENT_USER ( '(' ')')?;
+currentUserExpression
+    : CURRENT_USER ('(' ')')?
+    ;
 
-ownerStatement:
-    DEFINER '=' (
-        userName
-        | currentUserExpression
-    )
-;
+ownerStatement
+    : DEFINER '=' (userName | currentUserExpression)
+    ;
 
-scheduleExpression:
-    AT timestampValue intervalExpr* # preciseSchedule
+scheduleExpression
+    : AT timestampValue intervalExpr* # preciseSchedule
     | EVERY (decimalLiteral | expression) intervalType (
-        STARTS startTimestamp = timestampValue (
-            startIntervals += intervalExpr
-        )*
-    )? (
-        ENDS endTimestamp = timestampValue (
-            endIntervals += intervalExpr
-        )*
-    )? # intervalSchedule
-;
+        STARTS startTimestamp = timestampValue (startIntervals += intervalExpr)*
+    )? (ENDS endTimestamp = timestampValue ( endIntervals += intervalExpr)*)? # intervalSchedule
+    ;
 
-timestampValue:
-    CURRENT_TIMESTAMP
+timestampValue
+    : CURRENT_TIMESTAMP
     | stringLiteral
     | decimalLiteral
     | expression
-;
+    ;
 
-intervalExpr:
-    '+' INTERVAL (decimalLiteral | expression) intervalType
-;
+intervalExpr
+    : '+' INTERVAL (decimalLiteral | expression) intervalType
+    ;
 
-intervalType:
-    intervalTypeBase
+intervalType
+    : intervalTypeBase
     | YEAR
     | YEAR_MONTH
     | DAY_HOUR
@@ -420,133 +406,127 @@ intervalType:
     | MINUTE_MICROSECOND
     | HOUR_MICROSECOND
     | DAY_MICROSECOND
-;
+    ;
 
-enableType: ENABLE | DISABLE | DISABLE ON SLAVE;
+enableType
+    : ENABLE
+    | DISABLE
+    | DISABLE ON SLAVE
+    ;
 
-indexType:
-    USING (BTREE | HASH)
-;
+indexType
+    : USING (BTREE | HASH)
+    ;
 
-indexOption:
-    KEY_BLOCK_SIZE EQUAL_SYMBOL? fileSizeLiteral
+indexOption
+    : KEY_BLOCK_SIZE EQUAL_SYMBOL? fileSizeLiteral
     | indexType
     | WITH PARSER uid
     | COMMENT STRING_LITERAL
     | (VISIBLE | INVISIBLE)
     | ENGINE_ATTRIBUTE EQUAL_SYMBOL? STRING_LITERAL
     | SECONDARY_ENGINE_ATTRIBUTE EQUAL_SYMBOL? STRING_LITERAL
-;
+    ;
 
-procedureParameter:
-    direction = (IN | OUT | INOUT)? uid dataType
-;
+procedureParameter
+    : direction = (IN | OUT | INOUT)? uid dataType
+    ;
 
-functionParameter: uid dataType;
+functionParameter
+    : uid dataType
+    ;
 
-routineOption:
-    COMMENT STRING_LITERAL # routineComment
-    | LANGUAGE SQL         # routineLanguage
-    | NOT? DETERMINISTIC   # routineBehavior
-    | (
-        CONTAINS SQL
-        | NO SQL
-        | READS SQL DATA
-        | MODIFIES SQL DATA
-    )                                            # routineData
-    | SQL SECURITY context = (DEFINER | INVOKER) # routineSecurity
-;
+routineOption
+    : COMMENT STRING_LITERAL                                       # routineComment
+    | LANGUAGE SQL                                                 # routineLanguage
+    | NOT? DETERMINISTIC                                           # routineBehavior
+    | (CONTAINS SQL | NO SQL | READS SQL DATA | MODIFIES SQL DATA) # routineData
+    | SQL SECURITY context = (DEFINER | INVOKER)                   # routineSecurity
+    ;
 
-serverOption:
-    HOST STRING_LITERAL
+serverOption
+    : HOST STRING_LITERAL
     | DATABASE STRING_LITERAL
     | USER STRING_LITERAL
     | PASSWORD STRING_LITERAL
     | SOCKET STRING_LITERAL
     | OWNER STRING_LITERAL
     | PORT decimalLiteral
-;
+    ;
 
-createDefinitions:
-    '(' createDefinition (',' createDefinition)* ')'
-;
+createDefinitions
+    : '(' createDefinition (',' createDefinition)* ')'
+    ;
 
-createDefinition:
-    fullColumnName columnDefinition  # columnDeclaration
-    | tableConstraint NOT? ENFORCED? # constraintDeclaration
-    | indexColumnDefinition          # indexDeclaration
-;
+createDefinition
+    : fullColumnName columnDefinition # columnDeclaration
+    | tableConstraint NOT? ENFORCED?  # constraintDeclaration
+    | indexColumnDefinition           # indexDeclaration
+    ;
 
-columnDefinition: dataType columnConstraint* NOT? ENFORCED?;
+columnDefinition
+    : dataType columnConstraint* NOT? ENFORCED?
+    ;
 
-columnConstraint:
-    nullNotnull                                             # nullColumnConstraint
-    | DEFAULT defaultValue                                  # defaultColumnConstraint
-    | VISIBLE                                               # visibilityColumnConstraint
-    | INVISIBLE                                             # invisibilityColumnConstraint
-    | (AUTO_INCREMENT | ON UPDATE currentTimestamp)         # autoIncrementColumnConstraint
-    | PRIMARY? KEY                                          # primaryKeyColumnConstraint
-    | CLUSTERING KEY                                        # clusteringKeyColumnConstraint // Tokudb-specific only
-    | UNIQUE KEY?                                           # uniqueKeyColumnConstraint
-    | COMMENT STRING_LITERAL                                # commentColumnConstraint
-    | COLUMN_FORMAT colformat = (FIXED | DYNAMIC | DEFAULT) # formatColumnConstraint
-    | STORAGE storageval = (DISK | MEMORY | DEFAULT)        # storageColumnConstraint
-    | referenceDefinition                                   # referenceColumnConstraint
-    | COLLATE collationName                                 # collateColumnConstraint
-    | (GENERATED ALWAYS)? AS '(' expression ')' (
-        VIRTUAL
-        | STORED
-        | PERSISTENT
-    )?                                                   # generatedColumnConstraint
-    | SERIAL DEFAULT VALUE                               # serialDefaultColumnConstraint
-    | (CONSTRAINT name = uid?)? CHECK '(' expression ')' # checkColumnConstraint
-;
+columnConstraint
+    : nullNotnull                                                                # nullColumnConstraint
+    | DEFAULT defaultValue                                                       # defaultColumnConstraint
+    | VISIBLE                                                                    # visibilityColumnConstraint
+    | INVISIBLE                                                                  # invisibilityColumnConstraint
+    | (AUTO_INCREMENT | ON UPDATE currentTimestamp)                              # autoIncrementColumnConstraint
+    | PRIMARY? KEY                                                               # primaryKeyColumnConstraint
+    | CLUSTERING KEY                                                             # clusteringKeyColumnConstraint // Tokudb-specific only
+    | UNIQUE KEY?                                                                # uniqueKeyColumnConstraint
+    | COMMENT STRING_LITERAL                                                     # commentColumnConstraint
+    | COLUMN_FORMAT colformat = (FIXED | DYNAMIC | DEFAULT)                      # formatColumnConstraint
+    | STORAGE storageval = (DISK | MEMORY | DEFAULT)                             # storageColumnConstraint
+    | referenceDefinition                                                        # referenceColumnConstraint
+    | COLLATE collationName                                                      # collateColumnConstraint
+    | (GENERATED ALWAYS)? AS '(' expression ')' (VIRTUAL | STORED | PERSISTENT)? # generatedColumnConstraint
+    | SERIAL DEFAULT VALUE                                                       # serialDefaultColumnConstraint
+    | (CONSTRAINT name = uid?)? CHECK '(' expression ')'                         # checkColumnConstraint
+    ;
 
-tableConstraint: (CONSTRAINT name = uid?)? PRIMARY KEY index = uid? indexType? indexColumnNames
-        indexOption* # primaryKeyTableConstraint
-    | (CONSTRAINT name = uid?)? UNIQUE indexFormat = (
-        INDEX
-        | KEY
-    )? index = uid? indexType? indexColumnNames indexOption*                                  # uniqueKeyTableConstraint
-    | (CONSTRAINT name = uid?)? FOREIGN KEY index = uid? indexColumnNames referenceDefinition #
-        foreignKeyTableConstraint
-    | (CONSTRAINT name = uid?)? CHECK '(' expression ')' # checkTableConstraint
-    | CLUSTERING KEY index = uid? indexColumnNames       # clusteringKeyTableConstraint
-        // Tokudb-specific only
-;
+tableConstraint
+    : (CONSTRAINT name = uid?)? PRIMARY KEY index = uid? indexType? indexColumnNames indexOption*                         # primaryKeyTableConstraint
+    | (CONSTRAINT name = uid?)? UNIQUE indexFormat = (INDEX | KEY)? index = uid? indexType? indexColumnNames indexOption* #
+        uniqueKeyTableConstraint
+    | (CONSTRAINT name = uid?)? FOREIGN KEY index = uid? indexColumnNames referenceDefinition # foreignKeyTableConstraint
+    | (CONSTRAINT name = uid?)? CHECK '(' expression ')'                                      # checkTableConstraint
+    | CLUSTERING KEY index = uid? indexColumnNames                                            # clusteringKeyTableConstraint
+    // Tokudb-specific only
+    ;
 
-referenceDefinition:
-    REFERENCES tableName indexColumnNames? (
+referenceDefinition
+    : REFERENCES tableName indexColumnNames? (
         MATCH matchType = (FULL | PARTIAL | SIMPLE)
     )? referenceAction?
-;
+    ;
 
-referenceAction:
-    ON DELETE onDelete = referenceControlType (
+referenceAction
+    : ON DELETE onDelete = referenceControlType (
         ON UPDATE onUpdate = referenceControlType
     )?
     | ON UPDATE onUpdate = referenceControlType (
         ON DELETE onDelete = referenceControlType
     )?
-;
+    ;
 
-referenceControlType:
-    RESTRICT
+referenceControlType
+    : RESTRICT
     | CASCADE
     | SET NULL_LITERAL
     | NO ACTION
     | SET DEFAULT
-;
+    ;
 
-indexColumnDefinition:
-    indexFormat = (INDEX | KEY) uid? indexType? indexColumnNames indexOption* #
-        simpleIndexDeclaration
-    | (FULLTEXT | SPATIAL) indexFormat = (INDEX | KEY)? uid? indexColumnNames indexOption* #
-        specialIndexDeclaration
-;
+indexColumnDefinition
+    : indexFormat = (INDEX | KEY) uid? indexType? indexColumnNames indexOption*            # simpleIndexDeclaration
+    | (FULLTEXT | SPATIAL) indexFormat = (INDEX | KEY)? uid? indexColumnNames indexOption* # specialIndexDeclaration
+    ;
 
-tableOption:
-    ENGINE '='? engineName?                                         # tableOptionEngine
+tableOption
+    : ENGINE '='? engineName?                                       # tableOptionEngine
     | ENGINE_ATTRIBUTE '='? STRING_LITERAL                          # tableOptionEngineAttribute
     | AUTOEXTEND_SIZE '='? decimalLiteral                           # tableOptionAutoextendSize
     | AUTO_INCREMENT '='? decimalLiteral                            # tableOptionAutoIncrement
@@ -581,7 +561,7 @@ tableOption:
     )                                             # tableOptionRowFormat
     | START TRANSACTION                           # tableOptionStartTransaction
     | SECONDARY_ENGINE '='? (ID | STRING_LITERAL) # tableOptionSecondaryEngine
-        // HeatWave-specific only
+    // HeatWave-specific only
     | SECONDARY_ENGINE_ATTRIBUTE '='? STRING_LITERAL              # tableOptionSecondaryEngineAttribute
     | STATS_AUTO_RECALC '='? extBoolValue = (DEFAULT | '0' | '1') # tableOptionRecalculation
     | STATS_PERSISTENT '='? extBoolValue = (DEFAULT | '0' | '1')  # tableOptionPersistent
@@ -591,37 +571,40 @@ tableOption:
     | tablespaceStorage                                           # tableOptionTablespace
     | TRANSACTIONAL '='? ('0' | '1')                              # tableOptionTransactional
     | UNION '='? '(' tables ')'                                   # tableOptionUnion
-;
+    ;
 
-tableType: MYSQL | ODBC;
+tableType
+    : MYSQL
+    | ODBC
+    ;
 
-tablespaceStorage: STORAGE (DISK | MEMORY | DEFAULT);
+tablespaceStorage
+    : STORAGE (DISK | MEMORY | DEFAULT)
+    ;
 
-partitionDefinitions:
-    PARTITION BY partitionFunctionDefinition (
-        PARTITIONS count = decimalLiteral
-    )? (
+partitionDefinitions
+    : PARTITION BY partitionFunctionDefinition (PARTITIONS count = decimalLiteral)? (
         SUBPARTITION BY subpartitionFunctionDefinition (
             SUBPARTITIONS subCount = decimalLiteral
         )?
     )? ('(' partitionDefinition (',' partitionDefinition)* ')')?
-;
+    ;
 
-partitionFunctionDefinition:
-    LINEAR? HASH '(' expression ')'                                       # partitionFunctionHash
+partitionFunctionDefinition
+    : LINEAR? HASH '(' expression ')'                                     # partitionFunctionHash
     | LINEAR? KEY (ALGORITHM '=' algType = ('1' | '2'))? '(' uidList? ')' # partitionFunctionKey
     // Optional uidList for MySQL only
     | RANGE ('(' expression ')' | COLUMNS '(' uidList ')') # partitionFunctionRange
     | LIST ('(' expression ')' | COLUMNS '(' uidList ')')  # partitionFunctionList
-;
+    ;
 
-subpartitionFunctionDefinition:
-    LINEAR? HASH '(' expression ')'                                      # subPartitionFunctionHash
+subpartitionFunctionDefinition
+    : LINEAR? HASH '(' expression ')'                                    # subPartitionFunctionHash
     | LINEAR? KEY (ALGORITHM '=' algType = ('1' | '2'))? '(' uidList ')' # subPartitionFunctionKey
-;
+    ;
 
-partitionDefinition:
-    PARTITION uid VALUES LESS THAN '(' partitionDefinerAtom (
+partitionDefinition
+    : PARTITION uid VALUES LESS THAN '(' partitionDefinerAtom (
         ',' partitionDefinerAtom
     )* ')' partitionOption* (
         '(' subpartitionDefinition (',' subpartitionDefinition)* ')'
@@ -629,31 +612,33 @@ partitionDefinition:
     | PARTITION uid VALUES LESS THAN partitionDefinerAtom partitionOption* (
         '(' subpartitionDefinition (',' subpartitionDefinition)* ')'
     )? # partitionComparison
-    | PARTITION uid VALUES IN '(' partitionDefinerAtom (
-        ',' partitionDefinerAtom
-    )* ')' partitionOption* (
+    | PARTITION uid VALUES IN '(' partitionDefinerAtom (',' partitionDefinerAtom)* ')' partitionOption* (
         '(' subpartitionDefinition (',' subpartitionDefinition)* ')'
     )? # partitionListAtom
-    | PARTITION uid VALUES IN '(' partitionDefinerVector (
-        ',' partitionDefinerVector
-    )* ')' partitionOption* (
+    | PARTITION uid VALUES IN '(' partitionDefinerVector (',' partitionDefinerVector)* ')' partitionOption* (
         '(' subpartitionDefinition (',' subpartitionDefinition)* ')'
     )? # partitionListVector
     | PARTITION uid partitionOption* (
         '(' subpartitionDefinition (',' subpartitionDefinition)* ')'
     )? # partitionSimple
-;
+    ;
 
-partitionDefinerAtom: constant | expression | MAXVALUE;
+partitionDefinerAtom
+    : constant
+    | expression
+    | MAXVALUE
+    ;
 
-partitionDefinerVector:
-    '(' partitionDefinerAtom (',' partitionDefinerAtom)+ ')'
-;
+partitionDefinerVector
+    : '(' partitionDefinerAtom (',' partitionDefinerAtom)+ ')'
+    ;
 
-subpartitionDefinition: SUBPARTITION uid partitionOption*;
+subpartitionDefinition
+    : SUBPARTITION uid partitionOption*
+    ;
 
-partitionOption:
-    DEFAULT? STORAGE? ENGINE '='? engineName               # partitionOptionEngine
+partitionOption
+    : DEFAULT? STORAGE? ENGINE '='? engineName             # partitionOptionEngine
     | COMMENT '='? comment = STRING_LITERAL                # partitionOptionComment
     | DATA DIRECTORY '='? dataDirectory = STRING_LITERAL   # partitionOptionDataDirectory
     | INDEX DIRECTORY '='? indexDirectory = STRING_LITERAL # partitionOptionIndexDirectory
@@ -661,149 +646,124 @@ partitionOption:
     | MIN_ROWS '='? minRows = decimalLiteral               # partitionOptionMinRows
     | TABLESPACE '='? tablespace = uid                     # partitionOptionTablespace
     | NODEGROUP '='? nodegroup = uid                       # partitionOptionNodeGroup
-;
+    ;
 
 //    Alter statements
 
-alterDatabase:
-    ALTER dbFormat = (DATABASE | SCHEMA) uid? createDatabaseOption+        # alterSimpleDatabase
+alterDatabase
+    : ALTER dbFormat = (DATABASE | SCHEMA) uid? createDatabaseOption+      # alterSimpleDatabase
     | ALTER dbFormat = (DATABASE | SCHEMA) uid UPGRADE DATA DIRECTORY NAME # alterUpgradeName
-;
+    ;
 
-alterEvent:
-    ALTER ownerStatement? EVENT fullId (
-        ON SCHEDULE scheduleExpression
-    )? (ON COMPLETION NOT? PRESERVE)? (RENAME TO fullId)? enableType? (
-        COMMENT STRING_LITERAL
-    )? (DO routineBody)?
-;
+alterEvent
+    : ALTER ownerStatement? EVENT fullId (ON SCHEDULE scheduleExpression)? (
+        ON COMPLETION NOT? PRESERVE
+    )? (RENAME TO fullId)? enableType? (COMMENT STRING_LITERAL)? (DO routineBody)?
+    ;
 
-alterFunction: ALTER FUNCTION fullId routineOption*;
+alterFunction
+    : ALTER FUNCTION fullId routineOption*
+    ;
 
-alterInstance: ALTER INSTANCE ROTATE INNODB MASTER KEY;
+alterInstance
+    : ALTER INSTANCE ROTATE INNODB MASTER KEY
+    ;
 
-alterLogfileGroup:
-    ALTER LOGFILE GROUP uid ADD UNDOFILE STRING_LITERAL (
+alterLogfileGroup
+    : ALTER LOGFILE GROUP uid ADD UNDOFILE STRING_LITERAL (
         INITIAL_SIZE '='? fileSizeLiteral
     )? WAIT? ENGINE '='? engineName
-;
+    ;
 
-alterProcedure: ALTER PROCEDURE fullId routineOption*;
+alterProcedure
+    : ALTER PROCEDURE fullId routineOption*
+    ;
 
-alterServer:
-    ALTER SERVER uid OPTIONS '(' serverOption (',' serverOption)* ')'
-;
+alterServer
+    : ALTER SERVER uid OPTIONS '(' serverOption (',' serverOption)* ')'
+    ;
 
-alterTable:
-    ALTER intimeAction = (ONLINE | OFFLINE)? IGNORE? TABLE tableName
-    (alterSpecification (',' alterSpecification)*)? partitionDefinitions?
-;
+alterTable
+    : ALTER intimeAction = (ONLINE | OFFLINE)? IGNORE? TABLE tableName (
+        alterSpecification (',' alterSpecification)*
+    )? partitionDefinitions?
+    ;
 
-alterTablespace:
-    ALTER TABLESPACE uid objectAction = (ADD | DROP) DATAFILE STRING_LITERAL (
+alterTablespace
+    : ALTER TABLESPACE uid objectAction = (ADD | DROP) DATAFILE STRING_LITERAL (
         INITIAL_SIZE '=' fileSizeLiteral
     )? WAIT? ENGINE '='? engineName
-;
+    ;
 
-alterView:
-    ALTER (
-        ALGORITHM '=' algType = (UNDEFINED | MERGE | TEMPTABLE)
-    )? ownerStatement? (
+alterView
+    : ALTER (ALGORITHM '=' algType = (UNDEFINED | MERGE | TEMPTABLE))? ownerStatement? (
         SQL SECURITY secContext = (DEFINER | INVOKER)
     )? VIEW fullId ('(' uidList ')')? AS selectStatement (
         WITH checkOpt = (CASCADED | LOCAL)? CHECK OPTION
     )?
-;
+    ;
 
 // details
 
-alterSpecification:
-    tableOption (','? tableOption)* # alterByTableOption
-    | ADD COLUMN? uid columnDefinition (
-        FIRST
-        | AFTER uid
-    )? # alterByAddColumn
-    | ADD COLUMN?
-    '(' uid columnDefinition (',' uid columnDefinition)* ')' # alterByAddColumns
-    | ADD indexFormat = (INDEX | KEY) uid? indexType?
-    indexColumnNames indexOption* # alterByAddIndex
-    | ADD (CONSTRAINT name = uid?)? PRIMARY KEY index = uid? indexType? indexColumnNames indexOption
-        * # alterByAddPrimaryKey
-    | ADD (CONSTRAINT name = uid?)? UNIQUE ifNotExists? indexFormat = (
-        INDEX
-        | KEY
-    )? indexName = uid? indexType? indexColumnNames indexOption* # alterByAddUniqueKey
-    | ADD keyType = (FULLTEXT | SPATIAL) indexFormat = (
-        INDEX
-        | KEY
-    )? uid? indexColumnNames indexOption* # alterByAddSpecialIndex
-    | ADD (CONSTRAINT name = uid?)? FOREIGN KEY
-    indexName = uid? indexColumnNames referenceDefinition # alterByAddForeignKey
-    | ADD (CONSTRAINT name = uid?)? CHECK (
-        uid
-        | stringLiteral
-        | '(' expression ')'
-    ) NOT? ENFORCED? # alterByAddCheckTableConstraint
+alterSpecification
+    : tableOption (','? tableOption)*                                                                 # alterByTableOption
+    | ADD COLUMN? uid columnDefinition (FIRST | AFTER uid)?                                           # alterByAddColumn
+    | ADD COLUMN? '(' uid columnDefinition (',' uid columnDefinition)* ')'                            # alterByAddColumns
+    | ADD indexFormat = (INDEX | KEY) uid? indexType? indexColumnNames indexOption*                   # alterByAddIndex
+    | ADD (CONSTRAINT name = uid?)? PRIMARY KEY index = uid? indexType? indexColumnNames indexOption* # alterByAddPrimaryKey
+    | ADD (CONSTRAINT name = uid?)? UNIQUE ifNotExists? indexFormat = (INDEX | KEY)? indexName = uid? indexType? indexColumnNames
+        indexOption*                                                                                     # alterByAddUniqueKey
+    | ADD keyType = (FULLTEXT | SPATIAL) indexFormat = (INDEX | KEY)? uid? indexColumnNames indexOption* # alterByAddSpecialIndex
+    | ADD (CONSTRAINT name = uid?)? FOREIGN KEY indexName = uid? indexColumnNames referenceDefinition    # alterByAddForeignKey
+    | ADD (CONSTRAINT name = uid?)? CHECK (uid | stringLiteral | '(' expression ')') NOT? ENFORCED?      #
+        alterByAddCheckTableConstraint
     | ALTER (CONSTRAINT name = uid?)? CHECK (
         uid
         | stringLiteral
         | '(' expression ')'
-    ) NOT? ENFORCED? # alterByAlterCheckTableConstraint
-    | ALGORITHM '='? algType = (
-        DEFAULT
-        | INSTANT
-        | INPLACE
-        | COPY
-    )                                                             # alterBySetAlgorithm
-    | ALTER COLUMN? uid (SET DEFAULT defaultValue | DROP DEFAULT) # alterByChangeDefault
-    | CHANGE COLUMN? oldColumn = uid
-    newColumn = uid columnDefinition (
+    ) NOT? ENFORCED?                                                # alterByAlterCheckTableConstraint
+    | ALGORITHM '='? algType = (DEFAULT | INSTANT | INPLACE | COPY) # alterBySetAlgorithm
+    | ALTER COLUMN? uid (SET DEFAULT defaultValue | DROP DEFAULT)   # alterByChangeDefault
+    | CHANGE COLUMN? oldColumn = uid newColumn = uid columnDefinition (
         FIRST
         | AFTER afterColumn = uid
     )?                                                           # alterByChangeColumn
     | RENAME COLUMN oldColumn = uid TO newColumn = uid           # alterByRenameColumn
     | LOCK '='? lockType = (DEFAULT | NONE | SHARED | EXCLUSIVE) # alterByLock
-    | MODIFY COLUMN?
-    uid columnDefinition (FIRST | AFTER uid)? # alterByModifyColumn
-    | DROP COLUMN? uid RESTRICT?    # alterByDropColumn
-    | DROP (CONSTRAINT | CHECK) uid # alterByDropConstraintCheck
-    | DROP PRIMARY KEY                               # alterByDropPrimaryKey
-    | DROP indexFormat = (INDEX | KEY) uid # alterByDropIndex
-    | RENAME indexFormat = (INDEX | KEY) uid TO uid # alterByRenameIndex
+    | MODIFY COLUMN? uid columnDefinition (FIRST | AFTER uid)?   # alterByModifyColumn
+    | DROP COLUMN? uid RESTRICT?                                 # alterByDropColumn
+    | DROP (CONSTRAINT | CHECK) uid                              # alterByDropConstraintCheck
+    | DROP PRIMARY KEY                                           # alterByDropPrimaryKey
+    | DROP indexFormat = (INDEX | KEY) uid                       # alterByDropIndex
+    | RENAME indexFormat = (INDEX | KEY) uid TO uid              # alterByRenameIndex
     | ALTER COLUMN? uid (
         SET DEFAULT (stringLiteral | '(' expression ')')
         | SET (VISIBLE | INVISIBLE)
         | DROP DEFAULT
-    )                                          # alterByAlterColumnDefault
-    | ALTER INDEX uid (VISIBLE | INVISIBLE)    # alterByAlterIndexVisibility
-    | DROP FOREIGN KEY uid dottedId? # alterByDropForeignKey
-    | DISABLE KEYS                                    # alterByDisableKeys
-    | ENABLE KEYS                                     # alterByEnableKeys
-    | RENAME renameFormat = (TO | AS)? (uid | fullId) # alterByRename
-    | ORDER BY uidList                                # alterByOrder
-    | CONVERT TO (CHARSET | CHARACTER SET) charsetName (
-        COLLATE collationName
-    )? # alterByConvertCharset
-    | DEFAULT? CHARACTER SET '=' charsetName (
-        COLLATE '=' collationName
-    )?                                               # alterByDefaultCharset
-    | DISCARD TABLESPACE                             # alterByDiscardTablespace
-    | IMPORT TABLESPACE                              # alterByImportTablespace
-    | FORCE                                          # alterByForce
-    | validationFormat = (WITHOUT | WITH) VALIDATION # alterByValidate
-    | ADD COLUMN?
-    '(' createDefinition (',' createDefinition)* ')' # alterByAddDefinitions
-    | alterPartitionSpecification                    # alterPartition
-;
+    )                                                                           # alterByAlterColumnDefault
+    | ALTER INDEX uid (VISIBLE | INVISIBLE)                                     # alterByAlterIndexVisibility
+    | DROP FOREIGN KEY uid dottedId?                                            # alterByDropForeignKey
+    | DISABLE KEYS                                                              # alterByDisableKeys
+    | ENABLE KEYS                                                               # alterByEnableKeys
+    | RENAME renameFormat = (TO | AS)? (uid | fullId)                           # alterByRename
+    | ORDER BY uidList                                                          # alterByOrder
+    | CONVERT TO (CHARSET | CHARACTER SET) charsetName (COLLATE collationName)? # alterByConvertCharset
+    | DEFAULT? CHARACTER SET '=' charsetName (COLLATE '=' collationName)?       # alterByDefaultCharset
+    | DISCARD TABLESPACE                                                        # alterByDiscardTablespace
+    | IMPORT TABLESPACE                                                         # alterByImportTablespace
+    | FORCE                                                                     # alterByForce
+    | validationFormat = (WITHOUT | WITH) VALIDATION                            # alterByValidate
+    | ADD COLUMN? '(' createDefinition (',' createDefinition)* ')'              # alterByAddDefinitions
+    | alterPartitionSpecification                                               # alterPartition
+    ;
 
-alterPartitionSpecification:
-    ADD PARTITION
-    '(' partitionDefinition (',' partitionDefinition)* ')' # alterByAddPartition
-    | DROP PARTITION uidList                     # alterByDropPartition
-    | DISCARD PARTITION (uidList | ALL) TABLESPACE # alterByDiscardPartition
-    | IMPORT PARTITION (uidList | ALL) TABLESPACE  # alterByImportPartition
-    | TRUNCATE PARTITION (uidList | ALL)           # alterByTruncatePartition
-    | COALESCE PARTITION decimalLiteral            # alterByCoalescePartition
+alterPartitionSpecification
+    : ADD PARTITION '(' partitionDefinition (',' partitionDefinition)* ')' # alterByAddPartition
+    | DROP PARTITION uidList                                               # alterByDropPartition
+    | DISCARD PARTITION (uidList | ALL) TABLESPACE                         # alterByDiscardPartition
+    | IMPORT PARTITION (uidList | ALL) TABLESPACE                          # alterByImportPartition
+    | TRUNCATE PARTITION (uidList | ALL)                                   # alterByTruncatePartition
+    | COALESCE PARTITION decimalLiteral                                    # alterByCoalescePartition
     | REORGANIZE PARTITION uidList INTO '(' partitionDefinition (
         ',' partitionDefinition
     )* ')' # alterByReorganizePartition
@@ -817,349 +777,362 @@ alterPartitionSpecification:
     | REPAIR PARTITION (uidList | ALL)   # alterByRepairPartition
     | REMOVE PARTITIONING                # alterByRemovePartitioning
     | UPGRADE PARTITIONING               # alterByUpgradePartitioning
-;
+    ;
 
 //    Drop statements
 
-dropDatabase: DROP dbFormat = (DATABASE | SCHEMA) ifExists? uid;
+dropDatabase
+    : DROP dbFormat = (DATABASE | SCHEMA) ifExists? uid
+    ;
 
-dropEvent: DROP EVENT ifExists? fullId;
+dropEvent
+    : DROP EVENT ifExists? fullId
+    ;
 
-dropIndex:
-    DROP INDEX intimeAction = (ONLINE | OFFLINE)? uid ON tableName (
+dropIndex
+    : DROP INDEX intimeAction = (ONLINE | OFFLINE)? uid ON tableName (
         ALGORITHM '='? algType = (DEFAULT | INPLACE | COPY)
-        | LOCK '='? lockType = (
-            DEFAULT
-            | NONE
-            | SHARED
-            | EXCLUSIVE
-        )
+        | LOCK '='? lockType = ( DEFAULT | NONE | SHARED | EXCLUSIVE)
     )*
-;
+    ;
 
-dropLogfileGroup: DROP LOGFILE GROUP uid ENGINE '=' engineName;
+dropLogfileGroup
+    : DROP LOGFILE GROUP uid ENGINE '=' engineName
+    ;
 
-dropProcedure: DROP PROCEDURE ifExists? fullId;
+dropProcedure
+    : DROP PROCEDURE ifExists? fullId
+    ;
 
-dropFunction: DROP FUNCTION ifExists? fullId;
+dropFunction
+    : DROP FUNCTION ifExists? fullId
+    ;
 
-dropServer: DROP SERVER ifExists? uid;
+dropServer
+    : DROP SERVER ifExists? uid
+    ;
 
-dropTable:
-    DROP TEMPORARY? TABLE ifExists? tables dropType = (
-        RESTRICT
-        | CASCADE
-    )?
-;
+dropTable
+    : DROP TEMPORARY? TABLE ifExists? tables dropType = (RESTRICT | CASCADE)?
+    ;
 
-dropTablespace: DROP TABLESPACE uid (ENGINE '='? engineName)?;
+dropTablespace
+    : DROP TABLESPACE uid (ENGINE '='? engineName)?
+    ;
 
-dropTrigger: DROP TRIGGER ifExists? fullId;
+dropTrigger
+    : DROP TRIGGER ifExists? fullId
+    ;
 
-dropView:
-    DROP VIEW ifExists? fullId (',' fullId)* dropType = (
-        RESTRICT
-        | CASCADE
-    )?
-;
+dropView
+    : DROP VIEW ifExists? fullId (',' fullId)* dropType = (RESTRICT | CASCADE)?
+    ;
 
-dropRole: DROP ROLE ifExists? roleName (',' roleName)*;
+dropRole
+    : DROP ROLE ifExists? roleName (',' roleName)*
+    ;
 
-setRole:
-    SET DEFAULT ROLE (NONE | ALL | roleName (',' roleName)*) TO (
-        userName
-        | uid
-    ) (',' (userName | uid))*
+setRole
+    : SET DEFAULT ROLE (NONE | ALL | roleName (',' roleName)*) TO (userName | uid) (
+        ',' (userName | uid)
+    )*
     | SET ROLE roleOption
-;
+    ;
 
 //    Other DDL statements
 
-renameTable:
-    RENAME TABLE renameTableClause (',' renameTableClause)*
-;
+renameTable
+    : RENAME TABLE renameTableClause (',' renameTableClause)*
+    ;
 
-renameTableClause: tableName TO tableName;
+renameTableClause
+    : tableName TO tableName
+    ;
 
-truncateTable: TRUNCATE TABLE? tableName;
+truncateTable
+    : TRUNCATE TABLE? tableName
+    ;
 
 // Data Manipulation Language
 
 //    Primary DML Statements
 
-callStatement:
-    CALL fullId ('(' (constants | expressions)? ')')?
-;
+callStatement
+    : CALL fullId ('(' (constants | expressions)? ')')?
+    ;
 
-deleteStatement:
-    singleDeleteStatement
+deleteStatement
+    : singleDeleteStatement
     | multipleDeleteStatement
-;
+    ;
 
-doStatement: DO expressions;
+doStatement
+    : DO expressions
+    ;
 
-handlerStatement:
-    handlerOpenStatement
+handlerStatement
+    : handlerOpenStatement
     | handlerReadIndexStatement
     | handlerReadStatement
     | handlerCloseStatement
-;
+    ;
 
-insertStatement:
-    INSERT priority = (LOW_PRIORITY | DELAYED | HIGH_PRIORITY)? IGNORE? INTO? tableName (
+insertStatement
+    : INSERT priority = (LOW_PRIORITY | DELAYED | HIGH_PRIORITY)? IGNORE? INTO? tableName (
         PARTITION '(' partitions = uidList? ')'
     )? (
-        ('(' columns = fullColumnNameList? ')')? insertStatementValue (
-            AS? uid
-        )?
-        | SET setFirst = updatedElement (
-            ',' setElements += updatedElement
-        )*
+        ('(' columns = fullColumnNameList? ')')? insertStatementValue (AS? uid)?
+        | SET setFirst = updatedElement (',' setElements += updatedElement)*
     ) (
         ON DUPLICATE KEY UPDATE duplicatedFirst = updatedElement (
             ',' duplicatedElements += updatedElement
         )*
     )?
-;
+    ;
 
-loadDataStatement:
-    LOAD DATA priority = (LOW_PRIORITY | CONCURRENT)? LOCAL? INFILE filename = STRING_LITERAL
-        violation = (REPLACE | IGNORE)? INTO TABLE tableName (
-        PARTITION '(' uidList ')'
-    )? (CHARACTER SET charset = charsetName)? (
-        fieldsFormat = (FIELDS | COLUMNS) selectFieldsInto+
-    )? (LINES selectLinesInto+)? (
-        IGNORE decimalLiteral linesFormat = (LINES | ROWS)
-    )? ('(' assignmentField (',' assignmentField)* ')')? (
-        SET updatedElement (',' updatedElement)*
-    )?
-;
-
-loadXmlStatement:
-    LOAD XML priority = (LOW_PRIORITY | CONCURRENT)? LOCAL? INFILE filename = STRING_LITERAL
-        violation = (REPLACE | IGNORE)? INTO TABLE tableName (
+loadDataStatement
+    : LOAD DATA priority = (LOW_PRIORITY | CONCURRENT)? LOCAL? INFILE filename = STRING_LITERAL violation = (
+        REPLACE
+        | IGNORE
+    )? INTO TABLE tableName (PARTITION '(' uidList ')')? (
         CHARACTER SET charset = charsetName
-    )? (ROWS IDENTIFIED BY '<' tag = STRING_LITERAL '>')? (
-        IGNORE decimalLiteral linesFormat = (LINES | ROWS)
-    )? ('(' assignmentField (',' assignmentField)* ')')? (
-        SET updatedElement (',' updatedElement)*
-    )?
-;
+    )? (fieldsFormat = (FIELDS | COLUMNS) selectFieldsInto+)? (
+        LINES selectLinesInto+
+    )? (IGNORE decimalLiteral linesFormat = (LINES | ROWS))? (
+        '(' assignmentField (',' assignmentField)* ')'
+    )? (SET updatedElement (',' updatedElement)*)?
+    ;
 
-replaceStatement:
-    REPLACE priority = (LOW_PRIORITY | DELAYED)? INTO? tableName (
+loadXmlStatement
+    : LOAD XML priority = (LOW_PRIORITY | CONCURRENT)? LOCAL? INFILE filename = STRING_LITERAL violation = (
+        REPLACE
+        | IGNORE
+    )? INTO TABLE tableName (CHARACTER SET charset = charsetName)? (
+        ROWS IDENTIFIED BY '<' tag = STRING_LITERAL '>'
+    )? (IGNORE decimalLiteral linesFormat = (LINES | ROWS))? (
+        '(' assignmentField (',' assignmentField)* ')'
+    )? (SET updatedElement (',' updatedElement)*)?
+    ;
+
+replaceStatement
+    : REPLACE priority = (LOW_PRIORITY | DELAYED)? INTO? tableName (
         PARTITION '(' partitions = uidList ')'
     )? (
         ('(' columns = uidList ')')? insertStatementValue
-        | SET setFirst = updatedElement (
-            ',' setElements += updatedElement
-        )*
+        | SET setFirst = updatedElement (',' setElements += updatedElement)*
     )
-;
+    ;
 
-selectStatement:
-    querySpecification lockClause? # simpleSelect
-    | queryExpression lockClause?  # parenthesisSelect
+selectStatement
+    : querySpecification lockClause? # simpleSelect
+    | queryExpression lockClause?    # parenthesisSelect
     | (querySpecificationNointo | queryExpressionNointo) unionStatement+ (
-        UNION unionType = (ALL | DISTINCT)? (
-            querySpecification
-            | queryExpression
-        )
+        UNION unionType = (ALL | DISTINCT)? (querySpecification | queryExpression)
     )? orderByClause? limitClause? lockClause? # unionSelect
     | queryExpressionNointo unionParenthesis+ (
         UNION unionType = (ALL | DISTINCT)? queryExpression
     )? orderByClause? limitClause? lockClause?         # unionParenthesisSelect
     | querySpecificationNointo (',' lateralStatement)+ # withLateralStatement
-;
+    ;
 
 // https://dev.mysql.com/doc/refman/8.0/en/values.html
-valuesStatement:
-    VALUES '(' expressionsWithDefaults? ')' (
-        ',' '(' expressionsWithDefaults? ')'
-    )*
-;
+valuesStatement
+    : VALUES '(' expressionsWithDefaults? ')' (',' '(' expressionsWithDefaults? ')')*
+    ;
 
-withStatement:
-    WITH RECURSIVE? commonTableExpressions (
-        ',' commonTableExpressions
-    )*
-;
+withStatement
+    : WITH RECURSIVE? commonTableExpressions (',' commonTableExpressions)*
+    ;
 
-tableStatement: TABLE tableName orderByClause? limitClause?;
+tableStatement
+    : TABLE tableName orderByClause? limitClause?
+    ;
 
-updateStatement:
-    singleUpdateStatement
+updateStatement
+    : singleUpdateStatement
     | multipleUpdateStatement
-;
+    ;
 
 // details
 
-insertStatementValue:
-    selectStatement
+insertStatementValue
+    : selectStatement
     | insertFormat = (VALUES | VALUE) '(' expressionsWithDefaults? ')' (
         ',' '(' expressionsWithDefaults? ')'
     )*
-;
+    ;
 
-updatedElement: fullColumnName '=' (expression | DEFAULT);
+updatedElement
+    : fullColumnName '=' (expression | DEFAULT)
+    ;
 
-assignmentField: uid | LOCAL_ID;
+assignmentField
+    : uid
+    | LOCAL_ID
+    ;
 
-lockClause: (FOR UPDATE | LOCK IN SHARE MODE);
+lockClause
+    : (FOR UPDATE | LOCK IN SHARE MODE)
+    ;
 
 //    Detailed DML Statements
 
-singleDeleteStatement:
-    DELETE priority = LOW_PRIORITY? QUICK? IGNORE? FROM tableName (
-        AS? uid
-    )? (PARTITION '(' uidList ')')? (WHERE expression)? orderByClause? (
-        LIMIT limitClauseAtom
-    )?
-;
+singleDeleteStatement
+    : DELETE priority = LOW_PRIORITY? QUICK? IGNORE? FROM tableName (AS? uid)? (
+        PARTITION '(' uidList ')'
+    )? (WHERE expression)? orderByClause? (LIMIT limitClauseAtom)?
+    ;
 
-multipleDeleteStatement:
-    DELETE priority = LOW_PRIORITY? QUICK? IGNORE? (
+multipleDeleteStatement
+    : DELETE priority = LOW_PRIORITY? QUICK? IGNORE? (
         tableName ('.' '*')? (',' tableName ('.' '*')?)* FROM tableSources
         | FROM tableName ('.' '*')? (',' tableName ('.' '*')?)* USING tableSources
     ) (WHERE expression)?
-;
+    ;
 
-handlerOpenStatement: HANDLER tableName OPEN (AS? uid)?;
+handlerOpenStatement
+    : HANDLER tableName OPEN (AS? uid)?
+    ;
 
-handlerReadIndexStatement:
-    HANDLER tableName READ index = uid (
+handlerReadIndexStatement
+    : HANDLER tableName READ index = uid (
         comparisonOperator '(' constants ')'
         | moveOrder = (FIRST | NEXT | PREV | LAST)
     ) (WHERE expression)? (LIMIT limitClauseAtom)?
-;
+    ;
 
-handlerReadStatement:
-    HANDLER tableName READ moveOrder = (FIRST | NEXT) (
-        WHERE expression
-    )? (LIMIT limitClauseAtom)?
-;
+handlerReadStatement
+    : HANDLER tableName READ moveOrder = (FIRST | NEXT) (WHERE expression)? (
+        LIMIT limitClauseAtom
+    )?
+    ;
 
-handlerCloseStatement: HANDLER tableName CLOSE;
+handlerCloseStatement
+    : HANDLER tableName CLOSE
+    ;
 
-singleUpdateStatement:
-    UPDATE priority = LOW_PRIORITY? IGNORE? tableSources (
-        AS? uid
-    )? SET updatedElement (',' updatedElement)* (
-        WHERE expression
-    )? orderByClause? limitClause?
-;
+singleUpdateStatement
+    : UPDATE priority = LOW_PRIORITY? IGNORE? tableSources (AS? uid)? SET updatedElement (
+        ',' updatedElement
+    )* (WHERE expression)? orderByClause? limitClause?
+    ;
 
-multipleUpdateStatement:
-    UPDATE priority = LOW_PRIORITY? IGNORE? tableSources SET updatedElement (
+multipleUpdateStatement
+    : UPDATE priority = LOW_PRIORITY? IGNORE? tableSources SET updatedElement (
         ',' updatedElement
     )* (WHERE expression)?
-;
+    ;
 
 // details
 
-orderByClause:
-    ORDER BY orderByExpression (',' orderByExpression)*
-;
+orderByClause
+    : ORDER BY orderByExpression (',' orderByExpression)*
+    ;
 
-orderByExpression: expression order = (ASC | DESC)?;
+orderByExpression
+    : expression order = (ASC | DESC)?
+    ;
 
-tableSources: tableSource (',' tableSource)*;
+tableSources
+    : tableSource (',' tableSource)*
+    ;
 
-tableSource:
-    tableSourceItem joinPart*           # tableSourceBase
+tableSource
+    : tableSourceItem joinPart*         # tableSourceBase
     | '(' tableSourceItem joinPart* ')' # tableSourceNested
     | jsonTable                         # tableJson
-;
+    ;
 
-tableSourceItem:
-    tableName (PARTITION '(' uidList ')')? (AS? alias = uid)? (
+tableSourceItem
+    : tableName (PARTITION '(' uidList ')')? (AS? alias = uid)? (
         indexHint (',' indexHint)*
-    )? # atomTableItem
-    | (
-        selectStatement
-        | '(' parenthesisSubquery = selectStatement ')'
-    ) AS? alias = uid      # subqueryTableItem
-    | '(' tableSources ')' # tableSourcesItem
-;
+    )?                                                                                  # atomTableItem
+    | (selectStatement | '(' parenthesisSubquery = selectStatement ')') AS? alias = uid # subqueryTableItem
+    | '(' tableSources ')'                                                              # tableSourcesItem
+    ;
 
-indexHint:
-    indexHintAction = (USE | IGNORE | FORCE) keyFormat = (
-        INDEX
-        | KEY
-    ) (FOR indexHintType)? '(' uidList ')'
-;
+indexHint
+    : indexHintAction = (USE | IGNORE | FORCE) keyFormat = (INDEX | KEY) (
+        FOR indexHintType
+    )? '(' uidList ')'
+    ;
 
-indexHintType: JOIN | ORDER BY | GROUP BY;
+indexHintType
+    : JOIN
+    | ORDER BY
+    | GROUP BY
+    ;
 
-joinPart: (INNER | CROSS)? JOIN LATERAL? tableSourceItem joinSpec*  # innerJoin
+joinPart
+    : (INNER | CROSS)? JOIN LATERAL? tableSourceItem joinSpec*      # innerJoin
     | STRAIGHT_JOIN tableSourceItem (ON expression)*                # straightJoin
     | (LEFT | RIGHT) OUTER? JOIN LATERAL? tableSourceItem joinSpec* # outerJoin
     | NATURAL ((LEFT | RIGHT) OUTER?)? JOIN tableSourceItem         # naturalJoin
-;
+    ;
 
-joinSpec: (ON expression) | USING '(' uidList ')';
+joinSpec
+    : (ON expression)
+    | USING '(' uidList ')'
+    ;
 
 //    Select Statement's Details
 
-queryExpression:
-    '(' querySpecification ')'
+queryExpression
+    : '(' querySpecification ')'
     | '(' queryExpression ')'
-;
+    ;
 
-queryExpressionNointo:
-    '(' querySpecificationNointo ')'
+queryExpressionNointo
+    : '(' querySpecificationNointo ')'
     | '(' queryExpressionNointo ')'
-;
+    ;
 
-querySpecification:
-    SELECT selectSpec* selectElements selectIntoExpression? fromClause? groupByClause? havingClause?
-        windowClause? orderByClause? limitClause?
-    | SELECT selectSpec* selectElements fromClause? groupByClause? havingClause? windowClause?
-        orderByClause? limitClause? selectIntoExpression?
-;
+querySpecification
+    : SELECT selectSpec* selectElements selectIntoExpression? fromClause? groupByClause? havingClause? windowClause? orderByClause
+        ? limitClause?
+    | SELECT selectSpec* selectElements fromClause? groupByClause? havingClause? windowClause? orderByClause? limitClause?
+        selectIntoExpression?
+    ;
 
-querySpecificationNointo:
-    SELECT selectSpec* selectElements fromClause? groupByClause? havingClause? windowClause?
-        orderByClause? limitClause? unionStatement?
-;
+querySpecificationNointo
+    : SELECT selectSpec* selectElements fromClause? groupByClause? havingClause? windowClause? orderByClause? limitClause?
+        unionStatement?
+    ;
 
-unionParenthesis:
-    UNION unionType = (ALL | DISTINCT)? queryExpressionNointo
-;
+unionParenthesis
+    : UNION unionType = (ALL | DISTINCT)? queryExpressionNointo
+    ;
 
-unionStatement:
-    UNION unionType = (ALL | DISTINCT)? (
+unionStatement
+    : UNION unionType = (ALL | DISTINCT)? (
         querySpecificationNointo
         | queryExpressionNointo
     )
-;
+    ;
 
-lateralStatement:
-    LATERAL (
+lateralStatement
+    : LATERAL (
         querySpecificationNointo
         | queryExpressionNointo
-        | (
-            '(' (
-                querySpecificationNointo
-                | queryExpressionNointo
-            ) ')' (AS? uid)?
-        )
+        | ('(' ( querySpecificationNointo | queryExpressionNointo) ')' (AS? uid)?)
     )
-;
+    ;
 
 // JSON
 
 // https://dev.mysql.com/doc/refman/8.0/en/json-table-functions.html
-jsonTable:
-    JSON_TABLE '(' expression ',' STRING_LITERAL COLUMNS '(' jsonColumnList ')' ')' (
+jsonTable
+    : JSON_TABLE '(' expression ',' STRING_LITERAL COLUMNS '(' jsonColumnList ')' ')' (
         AS? uid
     )?
-;
+    ;
 
-jsonColumnList: jsonColumn (',' jsonColumn)*;
+jsonColumnList
+    : jsonColumn (',' jsonColumn)*
+    ;
 
-jsonColumn:
-    fullColumnName (
+jsonColumn
+    : fullColumnName (
         FOR ORDINALITY
         | dataType (
             PATH STRING_LITERAL jsonOnEmpty? jsonOnError?
@@ -1167,17 +1140,20 @@ jsonColumn:
         )
     )
     | NESTED PATH? STRING_LITERAL COLUMNS '(' jsonColumnList ')'
-;
+    ;
 
-jsonOnEmpty: (NULL_LITERAL | ERROR | DEFAULT defaultValue) ON EMPTY
-;
+jsonOnEmpty
+    : (NULL_LITERAL | ERROR | DEFAULT defaultValue) ON EMPTY
+    ;
 
-jsonOnError: (NULL_LITERAL | ERROR | DEFAULT defaultValue) ON ERROR
-;
+jsonOnError
+    : (NULL_LITERAL | ERROR | DEFAULT defaultValue) ON ERROR
+    ;
 
 // details
 
-selectSpec: (ALL | DISTINCT | DISTINCTROW)
+selectSpec
+    : (ALL | DISTINCT | DISTINCTROW)
     | HIGH_PRIORITY
     | STRAIGHT_JOIN
     | SQL_SMALL_RESULT
@@ -1185,183 +1161,206 @@ selectSpec: (ALL | DISTINCT | DISTINCTROW)
     | SQL_BUFFER_RESULT
     | (SQL_CACHE | SQL_NO_CACHE)
     | SQL_CALC_FOUND_ROWS
-;
+    ;
 
-selectElements: (star = '*' | selectElement) (',' selectElement)*
-;
+selectElements
+    : (star = '*' | selectElement) (',' selectElement)*
+    ;
 
-selectElement:
-    fullId '.' '*'                                 # selectStarElement
+selectElement
+    : fullId '.' '*'                               # selectStarElement
     | fullColumnName (AS? uid)?                    # selectColumnElement
     | functionCall (AS? uid)?                      # selectFunctionElement
     | (LOCAL_ID VAR_ASSIGN)? expression (AS? uid)? # selectExpressionElement
-;
+    ;
 
-selectIntoExpression:
-    INTO assignmentField (',' assignmentField)* # selectIntoVariables
-    | INTO DUMPFILE STRING_LITERAL              # selectIntoDumpFile
+selectIntoExpression
+    : INTO assignmentField (',' assignmentField)* # selectIntoVariables
+    | INTO DUMPFILE STRING_LITERAL                # selectIntoDumpFile
     | (
-        INTO OUTFILE filename = STRING_LITERAL (
-            CHARACTER SET charset = charsetName
-        )? (fieldsFormat = (FIELDS | COLUMNS) selectFieldsInto+)? (
-            LINES selectLinesInto+
-        )?
+        INTO OUTFILE filename = STRING_LITERAL (CHARACTER SET charset = charsetName)? (
+            fieldsFormat = (FIELDS | COLUMNS) selectFieldsInto+
+        )? (LINES selectLinesInto+)?
     ) # selectIntoTextFile
-;
+    ;
 
-selectFieldsInto:
-    TERMINATED BY terminationField = STRING_LITERAL
+selectFieldsInto
+    : TERMINATED BY terminationField = STRING_LITERAL
     | OPTIONALLY? ENCLOSED BY enclosion = STRING_LITERAL
     | ESCAPED BY escaping = STRING_LITERAL
-;
+    ;
 
-selectLinesInto:
-    STARTING BY starting = STRING_LITERAL
+selectLinesInto
+    : STARTING BY starting = STRING_LITERAL
     | TERMINATED BY terminationLine = STRING_LITERAL
-;
+    ;
 
-fromClause: (FROM tableSources)? (WHERE whereExpr = expression)?
-;
+fromClause
+    : (FROM tableSources)? (WHERE whereExpr = expression)?
+    ;
 
-groupByClause:
-    GROUP BY groupByItem (',' groupByItem)* (WITH ROLLUP)?
-;
+groupByClause
+    : GROUP BY groupByItem (',' groupByItem)* (WITH ROLLUP)?
+    ;
 
-havingClause: HAVING havingExpr = expression;
+havingClause
+    : HAVING havingExpr = expression
+    ;
 
-windowClause:
-    WINDOW windowName AS '(' windowSpec ')' (
-        ',' windowName AS '(' windowSpec ')'
-    )*
-;
+windowClause
+    : WINDOW windowName AS '(' windowSpec ')' (',' windowName AS '(' windowSpec ')')*
+    ;
 
-groupByItem: expression order = (ASC | DESC)?;
+groupByItem
+    : expression order = (ASC | DESC)?
+    ;
 
-limitClause:
-    LIMIT (
+limitClause
+    : LIMIT (
         (offset = limitClauseAtom ',')? limit = limitClauseAtom
         | limit = limitClauseAtom OFFSET offset = limitClauseAtom
     )
-;
+    ;
 
-limitClauseAtom: decimalLiteral | mysqlVariable | simpleId;
+limitClauseAtom
+    : decimalLiteral
+    | mysqlVariable
+    | simpleId
+    ;
 
 // Transaction's Statements
 
-startTransaction:
-    START TRANSACTION (transactionMode (',' transactionMode)*)?
-;
+startTransaction
+    : START TRANSACTION (transactionMode (',' transactionMode)*)?
+    ;
 
-beginWork: BEGIN WORK?;
+beginWork
+    : BEGIN WORK?
+    ;
 
-commitWork:
-    COMMIT WORK? (AND nochain = NO? CHAIN)? (
-        norelease = NO? RELEASE
-    )?
-;
+commitWork
+    : COMMIT WORK? (AND nochain = NO? CHAIN)? (norelease = NO? RELEASE)?
+    ;
 
-rollbackWork:
-    ROLLBACK WORK? (AND nochain = NO? CHAIN)? (
-        norelease = NO? RELEASE
-    )?
-;
+rollbackWork
+    : ROLLBACK WORK? (AND nochain = NO? CHAIN)? (norelease = NO? RELEASE)?
+    ;
 
-savepointStatement: SAVEPOINT uid;
+savepointStatement
+    : SAVEPOINT uid
+    ;
 
-rollbackStatement: ROLLBACK WORK? TO SAVEPOINT? uid;
+rollbackStatement
+    : ROLLBACK WORK? TO SAVEPOINT? uid
+    ;
 
-releaseStatement: RELEASE SAVEPOINT uid;
+releaseStatement
+    : RELEASE SAVEPOINT uid
+    ;
 
-lockTables:
-    LOCK (TABLE | TABLES) lockTableElement (',' lockTableElement)*
-;
+lockTables
+    : LOCK (TABLE | TABLES) lockTableElement (',' lockTableElement)*
+    ;
 
-unlockTables: UNLOCK TABLES;
+unlockTables
+    : UNLOCK TABLES
+    ;
 
 // details
 
-setAutocommitStatement:
-    SET AUTOCOMMIT '=' autocommitValue = ('0' | '1')
-;
+setAutocommitStatement
+    : SET AUTOCOMMIT '=' autocommitValue = ('0' | '1')
+    ;
 
-setTransactionStatement:
-    SET transactionContext = (GLOBAL | SESSION)? TRANSACTION transactionOption (
+setTransactionStatement
+    : SET transactionContext = (GLOBAL | SESSION)? TRANSACTION transactionOption (
         ',' transactionOption
     )*
-;
+    ;
 
-transactionMode:
-    WITH CONSISTENT SNAPSHOT
+transactionMode
+    : WITH CONSISTENT SNAPSHOT
     | READ WRITE
     | READ ONLY
-;
+    ;
 
-lockTableElement: tableName (AS? uid)? lockAction;
+lockTableElement
+    : tableName (AS? uid)? lockAction
+    ;
 
-lockAction: READ LOCAL? | LOW_PRIORITY? WRITE;
+lockAction
+    : READ LOCAL?
+    | LOW_PRIORITY? WRITE
+    ;
 
-transactionOption:
-    ISOLATION LEVEL transactionLevel
+transactionOption
+    : ISOLATION LEVEL transactionLevel
     | READ WRITE
     | READ ONLY
-;
+    ;
 
-transactionLevel:
-    REPEATABLE READ
+transactionLevel
+    : REPEATABLE READ
     | READ COMMITTED
     | READ UNCOMMITTED
     | SERIALIZABLE
-;
+    ;
 
 // Replication's Statements
 
 //    Base Replication
 
-changeMaster:
-    CHANGE MASTER TO masterOption (',' masterOption)* channelOption?
-;
+changeMaster
+    : CHANGE MASTER TO masterOption (',' masterOption)* channelOption?
+    ;
 
-changeReplicationFilter:
-    CHANGE REPLICATION FILTER replicationFilter (
-        ',' replicationFilter
-    )*
-;
+changeReplicationFilter
+    : CHANGE REPLICATION FILTER replicationFilter (',' replicationFilter)*
+    ;
 
-purgeBinaryLogs:
-    PURGE purgeFormat = (BINARY | MASTER) LOGS (
+purgeBinaryLogs
+    : PURGE purgeFormat = (BINARY | MASTER) LOGS (
         TO fileName = STRING_LITERAL
         | BEFORE timeValue = STRING_LITERAL
     )
-;
+    ;
 
-resetMaster: RESET MASTER;
+resetMaster
+    : RESET MASTER
+    ;
 
-resetSlave: RESET SLAVE ALL? channelOption?;
+resetSlave
+    : RESET SLAVE ALL? channelOption?
+    ;
 
-startSlave:
-    START SLAVE (threadType (',' threadType)*)? (
-        UNTIL untilOption
-    )? connectionOption* channelOption?
-;
+startSlave
+    : START SLAVE (threadType (',' threadType)*)? (UNTIL untilOption)? connectionOption* channelOption?
+    ;
 
-stopSlave: STOP SLAVE (threadType (',' threadType)*)?;
+stopSlave
+    : STOP SLAVE (threadType (',' threadType)*)?
+    ;
 
-startGroupReplication: START GROUP_REPLICATION;
+startGroupReplication
+    : START GROUP_REPLICATION
+    ;
 
-stopGroupReplication: STOP GROUP_REPLICATION;
+stopGroupReplication
+    : STOP GROUP_REPLICATION
+    ;
 
 // details
 
-masterOption:
-    stringMasterOption '=' STRING_LITERAL             # masterStringOption
+masterOption
+    : stringMasterOption '=' STRING_LITERAL           # masterStringOption
     | decimalMasterOption '=' decimalLiteral          # masterDecimalOption
     | boolMasterOption '=' boolVal = ('0' | '1')      # masterBoolOption
     | MASTER_HEARTBEAT_PERIOD '=' REAL_LITERAL        # masterRealOption
     | IGNORE_SERVER_IDS '=' '(' (uid (',' uid)*)? ')' # masterUidListOption
-;
+    ;
 
-stringMasterOption:
-    MASTER_BIND
+stringMasterOption
+    : MASTER_BIND
     | MASTER_HOST
     | MASTER_USER
     | MASTER_PASSWORD
@@ -1375,198 +1374,236 @@ stringMasterOption:
     | MASTER_SSL_KEY
     | MASTER_SSL_CIPHER
     | MASTER_TLS_VERSION
-;
-decimalMasterOption:
-    MASTER_PORT
+    ;
+
+decimalMasterOption
+    : MASTER_PORT
     | MASTER_CONNECT_RETRY
     | MASTER_RETRY_COUNT
     | MASTER_DELAY
     | MASTER_LOG_POS
     | RELAY_LOG_POS
-;
+    ;
 
-boolMasterOption:
-    MASTER_AUTO_POSITION
+boolMasterOption
+    : MASTER_AUTO_POSITION
     | MASTER_SSL
     | MASTER_SSL_VERIFY_SERVER_CERT
-;
+    ;
 
-channelOption: FOR CHANNEL STRING_LITERAL;
+channelOption
+    : FOR CHANNEL STRING_LITERAL
+    ;
 
-replicationFilter:
-    REPLICATE_DO_DB '=' '(' uidList ')'                           # doDbReplication
+replicationFilter
+    : REPLICATE_DO_DB '=' '(' uidList ')'                         # doDbReplication
     | REPLICATE_IGNORE_DB '=' '(' uidList ')'                     # ignoreDbReplication
     | REPLICATE_DO_TABLE '=' '(' tables ')'                       # doTableReplication
     | REPLICATE_IGNORE_TABLE '=' '(' tables ')'                   # ignoreTableReplication
     | REPLICATE_WILD_DO_TABLE '=' '(' simpleStrings ')'           # wildDoTableReplication
     | REPLICATE_WILD_IGNORE_TABLE '=' '(' simpleStrings ')'       # wildIgnoreTableReplication
     | REPLICATE_REWRITE_DB '=' '(' tablePair (',' tablePair)* ')' # rewriteDbReplication
-;
+    ;
 
-tablePair:
-    '(' firstTable = tableName ',' secondTable = tableName ')'
-;
+tablePair
+    : '(' firstTable = tableName ',' secondTable = tableName ')'
+    ;
 
-threadType: IO_THREAD | SQL_THREAD;
+threadType
+    : IO_THREAD
+    | SQL_THREAD
+    ;
 
-untilOption:
-    gtids = (SQL_BEFORE_GTIDS | SQL_AFTER_GTIDS) '=' gtuidSet                  # gtidsUntilOption
+untilOption
+    : gtids = (SQL_BEFORE_GTIDS | SQL_AFTER_GTIDS) '=' gtuidSet                # gtidsUntilOption
     | MASTER_LOG_FILE '=' STRING_LITERAL ',' MASTER_LOG_POS '=' decimalLiteral # masterLogUntilOption
     | RELAY_LOG_FILE '=' STRING_LITERAL ',' RELAY_LOG_POS '=' decimalLiteral   # relayLogUntilOption
     | SQL_AFTER_MTS_GAPS                                                       # sqlGapsUntilOption
-;
+    ;
 
-connectionOption:
-    USER '=' conOptUser = STRING_LITERAL              # userConnectionOption
+connectionOption
+    : USER '=' conOptUser = STRING_LITERAL            # userConnectionOption
     | PASSWORD '=' conOptPassword = STRING_LITERAL    # passwordConnectionOption
     | DEFAULT_AUTH '=' conOptDefAuth = STRING_LITERAL # defaultAuthConnectionOption
     | PLUGIN_DIR '=' conOptPluginDir = STRING_LITERAL # pluginDirConnectionOption
-;
+    ;
 
-gtuidSet: uuidSet (',' uuidSet)* | STRING_LITERAL;
+gtuidSet
+    : uuidSet (',' uuidSet)*
+    | STRING_LITERAL
+    ;
 
 //    XA Transactions
 
-xaStartTransaction:
-    XA xaStart = (START | BEGIN) xid xaAction = (JOIN | RESUME)?
-;
+xaStartTransaction
+    : XA xaStart = (START | BEGIN) xid xaAction = (JOIN | RESUME)?
+    ;
 
-xaEndTransaction: XA END xid (SUSPEND (FOR MIGRATE)?)?;
+xaEndTransaction
+    : XA END xid (SUSPEND (FOR MIGRATE)?)?
+    ;
 
-xaPrepareStatement: XA PREPARE xid;
+xaPrepareStatement
+    : XA PREPARE xid
+    ;
 
-xaCommitWork: XA COMMIT xid (ONE PHASE)?;
+xaCommitWork
+    : XA COMMIT xid (ONE PHASE)?
+    ;
 
-xaRollbackWork: XA ROLLBACK xid;
+xaRollbackWork
+    : XA ROLLBACK xid
+    ;
 
-xaRecoverWork: XA RECOVER (CONVERT xid)?;
+xaRecoverWork
+    : XA RECOVER (CONVERT xid)?
+    ;
 
 // Prepared Statements
 
-prepareStatement:
-    PREPARE uid FROM (
-        query = STRING_LITERAL
-        | variable = LOCAL_ID
-    )
-;
+prepareStatement
+    : PREPARE uid FROM (query = STRING_LITERAL | variable = LOCAL_ID)
+    ;
 
-executeStatement: EXECUTE uid (USING userVariables)?;
+executeStatement
+    : EXECUTE uid (USING userVariables)?
+    ;
 
-deallocatePrepare: dropFormat = (DEALLOCATE | DROP) PREPARE uid;
+deallocatePrepare
+    : dropFormat = (DEALLOCATE | DROP) PREPARE uid
+    ;
 
 // Compound Statements
 
-routineBody: blockStatement | sqlStatement;
+routineBody
+    : blockStatement
+    | sqlStatement
+    ;
 
 // details
 
-blockStatement: (uid ':')? BEGIN (
-        (declareVariable SEMI)* (declareCondition SEMI)* (
-            declareCursor SEMI
-        )* (declareHandler SEMI)* procedureSqlStatement*
+blockStatement
+    : (uid ':')? BEGIN (
+        (declareVariable SEMI)* (declareCondition SEMI)* (declareCursor SEMI)* (
+            declareHandler SEMI
+        )* procedureSqlStatement*
     )? END uid?
-;
+    ;
 
-caseStatement:
-    CASE (uid | expression)? caseAlternative+ (
-        ELSE procedureSqlStatement+
-    )? END CASE
-;
+caseStatement
+    : CASE (uid | expression)? caseAlternative+ (ELSE procedureSqlStatement+)? END CASE
+    ;
 
-ifStatement:
-    IF expression THEN thenStatements += procedureSqlStatement+ elifAlternative* (
+ifStatement
+    : IF expression THEN thenStatements += procedureSqlStatement+ elifAlternative* (
         ELSE elseStatements += procedureSqlStatement+
     )? END IF
-;
+    ;
 
-iterateStatement: ITERATE uid;
+iterateStatement
+    : ITERATE uid
+    ;
 
-leaveStatement: LEAVE uid;
+leaveStatement
+    : LEAVE uid
+    ;
 
-loopStatement: (uid ':')? LOOP procedureSqlStatement+ END LOOP uid?
-;
+loopStatement
+    : (uid ':')? LOOP procedureSqlStatement+ END LOOP uid?
+    ;
 
-repeatStatement: (uid ':')? REPEAT procedureSqlStatement+ UNTIL expression END REPEAT uid?
-;
+repeatStatement
+    : (uid ':')? REPEAT procedureSqlStatement+ UNTIL expression END REPEAT uid?
+    ;
 
-returnStatement: RETURN expression;
+returnStatement
+    : RETURN expression
+    ;
 
-whileStatement: (uid ':')? WHILE expression DO procedureSqlStatement+ END WHILE uid?
-;
+whileStatement
+    : (uid ':')? WHILE expression DO procedureSqlStatement+ END WHILE uid?
+    ;
 
-cursorStatement:
-    CLOSE uid                              # CloseCursor
+cursorStatement
+    : CLOSE uid                            # CloseCursor
     | FETCH (NEXT? FROM)? uid INTO uidList # FetchCursor
     | OPEN uid                             # OpenCursor
-;
+    ;
 
 // details
 
-declareVariable: DECLARE uidList dataType (DEFAULT expression)?;
+declareVariable
+    : DECLARE uidList dataType (DEFAULT expression)?
+    ;
 
-declareCondition:
-    DECLARE uid CONDITION FOR (
-        decimalLiteral
-        | SQLSTATE VALUE? STRING_LITERAL
-    )
-;
+declareCondition
+    : DECLARE uid CONDITION FOR (decimalLiteral | SQLSTATE VALUE? STRING_LITERAL)
+    ;
 
-declareCursor: DECLARE uid CURSOR FOR selectStatement;
+declareCursor
+    : DECLARE uid CURSOR FOR selectStatement
+    ;
 
-declareHandler:
-    DECLARE handlerAction = (CONTINUE | EXIT | UNDO) HANDLER FOR handlerConditionValue (
+declareHandler
+    : DECLARE handlerAction = (CONTINUE | EXIT | UNDO) HANDLER FOR handlerConditionValue (
         ',' handlerConditionValue
     )* routineBody
-;
+    ;
 
-handlerConditionValue:
-    decimalLiteral                   # handlerConditionCode
+handlerConditionValue
+    : decimalLiteral                 # handlerConditionCode
     | SQLSTATE VALUE? STRING_LITERAL # handlerConditionState
     | uid                            # handlerConditionName
     | SQLWARNING                     # handlerConditionWarning
     | NOT FOUND                      # handlerConditionNotfound
     | SQLEXCEPTION                   # handlerConditionException
-;
+    ;
 
-procedureSqlStatement: (compoundStatement | sqlStatement) SEMI;
+procedureSqlStatement
+    : (compoundStatement | sqlStatement) SEMI
+    ;
 
-caseAlternative:
-    WHEN (constant | expression) THEN procedureSqlStatement+
-;
+caseAlternative
+    : WHEN (constant | expression) THEN procedureSqlStatement+
+    ;
 
-elifAlternative: ELSEIF expression THEN procedureSqlStatement+;
+elifAlternative
+    : ELSEIF expression THEN procedureSqlStatement+
+    ;
 
 // Administration Statements
 
 //    Account management statements
 
-alterUser:
-    ALTER USER userSpecification (',' userSpecification)* # alterUserMysqlV56
+alterUser
+    : ALTER USER userSpecification (',' userSpecification)* # alterUserMysqlV56
     | ALTER USER ifExists? userAuthOption (',' userAuthOption)* (
         REQUIRE (tlsNone = NONE | tlsOption (AND? tlsOption)*)
-    )? (WITH userResourceOption+)? (
-        userPasswordOption
-        | userLockOption
-    )* (COMMENT STRING_LITERAL | ATTRIBUTE STRING_LITERAL)?         # alterUserMysqlV80
+    )? (WITH userResourceOption+)? (userPasswordOption | userLockOption)* (
+        COMMENT STRING_LITERAL
+        | ATTRIBUTE STRING_LITERAL
+    )?                                                              # alterUserMysqlV80
     | ALTER USER ifExists? (userName | uid) DEFAULT ROLE roleOption # alterUserMysqlV80
-;
+    ;
 
-createUser:
-    CREATE USER userAuthOption (',' userAuthOption)* # createUserMysqlV56
-    | CREATE USER ifNotExists? userAuthOption (
-        ',' userAuthOption
-    )* (DEFAULT ROLE roleOption)? (
-        REQUIRE (tlsNone = NONE | tlsOption (AND? tlsOption)*)
-    )? (WITH userResourceOption+)? (
-        userPasswordOption
-        | userLockOption
-    )* (COMMENT STRING_LITERAL | ATTRIBUTE STRING_LITERAL)? # createUserMysqlV80
-;
+createUser
+    : CREATE USER userAuthOption (',' userAuthOption)* # createUserMysqlV56
+    | CREATE USER ifNotExists? userAuthOption (',' userAuthOption)* (
+        DEFAULT ROLE roleOption
+    )? (REQUIRE (tlsNone = NONE | tlsOption (AND? tlsOption)*))? (
+        WITH userResourceOption+
+    )? (userPasswordOption | userLockOption)* (
+        COMMENT STRING_LITERAL
+        | ATTRIBUTE STRING_LITERAL
+    )? # createUserMysqlV80
+    ;
 
-dropUser: DROP USER ifExists? userName (',' userName)*;
+dropUser
+    : DROP USER ifExists? userName (',' userName)*
+    ;
 
-grantStatement:
-    GRANT privelegeClause (',' privelegeClause)* ON privilegeObject = (
+grantStatement
+    : GRANT privelegeClause (',' privelegeClause)* ON privilegeObject = (
         TABLE
         | FUNCTION
         | PROCEDURE
@@ -1575,99 +1612,94 @@ grantStatement:
     )? (WITH (GRANT OPTION | userResourceOption)*)? (
         AS userName WITH ROLE roleOption
     )?
-    | GRANT (userName | uid) (',' (userName | uid))* TO (
-        userName
-        | uid
-    ) (',' (userName | uid))* (WITH ADMIN OPTION)?
-;
+    | GRANT (userName | uid) (',' (userName | uid))* TO (userName | uid) (
+        ',' (userName | uid)
+    )* (WITH ADMIN OPTION)?
+    ;
 
-roleOption:
-    DEFAULT
+roleOption
+    : DEFAULT
     | NONE
     | ALL (EXCEPT userName (',' userName)*)?
     | userName (',' userName)*
-;
+    ;
 
-grantProxy:
-    GRANT PROXY ON fromFirst = userName TO toFirst = userName (
+grantProxy
+    : GRANT PROXY ON fromFirst = userName TO toFirst = userName (
         ',' toOther += userName
     )* (WITH GRANT OPTION)?
-;
+    ;
 
-renameUser:
-    RENAME USER renameUserClause (',' renameUserClause)*
-;
+renameUser
+    : RENAME USER renameUserClause (',' renameUserClause)*
+    ;
 
-revokeStatement:
-    REVOKE ifExists? (privelegeClause | uid) (
-        ',' privelegeClause
-        | uid
-    )* ON privilegeObject = (TABLE | FUNCTION | PROCEDURE)? privilegeLevel FROM userName (
-        ',' userName
-    )* (IGNORE UNKNOWN USER)? # detailRevoke
-    | REVOKE ifExists? ALL PRIVILEGES? ',' GRANT OPTION FROM userName (
-        ',' userName
-    )* (IGNORE UNKNOWN USER)? # shortRevoke
-    | REVOKE ifExists? (userName | uid) (',' (userName | uid))* FROM (
-        userName
-        | uid
-    ) (',' (userName | uid))* (IGNORE UNKNOWN USER)? # roleRevoke
-;
+revokeStatement
+    : REVOKE ifExists? (privelegeClause | uid) (',' privelegeClause | uid)* ON privilegeObject = (
+        TABLE
+        | FUNCTION
+        | PROCEDURE
+    )? privilegeLevel FROM userName (',' userName)* (IGNORE UNKNOWN USER)? # detailRevoke
+    | REVOKE ifExists? ALL PRIVILEGES? ',' GRANT OPTION FROM userName (',' userName)* (
+        IGNORE UNKNOWN USER
+    )? # shortRevoke
+    | REVOKE ifExists? (userName | uid) (',' (userName | uid))* FROM (userName | uid) (
+        ',' (userName | uid)
+    )* (IGNORE UNKNOWN USER)? # roleRevoke
+    ;
 
-revokeProxy:
-    REVOKE PROXY ON onUser = userName FROM fromFirst = userName (
+revokeProxy
+    : REVOKE PROXY ON onUser = userName FROM fromFirst = userName (
         ',' fromOther += userName
     )*
-;
+    ;
 
-setPasswordStatement:
-    SET PASSWORD (FOR userName)? '=' (
-        passwordFunctionClause
-        | STRING_LITERAL
-    )
-;
+setPasswordStatement
+    : SET PASSWORD (FOR userName)? '=' (passwordFunctionClause | STRING_LITERAL)
+    ;
 
 // details
 
-userSpecification: userName userPasswordOption;
+userSpecification
+    : userName userPasswordOption
+    ;
 
-userAuthOption:
-    userName IDENTIFIED BY PASSWORD hashed = STRING_LITERAL   # hashAuthOption
+userAuthOption
+    : userName IDENTIFIED BY PASSWORD hashed = STRING_LITERAL # hashAuthOption
     | userName IDENTIFIED BY RANDOM PASSWORD authOptionClause # randomAuthOption
     | userName IDENTIFIED BY STRING_LITERAL authOptionClause  # stringAuthOption
     | userName IDENTIFIED WITH authenticationRule             # moduleAuthOption
     | userName                                                # simpleAuthOption
-;
+    ;
 
-authOptionClause: (REPLACE STRING_LITERAL)? (
-        RETAIN CURRENT PASSWORD
-    )?
-;
+authOptionClause
+    : (REPLACE STRING_LITERAL)? (RETAIN CURRENT PASSWORD)?
+    ;
 
-authenticationRule:
-    authPlugin (
+authenticationRule
+    : authPlugin (
         (BY | USING | AS) (STRING_LITERAL | RANDOM PASSWORD) authOptionClause
     )?                                        # module
     | authPlugin USING passwordFunctionClause # passwordModuleOption
-;
+    ;
 
-tlsOption:
-    SSL
+tlsOption
+    : SSL
     | X509
     | CIPHER STRING_LITERAL
     | ISSUER STRING_LITERAL
     | SUBJECT STRING_LITERAL
-;
+    ;
 
-userResourceOption:
-    MAX_QUERIES_PER_HOUR decimalLiteral
+userResourceOption
+    : MAX_QUERIES_PER_HOUR decimalLiteral
     | MAX_UPDATES_PER_HOUR decimalLiteral
     | MAX_CONNECTIONS_PER_HOUR decimalLiteral
     | MAX_USER_CONNECTIONS decimalLiteral
-;
+    ;
 
-userPasswordOption:
-    PASSWORD EXPIRE (
+userPasswordOption
+    : PASSWORD EXPIRE (
         expireType = DEFAULT
         | expireType = NEVER
         | expireType = INTERVAL decimalLiteral DAY
@@ -1677,23 +1709,20 @@ userPasswordOption:
     | PASSWORD REQUIRE CURRENT (OPTIONAL | DEFAULT)?
     | FAILED_LOGIN_ATTEMPTS decimalLiteral
     | PASSWORD_LOCK_TIME (decimalLiteral | UNBOUNDED)
-;
+    ;
 
-userLockOption: ACCOUNT lockType = (LOCK | UNLOCK);
+userLockOption
+    : ACCOUNT lockType = (LOCK | UNLOCK)
+    ;
 
-privelegeClause: privilege ( '(' uidList ')')?;
+privelegeClause
+    : privilege ('(' uidList ')')?
+    ;
 
-privilege:
-    ALL PRIVILEGES?
+privilege
+    : ALL PRIVILEGES?
     | ALTER ROUTINE?
-    | CREATE (
-        TEMPORARY TABLES
-        | ROUTINE
-        | VIEW
-        | USER
-        | TABLESPACE
-        | ROLE
-    )?
+    | CREATE (TEMPORARY TABLES | ROUTINE | VIEW | USER | TABLESPACE | ROLE)?
     | DELETE
     | DROP (ROLE)?
     | EVENT
@@ -1762,99 +1791,100 @@ privilege:
     | LOAD FROM S3
     | SELECT INTO S3
     | INVOKE LAMBDA
-;
+    ;
 
-privilegeLevel:
-    '*'            # currentSchemaPriviLevel
+privilegeLevel
+    : '*'          # currentSchemaPriviLevel
     | '*' '.' '*'  # globalPrivLevel
     | uid '.' '*'  # definiteSchemaPrivLevel
     | uid '.' uid  # definiteFullTablePrivLevel
     | uid dottedId # definiteFullTablePrivLevel2
     | uid          # definiteTablePrivLevel
-;
+    ;
 
-renameUserClause: fromFirst = userName TO toFirst = userName;
+renameUserClause
+    : fromFirst = userName TO toFirst = userName
+    ;
 
 //    Table maintenance statements
 
-analyzeTable:
-    ANALYZE actionOption = (NO_WRITE_TO_BINLOG | LOCAL)? (
-        TABLE
-        | TABLES
-    ) tables (
+analyzeTable
+    : ANALYZE actionOption = (NO_WRITE_TO_BINLOG | LOCAL)? (TABLE | TABLES) tables (
         UPDATE HISTOGRAM ON fullColumnName (',' fullColumnName)* (
             WITH decimalLiteral BUCKETS
         )?
     )? (DROP HISTOGRAM ON fullColumnName (',' fullColumnName)*)?
-;
+    ;
 
-checkTable: CHECK TABLE tables checkTableOption*;
+checkTable
+    : CHECK TABLE tables checkTableOption*
+    ;
 
-checksumTable:
-    CHECKSUM TABLE tables actionOption = (QUICK | EXTENDED)?
-;
+checksumTable
+    : CHECKSUM TABLE tables actionOption = (QUICK | EXTENDED)?
+    ;
 
-optimizeTable:
-    OPTIMIZE actionOption = (NO_WRITE_TO_BINLOG | LOCAL)? (
-        TABLE
-        | TABLES
-    ) tables
-;
+optimizeTable
+    : OPTIMIZE actionOption = (NO_WRITE_TO_BINLOG | LOCAL)? (TABLE | TABLES) tables
+    ;
 
-repairTable:
-    REPAIR actionOption = (NO_WRITE_TO_BINLOG | LOCAL)? TABLE tables QUICK? EXTENDED? USE_FRM?
-;
+repairTable
+    : REPAIR actionOption = (NO_WRITE_TO_BINLOG | LOCAL)? TABLE tables QUICK? EXTENDED? USE_FRM?
+    ;
 
 // details
 
-checkTableOption:
-    FOR UPGRADE
+checkTableOption
+    : FOR UPGRADE
     | QUICK
     | FAST
     | MEDIUM
     | EXTENDED
     | CHANGED
-;
+    ;
 
 //    Plugin and udf statements
 
-createUdfunction:
-    CREATE AGGREGATE? FUNCTION ifNotExists? uid
-    RETURNS returnType = (STRING | INTEGER | REAL | DECIMAL) SONAME STRING_LITERAL
-;
+createUdfunction
+    : CREATE AGGREGATE? FUNCTION ifNotExists? uid RETURNS returnType = (
+        STRING
+        | INTEGER
+        | REAL
+        | DECIMAL
+    ) SONAME STRING_LITERAL
+    ;
 
-installPlugin: INSTALL PLUGIN uid SONAME STRING_LITERAL;
+installPlugin
+    : INSTALL PLUGIN uid SONAME STRING_LITERAL
+    ;
 
-uninstallPlugin: UNINSTALL PLUGIN uid;
+uninstallPlugin
+    : UNINSTALL PLUGIN uid
+    ;
 
 //    Set and show statements
 
-setStatement:
-    SET variableClause ('=' | ':=') (expression | ON) (
+setStatement
+    : SET variableClause ('=' | ':=') (expression | ON) (
         ',' variableClause ('=' | ':=') (expression | ON)
-    )*                                                           # setVariable
-    | SET charSet (charsetName | DEFAULT)                        # setCharset
-    | SET NAMES (charsetName (COLLATE collationName)? | DEFAULT) # setNames
-    | setPasswordStatement                                       # setPassword
-    | setTransactionStatement                                    # setTransaction
-    | setAutocommitStatement                                     # setAutocommit
-    | SET fullId ('=' | ':=') expression (
-        ',' fullId ('=' | ':=') expression
-    )* # setNewValueInsideTrigger
-;
+    )*                                                                         # setVariable
+    | SET charSet (charsetName | DEFAULT)                                      # setCharset
+    | SET NAMES (charsetName (COLLATE collationName)? | DEFAULT)               # setNames
+    | setPasswordStatement                                                     # setPassword
+    | setTransactionStatement                                                  # setTransaction
+    | setAutocommitStatement                                                   # setAutocommit
+    | SET fullId ('=' | ':=') expression (',' fullId ('=' | ':=') expression)* # setNewValueInsideTrigger
+    ;
 
-showStatement:
-    SHOW logFormat = (BINARY | MASTER) LOGS # showMasterLogs
-    | SHOW logFormat = (BINLOG | RELAYLOG) EVENTS (
-        IN filename = STRING_LITERAL
-    )? (FROM fromPosition = decimalLiteral)? (
-        LIMIT (offset = decimalLiteral ',')? rowCount = decimalLiteral
-    )?                                  # showLogEvents
-    | SHOW showCommonEntity showFilter? # showObjectFilter
-    | SHOW FULL? columnsFormat = (COLUMNS | FIELDS) tableFormat = (
-        FROM
-        | IN
-    ) tableName (schemaFormat = (FROM | IN) uid)? showFilter?         # showColumns
+showStatement
+    : SHOW logFormat = (BINARY | MASTER) LOGS # showMasterLogs
+    | SHOW logFormat = (BINLOG | RELAYLOG) EVENTS (IN filename = STRING_LITERAL)? (
+        FROM fromPosition = decimalLiteral
+    )? (LIMIT (offset = decimalLiteral ',')? rowCount = decimalLiteral)? # showLogEvents
+    | SHOW showCommonEntity showFilter?                                  # showObjectFilter
+    | SHOW FULL? columnsFormat = (COLUMNS | FIELDS) tableFormat = (FROM | IN) tableName (
+        schemaFormat = (FROM | IN) uid
+    )? showFilter?                                                    # showColumns
     | SHOW CREATE schemaFormat = (DATABASE | SCHEMA) ifNotExists? uid # showCreateDb
     | SHOW CREATE namedEntity = (
         EVENT
@@ -1874,43 +1904,41 @@ showStatement:
     | SHOW showSchemaEntity (schemaFormat = (FROM | IN) uid)? showFilter? # showSchemaFilter
     | SHOW routine = (FUNCTION | PROCEDURE) CODE fullId                   # showRoutine
     | SHOW GRANTS (FOR userName)?                                         # showGrants
-    | SHOW indexFormat = (INDEX | INDEXES | KEYS) tableFormat = (
-        FROM
-        | IN
-    ) tableName (schemaFormat = (FROM | IN) uid)? (
-        WHERE expression
-    )?                                                               # showIndexes
+    | SHOW indexFormat = (INDEX | INDEXES | KEYS) tableFormat = (FROM | IN) tableName (
+        schemaFormat = (FROM | IN) uid
+    )? (WHERE expression)?                                           # showIndexes
     | SHOW OPEN TABLES (schemaFormat = (FROM | IN) uid)? showFilter? # showOpenTables
     | SHOW PROFILE showProfileType (',' showProfileType)* (
         FOR QUERY queryCount = decimalLiteral
-    )? (
-        LIMIT (offset = decimalLiteral ',')? rowCount = decimalLiteral
-    )                                                 # showProfile
-    | SHOW SLAVE STATUS (FOR CHANNEL STRING_LITERAL)? # showSlaveStatus
-;
+    )? (LIMIT (offset = decimalLiteral ',')? rowCount = decimalLiteral) # showProfile
+    | SHOW SLAVE STATUS (FOR CHANNEL STRING_LITERAL)?                   # showSlaveStatus
+    ;
 
 // details
 
-variableClause:
-    LOCAL_ID
+variableClause
+    : LOCAL_ID
     | GLOBAL_ID
     | ( ('@' '@')? (GLOBAL | SESSION | LOCAL))? uid
-;
+    ;
 
-showCommonEntity:
-    CHARACTER SET
+showCommonEntity
+    : CHARACTER SET
     | COLLATION
     | DATABASES
     | SCHEMAS
     | FUNCTION STATUS
     | PROCEDURE STATUS
     | (GLOBAL | SESSION)? (STATUS | VARIABLES)
-;
+    ;
 
-showFilter: LIKE STRING_LITERAL | WHERE expression;
+showFilter
+    : LIKE STRING_LITERAL
+    | WHERE expression
+    ;
 
-showGlobalInfoClause:
-    STORAGE? ENGINES
+showGlobalInfoClause
+    : STORAGE? ENGINES
     | MASTER STATUS
     | PLUGINS
     | PRIVILEGES
@@ -1919,17 +1947,17 @@ showGlobalInfoClause:
     | SLAVE HOSTS
     | AUTHORS
     | CONTRIBUTORS
-;
+    ;
 
-showSchemaEntity:
-    EVENTS
+showSchemaEntity
+    : EVENTS
     | TABLE STATUS
     | FULL? TABLES
     | TRIGGERS
-;
+    ;
 
-showProfileType:
-    ALL
+showProfileType
+    : ALL
     | BLOCK IO
     | CONTEXT SWITCHES
     | CPU
@@ -1938,49 +1966,52 @@ showProfileType:
     | PAGE FAULTS
     | SOURCE
     | SWAPS
-;
+    ;
 
 //    Other administrative statements
 
-binlogStatement: BINLOG STRING_LITERAL;
+binlogStatement
+    : BINLOG STRING_LITERAL
+    ;
 
-cacheIndexStatement:
-    CACHE INDEX tableIndexes (',' tableIndexes)* (
+cacheIndexStatement
+    : CACHE INDEX tableIndexes (',' tableIndexes)* (
         PARTITION '(' (uidList | ALL) ')'
     )? IN schema = uid
-;
+    ;
 
-flushStatement:
-    FLUSH flushFormat = (NO_WRITE_TO_BINLOG | LOCAL)? flushOption (
-        ',' flushOption
-    )*
+flushStatement
+    : FLUSH flushFormat = (NO_WRITE_TO_BINLOG | LOCAL)? flushOption (',' flushOption)*
     // Specific for Azure Database for MySQL Single Server instance.
     | FLUSH FIREWALL_RULES
-;
+    ;
 
-killStatement:
-    KILL connectionFormat = (CONNECTION | QUERY)? expression
-;
+killStatement
+    : KILL connectionFormat = (CONNECTION | QUERY)? expression
+    ;
 
-loadIndexIntoCache:
-    LOAD INDEX INTO CACHE loadedTableIndexes (
-        ',' loadedTableIndexes
-    )*
-;
+loadIndexIntoCache
+    : LOAD INDEX INTO CACHE loadedTableIndexes (',' loadedTableIndexes)*
+    ;
 
 // remark reset (maser | slave) describe in replication's
 //  statements section
-resetStatement: RESET QUERY CACHE;
+resetStatement
+    : RESET QUERY CACHE
+    ;
 
-shutdownStatement: SHUTDOWN;
+shutdownStatement
+    : SHUTDOWN
+    ;
 
 // details
 
-tableIndexes:
-    tableName (indexFormat = (INDEX | KEY)? '(' uidList ')')?
-;
+tableIndexes
+    : tableName (indexFormat = (INDEX | KEY)? '(' uidList ')')?
+    ;
 
-flushOption: (
+flushOption
+    : (
         DES_KEY_FILE
         | HOSTS
         | (BINARY | ENGINE | ERROR | GENERAL | RELAY | SLOW)? LOGS
@@ -1993,63 +2024,59 @@ flushOption: (
     )                                            # simpleFlushOption
     | RELAY LOGS channelOption?                  # channelFlushOption
     | (TABLE | TABLES) tables? flushTableOption? # tableFlushOption
-;
+    ;
 
-flushTableOption: WITH READ LOCK | FOR EXPORT;
+flushTableOption
+    : WITH READ LOCK
+    | FOR EXPORT
+    ;
 
-loadedTableIndexes:
-    tableName (PARTITION '(' (partitionList = uidList | ALL) ')')? (
+loadedTableIndexes
+    : tableName (PARTITION '(' (partitionList = uidList | ALL) ')')? (
         indexFormat = (INDEX | KEY)? '(' indexList = uidList ')'
     )? (IGNORE LEAVES)?
-;
+    ;
 
 // Utility Statements
 
-simpleDescribeStatement:
-    command = (EXPLAIN | DESCRIBE | DESC) tableName (
+simpleDescribeStatement
+    : command = (EXPLAIN | DESCRIBE | DESC) tableName (
         column = uid
         | pattern = STRING_LITERAL
     )?
-;
+    ;
 
-fullDescribeStatement:
-    command = (EXPLAIN | DESCRIBE | DESC) (
+fullDescribeStatement
+    : command = (EXPLAIN | DESCRIBE | DESC) (
         formatType = (EXTENDED | PARTITIONS | FORMAT) '=' formatValue = (
             TRADITIONAL
             | JSON
         )
     )? describeObjectClause
-;
+    ;
 
-helpStatement: HELP STRING_LITERAL;
+helpStatement
+    : HELP STRING_LITERAL
+    ;
 
-useStatement: USE uid;
+useStatement
+    : USE uid
+    ;
 
-signalStatement:
-    SIGNAL (
-        ( SQLSTATE VALUE? stringLiteral)
-        | ID
-        | REVERSE_QUOTE_ID
-    ) (
-        SET signalConditionInformation (
-            ',' signalConditionInformation
-        )*
+signalStatement
+    : SIGNAL (( SQLSTATE VALUE? stringLiteral) | ID | REVERSE_QUOTE_ID) (
+        SET signalConditionInformation (',' signalConditionInformation)*
     )?
-;
+    ;
 
-resignalStatement:
-    RESIGNAL (
-        ( SQLSTATE VALUE? stringLiteral)
-        | ID
-        | REVERSE_QUOTE_ID
-    )? (
-        SET signalConditionInformation (
-            ',' signalConditionInformation
-        )*
+resignalStatement
+    : RESIGNAL (( SQLSTATE VALUE? stringLiteral) | ID | REVERSE_QUOTE_ID)? (
+        SET signalConditionInformation (',' signalConditionInformation)*
     )?
-;
+    ;
 
-signalConditionInformation: (
+signalConditionInformation
+    : (
         CLASS_ORIGIN
         | SUBCLASS_ORIGIN
         | MESSAGE_TEXT
@@ -2062,32 +2089,26 @@ signalConditionInformation: (
         | TABLE_NAME
         | COLUMN_NAME
         | CURSOR_NAME
-    ) '=' (
-        stringLiteral
-        | DECIMAL_LITERAL
-        | mysqlVariable
-        | simpleId
-    )
-;
+    ) '=' (stringLiteral | DECIMAL_LITERAL | mysqlVariable | simpleId)
+    ;
 
-diagnosticsStatement:
-    GET (CURRENT | STACKED)? DIAGNOSTICS (
+diagnosticsStatement
+    : GET (CURRENT | STACKED)? DIAGNOSTICS (
         (
             variableClause '=' (NUMBER | ROW_COUNT) (
                 ',' variableClause '=' (NUMBER | ROW_COUNT)
             )*
         )
         | (
-            CONDITION (decimalLiteral | variableClause) variableClause '='
-                diagnosticsConditionInformationName (
+            CONDITION (decimalLiteral | variableClause) variableClause '=' diagnosticsConditionInformationName (
                 ',' variableClause '=' diagnosticsConditionInformationName
             )*
         )
     )
-;
+    ;
 
-diagnosticsConditionInformationName:
-    CLASS_ORIGIN
+diagnosticsConditionInformationName
+    : CLASS_ORIGIN
     | SUBCLASS_ORIGIN
     | RETURNED_SQLSTATE
     | MESSAGE_TEXT
@@ -2100,11 +2121,12 @@ diagnosticsConditionInformationName:
     | TABLE_NAME
     | COLUMN_NAME
     | CURSOR_NAME
-;
+    ;
 
 // details
 
-describeObjectClause: (
+describeObjectClause
+    : (
         selectStatement
         | deleteStatement
         | insertStatement
@@ -2112,52 +2134,79 @@ describeObjectClause: (
         | updateStatement
     )                    # describeStatements
     | FOR CONNECTION uid # describeConnection
-;
+    ;
 
 // Common Clauses
 
 //    DB Objects
 
-fullId: uid (DOT_ID | '.' uid)?;
+fullId
+    : uid (DOT_ID | '.' uid)?
+    ;
 
-tableName: fullId;
+tableName
+    : fullId
+    ;
 
-roleName: userName | uid;
+roleName
+    : userName
+    | uid
+    ;
 
-fullColumnName:
-    uid (dottedId dottedId?)?
+fullColumnName
+    : uid (dottedId dottedId?)?
     | .? dottedId dottedId?
-;
+    ;
 
-indexColumnName: (
-        (uid | STRING_LITERAL) ('(' decimalLiteral ')')?
-        | expression
-    ) sortType = (ASC | DESC)?
-;
+indexColumnName
+    : ((uid | STRING_LITERAL) ('(' decimalLiteral ')')? | expression) sortType = (
+        ASC
+        | DESC
+    )?
+    ;
 
-simpleUserName: STRING_LITERAL | ID | ADMIN | keywordsCanBeId;
-hostName: (LOCAL_ID | HOST_IP_ADDRESS | '@');
-userName:
-    simpleUserName
+simpleUserName
+    : STRING_LITERAL
+    | ID
+    | ADMIN
+    | keywordsCanBeId
+    ;
+
+hostName
+    : (LOCAL_ID | HOST_IP_ADDRESS | '@')
+    ;
+
+userName
+    : simpleUserName
     | simpleUserName hostName
     | currentUserExpression
-;
+    ;
 
-mysqlVariable: LOCAL_ID | GLOBAL_ID;
+mysqlVariable
+    : LOCAL_ID
+    | GLOBAL_ID
+    ;
 
-charsetName:
-    BINARY
+charsetName
+    : BINARY
     | charsetNameBase
     | STRING_LITERAL
     | CHARSET_REVERSE_QOUTE_STRING
-;
+    ;
 
-collationName: uid | STRING_LITERAL;
+collationName
+    : uid
+    | STRING_LITERAL
+    ;
 
-engineName: engineNameBase | ID | STRING_LITERAL;
+engineName
+    : engineNameBase
+    | ID
+    | STRING_LITERAL
+    ;
 
-engineNameBase:
-    ARCHIVE
+engineNameBase
+    : ARCHIVE
     | BLACKHOLE
     | CONNECT
     | CSV
@@ -2170,40 +2219,41 @@ engineNameBase:
     | NDBCLUSTER
     | PERFORMANCE_SCHEMA
     | TOKUDB
-;
+    ;
 
-uuidSet:
-    decimalLiteral '-' decimalLiteral '-' decimalLiteral '-' decimalLiteral '-' decimalLiteral (
+uuidSet
+    : decimalLiteral '-' decimalLiteral '-' decimalLiteral '-' decimalLiteral '-' decimalLiteral (
         ':' decimalLiteral '-' decimalLiteral
     )+
-;
+    ;
 
-xid:
-    globalTableUid = xuidStringId (
-        ',' qualifier = xuidStringId (
-            ',' idFormat = decimalLiteral
-        )?
+xid
+    : globalTableUid = xuidStringId (
+        ',' qualifier = xuidStringId (',' idFormat = decimalLiteral)?
     )?
-;
+    ;
 
-xuidStringId:
-    STRING_LITERAL
+xuidStringId
+    : STRING_LITERAL
     | BIT_STRING
     | HEXADECIMAL_LITERAL+
-;
+    ;
 
-authPlugin: uid | STRING_LITERAL;
+authPlugin
+    : uid
+    | STRING_LITERAL
+    ;
 
-uid:
-    simpleId
+uid
+    : simpleId
     //| DOUBLE_QUOTE_ID
     //| REVERSE_QUOTE_ID
     | CHARSET_REVERSE_QOUTE_STRING
     | STRING_LITERAL
-;
+    ;
 
-simpleId:
-    ID
+simpleId
+    : ID
     | charsetNameBase
     | transactionLevelBase
     | engineNameBase
@@ -2212,40 +2262,50 @@ simpleId:
     | dataTypeBase
     | keywordsCanBeId
     | scalarFunctionName
-;
+    ;
 
-dottedId: DOT_ID | '.' uid;
+dottedId
+    : DOT_ID
+    | '.' uid
+    ;
 
 //    Literals
 
-decimalLiteral:
-    DECIMAL_LITERAL
+decimalLiteral
+    : DECIMAL_LITERAL
     | ZERO_DECIMAL
     | ONE_DECIMAL
     | TWO_DECIMAL
     | REAL_LITERAL
-;
+    ;
 
-fileSizeLiteral: FILESIZE_LITERAL | decimalLiteral;
+fileSizeLiteral
+    : FILESIZE_LITERAL
+    | decimalLiteral
+    ;
 
-stringLiteral: (
-        STRING_CHARSET_NAME? STRING_LITERAL
-        | START_NATIONAL_STRING_LITERAL
-    ) STRING_LITERAL+
-    | (
-        STRING_CHARSET_NAME? STRING_LITERAL
-        | START_NATIONAL_STRING_LITERAL
-    ) (COLLATE collationName)?
-;
+stringLiteral
+    : (STRING_CHARSET_NAME? STRING_LITERAL | START_NATIONAL_STRING_LITERAL) STRING_LITERAL+
+    | (STRING_CHARSET_NAME? STRING_LITERAL | START_NATIONAL_STRING_LITERAL) (
+        COLLATE collationName
+    )?
+    ;
 
-booleanLiteral: TRUE | FALSE;
+booleanLiteral
+    : TRUE
+    | FALSE
+    ;
 
-hexadecimalLiteral: STRING_CHARSET_NAME? HEXADECIMAL_LITERAL;
+hexadecimalLiteral
+    : STRING_CHARSET_NAME? HEXADECIMAL_LITERAL
+    ;
 
-nullNotnull: NOT? (NULL_LITERAL | NULL_SPEC_LITERAL);
+nullNotnull
+    : NOT? (NULL_LITERAL | NULL_SPEC_LITERAL)
+    ;
 
-constant:
-    stringLiteral
+constant
+    : stringLiteral
     | decimalLiteral
     | '-' decimalLiteral
     | hexadecimalLiteral
@@ -2253,12 +2313,12 @@ constant:
     | REAL_LITERAL
     | BIT_STRING
     | NOT? nullLiteral = (NULL_LITERAL | NULL_SPEC_LITERAL)
-;
+    ;
 
 //    Data Types
 
-dataType:
-    typeName = (
+dataType
+    : typeName = (
         CHAR
         | CHARACTER
         | VARCHAR
@@ -2272,12 +2332,10 @@ dataType:
     ) VARYING? lengthOneDimension? BINARY? (charSet charsetName)? (
         COLLATE collationName
         | BINARY
-    )?                                                                           # stringDataType
-    | NATIONAL typeName = (CHAR | CHARACTER) VARYING lengthOneDimension? BINARY? #
-        nationalVaryingStringDataType
-    | NATIONAL typeName = (VARCHAR | CHARACTER | CHAR) lengthOneDimension? BINARY? #
-        nationalStringDataType
-    | NCHAR typeName = VARCHAR lengthOneDimension? BINARY? # nationalStringDataType
+    )?                                                                             # stringDataType
+    | NATIONAL typeName = (CHAR | CHARACTER) VARYING lengthOneDimension? BINARY?   # nationalVaryingStringDataType
+    | NATIONAL typeName = (VARCHAR | CHARACTER | CHAR) lengthOneDimension? BINARY? # nationalStringDataType
+    | NCHAR typeName = VARCHAR lengthOneDimension? BINARY?                         # nationalStringDataType
     | typeName = (
         TINYINT
         | SMALLINT
@@ -2291,35 +2349,15 @@ dataType:
         | INT3
         | INT4
         | INT8
-    ) lengthOneDimension? (SIGNED | UNSIGNED | ZEROFILL)* # dimensionDataType
-    | typeName = REAL lengthTwoDimension? (
+    ) lengthOneDimension? (SIGNED | UNSIGNED | ZEROFILL)*                              # dimensionDataType
+    | typeName = REAL lengthTwoDimension? (SIGNED | UNSIGNED | ZEROFILL)*              # dimensionDataType
+    | typeName = DOUBLE PRECISION? lengthTwoDimension? (SIGNED | UNSIGNED | ZEROFILL)* # dimensionDataType
+    | typeName = (DECIMAL | DEC | FIXED | NUMERIC | FLOAT | FLOAT4 | FLOAT8) lengthTwoOptionalDimension? (
         SIGNED
         | UNSIGNED
         | ZEROFILL
-    )* # dimensionDataType
-    | typeName = DOUBLE PRECISION? lengthTwoDimension? (
-        SIGNED
-        | UNSIGNED
-        | ZEROFILL
-    )* # dimensionDataType
-    | typeName = (
-        DECIMAL
-        | DEC
-        | FIXED
-        | NUMERIC
-        | FLOAT
-        | FLOAT4
-        | FLOAT8
-    ) lengthTwoOptionalDimension? (SIGNED | UNSIGNED | ZEROFILL)* # dimensionDataType
-    | typeName = (
-        DATE
-        | TINYBLOB
-        | MEDIUMBLOB
-        | LONGBLOB
-        | BOOL
-        | BOOLEAN
-        | SERIAL
-    ) # simpleDataType
+    )*                                                                               # dimensionDataType
+    | typeName = (DATE | TINYBLOB | MEDIUMBLOB | LONGBLOB | BOOL | BOOLEAN | SERIAL) # simpleDataType
     | typeName = (
         BIT
         | TIME
@@ -2330,10 +2368,8 @@ dataType:
         | BLOB
         | YEAR
         | VECTOR
-    ) lengthOneDimension? # dimensionDataType
-    | typeName = (ENUM | SET) collectionOptions BINARY? (
-        charSet charsetName
-    )? # collectionDataType
+    ) lengthOneDimension?                                                      # dimensionDataType
+    | typeName = (ENUM | SET) collectionOptions BINARY? (charSet charsetName)? # collectionDataType
     | typeName = (
         GEOMETRYCOLLECTION
         | GEOMCOLLECTION
@@ -2345,153 +2381,154 @@ dataType:
         | POLYGON
         | JSON
         | GEOMETRY
-    ) (SRID decimalLiteral)? # spatialDataType
-    | typeName = LONG VARCHAR? BINARY? (charSet charsetName)? (
-        COLLATE collationName
-    )?               # longVarcharDataType // LONG VARCHAR is the same as LONG
+    ) (SRID decimalLiteral)?                                                           # spatialDataType
+    | typeName = LONG VARCHAR? BINARY? (charSet charsetName)? (COLLATE collationName)? # longVarcharDataType
+    // LONG VARCHAR is the same as LONG
     | LONG VARBINARY # longVarbinaryDataType
-;
+    ;
 
-collectionOptions:
-    '(' collectionOption (',' collectionOption)* ')'
-;
+collectionOptions
+    : '(' collectionOption (',' collectionOption)* ')'
+    ;
 
-collectionOption: STRING_LITERAL;
+collectionOption
+    : STRING_LITERAL
+    ;
 
-convertedDataType:
-    (
+convertedDataType
+    : (
         typeName = (BINARY | NCHAR | FLOAT) lengthOneDimension?
-        | typeName = CHAR lengthOneDimension? (
-            charSet charsetName
-        )?
-        | typeName = (
-            DATE
-            | DATETIME
-            | TIME
-            | YEAR
-            | JSON
-            | INT
-            | INTEGER
-            | DOUBLE
-        )
+        | typeName = CHAR lengthOneDimension? ( charSet charsetName)?
+        | typeName = (DATE | DATETIME | TIME | YEAR | JSON | INT | INTEGER | DOUBLE)
         | typeName = (DECIMAL | DEC) lengthTwoOptionalDimension?
         | (SIGNED | UNSIGNED) (INTEGER | INT)?
     ) ARRAY?
-;
+    ;
 
-lengthOneDimension: '(' decimalLiteral ')';
+lengthOneDimension
+    : '(' decimalLiteral ')'
+    ;
 
-lengthTwoDimension: '(' decimalLiteral ',' decimalLiteral ')';
+lengthTwoDimension
+    : '(' decimalLiteral ',' decimalLiteral ')'
+    ;
 
-lengthTwoOptionalDimension:
-    '(' decimalLiteral (',' decimalLiteral)? ')'
-;
+lengthTwoOptionalDimension
+    : '(' decimalLiteral (',' decimalLiteral)? ')'
+    ;
 
 //    Common Lists
 
-uidList: uid (',' uid)*;
+uidList
+    : uid (',' uid)*
+    ;
 
-fullColumnNameList: fullColumnName (',' fullColumnName)*;
+fullColumnNameList
+    : fullColumnName (',' fullColumnName)*
+    ;
 
-tables: tableName (',' tableName)*;
+tables
+    : tableName (',' tableName)*
+    ;
 
-indexColumnNames:
-    '(' indexColumnName (',' indexColumnName)* ')'
-;
+indexColumnNames
+    : '(' indexColumnName (',' indexColumnName)* ')'
+    ;
 
-expressions: expression (',' expression)*;
+expressions
+    : expression (',' expression)*
+    ;
 
-expressionsWithDefaults:
-    expressionOrDefault (',' expressionOrDefault)*
-;
+expressionsWithDefaults
+    : expressionOrDefault (',' expressionOrDefault)*
+    ;
 
-constants: constant (',' constant)*;
+constants
+    : constant (',' constant)*
+    ;
 
-simpleStrings: STRING_LITERAL (',' STRING_LITERAL)*;
+simpleStrings
+    : STRING_LITERAL (',' STRING_LITERAL)*
+    ;
 
-userVariables: LOCAL_ID (',' LOCAL_ID)*;
+userVariables
+    : LOCAL_ID (',' LOCAL_ID)*
+    ;
 
 //    Common Expressons
 
-defaultValue:
-    NULL_LITERAL
+defaultValue
+    : NULL_LITERAL
     | CAST '(' expression AS convertedDataType ')'
     | unaryOperator? constant
     | currentTimestamp (ON UPDATE currentTimestamp)?
     | '(' expression ')'
     | '(' fullId ')'
-;
+    ;
 
-currentTimestamp: (
-        (CURRENT_TIMESTAMP | LOCALTIME | LOCALTIMESTAMP) (
-            '(' decimalLiteral? ')'
-        )?
+currentTimestamp
+    : (
+        (CURRENT_TIMESTAMP | LOCALTIME | LOCALTIMESTAMP) ('(' decimalLiteral? ')')?
         | NOW '(' decimalLiteral? ')'
     )
-;
+    ;
 
-expressionOrDefault: expression | DEFAULT;
+expressionOrDefault
+    : expression
+    | DEFAULT
+    ;
 
-ifExists: IF EXISTS;
+ifExists
+    : IF EXISTS
+    ;
 
-ifNotExists: IF NOT EXISTS;
+ifNotExists
+    : IF NOT EXISTS
+    ;
 
 //    Functions
 
-functionCall:
-    specificFunction                           # specificFunctionCall
+functionCall
+    : specificFunction                         # specificFunctionCall
     | aggregateWindowedFunction                # aggregateFunctionCall
     | nonAggregateWindowedFunction             # nonAggregateFunctionCall
     | scalarFunctionName '(' functionArgs? ')' # scalarFunctionCall
     | fullId '(' functionArgs? ')'             # udfFunctionCall
     | passwordFunctionClause                   # passwordFunctionCall
-;
+    ;
 
-specificFunction: (
+specificFunction
+    : (
         CURRENT_DATE
         | CURRENT_TIME
         | CURRENT_TIMESTAMP
         | LOCALTIME
         | UTC_TIMESTAMP
         | SCHEMA
-    ) ('(' ')')?                                                   # simpleFunctionCall
-    | currentUserExpression                                        # currentUser
-    | CONVERT '(' expression separator = ',' convertedDataType ')' # dataTypeFunctionCall
-    | CONVERT '(' expression USING charsetName ')'                 # dataTypeFunctionCall
-    | CAST '(' expression AS convertedDataType ')'                 # dataTypeFunctionCall
-    | VALUES '(' fullColumnName ')'                                # valuesFunctionCall
-    | CASE expression caseFuncAlternative+ (
-        ELSE elseArg = functionArg
-    )? END                                                        # caseExpressionFunctionCall
-    | CASE caseFuncAlternative+ (ELSE elseArg = functionArg)? END # caseFunctionCall
-    | CHAR '(' functionArgs (USING charsetName)? ')'              # charFunctionCall
-    | POSITION '(' (
-        positionString = stringLiteral
-        | positionExpression = expression
-    ) IN (inString = stringLiteral | inExpression = expression) ')' # positionFunctionCall
+    ) ('(' ')')?                                                             # simpleFunctionCall
+    | currentUserExpression                                                  # currentUser
+    | CONVERT '(' expression separator = ',' convertedDataType ')'           # dataTypeFunctionCall
+    | CONVERT '(' expression USING charsetName ')'                           # dataTypeFunctionCall
+    | CAST '(' expression AS convertedDataType ')'                           # dataTypeFunctionCall
+    | VALUES '(' fullColumnName ')'                                          # valuesFunctionCall
+    | CASE expression caseFuncAlternative+ (ELSE elseArg = functionArg)? END # caseExpressionFunctionCall
+    | CASE caseFuncAlternative+ (ELSE elseArg = functionArg)? END            # caseFunctionCall
+    | CHAR '(' functionArgs (USING charsetName)? ')'                         # charFunctionCall
+    | POSITION '(' (positionString = stringLiteral | positionExpression = expression) IN (
+        inString = stringLiteral
+        | inExpression = expression
+    ) ')' # positionFunctionCall
     | (SUBSTR | SUBSTRING) '(' (
         sourceString = stringLiteral
         | sourceExpression = expression
-    ) FROM (
-        fromDecimal = decimalLiteral
-        | fromExpression = expression
-    ) (
-        FOR (
-            forDecimal = decimalLiteral
-            | forExpression = expression
-        )
+    ) FROM (fromDecimal = decimalLiteral | fromExpression = expression) (
+        FOR (forDecimal = decimalLiteral | forExpression = expression)
     )? ')' # substrFunctionCall
     | TRIM '(' positioinForm = (BOTH | LEADING | TRAILING) (
         sourceString = stringLiteral
         | sourceExpression = expression
-    )? FROM (
-        fromString = stringLiteral
-        | fromExpression = expression
-    ) ')' # trimFunctionCall
-    | TRIM '(' (
-        sourceString = stringLiteral
-        | sourceExpression = expression
-    ) FROM (
+    )? FROM (fromString = stringLiteral | fromExpression = expression) ')' # trimFunctionCall
+    | TRIM '(' (sourceString = stringLiteral | sourceExpression = expression) FROM (
         fromString = stringLiteral
         | fromExpression = expression
     ) ')' # trimFunctionCall
@@ -2501,31 +2538,26 @@ specificFunction: (
     | EXTRACT '(' intervalType FROM (
         sourceString = stringLiteral
         | sourceExpression = expression
-    ) ')'                                                                            # extractFunctionCall
-    | GET_FORMAT '(' datetimeFormat = (DATE | TIME | DATETIME) ',' stringLiteral ')' #
-        getFormatFunctionCall
-    | JSON_VALUE '(' expression ',' expression (
-        RETURNING convertedDataType
-    )? jsonOnEmpty? jsonOnError? ')' # jsonValueFunctionCall
-;
+    ) ')'                                                                                                   # extractFunctionCall
+    | GET_FORMAT '(' datetimeFormat = (DATE | TIME | DATETIME) ',' stringLiteral ')'                        # getFormatFunctionCall
+    | JSON_VALUE '(' expression ',' expression (RETURNING convertedDataType)? jsonOnEmpty? jsonOnError? ')' # jsonValueFunctionCall
+    ;
 
-caseFuncAlternative:
-    WHEN condition = functionArg THEN consequent = functionArg
-;
+caseFuncAlternative
+    : WHEN condition = functionArg THEN consequent = functionArg
+    ;
 
-levelsInWeightString:
-    LEVEL levelInWeightListElement (',' levelInWeightListElement)*     # levelWeightList
+levelsInWeightString
+    : LEVEL levelInWeightListElement (',' levelInWeightListElement)*   # levelWeightList
     | LEVEL firstLevel = decimalLiteral '-' lastLevel = decimalLiteral # levelWeightRange
-;
+    ;
 
-levelInWeightListElement:
-    decimalLiteral orderType = (ASC | DESC | REVERSE)?
-;
+levelInWeightListElement
+    : decimalLiteral orderType = (ASC | DESC | REVERSE)?
+    ;
 
-aggregateWindowedFunction: (AVG | MAX | MIN | SUM) '(' aggregator = (
-        ALL
-        | DISTINCT
-    )? functionArg ')' overClause?
+aggregateWindowedFunction
+    : (AVG | MAX | MIN | SUM) '(' aggregator = (ALL | DISTINCT)? functionArg ')' overClause?
     | COUNT '(' (
         starArg = '*'
         | aggregator = ALL? functionArg
@@ -2546,43 +2578,58 @@ aggregateWindowedFunction: (AVG | MAX | MIN | SUM) '(' aggregator = (
     | GROUP_CONCAT '(' aggregator = DISTINCT? functionArgs (
         ORDER BY orderByExpression (',' orderByExpression)*
     )? (SEPARATOR separator = STRING_LITERAL)? ')'
-;
+    ;
 
-nonAggregateWindowedFunction: (LAG | LEAD) '(' expression (
-        ',' decimalLiteral
-    )? (',' decimalLiteral)? ')' overClause
+nonAggregateWindowedFunction
+    : (LAG | LEAD) '(' expression (',' decimalLiteral)? (',' decimalLiteral)? ')' overClause
     | (FIRST_VALUE | LAST_VALUE) '(' expression ')' overClause
     | (CUME_DIST | DENSE_RANK | PERCENT_RANK | RANK | ROW_NUMBER) '(' ')' overClause
     | NTH_VALUE '(' expression ',' decimalLiteral ')' overClause
     | NTILE '(' decimalLiteral ')' overClause
-;
+    ;
 
-overClause: OVER ('(' windowSpec? ')' | windowName);
+overClause
+    : OVER ('(' windowSpec? ')' | windowName)
+    ;
 
-windowSpec:
-    windowName? partitionClause? orderByClause? frameClause?
-;
+windowSpec
+    : windowName? partitionClause? orderByClause? frameClause?
+    ;
 
-windowName: uid;
+windowName
+    : uid
+    ;
 
-frameClause: frameUnits frameExtent;
+frameClause
+    : frameUnits frameExtent
+    ;
 
-frameUnits: ROWS | RANGE;
+frameUnits
+    : ROWS
+    | RANGE
+    ;
 
-frameExtent: frameRange | frameBetween;
+frameExtent
+    : frameRange
+    | frameBetween
+    ;
 
-frameBetween: BETWEEN frameRange AND frameRange;
+frameBetween
+    : BETWEEN frameRange AND frameRange
+    ;
 
-frameRange:
-    CURRENT ROW
+frameRange
+    : CURRENT ROW
     | UNBOUNDED (PRECEDING | FOLLOWING)
     | expression (PRECEDING | FOLLOWING)
-;
+    ;
 
-partitionClause: PARTITION BY expression (',' expression)*;
+partitionClause
+    : PARTITION BY expression (',' expression)*
+    ;
 
-scalarFunctionName:
-    functionNameBase
+scalarFunctionName
+    : functionNameBase
     | ASCII
     | CURDATE
     | CURRENT_DATE
@@ -2606,64 +2653,51 @@ scalarFunctionName:
     | UTC_DATE
     | UTC_TIME
     | UTC_TIMESTAMP
-;
+    ;
 
-passwordFunctionClause:
-    functionName = (PASSWORD | OLD_PASSWORD) '(' functionArg ')'
-;
+passwordFunctionClause
+    : functionName = (PASSWORD | OLD_PASSWORD) '(' functionArg ')'
+    ;
 
-functionArgs: (
-        constant
-        | fullColumnName
-        | functionCall
-        | expression
-    ) (
-        ',' (
-            constant
-            | fullColumnName
-            | functionCall
-            | expression
-        )
+functionArgs
+    : (constant | fullColumnName | functionCall | expression) (
+        ',' (constant | fullColumnName | functionCall | expression)
     )*
-;
+    ;
 
-functionArg:
-    constant
+functionArg
+    : constant
     | fullColumnName
     | functionCall
     | expression
-;
+    ;
 
 //    Expressions, predicates
 
 // Simplified approach for expression
-expression:
-    notOperator = (NOT | '!') expression                     # notExpression
+expression
+    : notOperator = (NOT | '!') expression                   # notExpression
     | expression logicalOperator expression                  # logicalExpression
     | predicate IS NOT? testValue = (TRUE | FALSE | UNKNOWN) # isExpression
     | predicate                                              # predicateExpression
-;
+    ;
 
-predicate:
-    predicate NOT? IN '(' (selectStatement | expressions) ')' # inPredicate
-    | predicate IS nullNotnull                                # isNullPredicate
-    | left = predicate comparisonOperator right = predicate   # binaryComparisonPredicate
-    | predicate comparisonOperator quantifier = (
-        ALL
-        | ANY
-        | SOME
-    ) '(' selectStatement ')'                                # subqueryComparisonPredicate
-    | predicate NOT? BETWEEN predicate AND predicate         # betweenPredicate
-    | predicate SOUNDS LIKE predicate                        # soundsLikePredicate
-    | predicate NOT? LIKE predicate (ESCAPE STRING_LITERAL)? # likePredicate
-    | predicate NOT? regex = (REGEXP | RLIKE) predicate      # regexpPredicate
-    | predicate MEMBER OF '(' predicate ')'                  # jsonMemberOfPredicate
-    | expressionAtom                                         # expressionAtomPredicate
-;
+predicate
+    : predicate NOT? IN '(' (selectStatement | expressions) ')'                            # inPredicate
+    | predicate IS nullNotnull                                                             # isNullPredicate
+    | left = predicate comparisonOperator right = predicate                                # binaryComparisonPredicate
+    | predicate comparisonOperator quantifier = (ALL | ANY | SOME) '(' selectStatement ')' # subqueryComparisonPredicate
+    | predicate NOT? BETWEEN predicate AND predicate                                       # betweenPredicate
+    | predicate SOUNDS LIKE predicate                                                      # soundsLikePredicate
+    | predicate NOT? LIKE predicate (ESCAPE STRING_LITERAL)?                               # likePredicate
+    | predicate NOT? regex = (REGEXP | RLIKE) predicate                                    # regexpPredicate
+    | predicate MEMBER OF '(' predicate ')'                                                # jsonMemberOfPredicate
+    | expressionAtom                                                                       # expressionAtomPredicate
+    ;
 
 // Add in ASTVisitor nullNotnull in constant
-expressionAtom:
-    constant                                                    # constantExpressionAtom
+expressionAtom
+    : constant                                                  # constantExpressionAtom
     | fullColumnName                                            # fullColumnNameExpressionAtom
     | functionCall                                              # functionCallExpressionAtom
     | expressionAtom COLLATE collationName                      # collateExpressionAtom
@@ -2680,12 +2714,18 @@ expressionAtom:
     | left = expressionAtom multOperator right = expressionAtom # mathExpressionAtom
     | left = expressionAtom addOperator right = expressionAtom  # mathExpressionAtom
     | left = expressionAtom jsonOperator right = expressionAtom # jsonExpressionAtom
-;
+    ;
 
-unaryOperator: '!' | '~' | '+' | '-' | NOT;
+unaryOperator
+    : '!'
+    | '~'
+    | '+'
+    | '-'
+    | NOT
+    ;
 
-comparisonOperator:
-    '='
+comparisonOperator
+    : '='
     | '>'
     | '<'
     | '<' '='
@@ -2693,23 +2733,47 @@ comparisonOperator:
     | '<' '>'
     | '!' '='
     | '<' '=' '>'
-;
+    ;
 
-logicalOperator: AND | '&' '&' | XOR | OR | '|' '|';
+logicalOperator
+    : AND
+    | '&' '&'
+    | XOR
+    | OR
+    | '|' '|'
+    ;
 
-bitOperator: '<' '<' | '>' '>' | '&' | '^' | '|';
+bitOperator
+    : '<' '<'
+    | '>' '>'
+    | '&'
+    | '^'
+    | '|'
+    ;
 
-multOperator: '*' | '/' | '%' | DIV | MOD;
+multOperator
+    : '*'
+    | '/'
+    | '%'
+    | DIV
+    | MOD
+    ;
 
-addOperator: '+' | '-';
+addOperator
+    : '+'
+    | '-'
+    ;
 
-jsonOperator: '-' '>' | '-' '>' '>';
+jsonOperator
+    : '-' '>'
+    | '-' '>' '>'
+    ;
 
 //    Simple id sets
 //     (that keyword, which can be id)
 
-charsetNameBase:
-    ARMSCII8
+charsetNameBase
+    : ARMSCII8
     | ASCII
     | BIG5
     | BINARY
@@ -2751,17 +2815,17 @@ charsetNameBase:
     | UTF8
     | UTF8MB3
     | UTF8MB4
-;
+    ;
 
-transactionLevelBase:
-    REPEATABLE
+transactionLevelBase
+    : REPEATABLE
     | COMMITTED
     | UNCOMMITTED
     | SERIALIZABLE
-;
+    ;
 
-privilegesBase:
-    TABLES
+privilegesBase
+    : TABLES
     | ROUTINE
     | EXECUTE
     | FILE
@@ -2770,10 +2834,10 @@ privilegesBase:
     | SHUTDOWN
     | SUPER
     | PRIVILEGES
-;
+    ;
 
-intervalTypeBase:
-    QUARTER
+intervalTypeBase
+    : QUARTER
     | MONTH
     | DAY
     | HOUR
@@ -2781,20 +2845,20 @@ intervalTypeBase:
     | WEEK
     | SECOND
     | MICROSECOND
-;
+    ;
 
-dataTypeBase:
-    DATE
+dataTypeBase
+    : DATE
     | TIME
     | TIMESTAMP
     | DATETIME
     | YEAR
     | ENUM
     | TEXT
-;
+    ;
 
-keywordsCanBeId:
-    ACCOUNT
+keywordsCanBeId
+    : ACCOUNT
     | ACTION
     | ADMIN
     | AFTER
@@ -3226,10 +3290,10 @@ keywordsCanBeId:
     | XA_RECOVER_ADMIN
     | XML
     | YES
-;
+    ;
 
-functionNameBase:
-    ABS
+functionNameBase
+    : ABS
     | ACOS
     | ADDDATE
     | ADDTIME
@@ -3596,4 +3660,4 @@ functionNameBase:
     | JSON_STORAGE_SIZE
     | JSON_ARRAYAGG
     | JSON_OBJECTAGG
-;
+    ;
