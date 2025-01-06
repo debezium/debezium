@@ -597,18 +597,18 @@ partitionFunctionDefinition
     | RANGE ('(' expression ')' | COLUMNS '(' uidList ')')               # partitionFunctionRange
     | LIST ('(' expression ')' | COLUMNS '(' uidList ')')                # partitionFunctionList
     | SYSTEM_TIME (expression | LIMIT expression) (
-            STARTS (TIMESTAMP timestampValue | timestampValue)
-        )? AUTO? partitionSystemVersionDefinitions? # partitionSystemVersion // MariaDB-specific
-        ;
+        STARTS (TIMESTAMP timestampValue | timestampValue)
+    )? AUTO? partitionSystemVersionDefinitions? # partitionSystemVersion // MariaDB-specific
+    ;
 
-    // MariaDB-specific
-    partitionSystemVersionDefinitions
-        : '(' partitionSystemVersionDefinition (',' partitionSystemVersionDefinition)* ')'
-        ;
+// MariaDB-specific
+partitionSystemVersionDefinitions
+    : '(' partitionSystemVersionDefinition (',' partitionSystemVersionDefinition)* ')'
+    ;
 
-    // MariaDB-specific
-    partitionSystemVersionDefinition
-        : PARTITION uid (HISTORY | CURRENT)
+// MariaDB-specific
+partitionSystemVersionDefinition
+    : PARTITION uid (HISTORY | CURRENT)
     ;
 
 subpartitionFunctionDefinition
