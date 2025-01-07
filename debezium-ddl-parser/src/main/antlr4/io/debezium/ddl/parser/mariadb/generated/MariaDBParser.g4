@@ -721,10 +721,10 @@ alterSpecification
     | ADD COLUMN? ifNotExists?                                                              // here ifNotExists is MariaDB-specific only
     '(' uid columnDefinition (',' uid columnDefinition)* ')' # alterByAddColumns
     | ADD indexFormat = (INDEX | KEY) ifNotExists? uid? indexType? // here ifNotExists is MariaDB-specific only
-    indexColumnNames indexOption*                                                                     # alterByAddIndex
-    | ADD (CONSTRAINT name = uid?)? PRIMARY KEY index = uid? indexType? indexColumnNames indexOption* # alterByAddPrimaryKey
-    | ADD (CONSTRAINT name = uid?)? UNIQUE indexFormat = (INDEX | KEY)? ifNotExists? // here ifNotExists is MariaDB-specific only
-    indexName = uid? indexType? indexColumnNames indexOption*                                            # alterByAddUniqueKey
+    indexColumnNames indexOption*                                                                                                              # alterByAddIndex
+    | ADD (CONSTRAINT name = uid?)? PRIMARY KEY index = uid? indexType? indexColumnNames indexOption*                                          # alterByAddPrimaryKey
+    | ADD (CONSTRAINT name = uid?)? UNIQUE indexFormat = (INDEX | KEY)? ifNotExists? indexName = uid? indexType? indexColumnNames indexOption* #
+        alterByAddUniqueKey
     | ADD keyType = (FULLTEXT | SPATIAL) indexFormat = (INDEX | KEY)? uid? indexColumnNames indexOption* # alterByAddSpecialIndex
     | ADD (CONSTRAINT name = uid?)? FOREIGN KEY ifNotExists? // here ifNotExists is MariaDB-specific only
     indexName = uid? indexColumnNames referenceDefinition                    # alterByAddForeignKey
