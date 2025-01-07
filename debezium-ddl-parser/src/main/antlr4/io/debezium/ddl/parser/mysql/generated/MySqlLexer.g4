@@ -38,10 +38,11 @@ channels {
 
 // SKIP
 
-SPACE              : [ \t\r\n]+                                                           -> channel(HIDDEN);
-SPEC_MYSQL_COMMENT : '/*!' .+? '*/'                                                       -> channel(MYSQLCOMMENT);
-COMMENT_INPUT      : '/*' .*? '*/'                                                        -> channel(HIDDEN);
-LINE_COMMENT: (('--' [ \t]* | '#') ~[\r\n]* ('\r'? '\n' | EOF) | '--' ('\r'? '\n' | EOF)) -> channel(HIDDEN)
+SPACE              : [ \t\r\n]+     -> channel(HIDDEN);
+SPEC_MYSQL_COMMENT : '/*!' .+? '*/' -> channel(MYSQLCOMMENT);
+COMMENT_INPUT      : '/*' .*? '*/'  -> channel(HIDDEN);
+LINE_COMMENT:
+    (('--' [ \t]* | '#') ~[\r\n]* ('\r'? '\n' | EOF) | '--' ('\r'? '\n' | EOF)) -> channel(HIDDEN)
 ;
 
 // Keywords
@@ -615,6 +616,7 @@ PARTITIONING                : 'PARTITIONING';
 PARTITIONS                  : 'PARTITIONS';
 PASSWORD                    : 'PASSWORD';
 PASSWORD_LOCK_TIME          : 'PASSWORD_LOCK_TIME';
+PERSISTENT                  : 'PERSISTENT';
 PHASE                       : 'PHASE';
 PLUGIN                      : 'PLUGIN';
 PLUGIN_DIR                  : 'PLUGIN_DIR';
@@ -1171,7 +1173,6 @@ SUBDATE                           : 'SUBDATE';
 SUBSTRING_INDEX                   : 'SUBSTRING_INDEX';
 SUBTIME                           : 'SUBTIME';
 SYSTEM_USER                       : 'SYSTEM_USER';
-SYSTEM                            : 'SYSTEM';
 TAN                               : 'TAN';
 TELEMETRY_LOG_ADMIN               : 'TELEMETRY_LOG_ADMIN';
 TIMEDIFF                          : 'TIMEDIFF';
@@ -1197,7 +1198,6 @@ VALIDATE_PASSWORD_STRENGTH        : 'VALIDATE_PASSWORD_STRENGTH';
 VECTOR_DIM                        : 'VECTOR_DIM';
 VECTOR_TO_STRING                  : 'VECTOR_TO_STRING';
 VERSION                           : 'VERSION';
-VERSIONING                        : 'VERSIONING';
 WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS : 'WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS';
 WEEKDAY                           : 'WEEKDAY';
 WEEKOFYEAR                        : 'WEEKOFYEAR';
@@ -1299,7 +1299,7 @@ ID: ID_LITERAL;
 REVERSE_QUOTE_ID : BQUOTA_STRING;
 HOST_IP_ADDRESS  : (AT_SIGN IP_ADDRESS);
 LOCAL_ID         : AT_SIGN ( STRING_LITERAL | [A-Z0-9._$\u0080-\uFFFF]+);
-GLOBAL_ID        : AT_SIGN AT_SIGN ([A-Z0-9._$\u0080-\uFFFF]+ | BQUOTA_STRING);
+GLOBAL_ID        : AT_SIGN AT_SIGN ( [A-Z0-9._$\u0080-\uFFFF]+ | BQUOTA_STRING);
 
 // Fragments for Literal primitives
 
@@ -1349,7 +1349,7 @@ fragment CHARSET_NAME:
 
 fragment EXPONENT_NUM_PART : 'E' [-+]? DEC_DIGIT+;
 fragment ID_LITERAL        : [A-Z_$0-9\u0080-\uFFFF]*? [A-Z_$\u0080-\uFFFF]+? [A-Z_$0-9\u0080-\uFFFF]*;
-fragment DQUOTA_STRING     : '"' ('\\' . | '""' | ~('"' | '\\'))* '"';
+fragment DQUOTA_STRING     : '"' ( '\\' . | '""' | ~('"' | '\\'))* '"';
 fragment SQUOTA_STRING     : '\'' ('\\' . | '\'\'' | ~('\'' | '\\'))* '\'';
 fragment BQUOTA_STRING     : '`' ( ~'`' | '``')* '`';
 fragment HEX_DIGIT         : [0-9A-F];
