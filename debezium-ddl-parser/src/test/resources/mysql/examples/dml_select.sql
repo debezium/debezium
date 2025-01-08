@@ -23,6 +23,7 @@ select * from `select` where `varchar` = 'abc \' ' and `varchar2` = '\'bca';
 #begin
 -- -- -- Number literal
 SELECT 1;
+SELECT 1.;
 select 1.e-3 as 123e;
 select del1.e123 as c from del1;
 select -1, 3e-2, 2.34E0;
@@ -31,6 +32,7 @@ SELECT .1e10;
 SELECT -.1e10;
 select 15e3, .2e5 as col1;
 select .2e3 c1, .2e-4 as c5;
+select * from tab where `field` = 1.;
 #end
 #begin
 -- -- -- Number float collision test
@@ -189,13 +191,25 @@ SELECT * FROM test LIMIT LIMIT1,LIMIT2;
 SELECT SCHEMA();
 -- Functions
 SELECT REPEAT('X',2);
-SELECT mod(3,2);SELECT * FROM TEST WHERE TB_SCHEMA = SCHEMA();
+SELECT mod(3,2);
+SELECT * FROM TEST WHERE TB_SCHEMA = SCHEMA();
 -- Group By with computed column
 SELECT 1 AS col1, t1.Id FROM t1 GROUP BY col1;
 -- Non Aggregate Functions
 SELECT pk, LEAD(pk) OVER (ORDER BY pk) AS l;
 SELECT COALESCE(LAG(last_eq.end_variation) OVER (PARTITION BY eq.account_id, eq.execution_name_id, eq.currency ORDER BY eq.start_date), 0) AS start_variation FROM t1;
 -- Window Functions
+SELECT
+  year, country, product, profit,
+  SUM(profit) OVER() AS total_profit,
+  SUM(profit) OVER(PARTITION BY country) AS country_profit
+FROM sales
+  ORDER BY country, year, product, profit;
+SELECT
+  year, country, product, profit,
+  ROW_NUMBER() OVER(PARTITION BY country) AS row_num1,
+  ROW_NUMBER() OVER(PARTITION BY country ORDER BY year, product) AS row_num2
+FROM sales;
 SELECT
     e.id,
     SUM(e.bin_volume) AS bin_volume,
@@ -218,6 +232,21 @@ SELECT
 FROM table2
     WINDOW w AS (PARTITION BY id, bin_volume ORDER BY id ROWS UNBOUNDED PRECEDING),
            w2 AS (PARTITION BY id, bin_volume ORDER BY id DESC ROWS 10 PRECEDING);
+#begin
+-- https://dev.mysql.com/doc/refman/8.0/en/lateral-derived-tables.html
+SELECT
+  salesperson.name,
+  max_sale.amount,
+  max_sale.customer_name
+FROM
+  salesperson,
+  LATERAL
+  (SELECT amount, customer_name
+    FROM all_sales
+    WHERE all_sales.salesperson_id = salesperson.id
+    ORDER BY amount DESC LIMIT 1)
+  AS max_sale;
+#end
 -- Index hints: https://dev.mysql.com/doc/refman/5.7/en/index-hints.html
 SELECT * FROM table1 USE INDEX (col1_index,col2_index) WHERE col1=1 AND col2=2 AND col3=3;
 SELECT * FROM table1 FORCE INDEX (col1_index,col2_index) WHERE col1=1 AND col2=2 AND col3=3;
@@ -252,3 +281,6 @@ FROM
     (SELECT @sum := 0) AS init
 ORDER BY
     some_order_column;
+
+--- statement is supported as the field name
+SELECT REPLACE(statement, ' ','') as statement from your_table;
