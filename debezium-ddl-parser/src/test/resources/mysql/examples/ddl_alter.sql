@@ -1,7 +1,8 @@
 #begin
 -- Alter Table
-alter table ship_class add column ship_spec varchar(150) first, add somecol int after start_build;
+alter table ship_class add column ship_spec varchar(150) first, add somecol int after start_build, algorithm=instant;
 alter table t3 add column (c2 decimal(10, 2) comment 'comment`' null, c3 enum('abc', 'cba', 'aaa')), add index t3_i1 using btree (c2) comment 'some index';
+alter table t3 add column (c4 decimal(10, 2) comment 'comment`' null), add index t3_i2 using btree (c4) comment 'some index';
 alter table t3 add column (c2 decimal(10, 2), c3 int);
 ALTER TABLE `deals` ADD INDEX `idx_custom_field_30c4f4a7c529ccf0825b2fac732bebfd843ed764` ((cast(json_unquote(json_extract(`custom_fields`,_utf8mb4'$."30c4f4a7c529ccf0825b2fac732bebfd843ed764".value')) as DOUBLE)));
 ALTER TABLE `deals` ADD INDEX `idx_custom_field_30c4f4a7c529ccf0825b2fac732bebfd843ed764` ((cast(json_unquote(json_extract(`custom_fields`,_utf8mb4'$."30c4f4a7c529ccf0825b2fac732bebfd843ed764".value')) as FLOAT)));
@@ -30,7 +31,7 @@ alter table with_check add check (c1 in (1, 2, 3, 4));
 alter table with_partition add partition (partition p201901 values less than (737425) engine = InnoDB);
 alter table with_partition add partition (partition p1 values less than (837425) engine = InnoDB, partition p2 values less than (MAXVALUE) engine = InnoDB);
 alter table t1 stats_auto_recalc=default stats_sample_pages=50;
-alter table t1 stats_auto_recalc=default, stats_sample_pages=50;
+alter table t1 stats_auto_recalc=default, stats_sample_pages=50.0;
 alter table t1 stats_auto_recalc=default, stats_sample_pages=default;
 alter table t1 modify column c1 enum('abc','cba','aaa') character set 'utf8' collate 'utf8_unicode_ci' not null default 'abc';
 alter table table1 add primary key (id);
@@ -43,6 +44,10 @@ alter table table1 add column yes varchar(255)  default '' null;
 alter table add_test add column col1 int not null;
 alter table `some_table` add (primary key `id` (`id`),`k_id` int unsigned not null,`another_field` smallint not null,index `k_id` (`k_id`));
 alter table `some_table` add column (unique key `another_field` (`another_field`));
+alter table add_test add column optional bool default 0 null;
+alter table add_test add column empty varchar(255);
+alter table add_test add column geometry int;
+alter table add_test drop foreign key fk;
 alter table default.task add column xxxx varchar(200) comment 'cdc test';
 ALTER TABLE `hcore`.comments COLLATE='utf8mb4_general_ci', CONVERT TO CHARSET UTF8MB4;
 ALTER TABLE T1 ADD FOREIGN KEY ( I )  REFERENCES TT ( I ) ON DELETE SET DEFAULT;
@@ -103,7 +108,32 @@ alter algorithm = merge view my_view2(col1, col2) as select * from t2 with check
 alter definer = 'ivan'@'%' view my_view3 as select count(*) from t3;
 alter definer = current_user sql security invoker view my_view4(c1, 1c, _, c1_2)
 	as select * from  (t1 as tt1, t2 as tt2) inner join t1 on t1.col1 = tt1.col1;
+#end
+#begin
 -- Alter user
+alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
+    require none password expire default account unlock password history default;
+alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
+    require none password expire default account unlock password history 90;
+alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
+    require none password expire default account unlock password reuse interval default;
+alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
+    require none password expire default account unlock password reuse interval 360 DAY;
+alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
+    require none password expire default account unlock password require current;
+alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
+    require none password expire default account unlock password require current optional;
+alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
+    require none password expire default account unlock password require current default;
+alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
+    require none password expire default account unlock failed_login_attempts 5;
+alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
+    require none password expire default account unlock password_lock_time 2;
+alter user 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
+    require none password expire default account unlock password_lock_time unbounded;
+alter user 'user'@'%' identified by 'newpassword' retain current password;
+alter user if exists 'user'@'%' identified with 'mysql_native_password' as '*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19'
+    require none password expire default account unlock password history default;
 ALTER USER 'mattias.hultman' DEFAULT ROLE `prod-spain-mysql-read-only`@`%`;
 rename user user1@100.200.1.1 to user2@100.200.1.2;
 rename user user1@100.200.1.1 to user2@2001:0db8:85a3:0000:0000:8a2e:0370:7334;

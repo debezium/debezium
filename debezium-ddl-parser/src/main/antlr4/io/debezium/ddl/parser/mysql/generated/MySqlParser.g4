@@ -41,9 +41,9 @@ root
     ;
 
 sqlStatements
-    : (sqlStatement (MINUS MINUS)? SEMI? | emptyStatement)* (
+    : (sqlStatement (MINUS MINUS)? SEMI? | emptyStatement_)* (
         sqlStatement ((MINUS MINUS)? SEMI)?
-        | emptyStatement
+        | emptyStatement_
     )
     ;
 
@@ -57,7 +57,7 @@ sqlStatement
     | utilityStatement
     ;
 
-emptyStatement
+emptyStatement_
     : SEMI
     ;
 
@@ -239,7 +239,7 @@ createLogfileGroup
     ;
 
 createProcedure
-    : CREATE ownerStatement? PROCEDURE fullId '(' procedureParameter? (',' procedureParameter)* ')' routineOption* routineBody
+    : CREATE ownerStatement? PROCEDURE ifNotExists? fullId '(' procedureParameter? (',' procedureParameter)* ')' routineOption* routineBody
     ;
 
 createFunction
@@ -315,7 +315,7 @@ cteColumnName
     ;
 
 createView
-    : CREATE (ALGORITHM '=' algType = (UNDEFINED | MERGE | TEMPTABLE))? ownerStatement? (
+    : CREATE orReplace? (ALGORITHM '=' algType = (UNDEFINED | MERGE | TEMPTABLE))? ownerStatement? (
         SQL SECURITY secContext = (DEFINER | INVOKER)
     )? VIEW fullId ('(' uidList ')')? AS (
         '(' withClause? selectStatement ')'
@@ -441,28 +441,27 @@ columnDefinition
     ;
 
 columnConstraint
-    : nullNotnull                                                                # nullColumnConstraint
-    | DEFAULT defaultValue                                                       # defaultColumnConstraint
-    | VISIBLE                                                                    # visibilityColumnConstraint
-    | INVISIBLE                                                                  # invisibilityColumnConstraint
-    | (AUTO_INCREMENT | ON UPDATE currentTimestamp)                              # autoIncrementColumnConstraint
-    | PRIMARY? KEY                                                               # primaryKeyColumnConstraint
-    | CLUSTERING KEY                                                             # clusteringKeyColumnConstraint // Tokudb-specific only
-    | UNIQUE KEY?                                                                # uniqueKeyColumnConstraint
-    | COMMENT STRING_LITERAL                                                     # commentColumnConstraint
-    | COLUMN_FORMAT colformat = (FIXED | DYNAMIC | DEFAULT)                      # formatColumnConstraint
-    | STORAGE storageval = (DISK | MEMORY | DEFAULT)                             # storageColumnConstraint
-    | referenceDefinition                                                        # referenceColumnConstraint
-    | COLLATE collationName                                                      # collateColumnConstraint
-    | (GENERATED ALWAYS)? AS '(' expression ')' (VIRTUAL | STORED | PERSISTENT)? # generatedColumnConstraint
-    | SERIAL DEFAULT VALUE                                                       # serialDefaultColumnConstraint
-    | (CONSTRAINT name = uid?)? CHECK '(' expression ')'                         # checkColumnConstraint
+    : nullNotnull                                                   # nullColumnConstraint
+    | DEFAULT defaultValue                                          # defaultColumnConstraint
+    | VISIBLE                                                       # visibilityColumnConstraint
+    | INVISIBLE                                                     # invisibilityColumnConstraint
+    | (AUTO_INCREMENT | ON UPDATE currentTimestamp)                 # autoIncrementColumnConstraint
+    | PRIMARY? KEY                                                  # primaryKeyColumnConstraint
+    | CLUSTERING KEY                                                # clusteringKeyColumnConstraint // Tokudb-specific only
+    | UNIQUE KEY?                                                   # uniqueKeyColumnConstraint
+    | COMMENT STRING_LITERAL                                        # commentColumnConstraint
+    | COLUMN_FORMAT colformat = (FIXED | DYNAMIC | DEFAULT)         # formatColumnConstraint
+    | STORAGE storageval = (DISK | MEMORY | DEFAULT)                # storageColumnConstraint
+    | referenceDefinition                                           # referenceColumnConstraint
+    | COLLATE collationName                                         # collateColumnConstraint
+    | (GENERATED ALWAYS)? AS '(' expression ')' (VIRTUAL | STORED)? # generatedColumnConstraint
+    | SERIAL DEFAULT VALUE                                          # serialDefaultColumnConstraint
+    | (CONSTRAINT name = uid?)? CHECK '(' expression ')'            # checkColumnConstraint
     ;
 
 tableConstraint
     : (CONSTRAINT name = uid?)? PRIMARY KEY index = uid? indexType? indexColumnNames indexOption*                         # primaryKeyTableConstraint
-    | (CONSTRAINT name = uid?)? UNIQUE indexFormat = (INDEX | KEY)? index = uid? indexType? indexColumnNames indexOption* #
-        uniqueKeyTableConstraint
+    | (CONSTRAINT name = uid?)? UNIQUE indexFormat = (INDEX | KEY)? index = uid? indexType? indexColumnNames indexOption* # uniqueKeyTableConstraint
     | (CONSTRAINT name = uid?)? FOREIGN KEY index = uid? indexColumnNames referenceDefinition                             # foreignKeyTableConstraint
     | (CONSTRAINT name = uid?)? CHECK '(' expression ')'                                                                  # checkTableConstraint
     | CLUSTERING KEY index = uid? indexColumnNames                                                                        # clusteringKeyTableConstraint
@@ -524,9 +523,9 @@ tableOption
         | REDUNDANT
         | COMPACT
         | ID
-    )                                                              # tableOptionRowFormat
-    | START TRANSACTION                                            # tableOptionStartTransaction
-    | SECONDARY_ENGINE '='? (ID | STRING_LITERAL)                  # tableOptionSecondaryEngine
+    )                                                             # tableOptionRowFormat
+    | START TRANSACTION                                           # tableOptionStartTransaction
+    | SECONDARY_ENGINE '='? (ID | STRING_LITERAL)                 # tableOptionSecondaryEngine
     // HeatWave-specific only
     | SECONDARY_ENGINE_ATTRIBUTE '='? STRING_LITERAL              # tableOptionSecondaryEngineAttribute
     | STATS_AUTO_RECALC '='? extBoolValue = (DEFAULT | '0' | '1') # tableOptionRecalculation
@@ -948,7 +947,7 @@ handlerCloseStatement
     ;
 
 singleUpdateStatement
-    : UPDATE priority = LOW_PRIORITY? IGNORE? tableName (AS? uid)? SET updatedElement (
+    : UPDATE priority = LOW_PRIORITY? IGNORE? tableSources (AS? uid)? SET updatedElement (
         ',' updatedElement
     )* (WHERE expression)? orderByClause? limitClause?
     ;
@@ -1647,9 +1646,9 @@ privilege
     | PROXY
     | REFERENCES
     | RELOAD
-    | REPLICATION (CLIENT | SLAVE | MASTER) ADMIN?
+    | REPLICATION (CLIENT | SLAVE)
     | SELECT
-    | SHOW (VIEW | DATABASES | SCHEMAS)
+    | SHOW (VIEW | DATABASES)
     | SHUTDOWN
     | SUPER
     | TRIGGER
@@ -1673,7 +1672,6 @@ privilege
     | FLUSH_TABLES
     | FLUSH_USER_RESOURCES
     | GROUP_REPLICATION_ADMIN
-    | GROUP_REPLICATION_STREAM
     | INNODB_REDO_LOG_ARCHIVE
     | INNODB_REDO_LOG_ENABLE
     | NDB_STORED_USER
@@ -1684,7 +1682,6 @@ privilege
     | RESOURCE_GROUP_ADMIN
     | RESOURCE_GROUP_USER
     | ROLE_ADMIN
-    | SENSITIVE_VARIABLES_OBSERVER
     | SERVICE_CONNECTION_ADMIN
     | SESSION_VARIABLES_ADMIN
     | SET_USER_ID
@@ -1697,7 +1694,6 @@ privilege
     | TP_CONNECTION_ADMIN
     | VERSION_TOKEN_ADMIN
     | XA_RECOVER_ADMIN
-
     // MySQL on Amazon RDS
     | LOAD FROM S3
     | SELECT INTO S3
@@ -2357,6 +2353,10 @@ ifNotExists
     : IF NOT EXISTS
     ;
 
+orReplace
+    : OR REPLACE
+    ;
+
 //    Functions
 
 functionCall
@@ -2731,11 +2731,11 @@ keywordsCanBeId
     | AT
     | AUDIT_ADMIN
     | AUDIT_ABORT_EXEMPT
-    | AUTHENTICATION_POLICY_ADMIN
     | AUTHORS
     | AUTOCOMMIT
     | AUTOEXTEND_SIZE
     | AUTO_INCREMENT
+    | AUTHENTICATION_POLICY_ADMIN
     | AVG
     | AVG_ROW_LENGTH
     | ATTRIBUTE
@@ -2866,7 +2866,6 @@ keywordsCanBeId
     | GROUP_CONCAT
     | GROUP_REPLICATION
     | GROUP_REPLICATION_ADMIN
-    | GROUP_REPLICATION_STREAM
     | HANDLER
     | HASH
     | HELP
@@ -3053,7 +3052,6 @@ keywordsCanBeId
     | SCHEMA_NAME
     | SECURITY
     | SECONDARY_ENGINE_ATTRIBUTE
-    | SENSITIVE_VARIABLES_OBSERVER
     | SERIAL
     | SERVER
     | SESSION
@@ -3104,7 +3102,6 @@ keywordsCanBeId
     | SWITCHES
     | SYSTEM_VARIABLES_ADMIN
     | SYSTEM_USER
-    | SYSTEM
     | TABLE_NAME
     | TABLESPACE
     | TABLE_ENCRYPTION_ADMIN
@@ -3474,9 +3471,9 @@ functionNameBase
     | UUID
     | UUID_SHORT
     | VALIDATE_PASSWORD_STRENGTH
-    | VERSION
     | VECTOR_DIM
     | VECTOR_TO_STRING
+    | VERSION
     | VISIBLE
     | WAIT_UNTIL_SQL_THREAD_AFTER_GTIDS
     | WEEK

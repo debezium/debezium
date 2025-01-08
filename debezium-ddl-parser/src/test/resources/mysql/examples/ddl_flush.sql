@@ -1,4 +1,6 @@
 #begin
+flush no_write_to_binlog hosts;
+flush local hosts;
 flush hosts, status;
 #end
 #begin
@@ -15,9 +17,8 @@ flush table;
 flush local table Foo;
 flush TABLE Foo, Bar;
 flush table Foo, Bar for export;
+flush table Foo, Bar with read lock;
+#end
 
 -- Azure Database for MySQL Single Server instance. This type of database server is being decommissioned on Sept 16 2024 and is succeeded by their "Flexible Server" offering.
 FLUSH FIREWALL_RULES;
-
-
-
