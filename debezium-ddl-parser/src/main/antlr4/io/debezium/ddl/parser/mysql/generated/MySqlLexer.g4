@@ -31,6 +31,10 @@ THE SOFTWARE.
 
 lexer grammar MySqlLexer;
 
+options {
+    caseInsensitive = true;
+}
+
 channels {
     MYSQLCOMMENT,
     ERRORCHANNEL
@@ -117,7 +121,6 @@ GENERATED                     : 'GENERATED';
 GET                           : 'GET';
 GRANT                         : 'GRANT';
 GROUP                         : 'GROUP';
-GROUP_REPLICATION_STREAM      : 'GROUP_REPLICATION_STREAM';
 HAVING                        : 'HAVING';
 HIGH_PRIORITY                 : 'HIGH_PRIORITY';
 HISTOGRAM                     : 'HISTOGRAM';
@@ -616,7 +619,6 @@ PARTITIONING                : 'PARTITIONING';
 PARTITIONS                  : 'PARTITIONS';
 PASSWORD                    : 'PASSWORD';
 PASSWORD_LOCK_TIME          : 'PASSWORD_LOCK_TIME';
-PERSISTENT                  : 'PERSISTENT';
 PHASE                       : 'PHASE';
 PLUGIN                      : 'PLUGIN';
 PLUGIN_DIR                  : 'PLUGIN_DIR';
@@ -775,8 +777,8 @@ FIREWALL_RULES: 'FIREWALL_RULES';
 
 ADMIN                       : 'ADMIN';
 APPLICATION_PASSWORD_ADMIN  : 'APPLICATION_PASSWORD_ADMIN';
-AUDIT_ADMIN                 : 'AUDIT_ADMIN';
 AUDIT_ABORT_EXEMPT          : 'AUDIT_ABORT_EXEMPT';
+AUDIT_ADMIN                 : 'AUDIT_ADMIN';
 AUTHENTICATION_POLICY_ADMIN : 'AUTHENTICATION_POLICY_ADMIN';
 BACKUP_ADMIN                : 'BACKUP_ADMIN';
 BINLOG_ADMIN                : 'BINLOG_ADMIN';
@@ -1094,7 +1096,6 @@ RTRIM                             : 'RTRIM';
 SEC_TO_TIME                       : 'SEC_TO_TIME';
 SECONDARY_ENGINE                  : 'SECONDARY_ENGINE';
 SECONDARY_ENGINE_ATTRIBUTE        : 'SECONDARY_ENGINE_ATTRIBUTE';
-SENSITIVE_VARIABLES_OBSERVER      : 'SENSITIVE_VARIABLES_OBSERVER';
 SESSION_USER                      : 'SESSION_USER';
 SHA                               : 'SHA';
 SHA1                              : 'SHA1';
@@ -1277,7 +1278,8 @@ STRING_LITERAL                : DQUOTA_STRING | SQUOTA_STRING | BQUOTA_STRING;
 DECIMAL_LITERAL               : DEC_DIGIT+;
 HEXADECIMAL_LITERAL           : 'X' '\'' (HEX_DIGIT HEX_DIGIT)+ '\'' | '0X' HEX_DIGIT+;
 
-REAL_LITERAL: (DEC_DIGIT+)? '.' DEC_DIGIT*
+REAL_LITERAL:
+    (DEC_DIGIT+)? '.' DEC_DIGIT*
     | DEC_DIGIT+ '.' EXPONENT_NUM_PART
     | (DEC_DIGIT+)? '.' (DEC_DIGIT+ EXPONENT_NUM_PART)
     | DEC_DIGIT+ EXPONENT_NUM_PART
