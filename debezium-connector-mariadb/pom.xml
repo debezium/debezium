@@ -145,7 +145,7 @@
         <!--
         Specify the properties for the various Docker containers.
         -->
-        <mariadb.server.image.source>mariadb</mariadb.server.image.source>
+        <mariadb.server.image.source>mirror.gcr.io/library/mariadb</mariadb.server.image.source>
         <version.mariadb.server>11.4.3</version.mariadb.server>
         <mariadb.user>mysqluser</mariadb.user>
         <mariadb.password>mysqlpw</mariadb.password>
