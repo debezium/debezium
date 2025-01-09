@@ -28,6 +28,6 @@ public class ApicurioRegistryContainer extends GenericContainer<ApicurioRegistry
     public static String getApicurioVersion() {
         String apicurioVersionTestProperty = System.getProperty(TEST_PROPERTY_PREFIX + "apicurio.version");
         return apicurioVersionTestProperty != null ? apicurioVersionTestProperty
-                : ContainerImageVersions.getStableVersion("apicurio/apicurio-registry-mem");
+                : ContainerImageVersions.getStableVersion("quay.io/apicurio/apicurio-registry-mem");
     }
 }
