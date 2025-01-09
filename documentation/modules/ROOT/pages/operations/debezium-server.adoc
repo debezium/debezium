@@ -269,6 +269,7 @@ There are also other options available
 * `io.debezium.relational.history.MemorySchemaHistory` volatile store for test environments
 * `io.debezium.storage.redis.history.RedisSchemaHistory` for Redis deployments
 * `io.debezium.storage.rocketmq.history.RocketMqSchemaHistory` for RocketMQ deployments
+* `io.debezium.storage.azure.blob.history.AzureBlobSchemaHistory` for Azure Blob Storage deployments
 
 |[[debezium-source-database-history-file-filename]]<<debezium-source-database-history-file-filename, `debezium.source.schema.history.internal.file.filename`>>
 |
@@ -367,6 +368,21 @@ data during recovery.
 | `60000`
 |Timeout for sending messages to RocketMQ.
 
+|[[schema-history-internal-azure-storage-account-connectionstring]]<<schema-history-internal-azure-storage-account-connectionstring,`debezium.source.schema.history.internal.azure.storage.account.connectionstring`>>
+|
+|Azure Blob Storage account connection string.
+
+|[[schema-history-internal-azure-storage-account-name]]<<schema-history-internal-azure-storage-account-name,`debezium.source.schema.history.internal.azure.storage.account.name`>>
+|
+|Azure Blob Storage account name. This should be set if and only if `debezium.source.schema.history.internal.azure.storage.account.connectionstring` is empty, which will then use Azure Active Directory authentication.
+
+|[[schema-history-internal-azure-storage-account-container-name]]<<schema-history-internal-azure-storage-account-container-name,`debezium.source.schema.history.internal.azure.storage.account.container.name`>>
+|
+|Azure Blob Storage account container name.
+
+|[[schema-history-internal-azure-storage-blob-name]]<<schema-history-internal-azure-storage-blob-name,`debezium.source.schema.history.internal.azure.storage.blob.name`>>
+|
+|Azure Blob Storage blob name that persists schema history data.
 
 |===
 
