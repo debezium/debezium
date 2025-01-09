@@ -12,8 +12,9 @@ import org.testcontainers.utility.DockerImageName;
 
 public class SchemaRegistryContainer extends GenericContainer<SchemaRegistryContainer> {
 
-    private static final String SCHEMA_REGISTRY_DOCKER_IMAGE_NAME = "confluentinc/cp-schema-registry:6.0.2";
-    private static final DockerImageName SCHEMA_REGISTRY_DOCKER_IMAGE = DockerImageName.parse(SCHEMA_REGISTRY_DOCKER_IMAGE_NAME);
+    private static final String SCHEMA_REGISTRY_DOCKER_IMAGE_NAME = "quay.io/debezium/confluentinc-cp-schema-registry:6.0.2";
+    private static final DockerImageName SCHEMA_REGISTRY_DOCKER_IMAGE = DockerImageName.parse(SCHEMA_REGISTRY_DOCKER_IMAGE_NAME)
+            .asCompatibleSubstituteFor("confluentinc/cp-schema-registry");
     private static final Integer SCHEMA_REGISTRY_EXPOSED_PORT = 8081;
 
     SchemaRegistryContainer() {
