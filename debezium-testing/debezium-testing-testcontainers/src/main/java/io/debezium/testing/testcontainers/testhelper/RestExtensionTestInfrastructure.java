@@ -88,7 +88,7 @@ public class RestExtensionTestInfrastructure {
             .name("rs0")
             .memberCount(1)
             .network(NETWORK)
-            .imageName(DockerImageName.parse("mongo:5.0"))
+            .imageName(DockerImageName.parse("mirror.gcr.io/library/mongo:5.0"))
             .startupTimeout(Duration.ofSeconds(CI_CONTAINER_STARTUP_TIME))
             .build();
 
