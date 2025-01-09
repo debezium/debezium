@@ -10,11 +10,12 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.utility.DockerImageName;
 
 public class DebeziumKafkaContainer {
-    private static final String defaultImage = "confluentinc/cp-kafka:7.2.10";
+    private static final String defaultImage = "quay.io/debezium/confluentinc-cp-kafka:7.2.10";
 
     public static KafkaContainer defaultKRaftContainer(Network network) {
         try (
-                KafkaContainer kafka = new KafkaContainer(DockerImageName.parse(defaultImage))
+                KafkaContainer kafka = new KafkaContainer(DockerImageName.parse(defaultImage)
+                        .asCompatibleSubstituteFor("confluentinc/cp-kafka"))
                         .withNetwork(network)
                         .withKraft()) {
             return kafka;

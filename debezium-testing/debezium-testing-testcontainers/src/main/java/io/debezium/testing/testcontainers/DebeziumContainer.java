@@ -84,7 +84,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     private static String lazilyRetrieveAndCacheLatestStable() {
         if (debeziumLatestStable == null) {
-            debeziumLatestStable = ContainerImageVersions.getStableVersion("quay.io/debezium/connect");
+            debeziumLatestStable = ContainerImageVersions.getStableVersion(DEBEZIUM_CONTAINER);
         }
         return debeziumLatestStable;
     }
