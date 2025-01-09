@@ -191,6 +191,7 @@
         <mysql.ssl.port>3306</mysql.ssl.port>
         <mysql.replica.port>3306</mysql.replica.port> <!-- by default use primary as 'replica' -->
         <mysql.init.timeout>60000</mysql.init.timeout> <!-- 60 seconds -->
+	<apicurio.image>quay.io/apicurio/apicurio-registry-mem</apicurio.image>
         <apicurio.port>8080</apicurio.port>
         <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
         <mysql.database.protocol>jdbc:mysql</mysql.database.protocol>
@@ -500,7 +501,7 @@
                             </external>
                         </image>
                         <image>
-                            <name>apicurio/apicurio-registry-mem:${version.apicurio}</name>
+                            <name>${apicurio.image}:${version.apicurio}</name>
                             <run>
                                 <namingStrategy>none</namingStrategy>
                                 <ports>
@@ -935,7 +936,7 @@
                 </plugins>
             </build>
             <properties>
-                <docker.filter>${docker.dbs},apicurio/apicurio-registry-mem:${version.apicurio}</docker.filter>
+                <docker.filter>${docker.dbs},${apicurio.image}:${version.apicurio}</docker.filter>
             </properties>
         </profile>
 
