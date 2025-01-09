@@ -212,7 +212,7 @@
 
         <!-- This should be kept in sync with the infinispan dependencies used -->
         <oracle.infinispan.host>${docker.host.address}</oracle.infinispan.host>
-        <oracle.infinispan.image>infinispan/server:${version.infinispan.server}</oracle.infinispan.image>
+        <oracle.infinispan.image>quay.io/infinispan/server:${version.infinispan}</oracle.infinispan.image>
         <oracle.infinispan.port>11222</oracle.infinispan.port>
         <oracle.infinispan.user>admin</oracle.infinispan.user>
         <oracle.infinispan.password>admin</oracle.infinispan.password>
@@ -784,7 +784,7 @@
                             <images>
                                 <!-- A container for the data server replica set -->
                                 <image>
-                                    <name>apicurio/apicurio-registry-mem:${version.apicurio}</name>
+                                    <name>quay.io/apicurio/apicurio-registry-mem:${version.apicurio}</name>
                                     <run>
                                         <namingStrategy>none</namingStrategy>
                                         <ports>
