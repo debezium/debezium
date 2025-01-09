@@ -194,6 +194,7 @@
 	<apicurio.image>quay.io/apicurio/apicurio-registry-mem</apicurio.image>
         <apicurio.port>8080</apicurio.port>
         <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
+	<mysql.server.image.source>container-registry.oracle.com/mysql/community-server</mysql.server.image.source>
         <mysql.database.protocol>jdbc:mysql</mysql.database.protocol>
         <mysql.database.jdbc.driver>com.mysql.cj.jdbc.Driver</mysql.database.jdbc.driver>
         <mysql.replica.fileset.path>${project.basedir}/src/test/docker/init-replica</mysql.replica.fileset.path>
