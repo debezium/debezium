@@ -26,7 +26,7 @@ public class PostgresSinkDatabaseContextProvider extends AbstractSinkDatabaseCon
 
     // We explicitly use debezium/postgres which has the POSTGIS extension available.
     // The standard postgres image does not ship with POSTGIS available by default.
-    private static final DockerImageName IMAGE_NAME = DockerImageName.parse("debezium/postgres")
+    private static final DockerImageName IMAGE_NAME = DockerImageName.parse("quay.io/debezium/postgres")
             .asCompatibleSubstituteFor("postgres");
 
     @SuppressWarnings("resource")
