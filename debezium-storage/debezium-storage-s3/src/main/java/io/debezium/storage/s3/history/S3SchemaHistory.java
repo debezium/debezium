@@ -62,6 +62,7 @@ public class S3SchemaHistory extends AbstractFileBasedSchemaHistory {
     public static final String BUCKET_CONFIG = CONFIGURATION_FIELD_PREFIX_STRING + "s3.bucket.name";
     public static final String OBJECT_NAME_CONFIG = CONFIGURATION_FIELD_PREFIX_STRING + "s3.object.name";
     public static final String ENDPOINT_CONFIG = CONFIGURATION_FIELD_PREFIX_STRING + "s3.endpoint";
+    public static final String FORCE_PATH_STYLE_CONFIG = CONFIGURATION_FIELD_PREFIX_STRING + "s3.forcePathStyle";
     public static final String OBJECT_CONTENT_TYPE = "text/plain";
 
     public static final Field ACCESS_KEY_ID = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + ACCESS_KEY_ID_CONFIG)
@@ -101,12 +102,19 @@ public class S3SchemaHistory extends AbstractFileBasedSchemaHistory {
             .withType(Type.STRING)
             .withImportance(Importance.LOW);
 
-    public static final Field.Set ALL_FIELDS = Field.setOf(ACCESS_KEY_ID, SECRET_ACCESS_KEY, REGION, BUCKET, OBJECT_NAME, ENDPOINT);
+    public static final Field FORCE_PATH_STYLE = Field.create(FORCE_PATH_STYLE_CONFIG)
+            .withDisplayName("S3 force path style URL")
+            .withType(Type.BOOLEAN)
+            .withImportance(Importance.LOW)
+            .withDefault(false);
+
+    public static final Field.Set ALL_FIELDS = Field.setOf(ACCESS_KEY_ID, SECRET_ACCESS_KEY, REGION, BUCKET, OBJECT_NAME, ENDPOINT, FORCE_PATH_STYLE);
 
     private String bucket;
     private String objectName;
     private Region region;
     private URI endpoint = null;
+    private boolean forcePathStyle;
     private AwsCredentialsProvider credentialsProvider = null;
 
     private volatile S3Client client = null;
@@ -142,6 +150,8 @@ public class S3SchemaHistory extends AbstractFileBasedSchemaHistory {
             AwsCredentials credentials = AwsBasicCredentials.create(config.getString(ACCESS_KEY_ID), config.getString(SECRET_ACCESS_KEY));
             credentialsProvider = StaticCredentialsProvider.create(credentials);
         }
+
+        forcePathStyle = config.getBoolean(FORCE_PATH_STYLE);
     }
 
     @Override
@@ -150,6 +160,9 @@ public class S3SchemaHistory extends AbstractFileBasedSchemaHistory {
             S3ClientBuilder clientBuilder = S3Client.builder().credentialsProvider(credentialsProvider).region(region);
             if (endpoint != null) {
                 clientBuilder.endpointOverride(endpoint);
+            }
+            if (forcePathStyle) {
+                clientBuilder.forcePathStyle(true);
             }
 
             client = clientBuilder.build();
