@@ -45,7 +45,6 @@
             <groupId>com.dylibso.chicory</groupId>
             <artifactId>host-module-annotations-experimental</artifactId>
             <scope>provided</scope>
-            <version>${version.chicory}</version>
         </dependency>
 
         <!-- Testing -->
@@ -96,11 +95,11 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
+                    <annotationProcessorPathsUseDepMgmt>true</annotationProcessorPathsUseDepMgmt>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>com.dylibso.chicory</groupId>
                             <artifactId>host-module-processor-experimental</artifactId>
-                            <version>${version.chicory}</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
