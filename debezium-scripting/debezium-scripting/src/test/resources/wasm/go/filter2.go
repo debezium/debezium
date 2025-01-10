@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/andreaTP/debezium-smt-go-pdk"
+	"github.com/debezium/debezium-smt-go-pdk"
 )
 
 //export process
