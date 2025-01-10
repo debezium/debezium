@@ -189,7 +189,7 @@ public class ChicoryEngine {
     }
 
     @WasmExport
-    public int getUInt32(int proxyObjectRef) {
+    public int getInt(int proxyObjectRef) {
         var proxyObject = objects.get(proxyObjectRef);
         if (proxyObject.getClass().isAssignableFrom(Integer.class)) {
             return (Integer) proxyObject;

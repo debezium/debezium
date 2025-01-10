@@ -6,8 +6,8 @@ import (
 
 //export process
 func process(proxyPtr uint32) uint32 {
-	var valueId = debezium.GetUInt32(debezium.Get(proxyPtr, "value.after.id"))
-	var valueLsn = debezium.GetUInt32(debezium.Get(proxyPtr, "value.source.lsn"))
+	var valueId = debezium.GetInt(debezium.Get(proxyPtr, "value.after.id"))
+	var valueLsn = debezium.GetInt(debezium.Get(proxyPtr, "value.source.lsn"))
 	var valueVersion = debezium.GetString(debezium.Get(proxyPtr, "value.source.version"))
 	var topicName = debezium.GetString(debezium.Get(proxyPtr, "topic"))
 
