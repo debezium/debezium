@@ -38,6 +38,8 @@
         <!-- Scripting -->
         <version.groovy>4.0.17</version.groovy>
         <version.graalvm.js>23.0.2</version.graalvm.js>
+        <!-- Wasm -->
+        <version.chicory>1.0.0</version.chicory>
 
         <!-- Storages -->
 
@@ -326,6 +328,21 @@
             <dependency>
                 <groupId>com.dylibso.chicory</groupId>
                 <artifactId>wasm</artifactId>
+                <version>${version.chicory}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dylibso.chicory</groupId>
+                <artifactId>aot-experimental</artifactId>
+                <version>${version.chicory}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dylibso.chicory</groupId>
+                <artifactId>host-module-annotations-experimental</artifactId>
+                <version>${version.chicory}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.dylibso.chicory</groupId>
+                <artifactId>host-module-processor-experimental</artifactId>
                 <version>${version.chicory}</version>
             </dependency>
 
