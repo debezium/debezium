@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/andreaTP/debezium-smt-go-pdk"
+	"github.com/debezium/debezium-smt-go-pdk"
 )
 
 type value_after struct {

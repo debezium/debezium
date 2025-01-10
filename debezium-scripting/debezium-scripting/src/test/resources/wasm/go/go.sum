@@ -1,2 +1,2 @@
-github.com/andreaTP/debezium-smt-go-pdk v0.0.0-20250110121449-c93dcb0c1ea0 h1:Mn4JRRSxyk8sFkpEBE1qm7jlZ1z5d/7FPV1JQo2NBPM=
-github.com/andreaTP/debezium-smt-go-pdk v0.0.0-20250110121449-c93dcb0c1ea0/go.mod h1:BvlDTKHbG3esdS3wgFFM9EajvII4h1cXLtkI5oLCK1I=
+github.com/debezium/debezium-smt-go-pdk v0.0.0-20250110130940-c5aaaaa0ce9b h1:TtQzYUFGfUTPX4uUzUQNfmztqj4W4hhBkmApIOawenM=
+github.com/debezium/debezium-smt-go-pdk v0.0.0-20250110130940-c5aaaaa0ce9b/go.mod h1:L9j5ez2jXZW2pQYSE4eLdb+A6GbsAhaiqn4Y26IfbsM=
