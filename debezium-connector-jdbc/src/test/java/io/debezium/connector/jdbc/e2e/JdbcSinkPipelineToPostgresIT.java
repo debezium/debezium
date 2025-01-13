@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.debezium.connector.jdbc.junit.jupiter.PostgresSinkDatabaseContextProvider;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
+import io.debezium.connector.jdbc.junit.jupiter.WithPostgresExtension;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.ForSource;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.WithTemporalPrecisionMode;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.Source;
@@ -216,4 +217,19 @@ public class JdbcSinkPipelineToPostgresIT extends AbstractJdbcSinkPipelineIT {
                 },
                 ResultSet::getString);
     }
+
+    @TestTemplate
+    @ForSource(value = SourceType.POSTGRES, reason = "The SPARSEVEC data type only applies to PostgreSQL")
+    @WithPostgresExtension("vector")
+    public void testSparseVectorDataType(Source source, Sink sink) throws Exception {
+        assertDataTypeNonKeyOnly(source,
+                sink,
+                "sparsevec(25)",
+                List.of("'{1:0.1,3:0.2,5:0.3}/25'"),
+                List.of("{1:0.1,3:0.2,5:0.3}/25"),
+                (config) -> config.with("include.unknown.datatypes", true),
+                (record) -> assertColumn(sink, record, "data", "SPARSEVEC"),
+                ResultSet::getString);
+    }
+
 }

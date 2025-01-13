@@ -476,7 +476,19 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
             return type;
         }
 
-        throw new ConnectException(String.format("Failed to resolve column type for schema: %s (%s)", schema.type(), schema.name()));
+        switch (schema.name()) {
+            case "io.debezium.data.SparseVector" ->
+                throw new ConnectException(
+                        String.format(
+                                "Dialect does not support schema type %s. Please use the VectorToJsonConverter transform in " +
+                                        "your connector configuration to ingest data of this type.",
+                                schema.name()));
+            default -> throw new ConnectException(
+                    String.format(
+                            "Failed to resolve column type for schema: %s (%s)",
+                            schema.type(),
+                            schema.name()));
+        }
     }
 
     @Override

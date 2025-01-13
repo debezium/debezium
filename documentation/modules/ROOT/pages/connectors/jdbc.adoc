@@ -352,6 +352,7 @@ The actual final column type varies with for each database type.
 . xref:jdbc-kafka-connect-logical-mappings[]
 . xref:jdbc-debezium-logical-mappings[]
 . xref:jdbc-debezium-logical-mappings-dialect-specific[]
+. xref:jdbc-debezium-vector-logical-mappings[]
 
 [[jdbc-kafka-connect-primitive-mappings]]
 .Mappings between Kafka Connect Primitives and Column Data Types
@@ -497,6 +498,20 @@ If the database does not support time or timestamps with time zones, the mapping
 |n/a
 |`xml`
 |`xml`
+
+|===
+
+[[jdbc-debezium-vector-logical-mappings]]
+.Mapings between Debezium Vector Types and Column Data Types
+|===
+|Logical Type |Db2 |MySQL |PostgreSQL |Oracle |SQL Server
+
+|io.debezium.data.SparseVector
+|Unsupported
+|Unsupported
+|`sparsevec`
+|Unsupported
+|Unsupported
 
 |===
 
