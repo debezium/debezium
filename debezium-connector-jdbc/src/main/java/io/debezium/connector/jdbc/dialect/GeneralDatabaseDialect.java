@@ -477,7 +477,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         }
 
         switch (schema.name()) {
-            case "io.debezium.data.SparseVector" ->
+            case "io.debezium.data.SparseVector", "io.debezium.data.FloatVector" ->
                 throw new ConnectException(
                         String.format(
                                 "Dialect does not support schema type %s. Please use the VectorToJsonConverter transform in " +
