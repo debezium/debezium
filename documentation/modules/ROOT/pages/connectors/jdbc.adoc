@@ -506,6 +506,13 @@ If the database does not support time or timestamps with time zones, the mapping
 |===
 |Logical Type |Db2 |MySQL |PostgreSQL |Oracle |SQL Server
 
+|io.debezium.data.FloatVector
+|Unsupported
+|Unsupported
+|`halfvec`
+|Unsupported
+|Unsupported
+
 |io.debezium.data.SparseVector
 |Unsupported
 |Unsupported

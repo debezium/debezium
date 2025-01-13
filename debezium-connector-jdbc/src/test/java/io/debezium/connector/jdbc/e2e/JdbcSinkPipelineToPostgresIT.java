@@ -232,4 +232,18 @@ public class JdbcSinkPipelineToPostgresIT extends AbstractJdbcSinkPipelineIT {
                 ResultSet::getString);
     }
 
+    @TestTemplate
+    @ForSource(value = SourceType.POSTGRES, reason = "The HALFVEC data type only applies to PostgreSQL")
+    @WithPostgresExtension("vector")
+    public void testHalfVectorDataType(Source source, Sink sink) throws Exception {
+        assertDataTypeNonKeyOnly(source,
+                sink,
+                "halfvec(3)",
+                List.of("'[101,102,103]'"),
+                List.of("[101,102,103]"),
+                (config) -> config.with("include.unknown.datatypes", true),
+                (record) -> assertColumn(sink, record, "data", "HALFVEC"),
+                ResultSet::getString);
+    }
+
 }

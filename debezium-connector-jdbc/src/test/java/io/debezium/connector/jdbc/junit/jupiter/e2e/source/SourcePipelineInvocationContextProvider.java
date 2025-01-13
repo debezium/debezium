@@ -341,7 +341,7 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
 
     @SuppressWarnings("resource")
     private KafkaContainer getKafkaContainer() {
-        return DebeziumKafkaContainer.defaultKafkaContainer(network).withNetworkAliases("kafka");
+        return DebeziumKafkaContainer.defaultKRaftContainer(network).withNetworkAliases("kafka");
     }
 
     @SuppressWarnings("resource")
