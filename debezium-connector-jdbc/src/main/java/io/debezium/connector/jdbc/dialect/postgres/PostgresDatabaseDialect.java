@@ -195,6 +195,7 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
 
         registerType(SparseVectorType.INSTANCE);
         registerType(FloatVectorType.INSTANCE);
+        registerType(DoubleVectorType.INSTANCE);
     }
 
     @Override
