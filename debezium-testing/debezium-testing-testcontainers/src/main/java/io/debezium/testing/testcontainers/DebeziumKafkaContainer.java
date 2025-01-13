@@ -27,7 +27,8 @@ public class DebeziumKafkaContainer {
 
     public static KafkaContainer defaultKafkaContainer(Network network) {
         try (
-                KafkaContainer kafka = new KafkaContainer(DockerImageName.parse(defaultImage))
+                KafkaContainer kafka = new KafkaContainer(DockerImageName.parse(defaultImage)
+                        .asCompatibleSubstituteFor("confluentinc/cp-kafka"))
                         .withNetwork(network)) {
             return kafka;
         }
