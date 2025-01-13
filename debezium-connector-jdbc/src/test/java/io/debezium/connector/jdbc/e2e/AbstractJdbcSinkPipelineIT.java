@@ -2637,6 +2637,27 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         }
     }
 
+    @TestTemplate
+    @ForSource(value = SourceType.POSTGRES, reason = "The VECTOR data type only applies to PostgreSQL")
+    @SkipWhenSink(value = SinkType.POSTGRES, reason = "This mapping is not designed to fail for these sinks")
+    @WithPostgresExtension("vector")
+    public void testVectorDataTypeFails(Source source, Sink sink) throws Exception {
+        // This mapping fails unless the user supplies the VectorToJsonConverter transform
+        try {
+            assertDataTypeNonKeyOnly(source,
+                    sink,
+                    "vector(3)",
+                    List.of("'[1,2,3]'"),
+                    List.of("[1,2,3]"),
+                    (config) -> config.with("include.unknown.datatypes", true),
+                    (record) -> fail("Expected test failure"),
+                    ResultSet::getString);
+        }
+        catch (Exception e) {
+            assertThatThrowable(e).hasMessageContainingText("Dialect does not support schema type");
+        }
+    }
+
     private static List<ZonedDateTime> getExpectedZonedDateTimes(Sink sink) {
 
         List<ZonedDateTime> expectedValues = List.of();
