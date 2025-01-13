@@ -5,7 +5,9 @@
  */
 package io.debezium.connector.jdbc.e2e;
 
+import static io.debezium.connector.jdbc.util.assertions.ThrowableMessageAssert.assertThatThrowable;
 import static org.fest.assertions.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -2590,6 +2592,28 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     assertColumn(sink, record, "data1", getTimestampWithTimezoneType(source, false, 6));
                 },
                 (rs, index) -> rs.getTimestamp(index).toInstant().atZone(ZoneOffset.UTC));
+    }
+
+    @TestTemplate
+    @ForSource(value = SourceType.POSTGRES, reason = "The SPARSEVEC data type only applies to PostgreSQL")
+    @SkipWhenSink(value = SinkType.POSTGRES, reason = "This mapping is not designed to fail for PostgreSQL sinks")
+    @WithPostgresExtension("vector")
+    public void testSparseVectorDataTypeFails(Source source, Sink sink) throws Exception {
+        // This mapping fails unless the user supplies the VectorToJsonConverter transform
+        try {
+            assertDataTypeNonKeyOnly(source,
+                    sink,
+                    "sparsevec(25)",
+                    List.of("'{1:0.1,3:0.2,5:0.3}/25'"),
+                    List.of("{1:0.1,3:0.2,5:0.3}/25"),
+                    (config) -> config.with("include.unknown.datatypes", true),
+                    (record) -> fail("Expected test failure"),
+                    ResultSet::getString);
+            fail("Expected test failure");
+        }
+        catch (Exception e) {
+            assertThatThrowable(e).hasMessageContainingText("Dialect does not support schema type");
+        }
     }
 
     private static List<ZonedDateTime> getExpectedZonedDateTimes(Sink sink) {

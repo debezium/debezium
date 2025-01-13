@@ -125,10 +125,16 @@ public abstract class AbstractJdbcSinkIT {
 
                 LOGGER.info("KafkaConsumer thread is now polling for records.");
                 while (stopLatch.getCount() == 1) {
-                    ConsumerRecords<byte[], byte[]> records = consumer.poll(Duration.ofSeconds(1));
-                    LOGGER.info("Consumer poll returned {} records", records.count());
-                    if (!records.isEmpty()) {
-                        records.forEach(r -> consumerRecords.add(getSinkRecordFromConsumerRecord(r)));
+                    try {
+                        ConsumerRecords<byte[], byte[]> records = consumer.poll(Duration.ofSeconds(1));
+                        LOGGER.info("Consumer poll returned {} records", records.count());
+                        if (!records.isEmpty()) {
+                            records.forEach(r -> consumerRecords.add(getSinkRecordFromConsumerRecord(r)));
+                        }
+                    }
+                    catch (Exception e) {
+                        LOGGER.error("Connector failed", e);
+                        break;
                     }
                 }
 
@@ -155,11 +161,11 @@ public abstract class AbstractJdbcSinkIT {
         }
     }
 
-    protected SinkRecord consumeSinkRecord() {
+    protected SinkRecord consumeSinkRecord() throws Exception {
         return consumeSinkRecords(1).get(0);
     }
 
-    protected List<SinkRecord> consumeSinkRecords(int numRecords) {
+    protected List<SinkRecord> consumeSinkRecords(int numRecords) throws Exception {
         final List<SinkRecord> records = new ArrayList<>();
 
         Awaitility.await("Expected to receive " + numRecords + " from source connector")
@@ -175,6 +181,10 @@ public abstract class AbstractJdbcSinkIT {
                 });
 
         sinkTask.put(records);
+        if (sinkTask.getLastProcessingException() != null) {
+            throw new RuntimeException("JDBC sink throw an exception processing the data", sinkTask.getLastProcessingException());
+        }
+
         return records;
     }
 
