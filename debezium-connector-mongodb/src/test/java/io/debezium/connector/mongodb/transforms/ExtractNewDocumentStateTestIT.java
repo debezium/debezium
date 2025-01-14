@@ -14,11 +14,13 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Field;
@@ -1955,6 +1957,40 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         List<Struct> f2 = transformedInsertValue.getStruct("f1").getArray("f2");
         assertThat(f2.size()).isEqualTo(2);
         assertThat(f2.get(0).getArray("f3").size()).isEqualTo(0);
+    }
+
+    @Test
+    @FixFor("DBZ-8572")
+    public void shouldSupportNestedArraysNewCase() throws InterruptedException {
+        waitForStreamingRunning();
+
+        try (var client = connect()) {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .insertOne(Document.parse("{\"f1\": [ { \"f2\": \"v1\", \"f3\": [] } ] }"));
+        }
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+
+        SourceRecord insertRecord = records.recordsForTopic(this.topicName()).get(0);
+        SourceRecord transformedInsert = transformation.apply(insertRecord);
+
+        // assert schema
+        var type = transformedInsert.valueSchema().field("f1").schema().valueSchema().field("f3").schema().type();
+        assertThat(type).isEqualTo(Schema.Type.ARRAY);
+
+        // assert value
+        int nestedArraySize = Optional.of(transformedInsert.value())
+                .map(Struct.class::cast)
+                .map(v -> v.getArray("f1"))
+                .orElseThrow()
+                .stream()
+                .findFirst()
+                .map(Struct.class::cast)
+                .map(v -> v.getArray("f3"))
+                .map(Collection::size)
+                .orElseThrow();
+        assertThat(nestedArraySize).isEqualTo(0);
     }
 
     @Test
