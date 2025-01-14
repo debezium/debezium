@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.relational.ChangeTable;
 
 /**
@@ -78,7 +79,7 @@ public abstract class ChangeTableResultSet<C extends ChangeTable, T extends Comp
         }
         else {
             if (maxRowsPerResultSet > 0 && rowsReadPerResultSet > maxRowsPerResultSet) {
-                throw new RuntimeException("Number of rows read from the result set is greater than the configured max rows per a result set");
+                throw new DebeziumException("Number of rows read from the result set is greater than the configured max rows per a result set");
             }
 
             if (maxRowsPerResultSet > 0 && rowsReadPerResultSet == maxRowsPerResultSet) {
