@@ -235,7 +235,7 @@ public abstract class AbstractJdbcSinkIT {
             case MYSQL:
                 sourceConfig.with("connector.class", "io.debezium.connector.mysql.MySqlConnector");
                 sourceConfig.with("database.password", source.getPassword());
-                sourceConfig.with("database.user", "root");
+                sourceConfig.with("database.user", source.getUsername());
                 sourceConfig.with("database.server.id", 12345);
                 sourceConfig.with("database.include.list", "test");
                 sourceConfig.with("table.include.list", "test." + tableName);
