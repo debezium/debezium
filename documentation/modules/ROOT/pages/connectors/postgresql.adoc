@@ -1574,6 +1574,9 @@ Other than PostgreSQL's `TIMESTAMPTZ` and `TIMETZ` data types, which contain tim
 * xref:postgresql-time-precision-mode-adaptive[`time.precision.mode=adaptive`]
 * xref:postgresql-time-precision-mode-adaptive-time-microseconds[`time.precision.mode=adaptive_time_microseconds`]
 * xref:postgresql-time-precision-mode-connect[`time.precision.mode=connect`]
+* xref:postgresql-time-precision-mode-isostring[`time.precision.mode=isostring`]
+* xref:postgresql-time-precision-mode-microseconds[`time.precision.mode=microseconds`]
+* xref:postgresql-time-precision-mode-nanoseconds[`time.precision.mode=nanoseconds`]
 
 [[postgresql-time-precision-mode-adaptive]]
 .`time.precision.mode=adaptive`
@@ -1685,6 +1688,112 @@ Represents the number of milliseconds since midnight, and does not include timez
 Represents the number of milliseconds since the epoch, and does not include timezone information. PostgreSQL allows `P` to be in the range 0-6 to store up to microsecond precision, though this mode results in a loss of precision when `P` is greater than 3.
 
 |===
+
+[[postgresql-time-precision-mode-isostring]]
+.`time.precision.mode=isostring`
+Set the `time.precision.mode` property to `isostring` to configure the connector to map temporal values as ISO-8601 formatted string at UTC time zone.
+When you apply this setting, the connector uses the semantic types `io.debezium.time.IsoTimestamp`, `io.debezium.time.IsoTime`, and `io.debezium.time.IsoDate` to map timestamp, datetime, date, and time values.
+
+.Mappings when `time.precision.mode` is `isostring`
+[cols="25%a,20%a,55%a",options="header"]
+|===
+|PostgreSQL data type
+|Literal type (schema type)
+|Semantic type (schema name) and Notes
+
+|`DATE`
+|`STRING`
+|`io.debezium.time.IsoDate` +
+ +
+Represents date values in UTC format, according to the ISO 8601 standard, for example, `2017-09-15Z`.
+
+|`TIME([P])`
+|`STRING`
+|`io.debezium.time.IsoTime` +
+ +
+Represents time values in UTC format, according to the ISO 8601 standard, for example, `04:05:11.789Z`.
+
+|`TIMESTAMP([P])`
+|`STRING`
+|`io.debezium.time.IsoTimestamp` +
+ +
+Represents timestamp values in UTC format, according to the ISO 8601 standard, for example, `2019-07-09T02:28:57.123456Z`.
+
+|===
+
+[[postgresql-time-precision-mode-microseconds]]
+.`time.precision.mode=microseconds`
+Set the `time.precision.mode` property to `microseconds` to configure the connector to specify temporal values with microsecond precision.
+When you apply this setting, the connector uses the semantic types `io.debezium.time.MicroTime` and `io.debezium.time.MicroTimestamp` to map timestamp, datetime, and time values.
+
+
+.Mappings when `time.precision.mode` is `microseconds`
+[cols="25%a,20%a,55%a",options="header"]
+|===
+|PostgreSQL data type
+|Literal type (schema type)
+|Semantic type (schema name) and Notes
+
+|`DATE`
+|`INT32`
+|`io.debezium.time.Date` +
+ +
+Represents the number of days since the epoch.
+
+|`TIME([P])`
+|`INT64`
+|`io.debezium.time.MicroTime` +
+ +
+Represents the time value in microseconds and does not include timezone information. 
+In PostgreSQL, the precision `p` parameter specifies the number of decimal places in the seconds part of a time value.
+The precision can range from 0 (no fractional seconds) to 6 (microsecond precision).
+
+|`TIMESTAMP([P])`
+|`INT64`
+|`io.debezium.time.MicroTimestamp` +
+ +
+Represents the number of microseconds past the epoch, and does not include timezone information. 
+In PostgreSQL, the precision `p` parameter specifies the number of decimal places in the seconds part of a time value.
+The precision can range from 0 (no fractional seconds) to 6 (microsecond precision).
+
+|===
+
+[[postgresql-time-precision-mode-nanoseconds]]
+.`time.precision.mode=nanoseconds`
+Set the `time.precision.mode` property to `nanoseconds` to configure the connector to specify temporal values with nanosecond precision.
+When you apply this setting, the connector uses the semantic types `io.debezium.time.NanoTime` and `io.debezium.time.NanoTimestamp`, which store values with nanosecond precision, to map timestamp, datetime, and time values.
+
+.Mappings when `time.precision.mode` is `nanoseconds`
+[cols="25%a,20%a,55%a",options="header"]
+|===
+|PostgreSQL data type
+|Literal type (schema type)
+|Semantic type (schema name) and Notes
+
+|`DATE`
+|`INT32`
+|`io.debezium.time.Date` +
+ +
+Represents the number of days since the epoch.
+
+|`TIME([P])`
+|`INT64`
+|`io.debezium.time.NanoTime` +
+ +
+Represents the time value in nanoseconds and does not include timezone information. 
+In PostgreSQL, the precision `p` parameter specifies the number of decimal places in the seconds part of a time value.
+The precision can range from 0 (no fractional seconds) to 6 (microsecond precision).
+
+|`TIMESTAMP([P])`
+|`INT64`
+|`io.debezium.time.NanoTimestamp` +
+ +
+Represents the number of nanoseconds past the epoch, and does not include timezone information.
+In PostgreSQL, the precision `p` parameter specifies the number of decimal places in the seconds part of a time value.
+The precision can range from 0 (no fractional seconds) to 6 (microsecond precision).
+
+|===
+
 
 [id="postgresql-timestamp-type"]
 === TIMESTAMP type
