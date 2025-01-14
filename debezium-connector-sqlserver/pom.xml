@@ -25,7 +25,7 @@
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
         <!-- Apicurion container properties -->
-	<apicurio.image>quay.io/apicurio/apicurio-registry-mem</apicurio.image>
+        <apicurio.image>quay.io/apicurio/apicurio-registry-mem</apicurio.image>
         <apicurio.port>8080</apicurio.port>
         <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
     </properties>
