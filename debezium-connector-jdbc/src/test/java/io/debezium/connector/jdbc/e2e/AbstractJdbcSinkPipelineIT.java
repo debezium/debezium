@@ -37,6 +37,8 @@ import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.TestTemplate;
@@ -63,6 +65,7 @@ import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourceConnectorOption
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourcePipelineInvocationContextProvider;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourceType;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.ValueBinder;
+import io.debezium.data.vector.FloatVector;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
@@ -2618,7 +2621,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
     @TestTemplate
     @ForSource(value = SourceType.POSTGRES, reason = "The HALFVEC data type only applies to PostgreSQL")
-    @SkipWhenSink(value = SinkType.POSTGRES, reason = "This mapping is not designed to fail for these sinks")
+    @SkipWhenSink(value = { SinkType.POSTGRES, SinkType.MYSQL }, reason = "This mapping is not designed to fail for these sinks")
     @WithPostgresExtension("vector")
     public void testHalfVectorDataTypeFails(Source source, Sink sink) throws Exception {
         // This mapping fails unless the user supplies the VectorToJsonConverter transform
@@ -2638,8 +2641,8 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     }
 
     @TestTemplate
-    @ForSource(value = SourceType.POSTGRES, reason = "The VECTOR data type only applies to PostgreSQL")
-    @SkipWhenSink(value = SinkType.POSTGRES, reason = "This mapping is not designed to fail for these sinks")
+    @ForSource(value = { SourceType.POSTGRES, SourceType.MYSQL }, reason = "The VECTOR data type only applies to PostgreSQL and MySQL")
+    @SkipWhenSink(value = { SinkType.POSTGRES, SinkType.MYSQL }, reason = "This mapping is not designed to fail for these sinks")
     @WithPostgresExtension("vector")
     public void testVectorDataTypeFails(Source source, Sink sink) throws Exception {
         // This mapping fails unless the user supplies the VectorToJsonConverter transform
@@ -2647,7 +2650,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
             assertDataTypeNonKeyOnly(source,
                     sink,
                     "vector(3)",
-                    List.of("'[1,2,3]'"),
+                    List.of(source.getType().is(SourceType.POSTGRES) ? "'[1,2,3]'" : "string_to_vector('[1,2,3]')"),
                     List.of("[1,2,3]"),
                     (config) -> config.with("include.unknown.datatypes", true),
                     (record) -> fail("Expected test failure"),
@@ -2656,6 +2659,48 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         catch (Exception e) {
             assertThatThrowable(e).hasMessageContainingText("Dialect does not support schema type");
         }
+    }
+
+    @TestTemplate
+    @ForSource(value = { SourceType.POSTGRES, SourceType.MYSQL }, reason = "The VECTOR data type only applies to PostgreSQL and MySQL")
+    @SkipWhenSink(value = { SinkType.DB2, SinkType.ORACLE, SinkType.SQLSERVER }, reason = "The VECTOR data type can only be consumed natively by PostgreSQL and MySQL")
+    @WithPostgresExtension("vector")
+    public void testVectorDataType(Source source, Sink sink) throws Exception {
+        List<String> values = List.of("'[1,2,3]'");
+        if (source.getType().is(SourceType.MYSQL)) {
+            values = values.stream().map(v -> String.format("string_to_vector(%s)", v)).toList();
+        }
+
+        List<String> expectedValues = List.of("[1,2,3]");
+        if (sink.getType().is(SinkType.MYSQL)) {
+            expectedValues = List.of("[1.0,2.0,3.0]");
+        }
+
+        assertDataTypeNonKeyOnly(source,
+                sink,
+                "vector(3)",
+                values,
+                expectedValues,
+                (record) -> {
+                    if (sink.getType().is(SinkType.POSTGRES) && source.getType().is(SourceType.MYSQL)) {
+                        // MySQL maps VECTOR as a FloatVector, which means that on PostgreSQL these will
+                        // be created as HALFVEC column types.
+                        assertColumn(sink, record, "data", "HALFVEC");
+                    }
+                    else {
+                        assertColumn(sink, record, "data", "VECTOR");
+                    }
+                },
+                (rs, index) -> {
+                    if (sink.getType().is(SinkType.MYSQL)) {
+                        Field field = new Field("data", 0, Schema.OPTIONAL_BYTES_SCHEMA);
+                        final byte[] data = rs.getBytes(index);
+                        return FloatVector.fromLogical(field, data).stream()
+                                .map(String::valueOf)
+                                .collect(Collectors.joining(",", "[", "]"));
+                    }
+                    return rs.getString(index);
+                });
     }
 
     private static List<ZonedDateTime> getExpectedZonedDateTimes(Sink sink) {

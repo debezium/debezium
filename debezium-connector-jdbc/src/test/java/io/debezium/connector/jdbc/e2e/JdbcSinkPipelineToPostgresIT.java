@@ -246,18 +246,4 @@ public class JdbcSinkPipelineToPostgresIT extends AbstractJdbcSinkPipelineIT {
                 ResultSet::getString);
     }
 
-    @TestTemplate
-    @ForSource(value = SourceType.POSTGRES, reason = "The VECTOR data type only applies to PostgreSQL")
-    @WithPostgresExtension("vector")
-    public void testVectorDataType(Source source, Sink sink) throws Exception {
-        assertDataTypeNonKeyOnly(source,
-                sink,
-                "vector(3)",
-                List.of("'[1,2,3]'"),
-                List.of("[1,2,3]"),
-                (config) -> config.with("include.unknown.datatypes", true),
-                (record) -> assertColumn(sink, record, "data", "VECTOR"),
-                ResultSet::getString);
-    }
-
 }
