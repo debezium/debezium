@@ -33,6 +33,7 @@ import org.junit.jupiter.api.extension.TestTemplateInvocationContext;
 import org.junit.jupiter.api.extension.TestTemplateInvocationContextProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.KafkaContainer;
@@ -41,6 +42,7 @@ import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.OracleContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.lifecycle.Startable;
 import org.testcontainers.lifecycle.Startables;
 import org.testcontainers.utility.DockerImageName;
@@ -73,7 +75,7 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SourcePipelineInvocationContextProvider.class);
 
-    private static final String MYSQL_IMAGE_NAME = "quay.io/debezium/example-mysql";
+    private static final String MYSQL_IMAGE_NAME = "container-registry.oracle.com/mysql/community-server:9.0";
     private static final String MYSQL_USERNAME = "mysqluser";
     private static final String MYSQL_PASSWORD = "debezium";
 
@@ -364,7 +366,13 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
                         .withUsername(MYSQL_USERNAME)
                         .withPassword(MYSQL_PASSWORD)
                         .withNetworkAliases(sourceType.getValue())
-                        .withEnv("TZ", TestHelper.getSourceTimeZone());
+                        .withEnv("TZ", TestHelper.getSourceTimeZone())
+                        .withEnv("MYSQL_ROOT_PASSWORD", "debezium-rocks")
+                        .withClasspathResourceMapping(
+                                "database-init-scripts/mysql-source-init.sql",
+                                "docker-entrypoint-initdb.d/init.sql",
+                                BindMode.READ_ONLY)
+                        .withConfigurationOverride("mysql-conf");
                 if (TestHelper.isConnectionTimeZoneUsed()) {
                     container.withUrlParam("connectionTimeZone", TestHelper.getSourceTimeZone());
                 }
