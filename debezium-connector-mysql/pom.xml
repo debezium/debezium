@@ -198,6 +198,7 @@
         <mysql.database.protocol>jdbc:mysql</mysql.database.protocol>
         <mysql.database.jdbc.driver>com.mysql.cj.jdbc.Driver</mysql.database.jdbc.driver>
         <mysql.replica.fileset.path>${project.basedir}/src/test/docker/init-replica</mysql.replica.fileset.path>
+        <percona.server.image.source>quay.io/debezium</percona.server.image.source>
         <!--
         By default, we should use the docker image maintained by the MySQL team. This property is changed with different profiles.
         However, we run one container with GTIDs and one without.
@@ -476,7 +477,7 @@
                                 </wait>
                             </run>
                             <build>
-                                <from>percona/percona-server:${version.mysql.percona.server}</from>
+                                <from>${percona.server.image.source}/percona-server:${version.mysql.percona.server}</from>
                                 <assembly>
                                     <inline>
                                         <fileSets>
