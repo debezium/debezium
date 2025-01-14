@@ -117,6 +117,9 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
         registerType(PointType.INSTANCE);
         registerType(ZonedTimestampType.INSTANCE);
         registerType(ZonedTimeType.INSTANCE);
+
+        registerType(FloatVectorType.INSTANCE);
+        registerType(DoubleVectorType.INSTANCE);
     }
 
     @Override

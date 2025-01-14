@@ -508,14 +508,14 @@ If the database does not support time or timestamps with time zones, the mapping
 
 |io.debezium.data.DoubleVector
 |Unsupported
-|Unsupported
+|'vector'
 |`vector`
 |Unsupported
 |Unsupported
 
 |io.debezium.data.FloatVector
 |Unsupported
-|Unsupported
+|'vector'
 |`halfvec`
 |Unsupported
 |Unsupported
@@ -528,6 +528,11 @@ If the database does not support time or timestamps with time zones, the mapping
 |Unsupported
 
 |===
+
+[NOTE]
+====
+If there is not a direct mapping between one of the vector logical types and your target relational database's column types, you can use the `VectorToJsonConverter` to convert the vector logical type to JSON so that it can be written to any target relational database.
+====
 
 In addition to the primitive and logical mappings above, if the source of the change events is a {prodname} source connector, the resolution of the column type, along with its length, precision, and scale, can be further influenced by enabling column or data type propagation.
 To enforce propagation, one of the following properties must be set in the source connector  configuration:
