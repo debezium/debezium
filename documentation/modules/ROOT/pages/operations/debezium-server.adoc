@@ -919,6 +919,11 @@ At least `serviceUrl` must be provided.
 The message producer https://pulsar.apache.org/docs/en/client-libraries-java/#client-configuration[configuration properties] are passed to the producer with the prefix removed.
 The `topic` is set by {prodname}.
 
+|[[pulsar-producer-batching]]<<pulsar-producer-batching, `debezium.sink.pulsar.producer.batcherBuilder`>>
+| `DEFAULT`
+|Specifies the batcher builder for the producer. The producer uses the batcher builder to create a batch message container. This setting is applicable only when batching is enabled.
+Valid options are `DEFAULT` or `KEY_BASED`, which is used for https://pulsar.apache.org/docs/next/concepts-messaging/#batching-for-key_shared-subscriptions[KeyShared subscriptions].
+
 |[[pulsar-null-key]]<<pulsar-null-key, `debezium.sink.pulsar.null.key`>>
 |`default`
 |Tables without primary key sends messages with `null` key.
