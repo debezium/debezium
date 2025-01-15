@@ -161,11 +161,11 @@ public abstract class AbstractJdbcSinkIT {
         }
     }
 
-    protected SinkRecord consumeSinkRecord() throws Exception {
+    protected SinkRecord consumeSinkRecord() {
         return consumeSinkRecords(1).get(0);
     }
 
-    protected List<SinkRecord> consumeSinkRecords(int numRecords) throws Exception {
+    protected List<SinkRecord> consumeSinkRecords(int numRecords) {
         final List<SinkRecord> records = new ArrayList<>();
 
         Awaitility.await("Expected to receive " + numRecords + " from source connector")
