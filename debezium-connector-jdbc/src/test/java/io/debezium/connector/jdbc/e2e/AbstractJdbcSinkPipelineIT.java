@@ -2609,7 +2609,6 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     "sparsevec(25)",
                     List.of("'{1:0.1,3:0.2,5:0.3}/25'"),
                     List.of("{1:0.1,3:0.2,5:0.3}/25"),
-                    (config) -> config.with("include.unknown.datatypes", true),
                     (record) -> fail("Expected test failure"),
                     ResultSet::getString);
             fail("Expected test failure");
@@ -2631,7 +2630,6 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     "halfvec(3)",
                     List.of("'[101,102,103]'"),
                     List.of("[101,102,103]"),
-                    (config) -> config.with("include.unknown.datatypes", true),
                     (record) -> fail("Expected test failure"),
                     ResultSet::getString);
         }
@@ -2652,7 +2650,6 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     "vector(3)",
                     List.of(source.getType().is(SourceType.POSTGRES) ? "'[1,2,3]'" : "string_to_vector('[1,2,3]')"),
                     List.of("[1,2,3]"),
-                    (config) -> config.with("include.unknown.datatypes", true),
                     (record) -> fail("Expected test failure"),
                     ResultSet::getString);
         }
