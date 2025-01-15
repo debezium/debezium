@@ -169,7 +169,7 @@ node('Slave') {
             dir(IMAGES_DIR) {
                 sh """
                 ./setup-local-builder.sh
-                docker run --privileged --rm tonistiigi/binfmt --install all
+                docker run --privileged --rm mirror.gcr.io/tonistiigi/binfmt --install all
                 """
             }
             sh ""
