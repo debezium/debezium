@@ -44,7 +44,7 @@ public class FloatVectorType extends AbstractFloatVectorType {
             return List.of(new ValueBindDescriptor(index, null));
         }
 
-        if (!(value instanceof Collection<?>values)) {
+        if (!(value instanceof Collection<?> values)) {
             throw new DebeziumException("Expected value should be a collection");
         }
 
