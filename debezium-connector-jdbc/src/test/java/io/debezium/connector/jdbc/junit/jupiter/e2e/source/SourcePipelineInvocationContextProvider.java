@@ -227,6 +227,12 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
                     // MySQL explicitly prohibits the use of adaptive so we only allow the other two in the matrix.
                     continue;
                 }
+                if (TemporalPrecisionMode.ISOSTRING == temporalPrecisionMode) {
+                    // Tests currently are not designed to support ISOSTRING as it changes the target
+                    // column type expectations for the tests, using text-based column types rather
+                    // than expected temporal types like DATE, TIME, etc.
+                    continue;
+                }
                 result.add(temporalPrecisionMode);
             }
             return result;
