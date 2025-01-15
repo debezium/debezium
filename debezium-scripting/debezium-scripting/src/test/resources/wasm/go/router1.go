@@ -6,8 +6,8 @@ import (
 
 //export process
 func process(proxyPtr uint32) uint32 {
-	// 1
-	return debezium.SetInt(1)
+	// boolean
+	return debezium.SetBool(false)
 }
 
 func main() {}
