@@ -6,12 +6,12 @@
 package io.debezium.transforms;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
+import static org.apache.kafka.connect.transforms.util.Requirements.requireStructOrNull;
 
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -24,8 +24,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.transforms.Transformation;
 
 import io.debezium.Module;
-import io.debezium.config.Configuration;
-import io.debezium.data.Envelope;
+import io.debezium.annotation.Immutable;
 import io.debezium.data.Json;
 import io.debezium.data.SchemaUtil;
 import io.debezium.data.vector.DoubleVector;
@@ -39,7 +38,7 @@ import io.debezium.data.vector.FloatVector;
  * <ul>
  *     <li>io.debezium.data.DoubleVector</li>
  *     <li>io.debezium.data.FloatVector</li>
- *     <io>io.debezium.data.vector.SparseVector (PostgreSQL source only)</io>
+ *     <li>io.debezium.data.vector.SparseVector (PostgreSQL source only)</li>
  * </ul>
  *
  * @author Chris Cranford
@@ -50,10 +49,6 @@ public class VectorToJsonConverter<R extends ConnectRecord<R>> implements Transf
     private static final String FLOAT_VECTOR_NAME = FloatVector.LOGICAL_NAME;
     private static final String SPARSE_VECTOR_NAME = "io.debezium.data.SparseVector";
 
-    private static final List<String> VECTOR_LOGICAL_TYPES = List.of(DOUBLE_VECTOR_NAME, FLOAT_VECTOR_NAME, SPARSE_VECTOR_NAME);
-
-    private SmtManager<R> smtManager;
-
     @Override
     public ConfigDef config() {
         return new ConfigDef();
@@ -61,33 +56,23 @@ public class VectorToJsonConverter<R extends ConnectRecord<R>> implements Transf
 
     @Override
     public void configure(Map<String, ?> configs) {
-        final Configuration config = Configuration.from(configs);
-        smtManager = new SmtManager<>(config);
-        smtManager.validate(config, io.debezium.config.Field.setOf());
     }
 
     @Override
     public R apply(R record) {
-        if (record.value() == null || !smtManager.isValidEnvelope(record)) {
+        if (record.value() == null) {
             return record;
         }
 
-        final Struct value = requireStruct(record.value(), "Record value should be a struct.");
-
-        final Schema valueSchema = value.schema();
-        if (!isConversionRequired(valueSchema)) {
-            return record;
-        }
-
-        final Struct newValue = transformValue(value); // , getUpdatedRecordSchema(valueSchema));
+        final TransformationResult result = transformStruct(requireStruct(record.value(), "Value should be a struct"), record.valueSchema());
 
         return record.newRecord(
                 record.topic(),
                 record.kafkaPartition(),
                 record.keySchema(),
                 record.key(),
-                newValue.schema(),
-                newValue,
+                result.transformedSchema,
+                result.transformedStruct,
                 record.timestamp(),
                 record.headers());
     }
@@ -101,98 +86,90 @@ public class VectorToJsonConverter<R extends ConnectRecord<R>> implements Transf
         return Module.version();
     }
 
-    private boolean isConversionRequired(Schema originalSchema) {
-        final Schema recordSchema = originalSchema.field(Envelope.FieldName.AFTER).schema();
-        return recordSchema.fields().stream().anyMatch(field -> isFieldToConvertToJson(field.schema()));
-    }
-
-    private Schema getUpdatedRecordSchema(Schema originalSchema) {
-        final Schema originalRecordSchema = originalSchema.field(Envelope.FieldName.AFTER).schema();
-        final SchemaBuilder schemaBuilder = SchemaUtil.copySchemaBasics(originalRecordSchema);
-        for (Field field : originalRecordSchema.fields()) {
-            final Schema fieldSchema = field.schema();
-            if (isFieldToConvertToJson(fieldSchema)) {
-                schemaBuilder.field(field.name(), Json.schema());
-            }
-            else {
-                schemaBuilder.field(field.name(), field.schema());
-            }
-        }
-        return schemaBuilder.build();
-    }
-
-    private boolean isFieldToConvertToJson(Schema schema) {
-        return schema.name() != null && VECTOR_LOGICAL_TYPES.contains(schema.name());
-    }
-
-    private Struct transformValue(Struct originalValue) {
-        final Schema originalSchema = originalValue.schema();
-        final Schema recordSchema = getUpdatedRecordSchema(originalSchema);
-
+    private TransformationResult transformStruct(Struct originalStruct, Schema originalSchema) {
         final SchemaBuilder builder = SchemaUtil.copySchemaBasics(originalSchema);
 
-        final Map<String, Object> valueMap = new HashMap<>();
+        final Map<String, Object> fieldValues = new HashMap<>();
         for (Field field : originalSchema.fields()) {
-            Object fieldValue = originalValue.get(field);
-            switch (field.name()) {
-                case Envelope.FieldName.BEFORE, Envelope.FieldName.AFTER -> {
-                    if (fieldValue != null) {
-                        final Struct fieldStruct = requireStruct(fieldValue, "Field should be a struct.");
-                        fieldValue = transformRecord(fieldStruct, recordSchema);
-                    }
-                    builder.field(field.name(), recordSchema);
-                }
-                default -> builder.field(field.name(), field.schema());
+            Schema fieldSchema = field.schema();
+            Object fieldValue = originalStruct != null ? originalStruct.get(field) : null;
+            if (DOUBLE_VECTOR_NAME.equals(fieldSchema.name()) || FLOAT_VECTOR_NAME.equals(fieldSchema.name())) {
+                // Convert DoubleVector and FloatVector logical types to a Json logical type
+                builder.field(field.name(), getJsonSchema(fieldSchema));
+                fieldValues.put(field.name(), vectorToJson((Collection<?>) fieldValue));
             }
-            valueMap.put(field.name(), fieldValue);
+            else if (SPARSE_VECTOR_NAME.equals(fieldSchema.name())) {
+                // Convert SparseVector logical type to a Json logical type
+                final Struct fieldStruct = requireStructOrNull(fieldValue, "SparseVector should be a struct.");
+                builder.field(field.name(), getJsonSchema(fieldSchema));
+                fieldValues.put(field.name(), sparseVectorToJson(fieldStruct));
+            }
+            else if (Schema.Type.STRUCT.equals(fieldSchema.type())) {
+                // Transform nested Struct
+                final Struct fieldStruct = requireStructOrNull(fieldValue, "Should be a struct.");
+                final TransformationResult result = transformStruct(fieldStruct, fieldSchema);
+                builder.field(field.name(), result.transformedSchema);
+                fieldValues.put(field.name(), result.transformedStruct);
+            }
+            else {
+                // Keep original values
+                builder.field(field.name(), fieldSchema);
+                fieldValues.put(field.name(), fieldValue);
+            }
         }
 
-        final Struct newValue = new Struct(builder.build());
-        valueMap.forEach(newValue::put);
+        final Schema transformedSchema = builder.build();
 
-        return newValue;
-    }
-
-    private Struct transformRecord(Struct originalValue, Schema recordSchema) {
-        Objects.requireNonNull(originalValue, "The value should not be null");
-        Objects.requireNonNull(recordSchema, "The record schema should not be null");
-
-        final Struct newRecord = new Struct(recordSchema);
-
-        originalValue.schema().fields()
-                .stream()
-                .collect(Collectors.toMap(
-                        Field::name,
-                        field -> transformRecordFieldValue(field, originalValue.get(field))))
-                .forEach(newRecord::put);
-
-        return newRecord;
-    }
-
-    private Object transformRecordFieldValue(Field field, Object value) {
-        final String schemaName = field.schema().name();
-        if (SPARSE_VECTOR_NAME.equals(schemaName)) {
-            return sparseVectorToJson(requireStruct(value, "SparseVector should be a struct."));
+        final Struct transformedStruct;
+        if (originalStruct != null) {
+            transformedStruct = new Struct(transformedSchema);
+            fieldValues.forEach(transformedStruct::put);
         }
-        else if (FLOAT_VECTOR_NAME.equals(schemaName) || DOUBLE_VECTOR_NAME.equals(schemaName)) {
-            return vectorToJson((Collection<?>) value);
+        else {
+            transformedStruct = null;
         }
-        return value;
+
+        return new TransformationResult(transformedSchema, transformedStruct);
     }
 
-    private String vectorToJson(Collection<?> values) {
+    private static Schema getJsonSchema(Schema fieldSchema) {
+        if (fieldSchema.isOptional()) {
+            return Json.builder().optional().build();
+        }
+        return Json.schema();
+    }
+
+    private static String vectorToJson(Collection<?> values) {
+        if (values == null) {
+            return null;
+        }
         return "{ \"values\": [" + values.stream().map(String::valueOf).collect(Collectors.joining(", ")) + "] }";
     }
 
-    private String sparseVectorToJson(Struct sparseVector) {
+    private static String sparseVectorToJson(Struct sparseVector) {
+        if (sparseVector == null) {
+            return null;
+        }
+
         final Short dimensions = sparseVector.getInt16("dimensions");
-        final Map<Short, Double> vectorMap = sparseVector.getMap("vector");
+        final Map<Short, Double> vectorMap = new TreeMap<>(sparseVector.getMap("vector"));
 
         final String vector = vectorMap.entrySet().stream()
                 .map(e -> "\"" + e.getKey() + "\": " + e.getValue())
                 .collect(Collectors.joining(", "));
 
         return String.format("{ \"dimensions\": %d, \"vector\": { %s } }", dimensions, vector);
+    }
+
+    @Immutable
+    private static class TransformationResult {
+        final Schema transformedSchema;
+        final Struct transformedStruct;
+
+        TransformationResult(Schema transformedSchema, Struct transformedStruct) {
+            this.transformedSchema = transformedSchema;
+            this.transformedStruct = transformedStruct;
+        }
     }
 
 }
