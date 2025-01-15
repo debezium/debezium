@@ -12,7 +12,7 @@ func process(proxyPtr uint32) uint32 {
 	if debezium.IsNull(value) {
 		return debezium.SetString("nulls")
 	} else {
-		var beforeId = debezium.GetInt(debezium.Get(proxyPtr, "value.before.id"))
+		var beforeId = debezium.GetInt8(debezium.Get(proxyPtr, "value.before.id"))
 
 		if beforeId == 1 {
 			return debezium.SetString("ones")
