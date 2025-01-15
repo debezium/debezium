@@ -29,7 +29,7 @@ public class WasmRouterTest {
     private static final String EXPRESSION = "topic.expression";
     private static final String NULL_HANDLING = "null.handling.mode";
 
-    // 1
+    // boolean
     private static final String ROUTER_1 = routerAbsolutePath("router1");
 
     // value == null ? 'nulls' : (value.before.id == 1 ? 'ones' : null)
