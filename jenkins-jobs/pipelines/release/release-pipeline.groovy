@@ -61,7 +61,7 @@ VERSION_MAJOR_MINOR = "${VERSION_PARTS[0]}.${VERSION_PARTS[1]}"
 IMAGE_TAG = VERSION_MAJOR_MINOR
 CANDIDATE_BRANCH = "candidate-$RELEASE_VERSION"
 
-POSTGRES_TAGS = ['9.6', '9.6-alpine', '10', '10-alpine', '11', '11-alpine', '12', '12-alpine', '13', '13-alpine', '14', '14-alpine', '15', '15-alpine', '16', '16-alpine']
+POSTGRES_TAGS = ['12', '12-alpine', '13', '13-alpine', '14', '14-alpine', '15', '15-alpine', '16', '16-alpine']
 CONNECTORS_PER_VERSION = [
     '0.8' : ['mongodb', 'mysql', 'postgres', 'oracle'],
     '0.9' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle'],
@@ -590,7 +590,7 @@ node('release-node') {
                     env.DEBEZIUM_DOCKER_REGISTRY_SECONDARY_NAME='localhost:5500/debezium'
                 }
                 sh """
-                    docker run --privileged --rm tonistiigi/binfmt --install all
+                    docker run --privileged --rm mirror.gcr.io/tonistiigi/binfmt --install all
                     ./setup-local-builder.sh
                     docker compose -f local-registry/docker-compose.yml up -d
                     env SKIP_UI=true ./build-all-multiplatform.sh
