@@ -4,13 +4,13 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>3.0.7.Final</version>
+        <version>3.0.8-SNAPSHOT</version>
         <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
 
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-connector-jdbc</artifactId>
-    <version>3.0.7.Final</version>
+    <version>3.0.8-SNAPSHOT</version>
     <name>Debezium JDBC Sink Connector</name>
     <packaging>jar</packaging>
 
