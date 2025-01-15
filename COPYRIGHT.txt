@@ -29,6 +29,7 @@ Aman Garg
 Anatolii Popov
 Anders Engström
 Andrea Cosentino
+Andrea Peruffo
 Andreas Bergmeier
 Andreas Martens
 Andras Istvan Nagy
@@ -111,6 +112,7 @@ Chris Lee
 Chris Riccomini
 Christian Jacob Mencias
 Christian Posta
+Christian Seki
 Christian Stein
 Christopher Burch
 Christopher Sang
@@ -173,6 +175,7 @@ Eric Slep
 Eric Weaver
 Eric S. Kreiseir
 Erik Malm
+Eric Xiao
 Ethan Zou
 Eugene Abramchuk
 Ewen Cheslack-Postava
@@ -203,6 +206,7 @@ Giovanni De Stefano
 Gong Chang Hua
 Govinda Sakhare
 Grant Cooksey
+Guangnan Shi
 Guillaume Rosauro
 Guillaume Smet
 Gunnar Morling
@@ -223,6 +227,7 @@ Jason Schweier
 Jesse Ehrenzweig
 Jiabao Sun
 Jiri Kulhanek
+Jon Bruno
 Jonas Thelemann
 Jordan Pittier
 Juan Fiallo
