@@ -2,6 +2,34 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.0.7.Final
+January 15th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12440561)
+
+### New features since 3.0.6.Final
+
+None
+
+
+### Breaking changes since 3.0.6.Final
+
+None
+
+
+### Fixes since 3.0.6.Final
+
+* Exception during commit offsets won't trigger retry logic. [DBZ-2386](https://issues.redhat.com/browse/DBZ-2386)
+* Fix invalid gtid error on startup when ordered tx metadata enabled [DBZ-8541](https://issues.redhat.com/browse/DBZ-8541)
+* Dependency conflict in debezium conductor [DBZ-8542](https://issues.redhat.com/browse/DBZ-8542)
+* Debezium operator generate wrong offset and schema history properties [DBZ-8543](https://issues.redhat.com/browse/DBZ-8543)
+* A recent log switch may be seen as consistent during log gathering [DBZ-8546](https://issues.redhat.com/browse/DBZ-8546)
+
+
+### Other changes since 3.0.6.Final
+
+None
+
+
+
 ## 3.0.6.Final
 December 19th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12441350)
 
