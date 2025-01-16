@@ -2031,7 +2031,9 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
         int dateTime7NanoSeconds = 456789000;
         if (source.getOptions().isColumnTypePropagated() && SinkType.SQLSERVER.is(sink.getType())) {
-            dateTime7NanoSeconds = 456789100;
+            if (source.getOptions().getTemporalPrecisionMode() != TemporalPrecisionMode.MICROSECONDS) {
+                dateTime7NanoSeconds = 456789100;
+            }
         }
 
         final boolean connect = TemporalPrecisionMode.CONNECT.equals(source.getOptions().getTemporalPrecisionMode());
