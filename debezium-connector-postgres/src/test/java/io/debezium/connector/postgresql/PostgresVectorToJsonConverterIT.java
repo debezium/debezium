@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.postgresql;
 
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
@@ -22,6 +23,7 @@ import io.debezium.data.Json;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.transforms.VectorToJsonConverter;
 
 /**
@@ -29,6 +31,7 @@ import io.debezium.transforms.VectorToJsonConverter;
  *
  * @author Chris Cranford
  */
+@SkipWhenDatabaseVersion(check = LESS_THAN, major = 15, reason = "PgVector is tested only with PostgreSQL 15+")
 public class PostgresVectorToJsonConverterIT extends AbstractAsyncEngineConnectorTest {
 
     private PostgresConnection connection;
@@ -134,8 +137,8 @@ public class PostgresVectorToJsonConverterIT extends AbstractAsyncEngineConnecto
         assertThat(tableRecords).hasSize(5);
 
         assertRead(tableRecords.get(0), 1, "{ \"dimensions\": 25, \"vector\": { \"1\": 25.0, \"2\": 15.0, \"10\": 100.0 } }");
-        assertInsert(tableRecords.get(1), 2, "{ \"dimensions\": 25, \"vector\": { \"20\": 30.0, \"5\": 20.0, \"2\": 10.0 } }");
-        assertUpdate(tableRecords.get(2), 2, "{ \"dimensions\": 25, \"vector\": { \"20\": 30.0, \"5\": 20.0, \"2\": 10.0 } }",
+        assertInsert(tableRecords.get(1), 2, "{ \"dimensions\": 25, \"vector\": { \"2\": 10.0, \"5\": 20.0, \"20\": 30.0 } }");
+        assertUpdate(tableRecords.get(2), 2, "{ \"dimensions\": 25, \"vector\": { \"2\": 10.0, \"5\": 20.0, \"20\": 30.0 } }",
                 "{ \"dimensions\": 25, \"vector\": { \"1\": 5.0, \"2\": 10.0, \"3\": 25.0 } }");
         assertDelete(tableRecords.get(3), 2, "{ \"dimensions\": 25, \"vector\": { \"1\": 5.0, \"2\": 10.0, \"3\": 25.0 } }");
         assertTombstone(tableRecords.get(4), 2);
@@ -188,7 +191,8 @@ public class PostgresVectorToJsonConverterIT extends AbstractAsyncEngineConnecto
     }
 
     protected void assertFieldIsJsonSchema(Struct struct, String fieldName) {
-        assertThat(struct.schema().field(fieldName).schema()).isEqualTo(Json.schema());
+        assertThat(struct.schema().field(fieldName).schema()).isEqualTo(
+                struct.schema().isOptional() ? Json.builder().optional().build() : Json.schema());
     }
 
     protected void assertFieldIsJson(Struct value, String fieldName, String json) {
