@@ -1959,7 +1959,6 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(f2.get(0).getArray("f3").size()).isEqualTo(0);
     }
 
-
     @Test
     @FixFor("DBZ-8572")
     public void shouldSupportNestedArraysWhenItIsNotSingleField() throws InterruptedException {
