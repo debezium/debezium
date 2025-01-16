@@ -438,7 +438,7 @@ public class MongoDataConverter {
                             .filter(e -> e.getValue().isArray() && e.getValue().asArray().isEmpty())
                             .map(Entry::getKey)
                             .toList();
-                    for(String name : missedEmptyArrayFieldNames) {
+                    for (String name : missedEmptyArrayFieldNames) {
                         documentSchemaBuilder.field(name, SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
                     }
                 }
