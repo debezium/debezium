@@ -102,6 +102,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.history.MemorySchemaHistory;
 import io.debezium.storage.file.history.FileSchemaHistory;
+import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
 import ch.qos.logback.classic.Level;
@@ -5805,6 +5806,86 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "\"debezium_test'\"");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-8577")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Specific to LogMiner")
+    public void shouldRestoreConnectionStateWhenConnectionIsRestartedOnMiningRestartConnectToPdb() throws Exception {
+        TestHelper.dropTable(connection, "dbz8577");
+        try {
+            connection.execute("CREATE TABLE dbz8577 (id number(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz8577");
+
+            Configuration tempConfig = TestHelper.defaultConfig().build();
+
+            final Configuration.Builder builder = TestHelper.defaultConfig();
+            if (!Strings.isNullOrEmpty(tempConfig.getString(OracleConnectorConfig.PDB_NAME))) {
+                // For this use case, both PDB and DBNAME should refer to PDB
+                // This is an unconventional configuration, but permissible.
+                builder.with(OracleConnectorConfig.DATABASE_NAME, tempConfig.getString(OracleConnectorConfig.PDB_NAME));
+            }
+            builder.with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8577")
+                    .with(OracleConnectorConfig.LOG_MINING_RESTART_CONNECTION, "true");
+
+            start(OracleConnector.class, builder.build());
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Wait for CURRENT_SCN to be seen by the connector
+            // Then force a log switch
+            // Then wait for new CURRENT_SCN to be seen by the connector
+            waitForCurrentScnToHaveBeenSeenByConnector();
+            TestHelper.forceLogfileSwitch();
+            waitForCurrentScnToHaveBeenSeenByConnector();
+
+            // Insert a row to act as a marker
+            connection.execute("INSERT INTO dbz8577 (id,data) values (1,'test')");
+
+            final SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ8577")).hasSize(1);
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz8577");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-8577")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Specific to LogMiner")
+    public void shouldRestoreConnectionStateWhenConnectionIsRestartedOnMiningRestart() throws Exception {
+        TestHelper.dropTable(connection, "dbz8577");
+        try {
+            connection.execute("CREATE TABLE dbz8577 (id number(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz8577");
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8577")
+                    .with(OracleConnectorConfig.LOG_MINING_RESTART_CONNECTION, "true")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Wait for CURRENT_SCN to be seen by the connector
+            // Then force a log switch
+            // Then wait for new CURRENT_SCN to be seen by the connector
+            waitForCurrentScnToHaveBeenSeenByConnector();
+            TestHelper.forceLogfileSwitch();
+            waitForCurrentScnToHaveBeenSeenByConnector();
+
+            // Insert a row to act as a marker
+            connection.execute("INSERT INTO dbz8577 (id,data) values (1,'test')");
+
+            final SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ8577")).hasSize(1);
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz8577");
         }
     }
 
