@@ -54,6 +54,7 @@ import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 import io.debezium.util.Stopwatch;
+import io.debezium.util.Strings;
 
 /**
  * A {@link StreamingChangeEventSource} based on Oracle's LogMiner utility.
@@ -277,6 +278,12 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             // Close and reconnect
             LOGGER.debug("Log switch or maximum session threshold detected, restarting Oracle JDBC connection.");
             jdbcConnection.close();
+
+            if (!Strings.isNullOrEmpty(connectorConfig.getPdbName())) {
+                // Guarantee on reconnection that the connection resets to the CDB in case the user
+                // configured the database.dbname or database.url to point to the PDB
+                jdbcConnection.resetSessionToCdb();
+            }
         }
 
         // We explicitly expect auto-commit to be disabled
