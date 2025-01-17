@@ -12,29 +12,37 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.schema.SchemaFactory;
 
 /**
- * A semantic type for a PgVector sparsevec type.
+ * A semantic type to represent a double-precision sparse vector.
+ *
+ * The vector data type commonly consists of a collection of values in which each index of the
+ * underlying vector has a value; however, this can be memory intensive and wasteful when only
+ * a subset of indices is populated. In such cases, a "sparse vector" can be used, defining
+ * a map of key/value pairs for only the indices that are populated.
+ *
+ * An example is PostgreSQL's {@code sparsevec} data type.
  *
  * @author Mincong Huang
  */
-public class SparseVector {
+public class SparseDoubleVector {
 
-    public static final String LOGICAL_NAME = "io.debezium.data.SparseVector";
+    public static final String LOGICAL_NAME = "io.debezium.data.SparseDoubleVector";
     public static final String DIMENSIONS_FIELD = "dimensions";
     public static final String VECTOR_FIELD = "vector";
     public static int SCHEMA_VERSION = 1;
 
     /**
-     * Returns a {@link SchemaBuilder} for a {@code sparsevec} field. You can use the resulting SchemaBuilder
-     * to set additional schema settings such as required/optional, default value, and documentation.
+     * Returns a {@link SchemaBuilder} for a float64 sparse vector field. You can use the resulting
+     * SchemaBuilder to set additional schema settings such as required/optional, default value,
+     * and documentation.
      *
      * @return the schema builder
      */
     public static SchemaBuilder builder() {
-        return SchemaFactory.get().dataTypeSparseVectorSchema();
+        return SchemaFactory.get().dataTypeSparseDoubleVectorSchema();
     }
 
     /**
-     * Returns a {@link SchemaBuilder} for a {@code sparsevec} field, with all other default Schema settings.
+     * Returns a {@link SchemaBuilder} for a float64 sparse vector field, with all other default Schema settings.
      *
      * @return the schema
      * @see #builder()

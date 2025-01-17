@@ -23,7 +23,7 @@ import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.Xml;
 import io.debezium.data.vector.DoubleVector;
 import io.debezium.data.vector.FloatVector;
-import io.debezium.data.vector.SparseVector;
+import io.debezium.data.vector.SparseDoubleVector;
 import io.debezium.heartbeat.HeartbeatImpl;
 import io.debezium.pipeline.notification.Notification;
 import io.debezium.pipeline.txmetadata.TransactionStructMaker;
@@ -350,14 +350,14 @@ public class SchemaFactory {
                 .version(FloatVector.SCHEMA_VERSION);
     }
 
-    public SchemaBuilder dataTypeSparseVectorSchema() {
+    public SchemaBuilder dataTypeSparseDoubleVectorSchema() {
         return SchemaBuilder.struct()
-                .name(SparseVector.LOGICAL_NAME)
-                .name(SparseVector.LOGICAL_NAME)
-                .version(SparseVector.SCHEMA_VERSION)
-                .doc("Sparse vector")
-                .field(SparseVector.DIMENSIONS_FIELD, Schema.INT16_SCHEMA)
-                .field(SparseVector.VECTOR_FIELD, SchemaBuilder.map(Schema.INT16_SCHEMA, Schema.FLOAT64_SCHEMA).build());
+                .name(SparseDoubleVector.LOGICAL_NAME)
+                .name(SparseDoubleVector.LOGICAL_NAME)
+                .version(SparseDoubleVector.SCHEMA_VERSION)
+                .doc("Sparse double vector")
+                .field(SparseDoubleVector.DIMENSIONS_FIELD, Schema.INT16_SCHEMA)
+                .field(SparseDoubleVector.VECTOR_FIELD, SchemaBuilder.map(Schema.INT16_SCHEMA, Schema.FLOAT64_SCHEMA).build());
     }
 
     public Envelope.Builder datatypeEnvelopeSchema() {
