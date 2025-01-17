@@ -5,6 +5,14 @@
  */
 package io.debezium.connector.jdbc.type.debezium;
 
+import java.util.Collection;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.apache.kafka.connect.data.Schema;
+
+import io.debezium.DebeziumException;
+import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.data.vector.DoubleVector;
 
@@ -20,5 +28,16 @@ public abstract class AbstractDoubleVectorType extends AbstractType {
     @Override
     public String[] getRegistrationKeys() {
         return new String[]{ DoubleVector.LOGICAL_NAME };
+    }
+
+    @Override
+    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
+        if (value != null) {
+            if (!(value instanceof Collection<?> values)) {
+                throw new DebeziumException("Expected value should be a collection");
+            }
+            value = values.stream().map(String::valueOf).collect(Collectors.joining(",", "[", "]"));
+        }
+        return super.bind(index, schema, value);
     }
 }

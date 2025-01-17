@@ -193,7 +193,7 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
         registerType(CaseInsensitiveTextType.INSTANCE);
         registerType(OidType.INSTANCE);
 
-        registerType(SparseVectorType.INSTANCE);
+        registerType(SparseDoubleVectorType.INSTANCE);
         registerType(FloatVectorType.INSTANCE);
         registerType(DoubleVectorType.INSTANCE);
     }
