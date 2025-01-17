@@ -71,8 +71,8 @@ public final class Vectors {
         }
 
         final var result = new Struct(schema);
-        result.put(SparseVector.DIMENSIONS_FIELD, dimensions);
-        result.put(SparseVector.VECTOR_FIELD, vector);
+        result.put(SparseDoubleVector.DIMENSIONS_FIELD, dimensions);
+        result.put(SparseDoubleVector.VECTOR_FIELD, vector);
         return result;
     }
 }
