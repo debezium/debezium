@@ -227,7 +227,6 @@ public class JdbcSinkPipelineToPostgresIT extends AbstractJdbcSinkPipelineIT {
                 "sparsevec(25)",
                 List.of("'{1:0.1,3:0.2,5:0.3}/25'"),
                 List.of("{1:0.1,3:0.2,5:0.3}/25"),
-                (config) -> config.with("include.unknown.datatypes", true),
                 (record) -> assertColumn(sink, record, "data", "SPARSEVEC"),
                 ResultSet::getString);
     }
@@ -241,7 +240,6 @@ public class JdbcSinkPipelineToPostgresIT extends AbstractJdbcSinkPipelineIT {
                 "halfvec(3)",
                 List.of("'[101,102,103]'"),
                 List.of("[101,102,103]"),
-                (config) -> config.with("include.unknown.datatypes", true),
                 (record) -> assertColumn(sink, record, "data", "HALFVEC"),
                 ResultSet::getString);
     }

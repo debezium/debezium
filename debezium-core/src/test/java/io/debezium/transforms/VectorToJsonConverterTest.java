@@ -22,6 +22,7 @@ import io.debezium.data.Envelope;
 import io.debezium.data.Json;
 import io.debezium.data.vector.DoubleVector;
 import io.debezium.data.vector.FloatVector;
+import io.debezium.data.vector.SparseDoubleVector;
 import io.debezium.doc.FixFor;
 
 /**
@@ -41,10 +42,10 @@ public class VectorToJsonConverterTest {
             .field("id", Schema.INT8_SCHEMA)
             .field("vec1", DoubleVector.schema())
             .field("vec2", FloatVector.schema())
-            .field("vec3", sparseVectorSchema(false))
+            .field("vec3", sparseDoubleVectorSchema(false))
             .field("vec4", DoubleVector.builder().optional().build())
             .field("vec5", FloatVector.builder().optional().build())
-            .field("vec6", sparseVectorSchema(true))
+            .field("vec6", sparseDoubleVectorSchema(true))
             .build();
 
     private final VectorToJsonConverter<SourceRecord> converter = new VectorToJsonConverter<>();
@@ -59,7 +60,7 @@ public class VectorToJsonConverterTest {
         payload.put("id", (byte) 1);
         payload.put("vec1", DoubleVector.fromLogical(DoubleVector.schema(), "[1,2,3]"));
         payload.put("vec2", FloatVector.fromLogical(FloatVector.schema(), "[10,20,30]"));
-        payload.put("vec3", nmakeSparseVector(sparseVectorSchema(false), 25, Map.of((short) 1, 10.0, (short) 5, 20.0, (short) 10, 30.0)));
+        payload.put("vec3", nmakeSparseVector(sparseDoubleVectorSchema(false), 25, Map.of((short) 1, 10.0, (short) 5, 20.0, (short) 10, 30.0)));
 
         final SourceRecord record = new SourceRecord(
                 new HashMap<>(),
@@ -96,7 +97,7 @@ public class VectorToJsonConverterTest {
         after.put("id", (byte) 1);
         after.put("vec1", DoubleVector.fromLogical(DoubleVector.schema(), "[1,2,3]"));
         after.put("vec2", FloatVector.fromLogical(FloatVector.schema(), "[10,20,30]"));
-        after.put("vec3", nmakeSparseVector(sparseVectorSchema(false), 25, Map.of((short) 1, 10.0, (short) 5, 20.0, (short) 10, 30.0)));
+        after.put("vec3", nmakeSparseVector(sparseDoubleVectorSchema(false), 25, Map.of((short) 1, 10.0, (short) 5, 20.0, (short) 10, 30.0)));
 
         final Struct source = new Struct(SOURCE_SCHEMA);
         source.put("table", "vectors");
@@ -139,21 +140,15 @@ public class VectorToJsonConverterTest {
     }
 
     /**
-     * Creates a SparseVector schema, defined inside the PostgreSQL connector.
+     * Creates a schema for {@link SparseDoubleVector}.
      *
      * @param optional whether the field can be null
      */
-    protected static Schema sparseVectorSchema(boolean optional) {
-        final SchemaBuilder builder = SchemaBuilder.struct()
-                .name("io.debezium.data.SparseVector")
-                .version(1)
-                .doc("Sparse vector")
-                .field("dimensions", Schema.INT16_SCHEMA)
-                .field("vector", SchemaBuilder.map(Schema.INT16_SCHEMA, Schema.FLOAT64_SCHEMA).build());
+    protected static Schema sparseDoubleVectorSchema(boolean optional) {
         if (optional) {
-            builder.optional();
+            return SparseDoubleVector.builder().optional().build();
         }
-        return builder.build();
+        return SparseDoubleVector.schema();
     }
 
     protected static Struct nmakeSparseVector(Schema schema, int dimensions, Map<Short, Double> values) {

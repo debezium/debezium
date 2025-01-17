@@ -29,6 +29,7 @@ import io.debezium.data.Json;
 import io.debezium.data.SchemaUtil;
 import io.debezium.data.vector.DoubleVector;
 import io.debezium.data.vector.FloatVector;
+import io.debezium.data.vector.SparseDoubleVector;
 
 /**
  * A transformation that converts Debezium's logical vector data types to JSON, so that the vector data
@@ -38,7 +39,7 @@ import io.debezium.data.vector.FloatVector;
  * <ul>
  *     <li>io.debezium.data.DoubleVector</li>
  *     <li>io.debezium.data.FloatVector</li>
- *     <li>io.debezium.data.vector.SparseVector (PostgreSQL source only)</li>
+ *     <li>io.debezium.data.SparseDoubleVector</li>
  * </ul>
  *
  * @author Chris Cranford
@@ -47,7 +48,7 @@ public class VectorToJsonConverter<R extends ConnectRecord<R>> implements Transf
 
     private static final String DOUBLE_VECTOR_NAME = DoubleVector.LOGICAL_NAME;
     private static final String FLOAT_VECTOR_NAME = FloatVector.LOGICAL_NAME;
-    private static final String SPARSE_VECTOR_NAME = "io.debezium.data.SparseVector";
+    private static final String SPARSE_DOUBLE_VECTOR_NAME = SparseDoubleVector.LOGICAL_NAME;
 
     @Override
     public ConfigDef config() {
@@ -98,9 +99,9 @@ public class VectorToJsonConverter<R extends ConnectRecord<R>> implements Transf
                 builder.field(field.name(), getJsonSchema(fieldSchema));
                 fieldValues.put(field.name(), vectorToJson((Collection<?>) fieldValue));
             }
-            else if (SPARSE_VECTOR_NAME.equals(fieldSchema.name())) {
+            else if (SPARSE_DOUBLE_VECTOR_NAME.equals(fieldSchema.name())) {
                 // Convert SparseVector logical type to a Json logical type
-                final Struct fieldStruct = requireStructOrNull(fieldValue, "SparseVector should be a struct.");
+                final Struct fieldStruct = requireStructOrNull(fieldValue, "SparseDoubleVector should be a struct.");
                 builder.field(field.name(), getJsonSchema(fieldSchema));
                 fieldValues.put(field.name(), sparseVectorToJson(fieldStruct));
             }
