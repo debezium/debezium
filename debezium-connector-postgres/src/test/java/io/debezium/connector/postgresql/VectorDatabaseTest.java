@@ -11,7 +11,7 @@ import java.util.Map;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
-import io.debezium.connector.postgresql.data.vector.SparseVector;
+import io.debezium.data.vector.SparseVector;
 
 public class VectorDatabaseTest {
 

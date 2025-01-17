@@ -3,13 +3,13 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.postgresql.data.vector;
+package io.debezium.data.vector;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
-import io.debezium.connector.postgresql.PostgresSchemaFactory;
+import io.debezium.schema.SchemaFactory;
 
 /**
  * A semantic type for a PgVector sparsevec type.
@@ -30,7 +30,7 @@ public class SparseVector {
      * @return the schema builder
      */
     public static SchemaBuilder builder() {
-        return PostgresSchemaFactory.get().datatypeSparseVectorSchema();
+        return SchemaFactory.get().dataTypeSparseVectorSchema();
     }
 
     /**
