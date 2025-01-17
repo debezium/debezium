@@ -195,7 +195,7 @@ node('Slave') {
                         sh """
                             git checkout v$tag
                             git fetch origin $IMAGES_BRANCH:$IMAGES_BRANCH
-                            git checkout $IMAGES_BRANCH build-all-multiplatform.sh build-debezium-multiplatform.sh build-mongo-multiplatform.sh build-postgres-multiplatform.sh
+                            git checkout $IMAGES_BRANCH build-all-multiplatform.sh build-debezium-multiplatform.sh build-postgres-multiplatform.sh
                             echo '========== Building UI only for linux/amd64, arm64 not working =========='
                             DEBEZIUM_UI_PLATFORM=linux/amd64 RELEASE_TAG=$tag ./build-debezium-multiplatform.sh $stream $MULTIPLATFORM_PLATFORMS
                             git reset --hard
