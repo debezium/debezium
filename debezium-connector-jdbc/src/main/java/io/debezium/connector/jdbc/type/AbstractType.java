@@ -10,6 +10,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.connector.jdbc.ValueBindDescriptor;
@@ -94,6 +95,15 @@ public abstract class AbstractType implements Type {
     protected void throwUnexpectedValue(Object value) throws ConnectException {
         throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
                 value.toString(), value.getClass().getName()));
+    }
+
+    protected Struct requireStruct(Object value) throws ConnectException {
+        if (value instanceof Struct data) {
+            return data;
+        }
+
+        throwUnexpectedValue(value);
+        return null;
     }
 
     @Override

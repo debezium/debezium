@@ -78,6 +78,9 @@ import io.debezium.connector.jdbc.type.debezium.TimeType;
 import io.debezium.connector.jdbc.type.debezium.TimestampType;
 import io.debezium.connector.jdbc.type.debezium.VariableScaleDecimalType;
 import io.debezium.connector.jdbc.type.debezium.ZonedTimeType;
+import io.debezium.data.vector.DoubleVector;
+import io.debezium.data.vector.FloatVector;
+import io.debezium.data.vector.SparseDoubleVector;
 import io.debezium.metadata.CollectionId;
 import io.debezium.util.Strings;
 
@@ -477,7 +480,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         }
 
         switch (schema.name()) {
-            case "io.debezium.data.SparseVector", "io.debezium.data.FloatVector", "io.debezium.data.DoubleVector" ->
+            case SparseDoubleVector.LOGICAL_NAME, FloatVector.LOGICAL_NAME, DoubleVector.LOGICAL_NAME ->
                 throw new ConnectException(
                         String.format(
                                 "Dialect does not support schema type %s. Please use the VectorToJsonConverter transform in " +

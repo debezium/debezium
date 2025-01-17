@@ -5,15 +5,10 @@
  */
 package io.debezium.connector.jdbc.dialect.mysql;
 
-import java.util.Collection;
-import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.DebeziumException;
-import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.debezium.AbstractDoubleVectorType;
@@ -37,20 +32,4 @@ public class DoubleVectorType extends AbstractDoubleVectorType {
     public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
         return "string_to_vector(?)";
     }
-
-    @Override
-    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
-        if (value == null) {
-            return List.of(new ValueBindDescriptor(index, null));
-        }
-
-        if (!(value instanceof Collection<?> values)) {
-            throw new DebeziumException("Expected value should be a collection");
-        }
-
-        return List.of(new ValueBindDescriptor(
-                index,
-                values.stream().map(String::valueOf).collect(Collectors.joining(",", "[", "]"))));
-    }
-
 }
