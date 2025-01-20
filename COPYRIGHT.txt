@@ -23,6 +23,7 @@ Alexey Loubyansky
 Alexey Miroshnikov
 Alfusainey Jallow
 Alisa Houskova
+Alvar Viana
 Amirmohammad Sadat Shokouhi
 Amit Sela
 Aman Garg
@@ -504,6 +505,7 @@ Sergei Morozov
 Sergey Eizner
 Sergey Ivanov
 Sergey Kazakov
+Sergey Seroshtan
 Shane Paul
 Shantanu Sharma
 Sherafudheen PM
