@@ -2,6 +2,52 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.1.0.Alpha1
+January 20th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12441653)
+
+### New features since 3.0.7.Final
+
+* Support new non adaptive temporal values  [DBZ-6387](https://issues.redhat.com/browse/DBZ-6387)
+* Add MariaDB SSL support [DBZ-8482](https://issues.redhat.com/browse/DBZ-8482)
+* Update the pipeline designer flow UI to remove the multi moving circle to just have one instead. [DBZ-8532](https://issues.redhat.com/browse/DBZ-8532)
+* Sqlserver connector requires unbounded memory to process big transactions [DBZ-8557](https://issues.redhat.com/browse/DBZ-8557)
+* Use enum set strings flag available in Vitess v20 for decoding enums/sets  [DBZ-8561](https://issues.redhat.com/browse/DBZ-8561)
+* Pulsar Producer Batcher Builder - Key Based Batching [DBZ-8563](https://issues.redhat.com/browse/DBZ-8563)
+* Prototype  support of WASM in Debezium transformation [DBZ-8568](https://issues.redhat.com/browse/DBZ-8568)
+* S3 storage can force path-style addressing [DBZ-8569](https://issues.redhat.com/browse/DBZ-8569)
+* Support MySQL and PostgreSQL vector data types [DBZ-8571](https://issues.redhat.com/browse/DBZ-8571)
+
+
+### Breaking changes since 3.0.7.Final
+
+* Make source info schema versioned [DBZ-8499](https://issues.redhat.com/browse/DBZ-8499)
+* Rename SparseVector and move to debezium-core [DBZ-8585](https://issues.redhat.com/browse/DBZ-8585)
+
+
+### Fixes since 3.0.7.Final
+
+* Exception during commit offsets won't trigger retry logic. [DBZ-2386](https://issues.redhat.com/browse/DBZ-2386)
+* Fix invalid gtid error on startup when ordered tx metadata enabled [DBZ-8541](https://issues.redhat.com/browse/DBZ-8541)
+* Debezium operator generate wrong offset and schema history properties [DBZ-8543](https://issues.redhat.com/browse/DBZ-8543)
+* A recent log switch may be seen as consistent during log gathering [DBZ-8546](https://issues.redhat.com/browse/DBZ-8546)
+* Content-based routing expression variable headers is singular in code [DBZ-8550](https://issues.redhat.com/browse/DBZ-8550)
+* MongoDataConverter does not recognize nested empty array [DBZ-8572](https://issues.redhat.com/browse/DBZ-8572)
+* Fix issues in Transformation UI sections  [DBZ-8575](https://issues.redhat.com/browse/DBZ-8575)
+* ORA-65040 occurs on log switches when log.mining.restart.connection is enabled and connection defaults to PDB rather than CDB$ROOT [DBZ-8577](https://issues.redhat.com/browse/DBZ-8577)
+
+
+### Other changes since 3.0.7.Final
+
+* Remove mongo-initiator images [DBZ-8487](https://issues.redhat.com/browse/DBZ-8487)
+* Support storages supported by Debezium operator for pipeline in Debezium platform [DBZ-8512](https://issues.redhat.com/browse/DBZ-8512)
+* Setup minimum CI pipeline for debezium-platform-conductor [DBZ-8527](https://issues.redhat.com/browse/DBZ-8527)
+* Missing quick profile in test containers module [DBZ-8545](https://issues.redhat.com/browse/DBZ-8545)
+* Upgrade MongoDB driver to 5.2 [DBZ-8554](https://issues.redhat.com/browse/DBZ-8554)
+* Move to Quarkus 3.17.7 for the Outbox Extension [DBZ-8583](https://issues.redhat.com/browse/DBZ-8583)
+* Use latest tag instead of nightly for conductor image [DBZ-8589](https://issues.redhat.com/browse/DBZ-8589)
+
+
+
 ## 3.0.6.Final
 December 19th 2024 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12441350)
 
