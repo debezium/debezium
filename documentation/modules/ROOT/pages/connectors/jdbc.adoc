@@ -585,7 +585,8 @@ To deploy a {prodname} JDBC connector, you install the {prodname} JDBC connector
 
 .Prerequisites
 * link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
-* Source and destination databases are installed and are configured to accept JDBC connections.
+* You have a Kafka topic from which the connector can read change event records.
+* A destination database is installed and is configured to accept JDBC connections.
 
 .Procedure
 
@@ -659,6 +660,8 @@ After {StreamsName} builds the Kafka Connect image, you create `KafkaConnector` 
 * The {StreamsName} Operator is running.
 * An Apache Kafka cluster is deployed as documented in link:{LinkDeployManageStreamsOpenShift}#kafka-cluster-str[{NameDeployManageStreamsOpenShift}].
 * link:{LinkDeployManageStreamsOpenShift}#kafka-connect-str[Kafka Connect is deployed on {kafka-streams}]
+* You have a Kafka topic from which the connector can read change event records.
+* A destination database is installed and is configured to accept JDBC connections.
 * You have a {prodnamefull} license.
 * The link:https://docs.redhat.com/documentation/en-us/openshift_container_platform/{ocp-latest-version}/html-single/cli_tools/index#installing-openshift-cli[OpenShift `oc` CLI] client is installed or you have access to the OpenShift Container Platform web console.
 * Depending on how you intend to store the Kafka Connect build image, you need registry permissions or you must create an ImageStream resource:
@@ -787,8 +790,7 @@ metadata:
 spec:
   class: io.debezium.connector.jdbc.JdbcSinkConnector  // <2>
   tasksMax: 1  // <3>
-  topics: // <4>
-    - orders
+  topics: orders // <4>
    config:  // <5>
     connector.class: io.debezium.connector.jdbc.JdbcSinkConnector
     connection.url: jdbc://postgresql://<host>:<port>/<database-name> // <6>
@@ -817,7 +819,7 @@ spec:
 |The number of tasks that can operate concurrently.
 
 |4
-|Specifies an array of Kafka topics that the connector reads.
+|Specifies a comma-separated list of Kafka topics that the connector reads.
 Events from each topic are streamed to tables with the same name in the sink database.
 
 |5
@@ -873,15 +875,17 @@ You apply this CR to the OpenShift instance where link:https://access.redhat.com
 * A `KafkaConnector` CR that defines your {prodname} JDBC connector.
 Apply this CR to the same OpenShift instance where you applied the `KafkaConnect` CR.
 
+NOTE: The deployment method described in this section is deprecated and is scheduled for removal in future versions of the documentation.
+
+
 .Prerequisites
 
-* A source database is running and is available to the JDBC connector.
-
+* A destination database is installed and is configured to accept JDBC connections.
 * {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
 For more information, see link:{LinkDeployManageStreamsOpenShift}[{NameDeployManageStreamsOpenShift}].
-
 * Podman or Docker is installed.
-
+* You have a Kafka topic from which the connector can read change event records.
+* A destination database is installed and is configured to accept JDBC connections.
 * If you want the JDBC connector to send data to a Db2 or Oracle database, the Kafka Connect server has access to Maven Central to download the JDBC drivers for those databases.
   You can also use a local copy of the driver, or one that is available from a local Maven repository or other HTTP server.
 * You have an account and permissions to create and manage containers in the container registry (such as `quay.io` or `docker.io`) to which you plan to add the container that will run your {prodname} connector.
@@ -912,7 +916,7 @@ EOF
 ----
 =====================================================================
  +
-.Descriptions of containerfile settings for building a custom Kafka Connect container image
+.Descriptions of Containerfile settings for building a custom Kafka Connect container image
 [cols="1,7",options="header"]
 |===
 |Item |Description
@@ -1025,8 +1029,7 @@ spec:
     connection.url: jdbc:<_{context}_>://<_database-host_>:5432/<_database-name_>  // <4>
     connection.username: "<_database-user_>" // <5>
     connection.password: "<_database-password_>" // <6>
-    topics:  // <7>
-      - orders
+    topics: orders // <7>
 
 ----
 =====================================================================
@@ -1054,8 +1057,8 @@ spec:
 |The password that {prodname} uses to authenticate to the database user account.
 
 |7
-|Specifies an array of Kafka topics from which the connector reads event records.
-Records from the listed topics are streamed to tables that have the same names in the sink database.
+|Specifies a comma-separated list of Kafka topics that the connector reads.
+Events from each topic are streamed to tables with the same name in the sink database.
 
 |===
 
