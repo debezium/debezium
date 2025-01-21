@@ -124,7 +124,7 @@ public class RecordWriter {
             query.bind(new ValueBindDescriptor(index++, record.offset()));
         }
         else {
-            final Struct keySource = record.getKeyStruct(config.getPrimaryKeyMode());
+            final Struct keySource = record.getKeyStruct(config.getPrimaryKeyMode(), config.getPrimaryKeyFields());
             if (keySource != null) {
                 index = bindFieldValuesToQuery(record, query, index, keySource, record.keyFieldNames());
             }

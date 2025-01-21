@@ -6,7 +6,9 @@
 package io.debezium.bindings.kafka;
 
 import java.util.List;
+import java.util.Set;
 
+import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -122,10 +124,10 @@ public class KafkaDebeziumSinkRecord implements DebeziumSinkRecord {
     }
 
     @Override
-    public Struct getKeyStruct(SinkConnectorConfig.PrimaryKeyMode primaryKeyMode) {
+    public Struct getKeyStruct(SinkConnectorConfig.PrimaryKeyMode primaryKeyMode, Set<String> primaryKeyFields) {
         if (!keyFieldNames().isEmpty()) {
             switch (primaryKeyMode) {
-                case RECORD_KEY:
+                case RECORD_KEY -> {
                     final Schema keySchema = originalKafkaRecord.keySchema();
                     if (keySchema != null && Schema.Type.STRUCT.equals(keySchema.type())) {
                         return (Struct) originalKafkaRecord.key();
@@ -133,26 +135,47 @@ public class KafkaDebeziumSinkRecord implements DebeziumSinkRecord {
                     else {
                         throw new ConnectException("No struct-based primary key defined for record key.");
                     }
-                case RECORD_VALUE:
+                }
+                case RECORD_VALUE -> {
                     final Schema valueSchema = originalKafkaRecord.valueSchema();
                     if (valueSchema != null && Schema.Type.STRUCT.equals(valueSchema.type())) {
-                        return getPayload();
+                        Struct afterPayload = getPayload();
+                        if (primaryKeyFields.isEmpty()) {
+                            return afterPayload;
+                        }
+                        else {
+                            return buildRecordValueKeyStruct(afterPayload, primaryKeyFields);
+                        }
                     }
                     else {
                         throw new ConnectException("No struct-based primary key defined for record value.");
                     }
-
-                case RECORD_HEADER:
+                }
+                case RECORD_HEADER -> {
                     final SchemaBuilder headerSchemaBuilder = SchemaBuilder.struct();
                     originalKafkaRecord.headers().forEach((Header header) -> headerSchemaBuilder.field(header.key(), header.schema()));
-
                     final Schema headerSchema = headerSchemaBuilder.build();
                     final Struct headerStruct = new Struct(headerSchema);
                     originalKafkaRecord.headers().forEach((Header header) -> headerStruct.put(header.key(), header.value()));
                     return headerStruct;
+                }
             }
         }
         return null;
+    }
+
+    private Struct buildRecordValueKeyStruct(Struct afterPayload, Set<String> primaryKeyFields) {
+        final SchemaBuilder keySchemaBuilder = SchemaBuilder.struct();
+        primaryKeyFields.forEach(fieldName -> {
+            Field field = afterPayload.schema().field(fieldName);
+            keySchemaBuilder.field(field.name(), field.schema());
+        });
+        Struct keyStruct = new Struct(keySchemaBuilder.build());
+        primaryKeyFields.forEach(fieldName -> {
+            Field field = afterPayload.schema().field(fieldName);
+            keyStruct.put(field.name(), afterPayload.get(field));
+        });
+        return keyStruct;
     }
 
     public SinkRecord getOriginalKafkaRecord() {

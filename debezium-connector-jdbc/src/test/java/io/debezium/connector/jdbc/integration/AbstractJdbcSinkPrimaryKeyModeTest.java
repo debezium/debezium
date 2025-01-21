@@ -7,10 +7,13 @@ package io.debezium.connector.jdbc.integration;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.assertj.db.api.TableAssert;
 import org.assertj.db.type.ValueType;
@@ -361,6 +364,50 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
 
         assertHasPrimaryKeyColumns(destinationTableName, "id1", "id2", "name");
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    public void testRecordWithPrimaryKeyColumnWithPrimaryKeyModeRecordValueAndReductionBuffer(SinkRecordFactory factory) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.USE_REDUCTION_BUFFER, "true");
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id1_value,id2_value");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        final KafkaDebeziumSinkRecord createRecord1 = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                List.of("id1_value", "id2_value", "name"),
+                List.of(SchemaBuilder.type(Schema.INT8_SCHEMA.type()).optional().build(),
+                        SchemaBuilder.type(Schema.INT8_SCHEMA.type()).optional().build(),
+                        SchemaBuilder.type(Schema.STRING_SCHEMA.type()).optional().build()),
+                Arrays.asList((byte) 11, (byte) 22, "John Doe 1"));
+
+        final KafkaDebeziumSinkRecord createRecord2 = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                List.of("id1_value", "id2_value", "name"),
+                List.of(SchemaBuilder.type(Schema.INT8_SCHEMA.type()).optional().build(),
+                        SchemaBuilder.type(Schema.INT8_SCHEMA.type()).optional().build(),
+                        SchemaBuilder.type(Schema.STRING_SCHEMA.type()).optional().build()),
+                Arrays.asList((byte) 11, (byte) 22, "John Doe 2"));
+
+        consume(List.of(createRecord1, createRecord2));
+
+        final String destinationTableName = destinationTableName(createRecord1);
+
+        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        tableAssert.exists().hasNumberOfColumns(4);
+
+        getSink().assertColumnType(tableAssert, "id1_value", ValueType.NUMBER, (byte) 11);
+        getSink().assertColumnType(tableAssert, "id2_value", ValueType.NUMBER, (byte) 22);
+        getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe 2");
     }
 
     @ParameterizedTest
