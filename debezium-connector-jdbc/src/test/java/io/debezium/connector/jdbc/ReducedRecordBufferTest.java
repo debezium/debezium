@@ -8,6 +8,7 @@ package io.debezium.connector.jdbc;
 
 import static io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode.NONE;
 import static io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY;
+import static io.debezium.connector.jdbc.JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_VALUE;
 import static java.util.function.Predicate.not;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -17,6 +18,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,6 +29,7 @@ import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.Assertions;
@@ -226,4 +229,53 @@ class ReducedRecordBufferTest {
         assertThat(thrown.getMessage()).isEqualTo("No struct-based primary key defined for record key/value, reduction buffer require struct based primary key");
 
     }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @DisplayName("When primary key columns are in record value then reduced buffer should work as expected")
+    void primaryKeyInValue(SinkRecordFactory factory) {
+
+        JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of("batch.size", "5", "primary.key.mode", "record_value", "primary.key.fields", "value_id"));
+        ReducedRecordBuffer reducedRecordBuffer = new ReducedRecordBuffer(config);
+
+        List<SinkRecordDescriptor> sinkRecords = IntStream.range(0, 10)
+                .mapToObj(i -> SinkRecordDescriptor.builder()
+                        .withSinkRecord(
+                                factory.createRecordWithSchemaValue(
+                                        "topic",
+                                        (byte) (1),
+                                        List.of("value_id", "name"),
+                                        List.of(SchemaBuilder.type(Schema.INT8_SCHEMA.type()).optional().build(),
+                                                SchemaBuilder.type(Schema.STRING_SCHEMA.type()).optional().build()),
+                                        Arrays.asList((byte) (i % 2 == 0 ? i : i - 1), "John Doe " + i)))
+                        .withDialect(dialect)
+                        .withPrimaryKeyFields(Set.of("value_id"))
+                        .withPrimaryKeyMode(RECORD_VALUE)
+                        .build())
+                .collect(Collectors.toList());
+
+        List<List<SinkRecordDescriptor>> batches = sinkRecords.stream().map(reducedRecordBuffer::add)
+                .filter(not(List::isEmpty))
+                .collect(Collectors.toList());
+
+        assertThat(batches.size()).isEqualTo(1);
+        assertThat(batches.get(0).size()).isEqualTo(5);
+
+        batches.get(0).forEach(record -> {
+            Struct keyStruct = record.getKeyStruct(JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_VALUE, Set.of("value_id"));
+            assertThat(keyStruct).isNotNull();
+            assertThat(keyStruct.schema().fields()).hasSize(1);
+            assertThat(keyStruct.schema().field("value_id")).isNotNull();
+            // Verify the value_id matches what we expect (even numbers 0,2,4,6,8)
+            byte expectedValue = record.getAfterStruct().getInt8("value_id");
+            assertThat(keyStruct.get("value_id")).isEqualTo(expectedValue);
+            // Verify the name matches what we expect (odd numbers in the last 1, 3, 5, 7)
+            // 9 is not included because the buffer is flushed after 5 records, it will be in the next batch
+            if (expectedValue < 8) {
+                String expectedName = "John Doe " + (expectedValue + 1);
+                assertThat(record.getAfterStruct().getString("name")).isEqualTo(expectedName);
+            }
+        });
+    }
+
 }
