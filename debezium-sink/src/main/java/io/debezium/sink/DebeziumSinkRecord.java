@@ -6,6 +6,7 @@
 package io.debezium.sink;
 
 import java.util.List;
+import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct; // @TODO find a good replacement for Kafka Connect's Struct and Schema
@@ -47,6 +48,6 @@ public interface DebeziumSinkRecord {
 
     List<String> keyFieldNames();
 
-    Struct getKeyStruct(PrimaryKeyMode primaryKeyMode);
+    Struct getKeyStruct(PrimaryKeyMode primaryKeyMode, Set<String> primaryKeyFields);
 
 }

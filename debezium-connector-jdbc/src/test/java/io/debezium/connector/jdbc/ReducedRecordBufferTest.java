@@ -15,6 +15,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.function.UnaryOperator;
@@ -205,5 +206,39 @@ class ReducedRecordBufferTest extends AbstractRecordBufferTest {
         Exception thrown = Assertions.assertThrows(ConnectException.class, batchesFilter::toList);
         assertThat(thrown.getMessage()).isEqualTo("No struct-based primary key defined for record key/value, reduction buffer require struct based primary key");
 
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @DisplayName("When primary key columns are in record value then reduced buffer should work as expected")
+    void primaryKeyInValue(SinkRecordFactory factory) {
+        JdbcSinkConnectorConfig config = getJdbcConnectorConfig(PrimaryKeyMode.RECORD_VALUE, "value_id");
+
+        ReducedRecordBuffer reducedRecordBuffer = new ReducedRecordBuffer(config);
+
+        List<JdbcSinkRecord> sinkRecords = IntStream.range(0, 10)
+                .mapToObj(i -> {
+                    KafkaDebeziumSinkRecord record = factory.createRecordWithSchemaValue(
+                            "topic",
+                            (byte) (1),
+                            List.of("value_id", "name"),
+                            List.of(SchemaBuilder.type(Schema.INT8_SCHEMA.type()).optional().build(),
+                                    SchemaBuilder.type(Schema.STRING_SCHEMA.type()).optional().build()),
+                            Arrays.asList((byte) (i % 2 == 0 ? i : i - 1), "John Doe " + i));
+                    return new JdbcKafkaSinkRecord(
+                            record.getOriginalKafkaRecord(),
+                            config.getPrimaryKeyMode(),
+                            config.getPrimaryKeyFields(),
+                            config.getFieldFilter(),
+                            dialect);
+                })
+                .collect(Collectors.toList());
+
+        List<List<JdbcSinkRecord>> batches = sinkRecords.stream().map(reducedRecordBuffer::add)
+                .filter(not(List::isEmpty))
+                .toList();
+
+        assertThat(batches.size()).isEqualTo(1);
+        assertThat(batches.get(0).size()).isEqualTo(5);
     }
 }
