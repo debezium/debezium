@@ -2125,9 +2125,9 @@ If tombstones are disabled, and {link-kafka-docs}/#compaction[log compaction] is
 
 |[[informix-property-include-schema-changes]]<<informix-property-include-schema-changes, `+include.schema.changes+`>>
 |`true`
-|Boolean value that specifies whether the connector publishes changes in the database schema to the Kafka topic that has the same name as the database server ID.
-When the default value is set, schema changes are recorded with a `key` that contains the database name and a `value` that is a JSON structure that describes the schema update.
-This property does not effect the way that the connector records information to its internal database schema history topic.
+|Boolean value that specifies whether the connector publishes changes in the database schema to a Kafka topic with the same name as the topic prefix.
+The connector records each schema change with a key that contains the database name, and a value that is a JSON structure that describes the schema update.
+This mechanism for recording schema changes is independent of the connector's internal recording of changes to the database schema history.
 
 |[[informix-property-column-truncate-to-length-chars]]<<informix-property-column-truncate-to-length-chars, `column.truncate.to._length_.chars`>>
 |_n/a_
