@@ -330,9 +330,9 @@ For more information about configuring the database to return the original `SQL`
 [id="{context}-property-include-schema-changes"]
 xref:{context}-property-include-schema-changes[`include.schema.changes`]::
 Default value: `true` +
-Boolean value that specifies whether the connector publishes changes that occur to the database schema to a Kafka topic with the name of the database server ID.
-Each schema change event that the connector captures uses a key that contains the database name and a value that includes the DDL statements that describe the change.
-This setting does not affect how the connector records schema changes in its internal database schema history.
+Boolean value that specifies whether the connector publishes changes in the database schema to a Kafka topic with the same name as the topic prefix.
+The connector records each schema change with a key that contains the database name, and a value that is a JSON structure that describes the schema update.
+This mechanism for recording schema changes is independent of the connector's internal recording of changes to the database schema history.
 
 
 

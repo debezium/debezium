@@ -3791,7 +3791,9 @@ For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000
 
 |[[oracle-property-include-schema-changes]]<<oracle-property-include-schema-changes, `+include.schema.changes+`>>
 |`true`
-|Boolean value that specifies whether the connector should publish changes in the database schema to a Kafka topic with the same name as the database server ID. Each schema change is recorded with a key that contains the database name and a value that is a JSON structure that describes the schema update. This is independent of how the connector internally records database schema history. The default is `true`.
+|Boolean value that specifies whether the connector publishes changes in the database schema to a Kafka topic with the same name as the topic prefix.
+The connector records each schema change with a key that contains the database name, and a value that is a JSON structure that describes the schema update.
+This mechanism for recording schema changes is independent of the connector's internal recording of changes to the database schema history.
 
 |[[oracle-property-tombstones-on-delete]]<<oracle-property-tombstones-on-delete, `+tombstones.on.delete+`>>
 |`true`
