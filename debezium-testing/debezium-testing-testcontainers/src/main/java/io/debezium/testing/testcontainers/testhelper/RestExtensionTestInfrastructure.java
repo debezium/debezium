@@ -180,7 +180,7 @@ public class RestExtensionTestInfrastructure {
         final String registry = debeziumContainerImageVersion.startsWith("1.2") ? "" : "quay.io/";
         final String debeziumVersion = debeziumContainerImageVersion.startsWith("1.2") ? "1.2.5.Final" : connectorVersion;
         String baseImageName = registry + "debezium/connect-base:" + debeziumContainerImageVersion;
-        DEBEZIUM_CONTAINER = new DebeziumContainer(new ImageFromDockerfile("debezium/connect-rest-test:" + debeziumVersion)
+        DEBEZIUM_CONTAINER = new DebeziumContainer(new ImageFromDockerfile("quay.io/debezium/connect-rest-test:" + debeziumVersion)
                 .withFileFromPath(".", Paths.get(System.getProperty("project.build.directory")))
                 .withFileFromPath("Dockerfile", Paths.get(System.getProperty("project.basedir") + "/src/test/resources/Dockerfile.rest.test"))
                 .withBuildArg("BASE_IMAGE", baseImageName)
