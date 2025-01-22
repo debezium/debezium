@@ -756,14 +756,14 @@ metadata:
 spec:
   class: io.debezium.connector.jdbc.JdbcSinkConnector  // <2>
   tasksMax: 1  // <3>
-  topics: orders // <4>
-   config:  // <5>
+   config:  // <4>
     connector.class: io.debezium.connector.jdbc.JdbcSinkConnector
-    connection.url: jdbc://postgresql://<host>:<port>/<database-name> // <6>
-    connection.username: <database-user>  // <7>
-    connection.password: <database-pwd>  // <8>
+    connection.url: jdbc://postgresql://<host>:<port>/<database-name> // <5>
+    connection.username: <database-user>  // <6>
+    connection.password: <database-pwd>  // <7>
     insert.mode: upsert
     delete.enabled: true
+    topics: orders // <8>
     primary.key.mode: record_key
     schema.evolution: basic
     use.time.zone: UTC
@@ -785,24 +785,22 @@ spec:
 |The number of tasks that can operate concurrently.
 
 |4
-|Specifies a comma-separated list of Kafka topics that the connector reads.
-Events from each topic are streamed to tables with the same name in the sink database.
-
-|5
 |The connector’s configuration.
 
-|6
-|The JDBC address of the sink database.
+|5
+|The JDBC connection URL for the sink database.
+The URL specifies the port number and any other authentication properties that are required to connect to the database.
+For example, `jdbc:oracle:thin:@myhost.example.com:1521/myservice`
 
-|7
+|6
 |The name of the account that {prodname} uses to connect to the database.
 
-|8
+|7
 |The password that {prodname} uses to connect to the database user account.
 
-|9 ...
-|The connection URL specifies the port number and any other authentication properties that are required to connect to the database.
-For example, `jdbc:oracle:thin:@myhost.example.com:1521/myservice`
+|8
+|Specifies a comma-separated list of Kafka topics that the connector reads.
+Events from each topic are streamed to tables with the same name in the sink database.
 
 |===
 
