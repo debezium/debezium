@@ -55,6 +55,13 @@ After the snapshot window for the chunk closes, the buffer contains only `READ` 
 
 The connector repeats the process for each snapshot chunk.
 
+[NOTE]
+====
+{prodname} needs capability to write to the signaling {data-collection}.
+For connectors that supports the read only incremental snapshots please refer to the dedicated section in the documentation, if present.
+If not, the connector does not support read only incremental snapshot.
+====
+
 Currently, you can use either of the following methods to initiate an incremental snapshot:
 
 * xref:{context}-triggering-an-incremental-snapshot[Send an ad hoc snapshot signal to the signaling {data-collection} on the source database].
