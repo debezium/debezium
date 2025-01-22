@@ -122,31 +122,20 @@ public class ChicoryEngine {
         return index;
     }
 
-    // TODO: verify all the types that can go forth and back
-    // ProxyObjects can return arrays, should we always treat everything as an array?
-    // or we should have a specific API for it?
-    // alternatively we can always prefix the return value with the type, like:
-    // 0: following a pointer to a String
-    // 1: following pointer to an Array (TODO: decide how to encode arrays)
-    // 2: following a reference to a PointerObject
-    // TODO: test for array access
-    // Struct
-    // Map
-    // Array
-    // TODO: kafka "Schema" handling? - verify
     private Object resolveField(Object proxyObject, String fieldName) {
-        if (proxyObject instanceof Map) {
+        if (proxyObject == null) {
+            throw new DebeziumException("cannot access field " + fieldName + " on null object.");
+        }
+        else if (proxyObject instanceof Map) {
             return ((Map<String, Object>) proxyObject).get(fieldName);
         }
         else if (proxyObject instanceof Struct) {
             return ((Struct) proxyObject).get(fieldName);
         }
         else if (proxyObject instanceof Schema) {
-            // TODO: verify this has the correct semantics
             return ((Schema) proxyObject).field(fieldName).schema();
         }
         else if (proxyObject instanceof RecordHeader) {
-            // TODO: is this the correct semantics? it doesn't account for the "fieldName"
             return ((RecordHeader) proxyObject).value;
         }
         else {
@@ -165,19 +154,48 @@ public class ChicoryEngine {
         }
 
         var proxyObject = objects.get(proxyObjectRef);
-        for (int i = 0; i < split.length; i++) {
-            proxyObject = resolveField(proxyObject, split[i]);
-            if (i == split.length - 1) {
-                return registerProxyObject(proxyObject);
+        try {
+            for (int i = 0; i < split.length; i++) {
+                proxyObject = resolveField(proxyObject, split[i]);
+                if (i == split.length - 1) {
+                    return registerProxyObject(proxyObject);
+                }
             }
+        }
+        catch (DebeziumException e) {
+            throw new DebeziumException("Failed to resolve host object at path: " + fieldName, e);
         }
         throw new DebeziumException("Failed to resolve guest module Get on path: " + fieldName);
     }
 
     @WasmExport
+    public int getArrayElem(int proxyObjectRef, int elemIdx) {
+        var proxyObject = objects.get(proxyObjectRef);
+        if (proxyObject instanceof List) {
+            var result = ((List) proxyObject).get(elemIdx);
+            return registerProxyObject(result);
+        }
+        else {
+            throw new DebeziumException("Attempting to access element of an Array but " + proxyObject.getClass().getSimpleName() + " found");
+        }
+    }
+
+    @WasmExport
+    public int getArraySize(int proxyObjectRef) {
+        var proxyObject = objects.get(proxyObjectRef);
+        if (proxyObject instanceof List) {
+            var result = ((List) proxyObject).size();
+            return result;
+        }
+        else {
+            throw new DebeziumException("Attempting to check size of an Array but " + proxyObject.getClass().getSimpleName() + " found");
+        }
+    }
+
+    @WasmExport
     public int getString(int proxyObjectRef) {
         var proxyObject = objects.get(proxyObjectRef);
-        if (proxyObject.getClass().isAssignableFrom(String.class)) {
+        if (proxyObject instanceof String) {
             var result = (String) proxyObject;
             var resultPtr = malloc(result.length() + 1);
             instance.memory().writeCString(resultPtr, result);
@@ -189,17 +207,93 @@ public class ChicoryEngine {
     }
 
     @WasmExport
-    public int getInt(int proxyObjectRef) {
+    public int getBool(int proxyObjectRef) {
         var proxyObject = objects.get(proxyObjectRef);
-        if (proxyObject.getClass().isAssignableFrom(Integer.class)) {
-            return (Integer) proxyObject;
-        }
-        // TODO: verify if this is enough to cover all cases
-        else if (proxyObject.getClass().isAssignableFrom(Byte.class)) {
-            return ((Byte) proxyObject).intValue();
+        if (proxyObject instanceof Boolean) {
+            return ((Boolean) proxyObject) ? 1 : 0;
         }
         else {
-            throw new DebeziumException("Attempting to materialize a Int but " + proxyObject.getClass().getSimpleName() + " found");
+            throw new DebeziumException("Attempting to materialize a Byte but " + proxyObject.getClass().getSimpleName() + " found");
+        }
+    }
+
+    @WasmExport
+    public int getBytes(int proxyObjectRef) {
+        var proxyObject = objects.get(proxyObjectRef);
+        if (proxyObject instanceof byte[]) {
+            var result = new String((byte[]) proxyObject);
+            var resultPtr = malloc(result.length() + 1);
+            instance.memory().writeCString(resultPtr, result);
+            return resultPtr;
+        }
+        else {
+            throw new DebeziumException("Attempting to materialize Bytes but " + proxyObject.getClass().getSimpleName() + " found");
+        }
+    }
+
+    @WasmExport
+    public float getFloat32(int proxyObjectRef) {
+        var proxyObject = objects.get(proxyObjectRef);
+        if (proxyObject instanceof Float) {
+            return (Float) proxyObject;
+        }
+        else {
+            throw new DebeziumException("Attempting to materialize a Float but " + proxyObject.getClass().getSimpleName() + " found");
+        }
+    }
+
+    @WasmExport
+    public double getFloat64(int proxyObjectRef) {
+        var proxyObject = objects.get(proxyObjectRef);
+        if (proxyObject instanceof Double) {
+            return (Double) proxyObject;
+        }
+        else {
+            throw new DebeziumException("Attempting to materialize a Double but " + proxyObject.getClass().getSimpleName() + " found");
+        }
+    }
+
+    @WasmExport
+    public int getInt8(int proxyObjectRef) {
+        var proxyObject = objects.get(proxyObjectRef);
+        if (proxyObject instanceof Byte) {
+            return (Byte) proxyObject;
+        }
+        else {
+            throw new DebeziumException("Attempting to materialize a Int8 but " + proxyObject.getClass().getSimpleName() + " found");
+        }
+    }
+
+    @WasmExport
+    public int getInt16(int proxyObjectRef) {
+        var proxyObject = objects.get(proxyObjectRef);
+        if (proxyObject instanceof Short) {
+            return (Short) proxyObject;
+        }
+        else {
+            throw new DebeziumException("Attempting to materialize a Int16 but " + proxyObject.getClass().getSimpleName() + " found");
+        }
+    }
+
+    @WasmExport
+    public int getInt32(int proxyObjectRef) {
+        var proxyObject = objects.get(proxyObjectRef);
+        if (proxyObject instanceof Integer) {
+            return (Integer) proxyObject;
+        }
+        else {
+            throw new DebeziumException("Attempting to materialize a Int32 but " + proxyObject.getClass().getSimpleName() + " found");
+        }
+    }
+
+    @WasmExport
+    public long getInt64(int proxyObjectRef) {
+        var proxyObject = objects.get(proxyObjectRef);
+        if (proxyObject instanceof Long) {
+            return (Long) proxyObject;
+        }
+        else {
+            throw new DebeziumException("Attempting to materialize a Int64 but " + proxyObject.getClass().getSimpleName() + " found");
         }
     }
 
@@ -217,13 +311,6 @@ public class ChicoryEngine {
     public int setBool(int boolRef) {
         var result = (instance.memory().read(boolRef) == 1) ? Boolean.TRUE : Boolean.FALSE;
         free(boolRef);
-        return registerProxyObject(result);
-    }
-
-    @WasmExport
-    public int setInt(int intRef) {
-        var result = Integer.valueOf(instance.memory().readInt(intRef));
-        free(intRef);
         return registerProxyObject(result);
     }
 

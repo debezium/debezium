@@ -5,6 +5,8 @@
  */
 package io.debezium.transforms.wasm;
 
+import static io.debezium.transforms.TransformsUtils.createAllDataTypeRecord;
+import static io.debezium.transforms.TransformsUtils.createArrayDataTypeRecord;
 import static io.debezium.transforms.TransformsUtils.createComplexCreateRecord;
 import static io.debezium.transforms.TransformsUtils.createDeleteCustomerRecord;
 import static io.debezium.transforms.TransformsUtils.createDeleteRecord;
@@ -45,6 +47,12 @@ public class WasmFilterTest {
 
     // value.after.id == 1 && value.source.lsn == 1234 && value.source.version == "version!" && topic == "dummy"
     private static final String FILTER_5 = filterAbsolutePath("filter5");
+
+    // all fields matching
+    private static final String FILTER_6 = filterAbsolutePath("filter6");
+
+    // array access
+    private static final String FILTER_7 = filterAbsolutePath("filter7");
 
     private static String filterAbsolutePath(String filename) {
         return "file:" + new File(".").getAbsolutePath() + "/src/test/resources/wasm/compiled/" + filename + ".wasm";
@@ -210,6 +218,32 @@ public class WasmFilterTest {
             props.put(LANGUAGE, "wasm.chicory");
             transform.configure(props);
             final SourceRecord record = createComplexCreateRecord();
+            assertThat(transform.apply(record)).isSameAs(record);
+        }
+    }
+
+    @Test
+    public void shouldRunFilterWithAllDataTypeSchemas() {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(EXPRESSION, FILTER_6);
+            props.put(LANGUAGE, "wasm.chicory");
+            transform.configure(props);
+            final SourceRecord record = createAllDataTypeRecord(true);
+            assertThat(transform.apply(createAllDataTypeRecord(false))).isNull();
+            assertThat(transform.apply(record)).isSameAs(record);
+        }
+    }
+
+    @Test
+    public void shouldRunFilterWithArraySchemas() {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(EXPRESSION, FILTER_7);
+            props.put(LANGUAGE, "wasm.chicory");
+            transform.configure(props);
+            final SourceRecord record = createArrayDataTypeRecord(true);
+            assertThat(transform.apply(createArrayDataTypeRecord(false))).isNull();
             assertThat(transform.apply(record)).isSameAs(record);
         }
     }

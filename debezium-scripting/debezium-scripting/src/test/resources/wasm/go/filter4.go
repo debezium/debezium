@@ -7,7 +7,7 @@ import (
 
 //export process
 func process(proxyPtr uint32) uint32 {
-	var headerIdh = debezium.GetInt(debezium.Get(proxyPtr, "header.idh.value"))
+	var headerIdh = debezium.GetInt32(debezium.Get(proxyPtr, "header.idh.value"))
 	var topicName = debezium.GetString(debezium.Get(proxyPtr, "topic"))
 
 	// header.idh.value == 1 && topic.startsWith('dummy')
