@@ -2225,6 +2225,65 @@ az postgres server configuration set --resource-group mygroup --server-name myse
 
 az postgres server restart --resource-group mygroup --name myserver
 ```
+ifdef::community[]
+[[cloud-sql-for-postgresql]]
+==== Cloud SQL for PostgreSQL
+
+To use {prodname} with link:https://cloud.google.com/sql/postgresql/[Cloud SQL for PostgreSQL], you must configure the database to use the `pgoutput` logical decoding plug-in.
+
+The following sections provide an overview of the tasks that you must complete to prepare a Cloud SQL for PostgreSQL database for use with {prodname}.
+
+.Setting the `cloudsql.logical_decoding` flag
+
+In Cloud SQL, you can enable logical decoding by setting the `cloudsql.logical_decoding` flag to `on`. 
+After you set the flag, it automatically adjusts the `wal_level` configuration parameter to `logical`.
+
+You can use either the Google Cloud console or the `gcloud` command-line tool to edit the `cloudsql.logical_decoding` flag.  
+
+For detailed instructions about how to change the value of flags in Cloud SQL, see the link:https://cloud.google.com/sql/docs/postgres/flags/[Google Cloud SQL documentation]. 
+
+To verify that the value of the setting reflects your changes, run the following query:
+
+----
+SHOW wal_level;
+----
+
+```
+SHOW wal_level;
+```
+
+.Creating a replication user
+To use logical decoding features, you must create a PostgreSQL user with the `REPLICATION` attribute, or grant this attribute to an existing user.
+
+To create a user with the `REPLICATION` attribute::
+ 
+Log in as the `postgres` user, or as a member of the `cloudsqlsuperuser` user group, and run the following command:
++
+----
+CREATE USER replication_user WITH REPLICATION IN ROLE cloudsqlsuperuser LOGIN PASSWORD 'secret';
+----
+
+To set the `REPLICATION` attribute on an existing user::
+
+Log in as the `postgres` user, or as a member of the `cloudsqlsuperuser` user group, and run the following command:
++
+----
+ALTER USER existing_user WITH REPLICATION;
+----
+
+.Specifying the {prodname} `plugin.name`
+
+In the {prodname} connector configuration, set the value of the `plugin.name` property to `pgoutput`, as in the following example:
+
+----
+{
+      ..
+      "plugin.name": "pgoutput",
+      ..
+      ..
+}
+----
+endif::community[]
 
 [[postgresql-on-crunchybridge]]
 ==== PostgreSQL on CrunchyBridge
