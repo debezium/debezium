@@ -55,12 +55,15 @@ After the snapshot window for the chunk closes, the buffer contains only `READ` 
 
 The connector repeats the process for each snapshot chunk.
 
+ifdef::community[]
 [NOTE]
 ====
-{prodname} needs capability to write to the signaling {data-collection}.
-For connectors that supports the read only incremental snapshots please refer to the dedicated section in the documentation, if present.
-If not, the connector does not support read only incremental snapshot.
+In general, to enable {prodname} to perform incremental snapshots, you must grant the connector permission to write to the signaling {data-collection}.
+
+Write permission is unnecessary only for connectors that can be configured to perform read-only incrementals snapshots
+(xref:mariadb-read-only-incremental-snapshots[MariaDB], xref:mysql-read-only-incremental-snapshots[MySQL], or xref:postgresql-read-only-incremental-snapshots[PostgreSQL]). 
 ====
+endif::community[]
 
 Currently, you can use either of the following methods to initiate an incremental snapshot:
 
