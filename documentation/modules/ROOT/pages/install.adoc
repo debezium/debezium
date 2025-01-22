@@ -62,6 +62,14 @@ endif::[]
 NOTE: If you are interested in Debezium Server, please check the installation instructions xref:operations/debezium-server.adoc#_installation[here].
 
 If immutable containers are your thing, then check out https://quay.io/organization/debezium[{prodname}'s container images] (https://hub.docker.com/r/debezium/[alternative source] on DockerHub) for Apache Kafka, Kafka Connect and Apache Zookeeper, with the different {prodname} connectors already pre-installed and ready to go. Our xref:tutorial.adoc[tutorial] even walks you through using these images, and this is a great way to learn what {prodname} is all about.
+
+[IMPORTANT]
+====
+The {prodname} container images that you obtain from `quay.io` do not undergo rigorous testing or security analysis, and are provided for testing and evaluation purposes only.
+These images are not intended for use in production environments.
+To mitigate risk in production deployments, deploy only containers that are actively maintained by trusted vendors, and throughly tested for potential vulnerabilities.
+====
+
 Of course you also can run {prodname} on Kubernetes and xref:operations/openshift.adoc[OpenShift].
 Using the https://strimzi.io/[Strimzi] Kubernetes Operator is recommended for that.
 It allows to deploy Apache Kafka, Kafka Connect, and even connectors declaratively via custom Kubernetes resources.
