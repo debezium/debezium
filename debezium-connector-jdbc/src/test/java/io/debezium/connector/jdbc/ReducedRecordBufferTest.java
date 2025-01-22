@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -25,6 +26,7 @@ import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -240,5 +242,23 @@ class ReducedRecordBufferTest extends AbstractRecordBufferTest {
 
         assertThat(batches.size()).isEqualTo(1);
         assertThat(batches.get(0).size()).isEqualTo(5);
+
+        batches.get(0).forEach(record -> {
+            Struct keyStruct = record.getKeyStruct(PrimaryKeyMode.RECORD_VALUE, Set.of("value_id"));
+            assertThat(keyStruct).isNotNull();
+            assertThat(keyStruct.schema().fields()).hasSize(1);
+            assertThat(keyStruct.schema().field("value_id")).isNotNull();
+
+            // Verify the value_id matches what we expect (even numbers 0,2,4,6,8)
+            byte expectedValue = record.getPayload().getInt8("value_id");
+            assertThat(keyStruct.get("value_id")).isEqualTo(expectedValue);
+
+            // Verify the name matches what we expect (odd numbers in the last 1, 3, 5, 7)
+            // 9 is not included because the buffer is flushed after 5 records, it will be in the next batch
+            if (expectedValue < 8) {
+                String expectedName = "John Doe " + (expectedValue + 1);
+                assertThat(record.getPayload().getString("name")).isEqualTo(expectedName);
+            }
+        });
     }
 }
