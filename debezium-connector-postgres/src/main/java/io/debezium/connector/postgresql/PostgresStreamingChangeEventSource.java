@@ -324,7 +324,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         // DML event
         else {
             TableId tableId = null;
-            if (message.getOperation() != Operation.NOOP) {
+            if (!message.isSkippedMessage()) {
                 tableId = PostgresSchema.parse(message.getTable());
                 Objects.requireNonNull(tableId);
             }
@@ -334,7 +334,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     tableId,
                     message.getOperation());
 
-            boolean dispatched = message.getOperation() != Operation.NOOP && dispatcher.dispatchDataChangeEvent(
+            boolean dispatched = dispatcher.dispatchDataChangeEvent(
                     partition,
                     tableId,
                     new PostgresChangeRecordEmitter(
