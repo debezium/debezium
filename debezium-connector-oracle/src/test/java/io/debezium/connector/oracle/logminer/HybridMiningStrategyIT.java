@@ -930,6 +930,79 @@ public class HybridMiningStrategyIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-8597")
+    public void shouldStreamWhenTableHasAnInvisibleGeneratedColumn() throws Exception {
+        TestHelper.dropTable(connection, "dbz8597");
+        try {
+            connection.execute("CREATE TABLE dbz8597 (" +
+                    "id numeric(9,0) primary key, " +
+                    "val_gen varchar2(50) invisible generated always as (VAL1 || '-' || VAL2), " +
+                    "val1 varchar2(10), " +
+                    "val2 varchar2(10))");
+            TestHelper.streamTable(connection, "dbz8597");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8597")
+                    .with(OracleConnectorConfig.LOG_MINING_STRATEGY, "hybrid")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz8597 (id,val1,val2) values (1,'a','b')");
+
+            SourceRecords records = consumeRecordsByTopic(1);
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ8597");
+            assertThat(tableRecords).hasSize(1);
+
+            stopConnector();
+
+            connection.execute("UPDATE dbz8597 SET val2 = 'B1' WHERE id = 1");
+            connection.execute("ALTER TABLE dbz8597 add val3 varchar2(10)");
+            connection.execute("UPDATE dbz8597 SET val3 = 'C2' WHERE id = 1");
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            records = consumeRecordsByTopic(2);
+            tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ8597");
+            assertThat(tableRecords).hasSize(2);
+
+            Struct value = ((Struct) tableRecords.get(0).value());
+            Struct before = value.getStruct(Envelope.FieldName.BEFORE);
+            assertThat(before.get("ID")).isEqualTo(1);
+            assertThat(before.get("VAL1")).isEqualTo("a");
+            assertThat(before.get("VAL2")).isEqualTo("b");
+
+            Struct after = value.getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("VAL1")).isEqualTo("a");
+            assertThat(after.get("VAL2")).isEqualTo("B1");
+
+            value = ((Struct) tableRecords.get(1).value());
+            before = value.getStruct(Envelope.FieldName.BEFORE);
+            assertThat(before.get("ID")).isEqualTo(1);
+            assertThat(before.get("VAL1")).isEqualTo("a");
+            assertThat(before.get("VAL2")).isEqualTo("B1");
+
+            after = value.getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("VAL1")).isEqualTo("a");
+            assertThat(after.get("VAL2")).isEqualTo("B1");
+            assertThat(after.get("VAL3")).isEqualTo("C2");
+
+            stopConnector();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz8597");
+        }
+    }
+
     @SuppressWarnings("SameParameterValue")
     private static String toTimestamp(int year, int month, int day, int hour, int min, int sec, int nanos, int precision) {
         String nanoSeconds = Strings.justify(Strings.Justify.RIGHT, String.valueOf(nanos), precision, '0');
