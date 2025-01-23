@@ -119,7 +119,7 @@ public class SinkRecordDescriptor {
         return record.valueSchema();
     }
 
-    public Struct getKeyStruct(PrimaryKeyMode primaryKeyMode) {
+    public Struct getKeyStruct(PrimaryKeyMode primaryKeyMode, Set<String> primaryKeyFields) {
         if (!getKeyFieldNames().isEmpty()) {
             switch (primaryKeyMode) {
                 case RECORD_KEY:
@@ -133,7 +133,13 @@ public class SinkRecordDescriptor {
                 case RECORD_VALUE:
                     final Schema valueSchema = record.valueSchema();
                     if (valueSchema != null && Schema.Type.STRUCT.equals(valueSchema.type())) {
-                        return getAfterStruct();
+                        Struct afterStruct = getAfterStruct();
+                        if (primaryKeyFields.isEmpty()) {
+                            return afterStruct;
+                        }
+                        else {
+                            return buildRecordValueKeyStruct(afterStruct, primaryKeyFields);
+                        }
                     }
                     else {
                         throw new ConnectException("No struct-based primary key defined for record value.");
@@ -150,6 +156,20 @@ public class SinkRecordDescriptor {
             }
         }
         return null;
+    }
+
+    private Struct buildRecordValueKeyStruct(Struct afterStruct, Set<String> primaryKeyFields) {
+        final SchemaBuilder keySchemaBuilder = SchemaBuilder.struct();
+        primaryKeyFields.forEach(fieldName -> {
+            Field field = afterStruct.schema().field(fieldName);
+            keySchemaBuilder.field(field.name(), field.schema());
+        });
+        Struct keyStruct = new Struct(keySchemaBuilder.build());
+        primaryKeyFields.forEach(fieldName -> {
+            Field field = afterStruct.schema().field(fieldName);
+            keyStruct.put(field.name(), afterStruct.get(field));
+        });
+        return keyStruct;
     }
 
     public Struct getAfterStruct() {

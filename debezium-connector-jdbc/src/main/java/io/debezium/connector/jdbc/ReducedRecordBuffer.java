@@ -50,7 +50,7 @@ public class ReducedRecordBuffer implements Buffer {
             isSchemaChanged = true;
         }
 
-        Struct keyStruct = recordDescriptor.getKeyStruct(connectorConfig.getPrimaryKeyMode());
+        Struct keyStruct = recordDescriptor.getKeyStruct(connectorConfig.getPrimaryKeyMode(), connectorConfig.getPrimaryKeyFields());
         if (keyStruct != null) {
             records.put(keyStruct, recordDescriptor);
         }
