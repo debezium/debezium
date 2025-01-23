@@ -231,9 +231,9 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
         this.producerConfig = config.subset(PRODUCER_PREFIX, true).edit()
                 .withDefault(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
                 .withDefault(ProducerConfig.CLIENT_ID_CONFIG, dbHistoryName)
-                .withDefault(ProducerConfig.ACKS_CONFIG, 1)
-                .withDefault(ProducerConfig.RETRIES_CONFIG, 1) // may result in duplicate messages, but that's
-                                                               // okay
+                .withDefault(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1)
+                .withDefault(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, false)
+
                 .withDefault(ProducerConfig.BATCH_SIZE_CONFIG, 1024 * 32) // 32KB
                 .withDefault(ProducerConfig.LINGER_MS_CONFIG, 0)
                 .withDefault(ProducerConfig.BUFFER_MEMORY_CONFIG, 1024 * 1024) // 1MB
