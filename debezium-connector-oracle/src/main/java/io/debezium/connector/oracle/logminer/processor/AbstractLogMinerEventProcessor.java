@@ -1033,6 +1033,12 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                             row.getChangeTime(),
                             metrics,
                             () -> processTruncateEvent(row)));
+
+            if (isUsingHybridStrategy()) {
+                // Removes table from the column-based DML parser cache
+                // It will be refreshed on the next DML event that requires special parsing
+                reconstructColumnDmlParser.removeTableFromCache(tableId);
+            }
         }
     }
 
