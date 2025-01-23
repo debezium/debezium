@@ -177,7 +177,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         var offsets = getPreviousOffsets(partitionProvider, offsetLoader);
 
         // Compare with previous generation
-        if (connectorConfig.getMultiTaskEnabled() || connectorConfig.getMultiTaskPrevGen() >= 0) {
+        if (connectorConfig.isMultiTaskEnabled() || connectorConfig.getMultiTaskPrevGen() >= 0) {
             int prevGen = connectorConfig.getMultiTaskPrevGen();
             var prevPartitionProvider = new MongoDbPartition.PrevGenProvider(connectorConfig, taskContext);
             var prevOffsets = getPreviousOffsets(prevPartitionProvider, offsetLoader);

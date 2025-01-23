@@ -757,12 +757,12 @@ public class MongoDbMultiTaskConnectorScalingIT extends AbstractMongoConnectorIT
         final long clusterTime = getClusterTime(record);
 
         BsonTimestamp ts = new BsonTimestamp((int) (clusterTime / 1000), 0);
-        MultiTaskOffsetHandler mth = new MultiTaskOffsetHandler(ts, hopSize, taskCount, taskId);
-        if (mth.oplogStart.getTime() > ts.getTime() || mth.oplogStop.getTime() < ts.getTime()) {
-            throw new RuntimeException("Event timestamp " + ts.getTime() + " is not within the expected window: " + mth.oplogStart + " - " + mth.oplogStop);
+        MultiTaskWindowHandler mth = new MultiTaskWindowHandler(ts, hopSize, taskCount, taskId);
+        if (mth.windowStart.getTime() > ts.getTime() || mth.windowStop.getTime() < ts.getTime()) {
+            throw new RuntimeException("Event timestamp " + ts.getTime() + " is not within the expected window: " + mth.windowStart + " - " + mth.windowStop);
         }
-        assertThat(ts.getTime()).isGreaterThanOrEqualTo(mth.oplogStart.getTime());
-        assertThat(ts.getTime()).isLessThanOrEqualTo(mth.oplogStop.getTime());
+        assertThat(ts.getTime()).isGreaterThanOrEqualTo(mth.windowStart.getTime());
+        assertThat(ts.getTime()).isLessThanOrEqualTo(mth.windowStop.getTime());
     }
 
     private void populateDataCollectionOverTime(int numRecords, int ms, int intervalMs) throws InterruptedException {
