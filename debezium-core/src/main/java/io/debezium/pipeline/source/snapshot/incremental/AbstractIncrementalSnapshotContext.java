@@ -56,6 +56,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     public static final String EVENT_PRIMARY_KEY = INCREMENTAL_SNAPSHOT_KEY + "_primary_key";
     public static final String TABLE_MAXIMUM_KEY = INCREMENTAL_SNAPSHOT_KEY + "_maximum_key";
     public static final String CORRELATION_ID = INCREMENTAL_SNAPSHOT_KEY + "_correlation_id";
+    public static final String PAUSED_KEY = INCREMENTAL_SNAPSHOT_KEY + "_paused";
     private final SnapshotDataCollection<T> snapshotDataCollection = new SnapshotDataCollection<>();
 
     /**
@@ -185,6 +186,9 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     }
 
     public Map<String, Object> store(Map<String, Object> offset) {
+        if (paused.get()) {
+            offset.put(PAUSED_KEY, true);
+        }
         if (!snapshotRunning()) {
             return offset;
         }
@@ -281,6 +285,8 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
             context.addTablesIdsToSnapshot(context.snapshotDataCollection.stringToDataCollections(dataCollectionsStr, context.useCatalogBeforeSchema));
         }
         context.correlationId = (String) offsets.get(CORRELATION_ID);
+        final Boolean snapshotPaused  = Boolean.parseBoolean((String) offsets.get(PAUSED_KEY));
+        context.paused.set(snapshotPaused);
         return context;
     }
 
