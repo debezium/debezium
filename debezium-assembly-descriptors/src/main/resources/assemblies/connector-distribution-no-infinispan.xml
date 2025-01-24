@@ -29,6 +29,16 @@
               <exclude>org.infinispan:infinispan-core:*</exclude>
               <exclude>org.infinispan:infinispan-client-hotrod:*</exclude>
 
+              <!-- Exclude ehcache and dependencies  -->
+              <exclude>org.ehcache:ehcache:*</exclude>
+              <exclude>org.jvnet.staxex:stax-ex:*</exclude>
+              <exclude>com.sun.xml.fastinfoset:FastInfoset:*</exclude>
+              <exclude>javax.activation:javax.activation-api:*</exclude>
+              <exclude>org.glassfish.jaxb:jaxb-runtime:*</exclude>
+              <exclude>javax.xml.bind:jaxb-api:*</exclude>
+              <exclude>org.glassfish.jaxb:txw2:*</exclude>
+              <exclude>com.sun.istack:istack-commons-runtime:*</exclude>
+
               <!-- Exclude Oracle OpenLogReplicator dependencies -->
               <exclude>io.vertx:vertx-core:*</exclude>
               <exclude>com.google.protobuf:protobuf-java:*</exclude>
