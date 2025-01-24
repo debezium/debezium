@@ -25,6 +25,7 @@ import io.debezium.annotation.Immutable;
 import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.data.Envelope;
+import io.debezium.metadata.CollectionId;
 import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.sink.filter.FieldFilterFactory.FieldNameFilter;
 
@@ -44,8 +45,10 @@ public class JdbcKafkaSinkRecord extends KafkaDebeziumSinkRecord implements Jdbc
     private final List<String> keyFieldNames = new ArrayList<>();
     private final List<String> nonKeyFieldNames = new ArrayList<>();
     private final Map<String, FieldDescriptor> allFields = new LinkedHashMap<>();
+    private CollectionId collectionId = null;
 
-    public JdbcKafkaSinkRecord(SinkRecord record, PrimaryKeyMode primaryKeyMode, Set<String> primaryKeyFields, FieldNameFilter fieldsFilter, DatabaseDialect dialect) {
+    public JdbcKafkaSinkRecord(SinkRecord record, PrimaryKeyMode primaryKeyMode, Set<String> primaryKeyFields,
+                               FieldNameFilter fieldsFilter, DatabaseDialect dialect) {
         super(record);
 
         Objects.requireNonNull(primaryKeyMode, "The primary key mode must be provided.");

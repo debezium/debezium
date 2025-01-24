@@ -57,8 +57,8 @@ final class MongoDbChangeEventSink extends AbstractChangeEventSink implements Ch
         }
     }
 
-    public Optional<CollectionId> getCollectionId(String collectionName) {
-        return Optional.of(new CollectionId(collectionName));
+    public CollectionId getCollectionId(String collectionName) {
+        return new CollectionId(collectionName);
     }
 
     public void execute(final Collection<SinkRecord> records) {

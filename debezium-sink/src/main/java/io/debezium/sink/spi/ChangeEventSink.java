@@ -6,7 +6,6 @@
 package io.debezium.sink.spi;
 
 import java.util.Collection;
-import java.util.Optional;
 
 import org.apache.kafka.connect.sink.SinkRecord;
 
@@ -29,5 +28,5 @@ public interface ChangeEventSink extends AutoCloseable {
      */
     Batch put(Collection<SinkRecord> records);
 
-    Optional<CollectionId> getCollectionId(String collectionName);
+    CollectionId getCollectionId(String collectionName);
 }

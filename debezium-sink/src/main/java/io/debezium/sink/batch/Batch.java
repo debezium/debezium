@@ -5,13 +5,16 @@
  */
 package io.debezium.sink.batch;
 
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedHashSet;
+import java.util.Collections;
 
 import io.debezium.sink.DebeziumSinkRecord;
 
-public class Batch extends LinkedHashSet<DebeziumSinkRecord> {
-    public <R> Batch(R collection) {
-        super((Collection<? extends DebeziumSinkRecord>) collection);
+public class Batch extends ArrayList<DebeziumSinkRecord> {
+
+    public Batch(Collection<? extends DebeziumSinkRecord> collection) {
+        super(Collections.unmodifiableList(new ArrayList<>(collection)));
     }
+
 }

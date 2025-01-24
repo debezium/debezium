@@ -6,9 +6,6 @@
 package io.debezium.sink;
 
 import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Optional;
 
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.slf4j.Logger;
@@ -21,7 +18,6 @@ import io.debezium.sink.batch.Buffer;
 import io.debezium.sink.batch.DeduplicatedBuffer;
 import io.debezium.sink.batch.KeylessBuffer;
 import io.debezium.sink.spi.ChangeEventSink;
-import io.debezium.util.Stopwatch;
 
 /**
  * - Apply filtering fields/columns
@@ -50,10 +46,10 @@ public abstract class AbstractChangeEventSink implements ChangeEventSink {
         }
     }
 
-    public Optional<CollectionId> getCollectionIdFromRecord(DebeziumSinkRecord record) {
+    public CollectionId getCollectionIdFromRecord(DebeziumSinkRecord record) {
         String tableName = this.config.getCollectionNamingStrategy().resolveCollectionName(record, config.getCollectionNameFormat());
         if (tableName == null) {
-            return Optional.empty();
+            return null;
         }
         return getCollectionId(tableName);
     }
@@ -61,9 +57,6 @@ public abstract class AbstractChangeEventSink implements ChangeEventSink {
     @Override
     public Batch put(Collection<SinkRecord> records) {
         // @TODO in the future a list of Debezium sink records should be passed instead of the Kafka Connect's SinkRecord instances
-        final Map<CollectionId, Buffer> updateBufferByTable = new LinkedHashMap<>();
-        final Map<CollectionId, Buffer> deleteBufferByTable = new LinkedHashMap<>();
-
         for (SinkRecord kafkaSinkRecord : records) {
             LOGGER.trace("Processing {}", kafkaSinkRecord);
 
@@ -74,14 +67,12 @@ public abstract class AbstractChangeEventSink implements ChangeEventSink {
                 continue;
             }
 
-            Optional<CollectionId> optionalCollectionId = getCollectionIdFromRecord(record);
-            if (optionalCollectionId.isEmpty()) {
+            CollectionId collectionId = getCollectionIdFromRecord(record);
+            if (null == collectionId) {
                 LOGGER.warn("Ignored to write record from topic '{}' partition '{}' offset '{}'. No resolvable table name.",
                         record.topicName(), record.partition(), record.offset());
                 continue;
             }
-
-            final CollectionId collectionId = optionalCollectionId.get();
 
             if (record.isTruncate()) {
                 if (!config.isTruncateEnabled()) {
@@ -90,7 +81,7 @@ public abstract class AbstractChangeEventSink implements ChangeEventSink {
                 }
 
                 // clear all batches for the resolved collection/table and add the truncate event to the buffer
-                buffer.truncate(collectionId, record);
+                buffer.truncate(record);
                 continue;
             }
 
@@ -99,35 +90,11 @@ public abstract class AbstractChangeEventSink implements ChangeEventSink {
                     LOGGER.debug("Deletes are not enabled, skipping delete for topic '{}'", record.topicName());
                     continue;
                 }
-
-                buffer.enqueue(collectionId, record);
             }
-            else {
-                // lookup if the record is already in queue
-
-                Buffer buffer = deleteBufferByTable.get(collectionId);
-                if (buffer != null && buffer.size() > 0) {
-                    // When an insert arrives, delete buffer must be flushed to avoid losing an insert for the same record after its deletion.
-                    // this because at the end we will always flush inserts before deletes.
-                    // flushBuffer(collectionId, deleteBufferByTable.get(collectionId).flush());
-                    // @TODO
-                }
-
-                Stopwatch updateBufferStopwatch = Stopwatch.reusable();
-                updateBufferStopwatch.start();
-
-                // Buffer tableIdBuffer = resolveBuffer(updateBufferByTable, collectionId, sinkRecordDescriptor);
-                // List<JdbcSinkRecordDescriptor> toFlush = tableIdBuffer.add(sinkRecordDescriptor);
-                updateBufferStopwatch.stop();
-
-                LOGGER.trace("[PERF] Update buffer execution time {}", updateBufferStopwatch.durations());
-                // flushBuffer(collectionId, toFlush);
-            }
+            buffer.enqueue(record);
 
         }
 
-        // flushBuffers(updateBufferByTable);
-        // flushBuffers(deleteBufferByTable);
         return buffer.poll();
     }
 }

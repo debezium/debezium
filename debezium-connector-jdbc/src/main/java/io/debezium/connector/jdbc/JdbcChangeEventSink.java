@@ -15,7 +15,6 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -76,12 +75,10 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
         final Map<CollectionId, Buffer> deleteBufferByTable = new LinkedHashMap<>();
 
         for (SinkRecord kafkaSinkRecord : records) {
-
             JdbcSinkRecord record = new JdbcKafkaSinkRecord(kafkaSinkRecord, config.getPrimaryKeyMode(), config.getPrimaryKeyFields(), config.getFieldFilter(), dialect);
 
-            Optional<CollectionId> optionalCollectionId = getCollectionIdFromRecord(record);
-            if (optionalCollectionId.isEmpty()) {
-
+            CollectionId collectionId = getCollectionIdFromRecord(record);
+            if (null == collectionId) {
                 LOGGER.warn("Ignored to write record from topic '{}' partition '{}' offset '{}'. No resolvable table name", record.topicName(), record.partition(),
                         record.offset());
                 continue;
@@ -92,8 +89,6 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
                 LOGGER.debug("Skipping tombstone record {}", record);
                 continue;
             }
-
-            final CollectionId collectionId = optionalCollectionId.get();
 
             if (record.isTruncate()) {
                 if (!config.isTruncateEnabled()) {
@@ -379,8 +374,8 @@ public class JdbcChangeEventSink extends AbstractChangeEventSink implements Chan
         }
     }
 
-    public Optional<CollectionId> getCollectionId(String collectionName) {
-        return Optional.of(dialect.getCollectionId(collectionName));
+    public CollectionId getCollectionId(String collectionName) {
+        return dialect.getCollectionId(collectionName);
     }
 
     private boolean isRetriable(Throwable throwable) {

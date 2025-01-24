@@ -5,13 +5,9 @@
  */
 package io.debezium.sink.batch;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
-import io.debezium.metadata.CollectionId;
 import io.debezium.sink.DebeziumSinkRecord;
 import io.debezium.sink.SinkConnectorConfig;
 
@@ -29,7 +25,7 @@ public class DeduplicatedBuffer extends AbstractBuffer implements Buffer {
     }
 
     @Override
-    public void enqueue(CollectionId collectionId, DebeziumSinkRecord record) {
+    public void enqueue(DebeziumSinkRecord record) {
         if (!(record instanceof KafkaDebeziumSinkRecord kafkaDebeziumRecord)) {
             throw new RuntimeException("DeduplicatedBuffer requires KafkaDebeziumRecord type record. \"" + record.getClass() + "\" given.");
         }
@@ -53,25 +49,14 @@ public class DeduplicatedBuffer extends AbstractBuffer implements Buffer {
         if (null == keyStruct) {
             throw new RuntimeException("No struct-based primary key defined for record key/value, reduction buffer require struct based primary key");
         }
-        records.computeIfAbsent(collectionId, k -> new LinkedHashMap<>());
-        Map<Object, DebeziumSinkRecord> collectionRecords = records.get(collectionId);
 
         // Check if the record exists by key and update it if found
-        for (int i = 0; i < collectionRecords.size(); i++) {
-            if (keyStruct.equals(collectionRecords.get(i).getKeyStruct(connectorConfig.getPrimaryKeyMode()))) {
-                collectionRecords.put(i, record);
+        for (int i = 0; i < records.size(); i++) {
+            if (keyStruct.equals(records.get(i).getKeyStruct(connectorConfig.getPrimaryKeyMode()))) {
+                records.put(i, record);
                 return;
             }
         }
-        collectionRecords.put(record.key(), record);
-    }
-
-    @Override
-    public DebeziumSinkRecord remove(CollectionId collectionId, DebeziumSinkRecord record) {
-        Map<Object, DebeziumSinkRecord> recordsOfCollection = records.get(collectionId);
-        if (recordsOfCollection != null) {
-            return recordsOfCollection.remove(record.key());
-        }
-        return null;
+        records.put(record.key(), record);
     }
 }

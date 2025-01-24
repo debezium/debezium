@@ -5,7 +5,6 @@
  */
 package io.debezium.sink.batch;
 
-import io.debezium.metadata.CollectionId;
 import io.debezium.sink.DebeziumSinkRecord;
 
 /**
@@ -19,13 +18,13 @@ public interface Buffer {
      * Add a {@link DebeziumSinkRecord} to the internal buffer.
      * @param record the Sink record descriptor
      */
-    void enqueue(CollectionId collectionId, DebeziumSinkRecord record);
+    void enqueue(DebeziumSinkRecord record);
 
-    DebeziumSinkRecord remove(CollectionId collectionId, DebeziumSinkRecord record);
+    DebeziumSinkRecord remove(DebeziumSinkRecord record);
 
     int size();
 
-    void truncate(CollectionId collectionId, DebeziumSinkRecord record);
+    void truncate(DebeziumSinkRecord record);
 
     /**
      * Polls for a batch of {@link DebeziumSinkRecord} that can be stored to the datastore.

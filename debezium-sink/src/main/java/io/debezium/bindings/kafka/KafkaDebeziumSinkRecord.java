@@ -25,8 +25,11 @@ public class KafkaDebeziumSinkRecord implements DebeziumSinkRecord {
 
     protected final SinkRecord originalKafkaRecord;
 
+    private final Object key;
+
     public KafkaDebeziumSinkRecord(SinkRecord record) {
         this.originalKafkaRecord = record;
+        this.key = record.key(); // @TODO: convert to a non-Kafka datastructure
     }
 
     @Override
