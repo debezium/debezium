@@ -646,17 +646,13 @@ For more information about ImageStreams, see link:{LinkCreatingManagingOpenShift
 1. Log in to the OpenShift cluster.
 2. Create a {prodname} `KafkaConnect` custom resource (CR) for the connector, or modify an existing one. +
 For example, create a `KafkaConnect` CR with the name `dbz-jdbc-connect.yaml` that specifies the `annotations` and `image` properties, as shown in the following excerpt.
- +
-.A `dbz-jdbc-connect.yaml` file that defines a `KafkaConnect` custom resource that includes a {prodname} connector
-=====================================================================
 In the example that follows, the custom resource is configured to download the following artifacts:
-
++
 * The {prodname} {connector-name} connector archive.
-* A JDBC driver that is required to connect to an Oracle database.
-This driver is required only if you configure Oracle as the sink destination.
-A similar entry is required if you specify Db2 as the sink destination.
+* A JDBC driver that is required to connect to an Oracle or Db2 sink database.
 You can omit this entry for other sink destinations.
-
++
+.A `dbz-jdbc-connect.yaml` file that defines a `KafkaConnect` custom resource that includes a {prodname} connector
 [source,yaml,subs="+attributes"]
 ----
 apiVersion: {KafkaConnectApiVersion}
@@ -681,8 +677,8 @@ spec:
           - type: jar
             url: https://repo1.maven.org/maven2/com/oracle/ojdbc/ojdbc11/{ojdbc-version}/ojdbc11-{ojdbc-version}.jar  // <8>
   ...
-
 ----
++
 .Descriptions of Kafka Connect configuration settings
 [cols="1,7",options="header",subs="+attributes"]
 |===
@@ -728,7 +724,6 @@ The example provides the Maven URL for the Oracle Database JDBC driver.
 The Db2 JDBC driver is available at the following Maven location: `https://repo1.maven.org/maven2/com/ibm/db2/jcc/{db2-version}/jcc-{db2-version}.jar`
 
 |===
-====================================================================
 
 3. Apply the `KafkaConnect` build specification to the OpenShift cluster by entering the following command:
 +
@@ -745,7 +740,6 @@ The connector artifacts that you listed in the configuration are available in th
 For example, create the following `KafkaConnector` CR, and save it as `orders-to-postgresql-jdbc-connector.yaml`
 +
 .`orders-to-postgresql-jdbc-connector.yaml` file that defines the `KafkaConnector` custom resource for a {prodname} connector
-=====================================================================
 [source,yaml,subs="+attributes"]
 ----
 apiVersion: kafka.strimzi.io/v1beta2
@@ -767,7 +761,6 @@ spec:
     schema.evolution: basic
     use.time.zone: UTC
 ----
-=====================================================================
 +
 .Descriptions of connector configuration settings
 [cols="1,7",options="header",subs="+attributes"]
