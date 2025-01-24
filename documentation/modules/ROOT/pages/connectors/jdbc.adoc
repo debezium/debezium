@@ -757,7 +757,6 @@ spec:
   class: io.debezium.connector.jdbc.JdbcSinkConnector  // <2>
   tasksMax: 1  // <3>
    config:  // <4>
-    connector.class: io.debezium.connector.jdbc.JdbcSinkConnector
     connection.url: jdbc://postgresql://<host>:<port>/<database-name> // <5>
     connection.username: <database-user>  // <6>
     connection.password: <database-pwd>  // <7>
@@ -789,7 +788,7 @@ spec:
 
 |5
 |The JDBC connection URL for the sink database.
-The URL specifies the port number and any other authentication properties that are required to connect to the database.
+The URL specifies the port number and any authentication properties that are required to connect to the database.
 For example, `jdbc:oracle:thin:@myhost.example.com:1521/myservice`
 
 |6
@@ -921,7 +920,7 @@ podman push _<myregistry.io>_/debezium-jdbc-connector-container:latest
 +
 [source,shell,subs="+quotes"]
 ----
-docker push _<myregistry.io>_/ddebezium-jdbc-connector-container:latest
+docker push _<myregistry.io>_/debezium-jdbc-connector-container:latest
 ----
 
 .. Create a new {prodname} Oracle KafkaConnect custom resource (CR).
@@ -1153,10 +1152,19 @@ Information about the properties is organized as follows:
 A failure results if you attempt to reuse this name when registering a connector.
 This property is required by all Kafka Connect connectors.
 
+ifdef::product[]
+|[[jdbc-connector-property-class]]<<jdbc-connector-property-class, `+class+`>>
+|No default
+|The name of the Java class for the connector.
+For the {prodname} JDBC connector, specify the value `io.debezium.connector.jdbc.JdbcSinkConnector`.
+endif::product[]
+
+ifdef::community[]
 |[[jdbc-property-connection-class]]<<jdbc-property-connection-class, `+connector.class+`>>
 |No default
 |The name of the Java class for the connector.
 For the {prodname} JDBC connector, specify the value `io.debezium.connector.jdbc.JdbcSinkConnector`.
+endif::community[]
 
 |[[jdbc-property-connection-task]]<<jdbc-property-connection-task, `+tasks.max+`>>
 |1
