@@ -2584,7 +2584,9 @@ You can use either of the following methods to deploy a {prodname} PostgreSQL co
 * xref:openshift-streams-postgresql-connector-deployment[Use {StreamsName} to automatically create an image that includes the connector plug-in].
 +
 This is the preferred method.
-* xref:deploying-debezium-postgresql-connectors[Build a custom Kafka Connect container image from a Dockerfile].
+* xref:deploying-debezium-postgresql-connectors[Build a custom Kafka Connect container image from a Dockerfile]. +
+This Containerfile deployment method is deprecated.
+The instructions for this method are scheduled for removal in future versions of the documentation.
 
 .Additional resources
 
