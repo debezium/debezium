@@ -6,6 +6,8 @@ on:
       - main
       - 1.*
       - 2.*
+      - 3.*
+      - 4.*
     paths:
       - 'documentation/**'
 jobs:
