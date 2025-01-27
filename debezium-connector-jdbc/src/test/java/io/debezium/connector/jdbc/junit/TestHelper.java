@@ -18,8 +18,7 @@ import java.util.TreeMap;
 import javax.sql.DataSource;
 
 import org.assertj.db.api.TableAssert;
-import org.assertj.db.type.Source;
-import org.assertj.db.type.Table;
+import org.assertj.db.type.AssertDbConnection;
 
 /**
  * @author Chris Cranford
@@ -77,16 +76,16 @@ public class TestHelper {
         return System.getProperty("sink.time_zone", "UTC");
     }
 
-    public static TableAssert assertTable(DataSource dataSource, String tableName) {
-        return assertThat(new Table(dataSource, tableName));
+    public static TableAssert assertTable(AssertDbConnection assertDbConnection, String tableName) {
+        return assertThat(assertDbConnection.table(tableName).build());
     }
 
-    public static TableAssert assertTable(DataSource dataSource, String tableName, String[] columnsToCheck, String[] columnsToExclude) {
-        return assertThat(new Table(dataSource, tableName, columnsToCheck, columnsToExclude));
-    }
-
-    public static TableAssert assertTable(Source source, String tableName) {
-        return assertThat(new Table(source, tableName));
+    public static TableAssert assertTable(AssertDbConnection assertDbConnection, String tableName, String[] columnsToCheck, String[] columnsToExclude) {
+        return assertThat(assertDbConnection
+                .table(tableName)
+                .columnsToCheck(columnsToCheck)
+                .columnsToExclude(columnsToExclude)
+                .build());
     }
 
     /**
