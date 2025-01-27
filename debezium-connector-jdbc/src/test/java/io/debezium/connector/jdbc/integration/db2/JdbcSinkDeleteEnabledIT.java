@@ -38,11 +38,11 @@ public class JdbcSinkDeleteEnabledIT extends AbstractJdbcSinkDeleteEnabledTest {
         sink.execute("create table TEST_TRUNCATE_DB2_TABLE(id int not null, name varchar(255), primary key(id))");
         sink.execute("insert into TEST_TRUNCATE_DB2_TABLE(id,name) values(1,'jdbc')");
 
-        TableAssert tableAssert = TestHelper.assertTable(dataSource(), "TEST_TRUNCATE_DB2_TABLE");
+        TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), "TEST_TRUNCATE_DB2_TABLE");
         tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(2);
 
         sink.execute("truncate table TEST_TRUNCATE_DB2_TABLE IMMEDIATE");
-        tableAssert = TestHelper.assertTable(dataSource(), "TEST_TRUNCATE_DB2_TABLE");
+        tableAssert = TestHelper.assertTable(assertDbConnection(), "TEST_TRUNCATE_DB2_TABLE");
         tableAssert.exists().hasNumberOfRows(0).hasNumberOfColumns(2);
     }
 

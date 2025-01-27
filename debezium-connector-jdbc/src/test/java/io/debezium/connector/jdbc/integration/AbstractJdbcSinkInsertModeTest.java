@@ -62,7 +62,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         consume(createRecord);
         consume(factory.createRecordNoKey(topicName));
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
         tableAssert.exists().hasNumberOfRows(2).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1, (byte) 1);
@@ -87,7 +87,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         consume(createRecord);
         consume(factory.createRecord(topicName));
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
         tableAssert.exists().hasNumberOfRows(2).hasNumberOfColumns(6);
 
         getSink().assertColumnType(tableAssert, "__connect_topic", ValueType.TEXT, topicName, topicName);
@@ -115,7 +115,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         consume(createRecord);
         consume(factory.createRecord(topicName, (byte) 2));
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
         tableAssert.exists().hasNumberOfRows(2).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1, (byte) 2);
@@ -141,7 +141,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         consume(createRecord);
         consume(factory.createRecord(topicName, (byte) 2));
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
         tableAssert.exists().hasNumberOfRows(2).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1, (byte) 2);
@@ -194,7 +194,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         consume(createRecord);
         consume(factory.createRecord(topicName, (byte) 1));
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
         tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(6);
 
         getSink().assertColumnType(tableAssert, "__connect_topic", ValueType.TEXT, topicName);
@@ -222,7 +222,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         consume(createRecord);
         consume(factory.createRecord(topicName, (byte) 1));
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
         tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
@@ -248,7 +248,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         consume(createRecord);
         consume(factory.createRecord(topicName, (byte) 1));
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
         tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
@@ -273,7 +273,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         consume(createRecord);
 
         // No changes detected because there is no existing record.
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
         tableAssert.exists().hasNumberOfRows(0).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER);
@@ -298,7 +298,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         consume(createRecord);
 
         // No changes detected because there is no existing record.
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
         tableAssert.exists().hasNumberOfRows(0).hasNumberOfColumns(6);
 
         getSink().assertColumnType(tableAssert, "__connect_topic", ValueType.TEXT);
@@ -326,7 +326,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         consume(createRecord);
 
         // No changes detected because there is no existing record.
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
         tableAssert.exists().hasNumberOfRows(0).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER);
@@ -352,7 +352,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
         consume(createRecord);
 
         // No changes detected because there is no existing record.
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
         tableAssert.exists().hasNumberOfRows(0).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER);
@@ -382,7 +382,7 @@ public abstract class AbstractJdbcSinkInsertModeTest extends AbstractJdbcSinkTes
 
         consume(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
         tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(2);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);

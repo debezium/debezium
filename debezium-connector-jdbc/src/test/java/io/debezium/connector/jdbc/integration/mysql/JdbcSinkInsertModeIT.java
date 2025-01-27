@@ -87,7 +87,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
                 List.of("geometry", "point", "g"), List.of(geometrySchema, pointSchema, geometrySchema), Arrays.asList(new Object[]{ geometryValue, pointValue, null }));
         consume(createGeometryRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createGeometryRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createGeometryRecord));
         tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(4);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
@@ -157,7 +157,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         final List<KafkaDebeziumSinkRecord> records = List.of(recordA, recordB, recordC);
         consume(records);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(recordA));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(recordA));
         tableAssert.hasNumberOfRows(2).hasNumberOfColumns(3);
     }
 
