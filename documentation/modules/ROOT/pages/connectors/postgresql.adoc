@@ -1744,7 +1744,7 @@ Represents the number of days since the epoch.
 |`INT64`
 |`io.debezium.time.MicroTime` +
  +
-Represents the time value in microseconds and does not include timezone information. 
+Represents the time value in microseconds and does not include timezone information.
 In PostgreSQL, the precision `p` parameter specifies the number of decimal places in the seconds part of a time value.
 The precision can range from 0 (no fractional seconds) to 6 (microsecond precision).
 
@@ -1752,7 +1752,7 @@ The precision can range from 0 (no fractional seconds) to 6 (microsecond precisi
 |`INT64`
 |`io.debezium.time.MicroTimestamp` +
  +
-Represents the number of microseconds past the epoch, and does not include timezone information. 
+Represents the number of microseconds past the epoch, and does not include timezone information.
 In PostgreSQL, the precision `p` parameter specifies the number of decimal places in the seconds part of a time value.
 The precision can range from 0 (no fractional seconds) to 6 (microsecond precision).
 
@@ -1780,7 +1780,7 @@ Represents the number of days since the epoch.
 |`INT64`
 |`io.debezium.time.NanoTime` +
  +
-Represents the time value in nanoseconds and does not include timezone information. 
+Represents the time value in nanoseconds and does not include timezone information.
 In PostgreSQL, the precision `p` parameter specifies the number of decimal places in the seconds part of a time value.
 The precision can range from 0 (no fractional seconds) to 6 (microsecond precision).
 
@@ -2652,7 +2652,9 @@ You can use either of the following methods to deploy a {prodname} PostgreSQL co
 * xref:openshift-streams-postgresql-connector-deployment[Use {StreamsName} to automatically create an image that includes the connector plug-in].
 +
 This is the preferred method.
-* xref:deploying-debezium-postgresql-connectors[Build a custom Kafka Connect container image from a Dockerfile].
+* xref:deploying-debezium-postgresql-connectors[Build a custom Kafka Connect container image from a Dockerfile]. +
+This Containerfile deployment method is deprecated.
+The instructions for this method are scheduled for removal in future versions of the documentation.
 
 .Additional resources
 
