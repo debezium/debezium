@@ -16,7 +16,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.assertj.db.api.TableAssert;
-import org.assertj.db.type.DataSourceWithLetterCase;
+import org.assertj.db.type.AssertDbConnection;
 import org.assertj.db.type.ValueType;
 import org.assertj.db.type.lettercase.CaseComparisons;
 import org.assertj.db.type.lettercase.CaseConversions;
@@ -106,7 +106,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
                 Arrays.asList(new Object[]{ geometryValue, pointValue, geographyValue }));
         consume(createGeometryRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createGeometryRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createGeometryRecord));
         tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(5);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
@@ -185,7 +185,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         final List<KafkaDebeziumSinkRecord> records = List.of(recordA, recordB, recordC);
         consume(records);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(recordA));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(recordA));
         tableAssert.hasNumberOfRows(2).hasNumberOfColumns(3);
     }
 
@@ -212,8 +212,8 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         consume(createSimpleRecord1);
         consume(createSimpleRecord2);
 
-        DataSourceWithLetterCase dataSourceWithLetterCase = new DataSourceWithLetterCase(dataSource(), LetterCase.TABLE_DEFAULT, UPPER_CASE_STRICT, UPPER_CASE_STRICT);
-        final TableAssert tableAssert = TestHelper.assertTable(dataSourceWithLetterCase, destinationTableName(createSimpleRecord1));
+        AssertDbConnection assertDbConnection = assertDbConnection(LetterCase.TABLE_DEFAULT, UPPER_CASE_STRICT, UPPER_CASE_STRICT);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection, destinationTableName(createSimpleRecord1));
         tableAssert.exists().hasNumberOfRows(2).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "ID", ValueType.NUMBER, (byte) 1, (byte) 2);
@@ -243,9 +243,8 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
         consume(createSimpleRecord1);
         consume(createSimpleRecord2);
 
-        DataSourceWithLetterCase dataSourceWithLetterCase = new DataSourceWithLetterCase(dataSource(), LetterCase.TABLE_DEFAULT, LOWER_CASE_STRICT, LOWER_CASE_STRICT);
-
-        final TableAssert tableAssert = TestHelper.assertTable(dataSourceWithLetterCase, destinationTableName(createSimpleRecord1), null, null);
+        AssertDbConnection assertDbConnection = assertDbConnection(LetterCase.TABLE_DEFAULT, LOWER_CASE_STRICT, LOWER_CASE_STRICT);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection, destinationTableName(createSimpleRecord1), null, null);
         tableAssert.exists().hasNumberOfRows(2).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1, (byte) 2);
@@ -282,7 +281,7 @@ public class JdbcSinkInsertModeIT extends AbstractJdbcSinkInsertModeTest {
                 Arrays.asList(new Object[]{ "-infinity", "infinity", "[2010-01-01 14:30, infinity)" }));
         consume(createInfinityRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createInfinityRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createInfinityRecord));
         tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(4);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);

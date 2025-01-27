@@ -18,7 +18,7 @@
         <!-- Other artifact versions -->
         <version.hibernate>6.4.8.Final</version.hibernate>
         <version.c3p0>0.9.5.5</version.c3p0>
-        <version.assertjdb>2.0.2</version.assertjdb>
+        <version.assertjdb>3.0.0</version.assertjdb>
         <!--
         By default only run the integration tests for MySQL, PostgreSQL, and SQL Server.
         Other tags include it-db2 and it-oracle for the DB2 and Oracle integration tests.

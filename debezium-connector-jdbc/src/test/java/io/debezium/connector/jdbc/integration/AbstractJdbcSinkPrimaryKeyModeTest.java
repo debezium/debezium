@@ -58,7 +58,7 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
 
         final String destinationTableName = destinationTableName(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
@@ -85,7 +85,7 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
 
         final String destinationTableName = destinationTableName(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(6);
 
         getSink().assertColumnType(tableAssert, "__connect_topic", ValueType.TEXT, topicName);
@@ -115,7 +115,7 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
 
         final String destinationTableName = destinationTableName(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(6);
 
         getSink().assertColumnType(tableAssert, "__connect_topic", ValueType.TEXT, topicName);
@@ -145,14 +145,14 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
 
         final String destinationTableName = destinationTableName(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
         getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT, "John Doe$");
 
-        TestHelper.assertTable(dataSource(), destinationTableName)
+        TestHelper.assertTable(assertDbConnection(), destinationTableName)
                 .exists()
                 .hasNumberOfColumns(3)
                 .column("id").isNumber(false).hasValues((byte) 1)
@@ -179,7 +179,7 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
 
         final String destinationTableName = destinationTableName(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id1", ValueType.NUMBER, (byte) 1);
@@ -207,14 +207,14 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
 
         final String destinationTableName = destinationTableName(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
         getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT, "John Doe$");
 
-        TestHelper.assertTable(dataSource(), destinationTableName)
+        TestHelper.assertTable(assertDbConnection(), destinationTableName)
                 .exists()
                 .hasNumberOfColumns(3)
                 .column("id").isNumber(false).hasValues((byte) 1)
@@ -246,7 +246,7 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
 
         final String destinationTableName = destinationTableName(kafkaSinkRecordWithHeader);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id1", ValueType.NUMBER, (byte) 1);
@@ -274,7 +274,7 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
 
         final String destinationTableName = destinationTableName(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
@@ -300,7 +300,7 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
 
         final String destinationTableName = destinationTableName(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
@@ -328,7 +328,7 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
 
         final String destinationTableName = destinationTableName(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
@@ -356,7 +356,7 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
 
         final String destinationTableName = destinationTableName(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id1", ValueType.NUMBER, (byte) 1);
@@ -402,7 +402,7 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
 
         final String destinationTableName = destinationTableName(createRecord1);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(4);
 
         getSink().assertColumnType(tableAssert, "id1_value", ValueType.NUMBER, (byte) 11);
@@ -428,7 +428,7 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
 
         final String destinationTableName = destinationTableName(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id1", ValueType.NUMBER, (byte) 1);

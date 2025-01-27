@@ -57,7 +57,7 @@ public class JdbcSinkFieldFilterIT extends AbstractJdbcSinkTest {
         final KafkaDebeziumSinkRecord createRecord = factory.createRecordNoKey(topicName);
         consume(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
         tableAssert.exists().column("id").value().isEqualTo(1);
         tableAssert.exists().column("name").value().isEqualTo("John Doe");
         tableAssert.exists().hasNumberOfColumns(2);
@@ -81,7 +81,7 @@ public class JdbcSinkFieldFilterIT extends AbstractJdbcSinkTest {
         final KafkaDebeziumSinkRecord createRecord = factory.createRecordNoKey(topicName);
         consume(createRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
         tableAssert.exists().hasNumberOfColumns(2);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, 1);
@@ -109,7 +109,7 @@ public class JdbcSinkFieldFilterIT extends AbstractJdbcSinkTest {
         consume(createRecord);
         consume(factory.createRecord(topicName, (byte) 1));
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName(createRecord));
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName(createRecord));
         tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(2);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
@@ -118,7 +118,7 @@ public class JdbcSinkFieldFilterIT extends AbstractJdbcSinkTest {
         final KafkaDebeziumSinkRecord updateRecord = factory.updateRecord(topicName);
         consume(updateRecord);
 
-        final TableAssert tableAssertForUpdate = TestHelper.assertTable(dataSource(), destinationTableName(updateRecord));
+        final TableAssert tableAssertForUpdate = TestHelper.assertTable(assertDbConnection(), destinationTableName(updateRecord));
         tableAssertForUpdate.exists().hasNumberOfRows(1).hasNumberOfColumns(2);
 
         getSink().assertColumnType(tableAssertForUpdate, "id", ValueType.NUMBER, (byte) 1);

@@ -17,6 +17,9 @@ import javax.sql.DataSource;
 
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
+import org.assertj.db.type.AssertDbConnection;
+import org.assertj.db.type.AssertDbConnectionFactory;
+import org.assertj.db.type.lettercase.LetterCase;
 import org.junit.jupiter.api.AfterEach;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,6 +114,16 @@ public abstract class AbstractJdbcSinkTest {
         catch (SQLException e) {
             throw new RuntimeException("Failed to create data source", e);
         }
+    }
+
+    protected AssertDbConnection assertDbConnection() {
+        return AssertDbConnectionFactory.of(dataSource()).create();
+    }
+
+    protected AssertDbConnection assertDbConnection(LetterCase tableLetterCase, LetterCase columnLetterCase, LetterCase primaryKeyLetterCase) {
+        return AssertDbConnectionFactory.of(dataSource())
+                .letterCase(tableLetterCase, columnLetterCase, primaryKeyLetterCase)
+                .create();
     }
 
     /**
