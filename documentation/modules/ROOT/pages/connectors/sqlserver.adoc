@@ -2165,6 +2165,13 @@ To deploy a {prodname} SQL Server connector, you install the {prodname} SQL Serv
 If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Åpache ZooKeeper, Apache Kafka, and Kafka Connect.
 You can pull the official link:https://hub.docker.com/_/microsoft-mssql-server[container images for Microsoft SQL Server on Linux] from Docker Hub.
 
+[IMPORTANT]
+====
+The {prodname} container images that you obtain from `quay.io` do not undergo rigorous testing or security analysis, and are provided for testing and evaluation purposes only.
+These images are not intended for use in production environments.
+To mitigate risk in production deployments, deploy only containers that are actively maintained by trusted vendors, and throughly tested for potential vulnerabilities.
+====
+
 You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
 endif::community[]
 
