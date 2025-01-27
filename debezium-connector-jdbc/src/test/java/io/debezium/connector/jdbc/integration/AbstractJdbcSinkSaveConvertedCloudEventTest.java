@@ -65,7 +65,7 @@ public abstract class AbstractJdbcSinkSaveConvertedCloudEventTest extends Abstra
 
         final String destinationTableName = destinationTableName(convertedRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.TEXT);
@@ -102,7 +102,7 @@ public abstract class AbstractJdbcSinkSaveConvertedCloudEventTest extends Abstra
 
         final String destinationTableName = destinationTableName(convertedRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.TEXT);
@@ -140,7 +140,7 @@ public abstract class AbstractJdbcSinkSaveConvertedCloudEventTest extends Abstra
 
         final String destinationTableName = destinationTableName(convertedRecord);
 
-        final TableAssert tableAssert = TestHelper.assertTable(dataSource(), destinationTableName);
+        final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(3);
 
         getSink().assertColumnType(tableAssert, "id", ValueType.TEXT);
