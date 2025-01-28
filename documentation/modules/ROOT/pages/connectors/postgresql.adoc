@@ -2234,7 +2234,6 @@ To use {prodname} with link:https://cloud.google.com/sql/postgresql/[Cloud SQL f
 The following sections provide an overview of the tasks that you must complete to prepare a Cloud SQL for PostgreSQL database for use with {prodname}.
 
 .Setting the `cloudsql.logical_decoding` flag
-
 In Cloud SQL, you can enable logical decoding by setting the `cloudsql.logical_decoding` flag to `on`. 
 After you set the flag, it automatically adjusts the `wal_level` configuration parameter to `logical`.
 
