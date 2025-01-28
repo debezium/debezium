@@ -1720,10 +1720,8 @@ You can configure the connector to skip the following types of operations:
 * `d` (delete)
 * `t` (truncate)
 
-Set the value to `none` if you do not want the connector to skip any operations.
-
-The {prodname} Vitess connector emits `truncate` events only to its internal schema history topic and not data change topics.
-As a result, if you retain the default `t` value, the connector streams all `insert`, `update`, and `delete` operations; that is, it behaves as when the property is set to `none`.
+Because the {prodname} Vitess connector never emits `truncate` events to data change topics, setting the default `t` option has the same effect as setting the property to `none`.
+That is, the connector streams all `insert`, `update`, and `delete` operations. 
 
 |[[vitess-property-provide-transaction-metadata]]<<vitess-property-provide-transaction-metadata, `provide.transaction.metadata`>>
 |`false`
