@@ -27,8 +27,8 @@ pipelineJob('release/release-deploy_snapshots_pipeline') {
         stringParam('DEBEZIUM_BRANCH', 'main', 'A branch from which Debezium is built')
         stringParam(
                 'DEBEZIUM_ADDITIONAL_REPOSITORIES',
-                'db2#github.com/debezium/debezium-connector-db2.git#main vitess#github.com/debezium/debezium-connector-vitess.git#main cassandra#github.com/debezium/debezium-connector-cassandra.git#main spanner#github.com/debezium/debezium-connector-spanner.git#main informix#github.com/debezium/debezium-connector-informix.git#main ibmi#github.com/debezium/debezium-connector-ibmi.git#main server#github.com/debezium/debezium-server.git#main operator#github.com/debezium/debezium-operator.git#main',
-                'A space separated list of additional repositories from which Debezium connectors are built (id#repo#branch)'
+                'db2#github.com/debezium/debezium-connector-db2.git#main vitess#github.com/debezium/debezium-connector-vitess.git#main cassandra#github.com/debezium/debezium-connector-cassandra.git#main spanner#github.com/debezium/debezium-connector-spanner.git#main informix#github.com/debezium/debezium-connector-informix.git#main ibmi#github.com/debezium/debezium-connector-ibmi.git#main server#github.com/debezium/debezium-server.git#main operator#github.com/debezium/debezium-operator.git#main platform#github.com/debezium/debezium-platform.git#debezium-platform-conductor#main',
+                'A space separated list of additional repositories from which Debezium connectors are built (id#repo[#subDir]#branch)'
         )
     }
 

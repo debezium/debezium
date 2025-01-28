@@ -14,7 +14,7 @@ GIT_CREDENTIALS_ID = 'debezium-github'
 DEBEZIUM_DIR = 'debezium'
 HOME_DIR = '/home/cloud-user'
 
-def additionalDirs = []
+def additionalDirs = [:]
 node('Slave') {
     catchError {
         stage('Initialize') {
@@ -29,17 +29,23 @@ node('Slave') {
                       userRemoteConfigs                : [[url: "https://$params.DEBEZIUM_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
             ]
             )
-            params.DEBEZIUM_ADDITIONAL_REPOSITORIES.split().each {
-                def (id, repository, branch) = it.split('#')
+            def repoInfos = params.DEBEZIUM_ADDITIONAL_REPOSITORIES.split().collect { item ->
+                item.tokenize('#').with { parts ->
+                    parts.size() == 3 ?
+                            [id: parts[0], repository: parts[1], subDir: ".", branch: parts[2]] :
+                            [id: parts[0], repository: parts[1], subDir: parts[2], branch: parts[3]]
+                }
+            }
+            repoInfos.each { repoInfo ->
                 checkout([$class                           : 'GitSCM',
-                          branches                         : [[name: "*/$branch"]],
+                          branches                         : [[name: "*/${repoInfo.branch}"]],
                           doGenerateSubmoduleConfigurations: false,
-                          extensions                       : [[$class: 'RelativeTargetDirectory', relativeTargetDir: id]],
+                          extensions                       : [[$class: 'RelativeTargetDirectory', relativeTargetDir: repoInfo.id]],
                           submoduleCfg                     : [],
-                          userRemoteConfigs                : [[url: "https://$repository", credentialsId: GIT_CREDENTIALS_ID]]
-                ]
-                )
-                additionalDirs << id
+                          userRemoteConfigs                : [[url: "https://${repoInfo.repository}", credentialsId: GIT_CREDENTIALS_ID]]
+                ])
+
+                additionalDirs.put(repoInfo.id, repoInfo.subDir)
             }
 
             dir(DEBEZIUM_DIR) {
@@ -59,9 +65,9 @@ node('Slave') {
             }
         }
 
-        additionalDirs.each { id ->
+        additionalDirs.each { id, subDir ->
             stage("Build and deploy Debezium ${id.capitalize()}") {
-                dir(id) {
+                dir("$id/$subDir") {
                     // Execute a dependency installation script if provided by the repository
                     sh "if [ -f install-artifacts.sh ]; then ./install-artifacts.sh; fi"
 
