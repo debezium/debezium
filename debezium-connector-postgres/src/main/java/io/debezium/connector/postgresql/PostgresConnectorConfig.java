@@ -1111,6 +1111,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return getConfig().getInteger(MAX_RETRIES);
     }
 
+    @Override
+    public int getMaxRetriesOnError() {
+        return getConfig().getInteger(MAX_RETRIES_ON_ERROR);
+    }
+
     public Duration retryDelay() {
         return Duration.ofMillis(getConfig().getInteger(RETRY_DELAY_MS));
     }
