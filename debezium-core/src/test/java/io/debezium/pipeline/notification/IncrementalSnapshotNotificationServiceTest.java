@@ -147,8 +147,8 @@ public class IncrementalSnapshotNotificationServiceTest {
                 "connector_name", "connector-test",
                 "data_collections", "db.inventory.product,db.inventory.customer",
                 "current_collection_in_progress", "db.inventory.product",
-                "maximum_key", "100",
-                "last_processed_key", "50"), clock.millis());
+                "maximum_key", "100,0,0",
+                "last_processed_key", "50,0,0"), clock.millis());
 
         verify(notificationService).notify(eq(expectedNotification), any(Offsets.class));
     }
