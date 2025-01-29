@@ -72,12 +72,12 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     private static final Logger LOGGER = LoggerFactory.getLogger(EventDispatcher.class);
 
     protected final TransactionMonitor transactionMonitor;
-    private final TopicNamingStrategy<T> topicNamingStrategy;
+    protected final TopicNamingStrategy<T> topicNamingStrategy;
     private final DatabaseSchema<T> schema;
     private final HistorizedDatabaseSchema<T> historizedSchema;
-    private final ChangeEventQueue<DataChangeEvent> queue;
+    protected final ChangeEventQueue<DataChangeEvent> queue;
     private final DataCollectionFilter<T> filter;
-    private final ChangeEventCreator changeEventCreator;
+    protected final ChangeEventCreator changeEventCreator;
     private final Heartbeat heartbeat;
     private DataChangeEventListener<P> eventListener = DataChangeEventListener.NO_OP();
     private final boolean emitTombstonesOnDelete;
@@ -719,6 +719,15 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
      */
     public void setIncrementalSnapshotChangeEventSource(Optional<IncrementalSnapshotChangeEventSource<P, ? extends DataCollectionId>> incrementalSnapshotChangeEventSource) {
         this.incrementalSnapshotChangeEventSource = (IncrementalSnapshotChangeEventSource<P, T>) incrementalSnapshotChangeEventSource.orElse(null);
+    }
+
+    /**
+     * Returns the maximum number of threads used for snapshot operations.
+     *
+     * @return the maximum number of threads for snapshot operations
+     */
+    public int getSnapshotMaxThreads() {
+        return connectorConfig.getSnapshotMaxThreads();
     }
 
     /**
