@@ -2247,10 +2247,6 @@ To verify that the value of the setting reflects your changes, run the following
 SHOW wal_level;
 ----
 
-```
-SHOW wal_level;
-```
-
 .Creating a replication user
 To use logical decoding features, you must create a PostgreSQL user with the `REPLICATION` attribute, or grant this attribute to an existing user.
 
