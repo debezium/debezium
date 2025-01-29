@@ -894,3 +894,15 @@ BEGIN
     LIMIT 500;
 END
 #end
+
+#begin
+CREATE DEFINER=`bcadmin`@`%` PROCEDURE `sp_next_available_otc_instance_strategy_id`()
+BEGIN
+  SELECT MIN(st.value) AS strategy_id
+  FROM SEQUENCE_TABLE(100000) ST
+  JOIN btc_quant.stratId_ranges r ON r.stratId0 <= st.value AND st.value < r.stratId1
+  LEFT JOIN otc_instance i ON i.strategy_id=st.value
+  WHERE r.category = 'otc' AND now() BETWEEN validFromDate AND COALESCE(validToDate, now())
+  AND i.strategy_id IS NULL;
+END
+#end
