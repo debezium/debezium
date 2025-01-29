@@ -90,7 +90,7 @@
         <version.staging.plugin>1.6.12</version.staging.plugin>
         <version.protoc.maven.plugin>3.8.0</version.protoc.maven.plugin>
         <version.javadoc.plugin>3.4.0</version.javadoc.plugin>
-        <version.code.formatter>2.20.0</version.code.formatter>
+        <version.code.formatter>2.24.1</version.code.formatter>
         <version.surefire.plugin>3.1.2</version.surefire.plugin>
         <version.checkstyle.plugin>3.1.1</version.checkstyle.plugin>
         <version.release.plugin>2.5.3</version.release.plugin>
