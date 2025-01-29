@@ -81,15 +81,11 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
     }
 
     protected String buildProjection(Table table) {
-        String projection = "*";
-        if (connectorConfig.isColumnsFiltered()) {
-            TableId tableId = table.id();
-            projection = table.columns().stream()
-                    .filter(column -> columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
-                    .map(column -> jdbcConnection.quotedColumnIdString(column.name()))
-                    .collect(Collectors.joining(", "));
-        }
-        return projection;
+        TableId tableId = table.id();
+        return table.columns().stream()
+                .filter(column -> !connectorConfig.isColumnsFiltered() || columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
+                .map(column -> jdbcConnection.quotedColumnIdString(column.name()))
+                .collect(Collectors.joining(", "));
     }
 
     protected void addLowerBound(IncrementalSnapshotContext<T> context, Table table, Object[] boundaryKey, StringBuilder sql) {
