@@ -240,9 +240,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
             LOGGER.debug("Undo change refers to a transaction that has no explicit sequence, '{}'", row.getTransactionId());
             LOGGER.debug("Checking all transactions with prefix '{}'", basePrefix);
             eventKeys = eventKeysForBasePrefix;
-
-            Loggings.logWarningAndTraceRecord(LOGGER, row, "Cannot undo change on table '{}' since event with row-id {} was not found.", row.getTableId(),
-                    row.getRowId());
         }
 
         if (!eventKeys.isEmpty()) {
