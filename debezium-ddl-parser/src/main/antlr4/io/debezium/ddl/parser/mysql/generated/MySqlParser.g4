@@ -980,6 +980,7 @@ tableSource
 
 tableSourceItem
     : tableName (PARTITION '(' uidList ')')? (AS? alias = uid)? (indexHint (',' indexHint)*)? # atomTableItem
+    | sequenceFunctionName '(' DECIMAL_LITERAL ')' (AS? alias = uid)?                         # sequenceTableItem
     | (selectStatement | '(' parenthesisSubquery = selectStatement ')') AS? alias = uid       # subqueryTableItem
     | '(' tableSources ')'                                                                    # tableSourcesItem
     ;
@@ -2487,6 +2488,11 @@ frameRange
 
 partitionClause
     : PARTITION BY expression (',' expression)*
+    ;
+
+sequenceFunctionName
+    : SEQUENCE_TABLE
+    | PERCONA_SEQUENCE_TABLE
     ;
 
 scalarFunctionName

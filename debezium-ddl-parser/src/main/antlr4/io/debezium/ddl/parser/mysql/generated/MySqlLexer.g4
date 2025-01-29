@@ -1096,6 +1096,8 @@ RTRIM                             : 'RTRIM';
 SEC_TO_TIME                       : 'SEC_TO_TIME';
 SECONDARY_ENGINE                  : 'SECONDARY_ENGINE';
 SECONDARY_ENGINE_ATTRIBUTE        : 'SECONDARY_ENGINE_ATTRIBUTE';
+SEQUENCE_TABLE                    : 'SEQUENCE_TABLE';
+PERCONA_SEQUENCE_TABLE            : 'PERCONA_SEQUENCE_TABLE';
 SESSION_USER                      : 'SESSION_USER';
 SHA                               : 'SHA';
 SHA1                              : 'SHA1';
