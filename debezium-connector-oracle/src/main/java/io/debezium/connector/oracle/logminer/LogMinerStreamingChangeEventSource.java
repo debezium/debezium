@@ -515,6 +515,8 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
      * @throws SQLException if a database exception occurred
      */
     private void updateRedoLogMetrics() throws SQLException {
+        streamingMetrics.setMinedLogFileNames(currentLogFiles.stream().map(LogFile::getFileName).collect(Collectors.toSet()));
+
         final Map<String, String> logStatuses = jdbcConnection.queryAndMap(SqlUtils.redoLogStatusQuery(), rs -> {
             Map<String, String> results = new LinkedHashMap<>();
             while (rs.next()) {

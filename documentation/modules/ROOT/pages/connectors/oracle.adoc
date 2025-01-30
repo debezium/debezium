@@ -4446,7 +4446,11 @@ If the buffer is empty, the value will be `0`.
 
 |[[oracle-streaming-metrics-currentredologfilename]]<<oracle-streaming-metrics-currentredologfilename, `+CurrentRedoLogFileName+`>>
 |`string[]`
-|Array of the log files that are currently mined.
+|Array of the current online redo log files of the database.
+
+|[[oracle-streaming-metrics-minedlogfilenames]]<<oracle-streaming-metrics-minedlogfilenames, `+getMinedLogFileNames+`>>
+|`string[]`
+|Array of all archive and online redo logs that are part of the current mining session.
 
 |[[oracle-streaming-metrics-minimumminedlogcount]]<<oracle-streaming-metrics-minimumminedlogcount, `+MinimumMinedLogCount+`>>
 |`long`
@@ -4458,7 +4462,7 @@ If the buffer is empty, the value will be `0`.
 
 |[[oracle-streaming-metrics-redologstatus]]<<oracle-streaming-metrics-redologstatus, `+RedoLogStatus+`>>
 |`string[]`
-|Array of the current state for each mined logfile with the format `_filename_\|_status_`.
+|Array of the current state for each online redo log in the database with the format `_filename_\|_status_`.
 
 |[[oracle-streaming-metrics-switchcounter]]<<oracle-streaming-metrics-switchcounter, `+SwitchCounter+`>>
 |`int`

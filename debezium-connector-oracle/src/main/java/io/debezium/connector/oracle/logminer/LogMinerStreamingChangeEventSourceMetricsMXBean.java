@@ -150,9 +150,14 @@ public interface LogMinerStreamingChangeEventSourceMetricsMXBean
     long getOldestScnAgeInMilliseconds();
 
     /**
-     * @return array of current filenames to be used by the mining session
+     * @return array of online redo log filenames to be used by the mining session
      */
     String[] getCurrentLogFileNames();
+
+    /**
+     * @return array of all archive and redo logs that are read by the mining session
+     */
+    String[] getMinedLogFileNames();
 
     /**
      * Specifies the maximum gap between the start and end system change number range used for

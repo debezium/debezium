@@ -62,6 +62,16 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
         assertThat(metrics.getCurrentRedoLogFileName()[0].equals("name")).isTrue();
         assertThat(metrics.getCurrentRedoLogFileName()[1].equals("name1")).isTrue();
 
+        metrics.setMinedLogFileNames(new HashSet<>(Arrays.asList("arc1", "arc2", "online1")));
+        assertThat(metrics.getMinedLogFileNames()).contains("arc1", "arc2", "online1");
+        assertThat(metrics.getMinimumMinedLogCount()).isEqualTo(3);
+        assertThat(metrics.getMaximumMinedLogCount()).isEqualTo(3);
+
+        metrics.setMinedLogFileNames(new HashSet<>(Arrays.asList("arc2", "online1")));
+        assertThat(metrics.getMinedLogFileNames()).contains("arc2", "online1");
+        assertThat(metrics.getMinimumMinedLogCount()).isEqualTo(2);
+        assertThat(metrics.getMaximumMinedLogCount()).isEqualTo(3);
+
         metrics.setSwitchCount(5);
         assertThat(metrics.getSwitchCounter() == 5).isTrue();
 
