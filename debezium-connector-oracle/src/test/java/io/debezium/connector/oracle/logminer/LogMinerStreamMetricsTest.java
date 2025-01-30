@@ -56,19 +56,19 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
         metrics.setLastDurationOfFetchQuery(Duration.ofMillis(200));
         assertThat(metrics.getLastDurationOfFetchQueryInMilliseconds()).isEqualTo(200);
         assertThat(metrics.getMaxDurationOfFetchQueryInMilliseconds()).isEqualTo(200);
-        assertThat(metrics.getFetchingQueryCount()).isEqualTo(2);
+        assertThat(metrics.getFetchQueryCount()).isEqualTo(2);
 
         metrics.setCurrentLogFileNames(new HashSet<>(Arrays.asList("name", "name1")));
-        assertThat(metrics.getCurrentRedoLogFileName()[0].equals("name")).isTrue();
-        assertThat(metrics.getCurrentRedoLogFileName()[1].equals("name1")).isTrue();
+        assertThat(metrics.getCurrentLogFileNames()[0].equals("name")).isTrue();
+        assertThat(metrics.getCurrentLogFileNames()[1].equals("name1")).isTrue();
 
         metrics.setSwitchCount(5);
-        assertThat(metrics.getSwitchCounter() == 5).isTrue();
+        assertThat(metrics.getLogSwitchCount() == 5).isTrue();
 
         metrics.reset();
         metrics.setLastDurationOfFetchQuery(Duration.ofMillis(1000));
         assertThat(metrics.getLastDurationOfFetchQueryInMilliseconds()).isEqualTo(1000);
-        assertThat(metrics.getFetchingQueryCount()).isEqualTo(1);
+        assertThat(metrics.getFetchQueryCount()).isEqualTo(1);
 
         metrics.reset();
         metrics.setLastCapturedDmlCount(300);
@@ -92,11 +92,10 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
         metrics.setLastBatchProcessingDuration(Duration.ZERO);
         assertThat(metrics.getLastBatchProcessingThroughput()).isEqualTo(0);
 
-        assertThat(metrics.getHoursToKeepTransactionInBuffer()).isEqualTo(0);
         assertThat(metrics.getMillisecondsToKeepTransactionsInBuffer()).isEqualTo(0L);
 
         metrics.setRedoLogStatuses(Collections.singletonMap("name", "current"));
-        assertThat(metrics.getRedoLogStatus()[0].equals("name | current")).isTrue();
+        assertThat(metrics.getRedoLogStatuses()[0].equals("name | current")).isTrue();
 
         assertThat(metrics.toString().contains("logMinerQueryCount"));
     }
@@ -238,7 +237,7 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
             metrics.incrementTotalChangesCount();
             metrics.incrementCommittedTransactionCount();
         }
-        assertThat(metrics.getRegisteredDmlCount()).isEqualTo(1000);
+        assertThat(metrics.getTotalChangesCount()).isEqualTo(1000);
         assertThat(metrics.getNumberOfCommittedTransactions()).isEqualTo(1000);
         assertThat(metrics.getCommitThroughput()).isGreaterThanOrEqualTo(1_000);
 
@@ -281,7 +280,6 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
     @FixFor("DBZ-2754")
     public void testCustomTransactionRetention() throws Exception {
         init(TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION_MS, 10_800_000));
-        assertThat(metrics.getHoursToKeepTransactionInBuffer()).isEqualTo(3);
         assertThat(metrics.getMillisecondsToKeepTransactionsInBuffer()).isEqualTo(3 * 3600000);
     }
 
