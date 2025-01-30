@@ -175,6 +175,9 @@ public class JdbcKafkaSinkRecord extends KafkaDebeziumSinkRecord implements Jdbc
         if (flattened) {
             recordFields = valueSchema().fields().stream();
         }
+        else if (isDelete()) {
+            recordFields = ((Struct) value()).getStruct(Envelope.FieldName.BEFORE).schema().fields().stream();
+        }
         else {
             recordFields = ((Struct) value()).getStruct(Envelope.FieldName.AFTER).schema().fields().stream();
         }
