@@ -25,8 +25,10 @@ import com.dylibso.chicory.wasm.WasmModule;
 import com.dylibso.chicory.wasm.types.MemoryLimits;
 
 import io.debezium.DebeziumException;
+import io.debezium.common.annotation.Incubating;
 import io.debezium.transforms.scripting.RecordHeader;
 
+@Incubating
 @HostModule("env")
 public class ChicoryEngine {
 
