@@ -58,6 +58,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
     private final AtomicReference<Scn> oldestScn = new AtomicReference<>(Scn.NULL);
     private final AtomicReference<Instant> oldestScnTime = new AtomicReference<>();
     private final AtomicReference<String[]> currentLogFileNames = new AtomicReference<>(new String[0]);
+    private final AtomicReference<String[]> minedLogFileNames = new AtomicReference<>(new String[0]);
     private final AtomicReference<String[]> redoLogStatuses = new AtomicReference<>(new String[0]);
     private final AtomicReference<ZoneOffset> databaseZoneOffset = new AtomicReference<>(ZoneOffset.UTC);
 
@@ -182,6 +183,11 @@ public class LogMinerStreamingChangeEventSourceMetrics
     @Override
     public String[] getCurrentLogFileNames() {
         return currentLogFileNames.get();
+    }
+
+    @Override
+    public String[] getMinedLogFileNames() {
+        return minedLogFileNames.get();
     }
 
     @Override
@@ -458,20 +464,29 @@ public class LogMinerStreamingChangeEventSourceMetrics
     }
 
     /**
-     * Set the current iteration's logs that are being mined.
+     * Set the current iteration's online redo logs that are being mined.
      *
-     * @param logFileNames current set of logs that are part of the mining session.
+     * @param redoLogFileNames current set of online redo logs that are part of the mining session.
      */
-    public void setCurrentLogFileNames(Set<String> logFileNames) {
-        this.currentLogFileNames.set(logFileNames.toArray(String[]::new));
-        if (logFileNames.size() < minimumLogsMined.get()) {
-            minimumLogsMined.set(logFileNames.size());
+    public void setCurrentLogFileNames(Set<String> redoLogFileNames) {
+        this.currentLogFileNames.set(redoLogFileNames.toArray(String[]::new));
+    }
+
+    /**
+     * Set all logs that are currently being mined.
+     *
+     * @param minedLogFileNames all logs that are part of the mining session
+     */
+    public void setMinedLogFileNames(Set<String> minedLogFileNames) {
+        this.minedLogFileNames.set(minedLogFileNames.toArray(String[]::new));
+        if (minedLogFileNames.size() < minimumLogsMined.get()) {
+            minimumLogsMined.set(minedLogFileNames.size());
         }
         else if (minimumLogsMined.get() == 0) {
-            minimumLogsMined.set(logFileNames.size());
+            minimumLogsMined.set(minedLogFileNames.size());
         }
-        if (logFileNames.size() > maximumLogsMined.get()) {
-            maximumLogsMined.set(logFileNames.size());
+        if (minedLogFileNames.size() > maximumLogsMined.get()) {
+            maximumLogsMined.set(minedLogFileNames.size());
         }
     }
 
