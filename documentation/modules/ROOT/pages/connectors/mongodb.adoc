@@ -1264,7 +1264,7 @@ If you are working with immutable containers, see link:https://quay.io/organizat
 ====
 The {prodname} container images that you obtain from `quay.io` do not undergo rigorous testing or security analysis, and are provided for testing and evaluation purposes only.
 These images are not intended for use in production environments.
-To mitigate risk in production deployments, deploy only containers that are actively maintained by trusted vendors, and throughly tested for potential vulnerabilities.
+To mitigate risk in production deployments, deploy only containers that are actively maintained by trusted vendors, and thoroughly tested for potential vulnerabilities.
 ====
 
 
