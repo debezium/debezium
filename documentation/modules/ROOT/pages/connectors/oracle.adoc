@@ -4520,7 +4520,7 @@ If the buffer is empty, the value will be `0`.
 |`long`
 |The maximum duration in milliseconds spent processing results from a single LogMiner session.
 
-|[[oracle-streaming-metrics-totalprocessingtimeinmilliseconds]]<<oracle-streaming-metrics-totalprocessingtimeinmilliseconds, `+TotalProcessingTimeInMilliseconds+`>>
+|[[oracle-streaming-metrics-totalbatchprocessingtimeinmilliseconds]]<<oracle-streaming-metrics-totalbatchprocessingtimeinmilliseconds, `+TotalBatchProcessingTimeInMilliseconds+`>>
 |`long`
 |The total duration in milliseconds spent processing results from LogMiner sessions.
 
@@ -4556,6 +4556,10 @@ If the buffer is empty, the value will be `0`.
 |`long`
 |The number of milliseconds that transactions are retained by the connector's in-memory buffer without being committed or rolled back before being discarded.
 For more information, see xref:oracle-property-log-mining-transaction-retention-ms[`log.mining.transaction.retention.ms`].
+
+|[[oracle-streaming-metrics-sleeptimeinmilliseconds]]<<oracle-streaming-metrics-sleeptimeinmilliseconds, `+SleepTimeInMilliseconds+`>>
+|`long`
+|The number of milliseconds the connector waits between LogMiner queries.
 
 |[[oracle-streaming-metrics-number-of-active-transactions]]<<oracle-streaming-metrics-number-of-active-transactions, `+NumberOfActiveTransactions+`>>
 |`long`
