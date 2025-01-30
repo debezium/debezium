@@ -454,7 +454,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
      */
     public void setOldestScnDetails(Scn oldestScn, Instant changeTime) {
         this.oldestScn.set(oldestScn);
-        this.oldestScnTime.set(changeTime);
+        this.oldestScnTime.set(oldestScn.isNull() ? null : getAdjustedChangeTime(changeTime));
     }
 
     /**
@@ -684,9 +684,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
      */
     public void calculateLagFromSource(Instant changeTime) {
         if (changeTime != null) {
-            final Instant adjustedTime = changeTime.plusMillis(timeDifference.longValue())
-                    .minusSeconds(databaseZoneOffset.get().getTotalSeconds());
-            lagFromSourceDuration.set(Duration.between(adjustedTime, clock.instant()).abs());
+            lagFromSourceDuration.set(Duration.between(getAdjustedChangeTime(changeTime), clock.instant()).abs());
         }
     }
 
@@ -737,6 +735,14 @@ public class LogMinerStreamingChangeEventSourceMetrics
                 ", abandonedTransactionIds=" + abandonedTransactionIds +
                 ", rolledBackTransactionIds=" + rolledBackTransactionIds +
                 "} ";
+    }
+
+    private Instant getAdjustedChangeTime(Instant changeTime) {
+        if (changeTime == null) {
+            return null;
+        }
+        return changeTime.plusMillis(timeDifference.longValue())
+                .minusSeconds(databaseZoneOffset.get().getTotalSeconds());
     }
 
     /**
