@@ -5231,13 +5231,13 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
                 waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
                 // Get the number of fetching queries up to this point.
-                final Long fetchingQueryCount = getStreamingMetric("FetchingQueryCount");
+                final Long fetchingQueryCount = getStreamingMetric("FetchQueryCount");
 
                 connection.execute("INSERT INTO dbz6355 (id,name) VALUES (3, 'Donald Duck')");
 
                 // Fetch for a few mining iterations to guarantee that the abandonment process has fired
                 Awaitility.waitAtMost(Duration.ofSeconds(60)).until(() -> {
-                    return (fetchingQueryCount + 5L) <= (Long) getStreamingMetric("FetchingQueryCount");
+                    return (fetchingQueryCount + 5L) <= (Long) getStreamingMetric("FetchQueryCount");
                 });
 
                 // Commit in progress transaction
