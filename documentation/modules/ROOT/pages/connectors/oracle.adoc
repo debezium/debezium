@@ -278,7 +278,7 @@ For information about capturing data from a new table that has undergone structu
 1. Stop the connector.
 2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
 3. In the connector configuration:
-.. Set the xref:{context}-property-snapshot-mode[`snapshot.mode`] to `schema_only_recovery`.
+.. Set the xref:{context}-property-snapshot-mode[`snapshot.mode`] to `recovery`.
 .. (Optional) Set the value of xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] to `false` to ensure that in the future the connector can readily capture data for tables that are not currently designated for capture.
 Connectors can capture data from a table only if the table's schema history is present in the history topic.
 .. Add the tables that you want the connector to capture to `table.include.list`.
@@ -286,7 +286,7 @@ Connectors can capture data from a table only if the table's schema history is p
 The snapshot recovery process rebuilds the schema history based on the current structure of the tables.
 5. (Optional) After the snapshot completes, initiate an xref:debezium-oracle-incremental-snapshots[incremental snapshot] on the newly added tables.
 The incremental snapshot first streams the historical data of the newly added tables, and then resumes reading changes from the redo and archive logs for previously configured tables, including changes that occur while that connector was off-line.
-6. (Optional) Reset the `snapshot.mode` back to `schema_only` to prevent the connector from initiating recovery after a future restart.
+6. (Optional) Reset the `snapshot.mode` back to `no_data` to prevent the connector from initiating recovery after a future restart.
 
 // Type: procedure
 [id="oracle-capturing-data-from-new-tables-with-schema-changes"]
@@ -327,7 +327,7 @@ Removing offsets should be performed only by advanced users who have experience 
 This operation is potentially destructive, and should be performed only as a last resort.
 ====
 4. Set values for properties in the connector configuration as described in the following steps:
-.. Set the value of the xref:oracle-property-snapshot-mode[`snapshot.mode`] property to `schema_only`.
+.. Set the value of the xref:oracle-property-snapshot-mode[`snapshot.mode`] property to `no_data`.
 .. Edit the xref:oracle-property-table-include-list[`table.include.list`] to add the tables that you want to capture.
 5. Restart the connector.
 6. Wait for {prodname} to capture the schema of the new and existing tables.
@@ -3410,7 +3410,7 @@ If the snapshot completes successfully, upon next connector start snapshot is no
 `initial_only`:: The snapshot includes the structure and data of the captured tables.
 The connector performs an initial snapshot and then stops, without processing any subsequent changes.
 
-`schema_only`:: Deprecated, see `no-data`
+`schema_only`:: Deprecated, see `no_data`
 
 `no_data`:: The snapshot includes only the structure of captured tables.
 Specify this value if you want the connector to capture data only for changes that occur after the snapshot.
@@ -5537,7 +5537,7 @@ The first way to deal with this exception is to work with your database administ
 This does not require a restart of the Oracle database, so this can be done online without impacting database availability.
 However, changing this may still lead to the above exception or a "snapshot too old" exception if the tablespace has inadequate space to store the necessary undo data.
 +
-The second way to deal with this exception is to not rely on the initial snapshot at all, setting the `snapshot.mode` to `schema_only` and then instead relying on incremental snapshots.
+The second way to deal with this exception is to not rely on the initial snapshot at all, setting the `snapshot.mode` to `no_data` and then instead relying on incremental snapshots.
 An incremental snapshot does not rely on a flashback query and therefore isn't subject to ORA-01555 exceptions.
 
 *What's the cause for ORA-04036 and how to handle it?*::
