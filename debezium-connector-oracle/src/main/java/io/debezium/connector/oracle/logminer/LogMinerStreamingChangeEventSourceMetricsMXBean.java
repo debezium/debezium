@@ -274,6 +274,9 @@ public interface LogMinerStreamingChangeEventSourceMetricsMXBean
      */
     Set<String> getAbandonedTransactionIds();
 
+    /**
+     * @return the number of transactions that were abandoned from the transaction buffer
+     */
     long getAbandonedTransactionCount();
 
     /**
