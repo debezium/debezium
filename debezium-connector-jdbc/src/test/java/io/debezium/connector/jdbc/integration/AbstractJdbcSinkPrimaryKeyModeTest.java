@@ -28,6 +28,7 @@ import io.debezium.connector.jdbc.junit.TestHelper;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
+import io.debezium.doc.FixFor;
 import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
 
 /**
@@ -436,6 +437,27 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
         getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "John Doe");
 
         assertHasPrimaryKeyColumns(destinationTableName, "id1", "name");
+    }
+
+    @FixFor("DBZ-8648")
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    public void testRecordPrimaryKeyValueWithDeleteEvent(SinkRecordFactory factory) {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id");
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        final KafkaDebeziumSinkRecord record = factory.deleteRecord(topicName);
+        consume(record);
+
+        // Just to trigger failure because prior consume throw exception
+        consume(factory.createRecord(topicName));
     }
 
     protected void assertHasPrimaryKeyColumns(String tableName, String... columnNames) {
