@@ -2169,7 +2169,7 @@ You can pull the official link:https://hub.docker.com/_/microsoft-mssql-server[c
 ====
 The {prodname} container images that you obtain from `quay.io` do not undergo rigorous testing or security analysis, and are provided for testing and evaluation purposes only.
 These images are not intended for use in production environments.
-To mitigate risk in production deployments, deploy only containers that are actively maintained by trusted vendors, and throughly tested for potential vulnerabilities.
+To mitigate risk in production deployments, deploy only containers that are actively maintained by trusted vendors, and thoroughly tested for potential vulnerabilities.
 ====
 
 You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
