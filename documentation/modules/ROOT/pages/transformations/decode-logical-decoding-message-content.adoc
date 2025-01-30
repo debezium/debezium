@@ -47,9 +47,9 @@ The following example shows the `key` and `value` of an event record before and 
 
 .Effect of applying the `DecodeLogicalDecodingMessageContent` SMT
 ====
-Before processing::
+.Before processing
 
-Key before the SMT processes the record:::
+Event key before the SMT processes the record::
 +
 [source,json]
 ----
@@ -58,7 +58,7 @@ Key before the SMT processes the record:::
 }
 ----
 
-Value before the SMT processes the record:::
+Event value before the SMT processes the record::
 +
 [source,json]
 ----
@@ -90,15 +90,15 @@ Value before the SMT processes the record:::
 
 
 
-After processing::
+.After processing
 
-Key after the SMT processes the record:::
+Event key after the SMT processes the record::
 [source,json]
 ----
 null  // <1>
 ----
 
-Value after the SMT processes the record:::
+Event value after the SMT processes the record::
 +
 [source,json]
 ----
