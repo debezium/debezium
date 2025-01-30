@@ -4444,7 +4444,7 @@ If the buffer is empty, the value will be `0`.
 |`BigInteger`
 |The system change number currently written to the connector's offsets.
 
-|[[oracle-streaming-metrics-currentredologfilename]]<<oracle-streaming-metrics-currentredologfilename, `+CurrentRedoLogFileName+`>>
+|[[oracle-streaming-metrics-currentredologfilenames]]<<oracle-streaming-metrics-currentredologfilenames, `+CurrentRedoLogFileNames+`>>
 |`string[]`
 |Array of the current online redo log files of the database.
 
@@ -4460,11 +4460,11 @@ If the buffer is empty, the value will be `0`.
 |`long`
 |The maximum number of logs specified for any LogMiner session.
 
-|[[oracle-streaming-metrics-redologstatus]]<<oracle-streaming-metrics-redologstatus, `+RedoLogStatus+`>>
+|[[oracle-streaming-metrics-redologstatuses]]<<oracle-streaming-metrics-redologstatuses, `+RedoLogStatuses+`>>
 |`string[]`
 |Array of the current state for each online redo log in the database with the format `_filename_\|_status_`.
 
-|[[oracle-streaming-metrics-switchcounter]]<<oracle-streaming-metrics-switchcounter, `+SwitchCounter+`>>
+|[[oracle-streaming-metrics-logswitchcount]]<<oracle-streaming-metrics-logswitchcount, `+LogSwitchCount+`>>
 |`int`
 |The number of times the database has performed a log switch for the last day.
 
@@ -4480,7 +4480,7 @@ If the buffer is empty, the value will be `0`.
 |`long`
 |The total number of DML operations observed.
 
-|[[oracle-streaming-metrics-fetchingquerycount]]<<oracle-streaming-metrics-fetchingquerycount, `+FetchingQueryCount+`>>
+|[[oracle-streaming-metrics-fetchquerycount]]<<oracle-streaming-metrics-fetchquerycount, `+FetchQueryCount+`>>
 |`long`
 |The total number of LogMiner session query (aka batches) performed.
 
@@ -4552,13 +4552,9 @@ If the buffer is empty, the value will be `0`.
 |`long`
 |The average number of rows/second processed from the log mining view for the last batch.
 
-|[[oracle-streaming-metrics-networkconnectionproblemscounter]]<<oracle-streaming-metrics-networkconnectionproblemscounter, `+NetworkConnectionProblemsCounter+`>>
+|[[oracle-streaming-metrics-millisecondstokeeptransactionsinbuffer]]<<oracle-streaming-metrics-millisecondstokeeptransactionsinbuffer, `+MillisecondsToKeepTransactionsInBuffer+`>>
 |`long`
-|The number of connection problems detected.
-
-|[[oracle-streaming-metrics-hourstokeeptransactioninbuffer]]<<oracle-streaming-metrics-hourstokeeptransactioninbuffer, `+HoursToKeepTransactionInBuffer+`>>
-|`int`
-|The number of hours that transactions are retained by the connector's in-memory buffer without being committed or rolled back before being discarded.
+|The number of milliseconds that transactions are retained by the connector's in-memory buffer without being committed or rolled back before being discarded.
 For more information, see xref:oracle-property-log-mining-transaction-retention-ms[`log.mining.transaction.retention.ms`].
 
 |[[oracle-streaming-metrics-number-of-active-transactions]]<<oracle-streaming-metrics-number-of-active-transactions, `+NumberOfActiveTransactions+`>>
@@ -4585,9 +4581,9 @@ endif::community[]
 |`long`
 |The average number of committed transactions per second in the transaction buffer.
 
-|[[oracle-streaming-metrics-registered-dml-count]]<<oracle-streaming-metrics-registered-dml-count, `+RegisteredDmlCount+`>>
+|[[oracle-streaming-metrics-total-changes-count]]<<oracle-streaming-metrics-total-changes-count, `+TotalChangesCount+`>>
 |`long`
-|The number of registered DML operations in the transaction buffer.
+|The number of changes processed by the connector.
 
 |[[oracle-streaming-metrics-lag-from-source-in-milliseconds]]<<oracle-streaming-metrics-lag-from-source-in-milliseconds, `+LagFromSourceInMilliseconds+`>>
 |`long`
