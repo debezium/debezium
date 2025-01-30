@@ -1,4 +1,8 @@
 :page-aliases: configuration/decode-logical-decoding-message-content.adoc
+// Category: debezium-using
+// Type: assembly
+// Title: Decoding binary content in PostgreSQL logical decoding messages
+// ModuleID: debezium-postgresql-logical-decoding-message-transformation
 [id="decode-logical-decoding-message-content"]
 = Decode Logical Decoding Message Content
 
@@ -9,14 +13,22 @@
 :source-highlighter: highlight.js
 
 toc::[]
-
 The `DecodeLogicalDecodingMessageContent` SMT converts the binary content of a PostgreSQL logical decoding message to a structured form.
-You can use the SMT on its own, or in conjunction with another SMT, such as the link:/documentation/reference/transformations/outbox-event-router[Outbox Event Router].
 
+When the {prodname} PostgreSQL connector captures logical decoding messages, it emits {link-prefix}:{link-postgresql-connector}#postgresql-message-events[_message_ event records] to Kafka.
+By default, the `content` field in these message records contain encoded binary data.
+To facilitate processing of PostgreSQL event messages by other Kafka consumers, you can use the `DecodeLogicalDecodingMessageContent` SMT to decode the binary content of the original message, and convert it into a more consumable format.
+
+You also use the SMT in conjunction with other SMTs, such as the link:/documentation/reference/transformations/outbox-event-router[{prodname} Outbox Event Router].
+
+
+// Type: concept
+// Title: Example: Basic configuration of the {prodname} `DecodeLogicalDecodingMessageContent` SMT
+// ModuleID: debezium-postgresql-logical-decoding-message-transformation-basic-configuration
 [[example-decode-logical-decoding-message-content]]
 == Example
 
-You configure a connector to use the `DecodeLogicalDecodingMessageContent` SMT by adding the SMT to the Kafka Connect configuration for the connector, as in the following example:
+To enable a {prodname} PostgreSQL connector to decode the binary content in message events, add the `DecodeLogicalDecodingMessageContent` SMT to the Kafka Connect configuration for the connector, as shown in the following example:
 
 [source]
 ----
@@ -31,25 +43,27 @@ You configure a connector to use the `DecodeLogicalDecodingMessageContent` SMT b
 ...
 ----
 
-The following example shows key and value of an event record before and after the transformation is applied.
+The following example shows the `key` and `value` of an event record before and after the transformation is applied.
 
 .Effect of applying the `DecodeLogicalDecodingMessageContent` SMT
 ====
-Key before the SMT processes the record::
+Before processing::
+
+Key before the SMT processes the record:::
 +
 [source,json]
 ----
 {
-	"prefix": "test-prefix"
+	"prefix": "test-prefix"   // <1>
 }
 ----
 
-Value before the SMT processes the record::
+Value before the SMT processes the record:::
 +
 [source,json]
 ----
 {
-	"op": "m",
+	"op": "m",  // <2>
 	"ts_ms": 1723115240065,
 	"source": {
 		"version": "3.0.0-SNAPSHOT",
@@ -67,21 +81,29 @@ Value before the SMT processes the record::
 		"lsn": 26997904,
 		"xmin": null
 	},
-	"message": {
+	"message": {     // <3>
 		"prefix": "test-prefix",
 		"content": "eyJpZCI6IDEsICJpdGVtIjogIkRlYmV6aXVtIGluIEFjdGlvbiIsICJzdGF0dXMiOiAiRU5URVJFRCIsICJxdWFudGl0eSI6IDIsICJ0b3RhbFByaWNlIjogMzkuOTh9"
 	}
 }
 ----
 
-Key after the SMT processes the record:: null
 
-Value after the SMT processes the record::
+
+After processing::
+
+Key after the SMT processes the record:::
+[source,json]
+----
+null  // <1>
+----
+
+Value after the SMT processes the record:::
 +
 [source,json]
 ----
 {
-	"op": "c",
+	"op": "c",   // <2>
 	"ts_ms": 1723115415729,
 	"source": {
 		"version": "3.0.0-SNAPSHOT",
@@ -99,7 +121,7 @@ Value after the SMT processes the record::
 		"lsn": 26717576,
 		"xmin": null
 	},
-	"after": {
+	"after": {     // <3>
 		"id": 1,
 		"item": "Debezium in Action",
 		"status": "ENTERED",
@@ -111,15 +133,19 @@ Value after the SMT processes the record::
 
 In the preceding example, the SMT applies the following changes to the original event record:
 
-. Removes the key that contained the `prefix` field in the original logical decoding message (`"prefix": "test-prefix"`)
-. Converts the value of the `op` field from an `m` (message) to a `c` (create), effectively changing the type of the event from a message to an `INSERT`.
+. Removes the key that contained the `prefix` field in the original logical decoding message (`"prefix": "test-prefix"`).
+. Converts the value of the `op` field from an `m` (message) to a `c` (create), effectively changing the event type from `message` to `INSERT`.
 . Replaces the `message` field with an `after` field that contains the decoded content of a logical decoding message.
 
 
-After the SMT applies these changes, the record can be more easily processed by other SMTs, such as the Outbox Event Router.
+After the SMT applies these changes, the record can be more easily processed by downstream consumers or by other SMTs, such as the {prodname} Outbox Event Router.
 
 ====
 
+
+// Type: reference
+// ModuleID: options-for-configuring-the-debezium-postgresql-logical-decoding-message-transformation
+// Title: Options for configuring the `DecodeLogicalDecodingMessageContent` transformation
 [[decode-logical-decoding-message-content-configuration-options]]
 == Configuration options
 
@@ -135,7 +161,7 @@ The following table lists the configuration options that you can use with the `D
 
 |[[decode-logical-decoding-message-content-fields-null-include]]<<decode-logical-decoding-message-content-fields-null-include, `fields.null.include`>>
 |boolean
-|false
-|Specifies how the decoding process handles fields that have null values in the source message.
-By default, the transformation removes fields that have null values.
+|`false`
+|Specifies how the decoding process handles fields that have `null` values in the source message.
+By default, the transformation removes fields that have `null` values.
 |===
