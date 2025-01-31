@@ -106,7 +106,7 @@ end::session-timeout-options-descriptions[]
 ==== schema.history.config-store.only.captured.database.ddl
 
 tag::schema-hist-prop-store-only-cap-db-ddl-boolean[]
-`true`
+`false`
 end::schema-hist-prop-store-only-cap-db-ddl-boolean[]
 
 

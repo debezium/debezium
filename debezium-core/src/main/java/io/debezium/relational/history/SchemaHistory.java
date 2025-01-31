@@ -69,8 +69,8 @@ public interface SchemaHistory {
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Controls what DDL will Debezium store in database schema history. "
-                    + "By default (true) only DDL that manipulates a table from captured schema/database will be stored. "
-                    + "If set to false, then Debezium will store all incoming DDL statements.")
+                    + "By default (false) Debezium will store all incoming DDL statements. "
+                    + "If set to true, then only DDL that manipulates a table from captured schema/database will be stored.")
             .withDefault(false);
 
     Field DDL_FILTER = Field.createInternal(CONFIGURATION_FIELD_PREFIX_STRING + "ddl.filter")
