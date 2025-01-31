@@ -35,6 +35,7 @@ pipelineJob('release/release-deploy_snapshots_pipeline') {
     definition {
         cps {
             script(readFileFromWorkspace('jenkins-jobs/pipelines/release/deploy_snapshots_pipeline.groovy'))
+            sanbox()
         }
     }
 }
