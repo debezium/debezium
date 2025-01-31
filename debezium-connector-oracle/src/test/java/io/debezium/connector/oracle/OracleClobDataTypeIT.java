@@ -1572,12 +1572,14 @@ public class OracleClobDataTypeIT extends AbstractAsyncEngineConnectorTest {
             SourceRecord record = table.get(0);
             Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
             assertThat(after.get("ID")).isEqualTo(1);
-            assertThat(after.get("DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            // During snapshot, LOB fields are always captured.
+            assertThat(after.get("DATA")).isEqualTo("Test1");
 
             record = table.get(1);
             after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
             assertThat(after.get("ID")).isEqualTo(2);
-            assertThat(after.get("DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            // During snapshot, LOB fields are always captured.
+            assertThat(after.get("DATA")).isEqualTo(getClobString(clob1));
 
             // Small data and large data
             connection.executeWithoutCommitting("INSERT INTO dbz3645 (id,data) values (3,'Test3')");

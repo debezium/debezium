@@ -278,20 +278,15 @@ public class OracleValueConverters extends JdbcValueConverters {
             return ((CHAR) data).stringValue();
         }
         if (data instanceof Clob) {
-            if (lobEnabled) {
-                try {
-                    Clob clob = (Clob) data;
-                    // Note that java.sql.Clob specifies that the first character starts at 1
-                    // and that length must be greater-than or equal to 0. So for an empty
-                    // clob field, a call to getSubString(1, 0) is perfectly valid.
-                    return clob.getSubString(1, (int) clob.length());
-                }
-                catch (SQLException e) {
-                    throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
-                }
+            try {
+                Clob clob = (Clob) data;
+                // Note that java.sql.Clob specifies that the first character starts at 1
+                // and that length must be greater-than or equal to 0. So for an empty
+                // clob field, a call to getSubString(1, 0) is perfectly valid.
+                return clob.getSubString(1, (int) clob.length());
             }
-            else {
-                data = UNAVAILABLE_VALUE;
+            catch (SQLException e) {
+                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
             }
         }
         if (data instanceof String) {
@@ -330,13 +325,8 @@ public class OracleValueConverters extends JdbcValueConverters {
                 }
             }
             else if (data instanceof Blob) {
-                if (lobEnabled) {
-                    Blob blob = (Blob) data;
-                    data = blob.getBytes(1, Long.valueOf(blob.length()).intValue());
-                }
-                else {
-                    data = UNAVAILABLE_VALUE;
-                }
+                Blob blob = (Blob) data;
+                data = blob.getBytes(1, Long.valueOf(blob.length()).intValue());
             }
             else if (data instanceof RAW) {
                 data = ((RAW) data).getBytes();
