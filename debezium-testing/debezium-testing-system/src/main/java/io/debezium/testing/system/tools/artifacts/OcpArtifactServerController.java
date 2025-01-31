@@ -23,7 +23,6 @@ import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.OpenShiftUtils;
 import io.debezium.testing.system.tools.WaitConditions;
 import io.fabric8.kubernetes.api.model.Pod;
@@ -116,16 +115,15 @@ public class OcpArtifactServerController {
                 "groovy/groovy",
                 "groovy/groovy-json",
                 "groovy/groovy-jsr223",
+                "jackson/jackson-databind",
                 "jackson/jackson-dataformat-csv",
                 "jackson/jackson-datatype-jsr310",
                 "jackson/jackson-jaxrs-base",
                 "jackson/jackson-jaxrs-json-provider",
                 "jackson/jackson-module-jaxb-annotations",
+                "jackson/jackson-module-afterburner",
                 "jackson/jackson-module-scala_2.13");
         List<String> artifacts = Stream.concat(commonArtifacts.stream(), extraArtifacts.stream()).collect(toList());
-        if (!ConfigProperties.PRODUCT_BUILD) {
-            artifacts.add("jackson/jackson-module-afterburner");
-        }
         return createPlugin("debezium-connector-" + database, artifacts);
     }
 
