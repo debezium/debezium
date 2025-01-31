@@ -2,20 +2,26 @@
 
 DEBEZIUM_REPOSITORY=debezium/debezium
 DEBEZIUM_BRANCH=main
+DEFAULT_PLATFORMS=linux/amd64,linux/arm64
 
 SNAPSHOT_VERSION=$(curl -s https://raw.githubusercontent.com/$DEBEZIUM_REPOSITORY/$DEBEZIUM_BRANCH/pom.xml | grep -o '<version>.*-SNAPSHOT</version>' | awk -F '[<>]' '{print $3}')
+
+./setup-local-builder.sh
+docker run --privileged --rm mirror.gcr.io/tonistiigi/binfmt --install all
 
 docker login -u ${QUAYIO_CREDENTIALS%:*} -p ${QUAYIO_CREDENTIALS#*:} quay.io
 
 # connect
-docker build --build-arg DEBEZIUM_VERSION=$SNAPSHOT_VERSION -t quay.io/debezium/connect:nightly connect/snapshot
-docker push quay.io/debezium/connect:nightly
+docker buildx build --push --platform "${DEFAULT_PLATFORMS}" --build-arg DEBEZIUM_VERSION=$SNAPSHOT_VERSION -t quay.io/debezium/connect:nightly connect/snapshot
 
 # server
-docker build --build-arg DEBEZIUM_VERSION=$SNAPSHOT_VERSION -t quay.io/debezium/server:nightly server/snapshot
-docker push quay.io/debezium/server:nightly
-
+docker buildx build --push --platform "${DEFAULT_PLATFORMS}" --build-arg DEBEZIUM_VERSION=$SNAPSHOT_VERSION -t quay.io/debezium/server:nightly server/snapshot
 
 # operator
-docker build --build-arg DEBEZIUM_VERSION=$SNAPSHOT_VERSION -t quay.io/debezium/operator:nightly operator/snapshot
-docker push quay.io/debezium/operator:nightly
+docker buildx build --push --platform "${DEFAULT_PLATFORMS}" --build-arg DEBEZIUM_VERSION=$SNAPSHOT_VERSION -t quay.io/debezium/operator:nightly operator/snapshot
+
+# debezium platform-conductor
+docker buildx build --push --platform "${DEFAULT_PLATFORMS}" --build-arg DEBEZIUM_VERSION=$SNAPSHOT_VERSION -t quay.io/debezium/platform-conductor:nightly platform-conductor/snapshot
+
+# debezium platform-stage
+docker buildx build --push --platform "${DEFAULT_PLATFORMS}" --build-arg DEBEZIUM_VERSION=$SNAPSHOT_VERSION -t quay.io/debezium/platform-stage:nightly platform-stage/snapshot
