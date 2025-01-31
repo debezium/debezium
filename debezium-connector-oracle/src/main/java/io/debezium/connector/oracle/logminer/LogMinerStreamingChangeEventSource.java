@@ -671,8 +671,9 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private void updateBatchSize(boolean increment) {
         int batchSizeMin = connectorConfig.getLogMiningBatchSizeMin();
         int batchSizeMax = connectorConfig.getLogMiningBatchSizeMax();
+        int batchSizeIncrement = connectorConfig.getLogMiningBatchSizeIncrement();
         if (increment && currentBatchSize < batchSizeMax) {
-            currentBatchSize = Math.min(currentBatchSize + batchSizeMin, batchSizeMax);
+            currentBatchSize = Math.min(currentBatchSize + batchSizeIncrement, batchSizeMax);
             if (currentBatchSize == batchSizeMax) {
                 LOGGER.info("The connector is now using the maximum batch size {} when querying the LogMiner view.{}",
                         currentBatchSize,
@@ -680,7 +681,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             }
         }
         else if (!increment && currentBatchSize > batchSizeMin) {
-            currentBatchSize = Math.max(currentBatchSize - batchSizeMin, batchSizeMin);
+            currentBatchSize = Math.max(currentBatchSize - batchSizeIncrement, batchSizeMin);
         }
 
         if (currentBatchSize != batchSizeMax) {

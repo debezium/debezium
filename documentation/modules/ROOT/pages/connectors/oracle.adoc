@@ -4041,11 +4041,15 @@ This should be enabled if you experience excessive Oracle SGA growth with LogMin
 
 |[[oracle-property-log-mining-batch-size-min]]<<oracle-property-log-mining-batch-size-min, `+log.mining.batch.size.min+`>>
 |`1000`
-|The minimum SCN interval size that this connector attempts to read from redo/archive logs. Active batch size is also increased/decreased by this amount for tuning connector throughput when needed.
+|The minimum SCN interval size that this connector attempts to read from redo/archive logs.
 
 |[[oracle-property-log-mining-batch-size-max]]<<oracle-property-log-mining-batch-size-max, `+log.mining.batch.size.max+`>>
 |`100000`
 |The maximum SCN interval size that this connector uses when reading from redo/archive logs.
+
+|[[oracle-property-log-mining-batch-size-increment]]<<oracle-property-log-mining-batch-size-increment, `+log.mining.batch.size.increment+`>>
+|`20000`
+|The amount to increase/decrease the interval that the connector uses to read from redo/archive logs.
 
 |[[oracle-property-log-mining-batch-size-default]]<<oracle-property-log-mining-batch-size-default, `+log.mining.batch.size.default+`>>
 |`20000`
