@@ -1373,7 +1373,9 @@ Details are in the following sections:
 * xref:postgresql-domain-types[]
 * xref:postgresql-network-address-types[]
 * xref:postgresql-postgis-types[]
+* xref:postgresql-pgvector-types[]
 * xref:postgresql-toasted-values[]
+* xref:postgresql-default-values[]
 
 endif::product[]
 
@@ -2071,8 +2073,10 @@ Each map value includes the following elements:
 === Toasted values
 PostgreSQL has a hard limit on the page size.
 This means that values that are larger than around 8 KBs need to be stored by using link:https://www.postgresql.org/docs/current/storage-toast.html[TOAST storage].
-This impacts replication messages that are coming from the database. Values that were stored by using the TOAST mechanism and that have not been changed are not included in the message, unless they are part of the table's replica identity.
-There is no safe way for {prodname} to read the missing value out-of-bands directly from the database, as this would potentially lead to race conditions. Consequently, {prodname} follows these rules to handle toasted values:
+This impacts replication messages that are coming from the database.
+Values that were stored by using the TOAST mechanism and that have not been changed are not included in the message, unless they are part of the table's replica identity.
+There is no safe way for {prodname} to read the missing value out-of-bands directly from the database, as this would potentially lead to race conditions.
+Consequently, {prodname} follows these rules to handle toasted values:
 
 * Tables with `REPLICA IDENTITY FULL` - TOAST column values are part of the `before` and `after` fields in change events just like any other column.
 * Tables with `REPLICA IDENTITY DEFAULT` - When receiving an `UPDATE` event from the database, any unchanged TOAST column value that is not part of the replica identity is not contained in the event.
@@ -2081,7 +2085,8 @@ As {prodname} cannot safely provide the column value in this case, the connector
 
 [id="postgresql-default-values"]
 === Default values
-If a default value is specified for a column in the database schema, the PostgreSQL connector will attempt to propagate this value to the Kafka schema whenever possible. Most common data types are supported, including:
+If a default value is specified for a column in the database schema, the PostgreSQL connector will attempt to propagate this value to the Kafka schema whenever possible.
+Most common data types are supported, including the following:
 
 * `BOOLEAN`
 * Numeric types (`INT`, `FLOAT`, `NUMERIC`, etc.)
@@ -2234,12 +2239,12 @@ To use {prodname} with link:https://cloud.google.com/sql/postgresql/[Cloud SQL f
 The following sections provide an overview of the tasks that you must complete to prepare a Cloud SQL for PostgreSQL database for use with {prodname}.
 
 .Setting the `cloudsql.logical_decoding` flag
-In Cloud SQL, you can enable logical decoding by setting the `cloudsql.logical_decoding` flag to `on`. 
+In Cloud SQL, you can enable logical decoding by setting the `cloudsql.logical_decoding` flag to `on`.
 After you set the flag, it automatically adjusts the `wal_level` configuration parameter to `logical`.
 
-You can use either the Google Cloud console or the `gcloud` command-line tool to edit the `cloudsql.logical_decoding` flag.  
+You can use either the Google Cloud console or the `gcloud` command-line tool to edit the `cloudsql.logical_decoding` flag.
 
-For detailed instructions about how to change the value of flags in Cloud SQL, see the link:https://cloud.google.com/sql/docs/postgres/flags/[Google Cloud SQL documentation]. 
+For detailed instructions about how to change the value of flags in Cloud SQL, see the link:https://cloud.google.com/sql/docs/postgres/flags/[Google Cloud SQL documentation].
 
 To verify that the value of the setting reflects your changes, run the following query:
 
@@ -2251,7 +2256,7 @@ SHOW wal_level;
 To use logical decoding features, you must create a PostgreSQL user with the `REPLICATION` attribute, or grant this attribute to an existing user.
 
 To create a user with the `REPLICATION` attribute::
- 
+
 Log in as the `postgres` user, or as a member of the `cloudsqlsuperuser` user group, and run the following command:
 +
 ----
