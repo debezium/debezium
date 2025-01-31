@@ -177,7 +177,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withImportance(Importance.MEDIUM)
             .withDefault(0L)
             .withValidation(Field::isNonNegativeLong)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 18))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 19))
             .withDescription("Duration in milliseconds to keep long running transactions in transaction buffer between log mining " +
                     "sessions. By default, all transactions are retained.");
 
@@ -205,7 +205,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 12))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 13))
             .withDefault(MIN_BATCH_SIZE)
             .withDescription(
                     "The minimum SCN interval size that this connector will try to read from redo/archive logs.");
@@ -233,7 +233,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 13))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 14))
             .withDefault(MAX_BATCH_SIZE)
             .withDescription("The maximum SCN interval size that this connector will use when reading from redo/archive logs.");
 
@@ -242,7 +242,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 15))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 16))
             .withDefault(MIN_SLEEP_TIME.toMillis())
             .withDescription(
                     "The minimum amount of time that the connector will sleep after reading data from redo/archive logs and before starting reading data again. Value is in milliseconds.");
@@ -252,7 +252,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 14))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 15))
             .withDefault(DEFAULT_SLEEP_TIME.toMillis())
             .withDescription(
                     "The amount of time that the connector will sleep after reading data from redo/archive logs and before starting reading data again. Value is in milliseconds.");
@@ -262,7 +262,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 16))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 17))
             .withDefault(MAX_SLEEP_TIME.toMillis())
             .withDescription(
                     "The maximum amount of time that the connector will sleep after reading data from redo/archive logs and before starting reading data again. Value is in milliseconds.");
@@ -272,7 +272,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 17))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 18))
             .withDefault(SLEEP_TIME_INCREMENT.toMillis())
             .withDescription(
                     "The maximum amount of time that the connector will use to tune the optimal sleep time when reading data from LogMiner. Value is in milliseconds.");
@@ -293,7 +293,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 28))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 29))
             .withDefault(ARCHIVE_LOG_ONLY_POLL_TIME.toMillis())
             .withDescription("The interval in milliseconds to wait between polls checking to see if the SCN is in the archive logs.");
 
@@ -319,7 +319,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.STRING)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 19))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 20))
             .withValidation(OracleConnectorConfig::validateUsernameExcludeList)
             .withDescription("Comma separated list of usernames to exclude from LogMiner query.");
 
@@ -328,7 +328,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.STRING)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 32))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 33))
             .withDescription("Sets the specific archive log destination as the source for reading archive logs." +
                     "When not set, the connector will automatically select the first LOCAL and VALID destination.");
 
@@ -337,7 +337,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 31))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 32))
             .withDefault(0)
             .withDescription("The number of hours in the past from SYSDATE to mine archive logs. Using 0 mines all available archive logs");
 
@@ -346,7 +346,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withEnum(LogMiningBufferType.class, LogMiningBufferType.MEMORY)
             .withValidation(OracleConnectorConfig::validateLogMiningBufferType)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 21))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 22))
             .withDescription("The buffer type controls how the connector manages buffering transaction data." + System.lineSeparator() +
                     System.lineSeparator() +
                     "memory - Uses the JVM process' heap to buffer all transaction data." + System.lineSeparator() +
@@ -373,7 +373,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 27))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 28))
             .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration)
             .withDescription("Specifies the XML configuration for the Infinispan 'global' configuration");
 
@@ -382,7 +382,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 23))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 24))
             .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration)
             .withDescription("Specifies the XML configuration for the Infinispan 'transactions' cache");
 
@@ -391,7 +391,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 25))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 26))
             .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration)
             .withDescription("Specifies the XML configuration for the Infinispan 'processed-transactions' cache");
 
@@ -400,7 +400,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 24))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 25))
             .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration)
             .withDescription("Specifies the XML configuration for the Infinispan 'events' cache");
 
@@ -409,7 +409,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.STRING)
             .withWidth(Width.LONG)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 26))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 27))
             .withValidation(OracleConnectorConfig::validateLogMiningInfinispanCacheConfiguration)
             .withDescription("Specifies the XML configuration for the Infinispan 'schema-changes' cache");
 
@@ -427,7 +427,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 29))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 30))
             .withDefault(DEFAULT_SCN_GAP_SIZE)
             .withDescription("Used for SCN gap detection, if the difference between current SCN and previous end SCN is " +
                     "bigger than this value, and the time difference of current SCN and previous end SCN is smaller than " +
@@ -438,7 +438,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withType(Type.LONG)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 30))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 31))
             .withDefault(DEFAULT_SCN_GAP_TIME_INTERVAL)
             .withDescription("Used for SCN gap detection, if the difference between current SCN and previous end SCN is " +
                     "bigger than log.mining.scn.gap.detection.gap.size.min, and the time difference of current SCN and previous end SCN is smaller than " +
