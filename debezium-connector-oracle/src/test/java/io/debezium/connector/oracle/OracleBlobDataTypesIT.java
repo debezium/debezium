@@ -1181,12 +1181,14 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
             SourceRecord record = table.get(0);
             Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
             assertThat(after.get("ID")).isEqualTo(1);
-            assertThat(after.get("DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            // During snapshot, LOB fields are always captured.
+            assertThat(after.get("DATA")).isEqualTo(getByteBufferFromBlob(blob1));
 
             record = table.get(1);
             after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
             assertThat(after.get("ID")).isEqualTo(2);
-            assertThat(after.get("DATA")).isEqualTo(getUnavailableValuePlaceholder(config));
+            // During snapshot, LOB fields are always captured.
+            assertThat(after.get("DATA")).isEqualTo(getByteBufferFromBlob(blob2));
 
             // Small data and large data
             connection.prepareQuery("INSERT INTO dbz3645 (id,data) values (3,?)", ps -> ps.setBlob(1, blob1), null);
