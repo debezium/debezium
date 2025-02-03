@@ -11,6 +11,14 @@
     <artifactId>debezium-core</artifactId>
     <name>Debezium Core</name>
 
+    <properties>
+        <!--
+            By default, do not enable ByteBuddy Experimental Features.
+            This is used by JDK Outreach CI to test against Java EA builds.
+        -->
+        <net.bytebuddy.experimental>false</net.bytebuddy.experimental>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>io.debezium</groupId>
@@ -171,6 +179,9 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <argLine>-javaagent:${io.opentelemetry.javaagent:opentelemetry-agent-for-testing:jar}</argLine>
+                    <systemPropertyVariables>
+                        <net.bytebuddy.experimental>${net.bytebuddy.experimental}</net.bytebuddy.experimental>
+                    </systemPropertyVariables>
                 </configuration>
             </plugin>
         </plugins>
