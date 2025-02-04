@@ -111,19 +111,26 @@ public class OcpArtifactServerController {
         List<String> commonArtifacts = List.of(
                 "debezium-connector-" + database,
                 "debezium-scripting",
-                "connect-converter",
                 "groovy/groovy",
                 "groovy/groovy-json",
-                "groovy/groovy-jsr223",
-                "jackson/jackson-databind",
-                "jackson/jackson-dataformat-csv",
-                "jackson/jackson-datatype-jsr310",
-                "jackson/jackson-jaxrs-base",
-                "jackson/jackson-jaxrs-json-provider",
-                "jackson/jackson-module-jaxb-annotations",
-                "jackson/jackson-module-afterburner",
-                "jackson/jackson-module-scala_2.13");
-        List<String> artifacts = Stream.concat(commonArtifacts.stream(), extraArtifacts.stream()).collect(toList());
+                "groovy/groovy-jsr223");
+        Stream<String> artifactsStream = Stream.concat(commonArtifacts.stream(), extraArtifacts.stream());
+        if (!database.equalsIgnoreCase("jdbc")) {
+            List<String> apicurio = List.of(
+                    // add archive with Apicurio converters
+                    "connect-converter",
+                    // and libraries to override old libs pulled by Apicurio
+                    "jackson/jackson-databind",
+                    "jackson/jackson-dataformat-csv",
+                    "jackson/jackson-datatype-jsr310",
+                    "jackson/jackson-jaxrs-base",
+                    "jackson/jackson-jaxrs-json-provider",
+                    "jackson/jackson-module-jaxb-annotations",
+                    "jackson/jackson-module-afterburner",
+                    "jackson/jackson-module-scala_2.13");
+            artifactsStream = Stream.concat(artifactsStream, apicurio.stream());
+        }
+        List<String> artifacts = artifactsStream.collect(toList());
         return createPlugin("debezium-connector-" + database, artifacts);
     }
 

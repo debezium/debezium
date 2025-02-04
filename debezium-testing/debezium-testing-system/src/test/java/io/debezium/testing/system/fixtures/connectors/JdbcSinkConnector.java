@@ -28,4 +28,9 @@ public class JdbcSinkConnector extends ConnectorFixture<MySqlController> {
     public ConnectorConfigBuilder connectorConfig(String connectorName) {
         return new ConnectorFactories(kafkaController).jdbcSink(dbController, connectorName);
     }
+
+    @Override
+    protected void addApicurioConfig() {
+        // Skip adding Apicurio config as JDBC sink tests don't use Apicurio anyway.
+    }
 }
