@@ -236,6 +236,13 @@
                 <version>${version.sqlserver.driver}</version>
             </dependency>
 
+            <!-- Azure -->
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-identity</artifactId>
+                <version>${version.azure.identity}</version>
+            </dependency>
+
             <!-- Oracle JDBC driver, XML support, Oracle XStream -->
             <dependency>
                 <groupId>com.oracle.database.jdbc</groupId>

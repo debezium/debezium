@@ -19,7 +19,7 @@ import org.infinispan.client.hotrod.RemoteCacheManager;
 import org.infinispan.client.hotrod.configuration.Configuration;
 import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
 import org.infinispan.client.hotrod.impl.ConfigurationProperties;
-import org.infinispan.commons.configuration.XMLStringConfiguration;
+import org.infinispan.commons.configuration.StringConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,8 +34,6 @@ import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceM
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.processor.CacheProvider;
 import io.debezium.connector.oracle.logminer.processor.LogMinerCache;
-import io.debezium.connector.oracle.logminer.processor.infinispan.marshalling.LogMinerEventMarshallerImpl;
-import io.debezium.connector.oracle.logminer.processor.infinispan.marshalling.TransactionMarshallerImpl;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.TableId;
@@ -78,9 +76,6 @@ public class RemoteInfinispanLogMinerEventProcessor extends AbstractInfinispanLo
 
         Configuration config = new ConfigurationBuilder()
                 .withProperties(getHotrodClientProperties(connectorConfig))
-                // todo: why must these be defined manually rather than automated like embedded mode?
-                .addContextInitializer(TransactionMarshallerImpl.class.getName())
-                .addContextInitializer(LogMinerEventMarshallerImpl.class.getName())
                 .build();
 
         LOGGER.info("Using Infinispan in Hotrod client mode");
@@ -164,7 +159,7 @@ public class RemoteInfinispanLogMinerEventProcessor extends AbstractInfinispanLo
         final String cacheConfiguration = connectorConfig.getConfig().getString(field);
         Objects.requireNonNull(cacheConfiguration);
 
-        cache = cacheManager.administration().createCache(cacheName, new XMLStringConfiguration(cacheConfiguration));
+        cache = cacheManager.administration().createCache(cacheName, new StringConfiguration(cacheConfiguration));
         if (cache == null) {
             throw new DebeziumException("Failed to create remote Infinispan cache: " + cacheName);
         }

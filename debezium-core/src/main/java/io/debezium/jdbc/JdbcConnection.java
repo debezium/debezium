@@ -46,6 +46,11 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import com.azure.core.credential.TokenCredential;
+import com.azure.core.credential.TokenRequestContext;
+import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.microsoft.sqlserver.jdbc.SQLServerDataSource;
+import com.microsoft.sqlserver.jdbc.SQLServerDriver;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
@@ -187,15 +192,29 @@ public class JdbcConnection implements AutoCloseable {
                     JdbcConfiguration.PASSWORD,
                     JdbcConfiguration.DATABASE);
             String url = findAndReplace(urlPattern, props, varsWithDefaults);
-            if (LOGGER.isTraceEnabled()) {
-                LOGGER.trace("Props: {}", propsWithMaskedPassword(props));
+
+            // Check if Managed Identity should be used
+            boolean useManagedIdentity = Boolean.parseBoolean(props.getProperty("useManagedIdentity", "false"));
+            LOGGER.info("useManagedIdentity: {}", useManagedIdentity);
+            if (useManagedIdentity) {
+                url += ";authentication=ActiveDirectoryManagedIdentity";
+                props.remove("user"); // Remove username as it's not needed for Managed Identity
+                props.remove("password"); // Remove password as it's not needed
+                LOGGER.info("Connecting to {} with properties: {}", url, props);
+                Connection conn = DriverManager.getConnection(url, props);
+                return conn;
+            } else {
+                if (LOGGER.isTraceEnabled()) {
+                    LOGGER.trace("Props: {}", propsWithMaskedPassword(props));
+                }
+                LOGGER.trace("URL: {}", url);
+                Connection conn = DriverManager.getConnection(url, props);
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.info("Connected to {} with {}", url, propsWithMaskedPassword(props));
+                }
+                return conn;
             }
-            LOGGER.trace("URL: {}", url);
-            Connection conn = DriverManager.getConnection(url, props);
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Connected to {} with {}", url, propsWithMaskedPassword(props));
-            }
-            return conn;
+
         };
     }
 
@@ -234,16 +253,48 @@ public class JdbcConnection implements AutoCloseable {
             if (LOGGER.isTraceEnabled()) {
                 LOGGER.trace("Props: {}", propsWithMaskedPassword(props));
             }
-            LOGGER.trace("URL: {}", url);
+            LOGGER.info("DRIVER_CONNECTION_URL: {}", url);
+            LOGGER.info("PROPS: {}", propsWithMaskedPassword(props));
+            LOGGER.info("classloader: {}", classloader);
+            LOGGER.info("driverClassName: {}", driverClassName);
+            LOGGER.info("JdbcConnection.class.getClassLoader: {}", JdbcConnection.class.getClassLoader());
             Connection conn = null;
+            String token = null;
+
             try {
-                ClassLoader driverClassLoader = classloader;
-                if (driverClassLoader == null) {
-                    driverClassLoader = JdbcConnection.class.getClassLoader();
+                TokenCredential credential = new DefaultAzureCredentialBuilder().build();
+                token = credential.getToken(new TokenRequestContext().addScopes("https://database.windows.net/.default")).block().getToken();
+                LOGGER.info("GET TOKEN COMPLETE");
+            }
+            catch (Exception ex) {
+                LOGGER.error("ERROR WHEN GET TOKEN", ex);
+            }
+            try {
+                boolean useManagedIdentity = Boolean.parseBoolean(props.getProperty("useManagedIdentity"));
+                LOGGER.info("useManagedIdentity: {}", useManagedIdentity);
+                if(useManagedIdentity) {
+                    LOGGER.info("USING MANAGED IDENTITY");
+
+                    // Set up the connection URL
+                    String connectionUrl = url + ";"
+                            + "encrypt=true;"
+                            + "trustServerCertificate=false;"
+                            + "loginTimeout=30;";
+
+                    // Create a SQLServerDataSource and set the access token
+                    SQLServerDataSource dataSource = new SQLServerDataSource();
+                    dataSource.setURL(connectionUrl);
+                    dataSource.setAccessToken(token);
+                    conn = dataSource.getConnection();
+                } else {
+                    ClassLoader driverClassLoader = classloader;
+                    if (driverClassLoader == null) {
+                        driverClassLoader = JdbcConnection.class.getClassLoader();
+                    }
+                    Class<java.sql.Driver> driverClazz = (Class<java.sql.Driver>) Class.forName(driverClassName, true, driverClassLoader);
+                    java.sql.Driver driver = driverClazz.getDeclaredConstructor().newInstance();
+                    conn = driver.connect(url, props);
                 }
-                Class<java.sql.Driver> driverClazz = (Class<java.sql.Driver>) Class.forName(driverClassName, true, driverClassLoader);
-                java.sql.Driver driver = driverClazz.getDeclaredConstructor().newInstance();
-                conn = driver.connect(url, props);
             }
             catch (ClassNotFoundException | IllegalAccessException | InstantiationException | NoSuchMethodException | InvocationTargetException e) {
                 throw new SQLException(e);
@@ -917,6 +968,7 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     private void establishConnection() throws SQLException {
+        LOGGER.info("JDBC_CONFIGURATION: {}", JdbcConfiguration.adapt(config));
         conn = factory.connect(JdbcConfiguration.adapt(config));
         if (!isConnected()) {
             throw new SQLException("Unable to obtain a JDBC connection");
