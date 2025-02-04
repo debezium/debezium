@@ -4297,7 +4297,7 @@ For more information about the support scope of Red Hat Technology Preview featu
 ====
 endif::product[]
 
-|[[oracle-property-snapshot-database-errors-max-retries]]<oracle-property-snapshot-database-errors-max-retries, `snapshot.database.errors.max.retries`>>
+|[[oracle-property-snapshot-database-errors-max-retries]]<<oracle-property-snapshot-database-errors-max-retries, `snapshot.database.errors.max.retries`>>
 |`0`
 |Specifies the number of retry attempts to snapshot a table when a database error occurs.
 This configuration property currently only retries failures related to `ORA-01466` exceptions.
