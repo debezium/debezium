@@ -3498,14 +3498,14 @@ Ensures data consistency between the tables being scanned and blocking DDL on th
 Allows for serialization anomalies.
 
 `read_committed`::
-In PostgreSQL, because the Read Uncommitted and Read Committed isolation modes behave the same, for {prodname} PostgreSQL connector snapshots, this option effectively represents the least restrictive level of isolation.
+In PostgreSQL, there is no difference between the behavior of the Read Uncommitted and Read Committed isolation modes.
+As a result, for this property, the `read_committed` option effectively provides the least restrictive level of isolation.
 Setting this option sacrifices some consistency for initial and ad hoc blocking snapshots, but provides better database performance for other users during the snapshot.
-You might encounter minor data inconsistencies between reads if other transactions update table rows during the snapshot.
-New records can appear twice, first, during the snapshot, and again during the streaming phase.
-However, this consistency level is appropriate for data mirroring.
-The snapshot might read a version of the data that could be subject to change, but only after the data is committed.
-If the transaction re-issues the read, it will find the same data.
-In this level of isolation, the data that a snapshot reads might not be repeatable, because it is can change after it is first read, but before the transaction completes.
++
+In general, this transaction consistency level is appropriate for data mirroring.
+Other transactions cannot update table rows during the snapshot.
+However, minor data inconsistencies can occur when a record is added during the initial snapshot, and the connector later recaptures the record after the streaming phase begins.
+
 
 `read_uncommitted`::
 Nominally, this option offers the least restrictive level of isolation.
