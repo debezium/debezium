@@ -64,6 +64,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private static Logger LOGGER = LoggerFactory.getLogger(PostgresReplicationConnection.class);
 
     private final String slotName;
+    private final PostgresConnectorConfig.LsnType lsnType;
     private final String publicationName;
     private final RelationalTableFilters tableFilter;
     private final PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode;
@@ -114,6 +115,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
         this.connectorConfig = config;
         this.slotName = slotName;
+        this.lsnType = config.slotLsnType();
         this.publicationName = publicationName;
         this.tableFilter = tableFilter;
         this.publicationAutocreateMode = publicationAutocreateMode;
@@ -522,10 +524,11 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
         try (Statement stmt = pgConnection().createStatement()) {
             String createCommand = String.format(
-                    "CREATE_REPLICATION_SLOT \"%s\" %s LOGICAL %s",
+                    "CREATE_REPLICATION_SLOT \"%s\" %s LOGICAL %s %s",
                     slotName,
                     tempPart,
-                    plugin.getPostgresPluginName());
+                    plugin.getPostgresPluginName(),
+                    lsnType.getLsnTypeName());
             LOGGER.info("Creating replication slot with command {}", createCommand);
             stmt.execute(createCommand);
             // when we are in Postgres 9.4+, we can parse the slot creation info,

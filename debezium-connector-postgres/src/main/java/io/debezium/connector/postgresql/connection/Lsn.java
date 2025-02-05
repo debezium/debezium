@@ -144,7 +144,7 @@ public class Lsn implements Comparable<Lsn> {
 
     @Override
     public String toString() {
-        return "LSN{" + asString() + '}';
+        return "LSN{" + asLong() + '}';
     }
 
     @Override

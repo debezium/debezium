@@ -380,6 +380,62 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         }
     }
 
+    public enum LsnType implements EnumeratedValue {
+        SEQUENCE("SEQUENCE") {
+            @Override
+            public String getLsnTypeName() {
+                return getValue();
+            }
+
+            @Override
+            public boolean isSequence() {
+                return true;
+            }
+
+            @Override
+            public boolean isHybridTime() {
+                return false;
+            }
+        },
+        HYBRID_TIME("HYBRID_TIME") {
+            @Override
+            public String getLsnTypeName() {
+                return getValue();
+            }
+
+            @Override
+            public boolean isSequence() {
+                return false;
+            }
+
+            @Override
+            public boolean isHybridTime() {
+                return true;
+            }
+        };
+
+        private final String lsnTypeName;
+
+        LsnType(String lsnTypeName) {
+            this.lsnTypeName = lsnTypeName;
+        }
+
+        public static LsnType parse(String s) {
+            return valueOf(s.trim().toUpperCase());
+        }
+
+        @Override
+        public String getValue() {
+            return lsnTypeName;
+        }
+
+        public abstract boolean isSequence();
+
+        public abstract boolean isHybridTime();
+
+        public abstract String getLsnTypeName();
+    }
+
     public enum LogicalDecoder implements EnumeratedValue {
         PGOUTPUT("pgoutput") {
             @Override
@@ -579,6 +635,14 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     + "' and '" + LogicalDecoder.YBOUTPUT.getValue()
                     + "'. " +
                     "Defaults to '" + LogicalDecoder.YBOUTPUT.getValue() + "'.");
+
+    public static final Field SLOT_LSN_TYPE = Field.create("slot.lsn.type")
+            .withDisplayName("Slot LSN type")
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withEnum(LsnType.class, LsnType.SEQUENCE)
+            .withDescription("LSN type being used with the replication slot");
 
     public static final Field SLOT_NAME = Field.create("slot.name")
             .withDisplayName("Slot")
@@ -1083,6 +1147,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return getConfig().getString(SLOT_NAME);
     }
 
+    public LsnType slotLsnType() {
+        return LsnType.parse(getConfig().getString(SLOT_LSN_TYPE));
+    }
+
     protected boolean dropSlotOnStop() {
         if (getConfig().hasKey(DROP_SLOT_ON_STOP.name())) {
             return getConfig().getBoolean(DROP_SLOT_ON_STOP);
@@ -1218,6 +1286,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     DATABASE_NAME,
                     PLUGIN_NAME,
                     SLOT_NAME,
+                    SLOT_LSN_TYPE,
                     PUBLICATION_NAME,
                     PUBLICATION_AUTOCREATE_MODE,
                     REPLICA_IDENTITY_AUTOSET_VALUES,

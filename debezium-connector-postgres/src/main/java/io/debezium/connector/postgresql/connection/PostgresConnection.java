@@ -115,6 +115,13 @@ public class PostgresConnection extends JdbcConnection {
             final PostgresValueConverter valueConverter = valueConverterBuilder.build(this.typeRegistry);
             this.defaultValueConverter = new PostgresDefaultValueConverter(valueConverter, this.getTimestampUtils(), typeRegistry);
         }
+
+        try {
+            LOGGER.debug("Setting GUC to disable catalog version check");
+            execute("SET yb_disable_catalog_version_check = true;");
+        } catch (Exception e) {
+            LOGGER.error("Error while setting GUC yb_disable_catalog_version_check", e);
+        }
     }
 
     public PostgresConnection(JdbcConfiguration config, PostgresValueConverterBuilder valueConverterBuilder, String connectionUsage) {
