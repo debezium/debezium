@@ -150,16 +150,21 @@ You can find more information about snapshots in the following sections:
 endif::product[]
 
 .Default workflow behavior of initial snapshots
-The default behavior for performing a snapshot consists of the following steps.
+The following steps describe the default steps that the connector performs during an initial snapshot.
 You can change this behavior by setting the xref:postgresql-property-snapshot-mode[`snapshot.mode` connector configuration property] to a value other than `initial`.
 
-. Start a transaction with a link:https://www.postgresql.org/docs/current/static/sql-set-transaction.html[SERIALIZABLE, READ ONLY, DEFERRABLE] isolation level to ensure that subsequent reads in this transaction are against a single consistent version of the data. Any changes to the data due to subsequent `INSERT`, `UPDATE`, and `DELETE` operations by other clients are not visible to this transaction.
-. Read the current position in the server's transaction log.
-. Scan the database tables and schemas, generate a `READ` event for each row and write that event to the appropriate table-specific Kafka topic.
-. Commit the transaction.
-. Record the successful completion of the snapshot in the connector offsets.
+1. Starts a transaction that uses the isolation level specified by the xref:postgresql-property-snapshot-isolation-mode[`snapshot.isolation.mode`] property.
+  The specified mode determines whether subsequent reads in this transaction are against a single consistent version of the data.
+  Depending on the mode, changes to the data that result to subsequent `INSERT`, `UPDATE`, and `DELETE` operations by other clients might be visible to this transaction.
+2. Reads the current position in the server's transaction log.
+3. Scans the database tables and schemas, generate a `READ` event for each row and write that event to the appropriate table-specific Kafka topic.
+4. Commits the transaction.
+5. Records the successful completion of the snapshot in the connector offsets.
 
-If the connector fails, is rebalanced, or stops after Step 1 begins but before Step 5 completes, upon restart the connector begins a new snapshot. After the connector completes its initial snapshot, the PostgreSQL connector continues streaming from the position that it read in Step 2. This ensures that the connector does not miss any updates. If the connector stops again for any reason, upon restart, the connector continues streaming changes from where it previously left off.
+If the connector fails, is rebalanced, or stops after Step 1 begins but before Step 5 completes, upon restart the connector begins a new snapshot.
+After the connector completes its initial snapshot, the PostgreSQL connector continues streaming from the position that it read in Step 2.
+This ensures that the connector does not miss any updates.
+If the connector stops again for any reason, after it restarts, it continues streaming changes from where it previously left off.
 
 [id="postgresql-connector-snapshot-mode-options"]
 .Options for the `snapshot.mode` connector configuration property
@@ -169,16 +174,22 @@ If the connector fails, is rebalanced, or stops after Step 1 begins but before S
 |Description
 
 |`always`
-|The connector always performs a snapshot when it starts. After the snapshot completes, the connector continues streaming changes from step 3 in the above sequence. This mode is useful in these situations: +
+|The connector always performs a snapshot when it starts.
+After the snapshot completes, the connector continues streaming changes from step 3 in the above sequence.
+This mode is useful in the following situations: +
 
 * It is known that some WAL segments have been deleted and are no longer available. +
-* After a cluster failure, a new primary has been promoted. The `always` snapshot mode ensures that the connector does not miss any changes that were made after the new primary had been promoted but before the connector was restarted on the new primary.
+* After a cluster failure, a new primary has been promoted.
+  The `always` snapshot mode ensures that the connector does not miss any changes that were made after the new primary had been promoted but before the connector was restarted on the new primary.
 
 |`initial` (default)
-|The connector performs a database snapshot when no Kafka offsets topic exists. After the database snapshot completes the Kafka offsets topic is written. If there is a previously stored LSN in the Kafka offsets topic, the connector continues streaming changes from that position.
+|The connector performs a database snapshot when no Kafka offsets topic exists.
+After the database snapshot completes the Kafka offsets topic is written.
+If there is a previously stored LSN in the Kafka offsets topic, the connector continues streaming changes from that position.
 
 |`initial_only`
-|The connector performs a database snapshot and stops before streaming any change event records. If the connector had started but did not complete a snapshot before stopping, the connector restarts the snapshot process and stops when the snapshot completes.
+|The connector performs a database snapshot and stops before streaming any change event records.
+If the connector had started but did not complete a snapshot before stopping, the connector restarts the snapshot process and stops when the snapshot completes.
 
 |`no_data`
 |The connector never performs snapshots.
@@ -3458,6 +3469,52 @@ To associate any additional configuration parameter with a converter, prefix the
 For example, +
 
  isbn.schema.name: io.debezium.postgresql.type.Isbn
+
+|[[postgresql-property-snapshot-isolation-mode]]<<postgresql-property-snapshot-isolation-mode, `+snapshot.isolation.mode+`>>
+|`serializable`
+|Specifies the transaction isolation level and the type of locking, if any, that the connector applies when it reads data during an initial snapshot or ad hoc blocking snapshot.
+
+Each isolation level strikes a different balance between optimizing concurrency and performance on the one hand, and maximizing data consistency and accuracy on the other.
+Snapshots that use stricter isolation levels result in higher quality, more consistent data, but the cost of the improvement is decreased performance due to longer lock times and fewer concurrent transactions.
+Less restrictive isolation levels can increase efficiency, but at the expense of inconsistent data.
+For more information about transaction isolation levels in PostgreSQL, see the https://www.postgresql.org/docs/current/transaction-iso.html[PostgreSQL documentation].
+
+Specify one of the following isolation levels:
+
+`serializable`::
+The default, and most restrictive isolation level.
+This option prevents serialization anomalies and provides the highest degree of data integrity.
++
+To ensure the data consistency of captured tables, a snapshot runs in a transaction that uses a repeatable read isolation level, blocking concurrent DDL changes on the tables, and locking the database to index creation.
+When this option is set, users or administrators cannot perform certain operations, such as creating a table index, until the snapshot concludes.
+The entire range of table keys remains locked until the snapshot completes.
+This option matches the snapshot behavior that was available in the connector before the introduction of this property.
+
+`repeatable_read`::
+Prevents other transactions from updating table rows during the snapshot.
+New records captured by the snapshot can appear twice; first, as part of the initial snapshot, and then again in the streaming phase.
+However, this level of consistency is tolerable for database mirroring.
+Ensures data consistency between the tables being scanned and blocking DDL on the selected tables, and concurrent index creation throughout the database.
+Allows for serialization anomalies.
+
+`read_committed`::
+In PostgreSQL, because the Read Uncommitted and Read Committed isolation modes behave the same, for {prodname} PostgreSQL connector snapshots, this option effectively represents the least restrictive level of isolation.
+Setting this option sacrifices some consistency for initial and ad hoc blocking snapshots, but provides better database performance for other users during the snapshot.
+You might encounter minor data inconsistencies between reads if other transactions update table rows during the snapshot.
+New records can appear twice, first, during the snapshot, and again during the streaming phase.
+However, this consistency level is appropriate for data mirroring.
+The snapshot might read a version of the data that could be subject to change, but only after the data is committed.
+If the transaction re-issues the read, it will find the same data.
+In this level of isolation, the data that a snapshot reads might not be repeatable, because it is can change after it is first read, but before the transaction completes.
+
+`read_uncommitted`::
+Nominally, this option offers the least restrictive level of isolation.
+However, as explained in the description for the `read-committed` option, for the {prodname} PostgreSQL connector, this option provides the same level of isolation as the `read_committed` option.
+// The database does not issue shared locks, and it does not honor exclusive locks.
+// This option permits the snapshot to include so-called dirty reads, which can include changes related to transactions from other users, even if those transactions are not yet been committed, and are therefore subject to change.
+// Provides the best performance, but  at the risk of inaccurate data.
+// This level of isolation can result in dirty reads, non-repeatable reads, where in which a transaction gets different values each when it reads a row multiple times. and phantom reads, in which executing the same query multiple times returns different rows..
+
 
 |[[postgresql-property-snapshot-mode]]<<postgresql-property-snapshot-mode, `+snapshot.mode+`>>
 |_initial_
