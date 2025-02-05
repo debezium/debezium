@@ -3483,8 +3483,8 @@ Specify one of the following isolation levels:
 
 `serializable`::
 The default, and most restrictive isolation level.
-This option prevents serialization anomalies and provides the highest degree of data integrity.
-+
+This option prevents serialization anomalies and provides the highest degree of data integrity. +
+ +
 To ensure the data consistency of captured tables, a snapshot runs in a transaction that uses a repeatable read isolation level, blocking concurrent DDL changes on the tables, and locking the database to index creation.
 When this option is set, users or administrators cannot perform certain operations, such as creating a table index, until the snapshot concludes.
 The entire range of table keys remains locked until the snapshot completes.
@@ -3500,8 +3500,8 @@ Allows for serialization anomalies.
 `read_committed`::
 In PostgreSQL, there is no difference between the behavior of the Read Uncommitted and Read Committed isolation modes.
 As a result, for this property, the `read_committed` option effectively provides the least restrictive level of isolation.
-Setting this option sacrifices some consistency for initial and ad hoc blocking snapshots, but provides better database performance for other users during the snapshot.
-+
+Setting this option sacrifices some consistency for initial and ad hoc blocking snapshots, but provides better database performance for other users during the snapshot. +
+ +
 In general, this transaction consistency level is appropriate for data mirroring.
 Other transactions cannot update table rows during the snapshot.
 However, minor data inconsistencies can occur when a record is added during the initial snapshot, and the connector later recaptures the record after the streaming phase begins.
