@@ -221,34 +221,72 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
      * @param row the event row that contains the row identifier, must not be {@code null}
      */
     protected void removeEventWithRowId(LogMinerEventRow row) {
-        // locate the events based solely on XIDUSN and XIDSLT.
-        String basePrefix = getTransactionIdPrefix(row.getTransactionId());
-        List<String> eventKeysForBasePrefix = getTransactionKeysWithPrefix(basePrefix);
-
-        String transactionIdPrefix = row.getTransactionId() + "-";
-
-        // filter the existing list down to the events for the transaction
-        List<String> eventKeys = eventKeysForBasePrefix.stream()
-                .filter(k -> k.startsWith(transactionIdPrefix))
-                .toList();
-
-        if (eventKeys.isEmpty() && isTransactionIdWithNoSequence(row.getTransactionId())) {
+        final T transaction = getTransactionCache().get(row.getTransactionId());
+        if (transaction != null) {
+            if (removeTransactionEventWithRowId(transaction, row)) {
+                return;
+            }
+            Loggings.logWarningAndTraceRecord(LOGGER, row,
+                    "Cannot undo change on table '{}' since event with row-id {} was not found.",
+                    row.getTableId(), row.getRowId());
+        }
+        else if (isTransactionIdWithNoSequence(row.getTransactionId())) {
             // This means that Oracle LogMiner found an event that should be undone but its corresponding
             // undo entry was read in a prior mining session and the transaction's sequence could not be
             // resolved.
-
+            final String prefix = getTransactionIdPrefix(row.getTransactionId());
             LOGGER.debug("Undo change refers to a transaction that has no explicit sequence, '{}'", row.getTransactionId());
-            LOGGER.debug("Checking all transactions with prefix '{}'", basePrefix);
-            eventKeys = eventKeysForBasePrefix;
-        }
+            LOGGER.debug("Checking all transactions with prefix '{}'", prefix);
 
-        if (!eventKeys.isEmpty()) {
-            removeEvents(row, eventKeys);
+            final List<T> transactions = getTransactionCache().streamAndReturn(
+                    stream -> stream.filter(entry -> entry.getKey().startsWith(prefix))
+                            .map(LogMinerCache.Entry::getValue)
+                            .toList());
+
+            for (T prefixedTransaction : transactions) {
+                if (removeTransactionEventWithRowId(prefixedTransaction, row)) {
+                    return;
+                }
+            }
+
+            Loggings.logWarningAndTraceRecord(LOGGER, row,
+                    "Cannot undo change on table '{}' since event with row-id {} was not found.",
+                    row.getTableId(), row.getRowId());
         }
         else if (!getConfig().isLobEnabled()) {
-            Loggings.logWarningAndTraceRecord(LOGGER, row, "Cannot undo change on table '{}' since transaction '{}' was not found.", row.getTableId(),
-                    row.getTransactionId());
+            Loggings.logWarningAndTraceRecord(LOGGER, row,
+                    "Cannot undo change on table '{}' since transaction '{}' was not found.",
+                    row.getTableId(), row.getTransactionId());
         }
+        else {
+            // While the code should never get here, log a warning if it does.
+            Loggings.logWarningAndTraceRecord(LOGGER, row,
+                    "Failed to undo change on table '{}' in transaction '{}' with row-id '{}'",
+                    row.getTableId(), row.getTransactionId(), row.getRowId());
+        }
+    }
+
+    protected boolean removeTransactionEventWithRowId(T transaction, LogMinerEventRow row) {
+        for (int i = transaction.getNumberOfEvents() - 1; i >= 0; i--) {
+            final String eventKey = transaction.getEventId(i);
+            final LogMinerEvent event = getEventCache().get(eventKey);
+
+            if (event != null && event.getRowId().equals(row.getRowId())) {
+                // This metric won't necessarily be accurate when LOB is enabled, it will scale based on the
+                // number of times a given transaction is re-mined.
+                metrics.increasePartialRollbackCount();
+                counters.partialRollbackCount++;
+
+                Loggings.logDebugAndTraceRecord(LOGGER, row,
+                        "Undo change on table '{}' applied to transaction '{}'",
+                        row.getTableId(), eventKey);
+
+                getEventCache().remove(eventKey);
+                inMemoryPendingTransactionsCache.decrement(row.getTransactionId());
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -2060,25 +2098,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
             getEventCache().remove(transaction.getEventId(i));
         }
         inMemoryPendingTransactionsCache.remove(transaction.getTransactionId());
-    }
-
-    private void removeEvents(LogMinerEventRow row, List<String> eventKeys) {
-        // This metric won't necessarily be accurate when LOB is enabled, it will scale based on the
-        // number of times a given transaction is re-mined.
-        metrics.increasePartialRollbackCount();
-        counters.partialRollbackCount++;
-
-        for (String eventKey : eventKeys) {
-            final LogMinerEvent event = getEventCache().get(eventKey);
-            if (event != null && event.getRowId().equals(row.getRowId())) {
-                Loggings.logDebugAndTraceRecord(LOGGER, row, "Undo change on table '{}' applied to transaction '{}'", row.getTableId(), eventKey);
-                getEventCache().remove(eventKey);
-                inMemoryPendingTransactionsCache.decrement(row.getTransactionId());
-                return;
-            }
-        }
-        Loggings.logWarningAndTraceRecord(LOGGER, row, "Cannot undo change on table '{}' since event with row-id {} was not found.", row.getTableId(),
-                row.getRowId());
     }
 
     protected int compareStartScn(T first, T second) {
