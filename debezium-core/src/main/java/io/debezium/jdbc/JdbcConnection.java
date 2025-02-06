@@ -192,29 +192,15 @@ public class JdbcConnection implements AutoCloseable {
                     JdbcConfiguration.PASSWORD,
                     JdbcConfiguration.DATABASE);
             String url = findAndReplace(urlPattern, props, varsWithDefaults);
-
-            // Check if Managed Identity should be used
-            boolean useManagedIdentity = Boolean.parseBoolean(props.getProperty("useManagedIdentity", "false"));
-            LOGGER.info("useManagedIdentity: {}", useManagedIdentity);
-            if (useManagedIdentity) {
-                url += ";authentication=ActiveDirectoryManagedIdentity";
-                props.remove("user"); // Remove username as it's not needed for Managed Identity
-                props.remove("password"); // Remove password as it's not needed
-                LOGGER.info("Connecting to {} with properties: {}", url, props);
-                Connection conn = DriverManager.getConnection(url, props);
-                return conn;
-            } else {
-                if (LOGGER.isTraceEnabled()) {
-                    LOGGER.trace("Props: {}", propsWithMaskedPassword(props));
-                }
-                LOGGER.trace("URL: {}", url);
-                Connection conn = DriverManager.getConnection(url, props);
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.info("Connected to {} with {}", url, propsWithMaskedPassword(props));
-                }
-                return conn;
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("Props: {}", propsWithMaskedPassword(props));
             }
-
+            LOGGER.trace("URL: {}", url);
+            Connection conn = DriverManager.getConnection(url, props);
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Connected to {} with {}", url, propsWithMaskedPassword(props));
+            }
+            return conn;
         };
     }
 
@@ -968,7 +954,6 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     private void establishConnection() throws SQLException {
-        LOGGER.info("JDBC_CONFIGURATION: {}", JdbcConfiguration.adapt(config));
         conn = factory.connect(JdbcConfiguration.adapt(config));
         if (!isConnected()) {
             throw new SQLException("Unable to obtain a JDBC connection");
