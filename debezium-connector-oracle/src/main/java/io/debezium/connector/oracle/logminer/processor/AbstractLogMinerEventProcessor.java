@@ -17,7 +17,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -238,15 +237,11 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
             LOGGER.debug("Undo change refers to a transaction that has no explicit sequence, '{}'", row.getTransactionId());
             LOGGER.debug("Checking all transactions with prefix '{}'", prefix);
 
-            final List<T> transactions = getTransactionCache().streamAndReturn(
+            if (getTransactionCache().streamAndReturn(
                     stream -> stream.filter(entry -> entry.getKey().startsWith(prefix))
                             .map(LogMinerCache.Entry::getValue)
-                            .toList());
-
-            for (T prefixedTransaction : transactions) {
-                if (removeTransactionEventWithRowId(prefixedTransaction, row)) {
-                    return;
-                }
+                            .anyMatch(t -> removeTransactionEventWithRowId(t, row)))) {
+                return;
             }
 
             Loggings.logWarningAndTraceRecord(LOGGER, row,
