@@ -50,7 +50,6 @@ import com.azure.core.credential.TokenCredential;
 import com.azure.core.credential.TokenRequestContext;
 import com.azure.identity.DefaultAzureCredentialBuilder;
 import com.microsoft.sqlserver.jdbc.SQLServerDataSource;
-import com.microsoft.sqlserver.jdbc.SQLServerDriver;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
@@ -239,37 +238,24 @@ public class JdbcConnection implements AutoCloseable {
             if (LOGGER.isTraceEnabled()) {
                 LOGGER.trace("Props: {}", propsWithMaskedPassword(props));
             }
-            LOGGER.info("DRIVER_CONNECTION_URL: {}", url);
-            LOGGER.info("PROPS: {}", propsWithMaskedPassword(props));
-            LOGGER.info("classloader: {}", classloader);
-            LOGGER.info("driverClassName: {}", driverClassName);
-            LOGGER.info("JdbcConnection.class.getClassLoader: {}", JdbcConnection.class.getClassLoader());
+
             Connection conn = null;
-            String token = null;
-
             try {
-                TokenCredential credential = new DefaultAzureCredentialBuilder().build();
-                token = credential.getToken(new TokenRequestContext().addScopes("https://database.windows.net/.default")).block().getToken();
-                LOGGER.info("GET TOKEN COMPLETE");
-            }
-            catch (Exception ex) {
-                LOGGER.error("ERROR WHEN GET TOKEN", ex);
-            }
-            try {
-                boolean useManagedIdentity = Boolean.parseBoolean(props.getProperty("useManagedIdentity"));
-                LOGGER.info("useManagedIdentity: {}", useManagedIdentity);
-                if(useManagedIdentity) {
-                    LOGGER.info("USING MANAGED IDENTITY");
-
-                    // Set up the connection URL
-                    String connectionUrl = url + ";"
-                            + "encrypt=true;"
-                            + "trustServerCertificate=false;"
-                            + "loginTimeout=30;";
-
+                boolean useActiveDirectory = Boolean.parseBoolean(props.getProperty("useActiveDirectory"));
+                if(useActiveDirectory) {
+                    LOGGER.info("Using Active Directory");
+                    String token = null;
+                    try {
+                        TokenCredential credential = new DefaultAzureCredentialBuilder().build();
+                        token = credential.getToken(new TokenRequestContext().addScopes("https://database.windows.net/.default")).block().getToken();
+                    }
+                    catch (Exception ex) {
+                        LOGGER.error("Error when trying to get token from IMDS endpoint", ex);
+                        throw ex;
+                    }
                     // Create a SQLServerDataSource and set the access token
                     SQLServerDataSource dataSource = new SQLServerDataSource();
-                    dataSource.setURL(connectionUrl);
+                    dataSource.setURL(url);
                     dataSource.setAccessToken(token);
                     conn = dataSource.getConnection();
                 } else {
