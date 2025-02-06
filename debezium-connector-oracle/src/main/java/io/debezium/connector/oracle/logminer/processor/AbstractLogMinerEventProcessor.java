@@ -2051,16 +2051,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         }
     }
 
-    protected List<String> getTransactionKeysWithPrefix(String prefix) {
-        // Enforce that the keys are always reverse sorted.
-        return getEventCache()
-                .streamAndReturn(stream -> stream.map(LogMinerCache.Entry::getKey)
-                        .filter(k -> k.startsWith(prefix))
-                        .sorted(EventKeySortComparator.INSTANCE.reversed())
-                        .collect(Collectors.toList()) // must use Collectors.toList to avoid bug in ISPN for now
-                );
-    }
-
     /**
      * Calculates the last system change number to abandon by directly examining the transaction buffer
      * cache and comparing the transaction start time to the most recent last processed change time and
