@@ -2,7 +2,6 @@
 
 DEBEZIUM_REPOSITORY=debezium/debezium
 DEBEZIUM_BRANCH=main
-DEFAULT_PLATFORMS=linux/amd64,linux/arm64
 
 SNAPSHOT_VERSION=$(curl -s https://raw.githubusercontent.com/$DEBEZIUM_REPOSITORY/$DEBEZIUM_BRANCH/pom.xml | grep -o '<version>.*-SNAPSHOT</version>' | awk -F '[<>]' '{print $3}')
 
