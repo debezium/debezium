@@ -156,6 +156,7 @@ public class CloudEventsConverter implements Converter, Versioned {
     private List<String> schemaRegistryUrls;
     private SchemaNameAdjuster schemaNameAdjuster;
 
+    private boolean openTelemetryTracingAttributesEnable;
     private boolean extensionAttributesEnable;
     private String cloudEventsSchemaName;
     private MetadataSource metadataSource;
@@ -186,6 +187,7 @@ public class CloudEventsConverter implements Converter, Versioned {
         ceSerializerType = ceConfig.cloudeventsSerializerType();
         dataSerializerType = ceConfig.cloudeventsDataSerializerTypeConfig();
         schemaNameAdjuster = ceConfig.schemaNameAdjustmentMode().createAdjuster();
+        openTelemetryTracingAttributesEnable = ceConfig.openTelemetryTracingAttributesEnable();
         extensionAttributesEnable = ceConfig.extensionAttributesEnable();
         cloudEventsSchemaName = ceConfig.schemaCloudEventsName();
         metadataSource = ceConfig.metadataSource();
@@ -282,15 +284,12 @@ public class CloudEventsConverter implements Converter, Versioned {
 
         CloudEventsProvider provider = lookupCloudEventsProvider(source);
 
-        RecordAndMetadata recordAndMetadata;
-        final boolean useBaseImpl = Stream.of(metadataSource.global(), metadataSource.id(), metadataSource.type(), metadataSource.dataSchemaName())
+        final boolean useBaseImpl = Stream
+                .of(metadataSource.global(), metadataSource.id(), metadataSource.type(), metadataSource.traceparent(), metadataSource.dataSchemaName())
                 .allMatch(metadataSource -> metadataSource != MetadataSourceValue.HEADER);
-        if (useBaseImpl) {
-            recordAndMetadata = new RecordAndMetadataBaseImpl(record, schema);
-        }
-        else {
-            recordAndMetadata = new RecordAndMetadataHeaderImpl(record, schema, headers, metadataSource, jsonHeaderConverter);
-        }
+
+        RecordAndMetadata recordAndMetadata = useBaseImpl ? new RecordAndMetadataBaseImpl(record, schema)
+                : new RecordAndMetadataHeaderImpl(record, schema, headers, metadataSource, jsonHeaderConverter);
 
         CloudEventsMaker maker = provider.createMaker(recordAndMetadata, dataSerializerType,
                 (schemaRegistryUrls == null) ? null : String.join(",", schemaRegistryUrls), cloudEventsSchemaName);
@@ -501,6 +500,10 @@ public class CloudEventsConverter implements Converter, Versioned {
             ceSchemaBuilder.withSchema(CloudEventsMaker.FieldName.DATASCHEMA, Schema.STRING_SCHEMA);
         }
 
+        if (this.openTelemetryTracingAttributesEnable) {
+            ceSchemaBuilder.withSchema(CloudEventsMaker.FieldName.TRACEPARENT, Schema.STRING_SCHEMA);
+        }
+
         if (this.extensionAttributesEnable) {
             ceSchemaBuilder.withSchema(adjustExtensionName(Envelope.FieldName.OPERATION), Schema.STRING_SCHEMA);
             ceSchemaFromSchema(sourceSchema, ceSchemaBuilder, CloudEventsConverter::adjustExtensionName, false);
@@ -526,6 +529,10 @@ public class CloudEventsConverter implements Converter, Versioned {
 
         if (dataSchema != null) {
             ceValueBuilder.withValue(CloudEventsMaker.FieldName.DATASCHEMA, dataSchema);
+        }
+
+        if (this.openTelemetryTracingAttributesEnable) {
+            ceValueBuilder.withValue(CloudEventsMaker.FieldName.TRACEPARENT, recordAndMetadata.traceparent());
         }
 
         if (this.extensionAttributesEnable) {
