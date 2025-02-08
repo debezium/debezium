@@ -70,6 +70,12 @@ public class RecordAndMetadataBaseImpl implements RecordAndMetadata {
     }
 
     @Override
+    public String traceparent() {
+        throw new DataException(
+                "Value for `traceparent` CloudEvents field currently can't be obtained from a record value and can only be obtained from a record header");
+    }
+
+    @Override
     public String dataSchemaName() {
         String connectorType = source().getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
         return "io.debezium.connector." + connectorType + ".Data";
