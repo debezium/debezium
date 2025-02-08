@@ -49,6 +49,12 @@ public abstract class CloudEventsMaker {
         public static final String TIME = "time";
 
         /**
+         * CloudEvents OpenTelemetry attributes for distributed tracing (OPTIONAL)
+         * The attributes are described <a href="https://github.com/cloudevents/spec/blob/main/cloudevents/extensions/distributed-tracing.md">here</a>
+         */
+        public static final String TRACEPARENT = "traceparent";
+
+        /**
          * Event data
          */
         public static final String DATA = "data";
