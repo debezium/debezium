@@ -156,6 +156,16 @@
             <artifactId>rest-assured</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.opentelemetry.javaagent</groupId>
+            <artifactId>opentelemetry-testing-common</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry.javaagent</groupId>
+            <artifactId>opentelemetry-agent-for-testing</artifactId>
+            <scope>test</scope>
+        </dependency>
 
         <!-- Used for unit testing with Kafka -->
         <dependency>
@@ -307,6 +317,7 @@
                         <plugin.name>${decoder.plugin.name}</plugin.name>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
+                    <argLine>-javaagent:"${settings.localRepository}/io/opentelemetry/javaagent/opentelemetry-agent-for-testing/@{version.opentelemetry.testing}-alpha/opentelemetry-agent-for-testing-@{version.opentelemetry.testing}-alpha.jar"</argLine>
                     <runOrder>${runOrder}</runOrder>
                 </configuration>
             </plugin>

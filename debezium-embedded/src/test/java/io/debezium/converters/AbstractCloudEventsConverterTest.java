@@ -54,7 +54,7 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
     protected abstract String createInsert();
 
     protected abstract String createInsertToOutbox(String eventId, String eventType, String aggregateType,
-                                                   String aggregateId, String payloadJson, String additional);
+                                                   String aggregateId, String tracingSpanContext, String payloadJson, String additional);
 
     protected abstract void waitForStreamingStarted() throws InterruptedException;
 
@@ -113,6 +113,7 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
                 "UserCreated",
                 "User",
                 "10711fa5",
+                null,
                 "{" +
                         "\"someField1\": \"some value 1\"," +
                         "\"someField2\": 7005" +
@@ -139,7 +140,7 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
     }
 
     @Test
-    @FixFor("DBZ-7284")
+    @FixFor({ "DBZ-7284", "DBZ-8669" })
     public void shouldConvertToCloudEventsInJsonWithDataAsAvroAndAllMetadataInHeadersAfterOutboxEventRouter() throws Exception {
         HeaderFrom<SourceRecord> headerFrom = new HeaderFrom.Value<>();
         Map<String, String> headerFromConfig = new LinkedHashMap<>();
@@ -163,6 +164,7 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
                 "UserCreated",
                 "User",
                 "10711fa5",
+                "traceparent=00-f99aefa4b9c40a436432b62f851a8159-526f14c08e12c3b9-01",
                 "{" +
                         "\"someField1\": \"some value 1\"," +
                         "\"someField2\": 7005" +
