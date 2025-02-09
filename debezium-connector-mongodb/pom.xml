@@ -244,8 +244,7 @@
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
                     <runOrder>${runOrder}</runOrder>
-                    <!-- TODO: the dependency JAR is just hardcoded. At least, its version should be obtained from `debezium-bom` module -->
-                    <argLine>--add-opens java.base/java.net=ALL-UNNAMED -javaagent:"${settings.localRepository}/io/opentelemetry/javaagent/opentelemetry-agent-for-testing/2.10.0-alpha/opentelemetry-agent-for-testing-2.10.0-alpha.jar"</argLine>
+                    <argLine>--add-opens java.base/java.net=ALL-UNNAMED -javaagent:"${settings.localRepository}/io/opentelemetry/javaagent/opentelemetry-agent-for-testing/@{version.opentelemetry.testing}-alpha/opentelemetry-agent-for-testing-@{version.opentelemetry.testing}-alpha.jar"</argLine>
                 </configuration>
             </plugin>
             <plugin>
