@@ -45,11 +45,12 @@ public abstract class BinlogCloudEventsConverterIT<C extends SourceConnector>
 
     private static final String SETUP_OUTBOX_TABLE = "CREATE TABLE outbox " +
             "(" +
-            "  id            varchar(36)  not null," +
-            "  aggregatetype varchar(255) not null," +
-            "  aggregateid   varchar(255) not null," +
-            "  event_type    varchar(255) not null," +
-            "  payload       json," +
+            "  id                   varchar(36)  not null," +
+            "  aggregatetype        varchar(255) not null," +
+            "  aggregateid          varchar(255) not null," +
+            "  event_type           varchar(255) not null," +
+            "  tracingspancontext   varchar(255)," +
+            "  payload              json," +
             "  CONSTRAINT outbox_pk PRIMARY KEY (id));";
 
     private static final String INSERT_STMT = "INSERT INTO a VALUES (1, 1);";
@@ -124,6 +125,7 @@ public abstract class BinlogCloudEventsConverterIT<C extends SourceConnector>
                                           String eventType,
                                           String aggregateType,
                                           String aggregateId,
+                                          String tracingSpanContext,
                                           String payloadJson,
                                           String additional) {
         StringBuilder insert = new StringBuilder();
@@ -133,6 +135,12 @@ public abstract class BinlogCloudEventsConverterIT<C extends SourceConnector>
         insert.append(", '").append(aggregateId).append("'");
         insert.append(", '").append(eventType).append("'");
 
+        if (tracingSpanContext == null) {
+            insert.append(", null");
+        }
+        else {
+            insert.append(", '").append(tracingSpanContext).append("'");
+        }
         if (payloadJson == null) {
             insert.append(", null");
         }

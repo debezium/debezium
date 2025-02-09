@@ -175,6 +175,9 @@
 
         <!-- RocketMQ version for RocketMQ storage and Server sink -->
         <version.rocketmq>5.1.4</version.rocketmq>
+
+        <!-- OpenTelemetry version to use for the attached test agent-->
+        <version.opentelemetry.testing>2.10.0</version.opentelemetry.testing>
     </properties>
 
     <modules>

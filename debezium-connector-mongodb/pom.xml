@@ -124,6 +124,16 @@
             </exclusions>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.opentelemetry.javaagent</groupId>
+            <artifactId>opentelemetry-testing-common</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry.javaagent</groupId>
+            <artifactId>opentelemetry-agent-for-testing</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <properties>
         <!-- 
@@ -234,7 +244,7 @@
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
                     <runOrder>${runOrder}</runOrder>
-                    <argLine>--add-opens java.base/java.net=ALL-UNNAMED</argLine>
+                    <argLine>--add-opens java.base/java.net=ALL-UNNAMED -javaagent:"${settings.localRepository}/io/opentelemetry/javaagent/opentelemetry-agent-for-testing/@{version.opentelemetry.testing}-alpha/opentelemetry-agent-for-testing-@{version.opentelemetry.testing}-alpha.jar"</argLine>
                 </configuration>
             </plugin>
             <plugin>
