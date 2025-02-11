@@ -6,6 +6,7 @@ on:
       - main
       - 1.*
       - 2.*
+      - 3.*
 
 env:
   MAVEN_FULL_BUILD_PROJECTS: "\\!debezium-microbenchmark-oracle"
