@@ -1,0 +1,99 @@
+:ProductName: Debezium
+:prodname: {ProductName}
+:product:
+:imagesdir: ../documentation/modules/ROOT/assets/images
+:debezium: true
+include::attributes.adoc[]
+//include::attributes-links.adoc[]
+//include::upstream/debezium/attributes.adoc[]
+
+[id="debezium-user-guide"]
+= {ProductName} User Guide
+
+{ProductName} is a set of distributed services that capture row-level changes in your databases so that your applications can see and respond to those changes. {ProductName} records all row-level changes committed to each database table. Each application reads the transaction logs of interest to view all operations in the order in which they occurred.
+
+This guide provides details about using the following {ProductName} topics:
+
+* xref:high-level-overview-of-debezium[]
+* xref:debezium-connector-for-db2[]
+* xref:debezium-connector-for-jdbc[]
+* xref:debezium-connector-for-mariadb[]
+* xref:debezium-connector-for-mongodb[]
+* xref:debezium-connector-for-mysql[]
+* xref:debezium-connector-for-oracle[]
+* xref:debezium-connector-for-postgresql[]
+* xref:debezium-connector-for-sql-server[]
+* xref:monitoring-debezium[]
+* xref:debezium-logging[]
+* xref:configuring-debezium-connectors-for-your-application[]
+* xref:applying-transformations-to-modify-messages-exchanged-with-kafka[]
+* xref:developing-debezium-custom-data-type-converters[]
+* xref:using-post-processors-to-modify-event-messages[]
+
+
+:prodname: {ProductName}
+//include::assemblies/debezium-using/assembly-high-level-overview-of-debezium.adoc[leveloffset=+1]
+
+:prodname: {ProductName}
+:context: db2
+:include-list-tablename: public.inventory
+include::assemblies/debezium-using/assembly-debezium-connector-for-db2.adoc[leveloffset=+1]
+
+:prodname: {ProductName}
+:context: JDBC
+include::assemblies/debezium-using/assembly-debezium-connector-for-jdbc.adoc[leveloffset=+1]
+
+:prodname: {ProductName}
+:context: mariadb
+:MARIADB:
+:include-list-tablename: public.inventory
+include::assemblies/debezium-using/assembly-debezium-connector-for-mariadb.adoc[leveloffset=+1]
+:!MARIADB:
+
+:prodname: {ProductName}
+:context: mongodb
+include::assemblies/debezium-using/assembly-debezium-connector-for-mongodb.adoc[leveloffset=+1]
+
+:prodname: {ProductName}
+:context: mysql
+:MYSQL:
+:include-list-tablename: public.inventory
+include::assemblies/debezium-using/assembly-debezium-connector-for-mysql.adoc[leveloffset=+1]
+:!MYSQL:
+
+:prodname: {ProductName}
+:partialsdir: ../../partials
+
+:prodname: {ProductName}
+:context: oracle
+:include-list-tablename: PUBLIC.INVENTORY
+include::assemblies/debezium-using/assembly-debezium-connector-for-oracle.adoc[leveloffset=+1]
+
+:prodname: {ProductName}
+:context: postgresql
+:include-list-tablename: public.inventory
+include::assemblies/debezium-using/assembly-debezium-connector-for-postgresql.adoc[leveloffset=+1]
+
+:prodname: {ProductName}
+:context: sqlserver
+:include-list-tablename: public.inventory
+include::assemblies/debezium-using/assembly-debezium-connector-for-sql-server.adoc[leveloffset=+1]
+
+:prodname: {ProductName}
+include::assemblies/debezium-using/assembly-monitoring-debezium.adoc[leveloffset=+1]
+
+:prodname: {ProductName}
+include::assemblies/debezium-using/assembly-debezium-logging.adoc[leveloffset=+1]
+
+:prodname: {ProductName}
+include::assemblies/debezium-using/assembly-configuring-debezium-connectors-for-your-application.adoc[leveloffset=+1]
+
+:prodname: {ProductName}
+include::assemblies/debezium-using/assembly-applying-transformations-to-modify-messages-exchanged-with-kafka.adoc[leveloffset=+1]
+
+:prodname: {ProductName}
+include::assemblies/debezium-using/assembly-developing-debezium-custom-data-type-converters.adoc[leveloffset=+1]
+
+:prodname: {ProductName}
+include::assemblies/debezium-using/assembly-using-post-processors-to-modify-event-messages.adoc[leveloffset=+1]
+
