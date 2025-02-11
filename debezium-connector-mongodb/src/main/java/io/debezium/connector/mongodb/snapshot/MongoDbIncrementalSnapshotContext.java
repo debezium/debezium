@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
@@ -33,7 +34,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.mongodb.CollectionId;
+import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.signal.actions.snapshotting.AdditionalCondition;
+import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
 import io.debezium.pipeline.source.snapshot.incremental.DataCollection;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.relational.Table;
@@ -103,6 +106,7 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     private AtomicBoolean paused = new AtomicBoolean(false);
     private final LinkedBlockingQueue<String> dataCollectionsToStop = new LinkedBlockingQueue<>();
     private ObjectMapper mapper = new ObjectMapper();
+    private final ConcurrentHashMap<SignalPayload, SnapshotConfiguration> dataCollectionsToAdd = new ConcurrentHashMap<>();
 
     private TypeReference<List<LinkedHashMap<String, String>>> mapperTypeRef = new TypeReference<>() {
     };
@@ -186,6 +190,16 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
         List<String> drainedList = new ArrayList<>();
         dataCollectionsToStop.drainTo(drainedList);
         return drainedList;
+    }
+
+    @Override
+    public void requestAddDataCollectionNamesToSnapshot(SignalPayload signalPayload, SnapshotConfiguration snapshotConfiguration) {
+        dataCollectionsToAdd.put(signalPayload, snapshotConfiguration);
+    }
+
+    @Override
+    public Map<SignalPayload, SnapshotConfiguration> getDataCollectionsToAdd() {
+        return dataCollectionsToAdd;
     }
 
     private String dataCollectionsToSnapshotAsString() {
