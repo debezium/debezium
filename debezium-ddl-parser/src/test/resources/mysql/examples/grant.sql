@@ -165,6 +165,7 @@ GRANT reader TO topreader
 GRANT reader TO topreader WITH ADMIN OPTION;
 GRANT 'db_old_ro'@'%' TO 'oghalawinji'@'%'
 GRANT FLUSH_OPTIMIZER_COSTS, FLUSH_STATUS, FLUSH_TABLES, FLUSH_USER_RESOURCES, PASSWORDLESS_USER_ADMIN ON *.* TO "@"
+GRANT SENSITIVE_VARIABLES_OBSERVER ON *.* TO 'mysqluser'@'localhost'
 REVOKE reader FROM 'mysqluser'@'localhost'
 REVOKE reader FROM topreader
 REVOKE `cloudsqlsuperuser`@`%` FROM `sarmonitoring`@`10.90.29.%`
