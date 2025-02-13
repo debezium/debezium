@@ -51,6 +51,7 @@ GPG_DIR = 'gpg'
 DEBEZIUM_DIR = 'debezium'
 IMAGES_DIR = 'images'
 UI_DIR = 'ui'
+PLATFORM_STAGE_DIR='platform'
 POSTGRES_DECODER_DIR = 'postgres-decoder'
 
 INSTALL_ARTIFACTS_SCRIPT = 'install-artifacts.sh'
@@ -95,13 +96,16 @@ if (CONNECTORS == null) {
 echo "Connectors to be released: $CONNECTORS"
 
 ADDITIONAL_REPOSITORIES = [:]
-DEBEZIUM_ADDITIONAL_REPOSITORIES.split().each {
-    def (id, repository, branch) = it.split('#')
-    ADDITIONAL_REPOSITORIES[id] = ['git': repository, 'branch': branch]
-    echo "Additional repository $repository will be used"
+DEBEZIUM_ADDITIONAL_REPOSITORIES.split().each { item ->
+    item.tokenize('#').with { parts ->
+        echo "Additional repository ${parts[1]} will be used"
+        ADDITIONAL_REPOSITORIES[parts[0]] = parts.size() == 3 ?
+                ['git': parts[1], subDir: ".", 'branch': parts[2]] :
+                ['git': parts[1], subDir: parts[2], 'branch': parts[3]]
+    }
 }
 
-IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/mysql-replication/master', 'examples/mysql-replication/replica', 'examples/mariadb', 'examples/postgres', 'examples/mongodb', 'kafka', 'server', 'zookeeper', 'operator', 'ui']
+IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/mysql-replication/master', 'examples/mysql-replication/replica', 'examples/mariadb', 'examples/postgres', 'examples/mongodb', 'kafka', 'server', 'zookeeper', 'operator', 'ui', 'platform-conductor', 'platform-stage']
 MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
 STAGING_REPO = 'https://s01.oss.sonatype.org/content/repositories'
 STAGING_REPO_ID = null
@@ -229,9 +233,9 @@ def closeJiraRelease() {
     jiraUpdate(findVersion(JIRA_VERSION).self, JIRA_CLOSE_RELEASE, 'PUT')
 }
 
-def mvnRelease(repoDir, repoName, branchName, buildArgs = '') {
+def mvnRelease(repoDir, repoName, branchName, buildArgs = '', subDir = '.') {
     def repoId = null
-    dir(repoDir) {
+    dir("$repoDir/$subDir") {
         // Debezium Server must always ignore snapshots as it depends on Debezium Server BOM
         // and it is not possible to override it with a stable version
         def ignoreSnaphots = (repoDir == 'server') ? true : IGNORE_SNAPSHOTS
@@ -435,7 +439,7 @@ node('release-node') {
                 // Additional repositories (like Debezium Server) can have their own BOM
                 def repoBom = "debezium-${id}-bom/pom.xml"
                 def buildArgs = "-Dversion.debezium=$RELEASE_VERSION"
-                dir(id) {
+                dir("$id/${repo.subDir}") {
                     sh "git checkout -b $CANDIDATE_BRANCH"
                     // Obtain dependecies not available in Maven Central (introduced for Cassandra Enerprise)
                     if (fileExists(INSTALL_ARTIFACTS_SCRIPT)) {
@@ -467,8 +471,8 @@ node('release-node') {
                         sh "mvn clean install -DskipTests -DskipITs"
                     }
                 }
-                ADDITIONAL_REPOSITORIES[id].mavenRepoId = mvnRelease(id, repo.git, CANDIDATE_BRANCH, buildArgs)
-                dir(id) {
+                ADDITIONAL_REPOSITORIES[id].mavenRepoId = mvnRelease(id, repo.git, CANDIDATE_BRANCH, buildArgs, repo.subDir)
+                dir("$id/${repo.subDir}") {
                     modifyFile("pom.xml") {
                         it.replaceFirst('<version>.+</version>\n    </parent>', "<version>$DEVELOPMENT_VERSION</version>\n    </parent>")
                     }
@@ -505,6 +509,7 @@ node('release-node') {
             echo "MD5 sums calculated: ${sums}"
             def serverSum = sh(script: "md5sum -b $LOCAL_MAVEN_REPO/io/debezium/debezium-server-dist/$RELEASE_VERSION/debezium-server-dist-${RELEASE_VERSION}.tar.gz | awk '{print \$1}'", returnStdout: true).trim()
             def operatorSum = sh(script: "md5sum -b $LOCAL_MAVEN_REPO/io/debezium/debezium-operator-dist/$RELEASE_VERSION/debezium-operator-dist-${RELEASE_VERSION}.tar.gz | awk '{print \$1}'", returnStdout: true).trim()
+            def platformSum = sh(script: "md5sum -b $LOCAL_MAVEN_REPO/io/debezium/debezium-platform-conductor/$RELEASE_VERSION/debezium-platform-conductor-${RELEASE_VERSION}.tar.gz | awk '{print \$1}'", returnStdout: true).trim()
             sums['SCRIPTING'] = sh(script: "md5sum -b $LOCAL_MAVEN_REPO/io/debezium/debezium-scripting/$RELEASE_VERSION/debezium-scripting-${RELEASE_VERSION}.tar.gz | awk '{print \$1}'", returnStdout: true).trim()
             sums['KCRESTEXT'] = sh(script: "md5sum -b $LOCAL_MAVEN_REPO/io/debezium/debezium-connect-rest-extension/$RELEASE_VERSION/debezium-connect-rest-extension-${RELEASE_VERSION}.tar.gz | awk '{print \$1}'", returnStdout: true).trim()
             dir("$IMAGES_DIR/connect/$IMAGE_TAG") {
@@ -569,6 +574,34 @@ node('release-node') {
                     it.replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$DEVELOPMENT_VERSION")
                 }
             }
+
+            echo "Modifying Platform Conductor Dockerfile"
+            dir("$IMAGES_DIR/platform-conductor/$IMAGE_TAG") {
+                def conductorStagingRepoId = ADDITIONAL_REPOSITORIES['platform']?.mavenRepoId
+                if (conductorStagingRepoId == null) {
+                    conductorStagingRepoId = STAGING_REPO_ID
+                }
+                modifyFile('Dockerfile') {
+                    it
+                            .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$STAGING_REPO/$conductorStagingRepoId\"")
+                            .replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$RELEASE_VERSION")
+                            .replaceFirst('PLATFORM_CONDUCTOR_MD5=\\S+', "PLATFORM_CONDUCTOR_MD5=$platformSum")
+                }
+            }
+            echo "Modifying Platform Conductor snapshot Dockerfile"
+            dir("$IMAGES_DIR/platform-conductor/snapshot") {
+                modifyFile('Dockerfile') {
+                    it.replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$DEVELOPMENT_VERSION")
+                }
+            }
+
+            echo "Modifying Platform stage Dockerfile"
+            dir("$IMAGES_DIR/platform-stage/$IMAGE_TAG") {
+                modifyFile("Dockerfile") {
+                    it.replaceFirst('BRANCH=\\S+', "BRANCH=$VERSION_TAG")
+                }
+            }
+
             echo "Modifying UI Dockerfile"
             dir("$IMAGES_DIR") {
                 modifyFile("ui/$IMAGE_TAG/Dockerfile") {
@@ -653,6 +686,13 @@ node('release-node') {
                 }
             }
             dir("$IMAGES_DIR/operator/$IMAGE_TAG") {
+                modifyFile('Dockerfile') {
+                    it
+                            .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$MAVEN_CENTRAL\"")
+                }
+            }
+
+            dir("$IMAGES_DIR/platform-conductor/$IMAGE_TAG") {
                 modifyFile('Dockerfile') {
                     it
                             .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$MAVEN_CENTRAL\"")
@@ -795,6 +835,18 @@ node('release-node') {
                 }
             }
         }
+
+        stage('Debezium Platform stage') {
+            if (!DRY_RUN) {
+                dir(PLATFORM_STAGE_DIR) {
+                    withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                        sh "git tag $VERSION_TAG && git push \"https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${UI_REPOSITORY}\" $VERSION_TAG"
+                    }
+                }
+            }
+        }
+
+
 
     }
 
