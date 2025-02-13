@@ -31,6 +31,10 @@ public class CloudEventsConverterConfig extends ConverterConfig {
     public static final String CLOUDEVENTS_DATA_SERIALIZER_TYPE_DEFAULT = "json";
     private static final String CLOUDEVENTS_DATA_SERIALIZER_TYPE_DOC = "Specify a serializer to serialize the data field of CloudEvents values";
 
+    public static final String CLOUDEVENTS_OPENTELEMETRY_TRACING_ATTRIBUTES_ENABLE_CONFIG = "opentelemetry.tracing.attributes.enable";
+    public static final boolean CLOUDEVENTS_OPENTELEMETRY_TRACING_ATTRIBUTES_ENABLE_DEFAULT = false;
+    private static final String CLOUDEVENTS_OPENTELEMETRY_TRACING_ATTRIBUTES_ENABLE_DOC = "Specify whether to include OpenTelemetry tracing attributes to a cloud event";
+
     public static final String CLOUDEVENTS_EXTENSION_ATTRIBUTES_ENABLE_CONFIG = "extension.attributes.enable";
     public static final boolean CLOUDEVENTS_EXTENSION_ATTRIBUTES_ENABLE_DEFAULT = true;
     private static final String CLOUDEVENTS_EXTENSION_ATTRIBUTES_ENABLE_DOC = "Specify whether to include extension attributes to a cloud event";
@@ -50,7 +54,7 @@ public class CloudEventsConverterConfig extends ConverterConfig {
     private static final String CLOUDEVENTS_SCHEMA_DATA_NAME_SOURCE_HEADERS_ENABLE_DOC = "Specify whether CloudEvents.data schema name can be retrieved from the header";
 
     public static final String CLOUDEVENTS_METADATA_SOURCE_CONFIG = "metadata.source";
-    public static final String CLOUDEVENTS_METADATA_SOURCE_DEFAULT = "value,id:generate,type:generate,dataSchemaName:generate";
+    public static final String CLOUDEVENTS_METADATA_SOURCE_DEFAULT = "value,id:generate,type:generate,traceparent:header,dataSchemaName:generate";
     private static final String CLOUDEVENTS_METADATA_SOURCE_DOC = "Specify from where to retrieve metadata";
 
     private static final ConfigDef CONFIG;
@@ -62,6 +66,9 @@ public class CloudEventsConverterConfig extends ConverterConfig {
                 CLOUDEVENTS_SERIALIZER_TYPE_DOC);
         CONFIG.define(CLOUDEVENTS_DATA_SERIALIZER_TYPE_CONFIG, ConfigDef.Type.STRING, CLOUDEVENTS_DATA_SERIALIZER_TYPE_DEFAULT, ConfigDef.Importance.HIGH,
                 CLOUDEVENTS_DATA_SERIALIZER_TYPE_DOC);
+        CONFIG.define(CLOUDEVENTS_OPENTELEMETRY_TRACING_ATTRIBUTES_ENABLE_CONFIG, ConfigDef.Type.BOOLEAN, CLOUDEVENTS_OPENTELEMETRY_TRACING_ATTRIBUTES_ENABLE_DEFAULT,
+                ConfigDef.Importance.HIGH,
+                CLOUDEVENTS_OPENTELEMETRY_TRACING_ATTRIBUTES_ENABLE_DOC);
         CONFIG.define(CLOUDEVENTS_EXTENSION_ATTRIBUTES_ENABLE_CONFIG, ConfigDef.Type.BOOLEAN, CLOUDEVENTS_EXTENSION_ATTRIBUTES_ENABLE_DEFAULT, ConfigDef.Importance.HIGH,
                 CLOUDEVENTS_EXTENSION_ATTRIBUTES_ENABLE_DOC);
         CONFIG.define(CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_CONFIG, ConfigDef.Type.STRING, CLOUDEVENTS_SCHEMA_NAME_ADJUSTMENT_MODE_DEFAULT, ConfigDef.Importance.LOW,
@@ -102,6 +109,15 @@ public class CloudEventsConverterConfig extends ConverterConfig {
     }
 
     /**
+     * Return whether to include OpenTelemetry tracing attributes in a cloud event.
+     *
+     * @return whether to enable OpenTelemetry tracing attributes
+     */
+    public boolean openTelemetryTracingAttributesEnable() {
+        return getBoolean(CLOUDEVENTS_OPENTELEMETRY_TRACING_ATTRIBUTES_ENABLE_CONFIG);
+    }
+
+    /**
      * Return whether to include extension attributes in a cloud event.
      *
      * @return whether to enable extension attributes
@@ -135,7 +151,8 @@ public class CloudEventsConverterConfig extends ConverterConfig {
      */
     public MetadataSource metadataSource() {
         final List<String> metadataSources = getList(CLOUDEVENTS_METADATA_SOURCE_CONFIG);
-        final boolean enableDataSchemaNameFromHeader = getBoolean(CLOUDEVENTS_SCHEMA_DATA_NAME_SOURCE_HEADERS_ENABLE_CONFIG);
+        final boolean openTelemetryTracingAttributesEnable = getBoolean(CLOUDEVENTS_OPENTELEMETRY_TRACING_ATTRIBUTES_ENABLE_CONFIG);
+        final boolean dataSchemaNameFromHeaderEnable = getBoolean(CLOUDEVENTS_SCHEMA_DATA_NAME_SOURCE_HEADERS_ENABLE_CONFIG);
 
         // get global metadata source
         final Set<MetadataSourceValue> globalMetadataSourceAllowedValues = Set.of(MetadataSourceValue.VALUE, MetadataSourceValue.HEADER);
@@ -148,6 +165,7 @@ public class CloudEventsConverterConfig extends ConverterConfig {
         Set<MetadataSourceValue> fieldMetadataSourceAllowedValues = Set.of(MetadataSourceValue.HEADER, MetadataSourceValue.GENERATE);
         MetadataSourceValue idCustomSource = null;
         MetadataSourceValue typeCustomSource = null;
+        MetadataSourceValue traceparentCustomSource = null;
         MetadataSourceValue dataSchemaNameCustomSource = null;
         for (int i = 1; i < metadataSources.size(); i++) {
             final String[] parts = metadataSources.get(i).split(":");
@@ -166,6 +184,9 @@ public class CloudEventsConverterConfig extends ConverterConfig {
                 case CloudEventsMaker.FieldName.TYPE:
                     typeCustomSource = fieldSource;
                     break;
+                case CloudEventsMaker.FieldName.TRACEPARENT:
+                    traceparentCustomSource = fieldSource;
+                    break;
                 case CloudEventsMaker.DATA_SCHEMA_NAME_PARAM:
                     dataSchemaNameCustomSource = fieldSource;
                     break;
@@ -177,27 +198,40 @@ public class CloudEventsConverterConfig extends ConverterConfig {
         // set final source values
         final MetadataSourceValue idSource = idCustomSource != null ? idCustomSource : global;
         final MetadataSourceValue typeSource = typeCustomSource != null ? typeCustomSource : global;
+        MetadataSourceValue traceparentSource = traceparentCustomSource != null ? traceparentCustomSource : global;
         MetadataSourceValue dataSchemaNameSource = dataSchemaNameCustomSource != null ? dataSchemaNameCustomSource : global;
+
+        // to obtain a value for `traceparent` field from the header, it is required to configure its source to `header` (by specifying custom source or
+        // using global setting) and additionally enable inclusion of OpenTelemerey tracing attributes. it is done to preserve backward compatibility
+        final boolean setDefaultTraceparentSource = traceparentSource == MetadataSourceValue.HEADER && !openTelemetryTracingAttributesEnable;
+        if (setDefaultTraceparentSource) {
+            // this setting just marks that the source is NOT `HEADER`
+            traceparentSource = MetadataSourceValue.GENERATE;
+        }
+
         // to obtain CloudEvents.data schema name from the header, it is required to configure its source to `header` (by specifying custom source or
         // using global setting) and additionally enable that feature explicitly. it is done to preserve backward compatibility
-        final boolean setDefaultDataSchemaNameSource = dataSchemaNameSource == MetadataSourceValue.HEADER && !enableDataSchemaNameFromHeader;
+        final boolean setDefaultDataSchemaNameSource = dataSchemaNameSource == MetadataSourceValue.HEADER && !dataSchemaNameFromHeaderEnable;
         if (setDefaultDataSchemaNameSource) {
             dataSchemaNameSource = MetadataSourceValue.GENERATE;
         }
 
-        return new MetadataSource(global, idSource, typeSource, dataSchemaNameSource);
+        return new MetadataSource(global, idSource, typeSource, traceparentSource, dataSchemaNameSource);
     }
 
     public class MetadataSource {
         private final MetadataSourceValue global;
         private final MetadataSourceValue id;
         private final MetadataSourceValue type;
+        private final MetadataSourceValue traceparent;
         private final MetadataSourceValue dataSchemaName;
 
-        public MetadataSource(MetadataSourceValue global, MetadataSourceValue id, MetadataSourceValue type, MetadataSourceValue dataSchemaName) {
+        public MetadataSource(MetadataSourceValue global, MetadataSourceValue id, MetadataSourceValue type, MetadataSourceValue traceparent,
+                              MetadataSourceValue dataSchemaName) {
             this.global = global;
             this.id = id;
             this.type = type;
+            this.traceparent = traceparent;
             this.dataSchemaName = dataSchemaName;
         }
 
@@ -211,6 +245,10 @@ public class CloudEventsConverterConfig extends ConverterConfig {
 
         public MetadataSourceValue type() {
             return type;
+        }
+
+        public MetadataSourceValue traceparent() {
+            return traceparent;
         }
 
         public MetadataSourceValue dataSchemaName() {
