@@ -57,7 +57,7 @@ public class ConnectorFactories {
                 .put("connector.class", "io.debezium.connector.mariadb.MariaDbConnector")
                 .put("task.max", 1)
                 .put("database.server.id", 5400 + random.nextInt(1000))
-                .put("database.ssl.mode", "disabled")
+                .put("database.ssl.mode", "disable")
                 .put("database.hostname", dbHost)
                 .put("database.port", dbPort)
                 .put("database.user", ConfigProperties.DATABASE_MARIADB_DBZ_USERNAME)
