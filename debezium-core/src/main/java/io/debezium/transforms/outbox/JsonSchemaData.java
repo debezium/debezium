@@ -101,7 +101,6 @@ public class JsonSchemaData {
                 elementSchemas.add(toConnectSchema(key, element));
             }
             for (Schema element : elementSchemas) {
-                // TODO: need to support nested json object
                 schema = mergeSchema(schema, element);
             }
         }
@@ -127,6 +126,11 @@ public class JsonSchemaData {
             if (oldField == null) {
                 fields.put(field.name(), field);
             }
+             else if (oldField.schema().type() == Schema.Type.ARRAY && field.schema().type() == Schema.Type.ARRAY) {
+                 Schema mergedValueSchema = mergeSchema(oldField.schema().valueSchema(), field.schema().valueSchema());
+                 SchemaBuilder arrayBuilder = SchemaUtil.copySchemaBasics(field.schema(), SchemaBuilder.array(mergedValueSchema));
+                 fields.put(field.name(), new Field(field.name(), field.index(), arrayBuilder.build()));
+             }
             else {
                 if (!Objects.equals(oldField.schema(), field.schema())
                         && oldField.schema().type() == Schema.Type.BYTES

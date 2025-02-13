@@ -90,6 +90,71 @@ public class JsonSchemaDataTest {
     }
 
     @Test
+    @FixFor({ "DBZ-8693" })
+    public void shouldCreateCorrectSchemaFromNestedArrayJson() throws Exception {
+        String key = "test_obj";
+        // remove description value from nested array json in root object
+        JsonNode testNode = mapper
+                .readTree(
+                        "{\"array\":[{\"subarray\":[{\"code\":\"100\",\"description\":\"some description\"}]},{\"subarray\":[{\"code\":\"200\",\"description\":\"another description\"}]},{\"subarray\":[{\"code\":\"300\"}]}]}");
+        Schema schema = jsonSchemaData.toConnectSchema(key, testNode);
+
+        assertThat(schema.field("array").schema().valueSchema().field("subarray").schema().valueSchema().field("code")).isNotNull();
+        assertThat(schema.field("array").schema().valueSchema().field("subarray").schema().valueSchema().field("description").schema().type())
+                .isEqualTo(Schema.Type.STRING);
+
+        // remove description value from nested array json
+        testNode = mapper
+                .readTree(
+                        "[{\"subarray\":[{\"code\":\"100\",\"description\":\"some description\"}]},{\"subarray\":[{\"code\":\"200\",\"description\":\"another description\"}]},{\"subarray\":[{\"code\":\"300\"}]}]");
+        schema = jsonSchemaData.toConnectSchema(key, testNode);
+
+        assertThat(schema.valueSchema().field("subarray").schema().valueSchema().field("code")).isNotNull();
+        assertThat(schema.valueSchema().field("subarray").schema().valueSchema().field("description").schema().type()).isEqualTo(Schema.Type.STRING);
+
+        // set null value for description
+        testNode = mapper.readTree(
+                "{\"array\":[{\"subarray\":[{\"code\":\"100\",\"description\":null}]},{\"subarray\":[{\"code\":\"200\",\"description\":\"another description\"}]},{\"subarray\":[{\"code\":\"300\"}]}]}");
+        schema = jsonSchemaData.toConnectSchema(key, testNode);
+
+        assertThat(schema.field("array").schema().valueSchema().field("subarray").schema().valueSchema().field("code")).isNotNull();
+        assertThat(schema.field("array").schema().valueSchema().field("subarray").schema().valueSchema().field("description").schema().type())
+                .isEqualTo(Schema.Type.STRING);
+
+        // treat null value as bytes type
+        jsonSchemaData = new JsonSchemaData(JsonPayloadNullFieldBehavior.OPTIONAL_BYTES, avroFieldNamer);
+        testNode = mapper.readTree(
+                "{\"array\":[{\"subarray\":[{\"code\":\"100\",\"description\":null}]},{\"subarray\":[{\"code\":\"200\",\"description\":null}]},{\"subarray\":[{\"code\":\"300\"}]}]}");
+        schema = jsonSchemaData.toConnectSchema(key, testNode);
+
+        assertThat(schema.field("array").schema().valueSchema().field("subarray").schema().valueSchema().field("code")).isNotNull();
+        assertThat(schema.field("array").schema().valueSchema().field("subarray").schema().valueSchema().field("description").schema().type())
+                .isEqualTo(Schema.Type.BYTES);
+
+        testNode = mapper.readTree(
+                "{\"array\":[{\"subarray\":[{\"code\":\"100\",\"description\":null}]},{\"subarray\":[{\"code\":\"200\",\"description\":\"another description\"}]},{\"subarray\":[{\"code\":\"300\"}]}]}");
+        schema = jsonSchemaData.toConnectSchema(key, testNode);
+
+        assertThat(schema.field("array").schema().valueSchema().field("subarray").schema().valueSchema().field("code")).isNotNull();
+        assertThat(schema.field("array").schema().valueSchema().field("subarray").schema().valueSchema().field("description").schema().type())
+                .isEqualTo(Schema.Type.STRING);
+
+        // adjust the property name with non-avro supported character
+        testNode = mapper.readTree(
+                "{\"array\":[{\"subarray\":[{\"code\":\"100\",\"description\":\"some description\",\"test$\":\"test\"}]},{\"subarray\":[{\"code\":\"200\",\"description\":\"another description\"}]},{\"subarray\":[{\"code\":\"300\"}]}]}");
+        schema = jsonSchemaData.toConnectSchema(key, testNode);
+
+        assertThat(schema.field("array").schema().valueSchema().field("subarray").schema().valueSchema().field("test_")).isNotNull();
+
+        // adjust the property name with non-avro supported character
+        testNode = mapper.readTree(
+                "{\"array\":[{\"subarray\":[{\"code\":\"100\",\"description\":\"some description\",\"test$\":\"test\"}]},{\"subarray\":[{\"code\":\"200\",\"description\":\"another description\"}]},{\"subarray\":[{\"code\":\"300\"}]}]}");
+        schema = jsonSchemaData.toConnectSchema(key, testNode);
+
+        assertThat(schema.field("array").schema().valueSchema().field("subarray").schema().valueSchema().field("test_")).isNotNull();
+    }
+
+    @Test
     @FixFor("DBZ-5475")
     public void failSchemaCheckForArrayWithDifferentNumberTypes() throws Exception {
         JsonNode testNode = mapper.readTree("{\"test\": [1, 2.0, 3.0]}");
