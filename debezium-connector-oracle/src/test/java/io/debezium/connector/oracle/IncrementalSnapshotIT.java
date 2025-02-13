@@ -12,11 +12,9 @@ import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
-import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
-import io.debezium.data.VerifyRecord;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
@@ -217,15 +215,6 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Oracl
     @Override
     protected String server() {
         return TestHelper.SERVER_NAME;
-    }
-
-    @Test
-    public void snapshotPreceededBySchemaChange() throws Exception {
-        // TODO: remove once we upgrade Apicurio version (DBZ-7357)
-        if (VerifyRecord.isApucurioAvailable()) {
-            skipAvroValidation();
-        }
-        super.snapshotPreceededBySchemaChange();
     }
 
     private void createTables() throws Exception {
