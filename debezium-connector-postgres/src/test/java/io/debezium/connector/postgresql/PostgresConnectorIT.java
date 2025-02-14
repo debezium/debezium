@@ -262,6 +262,7 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         validateConfigField(validatedConfig, PostgresConnectorConfig.LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST, null);
         validateConfigField(validatedConfig, PostgresConnectorConfig.LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST, null);
         validateConfigField(validatedConfig, PostgresConnectorConfig.YB_CONSISTENT_SNAPSHOT, Boolean.TRUE);
+        validateConfigField(validatedConfig, PostgresConnectorConfig.YB_LOAD_BALANCE_CONNECTIONS, Boolean.TRUE);
     }
 
     @Test

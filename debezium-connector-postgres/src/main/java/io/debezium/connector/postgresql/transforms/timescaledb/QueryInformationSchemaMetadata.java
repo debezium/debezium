@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.TableId;
@@ -52,7 +53,7 @@ public class QueryInformationSchemaMetadata extends AbstractTimescaleDbMetadata 
         connection = new PostgresConnection(
                 JdbcConfiguration.adapt(config.subset(CommonConnectorConfig.DATABASE_CONFIG_PREFIX, true)
                         .merge(config.subset(CommonConnectorConfig.DRIVER_CONFIG_PREFIX, true))),
-                "Debezium TimescaleDB metadata");
+                "Debezium TimescaleDB metadata", config.getBoolean(PostgresConnectorConfig.YB_LOAD_BALANCE_CONNECTIONS));
     }
 
     @Override

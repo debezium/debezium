@@ -95,7 +95,8 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
             }
 
             final Charset databaseCharset;
-            try (PostgresConnection tempConnection = new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL)) {
+            try (PostgresConnection tempConnection = new PostgresConnection(connectorConfig.getJdbcConfig(),
+                    PostgresConnection.CONNECTION_GENERAL, connectorConfig.ybShouldLoadBalanceConnections())) {
                 databaseCharset = tempConnection.getDatabaseCharset();
             }
 
@@ -105,7 +106,8 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     typeRegistry);
 
             MainConnectionProvidingConnectionFactory<PostgresConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
-                    () -> new PostgresConnection(connectorConfig.getJdbcConfig(), valueConverterBuilder, PostgresConnection.CONNECTION_GENERAL));
+                    () -> new PostgresConnection(connectorConfig.getJdbcConfig(), valueConverterBuilder,
+                            PostgresConnection.CONNECTION_GENERAL, connectorConfig.ybShouldLoadBalanceConnections()));
             // Global JDBC connection used both for snapshotting and streaming.
             // Must be able to resolve datatypes.
             jdbcConnection = connectionFactory.mainConnection();
@@ -214,8 +216,10 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                         connectorConfig.createHeartbeat(
                                 topicNamingStrategy,
                                 schemaNameAdjuster,
-                                () -> new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL),
-                                exception -> {
+                                () -> new PostgresConnection(connectorConfig.getJdbcConfig(),
+                                        PostgresConnection.CONNECTION_GENERAL,
+                                        connectorConfig.ybShouldLoadBalanceConnections()),
+                                        exception -> {
                                     String sqlErrorId = exception.getSQLState();
                                     switch (sqlErrorId) {
                                         case "57P01":

@@ -239,7 +239,7 @@ public class PostgresConnectionIT {
             assertTrue(replConnection.isConnected());
         }
         try (PostgresConnection withIdleTransaction = new PostgresConnection(JdbcConfiguration.adapt(TestHelper.defaultJdbcConfig()),
-                PostgresConnection.CONNECTION_GENERAL);
+                PostgresConnection.CONNECTION_GENERAL,true /* loadBalance */);
                 PostgresConnection withEmptyConfirmedFlushLSN = buildConnectionWithEmptyConfirmedFlushLSN(slotName)) {
             withIdleTransaction.setAutoCommit(false);
             withIdleTransaction.query("select 1", connection -> {
@@ -253,7 +253,7 @@ public class PostgresConnectionIT {
 
     // "fake" a pg95 response by not returning confirmed_flushed_lsn
     private PostgresConnection buildPG95PGConn(String name) {
-        return new PostgresConnection(JdbcConfiguration.adapt(TestHelper.defaultJdbcConfig()), name) {
+        return new PostgresConnection(JdbcConfiguration.adapt(TestHelper.defaultJdbcConfig()), name, true /* loadBalance */) {
             @Override
             protected ServerInfo.ReplicationSlot queryForSlot(String slotName, String database, String pluginName,
                                                               ResultSetMapper<ServerInfo.ReplicationSlot> map)
@@ -270,7 +270,7 @@ public class PostgresConnectionIT {
     }
 
     private PostgresConnection buildConnectionWithEmptyConfirmedFlushLSN(String name) {
-        return new PostgresConnection(JdbcConfiguration.adapt(TestHelper.defaultJdbcConfig()), name) {
+        return new PostgresConnection(JdbcConfiguration.adapt(TestHelper.defaultJdbcConfig()), name, true /* loadBalance */) {
             @Override
             protected ServerInfo.ReplicationSlot queryForSlot(String slotName, String database, String pluginName,
                                                               ResultSetMapper<ServerInfo.ReplicationSlot> map)

@@ -53,7 +53,8 @@ public class TimescaleDbDatabaseTest extends AbstractConnectorTest {
     public void prepareDatabase() throws Exception {
         Startables.deepStart(timescaleDbContainer).join();
         connection = new PostgresConnection(
-                TestHelper.defaultJdbcConfig(timescaleDbContainer.getHost(), timescaleDbContainer.getMappedPort(5432)), TestHelper.CONNECTION_TEST);
+                TestHelper.defaultJdbcConfig(timescaleDbContainer.getHost(), timescaleDbContainer.getMappedPort(5432)),
+                TestHelper.CONNECTION_TEST, true /* loadBalance */);
         dropPublication(connection);
         connection.execute(
                 "DROP TABLE IF EXISTS conditions",
