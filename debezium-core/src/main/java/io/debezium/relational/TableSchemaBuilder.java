@@ -247,7 +247,7 @@ public class TableSchemaBuilder {
             return (row) -> {
                 Struct result = new Struct(schema);
                 for (int i = 0; i != numFields; ++i) {
-                    validateIncomingRowToInternalMetadata(recordIndexes, fields, converters, row, i);
+                    validateIncomingRowToInternalMetadata(columnSetName, recordIndexes, fields, converters, row, i);
                     Object value = row[recordIndexes[i]];
                     ValueConverter converter = converters[i];
                     if (converter != null) {
@@ -274,19 +274,22 @@ public class TableSchemaBuilder {
         return null;
     }
 
-    private void validateIncomingRowToInternalMetadata(int[] recordIndexes, Field[] fields, ValueConverter[] converters,
+    private void validateIncomingRowToInternalMetadata(TableId tableId, int[] recordIndexes, Field[] fields, ValueConverter[] converters,
                                                        Object[] row, int position) {
         if (position >= converters.length) {
-            LOGGER.error("Error requesting a converter, converters: {}, requested index: {}", converters.length, position);
+            LOGGER.error("Error requesting a converter, converters: {}, requested index: {} of {}.{}.{}", converters.length, position,
+                    tableId.catalog(), tableId.schema(), tableId.table());
             throw new ConnectException(
                     "Column indexing array is larger than number of converters, internal schema representation is probably out of sync with real database schema");
         }
         if (position >= fields.length) {
-            LOGGER.error("Error requesting a field, fields: {}, requested index: {}", fields.length, position);
+            LOGGER.error("Error requesting a field, fields: {}, requested index: {} of {}.{}.{}", fields.length, position,
+                    tableId.catalog(), tableId.schema(), tableId.table());
             throw new ConnectException("Too few schema fields, internal schema representation is probably out of sync with real database schema");
         }
         if (recordIndexes[position] >= row.length) {
-            LOGGER.error("Error requesting a row value, row: {}, requested index: {} at position {}", row.length, recordIndexes[position], position);
+            LOGGER.error("Error requesting a row value, row: {}, requested index: {} at position {} of {}.{}.{}", row.length, recordIndexes[position], position,
+                    tableId.catalog(), tableId.schema(), tableId.table());
             throw new ConnectException("Data row is smaller than a column index, internal schema representation is probably out of sync with real database schema");
         }
     }
@@ -316,7 +319,7 @@ public class TableSchemaBuilder {
             return (row) -> {
                 Struct result = new Struct(schema);
                 for (int i = 0; i != numFields; ++i) {
-                    validateIncomingRowToInternalMetadata(recordIndexes, fields, converters, row, i);
+                    validateIncomingRowToInternalMetadata(tableId, recordIndexes, fields, converters, row, i);
                     Object value = row[recordIndexes[i]];
 
                     ValueConverter converter = converters[i];
