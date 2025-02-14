@@ -598,7 +598,9 @@ node('release-node') {
             echo "Modifying Platform stage Dockerfile"
             dir("$IMAGES_DIR/platform-stage/$IMAGE_TAG") {
                 modifyFile("Dockerfile") {
-                    it.replaceFirst('BRANCH=\\S+', "BRANCH=$VERSION_TAG")
+                    it
+                            .replaceFirst('BRANCH=\\S+', "BRANCH=$VERSION_TAG")
+                            .replaceFirst(/RUN git clone -b \$\{BRANCH\} https:\/\/[^\s]+\.git/, "COPY $PLATFORM_STAGE_DIR ./debezium-platform")
                 }
             }
 
@@ -608,6 +610,7 @@ node('release-node') {
                     it.replaceFirst('BRANCH=\\S+', "BRANCH=$VERSION_TAG")
                 }
             }
+
             echo "Modifying container images build scripts"
             dir("$IMAGES_DIR") {
                 modifyFile('build-all-multiplatform.sh') {
@@ -617,6 +620,12 @@ node('release-node') {
                     it.replaceFirst('DEBEZIUM_VERSION=\"\\S+\"', "DEBEZIUM_VERSION=\"$IMAGE_TAG\"")
                 }
             }
+
+            dir(PLATFORM_STAGE_DIR) {
+                sh "git tag -f $VERSION_TAG"
+                sh "mkdir -p $WORKSPACE/$IMAGES_DIR/platform-stage/$IMAGE_TAG/$PLATFORM_STAGE_DIR && cp -r ./* $WORKSPACE/$IMAGES_DIR/platform-stage/$IMAGE_TAG/$PLATFORM_STAGE_DIR"
+            }
+
             dir(IMAGES_DIR) {
                 script {
                     env.DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME='localhost:5500/debeziumquay'
@@ -697,6 +706,10 @@ node('release-node') {
                     it
                             .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$MAVEN_CENTRAL\"")
                 }
+            }
+
+            dir("$IMAGES_DIR/platform-stage/$IMAGE_TAG/") {
+                sh "rm -rf $PLATFORM_STAGE_DIR"
             }
         }
 
@@ -840,7 +853,7 @@ node('release-node') {
             if (!DRY_RUN) {
                 dir(PLATFORM_STAGE_DIR) {
                     withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
-                        sh "git tag $VERSION_TAG && git push \"https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${UI_REPOSITORY}\" $VERSION_TAG"
+                        sh "git tag -f $VERSION_TAG && git push \"https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${UI_REPOSITORY}\" $VERSION_TAG"
                     }
                 }
             }
