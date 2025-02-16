@@ -655,8 +655,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         }
 
         int numEvents = (transaction == null) ? 0 : getTransactionEventCount(transaction);
-        LOGGER.debug("Committing transaction {} with {} events (scn: {}, oldest buffer scn: {}): {}",
-                transactionId, numEvents, row.getScn(), smallestScn, row);
 
         // There are situations where Oracle records empty transactions in the redo and these
         // do not make any changes. In such cases, LogMiner fails to reconcile the thread id
@@ -664,7 +662,13 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         // recorded for the wrong redo thread. Given that we cannot just "guess" the thread
         // as there may not have been a transaction recorded at all when LOB isn't enabled,
         // all we can do is ignore the COMMIT.
-        if (row.getThread() == 0 && numEvents == 0) {
+        final boolean skipCommit = row.getThread() == 0 && numEvents == 0;
+
+        LOGGER.debug("{} transaction {} with {} events (scn: {}, thread: {}, oldest buffer scn: {}): {}",
+                skipCommit ? "Skipping commit for" : "Committing",
+                transactionId, numEvents, row.getScn(), row.getThread(), smallestScn, row);
+
+        if (skipCommit) {
             return;
         }
 
