@@ -15,8 +15,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.storage.OffsetStorageReader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
@@ -25,8 +23,6 @@ import io.debezium.pipeline.spi.Partition;
  * Provides access to the partition offsets stored by connectors.
  */
 public class OffsetReader<P extends Partition, O extends OffsetContext, L extends OffsetContext.Loader<O>> {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(OffsetReader.class);
 
     private final OffsetStorageReader reader;
     private final L loader;
