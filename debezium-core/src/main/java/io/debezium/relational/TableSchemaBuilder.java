@@ -277,19 +277,16 @@ public class TableSchemaBuilder {
     private void validateIncomingRowToInternalMetadata(TableId tableId, int[] recordIndexes, Field[] fields, ValueConverter[] converters,
                                                        Object[] row, int position) {
         if (position >= converters.length) {
-            LOGGER.error("Error requesting a converter, converters: {}, requested index: {} of {}.{}.{}", converters.length, position,
-                    tableId.catalog(), tableId.schema(), tableId.table());
+            LOGGER.error("Error requesting a converter, converters: {}, requested index: {} of {}", converters.length, position, tableId);
             throw new ConnectException(
                     "Column indexing array is larger than number of converters, internal schema representation is probably out of sync with real database schema");
         }
         if (position >= fields.length) {
-            LOGGER.error("Error requesting a field, fields: {}, requested index: {} of {}.{}.{}", fields.length, position,
-                    tableId.catalog(), tableId.schema(), tableId.table());
+            LOGGER.error("Error requesting a field, fields: {}, requested index: {} of {}", fields.length, position, tableId);
             throw new ConnectException("Too few schema fields, internal schema representation is probably out of sync with real database schema");
         }
         if (recordIndexes[position] >= row.length) {
-            LOGGER.error("Error requesting a row value, row: {}, requested index: {} at position {} of {}.{}.{}", row.length, recordIndexes[position], position,
-                    tableId.catalog(), tableId.schema(), tableId.table());
+            LOGGER.error("Error requesting a row value, row: {}, requested index: {} at position {} of {}", row.length, recordIndexes[position], position, tableId);
             throw new ConnectException("Data row is smaller than a column index, internal schema representation is probably out of sync with real database schema");
         }
     }
