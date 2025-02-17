@@ -41,8 +41,8 @@ runs:
       run: >
         ./${{ inputs.path-core }}/mvnw clean install -B -ntp -f ${{ inputs.path-cassandra }}/pom.xml 
         -Passembly        
-        -Dcheckstyle.skip=true
-        -Dformat.skip=true
+        -Dcheckstyle.skip=false
+        -Dformat.skip=false
         -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
         -Dmaven.wagon.http.pool=false
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
