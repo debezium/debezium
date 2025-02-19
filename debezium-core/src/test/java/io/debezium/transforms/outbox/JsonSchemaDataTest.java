@@ -6,6 +6,7 @@
 package io.debezium.transforms.outbox;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -121,6 +122,17 @@ public class JsonSchemaDataTest {
         assertThat(schema.field("array").schema().valueSchema().field("subarray").schema().valueSchema().field("description").schema().type())
                 .isEqualTo(Schema.Type.STRING);
 
+        // set sub-array with primitives
+        testNode = mapper.readTree(
+                "{\"array\":[{\"subarray\":[{\"code\":\"100\",\"description\":\"some description\",\"subcodes\":[0]}]},{\"subarray\":[{\"code\":\"200\",\"description\":\"another description\",\"subcodes\":[-1, null]}]},{\"subarray\":[{\"code\":\"300\"}]}]}");
+        schema = jsonSchemaData.toConnectSchema(key, testNode);
+
+        assertThat(schema.field("array").schema().valueSchema().field("subarray").schema().valueSchema().field("code")).isNotNull();
+        assertThat(schema.field("array").schema().valueSchema().field("subarray").schema().valueSchema().field("description").schema().type())
+                .isEqualTo(Schema.Type.STRING);
+        assertThat(schema.field("array").schema().valueSchema().field("subarray").schema().valueSchema().field("subcodes").schema().valueSchema().type())
+                .isEqualTo(Schema.Type.INT32);
+
         // treat null value as bytes type
         jsonSchemaData = new JsonSchemaData(JsonPayloadNullFieldBehavior.OPTIONAL_BYTES, avroFieldNamer);
         testNode = mapper.readTree(
@@ -155,20 +167,60 @@ public class JsonSchemaDataTest {
     }
 
     @Test
-    @FixFor("DBZ-5475")
-    public void failSchemaCheckForArrayWithDifferentNumberTypes() throws Exception {
-        JsonNode testNode = mapper.readTree("{\"test\": [1, 2.0, 3.0]}");
+    @FixFor({ "DBZ-5475", "DBZ-8693" })
+    public void failSchemaCheckForArrayWithDifferentTypes() {
+        String key = "test_obj";
 
-        RuntimeException expectedException = null;
-        try {
-            jsonSchemaData.toConnectSchema(null, testNode);
-        }
-        catch (ConnectException e) {
-            expectedException = e;
-        }
-        assertThat(expectedException).isNotNull();
-        assertThat(expectedException).isInstanceOf(ConnectException.class);
-        assertThat(expectedException).hasMessage("Field is not a homogenous array (1 x 2.0), different number types (Schema{INT32} x Schema{FLOAT64})");
+        // have conflicting number types in the array
+        assertThatThrownBy(() -> jsonSchemaData.toConnectSchema(key, mapper.readTree("{\"test\": [1, 2.0, 3.0]}")))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageStartingWith("Schemas are of different types")
+                .hasMessageContaining("INT32")
+                .hasMessageContaining("FLOAT64");
+
+        // have conflicting types in the array
+        assertThatThrownBy(() -> jsonSchemaData.toConnectSchema(key, mapper
+                .readTree("[1, \"some string\"]")))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageStartingWith("Schemas are of different types")
+                .hasMessageContaining("STRING")
+                .hasMessageContaining("INT32");
+        assertThatThrownBy(() -> jsonSchemaData.toConnectSchema(key, mapper
+                .readTree("[{\"test\":[1]}, [1]]")))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageStartingWith("Schemas are of different types")
+                .hasMessageContaining("STRUCT")
+                .hasMessageContaining("ARRAY");
+
+        // have conflicting types in the matrix
+        assertThatThrownBy(() -> jsonSchemaData.toConnectSchema(key, mapper
+                .readTree("[[0],[\"some string\"]]")))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageStartingWith("Schemas are of different types")
+                .hasMessageContaining("STRING")
+                .hasMessageContaining("INT32");
+
+        // have conflicting types in the nested matrix
+        assertThatThrownBy(() -> jsonSchemaData.toConnectSchema(key, mapper
+                .readTree("{\"array\":[{\"subarray\":[[0],[1]]},{\"subarray\":[]},{\"subarray\":[[\"some string\"]]}]}")))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageStartingWith("Schemas are of different types")
+                .hasMessageContaining("STRING")
+                .hasMessageContaining("INT32");
+
+        // have conflicting struct types in the nested array
+        assertThatThrownBy(() -> jsonSchemaData.toConnectSchema(key, mapper
+                .readTree("{\"array\":[{\"subarray\":[{\"code\":\"100\",\"description\":\"some description\"}]},{\"subarray\":[{\"code\":\"200\",\"description\":true}]},{\"subarray\":[{\"code\":\"300\"}]}]}")))
+                .isInstanceOf(ConnectException.class)
+                .hasMessageStartingWith("Schemas are of different types")
+                .hasMessageContaining("STRING")
+                .hasMessageContaining("BOOLEAN");
+
+        // set null value in subarray
+        assertThatThrownBy(() -> jsonSchemaData.toConnectSchema(key, mapper
+                .readTree("{\"array\":[{\"subarray\":[null, {\"code\":\"100\",\"description\":null}, null]},{\"subarray\":[null, {\"code\":\"200\",\"description\":\"another description\"}]},{\"subarray\":[{\"code\":\"300\"}, null]},{\"subarray\":[null]}]}")))
+                .isInstanceOf(ConnectException.class)
+                .hasMessage("Array '' has unrecognized member schema.");
     }
 
     @Test

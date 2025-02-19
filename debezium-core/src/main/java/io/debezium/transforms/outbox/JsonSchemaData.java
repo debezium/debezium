@@ -23,9 +23,6 @@ import org.apache.kafka.connect.transforms.util.SchemaUtil;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.JsonNodeType;
-import com.fasterxml.jackson.databind.node.NullNode;
-
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.FieldNameSelector.FieldNamer;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -89,36 +86,50 @@ public class JsonSchemaData {
 
     private Schema toConnectSchemaWithCycles(String key, ArrayNode array) throws ConnectException {
         Schema schema = null;
-        final JsonNode sample = getFirstArrayElement(array);
-        if (sample.isObject()) {
-            final Set<Schema> elementSchemas = new HashSet<>();
-            final Iterator<JsonNode> elements = array.elements();
-            while (elements.hasNext()) {
-                final JsonNode element = elements.next();
-                if (!element.isObject()) {
-                    continue;
-                }
-                elementSchemas.add(toConnectSchema(key, element));
-            }
-            for (Schema element : elementSchemas) {
-                schema = mergeSchema(schema, element);
-            }
+        final Set<Schema> elementSchemas = new HashSet<>();
+        final Iterator<JsonNode> elements = array.elements();
+        while (elements.hasNext()) {
+            final JsonNode element = elements.next();
+            elementSchemas.add(toConnectSchema(key, element));
         }
-        else {
-            schema = toConnectSchema(null, sample);
-            if (schema == null) {
-                throw new ConnectException(String.format("Array '%s' has unrecognized member schema.", array.asText()));
-            }
+        for (Schema element : elementSchemas) {
+            schema = mergeSchema(schema, element);
+        }
+        if (schema == null) {
+            throw new ConnectException(String.format("Array '%s' has unrecognized member schema.", array.asText()));
         }
 
         return schema;
     }
 
-    private Schema mergeSchema(Schema left, Schema right) {
-        if (left == null) {
+    private Schema mergeSchema(Schema left, Schema right) throws ConnectException {
+        if (left == null || Objects.equals(left, right)) {
             return right;
         }
+        if (right == null) {
+            return left;
+        }
 
+        if (left.schema().type() == Schema.Type.BYTES && right.schema().type() != Schema.Type.BYTES) {
+            return right;
+        }
+        if (left.schema().type() != Schema.Type.BYTES && right.schema().type() == Schema.Type.BYTES) {
+            return left;
+        }
+
+        if (left.type() == Schema.Type.ARRAY && right.type() == Schema.Type.ARRAY) {
+            Schema mergedValueSchema = mergeSchema(left.schema().valueSchema(), right.schema().valueSchema());
+            return SchemaUtil.copySchemaBasics(right.schema(), SchemaBuilder.array(mergedValueSchema));
+        }
+
+        if (left.type() == Schema.Type.STRUCT && right.type() == Schema.Type.STRUCT) {
+            return mergeStructs(left, right);
+        }
+
+        throw new ConnectException(String.format("Schemas are of different types (%s x %s)", left, right));
+    }
+
+    private Schema mergeStructs(Schema left, Schema right) throws ConnectException {
         Map<String, Field> fields = new LinkedHashMap<>();
         left.fields().forEach(field -> fields.put(field.name(), field));
         right.fields().forEach(field -> {
@@ -126,63 +137,15 @@ public class JsonSchemaData {
             if (oldField == null) {
                 fields.put(field.name(), field);
             }
-             else if (oldField.schema().type() == Schema.Type.ARRAY && field.schema().type() == Schema.Type.ARRAY) {
-                 Schema mergedValueSchema = mergeSchema(oldField.schema().valueSchema(), field.schema().valueSchema());
-                 SchemaBuilder arrayBuilder = SchemaUtil.copySchemaBasics(field.schema(), SchemaBuilder.array(mergedValueSchema));
-                 fields.put(field.name(), new Field(field.name(), field.index(), arrayBuilder.build()));
-             }
             else {
-                if (!Objects.equals(oldField.schema(), field.schema())
-                        && oldField.schema().type() == Schema.Type.BYTES
-                        && field.schema().type() != Schema.Type.BYTES) {
-                    fields.put(field.name(), field);
-                }
+                Schema mergedValueSchema = mergeSchema(oldField.schema(), field.schema());
+                fields.put(field.name(), new Field(field.name(), field.index(), mergedValueSchema));
             }
         });
 
         SchemaBuilder newBuilder = SchemaUtil.copySchemaBasics(left);
         fields.forEach((k, v) -> newBuilder.field(k, v.schema()));
         return newBuilder.build();
-    }
-
-    private JsonNode getFirstArrayElement(ArrayNode array) throws ConnectException {
-        JsonNode refNode = NullNode.getInstance();
-        Schema refSchema = null;
-        // Get first non-null element type and check other member types.
-        Iterator<JsonNode> elements = array.elements();
-        while (elements.hasNext()) {
-            JsonNode element = elements.next();
-
-            // Skip null elements.
-            if (element.isNull()) {
-                continue;
-            }
-
-            // Set first non-null element if not set yet.
-            if (refNode.isNull()) {
-                refNode = element;
-            }
-
-            // Check types of elements.
-            if (element.getNodeType() != refNode.getNodeType()) {
-                throw new ConnectException(String.format("Field is not a homogenous array (%s x %s).",
-                        refNode.asText(), element.getNodeType().toString()));
-            }
-
-            // We may return different schemas for NUMBER type, check here they are same.
-            if (refNode.getNodeType() == JsonNodeType.NUMBER) {
-                if (refSchema == null) {
-                    refSchema = toConnectSchema(null, refNode);
-                }
-                Schema elementSchema = toConnectSchema(null, element);
-                if (refSchema != elementSchema) {
-                    throw new ConnectException(String.format("Field is not a homogenous array (%s x %s), different number types (%s x %s)",
-                            refNode.asText(), element.asText(), refSchema, elementSchema));
-                }
-            }
-        }
-
-        return refNode;
     }
 
     private boolean hasField(SchemaBuilder builder, String fieldName) {
