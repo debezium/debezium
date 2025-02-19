@@ -109,7 +109,7 @@ public final class SourceInfo extends BaseSourceInfo {
         }
 
         public int getTime() {
-            return (this.ts != null) ? this.ts.getTime() : 0;
+            return (this.ts != null) ? this.ts.getTime() : -1;
         }
 
         public int getInc() {
@@ -171,7 +171,7 @@ public final class SourceInfo extends BaseSourceInfo {
      * @param collectionId the event's collection identifier; may not be null
      * @see #schema()
      */
-    public void collectionEvent(CollectionId collectionId, long wallTime) {
+    public void readEvent(CollectionId collectionId, long wallTime) {
         onEvent(collectionId, position, wallTime);
     }
 
@@ -285,7 +285,8 @@ public final class SourceInfo extends BaseSourceInfo {
 
     @Override
     protected Instant timestamp() {
-        return Instant.ofEpochSecond(position().getTime());
+        var time = position().getTime();
+        return (time == -1) ? null : Instant.ofEpochSecond(time);
     }
 
     @Override

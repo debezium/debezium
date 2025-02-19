@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
@@ -142,15 +143,24 @@ public class SourceInfoTest {
         assertThat(source.hasPosition()).isEqualTo(hasOffset);
 
         Map<String, ?> offset = context.getOffset();
-        assertThat(offset.get(SourceInfo.TIMESTAMP)).isEqualTo((timestamp != null) ? timestamp.getTime() : 0);
+        assertThat(offset.get(SourceInfo.TIMESTAMP)).isEqualTo((timestamp != null) ? timestamp.getTime() : -1);
         assertThat(offset.get(SourceInfo.ORDER)).isEqualTo((timestamp != null) ? timestamp.getInc() : -1);
 
         String resumeToken = source.lastResumeToken();
         assertThat(resumeToken).isEqualTo(resumeTokenData);
 
-        source.collectionEvent(new CollectionId("test", "names"), 0L);
+        source.readEvent(new CollectionId("test", "names"), 0L);
+
+        var structPreMakeTime = Instant.now().toEpochMilli();
         Struct struct = source.struct();
-        assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo((timestamp != null) ? timestamp.getTime() * 1000L : 0L);
+        var structPostMakeTime = Instant.now().toEpochMilli();
+
+        if (timestamp != null) {
+            assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo(timestamp.getTime() * 1000L);
+        }
+        else {
+            assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isBetween(structPreMakeTime, structPostMakeTime);
+        }
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo((timestamp != null) ? timestamp.getInc() : -1);
         assertThat(struct.getString(SourceInfo.DATABASE_NAME_KEY)).isEqualTo("test");
         assertThat(struct.getString(SourceInfo.COLLECTION)).isEqualTo("names");
@@ -230,7 +240,7 @@ public class SourceInfoTest {
         var cursor = mockEventChangeStreamCursor();
         source.initEvent(cursor);
         assertThat(source.struct().getInt64(SourceInfo.WALL_TIME)).isNull();
-        source.collectionEvent(new CollectionId("test", "names"), 10L);
+        source.readEvent(new CollectionId("test", "names"), 10L);
         assertThat(source.struct().getInt64(SourceInfo.WALL_TIME)).isEqualTo(10L);
     }
 
