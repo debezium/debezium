@@ -134,7 +134,7 @@ public class MongoDbOffsetContext extends CommonOffsetContext<SourceInfo> {
     }
 
     public void readEvent(CollectionId collectionId, Instant timestamp) {
-        sourceInfo.collectionEvent(collectionId, 0L);
+        sourceInfo.readEvent(collectionId, 0L);
     }
 
     public void initEvent(MongoChangeStreamCursor<ChangeStreamDocument<BsonDocument>> cursor) {
