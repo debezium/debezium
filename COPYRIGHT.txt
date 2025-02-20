@@ -24,6 +24,7 @@ Alexey Miroshnikov
 Alfusainey Jallow
 Alisa Houskova
 Alvar Viana
+Alvar Viana Gomez
 Amirmohammad Sadat Shokouhi
 Amit Sela
 Aman Garg
@@ -233,6 +234,7 @@ Jonas Thelemann
 Jordan Pittier
 Juan Fiallo
 Juanma Barea
+Julien Roy
 Jun Zhao
 Hady Willi
 Hang Ruan
@@ -323,6 +325,7 @@ Kevin Rothenberger
 Kewei Shang
 Kosta Kostelnik
 Krizhan Mariampillai
+Krzysztof Grzechnik
 Kunal Bhatnagar
 Kyley Jex
 Lairen Hightower
@@ -399,6 +402,7 @@ Muhammad Sufyian
 My Lang Pangzi
 Nancy Xu
 Nansen
+Naresh Gandi
 Narz David
 Nathan Bradshaw
 Nathan Mills
@@ -465,6 +469,7 @@ Renato Mefi
 René Kerner
 Robert Hana
 Robin Moffatt
+Rodolphe Quiedeville
 Roman Kuchar
 Roman Kudryashov
 Rotem Adhoh
