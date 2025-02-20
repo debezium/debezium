@@ -183,7 +183,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
                 metrics.setGlobalLockAcquired();
             }
             catch (SQLException e) {
-                LOGGER.info("Unable to flush and acquire global read lock, will use table read locks after reading table names");
+                LOGGER.info("Unable to flush and acquire global read lock, will use table read locks after reading table names", e);
                 // Continue anyway, since RDS (among others) don't allow setting a global lock
                 assert !isGloballyLocked();
             }
@@ -199,14 +199,6 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         if (connectorConfig.getSnapshotLockingStrategy().isMinimalLockingEnabled()) {
             if (isGloballyLocked()) {
                 globalUnlock();
-            }
-            if (isTablesLocked()) {
-                // We could not acquire a global read lock and instead had to obtain individual table-level read locks
-                // using 'FLUSH TABLE <tableName> WITH READ LOCK'. However, if we were to do this, the 'UNLOCK TABLES'
-                // would implicitly commit our active transaction, and this would break our consistent snapshot logic.
-                // Therefore, we cannot unlock the tables here!
-                // https://dev.mysql.com/doc/refman/8.2/en/flush.html
-                LOGGER.warn("Tables were locked explicitly, but to get a consistent snapshot we cannot release the locks until we've read all tables.");
             }
         }
     }
@@ -438,6 +430,12 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
     }
 
     private boolean twoPhaseSchemaSnapshot() {
+        if (connectorConfig.isGlobalLockUseRequested() && connectorConfig.getSnapshotLockingStrategy().isMinimalLockingEnabled() && !isGloballyLocked()) {
+            // Prevent obtaining individual table-level read locks
+            // using 'FLUSH TABLE <tableName> WITH READ LOCK'
+            // when minimal locking is enabled
+            throw new DebeziumException("Cannot perform two-phase schema snapshot because global read lock was not acquired.");
+        }
         return connectorConfig.getSnapshotLockingStrategy().isLockingEnabled() && !isGloballyLocked();
     }
 
