@@ -2,6 +2,75 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.1.0.Alpha2
+February 20th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12443609)
+
+### New features since 3.1.0.Alpha1
+
+* Error handling mode in ReselectColumnsPostProcessors [DBZ-8336](https://issues.redhat.com/browse/DBZ-8336)
+* Provide full data types coverage for TinyGo Wasm SMT [DBZ-8586](https://issues.redhat.com/browse/DBZ-8586)
+* Add predicates support in Transformation UI [DBZ-8590](https://issues.redhat.com/browse/DBZ-8590)
+* Mention write permission on signaling data collection for incremental snapshot [DBZ-8596](https://issues.redhat.com/browse/DBZ-8596)
+* Publish Debezium platform snapshot artifact [DBZ-8603](https://issues.redhat.com/browse/DBZ-8603)
+* Include Current Archive log been processed in JMX metrics [DBZ-8644](https://issues.redhat.com/browse/DBZ-8644)
+* All text cols with binary collation should still be output as strings [DBZ-8679](https://issues.redhat.com/browse/DBZ-8679)
+* SQL Server - Errors related to schema validation should provide more details [DBZ-8692](https://issues.redhat.com/browse/DBZ-8692)
+
+
+### Breaking changes since 3.1.0.Alpha1
+
+* schema.history.internal.store.only.captured.databases.ddl not working properly [DBZ-8558](https://issues.redhat.com/browse/DBZ-8558)
+* Data loss when primary key update is last operation in a transaction [DBZ-8594](https://issues.redhat.com/browse/DBZ-8594)
+* Remove deprecated Oracle JMX metrics [DBZ-8647](https://issues.redhat.com/browse/DBZ-8647)
+* Emit LOB columns when available even if lob.enabled is off [DBZ-8653](https://issues.redhat.com/browse/DBZ-8653)
+
+
+### Fixes since 3.1.0.Alpha1
+
+* Reduced record buffer doesn't handle RECORD_VALUE with primary key fields [DBZ-8593](https://issues.redhat.com/browse/DBZ-8593)
+* Events for tables with generated columns fail when using hybrid mining strategy [DBZ-8597](https://issues.redhat.com/browse/DBZ-8597)
+* ANTLR DDL Parsing error [DBZ-8600](https://issues.redhat.com/browse/DBZ-8600)
+* MySQL master and replica images fail to start [DBZ-8633](https://issues.redhat.com/browse/DBZ-8633)
+* Remove misleading log entry about undo change failure [DBZ-8645](https://issues.redhat.com/browse/DBZ-8645)
+* Oracle metric OldestScnAgeInMilliseconds does not account for database timezone [DBZ-8646](https://issues.redhat.com/browse/DBZ-8646)
+* Using RECORD_VALUE with a DELETE event causes NullPointerException [DBZ-8648](https://issues.redhat.com/browse/DBZ-8648)
+* Downstream JDBC system tests fails [DBZ-8651](https://issues.redhat.com/browse/DBZ-8651)
+* Batch size calculation is incorrectly using min-batch-size [DBZ-8652](https://issues.redhat.com/browse/DBZ-8652)
+* Mysql example images for replication don't work [DBZ-8655](https://issues.redhat.com/browse/DBZ-8655)
+* Oracle performance drop when transaction contains many constraint violations [DBZ-8665](https://issues.redhat.com/browse/DBZ-8665)
+* Upstream system tests fail [DBZ-8678](https://issues.redhat.com/browse/DBZ-8678)
+* Skip empty transactions with commit with redo thread equal to 0 [DBZ-8681](https://issues.redhat.com/browse/DBZ-8681)
+* DDL statement couldn't be parsed: GRANT SENSITIVE_VARIABLES_OBSERVER [DBZ-8685](https://issues.redhat.com/browse/DBZ-8685)
+
+
+### Other changes since 3.1.0.Alpha1
+
+* Link old jdbc connector to new home and mark as retired [DBZ-8225](https://issues.redhat.com/browse/DBZ-8225)
+* Align MySQL and MariaDB grammars with upstream versions [DBZ-8270](https://issues.redhat.com/browse/DBZ-8270)
+* Add transformations and predicates support in conductor [DBZ-8459](https://issues.redhat.com/browse/DBZ-8459)
+* Documentation version-picker redirects to overview page [DBZ-8483](https://issues.redhat.com/browse/DBZ-8483)
+* Add note to connector docs to inform users about future removal of Containerfile deployment instructions  [DBZ-8566](https://issues.redhat.com/browse/DBZ-8566)
+* HIghlight that Debezium containers are not production ready [DBZ-8580](https://issues.redhat.com/browse/DBZ-8580)
+* Change schema history producer configurations [DBZ-8598](https://issues.redhat.com/browse/DBZ-8598)
+* Update Debezium Server and Operator to Quarkus 3.15.3 LTS [DBZ-8601](https://issues.redhat.com/browse/DBZ-8601)
+* Allow optional removal of ehcache form Oracle package [DBZ-8602](https://issues.redhat.com/browse/DBZ-8602)
+* Change snapshot pipeline to publish conductor artifacts [DBZ-8604](https://issues.redhat.com/browse/DBZ-8604)
+* Build conductor snapshot image [DBZ-8605](https://issues.redhat.com/browse/DBZ-8605)
+* Build stage snapshot image [DBZ-8606](https://issues.redhat.com/browse/DBZ-8606)
+* Publish stage/conductor nightly images to image registry [DBZ-8607](https://issues.redhat.com/browse/DBZ-8607)
+* Upgrade AssertJ-DB [DBZ-8609](https://issues.redhat.com/browse/DBZ-8609)
+* Prepare Logical message decoder SMT docs for productization [DBZ-8641](https://issues.redhat.com/browse/DBZ-8641)
+* Remove push from github workflow in container-images repo [DBZ-8649](https://issues.redhat.com/browse/DBZ-8649)
+* Update QOSDK to 6.9.3 [DBZ-8654](https://issues.redhat.com/browse/DBZ-8654)
+* Document PostgreSQL snapshot.isolation.mode property [DBZ-8659](https://issues.redhat.com/browse/DBZ-8659)
+* Integration tests should verify truncation of all data types [DBZ-8663](https://issues.redhat.com/browse/DBZ-8663)
+* Upgrade protoc from 1.4 to 1.5 for postgres container images [DBZ-8670](https://issues.redhat.com/browse/DBZ-8670)
+* Snapshot tests fails with Kafka 3.8.0  [DBZ-8688](https://issues.redhat.com/browse/DBZ-8688)
+* Enable formatting checks on all project durinig PRs [DBZ-8698](https://issues.redhat.com/browse/DBZ-8698)
+* Disable ARM images for PostgreSQL [DBZ-8713](https://issues.redhat.com/browse/DBZ-8713)
+
+
+
 ## 3.1.0.Alpha1
 January 20th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12441653)
 
