@@ -773,7 +773,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
             commitOffsets(offsetWriter, commitTimeout, task);
         }
         catch (InterruptedException e) {
-            LOGGER.debug("Interrupted while committing offsets");
+            LOGGER.warn("Interrupted while committing offsets");
             Thread.currentThread().interrupt();
         }
         catch (Throwable t) {
