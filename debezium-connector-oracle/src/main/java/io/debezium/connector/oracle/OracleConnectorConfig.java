@@ -40,6 +40,7 @@ import io.debezium.connector.oracle.logminer.processor.ehcache.EhcacheLogMinerEv
 import io.debezium.connector.oracle.logminer.processor.infinispan.EmbeddedInfinispanLogMinerEventProcessor;
 import io.debezium.connector.oracle.logminer.processor.infinispan.RemoteInfinispanLogMinerEventProcessor;
 import io.debezium.connector.oracle.logminer.processor.memory.MemoryLogMinerEventProcessor;
+import io.debezium.connector.oracle.util.OracleUtils;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
@@ -844,8 +845,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 ColumnFilterMode.SCHEMA,
                 false);
 
-        this.databaseName = toUpperCase(config.getString(DATABASE_NAME));
-        this.pdbName = toUpperCase(config.getString(PDB_NAME));
+        this.databaseName = OracleUtils.getObjectName(config.getString(DATABASE_NAME));
+        this.pdbName = OracleUtils.getObjectName(config.getString(PDB_NAME));
         this.xoutServerName = config.getString(XSTREAM_SERVER_NAME);
         this.intervalHandlingMode = IntervalHandlingMode.parse(config.getString(INTERVAL_HANDLING_MODE));
         this.snapshotMode = SnapshotMode.parse(config.getString(SNAPSHOT_MODE));
@@ -908,10 +909,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.openLogReplicatorSource = config.getString(OLR_SOURCE);
         this.openLogReplicatorHostname = config.getString(OLR_HOST);
         this.openLogReplicatorPort = config.getInteger(OLR_PORT, 0);
-    }
-
-    private static String toUpperCase(String property) {
-        return property == null ? null : property.toUpperCase();
     }
 
     public String getDatabaseName() {
