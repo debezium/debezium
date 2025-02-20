@@ -117,7 +117,6 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         readChunk(partition, offsetContext);
     }
 
-
     @Override
     public void pauseSnapshot(P partition, OffsetContext offsetContext) {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();

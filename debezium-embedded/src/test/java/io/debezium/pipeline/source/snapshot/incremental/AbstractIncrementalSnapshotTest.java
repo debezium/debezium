@@ -21,6 +21,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -1097,18 +1098,33 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
 
         sendPauseSignal();
 
+        // Verify pause state in offset
+        final AtomicReference<SourceRecord> lastRecordBeforePause = new AtomicReference<>();
         consumeAvailableRecords(record -> {
             if (topicName.equalsIgnoreCase(record.topic())) {
                 records.add(record);
+                lastRecordBeforePause.set(record);
             }
             if ("io.debezium.notification".equals(record.topic())) {
                 notifications.add(record);
             }
         });
 
+        // Check that the offset contains pause flag
+        if (lastRecordBeforePause.get() != null) {
+            Map<String, ?> offset = lastRecordBeforePause.get().sourceOffset();
+            assertThat(offset.get(AbstractIncrementalSnapshotContext.PAUSED_KEY)).isNotNull();
+            assertThat(offset.get(AbstractIncrementalSnapshotContext.PAUSED_KEY)).isEqualTo(true);
+        }
+
         sendResumeSignal();
 
         SourceRecords sourceRecords = consumeRecordsByTopicUntil(incrementalSnapshotCompleted());
+
+        // Verify resume state in offset
+        SourceRecord firstRecordAfterResume = sourceRecords.recordsForTopic(topicName()).get(0);
+        Map<String, ?> offsetAfterResume = firstRecordAfterResume.sourceOffset();
+        assertThat(offsetAfterResume.get(AbstractIncrementalSnapshotContext.PAUSED_KEY)).isNull();
 
         records.addAll(sourceRecords.recordsForTopic(topicName()));
         notifications.addAll(sourceRecords.recordsForTopic("io.debezium.notification"));

@@ -285,7 +285,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
             context.addTablesIdsToSnapshot(context.snapshotDataCollection.stringToDataCollections(dataCollectionsStr, context.useCatalogBeforeSchema));
         }
         context.correlationId = (String) offsets.get(CORRELATION_ID);
-        final Boolean snapshotPaused  = Boolean.parseBoolean((String) offsets.get(PAUSED_KEY));
+        final Boolean snapshotPaused = Boolean.parseBoolean((String) offsets.get(PAUSED_KEY));
         context.paused.set(snapshotPaused);
         return context;
     }

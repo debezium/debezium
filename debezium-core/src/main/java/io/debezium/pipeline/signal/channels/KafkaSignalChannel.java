@@ -185,7 +185,8 @@ public class KafkaSignalChannel implements SignalChannelReader {
                     .filter(Optional::isPresent)
                     .map(Optional::get)
                     .collect(Collectors.toList());
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             LOGGER.error("Kafka signal consumer failed", e);
             throw e;
         }
