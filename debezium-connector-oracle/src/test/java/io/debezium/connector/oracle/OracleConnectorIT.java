@@ -3259,6 +3259,32 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
         assertThat(((Struct) records.get(0).value()).getStruct(AFTER).get("ID")).isEqualTo(1);
     }
 
+    @Test
+    @FixFor("DBZ-8710")
+    public void shouldTreatQuotedPdbOrDatabaseNameAsCaseSensitive() throws Exception {
+        final Configuration config;
+        if (TestHelper.isUsingPdb()) {
+            config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.PDB_NAME, "\"" + TestHelper.getDatabaseName() + "\"")
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
+                    .build();
+        }
+        else {
+            config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.DATABASE_NAME, "\"" + TestHelper.getDatabaseName() + "\"")
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
+                    .build();
+        }
+
+        connection.execute("INSERT INTO debezium.customer (id,name) values (1, 'Bugs Bunny')");
+        start(OracleConnector.class, config);
+
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic("server1.DEBEZIUM.CUSTOMER");
+        assertThat(((Struct) records.get(0).value()).getStruct(AFTER).get("ID")).isEqualTo(1);
+    }
+
     @FixFor("DBZ-3986")
     private void consumeRecords(Configuration config) throws SQLException, InterruptedException {
         // Poll for records ...
