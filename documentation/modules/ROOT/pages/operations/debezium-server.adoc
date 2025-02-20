@@ -715,6 +715,22 @@ i.e. after this value is reached, the wait time will not increase further by the
 |`30000`
 |The max wait time for retrieve of publish requests results to Cloud Pub/Sub.
 
+|[[concurrency-enabled]]<<concurrency-enabled, `debezium.sink.pubsub.concurrency.enabled`>>
+|`false`
+|When enabled, allows fine-grained control over the number of threads used by the client library to publish messages.
+
+|[[concurrency-threads]]<<concurrency-threads, `debezium.sink.pubsub.concurrency.threads`>>
+|`1`
+|(Optional) If concurrency enabled, the number of threads used by the client library to publish messages
+
+|[[compression-enabled]]<<compression-enabled, `debezium.sink.pubsub.compression.enabled`>>
+|`false`
+|When enabled, uses gRPC to compress your data before your publisher client sends out the publish request.
+
+|[[compression-threshold-bytes]]<<compression-threshold-bytes, `debezium.sink.pubsub.compression.threshold.bytes`>>
+|`240`
+|(Optional) If compression enabled, sets the threshold (in bytes) above which messages are compressed for transport.
+
 |[[address]]<<address, `debezium.sink.pubsub.address`>>
 |
 |The address of the pubsub emulator.
