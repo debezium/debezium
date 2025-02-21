@@ -407,6 +407,8 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
 
     public class ChangeEventSourceContextImpl implements ChangeEventSourceContext {
 
+        private static final Duration PAUSE_BETWEEN_HEARTBEAT_CALLBACKS = Duration.ofSeconds(1);
+
         private final Lock lock = new ReentrantLock();
         private final Condition snapshotFinished = lock.newCondition();
         private final Condition streamingPaused = lock.newCondition();
@@ -435,13 +437,21 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
 
         @Override
         public void waitSnapshotCompletion() throws InterruptedException {
+            waitSnapshotCompletion(() -> {
+            });
+        }
+
+        @Override
+        public void waitSnapshotCompletion(Runnable heartbeatCallback) throws InterruptedException {
             lock.lock();
             try {
                 while (paused) {
                     LOGGER.trace("Waiting for snapshot to be completed.");
-                    snapshotFinished.await();
-                    streaming = true;
+                    if (!snapshotFinished.await(PAUSE_BETWEEN_HEARTBEAT_CALLBACKS.toNanos(), TimeUnit.NANOSECONDS)) {
+                        heartbeatCallback.run();
+                    }
                 }
+                streaming = true;
             }
             finally {
                 lock.unlock();

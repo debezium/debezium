@@ -256,7 +256,14 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             if (context.isPaused()) {
                 LOGGER.info("Streaming will now pause");
                 context.streamingPaused();
-                context.waitSnapshotCompletion();
+                context.waitSnapshotCompletion(() -> {
+                    try {
+                        probeConnectionIfNeeded();
+                    }
+                    catch (SQLException e) {
+                        throw new DebeziumException(e);
+                    }
+                });
                 LOGGER.info("Streaming resumed");
             }
         }
