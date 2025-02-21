@@ -13,6 +13,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Test;
@@ -25,6 +26,25 @@ import io.debezium.doc.FixFor;
  * @author Chris Cranford
  */
 public class ExtractChangedRecordStateTest extends AbstractExtractStateTest {
+
+    @Test
+    @FixFor("DBZ-8721")
+    public void testUpdateWithDefaultValues() {
+        try (ExtractChangedRecordState<SourceRecord> transform = new ExtractChangedRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put("header.changed.name", "Changed");
+            transform.configure(props);
+
+            final SourceRecord updatedRecord = createUpdateRecordWithOptionalNull();
+            // Update the name from null to the default value "default_str" instead of "updatedRecord"
+            ((Struct) updatedRecord.value()).getStruct("after").put("name", "default_str");
+
+            final SourceRecord transformRecord = transform.apply(updatedRecord);
+            final Header changedHeader = getSourceRecordHeader(transformRecord, "Changed");
+            final List<String> changedHeaderValues = (List<String>) changedHeader.value();
+            assertThat(changedHeaderValues).containsExactly("name");
+        }
+    }
 
     @Test
     @FixFor("DBZ-5283")
