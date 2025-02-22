@@ -87,10 +87,22 @@ public class SqlUtilsTest {
                 " WHERE STATUS='VALID' AND TYPE='LOCAL' AND ROWNUM=1) AND STATUS='A')";
         assertThat(result).isEqualTo(expected);
 
+        result = SqlUtils.oldestFirstChangeQuery(Duration.ofHours(1L), null);
+        expected = "SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM V$LOG UNION SELECT MIN(FIRST_CHANGE#)" +
+                " AS FIRST_CHANGE# FROM V$ARCHIVED_LOG WHERE DEST_ID IN (SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS" +
+                " WHERE STATUS='VALID' AND TYPE='LOCAL' AND ROWNUM=1) AND STATUS='A' AND FIRST_TIME >= SYSDATE - (1/24))";
+        assertThat(result).isEqualTo(expected);
+
         result = SqlUtils.oldestFirstChangeQuery(Duration.ofHours(0L), "LOG_ARCHIVE_DEST_3");
         expected = "SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM V$LOG UNION SELECT MIN(FIRST_CHANGE#)" +
                 " AS FIRST_CHANGE# FROM V$ARCHIVED_LOG WHERE DEST_ID IN (SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS" +
                 " WHERE STATUS='VALID' AND TYPE='LOCAL' AND UPPER(DEST_NAME)='LOG_ARCHIVE_DEST_3') AND STATUS='A')";
+        assertThat(result).isEqualTo(expected);
+
+        result = SqlUtils.oldestFirstChangeQuery(Duration.ofHours(1L), "LOG_ARCHIVE_DEST_3");
+        expected = "SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM V$LOG UNION SELECT MIN(FIRST_CHANGE#)" +
+                " AS FIRST_CHANGE# FROM V$ARCHIVED_LOG WHERE DEST_ID IN (SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS" +
+                " WHERE STATUS='VALID' AND TYPE='LOCAL' AND UPPER(DEST_NAME)='LOG_ARCHIVE_DEST_3') AND STATUS='A' AND FIRST_TIME >= SYSDATE - (1/24))";
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.allMinableLogsQuery(Scn.valueOf(10L), Duration.ofHours(0L), false, null);

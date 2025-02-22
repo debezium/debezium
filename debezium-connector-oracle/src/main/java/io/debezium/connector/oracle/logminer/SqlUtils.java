@@ -81,7 +81,7 @@ public class SqlUtils {
         sb.append("AND STATUS='A'");
 
         if (!archiveLogRetention.isNegative() && !archiveLogRetention.isZero()) {
-            sb.append("AND FIRST_TIME >= SYSDATE - (").append(archiveLogRetention.toHours()).append("/24)");
+            sb.append(" AND FIRST_TIME >= SYSDATE - (").append(archiveLogRetention.toHours()).append("/24)");
         }
 
         return sb.append(")").toString();
