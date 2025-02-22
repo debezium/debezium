@@ -244,7 +244,7 @@
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
                     <runOrder>${runOrder}</runOrder>
-                    <argLine>--add-opens java.base/java.net=ALL-UNNAMED -javaagent:"${settings.localRepository}/io/opentelemetry/javaagent/opentelemetry-agent-for-testing/@{version.opentelemetry.testing}-alpha/opentelemetry-agent-for-testing-@{version.opentelemetry.testing}-alpha.jar"</argLine>
+                    <argLine>--add-opens java.base/java.net=ALL-UNNAMED -javaagent:"${settings.localRepository}/@{opentelemetry.agent.for.testing.artifact.relative.path}"</argLine>
                 </configuration>
             </plugin>
             <plugin>
