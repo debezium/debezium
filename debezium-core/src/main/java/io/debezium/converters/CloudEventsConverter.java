@@ -285,7 +285,7 @@ public class CloudEventsConverter implements Converter, Versioned {
         CloudEventsProvider provider = lookupCloudEventsProvider(source);
 
         final boolean useBaseImpl = Stream
-                .of(metadataSource.global(), metadataSource.id(), metadataSource.type(), metadataSource.traceparent(), metadataSource.dataSchemaName())
+                .of(metadataSource.global(), metadataSource.id(), metadataSource.type(), metadataSource.traceParent(), metadataSource.dataSchemaName())
                 .allMatch(metadataSource -> metadataSource != MetadataSourceValue.HEADER);
 
         RecordAndMetadata recordAndMetadata = useBaseImpl ? new RecordAndMetadataBaseImpl(record, schema)
@@ -501,7 +501,7 @@ public class CloudEventsConverter implements Converter, Versioned {
         }
 
         if (this.openTelemetryTracingAttributesEnable) {
-            ceSchemaBuilder.withSchema(CloudEventsMaker.FieldName.TRACEPARENT, Schema.STRING_SCHEMA);
+            ceSchemaBuilder.withSchema(CloudEventsMaker.FieldName.TRACE_PARENT, Schema.STRING_SCHEMA);
         }
 
         if (this.extensionAttributesEnable) {
@@ -532,7 +532,7 @@ public class CloudEventsConverter implements Converter, Versioned {
         }
 
         if (this.openTelemetryTracingAttributesEnable) {
-            ceValueBuilder.withValue(CloudEventsMaker.FieldName.TRACEPARENT, recordAndMetadata.traceparent());
+            ceValueBuilder.withValue(CloudEventsMaker.FieldName.TRACE_PARENT, recordAndMetadata.traceParent());
         }
 
         if (this.extensionAttributesEnable) {

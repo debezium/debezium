@@ -165,7 +165,7 @@ public class CloudEventsConverterConfig extends ConverterConfig {
         Set<MetadataSourceValue> fieldMetadataSourceAllowedValues = Set.of(MetadataSourceValue.HEADER, MetadataSourceValue.GENERATE);
         MetadataSourceValue idCustomSource = null;
         MetadataSourceValue typeCustomSource = null;
-        MetadataSourceValue traceparentCustomSource = null;
+        MetadataSourceValue traceParentCustomSource = null;
         MetadataSourceValue dataSchemaNameCustomSource = null;
         for (int i = 1; i < metadataSources.size(); i++) {
             final String[] parts = metadataSources.get(i).split(":");
@@ -184,8 +184,8 @@ public class CloudEventsConverterConfig extends ConverterConfig {
                 case CloudEventsMaker.FieldName.TYPE:
                     typeCustomSource = fieldSource;
                     break;
-                case CloudEventsMaker.FieldName.TRACEPARENT:
-                    traceparentCustomSource = fieldSource;
+                case CloudEventsMaker.FieldName.TRACE_PARENT:
+                    traceParentCustomSource = fieldSource;
                     break;
                 case CloudEventsMaker.DATA_SCHEMA_NAME_PARAM:
                     dataSchemaNameCustomSource = fieldSource;
@@ -198,15 +198,15 @@ public class CloudEventsConverterConfig extends ConverterConfig {
         // set final source values
         final MetadataSourceValue idSource = idCustomSource != null ? idCustomSource : global;
         final MetadataSourceValue typeSource = typeCustomSource != null ? typeCustomSource : global;
-        MetadataSourceValue traceparentSource = traceparentCustomSource != null ? traceparentCustomSource : global;
+        MetadataSourceValue traceParentSource = traceParentCustomSource != null ? traceParentCustomSource : global;
         MetadataSourceValue dataSchemaNameSource = dataSchemaNameCustomSource != null ? dataSchemaNameCustomSource : global;
 
         // to obtain a value for `traceparent` field from the header, it is required to configure its source to `header` (by specifying custom source or
         // using global setting) and additionally enable inclusion of OpenTelemerey tracing attributes. it is done to preserve backward compatibility
-        final boolean setDefaultTraceparentSource = traceparentSource == MetadataSourceValue.HEADER && !openTelemetryTracingAttributesEnable;
-        if (setDefaultTraceparentSource) {
+        final boolean setDefaultTraceParentSource = traceParentSource == MetadataSourceValue.HEADER && !openTelemetryTracingAttributesEnable;
+        if (setDefaultTraceParentSource) {
             // this setting just marks that the source is NOT `HEADER`
-            traceparentSource = MetadataSourceValue.GENERATE;
+            traceParentSource = MetadataSourceValue.GENERATE;
         }
 
         // to obtain CloudEvents.data schema name from the header, it is required to configure its source to `header` (by specifying custom source or
@@ -216,22 +216,22 @@ public class CloudEventsConverterConfig extends ConverterConfig {
             dataSchemaNameSource = MetadataSourceValue.GENERATE;
         }
 
-        return new MetadataSource(global, idSource, typeSource, traceparentSource, dataSchemaNameSource);
+        return new MetadataSource(global, idSource, typeSource, traceParentSource, dataSchemaNameSource);
     }
 
     public class MetadataSource {
         private final MetadataSourceValue global;
         private final MetadataSourceValue id;
         private final MetadataSourceValue type;
-        private final MetadataSourceValue traceparent;
+        private final MetadataSourceValue traceParent;
         private final MetadataSourceValue dataSchemaName;
 
-        public MetadataSource(MetadataSourceValue global, MetadataSourceValue id, MetadataSourceValue type, MetadataSourceValue traceparent,
+        public MetadataSource(MetadataSourceValue global, MetadataSourceValue id, MetadataSourceValue type, MetadataSourceValue traceParent,
                               MetadataSourceValue dataSchemaName) {
             this.global = global;
             this.id = id;
             this.type = type;
-            this.traceparent = traceparent;
+            this.traceParent = traceParent;
             this.dataSchemaName = dataSchemaName;
         }
 
@@ -247,8 +247,8 @@ public class CloudEventsConverterConfig extends ConverterConfig {
             return type;
         }
 
-        public MetadataSourceValue traceparent() {
-            return traceparent;
+        public MetadataSourceValue traceParent() {
+            return traceParent;
         }
 
         public MetadataSourceValue dataSchemaName() {
