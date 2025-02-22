@@ -70,7 +70,7 @@ public class RecordAndMetadataBaseImpl implements RecordAndMetadata {
     }
 
     @Override
-    public String traceparent() {
+    public String traceParent() {
         throw new DataException(
                 "Value for `traceparent` CloudEvents field currently can't be obtained from a record value and can only be obtained from a record header");
     }
