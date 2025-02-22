@@ -30,7 +30,6 @@
 
         <!-- Tracing -->
         <version.opentelemetry>1.23.0</version.opentelemetry>
-        <version.opentelemetry.testing>2.10.0</version.opentelemetry.testing>
 
         <!-- HTTP client -->
         <version.okhttp>4.8.1</version.okhttp>
