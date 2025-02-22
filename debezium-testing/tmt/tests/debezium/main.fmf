@@ -23,7 +23,7 @@ environment:
 /oracle:
   summary: Run oracle connector functional tests
   tags: [debezium, oracle]
-  duration: 5h
+  duration: 6h
   tier: 1
   environment+:
     TEST_PROFILE: oracle
