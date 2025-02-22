@@ -16,7 +16,11 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -1800,7 +1804,7 @@ public class LogFileCollectorTest {
         final OracleConnection connection = getOracleConnectionMock(redoThreadState);
 
         // This should be false because the read position is before the redo logs scn
-        LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
+        LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files, Map.of(1, Collections.emptyList()));
         assertThat(collector.isLogFileListConsistent(Scn.valueOf(1234567250), files, redoThreadState)).isFalse();
 
         // Now add the archive log to the collected files
@@ -1953,7 +1957,7 @@ public class LogFileCollectorTest {
         files.clear();
         files.add(createRedoLog("group_2.271.1086113794", 14339038344718L, 164493, 1));
 
-        collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
+        collector = setCollectorLogFiles(getLogFileCollector(config, connection), files, Map.of(1, Collections.emptyList()));
         assertThat(collector.isLogFileListConsistent(Scn.valueOf(14339038344580L), files, redoThreadState)).isFalse();
 
         // Now add the archive log
@@ -1962,6 +1966,142 @@ public class LogFileCollectorTest {
 
         collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
         assertThat(collector.isLogFileListConsistent(Scn.valueOf(14339038344580L), files, redoThreadState)).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-8724")
+    public void testOpenThreadClosedAndReopenedWithScnGap() throws Exception {
+        RedoThreadState redoThreadState = RedoThreadState.builder()
+                .thread()
+                .threadId(1)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .enabledScn(Scn.valueOf(6637653211188L))
+                .checkpointScn(Scn.valueOf(6642813012960L))
+                .lastRedoScn(Scn.valueOf(6642813838339L))
+                .lastRedoSequenceNumber(16547L)
+                .build()
+                .thread()
+                .threadId(2)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .enabledScn(Scn.valueOf(6637653211188L))
+                .checkpointScn(Scn.valueOf(6642813011749L))
+                .lastRedoScn(Scn.valueOf(6642813838620L))
+                .lastRedoSequenceNumber(14691L)
+                .build()
+                .build();
+
+        final List<LogFile> files = new ArrayList<>();
+        files.add(createArchiveLog("thread_1_seq_16546.2850.1193544007", 6642813012960L, 6642813833063L, 16546, 1));
+        files.add(createArchiveLog("thread_2_seq_14690.4308.1193544007", 6642813791980L, 6642813832998L, 14690, 2));
+        files.add(createRedoLog("group_2.6538.1178059925", 6642813833063L, 16547, 1));
+        files.add(createRedoLog("group_8.6544.1178059933", 6642813832998L, 14691, 2));
+
+        final Configuration config = getDefaultConfig().build();
+        final OracleConnection connection = getOracleConnectionMock(redoThreadState);
+
+        // Logs should be consistent
+        LogFileCollector collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
+        assertThat(collector.isLogFileListConsistent(Scn.valueOf(6642813832493L), files, redoThreadState)).isTrue();
+
+        // Shutdown redo thread 1
+        redoThreadState = RedoThreadState.builder()
+                .thread()
+                .threadId(1)
+                .status("CLOSED")
+                .enabled("PUBLIC")
+                .enabledScn(Scn.valueOf(6637653211188L))
+                .checkpointScn(Scn.valueOf(6642814020839L))
+                .lastRedoScn(Scn.valueOf(6642813920585L))
+                .lastRedoSequenceNumber(16547L)
+                .build()
+                .thread()
+                .threadId(2)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .enabledScn(Scn.valueOf(6637653211188L))
+                .checkpointScn(Scn.valueOf(6642813832998L))
+                .lastRedoScn(Scn.valueOf(6642814022373L))
+                .lastRedoSequenceNumber(14692L)
+                .build()
+                .build();
+
+        files.clear();
+        files.add(createArchiveLog("thread_1_seq_16547.24874.1193544929", 6642813833063L, 6642814020839L, 16547, 1));
+        files.add(createArchiveLog("thread_1_seq_16548.21380.1193544929", 6642814020839L, 6642814020841L, 16548, 1));
+        files.add(createArchiveLog("thread_2_seq_14691.24372.1193544929", 6642813832998L, 6642814021033L, 14691, 2));
+        files.add(createRedoLog("group_5.6541.1178059929", 6642814021033L, 14692, 2));
+
+        // Logs should be consistent
+        collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
+        assertThat(collector.isLogFileListConsistent(Scn.valueOf(6642813920581L), files, redoThreadState)).isTrue();
+
+        // Advancing redo thread 2 for next mining step; thread 1 remains untouched
+        redoThreadState = RedoThreadState.builder()
+                .thread()
+                .threadId(1)
+                .status("CLOSED")
+                .enabled("PUBLIC")
+                .enabledScn(Scn.valueOf(6637653211188L))
+                .checkpointScn(Scn.valueOf(6642814020839L))
+                .lastRedoScn(Scn.valueOf(6642813920585L))
+                .lastRedoSequenceNumber(16547L)
+                .build()
+                .thread()
+                .threadId(2)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .enabledScn(Scn.valueOf(6637653211188L))
+                .checkpointScn(Scn.valueOf(6642814922780L))
+                .lastRedoScn(Scn.valueOf(6642815559491L))
+                .lastRedoSequenceNumber(14695L)
+                .build()
+                .build();
+
+        files.clear();
+        files.add(createRedoLog("group_8.6544.1178059933", 6642814922780L, 14695, 2));
+
+        // Logs should be consistent
+        collector = setCollectorLogFiles(getLogFileCollector(config, connection), files);
+        assertThat(collector.isLogFileListConsistent(Scn.valueOf(6642815554952L), files, redoThreadState)).isTrue();
+
+        // Reopen thread 1 with gap; advancing thread 2
+        redoThreadState = RedoThreadState.builder()
+                .thread()
+                .threadId(1)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .enabledScn(Scn.valueOf(6637653211188L))
+                .checkpointScn(Scn.valueOf(6642815622350L))
+                .lastRedoScn(Scn.valueOf(6642815623304L))
+                .lastRedoSequenceNumber(16550L)
+                .build()
+                .thread()
+                .threadId(2)
+                .status("OPEN")
+                .enabled("PUBLIC")
+                .enabledScn(Scn.valueOf(6637653211188L))
+                .checkpointScn(Scn.valueOf(6642814922780L))
+                .lastRedoScn(Scn.valueOf(6642815624060L))
+                .lastRedoSequenceNumber(14695L)
+                .build()
+                .build();
+
+        final Map<Integer, List<LogFile>> threadLogFiles = new HashMap<>();
+        threadLogFiles.put(1, new ArrayList<>());
+        threadLogFiles.put(2, new ArrayList<>());
+        threadLogFiles.get(1).add(createArchiveLog("thread_1_seq_16547.24874.1193544929", 6642813833063L, 6642814020839L, 16547, 1));
+        threadLogFiles.get(1).add(createArchiveLog("thread_1_seq_16548.21380.1193544929", 6642814020839L, 6642814020841L, 16548, 1));
+
+        files.clear();
+        files.add(createArchiveLog("thread_1_seq_16549.40606.1193551121", 6642815622343L, 6642815622349L, 16549, 1));
+        files.add(createRedoLog("group_1.6537.1178059925", 6642815622349L, 16550, 1));
+        files.add(createRedoLog("group_8.6544.1178059933", 6642814922780L, 14695, 2));
+
+        // Logs should be consistent
+        collector = setCollectorLogFiles(getLogFileCollector(config, connection), files, threadLogFiles);
+        assertThat(collector.isLogFileListConsistent(Scn.valueOf(6642815621860L), files, redoThreadState)).isTrue();
     }
 
     private static LogFile createRedoLog(String name, long startScn, int sequence, int threadId) {
@@ -2063,8 +2203,21 @@ public class LogFileCollectorTest {
     }
 
     private LogFileCollector setCollectorLogFiles(LogFileCollector collector, List<LogFile> logFiles) throws SQLException {
+        return setCollectorLogFiles(collector, logFiles, Collections.emptyMap());
+    }
+
+    private LogFileCollector setCollectorLogFiles(LogFileCollector collector, List<LogFile> logFiles, Map<Integer, List<LogFile>> archiveLogs) throws SQLException {
         final LogFileCollector mock = Mockito.mockingDetails(collector).isMock() ? collector : Mockito.spy(collector);
         Mockito.doReturn(logFiles).when(mock).getLogsForOffsetScn(Mockito.any(Scn.class));
+
+        if (!archiveLogs.isEmpty()) {
+            for (Map.Entry<Integer, List<LogFile>> entry : archiveLogs.entrySet()) {
+                // Always make sure the archive logs are reverse sorted to match API
+                entry.getValue().sort(Comparator.comparing(LogFile::getSequence).reversed());
+                Mockito.doReturn(entry.getValue()).when(mock).getAllRedoThreadArchiveLogs(entry.getKey());
+            }
+        }
+
         return mock;
     }
 
