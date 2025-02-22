@@ -317,7 +317,7 @@
                         <plugin.name>${decoder.plugin.name}</plugin.name>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
-                    <argLine>-javaagent:"${settings.localRepository}/io/opentelemetry/javaagent/opentelemetry-agent-for-testing/@{version.opentelemetry.testing}-alpha/opentelemetry-agent-for-testing-@{version.opentelemetry.testing}-alpha.jar"</argLine>
+                    <argLine>-javaagent:"${settings.localRepository}/@{opentelemetry.agent.for.testing.artifact.relative.path}"</argLine>
                     <runOrder>${runOrder}</runOrder>
                 </configuration>
             </plugin>
