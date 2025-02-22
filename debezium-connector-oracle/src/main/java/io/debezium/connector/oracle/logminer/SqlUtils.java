@@ -87,6 +87,17 @@ public class SqlUtils {
         return sb.append(")").toString();
     }
 
+    public static String allRedoThreadArchiveLogs(int threadId, String archiveDestinationName) {
+        final StringBuilder sb = new StringBuilder();
+        sb.append("SELECT NAME, SEQUENCE#, FIRST_CHANGE#, NEXT_CHANGE# ");
+        sb.append("FROM ").append(ARCHIVED_LOG_VIEW).append(" ");
+        sb.append("WHERE DEST_ID IN (").append(localArchiveLogDestinationsOnlyQuery(archiveDestinationName)).append(") ");
+        sb.append("AND STATUS='A' ");
+        sb.append("AND THREAD#=").append(threadId).append(" ");
+        sb.append("ORDER BY SEQUENCE# DESC");
+        return sb.toString();
+    }
+
     /**
      * Obtain a query to fetch all available minable logs, both archive and online redo logs.
      *
