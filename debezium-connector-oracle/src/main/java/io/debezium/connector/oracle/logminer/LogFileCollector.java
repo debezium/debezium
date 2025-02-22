@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -268,42 +269,39 @@ public class LogFileCollector {
                     // Collect all archive logs for a given redo thread that has an SCN range that comes
                     // after or includes the startScn plus the archive log that has a range that comes
                     // immediately before the startScn
-                    final List<LogFile> archiveLogs = new ArrayList<>();
-                    for (LogFile logFile : getAllRedoThreadArchiveLogs(threadId)) {
-                        if (logFile.getFirstScn().compareTo(startScn) > 0 || logFile.isScnInLogFileRange(startScn)) {
-                            archiveLogs.add(logFile);
-                            continue;
-                        }
-                        archiveLogs.add(logFile);
-                        break;
-                    }
+                    final List<LogFile> allThreadArchiveLogs = getAllRedoThreadArchiveLogs(threadId);
 
-                    if (archiveLogs.isEmpty()) {
-                        // Failed to collect a list of archive logs, which should never be the case if a thread
-                        // was recently closed and reopened. In this case, we should immediately fail as being
-                        // inconsistent.
-                        logException(String.format("Redo Thread %d is inconsistent; does not have a log that contains scn %s. " +
+                    if (allThreadArchiveLogs.isEmpty()) {
+                        logException(String.format("Redo Thread %d is inconsistent; at least one archive log expected.", threadId));
+                        return false;
+                    }
+                    else if (allThreadArchiveLogs.stream().anyMatch(l -> l.isScnInLogFileRange(startScn))) {
+                        logException(String.format("Redo thread %d is inconsistent; does not have a log that conatins scn %s. " +
                                 "A recent log switch may not have been archived by the Oracle ARC process yet.", threadId, startScn));
                         return false;
                     }
+                    else {
+                        // Collects all archive logs for a given redo thread and returns the first archive log
+                        // with an SCN range that comes immediately before the log with a range that includes the startScn.
+                        final Optional<LogFile> logWithRangeBeforeStartScn = allThreadArchiveLogs.stream()
+                                .filter(l -> l.getFirstScn().compareTo(startScn) < 0 && !l.isScnInLogFileRange(startScn))
+                                .findFirst();
 
-                    // Sanity check that the collected archive logs have no sequence gaps.
-                    Optional<Long> missingSequence = getFirstLogMissingSequence(archiveLogs);
-                    if (missingSequence.isPresent()) {
-                        logException(String.format("Redo thread %d is inconsistent; missing archive log with sequence %d", threadId, missingSequence.get()));
-                        return false;
-                    }
+                        // We expect that there should be an archive log with a range just before startScn
+                        // If this doesn't exist, we cannot guarantee there is not a gap in archive log sequences next
+                        if (logWithRangeBeforeStartScn.isEmpty()) {
+                            logException(String.format("Redo Thread %d is inconsistent; expected archive log with range just before scn %s.",
+                                    threadId, startScn));
+                            return false;
+                        }
 
-                    // Combine the mined thread logs and the collected archive logs
-                    final List<LogFile> combinedLogs = new ArrayList<>();
-                    combinedLogs.addAll(archiveLogs);
-                    combinedLogs.addAll(threadLogs);
-
-                    // Verify that the combined log set has no sequence gaps
-                    missingSequence = getFirstLogMissingSequence(combinedLogs);
-                    if (missingSequence.isPresent()) {
-                        logException(String.format("Redo thread %d is inconsistent; missing log with sequence %d", threadId, missingSequence.get()));
-                        return false;
+                        final Optional<Long> missingSequence = getFirstLogMissingSequence(Stream.concat(
+                                threadLogs.stream(), logWithRangeBeforeStartScn.stream()).toList());
+                        if (missingSequence.isPresent()) {
+                            logException(String.format("Redo Thread %d is inconsistent; an archive log with sequence %d is not available",
+                                    threadId, missingSequence.get()));
+                            return false;
+                        }
                     }
 
                     // Reaching here means that the log set for mining have scn ranges that come after the startScn.
