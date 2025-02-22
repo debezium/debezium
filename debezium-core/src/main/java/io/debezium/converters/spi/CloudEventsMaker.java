@@ -52,7 +52,7 @@ public abstract class CloudEventsMaker {
          * CloudEvents OpenTelemetry attributes for distributed tracing (OPTIONAL)
          * The attributes are described <a href="https://github.com/cloudevents/spec/blob/main/cloudevents/extensions/distributed-tracing.md">here</a>
          */
-        public static final String TRACEPARENT = "traceparent";
+        public static final String TRACE_PARENT = "traceparent";
 
         /**
          * Event data
