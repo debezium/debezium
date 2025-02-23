@@ -129,8 +129,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     flushBufferWithRetries(collectionId, upsertBufferByTable.get(collectionId).flush());
                 }
 
-                Buffer tableIdBuffer = resolveBuffer(deleteBufferByTable, collectionId, record);
-                List<JdbcSinkRecord> toFlush = tableIdBuffer.add(record);
+                List<JdbcSinkRecord> toFlush = getRecordsToFlush(upsertBufferByTable, collectionId, record);
                 flushBufferWithRetries(collectionId, toFlush);
             }
             else {
@@ -140,18 +139,9 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     flushBufferWithRetries(collectionId, deleteBufferByTable.get(collectionId).flush());
                 }
 
-                Stopwatch updateBufferStopwatch = Stopwatch.reusable();
-                updateBufferStopwatch.start();
-
-                Buffer tableIdBuffer = resolveBuffer(upsertBufferByTable, collectionId, record);
-
-                List<JdbcSinkRecord> toFlush = tableIdBuffer.add(record);
-                updateBufferStopwatch.stop();
-
-                LOGGER.trace("[PERF] Update buffer execution time {}", updateBufferStopwatch.durations());
+                List<JdbcSinkRecord> toFlush = getRecordsToFlush(upsertBufferByTable, collectionId, record);
                 flushBufferWithRetries(collectionId, toFlush);
             }
-
         }
 
         flushBuffers(upsertBufferByTable);
@@ -165,13 +155,25 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         }
     }
 
-    private Buffer resolveBuffer(Map<CollectionId, Buffer> bufferMap, CollectionId collectionId, JdbcSinkRecord record) {
+    private List<JdbcSinkRecord> getRecordsToFlush(Map<CollectionId, Buffer> bufferMap, CollectionId collectionId, JdbcSinkRecord record) {
+        Stopwatch stopwatch = Stopwatch.reusable();
+        stopwatch.start();
+
+        Buffer buffer;
+
         if (config.isUseReductionBuffer() && !record.keyFieldNames().isEmpty()) {
-            return bufferMap.computeIfAbsent(collectionId, k -> new ReducedRecordBuffer(config));
+            buffer = bufferMap.computeIfAbsent(collectionId, k -> new ReducedRecordBuffer(config));
         }
         else {
-            return bufferMap.computeIfAbsent(collectionId, k -> new RecordBuffer(config));
+            buffer = bufferMap.computeIfAbsent(collectionId, k -> new RecordBuffer(config));
         }
+
+        List<JdbcSinkRecord> toFlush = buffer.add(record);
+        stopwatch.stop();
+
+        LOGGER.trace("[PERF] Resolve and add record execution time for collection '{}': {}", collectionId.name(), stopwatch.durations());
+
+        return toFlush;
     }
 
     private void flushBuffers(Map<CollectionId, Buffer> bufferByTable) {
