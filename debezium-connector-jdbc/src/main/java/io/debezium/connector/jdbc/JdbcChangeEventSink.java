@@ -129,7 +129,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     flushBufferWithRetries(collectionId, upsertBufferByTable.get(collectionId).flush());
                 }
 
-                List<JdbcSinkRecord> toFlush = getRecordsToFlush(upsertBufferByTable, collectionId, record);
+                List<JdbcSinkRecord> toFlush = getRecordsToFlush(deleteBufferByTable, collectionId, record);
                 flushBufferWithRetries(collectionId, toFlush);
             }
             else {
@@ -159,7 +159,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         Stopwatch stopwatch = Stopwatch.reusable();
         stopwatch.start();
 
-        Buffer buffer;
+        final Buffer buffer;
 
         if (config.isUseReductionBuffer() && !record.keyFieldNames().isEmpty()) {
             buffer = bufferMap.computeIfAbsent(collectionId, k -> new ReducedRecordBuffer(config));
