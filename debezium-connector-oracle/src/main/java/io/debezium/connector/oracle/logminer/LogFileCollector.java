@@ -283,6 +283,8 @@ public class LogFileCollector {
                     else {
                         // Collects all archive logs for a given redo thread and returns the first archive log
                         // with an SCN range that comes immediately before the log with a range that includes the startScn.
+                        // As the query is specific to a singular archive log destination, there should always either
+                        // be one log or no log at all that matches this criteria.
                         final Optional<LogFile> logWithRangeBeforeStartScn = allThreadArchiveLogs.stream()
                                 .filter(l -> l.getFirstScn().compareTo(startScn) < 0 && !l.isScnInLogFileRange(startScn))
                                 .findFirst();
