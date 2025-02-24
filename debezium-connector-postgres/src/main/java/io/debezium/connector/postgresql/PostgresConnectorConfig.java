@@ -1086,13 +1086,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(PostgresSourceInfoStructMaker.class.getName());
 
-    public static final Field TASK_ID = Field.create("task.id")
-            .withDisplayName("ID of the connector task")
-            .withType(Type.INT)
-            .withDefault(0)
-            .withImportance(Importance.LOW)
-            .withDescription("Internal use only");
-
     public static final Field PRIMARY_KEY_HASH_COLUMNS = Field.create("primary.key.hash.columns")
             .withDisplayName("Comma separated primary key fields")
             .withType(Type.STRING)
@@ -1243,10 +1236,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public boolean isFlushLsnOnSource() {
         return flushLsnOnSource;
-    }
-
-    public int taskId() {
-        return getConfig().getInteger(TASK_ID);
     }
 
     public String primaryKeyHashColumns() {

@@ -27,14 +27,14 @@ rules:
     help: "Kafka $1 JMX metric type $2"
     type: GAUGE
   # Add other rules similarly...
-  - pattern: "debezium.([^:]+)<type=connector-metrics, server=([^,]+), task=([^,]+), context=([^>]+)>([^:]+)"
+  - pattern: "debezium.([^:]+)<type=connector-metrics, server=([^,]+), task=([^,]+), context=([^>]+), partition=([^>]+)>([^:]+)"
     name: "debezium_metrics_$6"
     labels:
       plugin: "$1"
       name: "$2"
       task: "$3"
       context: "$4"
-      database: "$5"
+      partition: "$5"
   - pattern: "debezium.([^:]+)<type=connector-metrics, server=([^,]+), task=([^,]+), context=([^>]+)>([^:]+)"
     name: "debezium_metrics_$5"
     labels:

@@ -112,7 +112,7 @@ public class YugabyteDBConnector extends RelationalBaseSourceConnector {
         for (int i = 0; i < maxTasks; ++i) {
             Map<String, String> taskProps = new HashMap<>(this.props);
 
-            taskProps.put(PostgresConnectorConfig.TASK_ID.name(), String.valueOf(i));
+            taskProps.put(PostgresConnectorConfig.TASK_ID, String.valueOf(i));
 
             long lowerBound = i * rangeSize;
             long upperBound = (i == maxTasks - 1) ? upperBoundExclusive - 1 : (lowerBound + rangeSize - 1);

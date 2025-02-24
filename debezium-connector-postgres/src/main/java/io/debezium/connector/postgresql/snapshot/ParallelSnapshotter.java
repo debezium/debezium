@@ -20,7 +20,7 @@ public class ParallelSnapshotter extends QueryingSnapshotter {
         super.init(config, sourceInfo, slotState);
         this.sourceInfo = sourceInfo;
 
-        LOGGER.info("Initialised ParallelSnapshotter for task {}", config.taskId());
+        LOGGER.info("Initialised ParallelSnapshotter for task {}", config.getTaskId());
     }
 
     @Override

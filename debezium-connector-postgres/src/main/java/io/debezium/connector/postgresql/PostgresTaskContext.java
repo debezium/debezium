@@ -52,8 +52,8 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
         this.schema = schema;
     }
 
-    protected PostgresTaskContext(PostgresConnectorConfig config, PostgresSchema schema, TopicNamingStrategy<TableId> topicNamingStrategy, int taskId) {
-        super(config.getContextName(), config.getLogicalName(), String.valueOf(taskId), config.getCustomMetricTags(), Collections::emptySet);
+    protected PostgresTaskContext(PostgresConnectorConfig config, PostgresSchema schema, TopicNamingStrategy<TableId> topicNamingStrategy, String taskId) {
+        super(config.getContextName(), config.getLogicalName(), taskId, config.getCustomMetricTags(), Collections::emptySet);
 
         this.config = config;
         if (config.xminFetchInterval().toMillis() > 0) {

@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import io.debezium.connector.postgresql.metrics.YugabyteDBMetricsFactory;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -123,9 +124,10 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
             final PostgresValueConverter valueConverter = valueConverterBuilder.build(typeRegistry);
 
             schema = new PostgresSchema(connectorConfig, defaultValueConverter, topicNamingStrategy, valueConverter);
-            this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicNamingStrategy, connectorConfig.taskId());
+            this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicNamingStrategy, connectorConfig.getTaskId());
+            final PostgresPartition.Provider partitionProvider = new PostgresPartition.Provider(connectorConfig, config);
             final Offsets<PostgresPartition, PostgresOffsetContext> previousOffsets = getPreviousOffsets(
-                    new PostgresPartition.Provider(connectorConfig, config), new PostgresOffsetContext.Loader(connectorConfig));
+                    partitionProvider, new PostgresOffsetContext.Loader(connectorConfig));
             final Clock clock = Clock.system();
             final PostgresOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
@@ -255,7 +257,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                                 replicationConnection,
                                 slotCreatedInfo,
                                 slotInfo),
-                        new DefaultChangeEventSourceMetricsFactory<>(),
+                        new YugabyteDBMetricsFactory(partitionProvider.getPartitions()),
                         dispatcher,
                         schema,
                         snapshotter,
