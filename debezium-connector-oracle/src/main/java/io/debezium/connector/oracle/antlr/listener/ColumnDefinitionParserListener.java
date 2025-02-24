@@ -68,11 +68,6 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
 
     @Override
     public void enterModify_col_properties(PlSqlParser.Modify_col_propertiesContext ctx) {
-        // Scale should always get unset
-        // It should be parsed by the data type resolver, if its applicable
-        // This standardizes the handling of scale when data types shift from one to another
-        columnEditor.unsetScale();
-
         resolveColumnDataType(ctx);
         if (ctx.DEFAULT() != null) {
             columnEditor.defaultValueExpression(ctx.column_default_value().getText());
@@ -117,6 +112,11 @@ public class ColumnDefinitionParserListener extends BaseParserListener {
         if (ctx == null) {
             return;
         }
+
+        // Scale should always get unset
+        // It should be parsed by the data type resolver, if its applicable
+        // This standardizes the handling of scale when data types shift from one to another
+        columnEditor.unsetScale();
 
         if (ctx.native_datatype_element() != null) {
             PlSqlParser.Precision_partContext precisionPart = ctx.precision_part();
