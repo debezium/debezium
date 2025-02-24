@@ -434,6 +434,36 @@ public class OracleDdlParserTest {
         assertThat(table.columns().size()).isEqualTo(2);
     }
 
+    @Test
+    @FixFor("DBZ-8700")
+    public void shouldNotResetColumnScaleWhenColumnTypeIsNotChanged() throws Exception {
+        parser.setCurrentDatabase(PDB_NAME);
+        parser.setCurrentSchema("SCOTT");
+
+        String SQL = "CREATE TABLE \"SCOTT\".\"TEST\" (id NUMBER(4) PRIMARY KEY, name VARCHAR2(20), a_number_20 NUMBER(20))";
+        parser.parse(SQL, tables);
+
+        DdlChanges changes = parser.getDdlChanges();
+        List<DdlParserListener.EventType> eventTypes = getEventTypesFromChanges(changes);
+        assertThat(eventTypes).containsExactly(DdlParserListener.EventType.CREATE_TABLE);
+
+        Table table = tables.forTable(new TableId(PDB_NAME, "SCOTT", "TEST"));
+        assertThat(table.columnWithName("A_NUMBER_20").length()).isEqualTo(20);
+        assertThat(table.columnWithName("A_NUMBER_20").scale().orElse(null)).isEqualTo(0);
+        changes.reset();
+
+        SQL = "ALTER TABLE \"SCOTT\".\"TEST\" MODIFY A_NUMBER_20 DEFAULT 1;";
+        parser.parse(SQL, tables);
+
+        changes = parser.getDdlChanges();
+        eventTypes = getEventTypesFromChanges(changes);
+        assertThat(eventTypes).containsExactly(DdlParserListener.EventType.ALTER_TABLE);
+
+        table = tables.forTable(new TableId(PDB_NAME, "SCOTT", "TEST"));
+        assertThat(table.columnWithName("A_NUMBER_20").length()).isEqualTo(20);
+        assertThat(table.columnWithName("A_NUMBER_20").scale().orElse(null)).isEqualTo(0);
+    }
+
     private List<DdlParserListener.EventType> getEventTypesFromChanges(DdlChanges changes) {
         List<DdlParserListener.EventType> eventTypes = new ArrayList<>();
         changes.getEventsByDatabase((String dbName, List<DdlParserListener.Event> events) -> {
