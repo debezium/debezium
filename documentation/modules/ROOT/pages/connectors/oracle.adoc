@@ -3951,7 +3951,7 @@ This also enables tracking DDL changes against captured tables, so if the schema
 This allows LogMiner to mine substantially faster but at the expense that DDL changes cannot be tracked.
 If the captured table(s) schema changes infrequently or never, this is the ideal choice.
 
-`hybrid`:: Uses a combination of the database's current data dictionary and the {prodname} in-memory schema model to resole table and column names seamlessly.
+`hybrid`:: Uses a combination of the database's current data dictionary and the {prodname} in-memory schema model to resolve table and column names seamlessly.
 This mode performs at the level of the `online_catalog` LogMiner strategy with the schema tracking resilience of the `redo_log_catalog` strategy while not incurring the overhead of archive log generation and performance costs of the `redo_log_catalog` strategy.
 
 |[[oracle-property-log-mining-query-filter-mode]]<<oracle-property-log-mining-query-filter-mode, `+log.mining.query.filter.mode+`>>
