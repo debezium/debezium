@@ -125,6 +125,7 @@ alter user if exists 'user'@'%' identified with 'mysql_native_password' as '*247
     require none password expire default account unlock password history default;
 rename user user1@100.200.1.1 to user2@100.200.1.2;
 rename user user1@100.200.1.1 to user2@2001:0db8:85a3:0000:0000:8a2e:0370:7334;
+ALTER USER 'user'@'localhost' WITH MAX_USER_CONNECTIONS 100 MAX_STATEMENT_TIME 30
 #end
 ALTER TABLE t1 ADD PARTITION (PARTITION p3 VALUES LESS THAN (2002));
 ALTER TABLE t1 ADD PARTITION IF NOT EXISTS (PARTITION p3 VALUES LESS THAN (2002));
