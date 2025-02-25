@@ -3266,6 +3266,40 @@ For non-CDB installation, do *not* specify the `database.pdb.name` property.
 ----
 
 endif::community[]
+
+[[using-mtls-secure-connections]]
+=== Using mTLS secure connections
+
+When connecting to Oracle using mutual TLS authentication (mTLS), this involves both the connector and the database service proving their identities.
+The {prodname} for Oracle connector relies on the Oracle JDBC driver's built-in functionality to support mTLS authentication.
+
+.Prerequisites
+* Verify Oracle Wallet is configured on the Oracle database server with your database administrators
+* Locate the `oraclepki.jar` inside the Oracle JDBC driver archive
+
+.Procedure
+* Install `oraclepki.jar` in the same location where ${prodname} Debezium Oracle connector jars exist.
+If you have downloaded and installed the Oracle JDBC driver, the same location is where you would also place `oraclepki.jar`.
+* Use the `database.url` configuration property rather than `database.hostname` to configure the connector.
+By using `database.url`, a TNS-based configuration is provided to interact with Oracle Wallet.
+A sample configuration is shown below.
+* Set the Oracle JDBC driver property `oracle.net.wallet_location` to explicitly set the Oracle Wallet configuration to be used by the Oracle JDBC driver.
+
+.Example mTLS configuration
+[source,json]
+----
+{
+  "database.url": "jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCPS)(PORT=xxxx)(HOST=xx.xx.xx.xx))(CONNECT_DATA=(SID=xxxx)))",
+  "driver.oracle.net.wallet_location": "(SOURCE=(METHOD=file)(METHOD_DATA=(DIRECTORY=/opt/kafka/external-configuration/oracle_wallet/)))"
+}
+----
+
+[WARNING]
+====
+Be sure that you set the correct host, port, and service identifier (sid) in the `database.url`.
+Additionally, be sure that the directory in the `driver.oracle.net.wallet_location` is readable.
+====
+
 ifdef::product[]
 // Type: procedure
 [id="verifying-that-the-debezium-oracle-connector-is-running"]
