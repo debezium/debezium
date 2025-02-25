@@ -848,19 +848,6 @@ node('release-node') {
                 }
             }
         }
-
-        stage('Debezium Platform stage') {
-            if (!DRY_RUN) {
-                dir(PLATFORM_STAGE_DIR) {
-                    withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
-                        sh "git tag -f $VERSION_TAG && git push \"https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${UI_REPOSITORY}\" $VERSION_TAG"
-                    }
-                }
-            }
-        }
-
-
-
     }
 
     mail to: MAIL_TO, subject: "${JOB_NAME} run #${BUILD_NUMBER} finished with ${currentBuild.currentResult}", body: "Run ${BUILD_URL} finished with result: ${currentBuild.currentResult}"
