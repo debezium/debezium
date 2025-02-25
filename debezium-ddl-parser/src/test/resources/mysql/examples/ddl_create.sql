@@ -409,6 +409,38 @@ create trigger trg_my1 before delete on test.t1 for each row begin insert into l
 -- Create trigger 7
 -- delimiter //
 CREATE TRIGGER IF NOT EXISTS `my_trigger` BEFORE INSERT ON `my_table` FOR EACH ROW BEGIN SET NEW.my_col = CONCAT(NEW.mycol, NEW.id); END; -- //-- delimiter ;
+#end
+#begin
+-- Create trigger 8
+CREATE DEFINER='bcadmin'@'%' TRIGGER `host_id_constraint` BEFORE INSERT ON `host` FOR EACH ROW begin
+  declare next_id int;
+  declare max_id int;
+  declare error_msg varchar(100);
+
+  set max_id = power(2, 9)-1;
+  set next_id = null;
+
+  select min(st.value) into next_id
+  from SEQUENCE_TABLE(max_id+1) st
+  left join host h on h.id=st.value
+  where st.value > 0
+  and h.id is null;
+
+  if isnull(next_id)
+  then
+    set error_msg = concat('no free ids in range [1, ', cast(max_id as char), ']');
+    signal sqlstate '45000' set MESSAGE_TEXT = error_msg;
+  end if;
+
+  if next_id > max_id
+  then
+    set erroR_msg = concat('next id too high to insert: next_id=', cast(next_id as char), ' max_id=', cast(max_id as char));
+    signal sqlstate '45000' set MESSAGE_TEXT = error_msg;
+  end if;
+
+  set NEW.id = next_id;
+END
+#end
 -- Create view
 create or replace view my_view1 as select 1 union select 2 limit 0,5;
 create algorithm = merge view my_view2(col1, col2) as select * from t2 with check option;
