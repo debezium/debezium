@@ -56,7 +56,7 @@ sqlStatement
     ;
 
 setStatementFor // setStatementFor is MariaDB-specific only
-    : SET STATEMENT ID EQUAL_SYMBOL constant (COMMA ID EQUAL_SYMBOL constant)* FOR
+    : SET STATEMENT simpleId EQUAL_SYMBOL constant (COMMA ID EQUAL_SYMBOL constant)* FOR
     ;
 
 emptyStatement_
@@ -1650,6 +1650,7 @@ userResourceOption
     | MAX_UPDATES_PER_HOUR decimalLiteral
     | MAX_CONNECTIONS_PER_HOUR decimalLiteral
     | MAX_USER_CONNECTIONS decimalLiteral
+    | MAX_STATEMENT_TIME decimalLiteral
     ;
 
 userPasswordOption
@@ -3005,6 +3006,7 @@ keywordsCanBeId
     | MAX
     | MAX_ROWS
     | MAX_SIZE
+    | MAX_STATEMENT_TIME
     | MAX_UPDATES_PER_HOUR
     | MAX_USER_CONNECTIONS
     | MEDIUM
