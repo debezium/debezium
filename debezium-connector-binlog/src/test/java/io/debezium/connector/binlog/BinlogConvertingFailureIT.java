@@ -101,7 +101,8 @@ public abstract class BinlogConvertingFailureIT<C extends SourceConnector> exten
         }
 
         waitForConnectorShutdown(getConnectorName(), DATABASE.getServerName());
-        stopConnector();
+        waitForEngineShutdown();
+        cleanupTestFwkState();
 
         final Throwable e = exception.get();
         if (e == null) {
