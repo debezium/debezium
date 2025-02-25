@@ -88,12 +88,6 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 continue;
             }
 
-            if (record.isTombstone()) {
-                // Skip only Debezium Envelope tombstone not the one produced by ExtractNewRecordState SMT
-                LOGGER.debug("Skipping tombstone record {}", record);
-                continue;
-            }
-
             final CollectionId collectionId = optionalCollectionId.get();
 
             if (record.isTruncate()) {
@@ -116,7 +110,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 }
             }
 
-            if (record.isDelete()) {
+            if (record.isDelete() || record.isTombstone()) {
                 if (!config.isDeleteEnabled()) {
                     LOGGER.debug("Deletes are not enabled, skipping delete for topic '{}'", record.topicName());
                     continue;
