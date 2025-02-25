@@ -165,6 +165,26 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                 else {
                     LOGGER.info("Found previous offset {}", previousOffset);
                     snapshotter.init(connectorConfig, previousOffset.asOffsetState(), slotInfo);
+
+                    // If previous offset is present that means that the connector is being restarted.
+                    if (snapshotter.shouldSnapshot() && connectorConfig.streamingMode().isParallel()) {
+                        // Drop existing slot so that a new slot can be created.
+                        LOGGER.info("Dropping existing replication slot '{}' since task restarted before snapshot was completed", connectorConfig.slotName());
+                        jdbcConnection.execute(String.format("SELECT * FROM pg_drop_replication_slot('%s')", connectorConfig.slotName()));
+
+                        // Set slotInfo to null so that slot can be created again.
+                        slotInfo = null;
+                    }
+                }
+
+                // TODO Vaibhav: Read more in https://issues.redhat.com/browse/DBZ-2118
+                if (connectorConfig.streamingMode().isParallel()) {
+                    try {
+                        jdbcConnection.commit();
+                    }
+                    catch (SQLException e) {
+                        throw new DebeziumException(e);
+                    }
                 }
 
                 SlotCreationResult slotCreatedInfo = null;
@@ -191,11 +211,14 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     }
                 }
 
-                try {
-                    jdbcConnection.commit();
-                }
-                catch (SQLException e) {
-                    throw new DebeziumException(e);
+                // TODO Vaibhav: Read more in https://issues.redhat.com/browse/DBZ-2118
+                if (!connectorConfig.streamingMode().isParallel()) {
+                    try {
+                        jdbcConnection.commit();
+                    }
+                    catch (SQLException e) {
+                        throw new DebeziumException(e);
+                    }
                 }
 
                 final PostgresEventMetadataProvider metadataProvider = new PostgresEventMetadataProvider();

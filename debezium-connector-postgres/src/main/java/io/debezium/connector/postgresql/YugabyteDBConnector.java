@@ -41,6 +41,7 @@ public class YugabyteDBConnector extends RelationalBaseSourceConnector {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(YugabyteDBConnector.class);
     private Map<String, String> props;
+    private PostgresConnectorConfig connectorConfig;
 
     public YugabyteDBConnector() {
     }
@@ -58,6 +59,39 @@ public class YugabyteDBConnector extends RelationalBaseSourceConnector {
     @Override
     public void start(Map<String, String> props) {
         this.props = props;
+        this.connectorConfig = new PostgresConnectorConfig(Configuration.from(props));
+    }
+
+    protected List<Map<String, String>> getTaskConfigsForParallelStreaming(List<String> slotNames,
+                                                                           List<String> publicationNames,
+                                                                           List<String> slotRanges) {
+        List<Map<String, String>> taskConfigs = new ArrayList<>();
+
+        if (connectorConfig.getSnapshotter().shouldSnapshot()) {
+            props.put(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE.name(), props.get(PostgresConnectorConfig.TABLE_INCLUDE_LIST.name()));
+        }
+
+        for (int i = 0; i < slotNames.size(); ++i) {
+            Map<String, String> taskProps = new HashMap<>(this.props);
+
+            taskProps.put(PostgresConnectorConfig.TASK_ID, String.valueOf(i));
+            taskProps.put(PostgresConnectorConfig.SLOT_NAME.name(), slotNames.get(i));
+            taskProps.put(PostgresConnectorConfig.PUBLICATION_NAME.name(), publicationNames.get(i));
+            taskProps.put(PostgresConnectorConfig.STREAM_PARAMS.name(), "hash_range=" + slotRanges.get(i));
+
+            if (connectorConfig.getSnapshotter().shouldSnapshot()) {
+                String[] splitRange = slotRanges.get(i).split(",");
+                String query = getParallelSnapshotQuery(splitRange[0], splitRange[1]);
+                taskProps.put(
+                    PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE.name() + "." + taskProps.get(PostgresConnectorConfig.TABLE_INCLUDE_LIST.name()),
+                    query
+                );
+            }
+
+            taskConfigs.add(taskProps);
+        }
+
+        return taskConfigs;
     }
 
     @Override
@@ -66,14 +100,33 @@ public class YugabyteDBConnector extends RelationalBaseSourceConnector {
             return Collections.emptyList();
         }
 
+        final String tableIncludeList = props.get(PostgresConnectorConfig.TABLE_INCLUDE_LIST.name());
+
+        if (connectorConfig.streamingMode().isParallel()) {
+            LOGGER.info("Initialising parallel streaming mode");
+
+            // Validate for a single table.
+            validateSingleTableProvided(tableIncludeList, false /* isSnapshot */);
+
+            List<String> slotNames = connectorConfig.getSlotNames();
+            List<String> publicationNames = connectorConfig.getPublicationNames();
+            List<String> slotRanges = connectorConfig.getSlotRanges();
+
+            YBValidate.slotAndPublicationsAreEqual(slotNames, publicationNames);
+            YBValidate.slotRangesMatchSlotNames(slotNames, slotRanges);
+            YBValidate.completeRangesProvided(slotRanges);
+
+            return getTaskConfigsForParallelStreaming(slotNames, publicationNames, slotRanges);
+        }
+
+        // TODO Vaibhav (#26106): The following code block is not needed now, remove in a separate PR.
         if (props.containsKey(PostgresConnectorConfig.SNAPSHOT_MODE.name())
                 && props.get(PostgresConnectorConfig.SNAPSHOT_MODE.name())
                     .equalsIgnoreCase(PostgresConnectorConfig.SnapshotMode.PARALLEL.getValue())) {
             LOGGER.info("Initialising parallel snapshot consumption");
 
-            final String tableIncludeList = props.get(PostgresConnectorConfig.TABLE_INCLUDE_LIST.name());
             // Perform basic validations.
-            validateSingleTableProvidedForParallelSnapshot(tableIncludeList);
+            validateSingleTableProvided(tableIncludeList, true);
 
             // Publication auto create mode should not be for all tables.
             if (props.containsKey(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE.name())
@@ -94,15 +147,16 @@ public class YugabyteDBConnector extends RelationalBaseSourceConnector {
         return props == null ? Collections.emptyList() : Collections.singletonList(new HashMap<>(props));
     }
 
-    protected void validateSingleTableProvidedForParallelSnapshot(String tableIncludeList) throws DebeziumException {
+    protected void validateSingleTableProvided(String tableIncludeList, boolean isSnapshot) throws DebeziumException {
         if (tableIncludeList == null) {
             throw new DebeziumException("No table provided, provide a table in the table.include.list");
         } else if (tableIncludeList.contains(",")) {
             // This might indicate the presence of multiple tables in the include list, we do not want that.
-            throw new DebeziumException("parallel snapshot consumption is only supported with one table at a time");
+            throw new DebeziumException("parallel " + (isSnapshot ? "snapshot" : "streaming") + " consumption is only supported with one table at a time");
         }
     }
 
+    // TODO Vaibhav (#26106): This method needs to be removed.
     protected List<Map<String, String>> getConfigForParallelSnapshotConsumption(int maxTasks) {
         List<Map<String, String>> taskConfigs = new ArrayList<>();
 
@@ -135,6 +189,14 @@ public class YugabyteDBConnector extends RelationalBaseSourceConnector {
                     props.get(PostgresConnectorConfig.TABLE_INCLUDE_LIST.name()),
                     props.get(PostgresConnectorConfig.PRIMARY_KEY_HASH_COLUMNS.name()), lowerBound,
                     props.get(PostgresConnectorConfig.PRIMARY_KEY_HASH_COLUMNS.name()), upperBound);
+    }
+
+    // TODO Vaibhav (#26106): This is a copy of existing method, remove the older method in a separate PR.
+    protected String getParallelSnapshotQuery(String lowerBound, String upperBound) {
+        return String.format("SELECT * FROM %s WHERE yb_hash_code(%s) >= %s AND yb_hash_code(%s) < %s",
+                props.get(PostgresConnectorConfig.TABLE_INCLUDE_LIST.name()),
+                props.get(PostgresConnectorConfig.PRIMARY_KEY_HASH_COLUMNS.name()), lowerBound,
+                props.get(PostgresConnectorConfig.PRIMARY_KEY_HASH_COLUMNS.name()), upperBound);
     }
 
     @Override

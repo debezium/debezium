@@ -48,6 +48,11 @@ public class Pair<A, B> {
     }
   }
 
+  @Override
+  public String toString() {
+    return String.format("%s,%s", first.toString(), second.toString());
+  }
+
   public int hashCode() {
     return Objects.hashCode(new Object[]{this.first, this.second});
   }

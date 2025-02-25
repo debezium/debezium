@@ -381,6 +381,39 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         }
     }
 
+    public enum StreamingMode implements EnumeratedValue {
+        DEFAULT("DEFAULT") {
+            @Override
+            public boolean isParallel() {
+                return false;
+            }
+        },
+        PARALLEL("PARALLEL") {
+            @Override
+            public boolean isParallel() {
+                return true;
+            }
+        };
+
+
+        private final String streamingMode;
+
+        StreamingMode(String streamingMode) {
+            this.streamingMode = streamingMode;
+        }
+
+        public static StreamingMode parse(String s) {
+            return valueOf(s.trim().toUpperCase());
+        }
+
+        @Override
+        public String getValue() {
+            return streamingMode;
+        }
+
+        public abstract boolean isParallel();
+    }
+
     public enum LsnType implements EnumeratedValue {
         SEQUENCE("SEQUENCE") {
             @Override
@@ -695,6 +728,31 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withImportance(Importance.LOW)
             .withDescription("Whether or not to take a consistent snapshot of the tables." +
                            "Disabling this option may result in duplication of some already snapshot data in the streaming phase.");
+
+    public static final Field STREAMING_MODE = Field.create("streaming.mode")
+            .withDisplayName("Streaming mode")
+            .withType(Type.STRING)
+            .withImportance(Importance.LOW)
+            .withEnum(StreamingMode.class, StreamingMode.DEFAULT)
+            .withDescription("Streaming mode the connector should follow");
+
+    public static final Field SLOT_NAMES = Field.create("slot.names")
+            .withDisplayName("Slot names for parallel consumption")
+            .withImportance(Importance.LOW)
+            .withDescription("Comma separated values for multiple slot names")
+            .withValidation(PostgresConnectorConfig::validateUsageWithParallelStreamingMode);
+
+    public static final Field PUBLICATION_NAMES = Field.create("publication.names")
+            .withDisplayName("Publication names for parallel consumption")
+            .withImportance(Importance.LOW)
+            .withDescription("Comma separated values for multiple publication names")
+            .withValidation(PostgresConnectorConfig::validateUsageWithParallelStreamingMode);
+
+    public static final Field SLOT_RANGES = Field.create("slot.ranges")
+            .withDisplayName("Ranges on which a slot is supposed to operate")
+            .withImportance(Importance.LOW)
+            .withDescription("Semi-colon separated values for hash ranges to be polled by tasks.")
+            .withValidation(PostgresConnectorConfig::validateUsageWithParallelStreamingMode);
 
     public static final Field YB_LOAD_BALANCE_CONNECTIONS = Field.create("yb.load.balance.connections")
             .withDisplayName("YB load balance connections")
@@ -1153,6 +1211,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return LsnType.parse(getConfig().getString(SLOT_LSN_TYPE));
     }
 
+    public StreamingMode streamingMode() {
+        return StreamingMode.parse(getConfig().getString(STREAMING_MODE));
+    }
+
     protected boolean dropSlotOnStop() {
         if (getConfig().hasKey(DROP_SLOT_ON_STOP.name())) {
             return getConfig().getBoolean(DROP_SLOT_ON_STOP);
@@ -1242,6 +1304,18 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return getConfig().getString(PRIMARY_KEY_HASH_COLUMNS);
     }
 
+    public List<String> getSlotNames() {
+        return List.of(getConfig().getString(SLOT_NAMES).trim().split(","));
+    }
+
+    public List<String> getPublicationNames() {
+        return List.of(getConfig().getString(PUBLICATION_NAMES).trim().split(","));
+    }
+
+    public List<String> getSlotRanges() {
+        return List.of(getConfig().getString(SLOT_RANGES).trim().split(";"));
+    }
+
     @Override
     public byte[] getUnavailableValuePlaceholder() {
         String placeholder = getConfig().getString(UNAVAILABLE_VALUE_PLACEHOLDER);
@@ -1326,7 +1400,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     UNAVAILABLE_VALUE_PLACEHOLDER,
                     LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST,
-                    LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST)
+                    LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST,
+                    STREAMING_MODE,
+                    SLOT_NAMES,
+                    PUBLICATION_NAMES,
+                    SLOT_RANGES)
             .excluding(INCLUDE_SCHEMA_CHANGES)
             .create();
 
@@ -1503,5 +1581,15 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         return problemCount;
     }
 
+    protected static int validateUsageWithParallelStreamingMode(Configuration config, Field field, Field.ValidationOutput problems) {
+        String mode = config.getString(STREAMING_MODE);
+        int problemCount = 0;
 
+        if (!StreamingMode.parse(mode).isParallel()) {
+            problems.accept(field, config.getString(field), "Configuration is only valid with parallel streaming mode");
+            ++problemCount;
+        }
+
+        return problemCount;
+    }
 }
