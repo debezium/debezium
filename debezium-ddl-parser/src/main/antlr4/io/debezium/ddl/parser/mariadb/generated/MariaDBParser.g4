@@ -743,6 +743,7 @@ alterSpecification
     | DROP indexFormat = (INDEX | KEY) ifExists? uid                      # alterByDropIndex // here ifExists is MariaDB-specific only
     | RENAME indexFormat = (INDEX | KEY) uid TO uid                       # alterByRenameIndex
     | ALTER INDEX uid (VISIBLE | INVISIBLE)                               # alterByAlterIndexVisibility
+    | ALTER (KEY | INDEX) ifExists? uid NOT? IGNORED                      # alterByAlterIndexIgnore // MariaDB-specific only
     | DROP FOREIGN KEY ifExists? uid dottedId?                            # alterByDropForeignKey // here ifExists is MariaDB-specific only
     | DISABLE KEYS                                                        # alterByDisableKeys
     | ENABLE KEYS                                                         # alterByEnableKeys
