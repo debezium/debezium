@@ -32,6 +32,11 @@ alter table add_test add index if not exists ix_add_test_col1 using btree (col1)
 alter table add_test add index if not exists ix_add_test_col4 using btree (col4) comment 'test index';
 alter table add_test alter index ix_add_test_col1 invisible;
 alter table add_test alter index ix_add_test_col1 visible;
+alter table add_test alter index if exists ix_add_test_col1 ignored;
+alter table add_test alter index ix_add_test_col1 ignored;
+alter table add_test alter index ix_add_test_col1 not ignored;
+alter table add_test alter key if exists fk ignored;
+alter table add_test alter key if exists fk not ignored;
 alter table add_test change column if exists col8 col9 tinyint;
 alter table add_test change column if exists col3 col5 tinyint;
 alter table add_test modify column if exists col9 tinyint;
