@@ -799,7 +799,7 @@ public interface Configuration {
     static Configuration from(Properties properties) {
         Properties props = new Properties();
         if (properties != null) {
-            props.putAll(properties);
+            properties.stringPropertyNames().forEach(key -> props.setProperty(key.trim(), properties.getProperty(key)));
         }
         return new Configuration() {
             @Override
