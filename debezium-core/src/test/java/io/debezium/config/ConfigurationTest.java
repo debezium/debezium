@@ -59,6 +59,14 @@ public class ConfigurationTest {
         assertThat(config.getBoolean("1")).isNull(); // not a boolean
     }
 
+    @Test
+    public void shouldTrimWhenConvertingFromProperties() {
+        Properties props = new Properties();
+        props.setProperty("A ", "a");
+        config = Configuration.from(props);
+        assertThat(config.getString("A")).isEqualTo("a");
+    }
+
     /**
      * Test verifying that a Configuration object cannot be modified after creation.
      */
