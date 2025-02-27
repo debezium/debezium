@@ -9,17 +9,9 @@ package io.debezium.connector.postgresql.connection;
 import static java.lang.Math.toIntExact;
 
 import java.nio.ByteBuffer;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.SQLWarning;
-import java.sql.Statement;
+import java.sql.*;
 import java.time.Duration;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -154,59 +146,115 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 conn.setAutoCommit(false);
 
                 String selectPublication = String.format("SELECT puballtables FROM pg_publication WHERE pubname = '%s'", publicationName);
-                try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(selectPublication)) {
-                    if (!rs.next()) {
-                        // Close eagerly as the transaction might stay running
-                        LOGGER.info("Creating new publication '{}' for plugin '{}'", publicationName, plugin);
-                        switch (publicationAutocreateMode) {
-                            case DISABLED:
-                                throw new ConnectException("Publication autocreation is disabled, please create one and restart the connector.");
-                            case ALL_TABLES:
-                                String createPublicationStmt = String.format("CREATE PUBLICATION %s FOR ALL TABLES;", publicationName);
-                                LOGGER.info("Creating Publication with statement '{}'", createPublicationStmt);
-                                // Publication doesn't exist, create it.
-                                stmt.execute(createPublicationStmt);
-                                break;
-                            case FILTERED:
-                                createOrUpdatePublicationModeFilterted(stmt, false);
-                                break;
-                        }
-                    }
-                    else {
-                        switch (publicationAutocreateMode) {
-                            case FILTERED:
-                                // Checking that publication can be altered
-                                Boolean allTables = rs.getBoolean(1);
-                                if (allTables) {
-                                    throw new DebeziumException(String.format(
-                                            "A logical publication for all tables named '%s' for plugin '%s' and database '%s' " +
-                                                    "is already active on the server and can not be altered. " +
-                                                    "If you need to exclude some tables or include only specific subset, " +
-                                                    "please recreate the publication with necessary configuration " +
-                                                    "or let plugin recreate it by dropping existing publication. " +
-                                                    "Otherwise please change the 'publication.autocreate.mode' property to 'all_tables'.",
-                                            publicationName, plugin, database()));
-                                }
-                                else {
-                                    createOrUpdatePublicationModeFilterted(stmt, true);
-                                }
-                                break;
-                            default:
-                                LOGGER.trace(
-                                        "A logical publication named '{}' for plugin '{}' and database '{}' is already active on the server " +
-                                                "and will be used by the plugin",
-                                        publicationName, plugin, database());
+                try (Statement stmt = conn.createStatement()) {
+                    boolean isOnlyRead = isReadOnlyDb(stmt);
+                    try (ResultSet rs = stmt.executeQuery(selectPublication)) {
+                        if (!rs.next()) {
+                            // Close eagerly as the transaction might stay running
+                            LOGGER.info("Creating new publication '{}' for plugin '{}'", publicationName, plugin);
+                            switch (publicationAutocreateMode) {
+                                case DISABLED:
+                                    throw new ConnectException("Publication autocreation is disabled, please create one and restart the connector.");
+                                case ALL_TABLES:
+                                    String createPublicationStmt = String.format("CREATE PUBLICATION %s FOR ALL TABLES;", publicationName);
+                                    LOGGER.info("Creating Publication with statement '{}'", createPublicationStmt);
+                                    // Publication doesn't exist, create it.
+                                    if (!isOnlyRead) {
+                                        stmt.execute(createPublicationStmt);
+                                    } else {
+                                        LOGGER.info("Server in standBy mode, skip create statement");
+                                    }
+                                    break;
+                                case FILTERED:
+                                    if (isOnlyRead) {
+                                        LOGGER.info("Checking is database replication up to date");
+                                        validatePublications(stmt);
+                                    } else {
+                                        createOrUpdatePublicationModeFilterted(stmt, true);
+                                    }
+                                    break;
+                            }
+                        } else {
+                            switch (publicationAutocreateMode) {
+                                case FILTERED:
+                                    // Checking that publication can be altered
+                                    Boolean allTables = rs.getBoolean(1);
+                                    if (allTables) {
+                                        throw new DebeziumException(String.format(
+                                                "A logical publication for all tables named '%s' for plugin '%s' and database '%s' " +
+                                                        "is already active on the server and can not be altered. " +
+                                                        "If you need to exclude some tables or include only specific subset, " +
+                                                        "please recreate the publication with necessary configuration " +
+                                                        "or let plugin recreate it by dropping existing publication. " +
+                                                        "Otherwise please change the 'publication.autocreate.mode' property to 'all_tables'.",
+                                                publicationName, plugin, database()));
+                                    } else {
+                                        if (isOnlyRead) {
+                                            LOGGER.info("Checking is database replication up to date");
+                                            validatePublications(stmt);
+                                        } else {
+                                            createOrUpdatePublicationModeFilterted(stmt, true);
+                                        }
+                                    }
+                                    break;
+                                default:
+                                    LOGGER.trace(
+                                            "A logical publication named '{}' for plugin '{}' and database '{}' is already active on the server " +
+                                                    "and will be used by the plugin",
+                                            publicationName, plugin, database());
 
+                            }
                         }
                     }
+                    conn.commit();
+                    conn.setAutoCommit(true);
+                }catch (DebeziumException e){
+                    throw new DebeziumException(e);
+                } catch (SQLException e) {
+                    throw new JdbcConnectionException(e);
+                }catch (Exception e){
+                    throw new RuntimeException(e);
                 }
-                conn.commit();
-                conn.setAutoCommit(true);
-            }
-            catch (SQLException e) {
+            }catch (SQLException e) {
                 throw new JdbcConnectionException(e);
             }
         }
+    }
+
+    private boolean isReadOnlyDb(Statement stmt) throws SQLException {
+        ResultSet rs = stmt.executeQuery("SELECT pg_is_in_recovery()");
+        boolean isStandBy = false;
+        if (rs.next()) {
+            isStandBy = rs.getBoolean(1);
+        }
+        return isStandBy;
+    }
+
+    private void validatePublications(Statement stmt) throws Exception {
+        String validatePublication = "Select schemaname, tablename from pg_catalog.pg_publication_tables where pubname=? ";
+            Set<TableId> tablesToCapture = determineCapturedTables();
+            if (tablesToCapture.isEmpty()) {
+                throw new DebeziumException(String.format("No table filters found for filtered publication %s", publicationName));
+            }
+
+            List<String> tableNames = tablesToCapture.stream().map(entity -> entity.schema() + "." + entity.table()).collect(Collectors.toList());
+            HashSet<String> dbTableNamesHashSet = new HashSet<>();
+            try (PreparedStatement prepStmt = stmt.getConnection().prepareStatement(validatePublication)) {
+                prepStmt.setString(1, publicationName);
+                ResultSet rs = prepStmt.executeQuery();
+                while (rs.next()) {
+                    String tableName = String.format("%s.%s", rs.getString(1), rs.getString(2));
+                    if (!tableNames.contains(tableName)) {
+                        throw new DebeziumException(String.format("Database replication is not up to date, there is no table %s in filtered list", tableName));
+                    }
+                    dbTableNamesHashSet.add(tableName);
+                }
+            }
+
+            long diff = tableNames.stream().filter(tableName -> !dbTableNamesHashSet.contains(tableName)).count();
+            if (diff > 0) {
+                throw new DebeziumException("Database replication is not up to date");
+            }
     }
 
     private void createOrUpdatePublicationModeFilterted(Statement stmt, boolean isUpdate) {
