@@ -194,7 +194,7 @@
                                     <MARIADB_DATABASE>mysql</MARIADB_DATABASE> <!-- database created upon init -->
                                     <MARIADB_USER>${mariadb.user}</MARIADB_USER>
                                     <MARIADB_PASSWORD>${mariadb.password}</MARIADB_PASSWORD>
-                                    <TZ>CET</TZ>
+                                    <TZ>Pacific/Pago_Pago</TZ>
                                 </env>
                                 <ports>
                                     <port>${mariadb.port}:3306</port>
@@ -249,7 +249,7 @@
                                     <MARIADB_DATABASE>mysql</MARIADB_DATABASE> <!-- database created upon init -->
                                     <MARIADB_USER>${mariadb.user}</MARIADB_USER>
                                     <MARIADB_PASSWORD>${mariadb.password}</MARIADB_PASSWORD>
-                                    <TZ>CET</TZ>
+                                    <TZ>Pacific/Pago_Pago</TZ>
                                 </env>
                                 <ports>
                                     <port>${mariadb.ssl.port}:3306</port>
@@ -313,7 +313,7 @@
                                     <MARIADB_DATABASE>mysql</MARIADB_DATABASE> <!-- database created upon init -->
                                     <MARIADB_USER>${mariadb.user}</MARIADB_USER>
                                     <MARIADB_PASSWORD>${mariadb.password}</MARIADB_PASSWORD>
-                                    <TZ>CET</TZ>
+                                    <TZ>Pacific/Pago_Pago</TZ>
                                 </env>
                                 <ports>
                                     <port>${mariadb.gtid.port}:3306</port>
@@ -369,7 +369,7 @@
                                     <MARIADB_ROOT_PASSWORD>debezium-rocks</MARIADB_ROOT_PASSWORD>
                                     <MARIADB_USER>${mariadb.replica.user}</MARIADB_USER>
                                     <MARIADB_PASSWORD>${mariadb.replica.password}</MARIADB_PASSWORD>
-                                    <TZ>CET</TZ>
+                                    <TZ>Pacific/Pago_Pago</TZ>
                                 </env>
                                 <links>
                                     <link>database-gtids</link>
