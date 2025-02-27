@@ -1063,19 +1063,6 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
     }
 
     private String getZonedDateTimeIsoString(ZonedDateTime zdt) {
-        if (isMariaDb()) {
-            // MariaDB applies the time-zone shift to the SHOW CREATE TABLE response when generating
-            // the SQL for the default value resolution which MySQL does not. This is because MariaDB
-            // pushes the "timezone=auto" connection argument to the server level whereas the MySQL
-            // "connectionTimeZone" is managed at the driver level on data responses only. In this
-            // case, MariaDB's default value resolution will always account for the current host
-            // time-zone difference with the host-system's time-zone.
-            long serverOffsetSecs = UniqueDatabase.TIMEZONE.getRules().getOffset(zdt.toInstant()).getTotalSeconds();
-            long hostOffsetSecs = ZoneOffset.systemDefault().getRules().getOffset(zdt.toInstant()).getTotalSeconds();
-            long timeDelta = serverOffsetSecs - hostOffsetSecs;
-            zdt = zdt.minusSeconds(timeDelta);
-            return ZonedTimestamp.toIsoString(zdt, UniqueDatabase.TIMEZONE, BinlogValueConverters::adjustTemporal, null);
-        }
         return ZonedTimestamp.toIsoString(zdt, ZoneId.systemDefault(), BinlogValueConverters::adjustTemporal, null);
     }
 
