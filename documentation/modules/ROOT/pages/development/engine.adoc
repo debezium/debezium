@@ -187,14 +187,14 @@ The next few lines define the fields that are specific to the connector (documen
 [source,java]
 ----
     /* begin connector properties */
-    props.setProperty("database.hostname", "localhost")
-    props.setProperty("database.port", "3306")
-    props.setProperty("database.user", "mysqluser")
-    props.setProperty("database.password", "mysqlpw")
-    props.setProperty("database.server.id", "85744")
-    props.setProperty("topic.prefix", "my-app-connector")
-    props.setProperty("schema.history.internal", "io.debezium.storage.file.history.FileSchemaHistory")
-    props.setProperty("schema.history.internal.file.filename", "/path/to/storage/schemahistory.dat")
+    props.setProperty("database.hostname", "localhost");
+    props.setProperty("database.port", "3306");
+    props.setProperty("database.user", "mysqluser");
+    props.setProperty("database.password", "mysqlpw");
+    props.setProperty("database.server.id", "85744");
+    props.setProperty("topic.prefix", "my-app-connector");
+    props.setProperty("schema.history.internal", "io.debezium.storage.file.history.FileSchemaHistory");
+    props.setProperty("schema.history.internal.file.filename", "/path/to/storage/schemahistory.dat");
 ----
 
 Here, we set the name of the host machine and port number where the MySQL database server is running, and we define the username and password that will be used to connect to the MySQL database.
