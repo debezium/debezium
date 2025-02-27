@@ -249,7 +249,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     private void validatePublications(Statement stmt) throws Exception {
-        LOGGER.info("Checking is database replication up to date");
         String validatePublication = "Select schemaname, tablename from pg_catalog.pg_publication_tables where pubname=? ";
             Set<TableId> tablesToCapture = determineCapturedTables();
             if (tablesToCapture.isEmpty()) {
