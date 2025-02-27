@@ -14,19 +14,20 @@ The following table lists the streaming metrics that are available.
 
 |[[connectors-strm-metric-totalnumberofeventsseen_{context}]]<<connectors-strm-metric-totalnumberofeventsseen_{context}, `TotalNumberOfEventsSeen`>>
 |`long`
-|The total number of events that this connector has seen since the last start or metrics reset.
+|The total number of data change events reported by the source database since the last connector start, or since a metrics reset.
+Represents the data change workload for {prodname} to process.
 
 |[[connectors-strm-metric-totalnumberofcreateeventsseen_{context}]]<<connectors-strm-metric-totalnumberofcreateeventsseen_{context}, `TotalNumberOfCreateEventsSeen`>>
 |`long`
-|The total number of create events that this connector has seen since the last start or metrics reset.
+|The total number of create events processed by the connector since its last start or metrics reset.
 
 |[[connectors-strm-metric-totalnumberofupdateeventsseen_{context}]]<<connectors-strm-metric-totalnumberofupdateeventsseen_{context}, `TotalNumberOfUpdateEventsSeen`>>
 |`long`
-|The total number of update events that this connector has seen since the last start or metrics reset.
+|The total number of update events processed by the connector since its last start or metrics reset.
 
 |[[connectors-strm-metric-totalnumberofdeleteeventsseen_{context}]]<<connectors-strm-metric-totalnumberofdeleteeventsseen_{context}, `TotalNumberOfDeleteEventsSeen`>>
 |`long`
-|The total number of delete events that this connector has seen since the last start or metrics reset.
+|The total number of delete events processed by the connector since its last start or metrics reset.
 
 |[[connectors-strm-metric-numberofeventsfiltered_{context}]]<<connectors-strm-metric-numberofeventsfiltered_{context}, `NumberOfEventsFiltered`>>
 |`long`
@@ -51,7 +52,7 @@ The following table lists the streaming metrics that are available.
 |[[connectors-strm-metric-millisecondsbehindsource_{context}]]<<connectors-strm-metric-millisecondsbehindsource_{context}, `MilliSecondsBehindSource`>>
 |`long`
 |The number of milliseconds between the last change event's timestamp and the connector processing it.
-The values will incoporate any differences between the clocks on the machines where the database server and the connector are running.
+The values will incorporate any differences between the clocks on the machines where the database server and the connector are running.
 
 |[[connectors-strm-metric-numberofcommittedtransactions_{context}]]<<connectors-strm-metric-numberofcommittedtransactions_{context}, `NumberOfCommittedTransactions`>>
 |`long`
@@ -74,3 +75,50 @@ The values will incoporate any differences between the clocks on the machines wh
 |The current volume, in bytes, of records in the queue.
 
 |===
+
+ifdef::MARIADB,MYSQL[]
+The {prodname} {connector-name} connector also provides the following additional streaming metrics:
+
+.Descriptions of additional {connector-name} streaming metrics
+[cols="3,2,5",options="header"]
+|===
+|Attribute |Type |Description
+
+|[[binlog-filename]]<<binlog-filename,`+BinlogFilename+`>>
+|`string`
+|The name of the binlog file that the connector has most recently read.
+
+|[[binlog-position]]<<binlog-position,`+BinlogPosition+`>>
+|`long`
+|The most recent position (in bytes) within the binlog that the connector has read.
+
+|[[is-gtid-mode-enabled]]<<is-gtid-mode-enabled,`+IsGtidModeEnabled+`>>
+|`boolean`
+|Flag that denotes whether the connector is currently tracking GTIDs from {connector-name} server.
+
+|[[gtid-set]]<<gtid-set,`+GtidSet+`>>
+|`string`
+|The string representation of the most recent GTID set processed by the connector when reading the binlog.
+
+|[[number-of-skipped-events]]<<number-of-skipped-events,`+NumberOfSkippedEvents+`>>
+|`long`
+|The number of events that have been skipped by the {connector-name} connector. Typically events are skipped due to a malformed or unparseable event from {connector-name}'s binlog.
+
+|[[number-of-disconnects]]<<number-of-disconnects,`+NumberOfDisconnects+`>>
+|`long`
+|The number of disconnects by the {connector-name} connector.
+
+|[[number-of-rolled-back-transactions]]<<number-of-rolled-back-transactions,`+NumberOfRolledBackTransactions+`>>
+|`long`
+|The number of processed transactions that were rolled back and not streamed.
+
+|[[number-of-not-well-formed-transactions]]<<number-of-not-well-formed-transactions,`+NumberOfNotWellFormedTransactions+`>>
+|`long`
+|The number of transactions that have not conformed to the expected protocol of `BEGIN` + `COMMIT`/`ROLLBACK`. This value should be `0` under normal conditions.
+
+|[[number-of-large-transactions]]<<number-of-large-transactions,`+NumberOfLargeTransactions+`>>
+|`long`
+|The number of transactions that have not fit into the look-ahead buffer. For optimal performance, this value should be significantly smaller than `NumberOfCommittedTransactions` and `NumberOfRolledBackTransactions`.
+
+|===
+endif::MARIADB,MYSQL[]

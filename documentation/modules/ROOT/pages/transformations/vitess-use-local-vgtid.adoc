@@ -1,0 +1,82 @@
+:page-aliases: configuration/vitess-use-local-vgtid.adoc
+[id="vitess-use-local-vgtid"]
+= Vitess Use Local VGTID
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+The `UseLocalVgtid` SMT converts the value of the VGTID in the event record from a list of VGTIDs for several shards to the VGTID for the single shard that received the change for this event.
+This transformation is designed for use only with the {prodname} connector for Vitess.
+
+The SMT extracts the `shard` field in the `source` block of the transaction boundary event record to determine the shard that received the change. 
+The SMT then sets that value of the VGTID in the event record to the value of the VGTID for the specified shard.
+Other VGTID values are removed from the event record.
+The following example shows how to add the SMT to the connector configuration so that it converts lists of the VGTIDs for multiple shards to the value of a single local VGTID.
+[[example-vitess-use-local-vgtid.adoc]]
+== Example: Configuring the `UseLocalVgtid` SMT
+
+
+[source]
+----
+"connector.class": "io.debezium.connector.vitess.VitessConnector",
+...
+"transforms": "useLocalVgtid",
+"transforms.useLocalVgtid.type": "io.debezium.connector.vitess.transforms.UseLocalVgtid",
+...
+----
+
+The following example shows the value of a record before and after the transformation is applied.
+
+.Effect of applying the `UseLocalVgtid` SMT
+====
+Value before the SMT processes the record::
++
+[source, json]
+----
+{
+    "source": {
+        "version": "2.6.2.Final",
+        "connector": "vitess",
+        "name": "my_sharded_connector",
+        "ts_ms": 1559033904000,
+        "ts_us": 1559033904000000,
+        "ts_ns": 1559033904000000000,
+        "snapshot": "false",
+        "db": "",
+        "sequence": null,
+        "keyspace": "commerce",
+        "table": "customers",
+        "shard": "-80",
+        "vgtid": "[{\"keyspace\":\"commerce\",\"shard\":\"80-\",\"gtid\":\"MariaDB/0-54610504-47\"},{\"keyspace\":\"commerce\",\"shard\":\"-80\",\"gtid\":\"MariaDB/0-1592148-45\"}]"
+    },
+}
+----
+
+Value after the SMT processes the record::
++
+[source, json]
+----
+{
+    "source": {
+        "version": "2.6.2.Final",
+        "connector": "vitess",
+        "name": "my_sharded_connector",
+        "ts_ms": 1559033904000,
+        "ts_us": 1559033904000000,
+        "ts_ns": 1559033904000000000,
+        "snapshot": "false",
+        "db": "",
+        "sequence": null,
+        "keyspace": "commerce",
+        "table": "customers",
+        "shard": "-80",
+        "vgtid": "[{\"keyspace\":\"commerce\",\"shard\":\"-80\",\"gtid\":\"MariaDB/0-1592148-45\"}]"
+    },
+}
+----
+====

@@ -5,10 +5,13 @@
  */
 package io.debezium.testing.system.tools.kafka.docker;
 
+import java.time.Duration;
+
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 
 import io.debezium.testing.system.tools.ConfigProperties;
+import io.debezium.testing.system.tools.WaitConditions;
 
 public class KafkaConnectConainer extends GenericContainer<KafkaConnectConainer> {
 
@@ -28,7 +31,7 @@ public class KafkaConnectConainer extends GenericContainer<KafkaConnectConainer>
     }
 
     private void defaultConfig() {
-        withReuse(true);
+        withReuse(false);
         withExposedPorts(KAFKA_CONNECT_API_PORT, KAFKA_JMX_PORT);
         addEnv("CONFIG_STORAGE_TOPIC", "connect_config");
         addEnv("OFFSET_STORAGE_TOPIC", "connect_offsets");
@@ -36,6 +39,7 @@ public class KafkaConnectConainer extends GenericContainer<KafkaConnectConainer>
         addEnv("JMXHOST", KAFKA_JMX_HOST);
         addEnv("JMXPORT", String.valueOf(KAFKA_JMX_PORT));
         withHttpMetrics();
+        withStartupTimeout(Duration.ofMinutes(WaitConditions.scaled(1)));
         withCommand(KAFKA_CONNECT_COMMAND);
     }
 

@@ -45,7 +45,7 @@ public class ParserUtils {
      * @return the resolved column's value
      */
     public static Object getColumnUnavailableValue(Object value, Column column) {
-        if (value == null && (OracleDatabaseSchema.isLobColumn(column) || OracleDatabaseSchema.isXmlColumn(column))) {
+        if (value == null && OracleDatabaseSchema.isNullReplacedByUnavailableValue(column)) {
             return OracleValueConverters.UNAVAILABLE_VALUE;
         }
         return value;

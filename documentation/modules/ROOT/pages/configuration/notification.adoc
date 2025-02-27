@@ -60,7 +60,8 @@ In domain-driven design, exported events should always refer to an aggregate.
 For an example, see xref:debezium-notifications-about-the-progress-of-incremental-snapshots[{prodname} notifications about the progress of incremental snapshots].
 
 |timestamp
-|The time when the notification has been created. Epoch unix timestamp in milliseconds
+|The time when the notification was created. 
+The value represents the number of milliseconds since the UNIX epoch.
 |===
 
 // Type: assembly
@@ -89,15 +90,19 @@ The following example shows a typical notification that provides the status of a
     "timestamp": "1695817046353"
 }
 ----
+[cols="1,7a",options="header",subs="+attributes"]
+|===
+|Item |Description
 
-<1> The `type` field can contain one of the following values:
+|1
+|The `type` field can contain one of the following values:
 
-* `STARTED`
-* `IN_PROGRESS`
-* `TABLE_SCAN_COMPLETED`
 * `COMPLETED`
 * `ABORTED`
 * `SKIPPED`
+
+|===
+
 
 The following table shows examples of the different payloads that might be present in notifications that report the status of initial snapshots:
 
@@ -132,7 +137,7 @@ a|[source, json]
    "timestamp": "1695817046353"
 }
 ----
-Field `data_collection` are currently not supported for Mongo connector
+Field `data_collection` are currently not supported for MongoDB connector
 
 |TABLE_SCAN_COMPLETED
 a|[source, json]
@@ -156,7 +161,7 @@ In the preceding example, the `additional_data.status` field can contain one of 
 `SQL_EXCEPTION`:: A SQL exception occurred while performing the snapshot.
 `SUCCEEDED`:: The snapshot completed successfully.
 
-Fields `total_rows_scanned` and `data_collection` are currently not supported for Mongo connector
+Fields `total_rows_scanned` and `data_collection` are currently not supported for MongoDB connector
 |COMPLETED
 a|[source, json]
 ----
@@ -400,13 +405,26 @@ public interface NotificationChannel {
     void close(); // <4>
 }
 ----
-<1> The name of the channel.
+[cols="1,7a",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|The name of the channel.
 To enable {prodname} to use the channel, specify this name in the connector's `notification.enabled.channels` property.
-<2> Initializes specific configuration, variables, or connections that the channel requires.
-<3> Sends the notification on the channel.
+
+|2
+|Initializes specific configuration, variables, or connections that the channel requires.
+
+|3
+|ends the notification on the channel.
 {prodname} calls this method to report its status.
-<4> Closes all allocated resources.
+
+|4
+|Closes all allocated resources.
 {prodname} calls this method when the connector is stopped.
+
+|===
 
 //   Type: concept
 [id="debezium-core-module-dependency"]
@@ -423,7 +441,14 @@ You must include these compile dependencies in your project's `pom.xml` file, as
     <version>${version.debezium}</version> // <1>
 </dependency>
 ----
-<1> `${version.debezium}` represents the version of the {prodname} connector.
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|`${version.debezium}` represents the version of the {prodname} connector.
+
+|===
 
 Declare your implementation in the `META-INF/services/io.debezium.pipeline.notification.channels.NotificationChannel` file.
 

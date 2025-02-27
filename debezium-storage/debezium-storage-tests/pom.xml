@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-storage</artifactId>
-        <version>2.5.0.Final</version>
+        <version>3.1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -13,10 +13,10 @@
 
     <properties>
 	<!-- S3 -->
-        <version.s3mock>2.4.14</version.s3mock>
+        <version.s3mock>3.10.0</version.s3mock>
 
     <!-- Azurite -->
-        <version.azurite>3.22.0</version.azurite>
+        <version.azurite>3.33.0</version.azurite>
     </properties>
 
     <dependencyManagement>
@@ -91,11 +91,6 @@
         </dependency>
 
         <!-- Source system -->
-        <dependency>
-            <groupId>io.debezium</groupId>
-            <artifactId>debezium-connector-mysql</artifactId>
-            <type>test-jar</type>
-        </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-connector-mysql</artifactId>

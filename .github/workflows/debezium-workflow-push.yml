@@ -1,0 +1,496 @@
+name: Build Debezium (Push)
+
+on:
+  push:
+    branches:
+      - main
+      - 1.*
+      - 2.*
+      - 3.*
+      - 4.*
+
+env:
+  MAVEN_FULL_BUILD_PROJECTS: "\\!debezium-microbenchmark-oracle"
+
+# Pushes to each branch will trigger a cancellation of any existing push jobs for that branch and
+# will restart the build based on the latest push for that specific branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+
+  # Approx 1m
+  build_cache:
+    name: "Update Dependencies"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Core)
+        uses: actions/checkout@v4
+        with:
+          path: core
+
+      - name: Checkout Action (Debezium Server)
+        uses: actions/checkout@v4
+        with:
+          repository: debezium/debezium-server
+          path: server
+          # Always checkout based on pushed branch name in main repository
+          # This should always exist in the debezium-server repository.
+          ref: ${{ github.ref_name }}
+
+      - uses: ./core/.github/actions/setup-java
+
+      # GitHub actions seem to struggle returning actions/cache cache-hit
+      # Directly use the cache action here to control whether to fetch dependencies
+      - id: maven-cache-check
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+          restore-keys: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+
+      # This step is responsible for pulling down artifacts
+      # Unfortunately due to the nature of how some of the maven workflows work, the only reliable way
+      # to guarantee fully seeding the maven cache is to run a full build. This step does not execute
+      # tests, formatting, checkstyle, nor import sorts.
+      #
+      # This check is conditioned so that if the cache-key was not found, we will execute this step.
+      # If the cache-key was found, this means we cannot update the cache and therefore we should
+      # not need to explicitly run this step. This should improve response of format/checkstyle
+      # errors to users faster.
+      #
+      # This job also explicitly excludes the "debezium-microbenchmark-oracle" module temporarily.
+      # There is a dependency on xstream.jar for this module that should be fixed and made to not
+      # be required so that the module can be built on GitHub Actions.
+      - name: Download dependencies (Core)
+        if: steps.maven-cache-check.outputs.cache-hit != 'true'
+        run: >
+          ./core/mvnw -B -ntp clean install -f core/pom.xml
+          -pl ${{ env.MAVEN_FULL_BUILD_PROJECTS }}
+          -Dformat.skip=true
+          -Dcheckstyle.skip=true
+          -Dorg.slf4j.simpleLogger.showDateTime=true
+          -Dorg.slf4j.simpleLogger.dateTimeFormat="YYYY-MM-dd HH:mm:ss,SSS"
+          -DskipTests=true
+          -DskipITs=true
+
+      - name: Download dependencies (Debezium Server)
+        if: steps.maven-cache-check.outputs.cache-hit != 'true'
+        run: >
+          ./server/mvnw -B -ntp clean install -f server/pom.xml
+          -Dformat.skip=true
+          -Dcheckstyle.skip=true
+          -Dorg.slf4j.simpleLogger.showDateTime=true
+          -Dorg.slf4j.simpleLogger.dateTimeFormat="YYYY-MM-dd HH:mm:ss,SSS"
+          -DskipTests=true
+          -DskipITs=true
+
+  # Approx 1m
+  check_style:
+    name: "Checkstyle and Formatting"
+    needs: [ build_cache ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/checkstyle-format
+        with:
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+
+  # Approx 40m each
+  build_mongodb:
+    strategy:
+      # Run each MongoDB job sequentially
+      max-parallel: 1
+      matrix:
+        version-mongo-server: [ "5.0", "8.0" ]
+      fail-fast: false
+    name: "MongoDB ${{ matrix.version-mongo-server }}"
+    needs: [ check_style ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-debezium-mongodb
+        with:
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+          version-mongo-server: ${{ matrix.version-mongo-server }}
+
+  # Approx 40m each
+  build_mysql:
+    strategy:
+      # Run 2 matrix jobs concurrently
+      max-parallel: 2
+      matrix:
+        profile: [ "mysql-ci", "mysql-ci-gtids", "mysql-ci-percona", "mysql-ci-ssl" ]
+        version-mysql-server: [ "8.0", "8.4", "9.1" ]
+      fail-fast: false
+    name: "MySQL ${{ matrix.version-mysql-server }} - ${{ matrix.profile }}"
+    needs: [ check_style ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-debezium-mysql
+        with:
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+          version-mysql-server: ${{ matrix.version-mysql-server }}
+          profile: ${{ matrix.profile }}
+
+  # Approx 40m each
+  build_mariadb:
+    strategy:
+      # Run each MariaDB job sequentially
+      max-parallel: 1
+      matrix:
+        profile: [ 'mariadb-ci', 'mariadb-ci-gtids', 'mariadb-ci-ssl' ]
+      fail-fast: false
+    name: "MariaDB - ${{ matrix.profile }}"
+    needs: [ check_style ]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-debezium-mariadb
+        with:
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+          profile: ${{ matrix.profile }}
+
+  # Approx 40m each
+  build_postgresql:
+    strategy:
+      # Run each PostgreSQL job sequentially
+      max-parallel: 1
+      matrix:
+        profile: [ "assembly,postgres-12", "assembly,postgres-17,pgoutput-decoder" ]
+      fail-fast: false
+    name: "PostgreSQL - ${{ matrix.profile }}"
+    needs: [ check_style ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-debezium-postgres
+        with:
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+          profile: ${{ matrix.profile }}
+
+  # Approx 1h 45m
+  build_sqlserver:
+    name: "SQL Server"
+    needs: [ check_style ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-debezium-sqlserver
+        with:
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+
+  # Approx 6m
+  build_oracle:
+    name: "Oracle"
+    needs: [ check_style ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-debezium-oracle
+        with:
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+
+  # Approx 2m
+  build_outbox:
+    name: "Quarkus Outbox Extension"
+    needs: [ check_style, build_oracle ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-debezium-outbox
+        with:
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+
+  # Approx 5m
+  build_rest_extension:
+    name: "REST Extension"
+    needs: [ check_style, build_outbox ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-debezium-rest-extension
+        with:
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+
+  # Approx 2m
+  build_schema_generator:
+    name: "Schema Generator"
+    needs: [ check_style, build_rest_extension ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-debezium-schema-generator
+        with:
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+
+  # Approx 5m
+  build_debezium_testing:
+    name: "Testing Module"
+    needs: [ check_style, build_schema_generator ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-debezium-testing
+        with:
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+
+  # Approx 3m
+  build_storage:
+    name: "Storage Module"
+    needs: [ check_style, build_debezium_testing ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-debezium-storage
+        with:
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+
+  # Approx 25m
+  build_cassandra:
+    name: "Cassandra"
+    needs: [ check_style, build_debezium_server ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Debezium Core)
+        uses: actions/checkout@v4
+        with:
+          path: core
+
+      - name: Checkout Action (Cassandra)
+        uses: actions/checkout@v4
+        with:
+          repository: debezium/debezium-connector-cassandra
+          path: cassandra
+          ref: ${{ github.ref_name }}
+
+      - uses: ./core/.github/actions/setup-java
+
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          # We specifically only use the hash of the pom files from the core repository
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+
+      - uses: ./core/.github/actions/build-debezium-cassandra
+        with:
+          path-core: core
+          path-cassandra: cassandra
+
+  # Approx 1h
+  build_db2:
+    name: "Db2"
+    needs: [ check_style ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Debezium Core)
+        uses: actions/checkout@v4
+        with:
+          path: core
+
+      - name: Checkout Action (Db2)
+        uses: actions/checkout@v4
+        with:
+          repository: debezium/debezium-connector-db2
+          path: db2
+          ref: ${{ github.ref_name }}
+
+      - uses: ./core/.github/actions/setup-java
+
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          # We specifically only use the hash of the pom files from the core repository
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+
+      - uses: ./core/.github/actions/build-debezium-db2
+        with:
+          path-core: core
+          path-db2: db2
+
+  # Approx 45m
+  build_informix:
+    name: "Informix"
+    needs: [ check_style ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Debezium Core)
+        uses: actions/checkout@v4
+        with:
+          path: core
+
+      - name: Checkout Action (Informix)
+        uses: actions/checkout@v4
+        with:
+          repository: debezium/debezium-connector-informix
+          path: informix
+          ref: ${{ github.ref_name }}
+
+      - uses: ./core/.github/actions/setup-java
+
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          # We specifically only use the hash of the pom files from the core repository
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+
+      - uses: ./core/.github/actions/build-debezium-informix
+        with:
+          path-core: core
+          path-informix: informix
+
+  build_ibmi:
+    name: "IBMi"
+    needs: [ check_style ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Debezium Core)
+        uses: actions/checkout@v4
+        with:
+          path: core
+
+      - name: Checkout Action (IBMi)
+        uses: actions/checkout@v4
+        with:
+          repository: debezium/debezium-connector-ibmi
+          path: ibmi
+          ref: ${{ github.ref_name }}
+
+      - uses: ./core/.github/actions/setup-java
+
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          # We specifically only use the hash of the pom files from the core repository
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+
+      - uses: ./core/.github/actions/build-debezium-ibmi
+        with:
+          path-core: core
+          path-ibmi: ibmi
+
+  # Approx 20m
+  build_vitess:
+    name: "Vitess"
+    needs: [ check_style, build_storage ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Debezium Core)
+        uses: actions/checkout@v4
+        with:
+          path: core
+
+      - name: Checkout Action (Vitess)
+        uses: actions/checkout@v4
+        with:
+          repository: debezium/debezium-connector-vitess
+          path: vitess
+          ref: ${{ github.ref_name }}
+
+      - uses: ./core/.github/actions/setup-java
+
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          # We specifically only use the hash of the pom files from the core repository
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+
+      - uses: ./core/.github/actions/build-debezium-vitess
+        with:
+          path-core: core
+          path-vitess: vitess
+
+  # Approx 7m
+  build_spanner:
+    name: "Spanner"
+    needs: [ check_style, build_vitess ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Debezium Core)
+        uses: actions/checkout@v4
+        with:
+          path: core
+
+      - name: Checkout Action (Spanner)
+        uses: actions/checkout@v4
+        with:
+          repository: debezium/debezium-connector-spanner
+          path: spanner
+          ref: ${{ github.ref_name }}
+
+      - uses: ./core/.github/actions/setup-java
+
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          # We specifically only use the hash of the pom files from the core repository
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+
+      - uses: ./core/.github/actions/build-debezium-spanner
+        with:
+          path-core: core
+          path-spanner: spanner
+
+  # Approx 1m
+  build_jdbc:
+    name: "JDBC"
+    needs: [ check_style, build_spanner ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-debezium-jdbc
+        with:
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+
+  # Approx 26m
+  build_debezium_server:
+    name: "Debezium Server"
+    needs: [ check_style, build_jdbc ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action (Debezium Core)
+        uses: actions/checkout@v4
+        with:
+          path: core
+
+      - name: Checkout Action (Debezium Server)
+        uses: actions/checkout@v4
+        with:
+          repository: debezium/debezium-server
+          path: server
+          ref: ${{ github.ref_name }}
+
+      - uses: ./core/.github/actions/setup-java
+
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          # We specifically only use the hash of the pom files from the core repository
+          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
+
+      - uses: ./core/.github/actions/build-debezium-server
+        with:
+          path-core: core
+          path-server: server

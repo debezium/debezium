@@ -10,6 +10,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Base64.Encoder;
+import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -21,7 +22,10 @@ import io.debezium.data.Envelope;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.util.Collect;
 import io.debezium.util.HexConverter;
 
 /**
@@ -84,7 +88,7 @@ public class LogicalDecodingMessageMonitor {
     }
 
     public void logicalDecodingMessageEvent(Partition partition, OffsetContext offsetContext, Long timestamp,
-                                            LogicalDecodingMessage message)
+                                            LogicalDecodingMessage message, TransactionMonitor transactionMonitor)
             throws InterruptedException {
         final Struct logicalMsgStruct = new Struct(blockSchema);
         logicalMsgStruct.put(DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY, message.getPrefix());
@@ -98,6 +102,8 @@ public class LogicalDecodingMessageMonitor {
         value.put(Envelope.FieldName.TIMESTAMP, timestamp);
         value.put(DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY, logicalMsgStruct);
         value.put(Envelope.FieldName.SOURCE, offsetContext.getSourceInfo());
+
+        transactionMonitor.dataEvent(partition, new LogicalDecodingMessageId(), offsetContext, key, value);
 
         sender.accept(new SourceRecord(partition.getSourcePartition(), offsetContext.getOffset(), topicName,
                 keySchema, key, value.schema(), value));
@@ -119,6 +125,31 @@ public class LogicalDecodingMessageMonitor {
                 return ByteBuffer.wrap(content);
             default:
                 return ByteBuffer.wrap(content);
+        }
+    }
+
+    public class LogicalDecodingMessageId implements DataCollectionId {
+
+        private final static String LOGICAL_DECODING_MESSAGE_ID = "LOGICAL_DECODING_MESSAGE";
+
+        @Override
+        public String identifier() {
+            return LOGICAL_DECODING_MESSAGE_ID;
+        }
+
+        @Override
+        public List<String> parts() {
+            return Collect.arrayListOf(LOGICAL_DECODING_MESSAGE_ID);
+        }
+
+        @Override
+        public List<String> databaseParts() {
+            return null;
+        }
+
+        @Override
+        public List<String> schemaParts() {
+            return null;
         }
     }
 }

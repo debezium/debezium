@@ -6,15 +6,12 @@
 
 package io.debezium.connector.mysql;
 
-import org.junit.Before;
+import io.debezium.config.Field;
+import io.debezium.connector.binlog.BinlogFieldTest;
 
-import io.debezium.config.AbstractFieldTest;
-
-public class FieldTest extends AbstractFieldTest {
-
-    @Before
-    public void before() {
-        setAllConnectorFields(MySqlConnectorConfig.ALL_FIELDS);
+public class FieldTest extends BinlogFieldTest<MySqlConnector> implements MySqlCommon {
+    @Override
+    protected Field.Set getAllFields() {
+        return MySqlConnectorConfig.ALL_FIELDS;
     }
-
 }

@@ -8,35 +8,46 @@ on:
       - main
       - 1.*
       - 2.*
+      - 3.*
+      - 4.*
     types: [ opened ]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # Checkout so that this contributor check passes if the contributor details are part of the pull request
+      # If we don't do this, then we are only
+      - name: Checkout Action
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Check if COPYRIGHT.txt has author name?
         id: check
         env:
           pull_request_number: ${{ github.event.pull_request.number }}
-        run: |
-          curl -H 'Accept: application/vnd.github.v3.raw' https://raw.githubusercontent.com/debezium/debezium/main/COPYRIGHT.txt >> COPYRIGHT.txt
-          curl -H 'Accept: application/vnd.github.v3.raw' https://raw.githubusercontent.com/debezium/debezium/main/jenkins-jobs/scripts/config/Aliases.txt >> ALIASES.txt
-          curl -H 'Accept: application/vnd.github.v3.raw' https://raw.githubusercontent.com/debezium/debezium/main/jenkins-jobs/scripts/config/FilteredNames.txt >> FILTEREDNAMES.txt
+        run: |        
+          curl -H 'Accept: application/vnd.github.v3.raw' https://raw.githubusercontent.com/debezium/debezium/main/COPYRIGHT.txt >> COPYRIGHT_MAIN.txt
+          curl -H 'Accept: application/vnd.github.v3.raw' https://raw.githubusercontent.com/debezium/debezium/main/jenkins-jobs/scripts/config/Aliases.txt >> ALIASES_MAIN.txt
+          curl -H 'Accept: application/vnd.github.v3.raw' https://raw.githubusercontent.com/debezium/debezium/main/jenkins-jobs/scripts/config/FilteredNames.txt >> FILTEREDNAMES_MAIN.txt
+          cat COPYRIGHT.txt COPYRIGHT_MAIN.txt | sort -u > COPYRIGHT_CHECK.txt
+          cat ALIASES_MAIN.txt jenkins-jobs/scripts/config/Aliases.txt | sort -u > ALIASES_CHECK.txt
+          cat FILTEREDNAMES_MAIN.txt jenkins-jobs/scripts/config/FilteredNames.txt | sort -u > FILTEREDNAMES_CHECK.txt
 
           curl --silent -X "GET" https://api.github.com/repos/debezium/debezium/pulls/$pull_request_number/commits | jq '.[] | {author: .commit.author.name}' | jq -r '.author' | uniq >> AUTHOR_NAME.txt
 
           while IFS=" " read -r AUTHOR;
           do
-            if ! grep -qi "$AUTHOR" COPYRIGHT.txt; then
-              if ! grep -qi "$AUTHOR" ALIASES.txt; then
-                if ! grep -qi "$AUTHOR" FILTEREDNAMES.txt; then
-                  echo "USER_NOT_FOUND=true" >> $GITHUB_OUTPUT
+            if ! grep -qi "$AUTHOR" COPYRIGHT_CHECK.txt; then
+              if ! grep -qi "$AUTHOR" ALIASES_CHECK.txt; then
+                if ! grep -qi "$AUTHOR" FILTEREDNAMES_CHECK.txt; then
+                  echo "USER_NOT_FOUND=true"
                 fi
               fi
             fi
           done < AUTHOR_NAME.txt
       - name: Create comment
         if: ${{ steps.check.outputs.USER_NOT_FOUND == 'true' }}
-        uses: peter-evans/create-or-update-comment@v3
+        uses: peter-evans/create-or-update-comment@v4
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |

@@ -30,6 +30,7 @@ import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Metronome;
@@ -55,9 +56,10 @@ public class SqlServerChangeEventSourceCoordinator extends ChangeEventSourceCoor
                                                  DatabaseSchema<?> schema,
                                                  Clock clock,
                                                  SignalProcessor<SqlServerPartition, SqlServerOffsetContext> signalProcessor,
-                                                 NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService) {
+                                                 NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService,
+                                                 SnapshotterService snapshotterService) {
         super(previousOffsets, errorHandler, connectorType, connectorConfig, changeEventSourceFactory,
-                changeEventSourceMetricsFactory, eventDispatcher, schema, signalProcessor, notificationService);
+                changeEventSourceMetricsFactory, eventDispatcher, schema, signalProcessor, notificationService, snapshotterService);
         this.clock = clock;
         this.pollInterval = connectorConfig.getPollInterval();
     }
@@ -86,6 +88,9 @@ public class SqlServerChangeEventSourceCoordinator extends ChangeEventSourceCoor
                 if (previousOffsets.getOffsets().size() == 1) {
                     signalProcessor.setContext(snapshotResult.getOffset());
                 }
+                if (snapshotResult.isCompleted()) {
+                    delayStreamingIfNeeded(context);
+                }
             }
         }
 
@@ -95,6 +100,9 @@ public class SqlServerChangeEventSourceCoordinator extends ChangeEventSourceCoor
         for (Map.Entry<SqlServerPartition, SqlServerOffsetContext> entry : streamingOffsets) {
             initStreamEvents(entry.getKey(), entry.getValue());
         }
+
+        getSignalProcessor(previousOffsets).ifPresent(signalProcessor -> registerSignalActionsAndStartProcessor(signalProcessor,
+                eventDispatcher, this, connectorConfig));
 
         final Metronome metronome = Metronome.sleeper(pollInterval, clock);
 

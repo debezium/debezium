@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Set;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -429,6 +430,16 @@ public class MongoDataConverter {
                     value.asArray().forEach(f -> subSchema(documentSchemaBuilder, union, f.asDocument(), true));
                     if (documentSchemaBuilder.fields().size() == 0) {
                         value.asArray().forEach(f -> subSchema(documentSchemaBuilder, union, f.asDocument(), false));
+                    }
+                    var missedEmptyArrayFieldNames = value.asArray().stream()
+                            .map(v -> v.asDocument().entrySet())
+                            .flatMap(Set::stream)
+                            .filter(e -> !union.containsKey(e.getKey()))
+                            .filter(e -> e.getValue().isArray() && e.getValue().asArray().isEmpty())
+                            .map(Entry::getKey)
+                            .toList();
+                    for (String name : missedEmptyArrayFieldNames) {
+                        documentSchemaBuilder.field(name, SchemaBuilder.array(Schema.OPTIONAL_STRING_SCHEMA).optional().build());
                     }
                 }
                 else {

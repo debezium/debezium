@@ -23,7 +23,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Testing;
 
 /**
@@ -31,7 +31,7 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec
  */
-public class SpecialCharsInNamesIT extends AbstractConnectorTest {
+public class SpecialCharsInNamesIT extends AbstractAsyncEngineConnectorTest {
 
     private SqlServerConnection connection;
 
@@ -128,8 +128,8 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
                 .build();
 
         connection.execute(
-                "CREATE TABLE [UAT WAG CZ$Fixed Asset] (id int primary key, [my col$a] varchar(30))",
-                "INSERT INTO [UAT WAG CZ$Fixed Asset] VALUES(1, 'a')");
+                "CREATE TABLE [UAT WAG CZ$Fixed Asset] (id int primary key, [my col$a] varchar(30), [my col#b] varchar(30))",
+                "INSERT INTO [UAT WAG CZ$Fixed Asset] VALUES(1, 'a', 'b')");
         TestHelper.enableTableCdc(connection, "UAT WAG CZ$Fixed Asset");
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
@@ -145,6 +145,7 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
                         .name("server1.testDB1.dbo.UAT_WAG_CZ_Fixed_Asset.Value")
                         .field("id", Schema.INT32_SCHEMA)
                         .field("my_col_a", Schema.OPTIONAL_STRING_SCHEMA)
+                        .field("my_col_b", Schema.OPTIONAL_STRING_SCHEMA)
                         .build());
         assertSchemaMatchesStruct(
                 (Struct) record.key(),
@@ -154,7 +155,7 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
                         .build());
         assertThat(((Struct) record.value()).getStruct("after").getInt32("id")).isEqualTo(1);
 
-        connection.execute("INSERT INTO [UAT WAG CZ$Fixed Asset] VALUES(2, 'b')");
+        connection.execute("INSERT INTO [UAT WAG CZ$Fixed Asset] VALUES(2, 'b', 'c')");
         records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic("server1.testDB1.dbo.UAT_WAG_CZ_Fixed_Asset")).hasSize(1);
         record = records.recordsForTopic("server1.testDB1.dbo.UAT_WAG_CZ_Fixed_Asset").get(0);
@@ -165,6 +166,7 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
                         .name("server1.testDB1.dbo.UAT_WAG_CZ_Fixed_Asset.Value")
                         .field("id", Schema.INT32_SCHEMA)
                         .field("my_col_a", Schema.OPTIONAL_STRING_SCHEMA)
+                        .field("my_col_b", Schema.OPTIONAL_STRING_SCHEMA)
                         .build());
         assertSchemaMatchesStruct(
                 (Struct) record.key(),
@@ -228,7 +230,7 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
-        connection.execute("INSERT INTO [UAT WAG CZ$Fixed Asset] VALUES(4, 'b')");
+        connection.execute("INSERT INTO [UAT WAG CZ$Fixed Asset] VALUES(4, 'b', 'c')");
         records = consumeRecordsByTopic(1);
         assertThat(records.recordsForTopic("server1.testDB1.dbo.UAT_WAG_CZ_Fixed_Asset")).hasSize(1);
         record = records.recordsForTopic("server1.testDB1.dbo.UAT_WAG_CZ_Fixed_Asset").get(0);
@@ -239,6 +241,7 @@ public class SpecialCharsInNamesIT extends AbstractConnectorTest {
                         .name("server1.testDB1.dbo.UAT_WAG_CZ_Fixed_Asset.Value")
                         .field("id", Schema.INT32_SCHEMA)
                         .field("my_col_a", Schema.OPTIONAL_STRING_SCHEMA)
+                        .field("my_col_b", Schema.OPTIONAL_STRING_SCHEMA)
                         .build());
         assertSchemaMatchesStruct(
                 (Struct) record.key(),

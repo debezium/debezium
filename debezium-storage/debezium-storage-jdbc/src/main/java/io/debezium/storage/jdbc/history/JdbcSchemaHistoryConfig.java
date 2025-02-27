@@ -65,7 +65,7 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
     /**
      *  Field that will store the Schema history SELECT query to check existence of the table.
      */
-    public static final Field PROP_TABLE_DATA_EXISTS_SELECT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.select")
+    public static final Field PROP_TABLE_DATA_EXISTS_SELECT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.exists")
             .withDescription("SELECT statement to check existence of the storage table")
             .withDefault(DEFAULT_TABLE_DATA_EXISTS_SELECT);
 

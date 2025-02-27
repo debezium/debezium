@@ -19,9 +19,9 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig.SchemaNameAdjustmentMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.util.TestHelper;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 
-public class SqlServerSchemaNameAdjustmentModeIT extends AbstractConnectorTest {
+public class SqlServerSchemaNameAdjustmentModeIT extends AbstractAsyncEngineConnectorTest {
 
     private SqlServerConnection connection;
 

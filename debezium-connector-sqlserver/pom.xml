@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>2.5.0.Final</version>
+        <version>3.1.0-SNAPSHOT</version>
         <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -20,11 +20,12 @@
         <sqlserver.user>sa</sqlserver.user>
         <sqlserver.password>Password!</sqlserver.password>
         <sqlserver.dbname>testDB</sqlserver.dbname>
-        <docker.db>mcr.microsoft.com/mssql/server:2019-latest</docker.db>
+        <docker.db>mcr.microsoft.com/mssql/server:2022-latest</docker.db>
         <docker.filter>${docker.db}</docker.filter>
         <docker.skip>false</docker.skip>
         <docker.showLogs>true</docker.showLogs>
         <!-- Apicurion container properties -->
+        <apicurio.image>quay.io/apicurio/apicurio-registry-mem</apicurio.image>
         <apicurio.port>8080</apicurio.port>
         <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
     </properties>
@@ -181,7 +182,7 @@
                             </external>
                         </image>
                         <image>
-                            <name>apicurio/apicurio-registry-mem:${version.apicurio}</name>
+                            <name>${apicurio.image}:${version.apicurio}</name>
                             <run>
                                 <namingStrategy>none</namingStrategy>
                                 <ports>
@@ -404,7 +405,7 @@
                 </plugins>
             </build>
             <properties>
-                <docker.filter>${docker.db},apicurio/apicurio-registry-mem:${version.apicurio}</docker.filter>
+                <docker.filter>${docker.db},${apicurio.image}:${version.apicurio}</docker.filter>
             </properties>
         </profile>
     </profiles>

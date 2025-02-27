@@ -11,7 +11,6 @@ import static org.junit.Assert.assertNull;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -30,7 +29,7 @@ import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.SchemaAndValueField;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenKafkaVersion;
@@ -44,7 +43,7 @@ import io.debezium.util.Testing;
  * @author Jiri Pechanec
  */
 @SkipWhenKafkaVersion(check = EqualityCheck.EQUAL, value = KafkaVersion.KAFKA_1XX, description = "Not compatible with Kafka 1.x")
-public class TransactionMetadataIT extends AbstractConnectorTest {
+public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
 
     private SqlServerConnection connection;
 
@@ -122,7 +121,6 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
 
         assertEndTransaction(all.get(2 * RECORDS_PER_TABLE + 1), txId, 2 * RECORDS_PER_TABLE,
                 Collect.hashMapOf("testDB1.dbo.tablea", RECORDS_PER_TABLE, "testDB1.dbo.tableb", RECORDS_PER_TABLE));
-        stopConnector();
     }
 
     private void restartInTheMiddleOfTx(boolean restartJustAfterSnapshot, boolean afterStreaming) throws Exception {
@@ -159,16 +157,14 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
                             final Lsn minLsn = connection.getMinLsn(TestHelper.TEST_DATABASE_1, tableName);
                             final Lsn maxLsn = connection.getMaxLsn(TestHelper.TEST_DATABASE_1);
                             final AtomicReference<Boolean> found = new AtomicReference<>(false);
-                            SqlServerChangeTable[] tables = Collections.singletonList(ct).toArray(new SqlServerChangeTable[]{});
-                            connection.getChangesForTables(TestHelper.TEST_DATABASE_1, tables, minLsn, maxLsn, resultsets -> {
-                                final ResultSet rs = resultsets[0];
+                            try (ResultSet rs = connection.getChangesForTable(ct, minLsn, maxLsn)) {
                                 while (rs.next()) {
                                     if (rs.getInt("id") == -1) {
                                         found.set(true);
                                         break;
                                     }
                                 }
-                            });
+                            }
                             return found.get();
                         }
                         catch (Exception e) {
@@ -243,7 +239,8 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
         assertRecord((Struct) value.get("after"), expectedLastRow);
         assertRecordTransactionMetadata(lastRecordForOffset, batchTxId, RECORDS_PER_TABLE, RECORDS_PER_TABLE / 2);
 
-        stopConnector();
+        waitForEngineShutdown();
+        cleanupTestFwkState();
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 

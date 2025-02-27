@@ -39,7 +39,7 @@ public class NotificationsIT extends AbstractNotificationsIT<OracleConnector> {
     }
 
     protected List<String> collections() {
-        return List.of("A");
+        return List.of(TestHelper.getDatabaseName() + ".DEBEZIUM.A");
     }
 
     @Override

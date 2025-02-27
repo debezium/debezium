@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.mongodb.rest;
 
-import static io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure.DATABASE;
+import static io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper.DATABASE;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItems;
@@ -27,7 +27,7 @@ import io.debezium.connector.mongodb.MongoDbConnector;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
 import io.debezium.testing.testcontainers.Connector;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
-import io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure;
+import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
 import io.debezium.testing.testcontainers.util.DockerUtils;
 import io.restassured.http.ContentType;
 
@@ -45,15 +45,15 @@ public class DebeziumMongoDbConnectorResourceIT {
 
     @Before
     public void start() {
-        RestExtensionTestInfrastructure.setupDebeziumContainer(Module.version(), DebeziumMongoDbConnectRestExtension.class.getName());
+        TestInfrastructureHelper.setupDebeziumContainer(Module.version(), DebeziumMongoDbConnectRestExtension.class.getName());
         DockerUtils.enableFakeDnsIfRequired();
-        RestExtensionTestInfrastructure.startContainers(DATABASE.MONGODB);
-        RestExtensionTestInfrastructure.getMongoDbContainer().execMongoScript(INIT_SCRIPT_RESOURCE, INIT_SCRIPT_PATH);
+        TestInfrastructureHelper.startContainers(DATABASE.MONGODB);
+        TestInfrastructureHelper.getMongoDbContainer().execMongoScript(INIT_SCRIPT_RESOURCE, INIT_SCRIPT_PATH);
     }
 
     @After
     public void stop() {
-        RestExtensionTestInfrastructure.stopContainers();
+        TestInfrastructureHelper.stopContainers();
         DockerUtils.disableFakeDns();
     }
 
@@ -62,7 +62,7 @@ public class DebeziumMongoDbConnectorResourceIT {
         ConnectorConfiguration config = getMongoDbConnectorConfiguration(1);
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumMongoDbConnectorResource.BASE_PATH + DebeziumMongoDbConnectorResource.VALIDATE_CONNECTION_ENDPOINT)
                 .then().log().all()
@@ -78,7 +78,7 @@ public class DebeziumMongoDbConnectorResourceIT {
 
         Locale.setDefault(new Locale("en", "US")); // to enforce errormessages in English
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumMongoDbConnectorResource.BASE_PATH + DebeziumMongoDbConnectorResource.VALIDATE_CONNECTION_ENDPOINT)
                 .then().log().all()
@@ -93,7 +93,7 @@ public class DebeziumMongoDbConnectorResourceIT {
     @Test
     public void testInvalidConnection() {
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body("{\"connector.class\": \"" + MongoDbConnector.class.getName() + "\"}")
                 .put(DebeziumMongoDbConnectorResource.BASE_PATH + DebeziumMongoDbConnectorResource.VALIDATE_CONNECTION_ENDPOINT)
                 .then().log().all()
@@ -111,7 +111,7 @@ public class DebeziumMongoDbConnectorResourceIT {
         ConnectorConfiguration config = getMongoDbConnectorConfiguration(1);
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumMongoDbConnectorResource.BASE_PATH + DebeziumMongoDbConnectorResource.VALIDATE_FILTERS_ENDPOINT)
                 .then().log().all()
@@ -121,9 +121,9 @@ public class DebeziumMongoDbConnectorResourceIT {
                 .body("matchingCollections.size()", is(3))
                 .body("matchingCollections",
                         hasItems(
-                                Map.of("realm", "rs0", "namespace", "inventory", "name", "customers", "identifier", "rs0.inventory.customers"),
-                                Map.of("realm", "rs0", "namespace", "inventory", "name", "orders", "identifier", "rs0.inventory.orders"),
-                                Map.of("realm", "rs0", "namespace", "inventory", "name", "products", "identifier", "rs0.inventory.products")));
+                                Map.of("namespace", "inventory", "name", "customers", "identifier", "inventory.customers"),
+                                Map.of("namespace", "inventory", "name", "orders", "identifier", "inventory.orders"),
+                                Map.of("namespace", "inventory", "name", "products", "identifier", "inventory.products")));
     }
 
     @Test
@@ -132,7 +132,7 @@ public class DebeziumMongoDbConnectorResourceIT {
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST.name(), "inventory\\.product.*");
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumMongoDbConnectorResource.BASE_PATH + DebeziumMongoDbConnectorResource.VALIDATE_FILTERS_ENDPOINT)
                 .then().log().all()
@@ -141,7 +141,7 @@ public class DebeziumMongoDbConnectorResourceIT {
                 .body("validationResults.size()", is(0))
                 .body("matchingCollections.size()", is(1))
                 .body("matchingCollections",
-                        hasItems(Map.of("realm", "rs0", "namespace", "inventory", "name", "products", "identifier", "rs0.inventory.products")));
+                        hasItems(Map.of("namespace", "inventory", "name", "products", "identifier", "inventory.products")));
     }
 
     @Test
@@ -150,7 +150,7 @@ public class DebeziumMongoDbConnectorResourceIT {
                 .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST.name(), "inventory");
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumMongoDbConnectorResource.BASE_PATH + DebeziumMongoDbConnectorResource.VALIDATE_FILTERS_ENDPOINT)
                 .then().log().all()
@@ -160,9 +160,9 @@ public class DebeziumMongoDbConnectorResourceIT {
                 .body("matchingCollections.size()", is(3))
                 .body("matchingCollections",
                         hasItems(
-                                Map.of("realm", "rs0", "namespace", "inventory", "name", "customers", "identifier", "rs0.inventory.customers"),
-                                Map.of("realm", "rs0", "namespace", "inventory", "name", "orders", "identifier", "rs0.inventory.orders"),
-                                Map.of("realm", "rs0", "namespace", "inventory", "name", "products", "identifier", "rs0.inventory.products")));
+                                Map.of("namespace", "inventory", "name", "customers", "identifier", "inventory.customers"),
+                                Map.of("namespace", "inventory", "name", "orders", "identifier", "inventory.orders"),
+                                Map.of("namespace", "inventory", "name", "products", "identifier", "inventory.products")));
     }
 
     @Test
@@ -171,7 +171,7 @@ public class DebeziumMongoDbConnectorResourceIT {
                 .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST.name(), "+");
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumMongoDbConnectorResource.BASE_PATH + DebeziumMongoDbConnectorResource.VALIDATE_FILTERS_ENDPOINT)
                 .then().log().all()
@@ -191,7 +191,7 @@ public class DebeziumMongoDbConnectorResourceIT {
                 .with(MongoDbConnectorConfig.DATABASE_EXCLUDE_LIST.name(), "+");
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumMongoDbConnectorResource.BASE_PATH + DebeziumMongoDbConnectorResource.VALIDATE_FILTERS_ENDPOINT)
                 .then().log().all()
@@ -210,17 +210,17 @@ public class DebeziumMongoDbConnectorResourceIT {
         ConnectorConfiguration config = getMongoDbConnectorConfiguration(1);
 
         var connectorName = "my-mongodb-connector";
-        RestExtensionTestInfrastructure.getDebeziumContainer().registerConnector(
+        TestInfrastructureHelper.getDebeziumContainer().registerConnector(
                 connectorName,
                 config);
 
-        RestExtensionTestInfrastructure.getDebeziumContainer().ensureConnectorState(connectorName, Connector.State.RUNNING);
-        RestExtensionTestInfrastructure.waitForConnectorTaskStatus(connectorName, 0, Connector.State.RUNNING);
-        RestExtensionTestInfrastructure.getDebeziumContainer().waitForStreamingRunning("mongodb", config.asProperties().getProperty("topic.prefix"), "streaming",
+        TestInfrastructureHelper.getDebeziumContainer().ensureConnectorState(connectorName, Connector.State.RUNNING);
+        TestInfrastructureHelper.waitForConnectorTaskStatus(connectorName, 0, Connector.State.RUNNING);
+        TestInfrastructureHelper.getDebeziumContainer().waitForStreamingRunning("mongodb", config.asProperties().getProperty("topic.prefix"), "streaming",
                 String.valueOf(0));
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .get(DebeziumMongoDbConnectorResource.BASE_PATH + DebeziumMongoDbConnectorResource.CONNECTOR_METRICS_ENDPOINT, connectorName)
                 .then().log().all()
@@ -234,7 +234,7 @@ public class DebeziumMongoDbConnectorResourceIT {
     }
 
     public static ConnectorConfiguration getMongoDbConnectorConfiguration(int id, String... options) {
-        final ConnectorConfiguration config = ConnectorConfiguration.forMongoDbReplicaSet(RestExtensionTestInfrastructure.getMongoDbContainer())
+        final ConnectorConfiguration config = ConnectorConfiguration.forMongoDbReplicaSet(TestInfrastructureHelper.getMongoDbContainer())
                 .with(MongoDbConnectorConfig.SERVER_SELECTION_TIMEOUT_MS.name(), 10000)
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE.name(), "never") // temporarily disable snapshot mode globally until we can check if connectors inside testcontainers are in SNAPSHOT or STREAMING mode (wait for snapshot finished!)
                 .with(MongoDbConnectorConfig.USER.name(), "debezium")

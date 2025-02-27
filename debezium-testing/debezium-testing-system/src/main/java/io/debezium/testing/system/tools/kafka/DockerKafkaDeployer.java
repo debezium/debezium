@@ -34,7 +34,9 @@ public class DockerKafkaDeployer
         container.withZookeeper(zookeeperContainer);
 
         Startables.deepStart(Stream.of(zookeeperContainer, container)).join();
-        return getController(container);
+        DockerKafkaController controller = getController(container);
+        controller.setZookeeperContainer(zookeeperContainer);
+        return controller;
     }
 
     public static class Builder

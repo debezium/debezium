@@ -15,12 +15,16 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.core.BaseConnection;
 import org.postgresql.jdbc.PgConnection;
@@ -33,9 +37,11 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.VisibleForTesting;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PgOid;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
+import io.debezium.connector.postgresql.PostgresOffsetContext;
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.PostgresValueConverter;
 import io.debezium.connector.postgresql.TypeRegistry;
@@ -43,11 +49,17 @@ import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.data.SpecialValueDecimal;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.source.snapshot.incremental.ChunkQueryBuilder;
+import io.debezium.pipeline.source.snapshot.incremental.RowValueConstructorChunkQueryBuilder;
+import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 
@@ -117,7 +129,11 @@ public class PostgresConnection extends JdbcConnection {
      * @param connectionUsage a symbolic name of the connection to be tracked in monitoring tools
      */
     public PostgresConnection(PostgresConnectorConfig config, TypeRegistry typeRegistry, String connectionUsage) {
-        super(addDefaultSettings(config.getJdbcConfig(), connectionUsage), FACTORY, PostgresConnection::validateServerVersion, "\"", "\"");
+        super(addDefaultSettings(config.getJdbcConfig(), connectionUsage),
+                FACTORY,
+                PostgresConnection::validateServerVersion,
+                "\"", "\"");
+
         if (Objects.isNull(typeRegistry)) {
             this.typeRegistry = null;
             this.defaultValueConverter = null;
@@ -549,7 +565,10 @@ public class PostgresConnection extends JdbcConnection {
         ServerInfo serverInfo = new ServerInfo();
         query("SELECT version(), current_user, current_database()", rs -> {
             if (rs.next()) {
-                serverInfo.withServer(rs.getString(1)).withUsername(rs.getString(2)).withDatabase(rs.getString(3));
+                serverInfo
+                        .withServer(rs.getString(1))
+                        .withUsername(rs.getString(2))
+                        .withDatabase(rs.getString(3));
             }
         });
         String username = serverInfo.username();
@@ -566,6 +585,9 @@ public class PostgresConnection extends JdbcConnection {
                         }
                     });
         }
+
+        serverInfo.withMajorVersion(connection().getMetaData().getDatabaseMajorVersion());
+
         return serverInfo;
     }
 
@@ -784,6 +806,29 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     @Override
+    public <T extends DataCollectionId> ChunkQueryBuilder<T> chunkQueryBuilder(RelationalDatabaseConnectorConfig connectorConfig) {
+        // PostgreSQL definitely must use row value constructors in order to yield optimal results. See DBZ-5071.
+        return new RowValueConstructorChunkQueryBuilder<>(connectorConfig, this);
+    }
+
+    @Override
+    public Optional<Boolean> nullsSortLast() {
+        // "By default, null values sort as if larger than any non-null value"
+        // https://www.postgresql.org/docs/16/queries-order.html
+        return Optional.of(true);
+    }
+
+    @Override
+    public Map<String, Object> reselectColumns(Table table, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source)
+            throws SQLException {
+        final String query = String.format("SELECT %s FROM %s WHERE %s",
+                columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
+                quotedTableIdString(table.id()),
+                keyColumns.stream().map(key -> key + "=?::" + table.columnWithName(key).typeName()).collect(Collectors.joining(" AND ")));
+        return reselectColumns(query, table.id(), columns, keyValues);
+    }
+
+    @Override
     public void setQueryColumnValue(PreparedStatement statement, Column column, int pos, Object value)
             throws SQLException {
         final PostgresType resolvedType = typeRegistry.get(column.nativeType());
@@ -800,6 +845,24 @@ public class PostgresConnection extends JdbcConnection {
     @Override
     public TableId createTableId(String databaseName, String schemaName, String tableName) {
         return new TableId(null, schemaName, tableName);
+    }
+
+    public boolean validateLogPosition(Partition partition, OffsetContext offset, CommonConnectorConfig config) {
+
+        final Lsn storedLsn = ((PostgresOffsetContext) offset).lastCommitLsn();
+        final String slotName = ((PostgresConnectorConfig) config).slotName();
+        final String postgresPluginName = ((PostgresConnectorConfig) config).plugin().getPostgresPluginName();
+
+        try {
+            SlotState slotState = getReplicationSlotState(slotName, postgresPluginName);
+            if (slotState == null) {
+                return false;
+            }
+            return storedLsn == null || slotState.slotRestartLsn().compareTo(storedLsn) < 0;
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Unable to get last available log position", e);
+        }
     }
 
     @FunctionalInterface

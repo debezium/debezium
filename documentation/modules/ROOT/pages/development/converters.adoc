@@ -55,8 +55,8 @@ Whenever {prodname} processes a new change event, it invokes the configured conv
 
 [NOTE]
 ====
-The instructions that follow apply to {prodname} relational database connectors only.
-You cannot use this information to create a custom converter for the {prodname} MongoDB connector.
+The instructions that follow apply to {prodname} relational database source connectors only.
+You cannot use this information to create a custom converter for the {prodname} MongoDB connector, or for the {prodname} JDBC sink connector.
 ====
 
 // Type: assembly
@@ -85,11 +85,25 @@ public interface CustomConverter<S, F extends ConvertedField> {
     void converterFor(F field, ConverterRegistration<S> registration); // <4>
 }
 ----
-<1> A function for converting data from one type to another.
-<2> Callback for registering a converter.
-<3> Registers the given schema and converter for the current field.
+.Descriptions of fields in a Java converter class that implements the `io.debezium.spi.converter.CustomConverter` interface
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|Converts data from one type to another.
+
+|2
+|Callback for registering a converter.
+
+|3
+|Registers the given schema and converter for the current field.
 Should not be invoked more than once for the same field.
-<4> Registers the customized value and schema converter for use with a specific field.
+
+|4
+|Registers the customized value and schema converter for use with a specific field.
+
+|===
 
 [id="debezium-custom-converter-methods"]
 === Custom converter methods
@@ -143,11 +157,11 @@ The converter configuration is specific to each instance.
 ----
     public static class IsbnConverter implements CustomConverter<SchemaBuilder, RelationalColumn> {
 
-        private SchemaBuilder isbnSchema;
+        private String isbnSchemaName;
 
         @Override
         public void configure(Properties props) {
-            isbnSchema = SchemaBuilder.string().name(props.getProperty("schema.name"));
+            isbnSchemaName = props.getProperty("schema.name");
         }
 
         @Override
@@ -155,7 +169,7 @@ The converter configuration is specific to each instance.
                 ConverterRegistration<SchemaBuilder> registration) {
 
             if ("isbn".equals(column.typeName())) {
-                registration.register(isbnSchema, x -> x.toString());
+                registration.register(SchemaBuilder.string().name(isbnSchemaName)), x -> x.toString());
             }
         }
     }
@@ -182,8 +196,19 @@ These compile dependencies must be included in your project's `pom.xml`, as show
     <version>${version.kafka}</version> <2>
 </dependency>
 ----
-<1> `${version.debezium}` represents the version of the {prodname} connector.
-<2> `${version.kafka}` represents the version of Apache Kafka in your environment.
+[cols="1,7",options="header",subs="+attributes"]
+.Descriptions of compile dependency versions in `pom.xml`
+|===
+|Item |Description
+
+|1
+|`${version.debezium}` represents the version of the {prodname} connector.
+
+|2
+|`${version.kafka}` represents the version of Apache Kafka in your environment.
+
+|===
+
 
 // Type: assembly
 // Title: Using custom converters with {prodname} connectors
@@ -193,6 +218,12 @@ These compile dependencies must be included in your project's `pom.xml`, as show
 
 Custom converters act on specific columns or column types in a source table to specify how to convert the data types in the source to Kafka Connect schema types.
 To use a custom converter with a connector, you deploy the converter JAR file alongside the connector file, and then configure the connector to use the converter.
+
+[IMPORTANT]
+====
+Custom converters are designed to modify messages emitted by {prodname} relational database source connectors.
+You cannot configure either the {prodname} MongoDB connector, or the {prodname} JDBC sink connector to use a custom converter.
+====
 
 // Type: procedure
 [id="deploying-a-debezium-custom-converter"]
@@ -213,8 +244,14 @@ NOTE: To use a converter with multiple connectors, you must place a copy of the 
 [id="configuring-a-connectors-to-use-a-custom-converter"]
 === Configuring a connector to use a custom converter
 
-To enable a connector to use the custom converter, you add properties to the connector configuration that specify the converter name and class.
-If the converter requires further information to customize the formats of specific data types, you can also define other coniguration options to provide that information.
+To enable a connector to use the custom converter, add properties to specify the name and class of the converter to the configuration of a {prodname} source connector.
+You cannot configure the {prodname} JDBC sink connector to use a custom converter.
+If the converter requires further information to customize the formats of specific data types, you can define other configuration options to provide that information.
+
+.Prerequisites
+
+* You xref:implementing-a-custom-converter[created] and xref:deploying-a-debezium-custom-converter[deployed a custom converter].
+* A {prodname} relational database source connector is deployed.
 
 .Procedure
 
@@ -225,9 +262,21 @@ If the converter requires further information to customize the formats of specif
 converters: _<converterSymbolicName>_ // <1>
 _<converterSymbolicName>_.type: _<fullyQualifiedConverterClassName>_ // <2>
 ----
-<1> The `converters` property is mandatory and enumerates a comma-separated list of symbolic names of the converter instances to use with the connector.
++
+[cols="1,7a",options="header",subs="+attributes"]
+.Description of connector configuration properties for enabling a converter
+|===
+|Item |Description
+
+|1
+|The mandatory `converters` property enumerates a comma-separated list of symbolic names of the converter instances to use with the connector.
 The values listed for this property serve as prefixes in the names of other properties that you specify for the converter.
-<2> The `_<converterSymbolicName>_.type` property is mandatory, and specifies the name of the class that implements the converter.
+
+|2
+|The mandatory `_<converterSymbolicName>_.type` property specifies the name of the class that implements the converter.
+
+|===
++
 For example, for the earlier xref:example-debezium-simple-custom-converter[custom converter example], you would add the following properties to the connector configuration:
 +
 ----

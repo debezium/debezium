@@ -582,9 +582,10 @@ public class TestHelper {
                                 try {
                                     final Lsn minLsn = connection.getMinLsn(TEST_DATABASE_1, ctTableName);
                                     final Lsn maxLsn = connection.getMaxLsn(TEST_DATABASE_1);
-                                    final CdcRecordFoundBlockingMultiResultSetConsumer consumer = new CdcRecordFoundBlockingMultiResultSetConsumer(handler);
-                                    SqlServerChangeTable[] tables = Collections.singletonList(ct).toArray(new SqlServerChangeTable[]{});
-                                    connection.getChangesForTables(TEST_DATABASE_1, tables, minLsn, maxLsn, consumer);
+                                    final CdcRecordFoundBlockingResultSetConsumer consumer = new CdcRecordFoundBlockingResultSetConsumer(handler);
+                                    try (ResultSet resultSet = connection.getChangesForTable(ct, minLsn, maxLsn)) {
+                                        consumer.accept(resultSet);
+                                    }
                                     return consumer.isFound();
                                 }
                                 catch (Exception e) {
@@ -637,9 +638,10 @@ public class TestHelper {
                                 try {
                                     final Lsn minLsn = connection.getMinLsn(TEST_DATABASE_1, ctTableName);
                                     final Lsn maxLsn = connection.getMaxLsn(TEST_DATABASE_1);
-                                    final CdcRecordFoundBlockingMultiResultSetConsumer consumer = new CdcRecordFoundBlockingMultiResultSetConsumer(handler);
-                                    SqlServerChangeTable[] tables = Collections.singletonList(ct).toArray(new SqlServerChangeTable[]{});
-                                    connection.getChangesForTables(TEST_DATABASE_1, tables, minLsn, maxLsn, consumer);
+                                    final CdcRecordFoundBlockingResultSetConsumer consumer = new CdcRecordFoundBlockingResultSetConsumer(handler);
+                                    try (ResultSet resultSet = connection.getChangesForTable(ct, minLsn, maxLsn)) {
+                                        consumer.accept(resultSet);
+                                    }
                                     return consumer.isFound();
                                 }
                                 catch (Exception e) {
@@ -687,23 +689,20 @@ public class TestHelper {
      * A multiple result-set consumer used internally by {@link #waitForCdcRecord(SqlServerConnection, String, CdcRecordHandler)}
      * that allows returning whether the provided {@link CdcRecordHandler} detected the expected condition or not.
      */
-    static class CdcRecordFoundBlockingMultiResultSetConsumer implements JdbcConnection.BlockingMultiResultSetConsumer {
+    static class CdcRecordFoundBlockingResultSetConsumer implements JdbcConnection.BlockingResultSetConsumer {
         private final CdcRecordHandler handler;
         private boolean found;
 
-        CdcRecordFoundBlockingMultiResultSetConsumer(CdcRecordHandler handler) {
+        CdcRecordFoundBlockingResultSetConsumer(CdcRecordHandler handler) {
             this.handler = handler;
         }
 
         @Override
-        public void accept(ResultSet[] rs) throws SQLException, InterruptedException {
-            if (rs.length == 1) {
-                final ResultSet resultSet = rs[0];
-                while (resultSet.next()) {
-                    if (handler.apply(resultSet)) {
-                        this.found = true;
-                        break;
-                    }
+        public void accept(final ResultSet resultSet) throws SQLException, InterruptedException {
+            while (resultSet.next()) {
+                if (handler.apply(resultSet)) {
+                    this.found = true;
+                    break;
                 }
             }
         }

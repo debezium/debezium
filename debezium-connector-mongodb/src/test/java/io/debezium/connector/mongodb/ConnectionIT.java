@@ -123,6 +123,6 @@ public class ConnectionIT extends AbstractMongoIT {
 
         // Now that we've put at least one document into our collection, verify we can see the database and collection ...
         assertThat(connection.databaseNames()).containsOnly("dbA", "dbB");
-        assertThat(connection.collections()).containsOnly(new CollectionId(replicaSet.replicaSetName(), "dbA", "moviesA"));
+        assertThat(connection.collections()).containsOnly(new CollectionId("dbA", "moviesA"));
     }
 }

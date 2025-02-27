@@ -2,7 +2,7 @@ test:
   ./test.sh
 duration: 2h
 environment:
-  MAVEN_ARGS: "-U -am -fae -Papicurio -Dinsecure.repositories=WARN -pl debezium-bom"
+  CUSTOM_MAVEN_ARGS: "-U -am -fae -Papicurio -Dinsecure.repositories=WARN --no-transfer-progress -pl debezium-bom"
 
 /mysql:
   summary: Run mysql connector functional tests
@@ -23,7 +23,7 @@ environment:
 /oracle:
   summary: Run oracle connector functional tests
   tags: [debezium, oracle]
-  duration: 4h
+  duration: 5h
   tier: 1
   environment+:
     TEST_PROFILE: oracle

@@ -9,9 +9,10 @@
 ** xref:configuration/topic-auto-create-config.adoc[Customizing Topic Auto-Creation]
 ** xref:configuration/signalling.adoc[Sending Signals to Debezium]
 ** xref:configuration/notification.adoc[Receive notifications from Debezium]
-* Connectors
+* Source Connectors
 ** xref:connectors/index.adoc[Overview]
 ** xref:connectors/mysql.adoc[MySQL]
+** xref:connectors/mariadb.adoc[MariaDB]
 ** xref:connectors/mongodb.adoc[MongoDB]
 ** xref:connectors/postgresql.adoc[PostgreSQL]
 ** xref:connectors/oracle.adoc[Oracle]
@@ -20,8 +21,10 @@
 ** xref:connectors/cassandra.adoc[Cassandra]
 ** xref:connectors/vitess.adoc[Vitess]
 ** xref:connectors/spanner.adoc[Spanner]
-** xref:connectors/jdbc.adoc[JDBC]
 ** xref:connectors/informix.adoc[Informix]
+* Sink Connectors
+** xref:connectors/index-sink.adoc[Overview]
+** xref:connectors/jdbc.adoc[JDBC]
 * Transformations
 ** xref:transformations/index.adoc[Overview]
 ** xref:transformations/topic-routing.adoc[Topic Routing]
@@ -38,7 +41,9 @@
 ** xref:transformations/header-to-value.adoc[HeaderToValue]
 ** xref:transformations/timezone-converter.adoc[Timezone Converter]
 ** xref:transformations/timescaledb.adoc[TimescaleDB Integration]
+** xref:transformations/decode-logical-decoding-message-content.adoc[Decode Logical Decoding Message Content]
 ** xref:transformations/convert-cloudevent-to-saveable-form.adoc[Convert CloudEvents to Saveable Form]
+** xref:transformations/vector-to-json.adoc[Vector Data Types to JSON Types]
 * Post Processors
 ** xref:post-processors/index.adoc[Overview]
 ** xref:post-processors/reselect-columns.adoc[Reselect Columns]
@@ -57,5 +62,4 @@
 ** xref:operations/monitoring.adoc[Monitoring]
 ** xref:operations/kubernetes.adoc[Running on Kubernetes]
 ** xref:operations/openshift.adoc[Running on Openshift]
-** xref:operations/embedded.adoc[Embedding Debezium]
 ** xref:operations/debezium-ui.adoc[Debezium UI]

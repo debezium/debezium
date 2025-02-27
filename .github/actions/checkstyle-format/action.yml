@@ -1,0 +1,34 @@
+name: "Checkstyle and Formatting"
+description: "Performs checkstyle and formatting"
+
+inputs:
+  maven-cache-key:
+    description: "The maven build cache key"
+    required: true
+  shell:
+    description: "The shell to use"
+    required: false
+    default: bash
+
+runs:
+  using: "composite"
+  steps:
+    - uses: ./.github/actions/setup-java
+
+    - uses: ./.github/actions/maven-cache
+      with:
+        key: ${{ inputs.maven-cache-key }}
+
+    - name: "Checkstyle, Formatting, and Import Order Checks"
+      shell: ${{ inputs.shell }}
+      run: >
+        ./mvnw -B -pl support/checkstyle,support/ide-configs/ clean install
+        -Dorg.slf4j.simpleLogger.showDateTime=true
+        -Dorg.slf4j.simpleLogger.dateTimeFormat="YYYY-MM-dd HH:mm:ss,SSS"
+        &&
+        ./mvnw -B -ntp process-sources checkstyle:checkstyle
+        -pl ${{ env.MAVEN_FULL_BUILD_PROJECTS }}
+        -Dformat.formatter.goal=validate
+        -Dformat.imports.goal=check
+        -Dorg.slf4j.simpleLogger.showDateTime=true
+        -Dorg.slf4j.simpleLogger.dateTimeFormat="YYYY-MM-dd HH:mm:ss,SSS"

@@ -5,17 +5,8 @@
  */
 package io.debezium.connector.mongodb;
 
-import static io.debezium.connector.mongodb.connection.MongoDbConnection.AUTHORIZATION_FAILURE_MESSAGE;
-
 import java.util.Optional;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import io.debezium.DebeziumException;
-import io.debezium.connector.mongodb.connection.ConnectionContext;
-import io.debezium.connector.mongodb.connection.MongoDbConnection;
-import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.connector.mongodb.metrics.MongoDbStreamingChangeEventSourceMetrics;
 import io.debezium.connector.mongodb.snapshot.MongoDbIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.ErrorHandler;
@@ -28,6 +19,7 @@ import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 
@@ -38,31 +30,27 @@ import io.debezium.util.Clock;
  */
 public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory<MongoDbPartition, MongoDbOffsetContext> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnection.class);
-
     private final MongoDbConnectorConfig configuration;
     private final ErrorHandler errorHandler;
     private final EventDispatcher<MongoDbPartition, CollectionId> dispatcher;
     private final Clock clock;
-    private final ReplicaSets replicaSets;
     private final MongoDbTaskContext taskContext;
-    private final MongoDbConnection.ChangeEventSourceConnectionFactory connections;
     private final MongoDbSchema schema;
     private final MongoDbStreamingChangeEventSourceMetrics streamingMetrics;
+    private final SnapshotterService snapshotterService;
 
     public MongoDbChangeEventSourceFactory(MongoDbConnectorConfig configuration, ErrorHandler errorHandler,
                                            EventDispatcher<MongoDbPartition, CollectionId> dispatcher, Clock clock,
-                                           ReplicaSets replicaSets, MongoDbTaskContext taskContext, MongoDbSchema schema,
-                                           MongoDbStreamingChangeEventSourceMetrics streamingMetrics) {
+                                           MongoDbTaskContext taskContext, MongoDbSchema schema,
+                                           MongoDbStreamingChangeEventSourceMetrics streamingMetrics, SnapshotterService snapshotterService) {
         this.configuration = configuration;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
         this.clock = clock;
-        this.replicaSets = replicaSets;
         this.taskContext = taskContext;
-        this.connections = createMongoDbConnectionFactory(taskContext.getConnectionContext());
         this.schema = schema;
         this.streamingMetrics = streamingMetrics;
+        this.snapshotterService = snapshotterService;
     }
 
     @Override
@@ -71,13 +59,12 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
         return new MongoDbSnapshotChangeEventSource(
                 configuration,
                 taskContext,
-                connections,
-                replicaSets,
                 dispatcher,
                 clock,
                 snapshotProgressListener,
                 errorHandler,
-                notificationService);
+                notificationService,
+                snapshotterService);
     }
 
     @Override
@@ -85,12 +72,11 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
         return new MongoDbStreamingChangeEventSource(
                 configuration,
                 taskContext,
-                connections,
-                replicaSets,
                 dispatcher,
                 errorHandler,
                 clock,
-                streamingMetrics);
+                streamingMetrics,
+                snapshotterService);
     }
 
     @Override
@@ -99,15 +85,9 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
                                                                                                                                                 SnapshotProgressListener<MongoDbPartition> snapshotProgressListener,
                                                                                                                                                 DataChangeEventListener<MongoDbPartition> dataChangeEventListener,
                                                                                                                                                 NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService) {
-        if (replicaSets.size() > 1) {
-            LOGGER.info("Only ReplicaSet deployments and Sharded Cluster with connection.mode=sharded are supported by incremental snapshot");
-            return Optional.empty();
-        }
-
         final MongoDbIncrementalSnapshotChangeEventSource incrementalSnapshotChangeEventSource = new MongoDbIncrementalSnapshotChangeEventSource(
                 configuration,
-                connections,
-                replicaSets,
+                taskContext,
                 dispatcher,
                 schema,
                 clock,
@@ -115,21 +95,5 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
                 dataChangeEventListener,
                 notificationService);
         return Optional.of(incrementalSnapshotChangeEventSource);
-    }
-
-    private MongoDbConnection.ChangeEventSourceConnectionFactory createMongoDbConnectionFactory(ConnectionContext connectionContext) {
-        return (ReplicaSet replicaSet, MongoDbPartition partition) -> connectionContext.connect(
-                replicaSet, taskContext.filters(), connectionErrorHandler(partition));
-    }
-
-    private MongoDbConnection.ErrorHandler connectionErrorHandler(MongoDbPartition partition) {
-        return (String desc, Throwable error) -> {
-            if (error.getMessage() == null || !error.getMessage().startsWith(AUTHORIZATION_FAILURE_MESSAGE)) {
-                dispatcher.dispatchConnectorEvent(partition, new DisconnectEvent());
-            }
-
-            LOGGER.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
-            throw new DebeziumException("Error while attempting to " + desc, error);
-        };
     }
 }

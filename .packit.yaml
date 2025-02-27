@@ -9,7 +9,7 @@ jobs:
     # Suffix for job name
     identifier: "postgres-12-decoderbufs"
     targets:
-      - centos-stream-8-x86_64
+      - centos-stream-9
     skip_build: true
     manual_trigger: true
     labels:
@@ -29,7 +29,7 @@ jobs:
     # Suffix for job name
     identifier: "postgres-12-pgoutput"
     targets:
-      - centos-stream-8-x86_64
+      - centos-stream-9
     skip_build: true
     manual_trigger: true
     labels:
@@ -49,7 +49,7 @@ jobs:
     # Suffix for job name
     identifier: "postgres-15-decoderbufs"
     targets:
-      - centos-stream-8-x86_64
+      - centos-stream-9
     skip_build: true
     manual_trigger: true
     labels:
@@ -70,7 +70,7 @@ jobs:
     # Suffix for job name
     identifier: "postgres-15-pgoutput"
     targets:
-      - centos-stream-8-x86_64
+      - centos-stream-9
     skip_build: true
     manual_trigger: true
     labels:
@@ -90,7 +90,7 @@ jobs:
     # Suffix for job name
     identifier: "mysql-8-none"
     targets:
-      - centos-stream-8-x86_64
+      - centos-stream-9
     skip_build: true
     manual_trigger: true
     labels:
@@ -110,7 +110,7 @@ jobs:
     # Suffix for job name
     identifier: "mysql-8-assembly"
     targets:
-      - centos-stream-8-x86_64
+      - centos-stream-9
     skip_build: true
     manual_trigger: true
     labels:
@@ -128,49 +128,9 @@ jobs:
   - job: tests
     trigger: pull_request
     # Suffix for job name
-    identifier: "mysql-5-none"
-    targets:
-      - centos-stream-8-x86_64
-    skip_build: true
-    manual_trigger: true
-    labels:
-      - mysql
-    tf_extra_params:
-      test:
-        tmt:
-          name: mysql
-      environments:
-        - variables:
-            MYSQL_VERSION: 5.7
-            PROFILE: none
-
-  ###############################################################################################
-  - job: tests
-    trigger: pull_request
-    # Suffix for job name
-    identifier: "mysql-5-assembly"
-    targets:
-      - centos-stream-8-x86_64
-    skip_build: true
-    manual_trigger: true
-    labels:
-      - mysql
-    tf_extra_params:
-      test:
-        tmt:
-          name: mysql
-      environments:
-        - variables:
-            MYSQL_VERSION: 5.7
-            PROFILE: assembly
-
-  ###############################################################################################
-  - job: tests
-    trigger: pull_request
-    # Suffix for job name
     identifier: "sqlserver-2017"
     targets:
-      - centos-stream-8-x86_64
+      - centos-stream-9
     skip_build: true
     manual_trigger: true
     labels:
@@ -189,7 +149,7 @@ jobs:
     # Suffix for job name
     identifier: "sqlserver-2022"
     targets:
-      - centos-stream-8-x86_64
+      - centos-stream-9
     skip_build: true
     manual_trigger: true
     labels:
@@ -208,7 +168,7 @@ jobs:
     # Suffix for job name
     identifier: "mongodb-4"
     targets:
-      - centos-stream-8-x86_64
+      - centos-stream-9
     skip_build: true
     manual_trigger: true
     labels:
@@ -228,7 +188,7 @@ jobs:
     # Suffix for job name
     identifier: "mongodb-5"
     targets:
-      - centos-stream-8-x86_64
+      - centos-stream-9
     skip_build: true
     manual_trigger: true
     labels:
@@ -248,7 +208,7 @@ jobs:
     # Suffix for job name
     identifier: "mongodb-6"
     targets:
-      - centos-stream-8-x86_64
+      - centos-stream-9
     skip_build: true
     manual_trigger: true
     labels:
@@ -347,5 +307,28 @@ jobs:
             ORACLE_VERSION: 19.3.0-xs
             TEST_PROFILE: oracle
             ORACLE_ARG: "-Poracle-xstream"
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "oracle-23"
+    targets:
+      centos-stream-8-x86_64:
+        distros: [ "debezium-tf-2330" ]
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - oracle
+      - oracle-23
+    tf_extra_params:
+      test:
+        tmt:
+          name: oracle
+      environments:
+        - variables:
+            ORACLE_VERSION: 23.3.0.0
+            ORACLE_PROFILE_ARGS: "-Poracle-23 -pl debezium-connector-oracle"
+            TEST_PROFILE: oracle
 
   ###############################################################################################

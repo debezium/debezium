@@ -1,0 +1,105 @@
+:page-aliases: configuration/vector-to-json.adoc
+
+[id="vector-to-json"]
+= Vector To Json
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+Debezium maps vector data type columns with specific logical semantic representations of the vector data.
+If you need to remap that representation into something more universal like JSON, Debezium provides the Vector to Json single message transformation (SMT).
+
+== Use cases
+
+Debezium maps vector data type columns using the follow mappings:
+
+|===
+|Database |Column Type |Logical Semantic Type |Kafka Connect Type
+
+|MySQL
+|`vector`
+|`io.debezium.data.FloatVector`
+|`ARRAY`
+
+|PostgreSQL
+|`vector`
+|`io.debezium.data.DoubleVector`
+|`ARRAY`
+
+|PostgreSQL
+|`halfvec`
+|`io.debezium.data.FloatVector`
+|`ARRAY`
+
+|PostgreSQL
+|`sparsevec`
+|`io.debezium.data.SparseVector`
+|`Struct`
+
+|===
+
+.JDBC sink
+
+One of the clearer use cases is to use this transformation to deal with consuming vector data types for a target relational database that does not support vector data types.
+For example, you cannot write such data types to relational databases such as Db2, SQL Server, or Oracle prior to 23ai.
+The `VectorToJsonConverter` transformation provides a useful, yet simple way to address this difference by converting all vector data type fields in the event payload from their respective vector-specific logical semantic representation to JSON.
+
+The primary benefit of using JSON is that databases that support a Json data type will store the representation natively.
+For relatinoal databases that do not have a native JSON data type, those will default to use their respective long text equivalent data types.
+
+.Ease of use
+Another use case involves ease of use.
+The Kafka Connect API is not one that many people are often comfortable working with and being provided the data in a format that is more intuitive simply lowers the complexity.
+Since Debezium's JSON semantic type is `io.debezium.data.Json` and its natively represented in the Kafka event structure as a string value, it's very easy to quickly parse the JSON details using any JSON library.
+
+== Examples of JSON by semantic type
+
+Debezium's logical semantic types consist either of an array of values or a data structure that not only contains the array of values, but additional attributes that describe the vector's SQL representation.
+The following illustrates the JSON output based on the Debezium logical semantic type.
+
+.DoubleVector after conversion to JSON
+[source,json]
+----
+{
+  "values": [1, 2, 3]
+}
+----
+
+.FloatVector after conversion to JSON
+[source,json]
+----
+{
+  "values": [1, 2, 3]
+}
+----
+
+.SparseVector after conversion to JSON
+[source,json]
+----
+{
+  "dimensions": 25,
+  "vector": {
+    "1": 10,
+    "5": 25,
+    "10": 100,
+    "25": 10000
+  }
+}
+----
+
+== Example
+
+To convert vector data types to JSON, configure the `VectorToJsonConverter` in the Kafka Connect configuration for the {prodname} connector.
+
+The connector configuration in the following example will convert all PostgreSQL vector logical field types to JSON:
+
+[source]
+----
+transforms=vectortojson
+transforms.vectortojson.type=io.debezium.transforms.VectorToJsonConverter
+----
+

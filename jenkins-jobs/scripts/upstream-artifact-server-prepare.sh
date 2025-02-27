@@ -52,15 +52,15 @@ cp "$MAVEN_REPO"/io/apicurio/apicurio-registry-distro-connect-converter/*/apicur
 
 # Copy groovy scripts
 mkdir groovy
-cp "$MAVEN_REPO"/org/codehaus/groovy/groovy/*/groovy-*.jar groovy/
-cp "$MAVEN_REPO"/org/codehaus/groovy/groovy-json/*/groovy-json-*.jar groovy/
-cp "$MAVEN_REPO"/org/codehaus/groovy/groovy-jsr223/*/groovy-jsr223-*.jar groovy/
+cp "$MAVEN_REPO"/org/apache/groovy/groovy/*/groovy-*.jar groovy/
+cp "$MAVEN_REPO"/org/apache/groovy/groovy-json/*/groovy-json-*.jar groovy/
+cp "$MAVEN_REPO"/org/apache/groovy/groovy-jsr223/*/groovy-jsr223-*.jar groovy/
 
 prefix=""
 if [ "${ORACLE}" = "false" ] ; then
   rm debezium-connector-oracle*.zip
 else
-  cp "$MAVEN_REPO"/com/oracle/database/jdbc/ojdbc8/*/ojdbc8-*.jar jdbc/
+  cp "$MAVEN_REPO"/com/oracle/database/jdbc/ojdbc11/*/ojdbc11-*.jar jdbc/
   echo "Changing quay organisation to private rh-integration since ORACLE connector is included"
   ORGANISATION="rh_integration"
   prefix="dbz-"

@@ -5,10 +5,12 @@
  */
 package io.debezium.connector.oracle;
 
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,31 +81,37 @@ public abstract class AbstractStreamingAdapter<T extends AbstractOracleStreaming
             return Optional.empty();
         }
 
-        StringBuilder lastDdlScnQuery = new StringBuilder("SELECT TIMESTAMP_TO_SCN(MAX(last_ddl_time))")
-                .append(" FROM all_objects")
-                .append(" WHERE");
+        final String lastDdlScnQuery = "SELECT TIMESTAMP_TO_SCN(MAX(last_ddl_time))" +
+                " FROM all_objects" +
+                " WHERE" +
+                ctx.capturedTables.stream()
+                        .map(t -> " (owner=? and object_name=?)")
+                        .collect(Collectors.joining(" OR"));
 
-        for (TableId table : ctx.capturedTables) {
-            lastDdlScnQuery.append(" (owner = '" + table.schema() + "' AND object_name = '" + table.table() + "') OR");
-        }
-
-        String query = lastDdlScnQuery.substring(0, lastDdlScnQuery.length() - 3).toString();
-        try (Statement statement = connection.connection().createStatement();
-                ResultSet rs = statement.executeQuery(query)) {
-
-            if (!rs.next()) {
-                throw new IllegalStateException("Couldn't get latest table DDL SCN");
+        try (PreparedStatement statement = connection.connection().prepareStatement(lastDdlScnQuery)) {
+            int index = 1;
+            for (TableId tableId : ctx.capturedTables) {
+                statement.setString(index, tableId.schema());
+                statement.setString(index + 1, tableId.table());
+                index += 2;
             }
 
-            // Guard against LAST_DDL_TIME with value of 0.
-            // This case should be treated as if we were unable to determine a value for LAST_DDL_TIME.
-            // This forces later calculations to be based upon the current SCN.
-            String latestDdlTime = rs.getString(1);
-            if ("0".equals(latestDdlTime)) {
-                return Optional.empty();
-            }
+            try (ResultSet rs = statement.executeQuery()) {
 
-            return Optional.of(Scn.valueOf(latestDdlTime));
+                if (!rs.next()) {
+                    throw new IllegalStateException("Couldn't get latest table DDL SCN");
+                }
+
+                // Guard against LAST_DDL_TIME with value of 0.
+                // This case should be treated as if we were unable to determine a value for LAST_DDL_TIME.
+                // This forces later calculations to be based upon the current SCN.
+                String latestDdlTime = rs.getString(1);
+                if ("0".equals(latestDdlTime)) {
+                    return Optional.empty();
+                }
+
+                return Optional.of(Scn.valueOf(latestDdlTime));
+            }
         }
         catch (SQLException e) {
             if (e.getErrorCode() == 8180) {

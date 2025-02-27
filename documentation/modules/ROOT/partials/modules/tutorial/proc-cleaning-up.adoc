@@ -28,8 +28,8 @@ ifdef::community[]
 If you use Podman, run the following command:
 [source,shell,options="nowrap",subs="+attributes"]
 ----
-$ sudo podman pod kill dbz
-$ sudo podman pod rm dbz
+$ podman pod kill dbz
+$ podman pod rm dbz
 ----
 ====
 endif::community[]

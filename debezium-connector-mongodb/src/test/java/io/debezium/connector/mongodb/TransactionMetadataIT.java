@@ -17,7 +17,6 @@ import io.debezium.connector.mongodb.MongoDbConnectorConfig.SnapshotMode;
 import io.debezium.doc.FixFor;
 import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.util.Collect;
-import io.debezium.util.Testing;
 
 /**
  * Transaction metadata integration test for Debezium MongoDB connector.
@@ -28,7 +27,7 @@ public class TransactionMetadataIT extends AbstractMongoConnectorIT {
 
     @Test
     public void transactionMetadata() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         config = TestHelper.getConfiguration(mongo)
                 .edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.c1")
@@ -72,7 +71,7 @@ public class TransactionMetadataIT extends AbstractMongoConnectorIT {
             counter++;
         }
 
-        assertEndTransaction(all.get(7), txId1, 6, Collect.hashMapOf("rs0.dbA.c1", 6));
+        assertEndTransaction(all.get(7), txId1, 6, Collect.hashMapOf("dbA.c1", 6));
 
         stopConnector();
     }
@@ -80,7 +79,7 @@ public class TransactionMetadataIT extends AbstractMongoConnectorIT {
     @Test
     @FixFor("DBZ-4077")
     public void transactionMetadataWithCustomTopicName() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         config = TestHelper.getConfiguration(mongo)
                 .edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbA.c1")
@@ -125,7 +124,7 @@ public class TransactionMetadataIT extends AbstractMongoConnectorIT {
             counter++;
         }
 
-        assertEndTransaction(all.get(7), txId1, 6, Collect.hashMapOf("rs0.dbA.c1", 6));
+        assertEndTransaction(all.get(7), txId1, 6, Collect.hashMapOf("dbA.c1", 6));
 
         stopConnector();
     }

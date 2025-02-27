@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- *
  * @author Jakub Cechacek
  */
 public final class ConfigProperties {
@@ -33,8 +32,8 @@ public final class ConfigProperties {
     public static final String DOCKER_IMAGE_MYSQL_REPLICA = System.getProperty("test.docker.image.mysql.replica", "quay.io/debezium/example-mysql-replica:latest");
 
     public static final String DOCKER_IMAGE_POSTGRESQL = System.getProperty("test.docker.image.postgresql", "quay.io/debezium/example-postgres:latest");
-    public static final String DOCKER_IMAGE_MONGO = System.getProperty("test.docker.image.mongo", "quay.io/debezium/example-mongodb:latest");
-    public static final String DOCKER_IMAGE_MONGO_SHARDED = System.getProperty("test.docker.image.mongo.sharded", "quay.io/debezium/example-mongodb:latest");
+    public static final String DOCKER_IMAGE_MONGO = System.getProperty("test.docker.image.mongo", "quay.io/debezium/example-mongodb:2.6");
+    public static final String DOCKER_IMAGE_MONGO_SHARDED = System.getProperty("test.docker.image.mongo.sharded", "quay.io/debezium/example-mongodb:2.6");
     public static final String DOCKER_IMAGE_SQLSERVER = System.getProperty("test.docker.image.sqlserver", "mcr.microsoft.com/mssql/server:2019-latest");
     public static final String DOCKER_IMAGE_DB2 = System.getProperty("test.docker.image.db2", "quay.io/debezium/db2-cdc:latest");
     public static final String DOCKER_IMAGE_ORACLE = System.getProperty("test.docker.image.oracle", "quay.io/rh_integration/dbz-oracle:19.3.0");
@@ -47,6 +46,7 @@ public final class ConfigProperties {
     public static final String OCP_PROJECT_DBZ = System.getProperty("test.ocp.project.debezium");
     public static final String OCP_PROJECT_REGISTRY = System.getProperty("test.ocp.project.registry", OCP_PROJECT_DBZ + "-registry");
     public static final String OCP_PROJECT_MYSQL = System.getProperty("test.ocp.project.mysql", OCP_PROJECT_DBZ + "-mysql");
+    public static final String OCP_PROJECT_MARIADB = System.getProperty("test.ocp.project.mariadb", OCP_PROJECT_DBZ + "-mariadb");
     public static final String OCP_PROJECT_POSTGRESQL = System.getProperty("test.ocp.project.postgresql", OCP_PROJECT_DBZ + "-postgresql");
     public static final String OCP_PROJECT_SQLSERVER = System.getProperty("test.ocp.project.sqlserver", OCP_PROJECT_DBZ + "-sqlserver");
     public static final String OCP_PROJECT_MONGO = System.getProperty("test.ocp.project.mongo", OCP_PROJECT_DBZ + "-mongo");
@@ -75,6 +75,13 @@ public final class ConfigProperties {
     public static final Optional<String> DATABASE_MYSQL_HOST = stringOptionalProperty("test.database.mysql.host");
     public static final int DATABASE_MYSQL_PORT = Integer.parseInt(System.getProperty("test.database.mysql.port", "3306"));
 
+    public static final String DATABASE_MARIADB_USERNAME = System.getProperty("test.database.mariadb.username", "mysqluser");
+    public static final String DATABASE_MARIADB_PASSWORD = System.getProperty("test.database.mariadb.password", "mysqlpw");
+    public static final String DATABASE_MARIADB_DBZ_USERNAME = System.getProperty("test.database.mariadb.dbz.username", "debezium");
+    public static final String DATABASE_MARIADB_DBZ_PASSWORD = System.getProperty("test.database.mariadb.dbz.password", "dbz");
+    public static final Optional<String> DATABASE_MARIADB_HOST = stringOptionalProperty("test.database.mariadb.host");
+    public static final int DATABASE_MARIADB_PORT = Integer.parseInt(System.getProperty("test.database.mariadb.port", "3306"));
+
     // PostgreSql Configuration
     public static final String DATABASE_POSTGRESQL_USERNAME = System.getProperty("test.database.postgresql.username", "debezium");
     public static final String DATABASE_POSTGRESQL_PASSWORD = System.getProperty("test.database.postgresql.password", "debezium");
@@ -102,6 +109,8 @@ public final class ConfigProperties {
     public static final String DATABASE_MONGO_DBZ_LOGIN_DBNAME = System.getProperty("test.database.mongo.dbz.login.dbname", "admin");
     public static final Optional<String> DATABASE_MONGO_HOST = stringOptionalProperty("test.database.mongo.host");
     public static final int DATABASE_MONGO_PORT = Integer.parseInt(System.getProperty("test.database.mongo.port", "27017"));
+    public static final boolean DATABASE_MONGO_USE_KEYFILE = Boolean.parseBoolean(System.getProperty("test.database.mongo.use.keyfile"));
+    public static final boolean DATABASE_MONGO_USE_TLS = Boolean.parseBoolean(System.getProperty("test.database.mongo.use.tls"));
 
     public static final String DATABASE_MONGO_DOCKER_DESKTOP_PORTS = System.getProperty("database.mongo.docker.desktop.ports", "27017:27117");
     public static final int DATABASE_MONGO_DOCKER_REPLICA_SIZE = Integer.parseInt(System.getProperty("database.mongo.docker.replica.size", "1"));

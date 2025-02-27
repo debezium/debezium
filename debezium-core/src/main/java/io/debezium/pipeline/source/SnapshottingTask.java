@@ -8,6 +8,8 @@ package io.debezium.pipeline.source;
 import java.util.List;
 import java.util.Map;
 
+import io.debezium.spi.schema.DataCollectionId;
+
 /**
  * A configuration describing the task to be performed during snapshotting.
  */
@@ -16,16 +18,16 @@ public class SnapshottingTask {
     private final boolean snapshotSchema;
     private final boolean snapshotData;
     private final List<String> dataCollections;
-    private final Map<String, String> filterQueries;
+    private final Map<DataCollectionId, String> filterQueries;
 
-    private final boolean blocking;
+    private final boolean onDemand;
 
-    public SnapshottingTask(boolean snapshotSchema, boolean snapshotData, List<String> dataCollections, Map<String, String> filterQueries, boolean blocking) {
+    public SnapshottingTask(boolean snapshotSchema, boolean snapshotData, List<String> dataCollections, Map<DataCollectionId, String> filterQueries, boolean onDemand) {
         this.snapshotSchema = snapshotSchema;
         this.snapshotData = snapshotData;
         this.dataCollections = dataCollections;
         this.filterQueries = filterQueries;
-        this.blocking = blocking;
+        this.onDemand = onDemand;
     }
 
     /**
@@ -53,7 +55,7 @@ public class SnapshottingTask {
     /**
      * Map of query statement overrides by data collection
      */
-    public Map<String, String> getFilterQueries() {
+    public Map<DataCollectionId, String> getFilterQueries() {
         return filterQueries;
     }
 
@@ -68,11 +70,11 @@ public class SnapshottingTask {
     }
 
     /**
-     * Determine if the task is a blocking snapshot or not
+     * Determine if the task is an onDemand snapshot or not
      *
      */
-    public boolean isBlocking() {
-        return blocking;
+    public boolean isOnDemand() {
+        return onDemand;
     }
 
     @Override

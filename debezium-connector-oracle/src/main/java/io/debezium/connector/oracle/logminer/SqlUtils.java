@@ -9,7 +9,6 @@ import java.time.Duration;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
-import io.debezium.relational.TableId;
 import io.debezium.util.Strings;
 
 /**
@@ -68,11 +67,11 @@ public class SqlUtils {
         return String.format("SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_MIN FROM %s", DATABASE_VIEW);
     }
 
-    static String tableSupplementalLoggingCheckQuery(TableId tableId) {
-        return String.format("SELECT 'KEY', LOG_GROUP_TYPE FROM %s WHERE OWNER = '%s' AND TABLE_NAME = '%s'", ALL_LOG_GROUPS, tableId.schema(), tableId.table());
+    static String tableSupplementalLoggingCheckQuery() {
+        return String.format("SELECT 'KEY', LOG_GROUP_TYPE FROM %s WHERE OWNER=? AND TABLE_NAME=?", ALL_LOG_GROUPS);
     }
 
-    static String oldestFirstChangeQuery(Duration archiveLogRetention, String archiveDestinationName) {
+    public static String oldestFirstChangeQuery(Duration archiveLogRetention, String archiveDestinationName) {
         final StringBuilder sb = new StringBuilder();
         sb.append("SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# ");
         sb.append("FROM ").append(LOG_VIEW).append(" ");
@@ -197,9 +196,10 @@ public class SqlUtils {
      * @param startScn mine from
      * @param endScn mine till
      * @param strategy Log Mining strategy
+     * @param continuousMining whether to use continuous mining
      * @return statement todo: handle corruption. STATUS (Double) — value of 0 indicates it is executable
      */
-    static String startLogMinerStatement(Scn startScn, Scn endScn, OracleConnectorConfig.LogMiningStrategy strategy, boolean isContinuousMining) {
+    static String startLogMinerStatement(Scn startScn, Scn endScn, OracleConnectorConfig.LogMiningStrategy strategy, boolean continuousMining) {
         String miningStrategy;
         if (strategy.equals(OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO)) {
             miningStrategy = "DBMS_LOGMNR.DICT_FROM_REDO_LOGS + DBMS_LOGMNR.DDL_DICT_TRACKING ";
@@ -207,7 +207,7 @@ public class SqlUtils {
         else {
             miningStrategy = "DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG ";
         }
-        if (isContinuousMining) {
+        if (continuousMining) {
             miningStrategy += " + DBMS_LOGMNR.CONTINUOUS_MINE ";
         }
         return "BEGIN sys.dbms_logmnr.start_logmnr(" +

@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>2.5.0.Final</version>
+        <version>3.1.0-SNAPSHOT</version>
         <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -40,8 +40,7 @@
         </dependency>
         <dependency>
             <groupId>com.oracle.database.jdbc</groupId>
-            <artifactId>ojdbc8</artifactId>
-            <scope>provided</scope>
+            <artifactId>ojdbc11</artifactId>
         </dependency>
         <dependency>
             <groupId>org.antlr</groupId>
@@ -49,15 +48,20 @@
         </dependency>
         <dependency>
             <groupId>org.infinispan</groupId>
-            <artifactId>infinispan-core-jakarta</artifactId>
+            <artifactId>infinispan-core</artifactId>
         </dependency>
         <dependency>
             <groupId>org.infinispan</groupId>
-            <artifactId>infinispan-client-hotrod-jakarta</artifactId>
+            <artifactId>infinispan-client-hotrod</artifactId>
         </dependency>
         <dependency>
             <groupId>org.infinispan.protostream</groupId>
             <artifactId>protostream-processor</artifactId>
+        </dependency>
+        <!-- Dependencies for NLS for Internationalization support -->
+        <dependency>
+            <groupId>com.oracle.database.nls</groupId>
+            <artifactId>orai18n</artifactId>
         </dependency>
         <!-- Dependencies needed for XML support -->
         <dependency>
@@ -80,6 +84,19 @@
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java-util</artifactId>
             <version>${version.com.google.protobuf}</version>
+        </dependency>
+
+        <!-- Ehcache Dependencies -->
+        <dependency>
+            <groupId>org.ehcache</groupId>
+            <artifactId>ehcache</artifactId>
+            <version>${version.ehcache}</version>
+        </dependency>
+        <!-- Ehcache JAXB implementation dependency -->
+        <dependency>
+            <groupId>org.glassfish.jaxb</groupId>
+            <artifactId>jaxb-runtime</artifactId>
+            <version>${version.jaxb.implementation}</version>
         </dependency>
 
         <!-- Testing -->
@@ -195,7 +212,7 @@
 
         <!-- This should be kept in sync with the infinispan dependencies used -->
         <oracle.infinispan.host>${docker.host.address}</oracle.infinispan.host>
-        <oracle.infinispan.image>infinispan/server:${version.infinispan.server}</oracle.infinispan.image>
+        <oracle.infinispan.image>quay.io/infinispan/server:${version.infinispan}</oracle.infinispan.image>
         <oracle.infinispan.port>11222</oracle.infinispan.port>
         <oracle.infinispan.user>admin</oracle.infinispan.user>
         <oracle.infinispan.password>admin</oracle.infinispan.password>
@@ -726,6 +743,17 @@
                 </plugins>
             </build>
         </profile>
+        <!-- This profile should be used for testing connector with EhCache only -->
+        <profile>
+            <id>oracle-ehcache</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <log.mining.buffer.type.name>ehcache</log.mining.buffer.type.name>
+            </properties>
+            <!-- todo: when using this profile, enforce oracle-xstream being mutually exclusive -->
+        </profile>
         <profile>
             <id>apicurio</id>
             <activation>
@@ -756,7 +784,7 @@
                             <images>
                                 <!-- A container for the data server replica set -->
                                 <image>
-                                    <name>apicurio/apicurio-registry-mem:${version.apicurio}</name>
+                                    <name>quay.io/apicurio/apicurio-registry-mem:${version.apicurio}</name>
                                     <run>
                                         <namingStrategy>none</namingStrategy>
                                         <ports>
@@ -807,6 +835,16 @@
             </activation>
             <properties>
                 <log.mining.read.only.mode>true</log.mining.read.only.mode>
+            </properties>
+        </profile>
+        <profile>
+            <id>oracle-23</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <version.oracle.driver>23.3.0.23.09</version.oracle.driver>
+                <version.oracle.instantclient>23.3.0.0</version.oracle.instantclient>
             </properties>
         </profile>
     </profiles>

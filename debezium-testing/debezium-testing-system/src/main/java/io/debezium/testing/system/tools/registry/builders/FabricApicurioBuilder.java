@@ -9,11 +9,11 @@ import static io.debezium.testing.system.tools.ConfigProperties.APICURIO_TLS_ENA
 import static io.debezium.testing.system.tools.kafka.builders.FabricKafkaConnectBuilder.KAFKA_CERT_SECRET;
 import static io.debezium.testing.system.tools.kafka.builders.FabricKafkaConnectBuilder.KAFKA_CLIENT_CERT_SECRET;
 
-import io.apicurio.registry.operator.api.model.ApicurioRegistry;
-import io.apicurio.registry.operator.api.model.ApicurioRegistryBuilder;
-import io.apicurio.registry.operator.api.model.ApicurioRegistrySpecConfigurationKafkaSecurity;
-import io.apicurio.registry.operator.api.model.ApicurioRegistrySpecConfigurationKafkaSecurityBuilder;
-import io.apicurio.registry.operator.api.model.ApicurioRegistrySpecConfigurationKafkaSecurityTlsBuilder;
+import io.apicurio.registry.operator.api.v1.model.ApicurioRegistry;
+import io.apicurio.registry.operator.api.v1.model.ApicurioRegistryBuilder;
+import io.apicurio.registry.operator.api.v1.model.apicurioregistryspec.configuration.kafkasql.Security;
+import io.apicurio.registry.operator.api.v1.model.apicurioregistryspec.configuration.kafkasql.SecurityBuilder;
+import io.apicurio.registry.operator.api.v1.model.apicurioregistryspec.configuration.kafkasql.security.TlsBuilder;
 import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.fabric8.FabricBuilderWrapper;
 
@@ -75,10 +75,10 @@ public class FabricApicurioBuilder
         return self();
     }
 
-    private ApicurioRegistrySpecConfigurationKafkaSecurity getTlsSpec() {
-        return new ApicurioRegistrySpecConfigurationKafkaSecurityBuilder()
+    private Security getTlsSpec() {
+        return new SecurityBuilder()
                 .withTls(
-                        new ApicurioRegistrySpecConfigurationKafkaSecurityTlsBuilder()
+                        new TlsBuilder()
                                 .withKeystoreSecretName(KAFKA_CLIENT_CERT_SECRET)
                                 .withTruststoreSecretName(KAFKA_CERT_SECRET)
                                 .build())

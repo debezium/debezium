@@ -2,8 +2,10 @@
 // Type: assembly
 [id="debezium-connector-for-jdbc"]
 = {prodname} connector for JDBC
-:context: JDBC
+:context: jdbc
 :mbean-name: {context}
+:connector-file: {context}
+:connector-name: JDBC
 ifdef::community[]
 :toc:
 :toc-placement: macro
@@ -12,12 +14,6 @@ ifdef::community[]
 :source-highlighter: highlight.js
 
 toc::[]
-
-[NOTE]
-====
-This connector is currently in an incubating state. In future versions, we might change the exact semantics, configuration options, and so forth, depending on the feedback that we receive.
-Please let us know if you encounter any problems.
-====
 
 [[jdbc-overview]]
 == Overview
@@ -38,15 +34,16 @@ The connector supports idempotent write operations by using upsert semantics and
 
 The {prodname} JDBC connector provides the following features:
 
-* xref:jdbc-consume-complex-debezium-events[]
-* xref:jdbc-at-least-once-delivery[]
-* xref:jdbc-multiple-tasks[]
-* xref:jdbc-data-and-type-mappings[]
-* xref:jdbc-primary-key-handling[]
-* xref:jdbc-delete-mode[]
-* xref:jdbc-idempotent-writes[]
-* xref:jdbc-schema-evolution[]
-* xref:jdbc-quoting-case-sensitivity[]
+* xref:jdbc-consume-complex-debezium-events[Consuming complex {prodname} change events]
+* xref:jdbc-at-least-once-delivery[JDBC at-least-once delivery]
+* xref:jdbc-multiple-tasks[Multiple tasks]
+* xref:jdbc-data-and-type-mappings[Data and column type mappings]
+* xref:jdbc-primary-key-handling[Primary key handling]
+* xref:jdbc-delete-mode[Delete mode]
+* xref:jdbc-idempotent-writes[Idempotent writes]
+* xref:jdbc-schema-evolution[Schema evolution]
+* xref:jdbc-quoting-case-sensitivity[JDBC quoting and case-sensitivity]
+* xref:jdbc-connection-idle-timeouts[Connection idle timeouts]
 
 // Type: concept
 // Title: Description of how the {prodname} JDBC connector consumes complex change events
@@ -161,6 +158,12 @@ To avoid this problem, apply the following settings in your environment:
 * Create the database table and primary key mappings in advance.
 ====
 
+[IMPORTANT]
+====
+If a column maps to a data type that isn't permitted as a primary key for your target database, an explicit list of columns will be necessary in `primary.key.fields` excluding such columns.
+Consult your specific database vendor's documentation for what data types are and are not permissible.
+====
+
 // Type: procedure
 // Title: Configuring the {prodname} JDBC connector to delete rows when consuming `DELETE` or _tombstone_ events
 // ModuleID: debezium-jdbc-connector-configuring-the-connector-to-delete-rows
@@ -246,7 +249,7 @@ If the connector attempts to create a table with a nullability setting or a defa
 To adjust nullability settings or default values, you can introduce a custom single message transformation that applies changes in the pipeline, or modifies the column state defined in the source database.
 
 A field's data type is resolved based on a predefined set of mappings.
-For more information, see xref:jdbc-field-types[].
+For more information, see xref:jdbc-field-types[JDBC field types].
 
 [IMPORTANT]
 ====
@@ -277,6 +280,33 @@ To explicitly preserve the case of the table and field names that are present in
 When this options is set, when an incoming event is for a topic called `orders`, and the destination database dialect is Oracle, the connector creates a table with the name `orders`, because the constructed SQL defines the name of the table as `"orders"`.
 Enabling quoting results in the same behavior when the connector creates column names.
 
+[[jdbc-connection-idle-timeouts]]
+=== Connection Idle Timeouts
+
+The JDBC sink connector for {prodname} leverages a connection pool to enhance performance.
+Connection pools are engineered to establish an initial set of connections, maintain a specified number of connections, and efficiently allocate connections to the application as required.
+However, a challenge arises when connections linger idle in the pool, potentially triggering timeouts if they remain inactive beyond the configured idle timeout threshold of the database.
+
+To mitigate the potential for idle connection threads to trigger timeouts, connection pools offer a mechanism that periodically validates the activity of each connection.
+This validation ensures that connections remain active, and prevents the database from flagging them as idle.
+In the event of a network disruption, if {prodname} attempts to use a terminated connection, the connector prompts the pool to generate a new connection.
+
+By default, the {prodname} JDBC sink connector does not conduct idle timeout tests.
+However, you can configure the connector to request the pool to perform timeout tests at a specified interval by setting the `hibernate.c3p0.idle_test_period` property.
+For example:
+
+.Example timeout configuration
+[source,json]
+----
+{
+  "hibernate.c3p0.idle_test_period": "300"
+}
+----
+
+The {prodname} JDBC sink connector uses the Hibernate C3P0 connection pool.
+You can customize the CP30 connection pool by setting properties in the hibernate.c3p0.*` configuration namespace.
+In the preceding example, the setting of the hibernate.c3p0.idle_test_period property configures the connection pool to perform idle timeout tests every 300 seconds.
+After you apply the configuration, the connection pool begins to assess unused connections every five minutes.
 
 // Type: reference
 // ModuleID: debezium-jdbc-connector-how-the-connector-maps-data-types
@@ -304,12 +334,12 @@ The following examples show representative structures of primitive and logical d
 .Logical field schema
 [source,json]
 ----
-[
+{
   "schema": {
     "type": "INT64",
     "name": "org.apache.kafka.connect.data.Date"
   }
-]
+}
 ----
 
 Kafka Connect is not the only source for these complex, logical types.
@@ -324,6 +354,7 @@ The actual final column type varies with for each database type.
 . xref:jdbc-kafka-connect-logical-mappings[]
 . xref:jdbc-debezium-logical-mappings[]
 . xref:jdbc-debezium-logical-mappings-dialect-specific[]
+. xref:jdbc-debezium-vector-logical-mappings[]
 
 [[jdbc-kafka-connect-primitive-mappings]]
 .Mappings between Kafka Connect Primitives and Column Data Types
@@ -472,6 +503,39 @@ If the database does not support time or timestamps with time zones, the mapping
 
 |===
 
+[[jdbc-debezium-vector-logical-mappings]]
+.Mapings between Debezium Vector Types and Column Data Types
+|===
+|Logical Type |Db2 |MySQL |PostgreSQL |Oracle |SQL Server
+
+|io.debezium.data.DoubleVector
+|Unsupported
+|'vector'
+|`vector`
+|Unsupported
+|Unsupported
+
+|io.debezium.data.FloatVector
+|Unsupported
+|'vector'
+|`halfvec`
+|Unsupported
+|Unsupported
+
+|io.debezium.data.SparseVector
+|Unsupported
+|Unsupported
+|`sparsevec`
+|Unsupported
+|Unsupported
+
+|===
+
+[NOTE]
+====
+If there is not a direct mapping between one of the vector logical types and your target relational database's column types, you can use the `VectorToJsonConverter` to convert the vector logical type to JSON so that it can be written to any target relational database.
+====
+
 In addition to the primitive and logical mappings above, if the source of the change events is a {prodname} source connector, the resolution of the column type, along with its length, precision, and scale, can be further influenced by enabling column or data type propagation.
 To enforce propagation, one of the following properties must be set in the source connector  configuration:
 
@@ -516,11 +580,13 @@ endif::community[]
 [[jdbc-deployment]]
 == Deployment
 
+ifdef::community[]
 To deploy a {prodname} JDBC connector, you install the {prodname} JDBC connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
 
 .Prerequisites
 * link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
-* A destination database is installed and configured to accept JDBC connections.
+* You have a Kafka topic from which the connector can read change event records.
+* A destination database is installed and is configured to accept JDBC connections.
 
 .Procedure
 
@@ -528,18 +594,479 @@ To deploy a {prodname} JDBC connector, you install the {prodname} JDBC connector
 . Extract the files into your Kafka Connect environment.
 . Optionally download the JDBC driver from Maven Central and extract the downloaded driver file to the directory that contains the JDBC sink connector JAR file.
 +
-[NOTE]
+[IMPORTANT]
 ====
 Drivers for Oracle and Db2 are not included with the JDBC sink connector.
 You must download the drivers and install them manually.
 ====
-
-. Add the driver JAR files to the path where the JDBC sink connector has been installed.
-. Make sure that the path where you install the JDBC sink connector is part of the {link-kafka-docs}/#connectconfigs[Kafka Connect `plugin.path`].
+. Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`]. Make sure that the path where you install the JDBC sink connector is part of the {link-kafka-docs}/#connectconfigs[Kafka Connect `plugin.path`].
 . Restart the Kafka Connect process to pick up the new JAR files.
+endif::community[]
 
-// ModuleID: debezium-jdbc-connector-configuration
-// Type: reference
+ifdef::product[]
+You can use either of the following methods to deploy a {prodname} JDBC connector:
+
+* xref:debezium-jdbc-connector-openshift-streams-deployment[Use {StreamsName} to automatically create an image that includes the connector plug-in].
++
+This is the preferred method.
+* xref:debezium-jdbc-connector-deploying-custom-image-from-a-containerfile[Build a custom Kafka Connect container image from a Containerfile]. +
+This Containerfile deployment method is deprecated.
+The instructions for this method are scheduled for removal in future versions of the documentation.
+
+[IMPORTANT]
+====
+Due to licensing requirements, the {prodname} JDBC connector archive does not include the drivers that {prodname} requires to connect to the Db2 and Oracle databases.
+To enable the connector to access these databases, you must add the drivers to your connector environment.
+For information about how to obtain drivers that are not supplied with the connector, see xref:debezium-jdbc-connector-obtaining-drivers-not-included-with-the-connector-files[Obtaining drivers not included in the connector archive].
+====
+
+// Type: procedure
+[id="debezium-jdbc-connector-obtaining-drivers-not-included-with-the-connector-files"]
+=== Obtaining JDBC drivers not included in the connector archive
+
+Due to licensing requirements, the JDBC driver files that {prodname} requires to connect to Db2 Database and Oracle Database are not included in the {prodname} JDBC connector archive.
+These drivers are available for download from Maven Central.
+Depending on the deployment method that you use, you can use one of the following metods to retrieve the drivers:
+
+You use {StreamsName} to add the connector to your Kafka Connect image::
+Add the Maven Central location for the driver to `builds.plugins.artifact.url` in the `KafkaConnect` custom resource as shown in xref:using-streams-to-deploy-debezium-jdbc-connectors[].
+
+You use a Containerfile to build a container image for the connector::
+In the Containerfile, insert a `curl` command that specifies the URL for downloading the driver file from Maven Central.
+For more information, see xref:debezium-jdbc-connector-deploying-custom-image-from-a-containerfile[].
+
+
+// Type: concept
+[id="debezium-jdbc-connector-openshift-streams-deployment"]
+=== JDBC connector deployment using {StreamsName}
+
+include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc[leveloffset=+1]
+
+// Type: procedure
+[id="using-streams-to-deploy-debezium-jdbc-connectors"]
+=== Using {StreamsName} to deploy a {prodname} JDBC connector
+
+You can use the build configuration in {kafka-streams} to automatically build a Kafka Connect container image to OpenShift.
+The build image includes the {prodname} connector plug-ins that you specify.
+
+During the build process, the {kafka-streams} Operator transforms input parameters in a `KafkaConnect` custom resource, including {prodname} connector definitions, into a Kafka Connect container image.
+The build downloads the necessary artifacts from the Red Hat Maven repository or from another configured HTTP server.
+
+The newly created container is pushed to the container registry that is specified in `.spec.build.output`, and is used to deploy a Kafka Connect cluster.
+After {StreamsName} builds the Kafka Connect image, you create `KafkaConnector` custom resources to start the connectors that are included in the build.
+
+.Prerequisites
+* You have access to an OpenShift cluster in which the cluster Operator is installed.
+* The {StreamsName} Operator is running.
+* An Apache Kafka cluster is deployed as documented in link:{LinkDeployManageStreamsOpenShift}#kafka-cluster-str[{NameDeployManageStreamsOpenShift}].
+* link:{LinkDeployManageStreamsOpenShift}#kafka-connect-str[Kafka Connect is deployed on {kafka-streams}]
+* You have a Kafka topic from which the connector can read change event records.
+* A destination database is installed and is configured to accept JDBC connections.
+* You have a {prodnamefull} license.
+* The link:https://docs.redhat.com/documentation/en-us/openshift_container_platform/{ocp-latest-version}/html-single/cli_tools/index#installing-openshift-cli[OpenShift `oc` CLI] client is installed or you have access to the OpenShift Container Platform web console.
+* Depending on how you intend to store the Kafka Connect build image, you need registry permissions or you must create an ImageStream resource:
++
+To store the build image in an image registry, such as Red Hat Quay.io or Docker Hub::
+** An account and permissions to create and manage images in the registry.
+
+To store the build image as a native OpenShift ImageStream::
+** An link:{LinkConfiguringStreamsOpenShift}#literal_output_literal[ImageStream] resource is deployed to the cluster for storing new container images.
+You must explicitly create an ImageStream for the cluster.
+ImageStreams are not available by default.
+For more information about ImageStreams, see link:{LinkCreatingManagingOpenShiftImages}#managing-image-streams[Managing image streams on OpenShift Container Platform].
+
+.Procedure
+
+1. Log in to the OpenShift cluster.
+2. Create a {prodname} `KafkaConnect` custom resource (CR) for the connector, or modify an existing one. +
+For example, create a `KafkaConnect` CR with the name `dbz-jdbc-connect.yaml` that specifies the `annotations` and `image` properties, as shown in the following excerpt.
+In the example that follows, the custom resource is configured to download the following artifacts:
++
+* The {prodname} {connector-name} connector archive.
+* A JDBC driver that is required to connect to an Oracle or Db2 sink database.
+You can omit this entry for other sink destinations.
++
+.A `dbz-jdbc-connect.yaml` file that defines a `KafkaConnect` custom resource that includes a {prodname} connector
+[source,yaml,subs="+attributes"]
+----
+apiVersion: {KafkaConnectApiVersion}
+kind: KafkaConnect
+metadata:
+  name: debezium-kafka-connect-cluster
+  annotations:
+    strimzi.io/use-connector-resources: "true"  //  <1>
+spec:
+  version: {debezium-kafka-version}
+  replicas: 1
+  bootstrapServers: debezium-kafka-cluster-kafka-bootstrap:9093
+  build:  // <2>
+    output:  // <3>
+      type: imagestream  // <4>
+      image: debezium-streams-connect:latest
+    plugins:   // <5>
+      - name: debezium-jdbc-connector
+        artifacts:
+          - type: zip  // <6>
+            url: {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-{debezium-build-number}/debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip  // <7>
+          - type: jar
+            url: https://repo1.maven.org/maven2/com/oracle/ojdbc/ojdbc11/{ojdbc-version}/ojdbc11-{ojdbc-version}.jar  // <8>
+  ...
+----
++
+.Descriptions of Kafka Connect configuration settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|Sets the `strimzi.io/use-connector-resources` annotation to `"true"` to enable the Cluster Operator to use `KafkaConnector` resources to configure connectors in this Kafka Connect cluster.
+
+|2
+|The `spec.build` configuration specifies where to store the build image and lists the plug-ins to include in the image, along with the location of the plug-in artifacts.
+
+|3
+|The `build.output` specifies the registry in which the newly built image is stored.
+
+|4
+|Specifies the name and image name for the image output.
+Valid values for `output.type` are `docker` to push into a container registry such as Quay, or `imagestream` to push the image to an internal OpenShift ImageStream.
+To use an ImageStream, an ImageStream resource must be deployed to the cluster.
+For more information about specifying the `build.output` in the KafkaConnect configuration, see the link:{LinkConfiguringStreamsOpenShift}#type-Build-reference[{StreamsName} Build schema reference] in {NameConfiguringStreamsOpenShift}.
+
+|5
+|The `plugins` configuration lists all of the connectors that you want to include in the Kafka Connect image.
+For each entry in the list, specify a plug-in `name`, and information for about the artifacts that are required to build the connector.
+Optionally, for each connector plug-in, you can include other components that you want to be available for use with the connector.
+For example, you can add Service Registry artifacts, or the {prodname} scripting component.
+
+|6
+|The value of `artifacts.type` specifies the file type of the artifact specified in the `artifacts.url`.
+Valid types are `zip`, `tgz`, or `jar`.
+{prodname} connector archives are provided in `.zip` file format.
+JDBC driver files are in `.jar` format.
+The `type` value must match the type of the file that is referenced in the `url` field.
+
+|7
+|The value of `artifacts.url` specifies the address of an HTTP server, such as a Maven repository, that stores the file for the connector artifact.
+The OpenShift cluster must have access to the specified server.
+
+|8
+|(For Db2 or Oracle sinks only) Specifies the location of the {connector-name} JDBC driver in Maven Central.
+The drivers that are required for {prodname} to connect to these databases are not included in the {prodname} connector archives.
+
+The example provides the Maven URL for the Oracle Database JDBC driver.
+The Db2 JDBC driver is available at the following Maven location: `https://repo1.maven.org/maven2/com/ibm/db2/jcc/{db2-version}/jcc-{db2-version}.jar`
+
+|===
+
+3. Apply the `KafkaConnect` build specification to the OpenShift cluster by entering the following command:
++
+[source,shell,options="nowrap"]
+----
+oc create -f dbz-jdbc-connect.yaml
+----
++
+Based on the configuration specified in the custom resource, the Streams Operator prepares a Kafka Connect image to deploy. +
+After the build completes, the Operator pushes the image to the specified registry or ImageStream, and starts the Kafka Connect cluster.
+The connector artifacts that you listed in the configuration are available in the cluster.
+
+4. Create a `KafkaConnector` resource to define an instance of each connector that you want to deploy. +
+For example, create the following `KafkaConnector` CR, and save it as `orders-to-postgresql-jdbc-connector.yaml`
++
+.`orders-to-postgresql-jdbc-connector.yaml` file that defines the `KafkaConnector` custom resource for a {prodname} connector
+[source,yaml,subs="+attributes"]
+----
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnector
+metadata:
+  name: orders-topic-to-postgresql-via-jdbc-sink-connector // <1>
+  labels: strimzi.io/cluster: debezium-kafka-connect-cluster
+spec:
+  class: io.debezium.connector.jdbc.JdbcSinkConnector  // <2>
+  tasksMax: 1  // <3>
+   config:  // <4>
+    connection.url: jdbc://postgresql://<host>:<port>/<database-name> // <5>
+    connection.username: <database-user>  // <6>
+    connection.password: <database-pwd>  // <7>
+    insert.mode: upsert
+    delete.enabled: true
+    topics: orders // <8>
+    primary.key.mode: record_key
+    schema.evolution: basic
+    use.time.zone: UTC
+----
++
+.Descriptions of connector configuration settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|The name of the connector to register with the Kafka Connect cluster.
+
+|2
+|The name of the connector class.
+
+|3
+|The number of tasks that can operate concurrently.
+
+|4
+|The connector’s configuration.
+
+|5
+|The JDBC connection URL for the sink database.
+The URL specifies the port number and any authentication properties that are required to connect to the database.
+For example, `jdbc:oracle:thin:@myhost.example.com:1521/myservice`
+
+|6
+|The name of the account that {prodname} uses to connect to the database.
+
+|7
+|The password that {prodname} uses to connect to the database user account.
+
+|8
+|Specifies a comma-separated list of Kafka topics that the connector reads.
+Events from each topic are streamed to tables with the same name in the sink database.
+
+|===
+
+5. Create the connector resource by running the following command:
++
+[source,shell,options="nowrap", subs="+attributes,+quotes"]
+----
+oc create -n __<namespace>__ -f __<kafkaConnector>__.yaml
+----
++
+For example,
++
+[source,shell,options="nowrap",subs="+attributes,+quotes"]
+----
+oc create -n debezium -f {context}-inventory-connector.yaml
+----
++
+The connector is registered to the Kafka Connect cluster and starts to run against the database that is specified by `spec.config.database.dbname` in the `KafkaConnector` CR.
+After the connector pod is ready, {prodname} is running.
+
+// You are now ready to xref:verifying-that-the-debezium-{context}-connector-is-running[verify the {prodname} {connector-name} deployment].
+
+
+// Type: procedure
+// ModuleID: debezium-jdbc-connector-deploying-custom-image-from-a-containerfile
+=== Deploying a {prodname} JDBC connector by building a custom Kafka Connect container image from a Containerfile
+
+You can deploy a {prodname} JDBC connector by building a custom Kafka Connect container image that contains the {prodname} connector archive, and then push this container image to a container registry.
+Afterwards, you create the following custom resources (CRs) to define the connector configuration:
+
+* A `KafkaConnect` CR that defines your Kafka Connect instance.
+The `image` property in the CR specifies the name of the container image that you create to run your {prodname} connector.
+You apply this CR to the OpenShift instance where link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat {StreamsName}] is deployed.
+{StreamsName} offers operators and images that bring Apache Kafka to OpenShift.
+
+* A `KafkaConnector` CR that defines your {prodname} JDBC connector.
+Apply this CR to the same OpenShift instance where you applied the `KafkaConnect` CR.
+
+NOTE: The deployment method described in this section is deprecated and is scheduled for removal in future versions of the documentation.
+
+
+.Prerequisites
+
+* A destination database is installed and is configured to accept JDBC connections.
+* {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
+For more information, see link:{LinkDeployManageStreamsOpenShift}[{NameDeployManageStreamsOpenShift}].
+* Podman or Docker is installed.
+* You have a Kafka topic from which the connector can read change event records.
+* A destination database is installed and is configured to accept JDBC connections.
+* If you want the JDBC connector to send data to a Db2 or Oracle database, the Kafka Connect server has access to Maven Central to download the JDBC drivers for those databases.
+  You can also use a local copy of the driver, or one that is available from a local Maven repository or other HTTP server.
+* You have an account and permissions to create and manage containers in the container registry (such as `quay.io` or `docker.io`) to which you plan to add the container that will run your {prodname} connector.
+
+.Procedure
+
+. Create the {prodname} JDBC connector container on Kafka Connect:
+
+.. Create a Containerfile that uses `{DockerKafkaConnect}` as the base image.
+For example, from a terminal window, enter the following command:
+ +
+=====================================================================
+
+[source,shell,subs="+attributes,+quotes"]
+----
+cat <<EOF >debezium-jdbc-connector-container.yaml // <1>
+FROM {DockerKafkaConnect}
+USER root:root
+RUN mkdir -p /opt/kafka/plugins/debezium // <2>
+RUN cd /opt/kafka/plugins/debezium/ \
+&& curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-{debezium-build-number}/debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
+&& unzip debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
+&& rm debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip
+RUN cd /opt/kafka/plugins/debezium/ \
+&& curl -O https://repo1.maven.org/maven2/com/oracle/ojdbc/ojdbc11/{ojdbc-version}/ojdbc11-{ojdbc-version}.jar
+USER 1001
+EOF
+----
+=====================================================================
+ +
+.Descriptions of Containerfile settings for building a custom Kafka Connect container image
+[cols="1,7",options="header"]
+|===
+|Item |Description
+
+|1
+|You can specify any file name that you want.
+
+|2
+|Specifies the path to your Kafka Connect plug-ins directory.
+If your Kafka Connect plug-ins directory is in a different location, replace this path with the actual path of your directory.
+
+|===
++
+The command creates a Containerfile with the name `debezium-jdbc-connector-container.yaml` in the current directory.
+
+.. Build the container image from the `debezium-jdbc-connector-container.yaml` Containerfile that you created in the previous step.
+From the directory that contains the file, open a terminal window and enter one of the following commands:
++
+[source,shell,options="nowrap"]
+----
+podman build -t debezium-jdbc-connector-container:latest .
+----
++
+[source,shell,options="nowrap"]
+----
+docker build -t debezium-jdbc-connector-container:latest .
+----
+The preceding commands build a container image with the name `debezium-jdbc-connector-container`.
+
+.. Push your custom image to a container registry, such as quay.io or an internal container registry.
+The container registry must be available to the OpenShift instance where you want to deploy the image.
+Enter one of the following commands:
++
+[source,shell,subs="+quotes"]
+----
+podman push _<myregistry.io>_/debezium-jdbc-connector-container:latest
+----
++
+[source,shell,subs="+quotes"]
+----
+docker push _<myregistry.io>_/debezium-jdbc-connector-container:latest
+----
+
+.. Create a new {prodname} Oracle KafkaConnect custom resource (CR).
+For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties.
+The following example shows an excerpt from a `dbz-connect.yaml` file that describes a `KafkaConnect` custom resource. +
++
+=====================================================================
+[source,yaml,subs="+attributes"]
+----
+apiVersion: {KafkaConnectApiVersion}
+kind: KafkaConnect
+metadata:
+  name: debezium-kafka-connect-cluster
+  annotations:
+    strimzi.io/use-connector-resources: "true" // <1>
+spec:
+  image: debezium-jdbc-connector-container // <2>
+
+  ...
+----
+=====================================================================
+
+[cols="1,7",options="header"]
+|===
+|Item |Description
+
+|1
+|You must set `metadata.annotations` to `true` to permit the Cluster Operator to use `KafkaConnector` resources to configure {prodname} connectors in the cluster.
+
+|2
+|`spec.image` specifies the name of the image that you created to run your {prodname} connector.
+This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator.
+
+|===
+
+.. Apply the `KafkaConnect` CR to the OpenShift Kafka Connect environment by entering the following command:
++
+[source,shell,options="nowrap"]
+----
+oc create -f dbz-connect.yaml
+----
++
+The command adds a Kafka Connect instance that specifies the name of the image that you created to run your {prodname} connector.
+
+. Create a `KafkaConnector` custom resource that configures your {prodname} JDBC connector instance.
++
+You configure a {prodname} JDBC connector in a `.yaml` file that specifies the configuration properties for the connector.
++
+The following example shows an excerpt from a `dbz-connect.yaml` file that sets a few of the key properties for a `KafkaConnect` custom resource. +
+The connector establishes a JDBC connection to a PostgreSQL server sink on port `5432`. +
+ +
+For information about the full range of available connector properties, see xref:debezium-jdbc-connector-descriptions-of-connector-configuration-properties[Descriptions of {prodname} JDBC connector configuration properties].
++
+.`jdbc-connector.yaml`
+=====================================================================
+[source,yaml,subs="+attributes,+quotes",options="nowrap"]
+----
+apiVersion: {KafkaConnectApiVersion}
+kind: KafkaConnector
+metadata:
+  labels:
+  strimzi.io/cluster: my-connect-cluster // <1>
+  name: orders-topic-to-postgresql-via-jdbc-sink-connector // <2>
+...
+spec:
+  class: io.debezium.connector.jdbc.JdbcSinkConnector // <3>
+...
+  config:
+    connection.url: jdbc:<_{context}_>://<_database-host_>:5432/<_database-name_>  // <4>
+    connection.username: "<_database-user_>" // <5>
+    connection.password: "<_database-password_>" // <6>
+    topics: orders // <7>
+
+----
+=====================================================================
+.Descriptions of connector configuration settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|The connector name that is registered with the Kafka Connect service.
+
+|2
+|The name of the {StreamsName} cluster.
+
+|3
+|The name of the {prodname} JDBC connector class.
+
+|4
+|The JDBC address of the sink database.
+
+|5
+|The name of the account that {prodname} uses to connect to the database.
+
+|6
+|The password that {prodname} uses to authenticate to the database user account.
+
+|7
+|Specifies a comma-separated list of Kafka topics that the connector reads.
+Events from each topic are streamed to tables with the same name in the sink database.
+
+|===
+
+. Create your connector instance with Kafka Connect.
+  For example, if you saved your `KafkaConnector` resource in the `jdbc-connector.yaml` file, you would run the following command:
++
+[source,shell,options="nowrap"]
+----
+oc apply -f jdbc-connector.yaml
+----
++
+The preceding command registers `orders-topic-to-postgresql-via-jdbc-sink-connector`.
+The connector starts and begins to read from the `orders` topic, as specified in the `KafkaConnector` CR.
+
+
+endif::product[]
+
+ifdef::community[]
 [[jdbc-connector-configuration]]
 === {prodname} JDBC connector configuration
 
@@ -561,26 +1088,56 @@ The following example shows a JSON request for registering an instance of the {p
         "delete.enabled": "true",  // <8>
         "primary.key.mode": "record_key",  // <9>
         "schema.evolution": "basic",  // <10>
-        "database.time_zone": "UTC",  // <11>
+        "use.time.zone": "UTC",  // <11>
         "topics": "orders" // <12>
     }
 }
 ----
-<1> The name that is assigned to the connector when you register it with Kafka Connect service.
-<2> The name of the JDBC sink connector class.
-<3> The maximum number of tasks to create for this connector.
-<4> The JDBC URL that the connector uses to connect to the sink database that it writes to.
-<5> The name of the database user used for authentication.
-<6> The password of the database user used for authentication.
-<7> The xref:jdbc-property-insert-mode[insert.mode] that the connector uses.
-<8> Enables the deletion of records in the database.
+Descriptions of JDBC connector configuration settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|The name that is assigned to the connector when you register it with Kafka Connect service.
+
+|2
+|The name of the JDBC sink connector class.
+
+|3
+|The maximum number of tasks to create for this connector.
+
+|4
+|The JDBC URL that the connector uses to connect to the sink database that it writes to.
+
+|5
+|The name of the database user that is used for authentication.
+
+|6
+|The password of the database user used for authentication.
+
+|7
+|The xref:jdbc-property-insert-mode[insert.mode] that the connector uses.
+
+|8
+|Enables the deletion of records in the database.
 For more information, see the xref:jdbc-property-delete-enabled[delete.enabled] configuration property.
-<9> Specifies the method used to resolve primary key columns.
+
+|9
+|Specifies the method used to resolve primary key columns.
 For more information, see the xref:jdbc-property-primary-key-mode[primary.key.mode] configuration property.
-<10> Enables the connector to evolve the destination database's schema.
+
+|10
+|Enables the connector to evolve the destination database's schema.
 For more information, see the xref:jdbc-property-schema-evolution[schema.evolution] configuration property.
-<11> Specifies the timezone used when writing temporal field types.
-<12> List of topics to consume, separated by commas.
+
+|11
+|Specifies the timezone used when writing temporal field types.
+
+|12
+|List of topics to consume, separated by commas.
+
+|===
 
 For a complete list of configuration properties that you can set for the {prodname} JDBC connector, see xref:jdbc-connector-properties[JDBC connector properties].
 
@@ -590,9 +1147,9 @@ The service records the configuration and starts a sink connector task(s) that p
 * Connects to the database.
 * Consumes events from subscribed Kafka topics.
 * Writes the events to the configured database.
+endif::community[]
 
-
-// Type: reference
+// Type: assembly
 // Title: Descriptions of {prodname} JDBC connector configuration properties
 // ModuleID: debezium-jdbc-connector-descriptions-of-connector-configuration-properties
 [[jdbc-connector-properties]]
@@ -602,13 +1159,16 @@ The {prodname} JDBC sink connector has several configuration properties that you
 Many properties have default values.
 Information about the properties is organized as follows:
 
-* xref:jdbc-connector-properties-generic[JCBC connector generic properties]
+* xref:jdbc-connector-properties-generic[JCBC connector Kafka consumer properties]
 * xref:jdbc-connector-properties-connection[JDBC connector connection properties]
 * xref:jdbc-connector-properties-runtime[JDBC connector runtime properties]
 * xref:jdbc-connector-properties-extendable[JDBC connector extendable properties]
+* xref:jdbc-connector-hibernate-passthrough-properties[JDBC connector `hibernate.*` passthrough properties]
 
-[[jdbc-connector-properties-generic]]
-.Generic properties
+// Type: reference
+[[jdbc-connector-properties-kafka-consumer]]
+=== JDBC connector Kafka consumer properties
+
 [cols="30%a,25%a,45%a"]
 |===
 |Property |Default |Description
@@ -619,10 +1179,19 @@ Information about the properties is organized as follows:
 A failure results if you attempt to reuse this name when registering a connector.
 This property is required by all Kafka Connect connectors.
 
+ifdef::product[]
+|[[jdbc-connector-property-class]]<<jdbc-connector-property-class, `+class+`>>
+|No default
+|The name of the Java class for the connector.
+For the {prodname} JDBC connector, specify the value `io.debezium.connector.jdbc.JdbcSinkConnector`.
+endif::product[]
+
+ifdef::community[]
 |[[jdbc-property-connection-class]]<<jdbc-property-connection-class, `+connector.class+`>>
 |No default
 |The name of the Java class for the connector.
 For the {prodname} JDBC connector, specify the value `io.debezium.connector.jdbc.JdbcSinkConnector`.
+endif::community[]
 
 |[[jdbc-property-connection-task]]<<jdbc-property-connection-task, `+tasks.max+`>>
 |1
@@ -641,11 +1210,17 @@ Do not use this property in combination with the xref:jdbc-property-connection-t
 
 |===
 
+// Type: reference
 [[jdbc-connector-properties-connection]]
-.JDBC connector connection properties
+=== JDBC connector connection properties
+
 [cols="30%a,25%a,45%a"]
 |===
 |Property |Default |Description
+
+|[[jdbc-property-connection-provider]]<<jdbc-property-connection-provider, `+connection.provider+`>>
+|`org.hibernate.c3p0.internal.C3P0ConnectionProvider`
+|The connection provider implementation to use.
 
 |[[jdbc-property-connection-url]]<<jdbc-property-connection-url, `+connection.url+`>>
 |No default
@@ -677,13 +1252,15 @@ Do not use this property in combination with the xref:jdbc-property-connection-t
 
 |===
 
+// Type: reference
 [[jdbc-connector-properties-runtime]]
-.JDBC connector runtime properties
+=== JDBC connector runtime properties
+
 [cols="30%a,25%a,45%a"]
 |===
 |Property |Default |Description
 
-|[[jdbc-property-database-time-zone]]<<jdbc-property-database-time-zone, `+database.time_zone+`>>
+|[[jdbc-property-use-time-zone]]<<jdbc-property-use-time-zone, `+use.time.zone+`>>
 |`UTC`
 |Specifies the timezone used when inserting JDBC temporal values.
 
@@ -747,12 +1324,12 @@ You can set the xref:jdbc-property-primary-key-fields[`primary.key.fields`] prop
 When xref:jdbc-property-primary-key-mode[`primary.key.mode`] is set to `record_key` and the event's key is a primitive type, it is expected that this property specifies the column name to be used for the key. +
  +
 When the xref:jdbc-property-primary-key-mode[`primary.key.mode`] is set to `record_key` with a non-primitive key, or `record_value`, it is expected that this property specifies a comma-separated list of field names from either the key or value.
-If the xref:jdbc-property-primary-key-mode[`primary.key.mode`] is set to `record_key` with a non-primitive key, or `record_value`, and this property is not specifies, the connector derives the primary key from all fields of either the record key or record value, depending on the specified mode.
+If the xref:jdbc-property-primary-key-mode[`primary.key.mode`] is set to `record_key` with a non-primitive key, or `record_value`, and this property is not specified, the connector derives the primary key from all fields of either the record key or record value, depending on the specified mode.
 
 |[[jdbc-property-quote-identifiers]]<<jdbc-property-quote-identifiers, `+quote.identifiers+`>>
 |`false`
 |Specifies whether generated SQL statements use quotation marks to delimit table and column names.
-See the xref:jdbc-quoting-case-sensitivity[] section for more details.
+See the xref:jdbc-quoting-case-sensitivity[JDBC quoting case-sensitivity] section for more details.
 
 |[[jdbc-property-schema-evolution]]<<jdbc-property-schema-evolution, `+schema.evolution+`>>
 |`none`
@@ -764,10 +1341,18 @@ The following options are available:
 `basic`:: Specifies that basic evolution occurs.
 The connector adds missing columns to the table by comparing the incoming event's record schema to the database table structure.
 
-|[[jdbc-property-table-name-format]]<<jdbc-property-table-name-format, `+table.name.format+`>>
+|[[jdbc-property-collection-name-format]]<<jdbc-property-collection-name-format, `+collection.name.format+`>>
 |`+${topic}+`
-|Specifies a string that determines how the destination table name is formatted, based on the topic name of the event.
-The placeholder, `+${topic}+`, is replaced by the topic name.
+|Specifies a string pattern that the connector uses to construct the names of destination tables. +
+When the property is set to its default value, `+${topic}+`, after the connector reads an event from Kafka, it writes the event record to a destination table with a name that matches the name of the source topic. +
+ +
+You can also configure this property to extract values from specific fields in incoming event records and then use those values to dynamically generate the names of target tables.
+This ability to generate table names from values in the message source would otherwise require the use of a custom Kafka Connect single message transformation (SMT). +
+ +
+To configure the property to dynamically generate the names of destination tables, set its value to a pattern such as `+${source._field_}+`.
+When you specify this type of pattern, the connector extracts values from the `source` block of the {prodname} change event, and then uses those values to construct the table name.
+For example, you might set the value of the property to the pattern `+${source.schema}_${source.table}+`.
+Based on this pattern, if the connector reads an event in which the `schema` field in the source block contains the value, `user`, and the `table` field contains the value, `tab`, the connector writes the event record to a table with the name `user_tab`.
 
 |[[jdbc-property-dialect-postgres-postgis-schema]]<<jdbc-property-dialect-postgres-postgis-schema, `+dialect.postgres.postgis.schema+`>>
 |`public`
@@ -789,6 +1374,19 @@ Note that if you set `_consumer.max.poll.records_` in the Connect worker propert
 You can also configure the connector’s underlying consumer’s `_max.poll.records_` using `_consumer.override.max.poll.records_` in the connector configuration.
 ====
 
+|[[jdbc-property-use-reduction-buffer]]<<jdbc-property-use-reduction-buffer, `+use.reduction.buffer+`>>
+|`false`
+|Specifies whether to enable the {prodname} JDBC connector's reduction buffer.
+
+Choose one of the following settings:
+
+`false`:: (default) The connector writes each change event that it consumes from Kafka as a separate logical SQL change.
+`true`:: The connector uses the reduction buffer to reduce change events before it writes them to the sink database.
+That is, if multiple events refer to the same primary key, the connector consolidates the SQL queries and writes only a single logical SQL change, based on the row state that is reported in the most recent offset record. +
+Choose this option to reduce the SQL load on the target database.
+
+To optimize query processing in a PostgreSQL sink database when the reduction buffer is enabled, you must also enable the database to execute the batched queries by adding the `reWriteBatchedInserts` parameter to the JDBC connection URL.
+
 |[[jdbc-property-field-include-list]]<<jdbc-property-field-include-list, `+field.include.list+`>>
 |_empty string_
 |An optional, comma-separated list of field names that match the fully-qualified names of fields to include from the change event value.
@@ -803,10 +1401,25 @@ Fully-qualified names for fields are of the form `_fieldName_` or `_topicName_:_
  +
 If you include this property in the configuration, do not set the `field.include.list` property.
 
+|[[jdbc-property-flush-max-retries]]<<jdbc-property-flush-max-retries, `+flush.max.retries+`>>
+|5
+|Specifies the maximum number of retries that the connector performs after an attempt to flush changes to the target database results in certain database errors.
+If the number of retries exceeds the retry value, the sink connector enters a _FAILED_ state.
+
+|[[jdbc-property-flush-retry-delay-ms]]<<jdbc-property-flush-retry-delay-ms, `+flush.retry.delay.ms+`>>
+|1000
+|Specifies the number of milliseconds that the connector waits to retry a flush operation that failed.
+[NOTE]
+====
+When you set both the `flush.retry.delay.ms` and xref:jdbc-property-flush-max-retries[`flush.max.retries`] properties, it can affect the behavior of the Kafka link:https://kafka.apache.org/documentation/#consumerconfigs_max.poll.interval.ms[max.poll.interval.ms] property.
+To prevent the connector from rebalancing, set the total retry time (flush.retry.delay.ms * flush.max.retries) to a value that is less than the value of `max.poll.interval.ms` (default is 5 minutes).
+====
 |===
 
+// Type: reference
 [[jdbc-connector-properties-extendable]]
-.JDBC connector extendable properties
+=== JDBC connector extendable properties
+
 [cols="30%a,25%a,45%a"]
 |===
 |Property |Default |Description
@@ -816,16 +1429,28 @@ If you include this property in the configuration, do not set the `field.include
 |Specifies the fully-qualified class name of a `ColumnNamingStrategy` implementation that the connector uses to resolve column names from event field names. +
  +
 By default, the connector uses the field name as the column name.
-|[[jdbc-property-table-naming-strategy]]<<jdbc-property-table-naming-strategy, `+table.naming.strategy+`>>
-|`i.d.c.j.n.DefaultTableNamingStrategy`
-|Specifies the fully-qualified class name of a `TableNamingStrategy` implementation that the connector uses to resolve table names from incoming event topic names. +
+|[[jdbc-property-collection-naming-strategy]]<<jdbc-property-collection-naming-strategy, `+collection.naming.strategy+`>>
+|`i.d.c.j.n.DefaultCollectionNamingStrategy`
+|Specifies the fully-qualified class name of a `CollectionNamingStrategy` implementation that the connector uses to resolve table names from incoming event topic names. +
  +
 The default behavior is to: +
 
-* Replace the `+${topic}+` placeholder in the xref:jdbc-property-table-name-format[`table.name.format`] configuration property with the event's topic.
+* Replace the `+${topic}+` placeholder in the xref:jdbc-property-collection-name-format[`collection.name.format`] configuration property with the event's topic.
 * Sanitize the table name by replacing dots (`.`) with underscores (`_`).
 
 |===
+
+// Type: reference
+[id="jdbc-connector-hibernate-passthrough-properties"]
+=== JDBC connector `hibernate.*` passthrough properties
+
+Kafka Connect supports passthrough configuration, enabling you to modify the behavior of an underlying system by passing certain properties directly from the connector configuration.
+By default, some Hibernate properties are exposed via the JDBC connector xref:jdbc-connector-properties-connection[connection properties] (for example, `connection.url`, `connection.username`, and `connection.pool.*_size`),
+and through the connector's xref:jdbc-connector-properties-runtime[runtime properties] (for example, `use.time.zone`, `quote.identifiers`).
+
+If you want to customize other Hibernate behavior, you can take advantage of the passthrough mechanism by adding properties that use the `hibernate.*` namespace to the connector configuration.
+For example, to assist Hibernate in resolving the type and version of the target database, you can add the `hibernate.dialect` property and set it to the fully qualified class name of the database, for example, `org.hibernate.dialect.MariaDBDialect`.
+
 
 // Type: concept
 // ModuleID: debezium-jdbc-connector-frequently-asked-questions
@@ -851,8 +1476,8 @@ For details about how this type system resolves a specific field's schema defini
 If you want to apply a different data type mapping, define the table manually to explicitly obtain the preferred column type.
 
 *How do you specify a prefix or a suffix to the table name without changing the Kafka topic name?*::
-In order to add a prefix or a suffix to the destination table name, adjust the xref:jdbc-property-table-name-format[table.name.format] connector configuration property to apply the prefix or suffix that you want.
-For example, to prefix all table names with `jdbc_`, specify the `table.name.format` configuration property with a value of `+jdbc_${topic}+`.
+In order to add a prefix or a suffix to the destination table name, adjust the xref:jdbc-property-collection-name-format[collection.name.format] connector configuration property to apply the prefix or suffix that you want.
+For example, to prefix all table names with `jdbc_`, specify the `collection.name.format` configuration property with a value of `+jdbc_${topic}+`.
 If the connector is subscribed to a topic called `orders`, the resulting table is created as `jdbc_orders`.
 
 *Why are some columns automatically quoted, even though identifier quoting is not enabled?*::

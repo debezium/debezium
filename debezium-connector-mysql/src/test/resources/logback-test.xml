@@ -21,12 +21,19 @@
     <logger name="io.debezium.connector.mysql.MySqlSnapshotChangeEventSource" level="warn" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
-    <logger name="io.debezium.relational.RelationalSnapshotChangeEventSource" level="warn" additivity="false">
+    <logger name="io.debezium.relational.BinlogSnapshotChangeEventSource" level="warn" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+    <logger name="io.debezium.relational.RelationalSnapshotChangeEventSource" level="debug" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+    <!-- This is to reduce the "context is null" error -->
+    <logger name="io.debezium.connector.binlog.BinlogReadOnlyIncrementalSnapshotChangeEventSource" level="error" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
 
     <logger
-        name="io.debezium.embedded.EmbeddedEngine$EmbeddedConfig"
+        name="io.debezium.embedded.EmbeddedWorkerConfig"
         level="warn" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>

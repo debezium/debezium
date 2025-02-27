@@ -5,6 +5,8 @@
  */
 package io.debezium.metadata;
 
+import java.util.Objects;
+
 public class ConnectorDescriptor {
 
     private final String id;
@@ -12,7 +14,7 @@ public class ConnectorDescriptor {
     private final String className;
     private final String version;
 
-    public ConnectorDescriptor(String id, String displayName, String className, String version) {
+    private ConnectorDescriptor(String id, String displayName, String className, String version) {
         this.id = id;
         this.displayName = displayName;
         this.className = className;
@@ -20,10 +22,7 @@ public class ConnectorDescriptor {
     }
 
     public ConnectorDescriptor(String className, String version) {
-        this.id = getIdForConnectorClass(className);
-        this.displayName = getDisplayNameForConnectorClass(className);
-        this.className = className;
-        this.version = version;
+        this(getIdForConnectorClass(className), getDisplayNameForConnectorClass(className), className, version);
     }
 
     public String getId() {
@@ -54,6 +53,8 @@ public class ConnectorDescriptor {
                 return "postgres";
             case "io.debezium.connector.sqlserver.SqlServerConnector":
                 return "sqlserver";
+            case "io.debezium.connector.mariadb.MariaDbConnector":
+                return "mariadb";
             default:
                 throw new RuntimeException("Unsupported connector type with className: \"" + className + "\"");
         }
@@ -71,8 +72,26 @@ public class ConnectorDescriptor {
                 return "Debezium PostgreSQL Connector";
             case "io.debezium.connector.sqlserver.SqlServerConnector":
                 return "Debezium SQLServer Connector";
+            case "io.debezium.connector.mariadb.MariaDbConnector":
+                return "Debezium MariaDB Connector";
             default:
                 throw new RuntimeException("Unsupported connector type with className: \"" + className + "\"");
         }
+    }
+
+    @Override
+    public boolean equals(Object that) {
+        if (this == that) {
+            return true;
+        }
+        if (that == null || getClass() != that.getClass()) {
+            return false;
+        }
+        return this.getClassName().equals(((ConnectorDescriptor) that).getClassName())
+                && this.getVersion().equals(((ConnectorDescriptor) that).getVersion());
+    }
+
+    public int hashCode() {
+        return Objects.hash(this.className, this.version);
     }
 }

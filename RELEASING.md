@@ -51,7 +51,7 @@ can be generated with the `Release Notes` tool in JIRA on the version's detail p
 * https://github.com/debezium/debezium.github.io/blob/develop/_data/releases/1.7/series.yml
 
 JIRA issues that break backwards compatability for existing consumers, should be marked with the "add-to-upgrade-guide" label.
-Search for them using [this query](https://issues.jboss.org/issues/?jql=labels%20%3D%20add-to-upgrade-guide) and describe the
+Search for them using [this query](https://issues.redhat.com/issues/?jql=labels%20%3D%20add-to-upgrade-guide) and describe the
 implications and required steps for upgrading in the changelog on the website.
 
 ### Update antora.yml and series.yml
@@ -193,13 +193,13 @@ Before we _release_ the staging repository, we first need to review and verify t
 
 #### Reviewing the staged artifacts
 
-Go to Sonatype's Nexus Repository Manager at https://oss.sonatype.org/ and log in with an account that has privilege to release Debezium artifacts. In the left hand panel, click on the "Staging Repositories". Then type "debezium" in the search box to locate the staging repository, which should be _closed_ but not _released_.
+Go to Sonatype's Nexus Repository Manager at https://s01.oss.sonatype.org/ and log in with an account that has privilege to release Debezium artifacts. In the left hand panel, click on the "Staging Repositories". Then type "debezium" in the search box to locate the staging repository, which should be _closed_ but not _released_.
 
 Select the staging repository to see the details, including the staging repository's URL, in the lower portion of the window. Briefly navigate the staged repository contents to verify all modules exist and have the proper versions. You can even look at the POM files or view the details of a file (including its SHA1 and MD5 hash values) using this tool.
 
 Before continuing, using this lower frame of the window to collect the following pieces of information:
 
-* In the "Summary" tab, locate the URL of the staging repository, which might look something like this: `https://oss.sonatype.org/content/repositories/iodebezium-1002`
+* In the "Summary" tab, locate the URL of the staging repository, which might look something like this: `https://s01.oss.sonatype.org/content/repositories/iodebezium-1002`
 * In the "Content" tab, navigate to, select, and obtain the MD5 hash of the `...-plugin.tar.gz` file for each connector. (Do _not_ select the `...-plugin.tar.gz.md5` file, since the Repository Manager does not show the contents of the file.)
 
 #### Validating the staged artifacts
@@ -217,7 +217,7 @@ For Debezium patch releases, we simply update the Dockerfiles that correspond to
 Currently, the only container image that contains Debezium code is the [Connect service image](https://github.com/debezium/container-images/connect), which means this is the only Dockerfile that you will need to change to point to the Maven staging repository. To do this, edit the Dockerfile for the Connect service, and:
 
 * change the `DEBEZIUM_VERSION` environment variable value to match the _major.minor.patch_ version number for the release (e.g., `0.2.1`)
-* temporarily replace the Maven Central repository URL with that URL of the staging repository created in [Perform the Release](#perform-the-release), which again looks something like `https://oss.sonatype.org/content/repositories/iodebezium-1002`.
+* temporarily replace the Maven Central repository URL with that URL of the staging repository created in [Perform the Release](#perform-the-release), which again looks something like `https://s01.oss.sonatype.org/content/repositories/iodebezium-1002`.
 * update the MD5 literal string used to check the `...-plugin.tar.gz` file
 
 After all of the Docker files have been created or updated, go to the top of your local Git repository and run the following command to build the container images:
@@ -254,7 +254,7 @@ If you need to update the base container image for the JDK to use a different JD
 
 Once you have verified that the artifacts in the staging repository are acceptable, the next step is to _release_ the staging repository so that its artfacts are then pushed into the Maven Central repository.
 
-Go back to Sonatype's Nexus Repository Manager at https://oss.sonatype.org/ and log in with an account that has privilege to release Debezium artifacts. In the left hand panel, click on the "Staging Repositories". Then type "debezium" in the search box to locate the closed staging repository that you've verified.
+Go back to Sonatype's Nexus Repository Manager at https://s01.oss.sonatype.org/ and log in with an account that has privilege to release Debezium artifacts. In the left hand panel, click on the "Staging Repositories". Then type "debezium" in the search box to locate the closed staging repository that you've verified.
 
 Select the staging repository (by checking the box) and press the "Release" button. Enter a description in the dialog box, and press "OK" to release the artifacts to Maven Central. You may need to press the "Refresh" button a few times until the staging repository disappears.
 

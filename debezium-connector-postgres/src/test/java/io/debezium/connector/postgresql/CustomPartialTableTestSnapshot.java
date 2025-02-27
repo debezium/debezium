@@ -9,15 +9,23 @@ package io.debezium.connector.postgresql;
 import java.util.List;
 import java.util.Optional;
 
-import io.debezium.relational.TableId;
+import io.debezium.spi.snapshot.Snapshotter;
 
-public class CustomPartialTableTestSnapshot extends CustomStartFromStreamingTestSnapshot {
+public class CustomPartialTableTestSnapshot extends CustomStartFromStreamingTestSnapshot implements Snapshotter {
+
     @Override
-    public Optional<String> buildSnapshotQuery(TableId tableId, List<String> snapshotSelectColumns) {
-        if (tableId.schema().equals("s1") && tableId.table().equals("a")) {
-            return super.buildSnapshotQuery(tableId, snapshotSelectColumns);
+    public String name() {
+        return CustomPartialTableTestSnapshot.class.getName();
+    }
+
+    @Override
+    public Optional<String> snapshotQuery(String tableId, List<String> snapshotSelectColumns) {
+
+        if (tableId.contains("s1") && tableId.contains("a")) {
+            return super.snapshotQuery(tableId, snapshotSelectColumns);
         }
 
         return Optional.empty();
     }
+
 }

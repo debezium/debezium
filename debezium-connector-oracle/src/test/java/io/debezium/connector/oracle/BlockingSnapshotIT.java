@@ -23,7 +23,7 @@ import io.debezium.pipeline.AbstractBlockingSnapshotTest;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
 
-public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
+public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest<OracleConnector> {
 
     private OracleConnection connection;
 
@@ -108,6 +108,11 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
     @Override
     protected String tableDataCollectionId() {
         return TestHelper.getDatabaseName() + ".DEBEZIUM.A";
+    }
+
+    @Override
+    protected String escapedTableDataCollectionId() {
+        return "\\\"" + TestHelper.getDatabaseName() + "\\\".\\\"DEBEZIUM\\\".\\\"A\\\"";
     }
 
     @Override

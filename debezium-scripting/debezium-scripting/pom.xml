@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-scripting-parent</artifactId>
-        <version>2.5.0.Final</version>
+        <version>3.1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -35,11 +35,16 @@
             <artifactId>connect-transforms</artifactId>
             <scope>provided</scope>
         </dependency>	
-	<dependency>
+	    <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-scripting-languages</artifactId>
-	    <type>pom</type>
+	        <type>pom</type>
             <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.dylibso.chicory</groupId>
+            <artifactId>host-module-annotations-experimental</artifactId>
+            <scope>provided</scope>
         </dependency>
 
         <!-- Testing -->
@@ -59,7 +64,7 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.codehaus.groovy</groupId>
+            <groupId>org.apache.groovy</groupId>
             <artifactId>groovy-json</artifactId>
             <scope>test</scope>
         </dependency>
@@ -79,10 +84,27 @@
                 <filtering>true</filtering>
                 <directory>src/main/resources</directory>
                 <includes>
+                    <include>**/*</include>
                     <include>**/build.properties</include>
                 </includes>
             </resource>
         </resources>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPathsUseDepMgmt>true</annotationProcessorPathsUseDepMgmt>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>com.dylibso.chicory</groupId>
+                            <artifactId>host-module-processor-experimental</artifactId>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+        </plugins>
     </build>
 
     <profiles>

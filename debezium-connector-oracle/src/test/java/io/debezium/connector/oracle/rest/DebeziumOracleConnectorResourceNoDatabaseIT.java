@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.oracle.rest;
 
-import static io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure.DATABASE;
+import static io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper.DATABASE;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.hasKey;
@@ -18,7 +18,7 @@ import org.junit.Test;
 
 import io.debezium.connector.oracle.Module;
 import io.debezium.connector.oracle.OracleConnector;
-import io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure;
+import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
 
 public class DebeziumOracleConnectorResourceNoDatabaseIT {
 
@@ -30,19 +30,19 @@ public class DebeziumOracleConnectorResourceNoDatabaseIT {
 
     @Before
     public void start() {
-        RestExtensionTestInfrastructure.setupDebeziumContainer(Module.version(), DebeziumOracleConnectRestExtension.class.getName());
-        RestExtensionTestInfrastructure.startContainers(DATABASE.NONE);
+        TestInfrastructureHelper.setupDebeziumContainer(Module.version(), DebeziumOracleConnectRestExtension.class.getName());
+        TestInfrastructureHelper.startContainers(DATABASE.NONE);
     }
 
     @After
     public void stop() {
-        RestExtensionTestInfrastructure.stopContainers();
+        TestInfrastructureHelper.stopContainers();
     }
 
     @Test
     public void testVersionEndpoint() {
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when()
                 .get(DebeziumOracleConnectorResource.BASE_PATH + DebeziumOracleConnectorResource.VERSION_ENDPOINT)
                 .then().log().all()
@@ -53,7 +53,7 @@ public class DebeziumOracleConnectorResourceNoDatabaseIT {
     @Test
     public void testSchemaEndpoint() {
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when()
                 .get(DebeziumOracleConnectorResource.BASE_PATH + DebeziumOracleConnectorResource.SCHEMA_ENDPOINT)
                 .then().log().all()

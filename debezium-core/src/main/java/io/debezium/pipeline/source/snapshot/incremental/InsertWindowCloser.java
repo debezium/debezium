@@ -18,14 +18,16 @@ import io.debezium.pipeline.spi.Partition;
 public class InsertWindowCloser implements WatermarkWindowCloser {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(InsertWindowCloser.class);
-    public static final String INSERT_STATEMENT = "INSERT INTO %s VALUES (?, ?, null)";
+    public static final String INSERT_STATEMENT = "INSERT INTO %s VALUES (?, ?, ?)";
 
     private final JdbcConnection jdbcConnection;
     private final String signalWindowStatement;
+    private final SignalMetadata signalMetadata;
 
-    public InsertWindowCloser(JdbcConnection jdbcConnection, String signalTable) {
+    public InsertWindowCloser(JdbcConnection jdbcConnection, String signalTable, SignalMetadata signalMetadata) {
         this.jdbcConnection = jdbcConnection;
         signalWindowStatement = String.format(INSERT_STATEMENT, signalTable);
+        this.signalMetadata = signalMetadata;
     }
 
     @Override
@@ -35,6 +37,7 @@ public class InsertWindowCloser implements WatermarkWindowCloser {
             LOGGER.trace("Emitting close window for chunk = '{}'", chunkId);
             x.setString(1, chunkId + "-close");
             x.setString(2, CloseIncrementalSnapshotWindow.NAME);
+            x.setString(3, signalMetadata.metadataString());
         });
 
         jdbcConnection.commit();

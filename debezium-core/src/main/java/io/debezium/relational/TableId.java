@@ -288,13 +288,13 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
     }
 
     private static String tableId(String catalog, String schema, String table) {
-        if (catalog == null || catalog.length() == 0) {
-            if (schema == null || schema.length() == 0) {
+        if (catalog == null || catalog.isEmpty()) {
+            if (schema == null || schema.isEmpty()) {
                 return table;
             }
             return schema + "." + table;
         }
-        if (schema == null || schema.length() == 0) {
+        if (schema == null || schema.isEmpty()) {
             return catalog + "." + table;
         }
         return catalog + "." + schema + "." + table;
@@ -309,7 +309,7 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
         }
 
         if (identifierPart.isEmpty()) {
-            return new StringBuilder().append(quotingChar).append(quotingChar).toString();
+            return repeat(quotingChar);
         }
 
         if (identifierPart.charAt(0) != quotingChar && identifierPart.charAt(identifierPart.length() - 1) != quotingChar) {

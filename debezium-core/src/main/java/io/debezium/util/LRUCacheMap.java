@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 import org.apache.kafka.common.cache.Cache;
 
@@ -65,5 +66,9 @@ public class LRUCacheMap<K, V> implements Cache<K, V> {
     @Override
     public String toString() {
         return delegate.toString();
+    }
+
+    public V computeIfAbsent(K key, Function<K, V> mappingFunction) {
+        return delegate.computeIfAbsent(key, mappingFunction);
     }
 }

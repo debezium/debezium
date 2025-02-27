@@ -22,6 +22,7 @@ import org.mockito.ArgumentCaptor;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.data.Envelope;
 
 public class MongoDbConnectorConfigTest {
 
@@ -34,7 +35,7 @@ public class MongoDbConnectorConfigTest {
                 "\"data\":{\"data-collections\":[\"database.collection\"],\"type\":\"incremental\"}}");
         MongoDbConnectorConfig mongoDbConnectorConfig = new MongoDbConnectorConfig(TestHelper.getConfiguration());
 
-        Optional<String[]> resultOpt = mongoDbConnectorConfig.parseSignallingMessage(struct);
+        Optional<String[]> resultOpt = mongoDbConnectorConfig.parseSignallingMessage(struct, Envelope.FieldName.AFTER);
 
         Assert.assertTrue(resultOpt.isPresent());
         String[] result = resultOpt.get();

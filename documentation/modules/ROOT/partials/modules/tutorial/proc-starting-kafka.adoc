@@ -51,7 +51,7 @@ ifdef::community[]
 If you use Podman, run the following command:
 [source,shell,options="nowrap",subs="+attributes"]
 ----
-$ sudo podman run -it --rm --name kafka --pod dbz quay.io/debezium/kafka:{debezium-docker-label}
+$ podman run -it --rm --name kafka --pod dbz -e HOST_NAME=127.0.0.1 quay.io/debezium/kafka:{debezium-docker-label}
 ----
 ====
 endif::community[]

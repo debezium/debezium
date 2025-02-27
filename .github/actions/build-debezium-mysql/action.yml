@@ -1,0 +1,42 @@
+name: "Build MySQL"
+description: "Builds the Debezium MySQL connector"
+
+inputs:
+  maven-cache-key:
+    description: "The maven build cache key"
+    required: true
+  version-mysql-server:
+    description: "The MySQL server version to use"
+    required: false
+    default: "8.4"
+  profile:
+    description: "The MySQL build profile to use"
+    required: false
+    default: "mysql-ci"
+  shell:
+    description: "The shell to use"
+    required: false
+    default: bash
+
+runs:
+  using: "composite"
+  steps:
+    - uses: ./.github/actions/setup-java
+
+    - uses: ./.github/actions/maven-cache
+      with:
+        key: ${{ inputs.maven-cache-key }}
+
+    - name: Build MySQL connector (MySQL ${{ inputs.version-mysql-server }} - ${{ inputs.profile }})
+      shell: ${{ inputs.shell }}
+      run: >
+        ./mvnw clean install -B -pl debezium-connector-mysql -am
+        -P${{ inputs.profile }}
+        -Dcheckstyle.skip=true
+        -Dformat.skip=true
+        -Dversion.mysql.server=${{ inputs.version-mysql-server }}
+        -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        -Dmaven.wagon.http.pool=false
+        -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        -DfailFlakyTests=false
+        -Ddebezium.test.mongo.replica.primary.startup.timeout.seconds=120

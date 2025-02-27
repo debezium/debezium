@@ -61,7 +61,7 @@ public class MaskStrings implements ColumnMapper {
         this.converterFromColumn = column -> {
             final HashValueConverter hashValueConverter = new HashValueConverter(salt, hashAlgorithm, hashingByteArrayStrategy);
             if (column.length() > 0) {
-                return hashValueConverter.and(new TruncateStrings.TruncatingValueConverter(column.length()));
+                return hashValueConverter.and(new TruncateColumn.TruncatingValueConverter(column.length()));
             }
             else {
                 return hashValueConverter;

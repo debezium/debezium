@@ -47,13 +47,15 @@ public abstract class ConnectorFixture<T extends DatabaseController<?>> extends 
     public void setup() throws Exception {
         String connectorName = connectorBaseName + TestUtils.getUniqueId();
         connectorConfig = connectorConfig(connectorName);
+        addApicurioConfig();
+        connectController.deployConnector(connectorConfig);
+        store(ConnectorConfigBuilder.class, connectorConfig);
+    }
 
+    protected void addApicurioConfig() {
         if (apicurioController != null) {
             connectorConfig.addApicurioAvroSupport(apicurioController.getRegistryApiAddress());
         }
-
-        connectController.deployConnector(connectorConfig);
-        store(ConnectorConfigBuilder.class, connectorConfig);
     }
 
     @Override

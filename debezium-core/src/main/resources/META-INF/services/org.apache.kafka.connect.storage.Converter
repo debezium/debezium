@@ -1,0 +1,3 @@
+io.debezium.converters.BinaryDataConverter
+io.debezium.converters.ByteArrayConverter
+io.debezium.converters.CloudEventsConverter

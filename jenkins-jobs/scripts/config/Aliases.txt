@@ -1,3 +1,4 @@
+joontube,Seongjoon Jeong
 garrett528,Andrew Garrett
 arosenber,Aaron Rosenberg
 jcechace,Jakub Cechacek
@@ -237,7 +238,8 @@ pricelessjunk,Kaustuv Chakrabarti
 laughingman7743,Tomoyuki Nakamura
 dtseiler,Don Seiler
 markducommun,Mark Ducommun
-Lars M Johansson,Lars M. Johansson
+larsmjoh,Lars M Johansson
+nrkljo,Lars M Johansson
 ahmedrachid,Ahmed Rachid Hazourli
 ahazourli,Ahmed Rachid Hazourli
 sherpa003,Jiri Kulhanek
@@ -246,3 +248,49 @@ baabgai,baabgai
 methodmissing,Lourens Naudé
 Prabhu19,Pavithrananda Prabhu
 Lourens Naude,Lourens Naudé
+overwatcheddude,حمود سمبول
+wukachn,Peter Hamer
+shybovycha,Artem Shubovych
+Liaoyuxing,leoloel
+iankko,Jan Lieskovsky
+CliffordCheefoon,Clifford Cheefoon
+Fr0z3Nn,Ivanov Sergey Vasilevich
+Bue-Von-Hun,Bue Von Hun
+nrkeli,Emil Lindström
+akulapid,Akula
+VWagen1989,Sean Wu
+ArthurLR,Arthur Le Ray
+Lars M Johansson,Lars M. Johansson
+nivolg,Nick Golubev
+zeldanerd24,Kevin Rothenberger
+PradeepNain,Pradeep Nain
+DLT1412,Duc Le Tu
+gaurav7261,Gaurav Miglani
+sullis,Sean C. Sullivan
+einar-rt,einar-rt
+michal-k-gl,Michal Pioun
+michal.kluz,Michal Pioun
+joontube,Seongjoon Jeong
+chungeun-choi,Chungeun Choi
+ashwinmk,Ashwin Murali Krishnan
+ganesh-bankar,Ganesh Bankar
+HenkvanDyk,Henk van Dyk
+TimoWilhelm,Timo Wilhelm
+ashishbinu,Ashish Binu
+wltmlx,Lukas Langegger
+GitHubSergei,Sergey Kazakov
+shaer,Mohamed El Shaer
+SylvainMarty,Sylvain Marty
+m8719-github,Andrei Leibovski
+cwholmes,Cody Holmes
+ArtDu,Artyom Dubinin
+Kate Galieva,Katerina Galieva
+dongwook-chan,Dongwook Chan
+paumr,P. Aum
+yevhenii-lopatenko,Yevhenii Lopatenko
+kavyaramaiah1991,Kavya Ramaiah
+gpanice,Giovanni Panice
+AndreiLeib,Andrei Leibovski
+iamseki,Christian Seki
+AlvarVG,Alvar Viana
+sergey.siroshtan@signanthealth.com,Sergey Seroshtan

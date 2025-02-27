@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.ConfigurationDefaults;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
@@ -49,8 +50,11 @@ import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.pipeline.spi.SnapshotResult.SnapshotResultStatus;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
+import io.debezium.util.Metronome;
 import io.debezium.util.Threads;
 
 /**
@@ -66,12 +70,13 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     /**
      * Waiting period for the polling loop to finish. Will be applied twice, once gracefully, once forcefully.
      */
-    public static final Duration SHUTDOWN_WAIT_TIMEOUT = Duration.ofSeconds(90);
+    public static final Duration SHUTDOWN_WAIT_TIMEOUT = Duration.ofSeconds(CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_SEC);
 
     protected final Offsets<P, O> previousOffsets;
     protected final ErrorHandler errorHandler;
     protected final ChangeEventSourceFactory<P, O> changeEventSourceFactory;
     protected final ChangeEventSourceMetricsFactory<P> changeEventSourceMetricsFactory;
+    protected final SnapshotterService snapshotterService;
     protected final ExecutorService executor;
     private final ExecutorService blockingSnapshotExecutor;
     protected final EventDispatcher<P, ?> eventDispatcher;
@@ -98,11 +103,12 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                                         ChangeEventSourceFactory<P, O> changeEventSourceFactory,
                                         ChangeEventSourceMetricsFactory<P> changeEventSourceMetricsFactory, EventDispatcher<P, ?> eventDispatcher,
                                         DatabaseSchema<?> schema,
-                                        SignalProcessor<P, O> signalProcessor, NotificationService<P, O> notificationService) {
+                                        SignalProcessor<P, O> signalProcessor, NotificationService<P, O> notificationService, SnapshotterService snapshotterService) {
         this.previousOffsets = previousOffsets;
         this.errorHandler = errorHandler;
         this.changeEventSourceFactory = changeEventSourceFactory;
         this.changeEventSourceMetricsFactory = changeEventSourceMetricsFactory;
+        this.snapshotterService = snapshotterService;
         this.executor = Threads.newSingleThreadExecutor(connectorType, connectorConfig.getLogicalName(), "change-event-source-coordinator");
         this.blockingSnapshotExecutor = Threads.newSingleThreadExecutor(connectorType, connectorConfig.getLogicalName(), "blocking-snapshot");
         this.eventDispatcher = eventDispatcher;
@@ -147,9 +153,6 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                     streamingConnected(false);
                 }
             });
-
-            getSignalProcessor(previousOffsets).ifPresent(signalProcessor -> registerSignalActionsAndStartProcessor(signalProcessor,
-                    eventDispatcher, this, connectorConfig));
         }
         finally {
             if (previousLogContext.get() != null) {
@@ -168,7 +171,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         actionProviders.stream()
                 .map(provider -> provider.createActions(dispatcher, changeEventSourceCoordinator, connectorConfig))
                 .flatMap(e -> e.entrySet().stream())
-                .collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))
                 .forEach(signalProcessor::registerSignalAction);
 
         signalProcessor.start(); // this will run on a separate thread
@@ -193,8 +196,37 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         LOGGER.debug("Snapshot result {}", snapshotResult);
 
         if (running && snapshotResult.isCompletedOrSkipped()) {
+            if (snapshotResult.isCompleted()) {
+                delayStreamingIfNeeded(context);
+            }
             previousLogContext.set(taskContext.configureLoggingContext("streaming", partition));
             streamEvents(context, partition, snapshotResult.getOffset());
+        }
+    }
+
+    /**
+     * Delays streaming execution as per the {@link CommonConnectorConfig#STREAMING_DELAY_MS} parameter.
+     */
+    protected void delayStreamingIfNeeded(ChangeEventSourceContext context) throws InterruptedException {
+        if (snapshotterService != null && !snapshotterService.getSnapshotter().shouldStream()) {
+            return;
+        }
+
+        Duration streamingDelay = connectorConfig.getStreamingDelay();
+        if (streamingDelay.isZero() || streamingDelay.isNegative()) {
+            return;
+        }
+
+        Threads.Timer timer = Threads.timer(Clock.SYSTEM, streamingDelay);
+        Metronome metronome = Metronome.parker(ConfigurationDefaults.RETURN_CONTROL_INTERVAL, Clock.SYSTEM);
+
+        while (!timer.expired()) {
+            if (!context.isRunning()) {
+                throw new InterruptedException("Interrupted while awaiting streaming delay");
+            }
+
+            LOGGER.info("The connector will wait for {}s before initiating streaming", timer.remaining().getSeconds());
+            metronome.pause();
         }
     }
 
@@ -215,18 +247,30 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                 LOGGER.info("Starting snapshot");
 
                 SnapshottingTask snapshottingTask = snapshotSource.getBlockingSnapshottingTask(partition, (O) offsetContext, snapshotConfiguration);
-                SnapshotResult<O> snapshotResult = doSnapshot(snapshotSource, context, partition, (O) offsetContext, snapshottingTask);
+                try {
+                    SnapshotResult<O> snapshotResult = doSnapshot(snapshotSource, context, partition, (O) offsetContext, snapshottingTask);
+                    eventDispatcher.setEventListener(streamingMetrics);
 
-                if (running && snapshotResult.isCompletedOrSkipped()) {
-                    previousLogContext.set(taskContext.configureLoggingContext("streaming", partition));
-                    paused = false;
-                    context.resumeStreaming();
+                    if (running && snapshotResult.isCompletedOrSkipped()) {
+                        resumeStreaming(partition);
+                    }
+
+                }
+                catch (Exception e) {
+                    LOGGER.warn("Error while executing requested blocking snapshot.", e);
+                    resumeStreaming(partition);
                 }
             }
             catch (InterruptedException e) {
                 throw new DebeziumException("Blocking snapshot has been interrupted");
             }
         });
+    }
+
+    private void resumeStreaming(P partition) throws InterruptedException {
+        previousLogContext.set(taskContext.configureLoggingContext("streaming", partition));
+        paused = false;
+        context.resumeStreaming();
     }
 
     protected SnapshotResult<O> doSnapshot(SnapshotChangeEventSource<P, O> snapshotSource, ChangeEventSourceContext context, P partition, O previousOffset)
@@ -268,6 +312,14 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
 
     protected void streamEvents(ChangeEventSourceContext context, P partition, O offsetContext) throws InterruptedException {
         initStreamEvents(partition, offsetContext);
+        getSignalProcessor(previousOffsets).ifPresent(signalProcessor -> registerSignalActionsAndStartProcessor(signalProcessor,
+                eventDispatcher, this, connectorConfig));
+
+        if (snapshotterService != null && !snapshotterService.getSnapshotter().shouldStream()) {
+            LOGGER.info("Streaming is disabled for snapshot mode {}", snapshotterService.getSnapshotter().name());
+            return;
+        }
+
         LOGGER.info("Starting streaming");
         streamingSource.execute(context, partition, offsetContext);
         LOGGER.info("Finished streaming");
@@ -289,8 +341,13 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     }
 
     public void commitOffset(Map<String, ?> partition, Map<String, ?> offset) {
-        if (!commitOffsetLock.isLocked() && streamingSource != null && offset != null) {
-            streamingSource.commitOffset(partition, offset);
+        try {
+            if (!commitOffsetLock.isLocked() && streamingSource != null && offset != null) {
+                streamingSource.commitOffset(partition, offset);
+            }
+        }
+        catch (Throwable e) {
+            errorHandler.setProducerThrowable(e);
         }
     }
 

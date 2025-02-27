@@ -28,7 +28,7 @@ import com.mongodb.client.model.changestream.OperationType;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.connector.AbstractSourceInfoStructMaker;
+import io.debezium.schema.SchemaFactory;
 
 /**
  * @author Randall Hauch
@@ -37,33 +37,52 @@ public class SourceInfoTest {
 
     private static final String REPLICA_SET_NAME = "myReplicaSet";
 
-    // FROM: https://www.mongodb.com/docs/manual/changeStreams/#resume-tokens-from-change-events
-    private static final String CHANGE_RESUME_TOKEN_DATA = "82635019A0000000012B042C0100296E5A1004AB1154ACA" +
-            "CD849A48C61756D70D3B21F463C6F7065726174696F6E54" +
-            "797065003C696E736572740046646F63756D656E744B657" +
-            "90046645F69640064635019A078BE67426D7CF4D2000004";
-    private static final BsonDocument CHANGE_RESUME_TOKEN = ResumeTokens.fromData(CHANGE_RESUME_TOKEN_DATA);
+    // For resume token with all fields included
+    private static final String CHANGE_RESUME_TOKEN_JSON = "{\n" +
+            "    \"_data\": \"82647A41A6000000012B022C0100296E5A10042409C0859BCF45ABBE0E0BD72AB4040346465F696400461E666F6F002B021E626172002B04000004\",\n" +
+            "    \"_typeBits\":\n" +
+            "    {\n" +
+            "        \"$binary\":\n" +
+            "        {\n" +
+            "            \"base64\": \"gkAB\",\n" +
+            "            \"subType\": \"00\"\n" +
+            "        }\n" +
+            "    }\n" +
+            "}";
+    private static final BsonDocument CHANGE_RESUME_TOKEN = BsonDocument.parse(CHANGE_RESUME_TOKEN_JSON);
+    private static final String CHANGE_RESUME_TOKEN_STRING = ResumeTokens.toBase64(CHANGE_RESUME_TOKEN);
     private static final BsonTimestamp CHANGE_TIMESTAMP = new BsonTimestamp(1666193824, 1);
 
     // FROM: https://www.mongodb.com/docs/manual/changeStreams/#resume-tokens-from-aggregate
-    private static final String CURSOR_RESUME_TOKEN_DATA = "8263515EAC000000022B0429296E1404";
-    private static final BsonTimestamp CURSOR_TIMESTAMP = new BsonTimestamp(1666277036, 2);
-    private static final BsonDocument CURSOR_RESUME_TOKEN = ResumeTokens.fromData(CURSOR_RESUME_TOKEN_DATA);
+    private static final String CURSOR_RESUME_TOKEN_JSON = "{ \"_data\" : \"8263515EAC000000022B0429296E1404\" }";
+    private static final BsonDocument CURSOR_RESUME_TOKEN = BsonDocument.parse(CURSOR_RESUME_TOKEN_JSON);
+    private static final String CURSOR_RESUME_TOKEN_STRING = ResumeTokens.toBase64(CURSOR_RESUME_TOKEN);
 
     private SourceInfo source;
-    private Map<String, String> partition;
+    private MongoDbOffsetContext context;
 
     @Before
     public void beforeEach() {
-        source = createSourceInfo();
+        createOffsetContext();
     }
 
     private SourceInfo createSourceInfo() {
         var config = new MongoDbConnectorConfig(Configuration.create()
+                .with(MongoDbConnectorConfig.CONNECTION_STRING, "mongodb://localhost:2017/?replicaSet=" + REPLICA_SET_NAME)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "serverX")
                 .build());
 
         return new SourceInfo(config);
+    }
+
+    private void createOffsetContext() {
+        var config = new MongoDbConnectorConfig(Configuration.create()
+                .with(MongoDbConnectorConfig.CONNECTION_STRING, "mongodb://localhost:2017/?replicaSet=" + REPLICA_SET_NAME)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "serverX")
+                .build());
+
+        context = MongoDbOffsetContext.empty(config);
+        source = context.sourceInfo();
     }
 
     @SuppressWarnings("unchecked")
@@ -84,6 +103,7 @@ public class SourceInfoTest {
                 null, // txnNumber
                 null, // lsid
                 null, // wallTime
+                null, // spiltEvent
                 null // extraElements
         );
 
@@ -107,8 +127,8 @@ public class SourceInfoTest {
                                          BsonTimestamp timestamp,
                                          String snapshot) {
         if (cursor != null) {
-            assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
-            source.initEvent(REPLICA_SET_NAME, cursor);
+            assertThat(source.hasPosition()).isEqualTo(false);
+            source.initEvent(cursor);
         }
 
         assertSourceInfoContents(source, cursor != null, resumeTokenData, timestamp, snapshot);
@@ -119,22 +139,21 @@ public class SourceInfoTest {
                                          String resumeTokenData,
                                          BsonTimestamp timestamp,
                                          String snapshot) {
-        assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(hasOffset);
+        assertThat(source.hasPosition()).isEqualTo(hasOffset);
 
-        Map<String, ?> offset = source.lastOffset(REPLICA_SET_NAME);
+        Map<String, ?> offset = context.getOffset();
         assertThat(offset.get(SourceInfo.TIMESTAMP)).isEqualTo((timestamp != null) ? timestamp.getTime() : 0);
         assertThat(offset.get(SourceInfo.ORDER)).isEqualTo((timestamp != null) ? timestamp.getInc() : -1);
 
-        String resumeToken = source.lastResumeToken(REPLICA_SET_NAME);
+        String resumeToken = source.lastResumeToken();
         assertThat(resumeToken).isEqualTo(resumeTokenData);
 
-        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "test", "names"), 0L);
+        source.collectionEvent(new CollectionId("test", "names"), 0L);
         Struct struct = source.struct();
         assertThat(struct.getInt64(SourceInfo.TIMESTAMP_KEY)).isEqualTo((timestamp != null) ? timestamp.getTime() * 1000L : 0L);
         assertThat(struct.getInt32(SourceInfo.ORDER)).isEqualTo((timestamp != null) ? timestamp.getInc() : -1);
         assertThat(struct.getString(SourceInfo.DATABASE_NAME_KEY)).isEqualTo("test");
         assertThat(struct.getString(SourceInfo.COLLECTION)).isEqualTo("names");
-        assertThat(struct.getString(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
         assertThat(struct.getString(SourceInfo.SERVER_NAME_KEY)).isEqualTo("serverX");
         assertThat(struct.getString(SourceInfo.SNAPSHOT_KEY)).isEqualTo(snapshot);
     }
@@ -142,120 +161,106 @@ public class SourceInfoTest {
     @Test
     public void shouldSetAndReturnRecordedOffset() {
         var cursor = mockEventChangeStreamCursor();
-        assertSourceInfoContents(source, cursor, CHANGE_RESUME_TOKEN_DATA, CHANGE_TIMESTAMP, null);
+        assertSourceInfoContents(source, cursor, CHANGE_RESUME_TOKEN_STRING, CHANGE_TIMESTAMP, null);
 
         // Create a new source info and set the offset ...
-        Map<String, ?> offset = source.lastOffset(REPLICA_SET_NAME);
-        Map<String, String> partition = source.partition(REPLICA_SET_NAME);
+        var position = source.position();
         SourceInfo newSource = createSourceInfo();
-        newSource.setOffsetFor(partition, offset);
+        newSource.setPosition(position);
 
-        assertSourceInfoContents(newSource, true, CHANGE_RESUME_TOKEN_DATA, CHANGE_TIMESTAMP, null);
+        assertSourceInfoContents(newSource, true, CHANGE_RESUME_TOKEN_STRING, CHANGE_TIMESTAMP, null);
     }
 
     @Test
     public void shouldReturnOffsetForUnusedReplicaName() {
-        assertThat(source.hasOffset(REPLICA_SET_NAME)).isEqualTo(false);
+        assertThat(source.hasPosition()).isEqualTo(false);
         assertSourceInfoContents(source, false, null, new BsonTimestamp(0), null);
     }
 
     @Test
     public void shouldReturnRecordedOffsetForUsedReplicaName() {
         var cursor = mockEventChangeStreamCursor();
-        assertSourceInfoContents(source, cursor, CHANGE_RESUME_TOKEN_DATA, CHANGE_TIMESTAMP, null);
+        assertSourceInfoContents(source, cursor, CHANGE_RESUME_TOKEN_STRING, CHANGE_TIMESTAMP, null);
     }
 
     @Test
     public void shouldReturnRecordedOffsetForUsedReplicaNameWithoutEvent() {
         var cursor = mockNoEventChangeStreamCursor();
-        assertSourceInfoContents(source, cursor, CURSOR_RESUME_TOKEN_DATA, null, null);
+        assertSourceInfoContents(source, cursor, CURSOR_RESUME_TOKEN_STRING, null, null);
     }
 
     @Test
-    public void shouldReturnOffsetForUnusedReplicaNameDuringInitialSync() {
-        source.startInitialSync(REPLICA_SET_NAME);
+    public void shouldReturnOffsetForUnusedReplicaNameDuringInitialSnapshot() {
+        source.startInitialSnapshot();
         assertSourceInfoContents(source, false, null, new BsonTimestamp(0), "true");
     }
 
     @Test
-    public void shouldReturnRecordedOffsetForUsedReplicaNameDuringInitialSync() {
-        source.startInitialSync(REPLICA_SET_NAME);
+    public void shouldReturnRecordedOffsetForUsedReplicaNameDuringInitialSnapshot() {
+        source.startInitialSnapshot();
 
         var cursor = mockEventChangeStreamCursor();
-        assertSourceInfoContents(source, cursor, CHANGE_RESUME_TOKEN_DATA, CHANGE_TIMESTAMP, "true");
+        assertSourceInfoContents(source, cursor, CHANGE_RESUME_TOKEN_STRING, CHANGE_TIMESTAMP, "true");
     }
 
     @Test
-    public void shouldReturnRecordedOffsetForUsedReplicaNameDuringInitialSyncWithoutEvent() {
-        source.startInitialSync(REPLICA_SET_NAME);
+    public void shouldReturnRecordedOffsetForUsedReplicaNameDuringInitialSnapshotWithoutEvent() {
+        source.startInitialSnapshot();
 
         var cursor = mockNoEventChangeStreamCursor();
-        assertSourceInfoContents(source, cursor, CURSOR_RESUME_TOKEN_DATA, null, "true");
-    }
-
-    @Test
-    public void shouldProducePartitionMap() {
-        partition = source.partition(REPLICA_SET_NAME);
-        assertThat(partition.get(SourceInfo.REPLICA_SET_NAME)).isEqualTo(REPLICA_SET_NAME);
-        assertThat(partition.get(SourceInfo.SERVER_ID_KEY)).isEqualTo("serverX");
-        assertThat(partition.size()).isEqualTo(2);
-    }
-
-    @Test
-    public void shouldReturnSamePartitionMapForSameReplicaName() {
-        partition = source.partition(REPLICA_SET_NAME);
-        assertThat(partition).isSameAs(source.partition(REPLICA_SET_NAME));
+        assertSourceInfoContents(source, cursor, CURSOR_RESUME_TOKEN_STRING, null, "true");
     }
 
     @Test
     public void versionIsPresent() {
         var cursor = mockEventChangeStreamCursor();
-        source.initEvent(REPLICA_SET_NAME, cursor);
+        source.initEvent(cursor);
         assertThat(source.struct().getString(SourceInfo.DEBEZIUM_VERSION_KEY)).isEqualTo(Module.version());
     }
 
     @Test
     public void connectorIsPresent() {
         var cursor = mockEventChangeStreamCursor();
-        source.initEvent(REPLICA_SET_NAME, cursor);
+        source.initEvent(cursor);
         assertThat(source.struct().getString(SourceInfo.DEBEZIUM_CONNECTOR_KEY)).isEqualTo(Module.name());
     }
 
     @Test
     public void wallTimeIsPresent() {
         var cursor = mockEventChangeStreamCursor();
-        source.initEvent(REPLICA_SET_NAME, cursor);
+        source.initEvent(cursor);
         assertThat(source.struct().getInt64(SourceInfo.WALL_TIME)).isNull();
-        source.collectionEvent(REPLICA_SET_NAME, new CollectionId(REPLICA_SET_NAME, "test", "names"), 10L);
+        source.collectionEvent(new CollectionId("test", "names"), 10L);
         assertThat(source.struct().getInt64(SourceInfo.WALL_TIME)).isEqualTo(10L);
     }
 
     @Test
     public void shouldHaveSchemaForSource() {
-        Schema schema = source.schema();
+        Schema schema = context.getSourceInfoSchema();
         assertThat(schema.name()).isNotEmpty();
-        assertThat(schema.version()).isNull();
+        assertThat(schema.version()).isEqualTo(SchemaFactory.SOURCE_INFO_DEFAULT_SCHEMA_VERSION);
         assertThat(schema.field(SourceInfo.SERVER_NAME_KEY).schema()).isEqualTo(Schema.STRING_SCHEMA);
-        assertThat(schema.field(SourceInfo.REPLICA_SET_NAME).schema()).isEqualTo(Schema.STRING_SCHEMA);
         assertThat(schema.field(SourceInfo.DATABASE_NAME_KEY).schema()).isEqualTo(Schema.STRING_SCHEMA);
         assertThat(schema.field(SourceInfo.COLLECTION).schema()).isEqualTo(Schema.STRING_SCHEMA);
         assertThat(schema.field(SourceInfo.TIMESTAMP_KEY).schema()).isEqualTo(Schema.INT64_SCHEMA);
         assertThat(schema.field(SourceInfo.ORDER).schema()).isEqualTo(Schema.INT32_SCHEMA);
-        assertThat(schema.field(SourceInfo.SNAPSHOT_KEY).schema()).isEqualTo(AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA);
+        assertThat(schema.field(SourceInfo.SNAPSHOT_KEY).schema()).isEqualTo(SchemaFactory.get().snapshotRecordSchema());
     }
 
     @Test
     public void schemaIsCorrect() {
         final Schema schema = SchemaBuilder.struct()
                 .name("io.debezium.connector.mongo.Source")
+                .version(SchemaFactory.SOURCE_INFO_DEFAULT_SCHEMA_VERSION)
                 .field("version", Schema.STRING_SCHEMA)
                 .field("connector", Schema.STRING_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
                 .field("ts_ms", Schema.INT64_SCHEMA)
-                .field("snapshot", AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA)
+                .field("snapshot", SchemaFactory.get().snapshotRecordSchema())
                 .field("db", Schema.STRING_SCHEMA)
                 .field("sequence", Schema.OPTIONAL_STRING_SCHEMA)
-                .field("rs", Schema.STRING_SCHEMA)
+                .field("ts_us", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("ts_ns", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("collection", Schema.STRING_SCHEMA)
                 .field("ord", Schema.INT32_SCHEMA)
                 .field("lsid", Schema.OPTIONAL_STRING_SCHEMA)

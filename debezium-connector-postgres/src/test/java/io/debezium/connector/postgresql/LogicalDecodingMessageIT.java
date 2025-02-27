@@ -32,7 +32,7 @@ import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNa
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 
 /**
@@ -40,7 +40,7 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
  *
  * @author Lairen Hightower
  */
-public class LogicalDecodingMessageIT extends AbstractConnectorTest {
+public class LogicalDecodingMessageIT extends AbstractAsyncEngineConnectorTest {
 
     private static final String CREATE_TABLES_STMT = "DROP SCHEMA IF EXISTS s1 CASCADE;" +
             "CREATE SCHEMA s1; " +
@@ -114,6 +114,7 @@ public class LogicalDecodingMessageIT extends AbstractConnectorTest {
             Struct value = (Struct) record.value();
             String op = value.getString(Envelope.FieldName.OPERATION);
             Struct source = value.getStruct(Envelope.FieldName.SOURCE);
+            Struct transaction = value.getStruct(Envelope.FieldName.TRANSACTION);
             Struct message = value.getStruct(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY);
 
             assertNull(source.getInt64(SourceInfo.TXID_KEY));
@@ -121,6 +122,8 @@ public class LogicalDecodingMessageIT extends AbstractConnectorTest {
             assertNotNull(source.getInt64(SourceInfo.LSN_KEY));
             assertEquals("", source.getString(SourceInfo.TABLE_NAME_KEY));
             assertEquals("", source.getString(SourceInfo.SCHEMA_NAME_KEY));
+
+            assertNull(transaction);
 
             assertEquals(Envelope.Operation.MESSAGE.code(), op);
             assertEquals("foo",
@@ -144,7 +147,7 @@ public class LogicalDecodingMessageIT extends AbstractConnectorTest {
 
         // emit transactional logical decoding message with text
         TestHelper.execute("SELECT pg_logical_emit_message(true, 'txn_foo', 'txn_bar');");
-        // emit transactional logical decoding message with binary
+        // emit non transactional logical decoding message with binary
         TestHelper.execute("SELECT pg_logical_emit_message(false, 'foo', E'txn_bar'::bytea);");
 
         SourceRecords txnRecords = consumeRecordsByTopic(1);
@@ -155,6 +158,7 @@ public class LogicalDecodingMessageIT extends AbstractConnectorTest {
             Struct value = (Struct) record.value();
             String op = value.getString(Envelope.FieldName.OPERATION);
             Struct source = value.getStruct(Envelope.FieldName.SOURCE);
+            Struct transaction = value.getStruct(Envelope.FieldName.TRANSACTION);
             Struct message = value.getStruct(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY);
 
             assertNotNull(source.getInt64(SourceInfo.TXID_KEY));
@@ -162,6 +166,52 @@ public class LogicalDecodingMessageIT extends AbstractConnectorTest {
             assertNotNull(source.getInt64(SourceInfo.LSN_KEY));
             assertEquals("", source.getString(SourceInfo.TABLE_NAME_KEY));
             assertEquals("", source.getString(SourceInfo.SCHEMA_NAME_KEY));
+
+            assertNull(transaction);
+
+            assertEquals(Envelope.Operation.MESSAGE.code(), op);
+            assertEquals("txn_foo",
+                    message.getString(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_PREFIX_KEY));
+            assertArrayEquals("txn_bar".getBytes(),
+                    message.getBytes(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_CONTENT_KEY));
+        });
+    }
+
+    @Test
+    @FixFor("DBZ-8185")
+    @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Only supported on PgOutput")
+    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "Message not supported for PG version < 14")
+    public void shouldConsumeTransactionalLogicalDecodingMessagesThatContainTransactionData() throws Exception {
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PROVIDE_TRANSACTION_METADATA, true);
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+        waitForSnapshotToBeCompleted();
+
+        // emit transactional logical decoding message with text
+        TestHelper.execute("SELECT pg_logical_emit_message(true, 'txn_foo', 'txn_bar');");
+
+        SourceRecords txnRecords = consumeRecordsByTopic(2);
+        List<SourceRecord> txnRecordsForTopic = txnRecords.recordsForTopic(topicName("message"));
+        assertThat(txnRecordsForTopic).hasSize(1);
+
+        txnRecordsForTopic.forEach(record -> {
+            Struct value = (Struct) record.value();
+            String op = value.getString(Envelope.FieldName.OPERATION);
+            Struct source = value.getStruct(Envelope.FieldName.SOURCE);
+            Struct transaction = value.getStruct(Envelope.FieldName.TRANSACTION);
+            Struct message = value.getStruct(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY);
+
+            assertNotNull(source.getInt64(SourceInfo.TXID_KEY));
+            assertNotNull(source.getInt64(SourceInfo.TIMESTAMP_KEY));
+            assertNotNull(source.getInt64(SourceInfo.LSN_KEY));
+            assertEquals("", source.getString(SourceInfo.TABLE_NAME_KEY));
+            assertEquals("", source.getString(SourceInfo.SCHEMA_NAME_KEY));
+
+            assertNotNull(transaction);
+            assertThat(transaction.getString("id")).isNotBlank();
+            assertEquals(1, transaction.getInt64("total_order").longValue());
+            assertEquals(1, transaction.getInt64("data_collection_order").longValue());
 
             assertEquals(Envelope.Operation.MESSAGE.code(), op);
             assertEquals("txn_foo",

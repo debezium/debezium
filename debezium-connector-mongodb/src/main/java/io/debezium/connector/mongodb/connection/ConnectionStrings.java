@@ -20,6 +20,8 @@ import io.debezium.util.Strings;
  */
 public final class ConnectionStrings {
 
+    public static final String CLUSTER_RS_NAME = "cluster";
+
     private ConnectionStrings() {
         // intentionally private;
     }
@@ -32,6 +34,10 @@ public final class ConnectionStrings {
 
     public static Optional<String> parseFromHosts(String hosts) {
         return matcher(hosts).map(m -> connectionString(m.group(2), m.group(3)));
+    }
+
+    public static ConnectionString appendParameter(ConnectionString connectionString, String name, String value) {
+        return new ConnectionString(appendParameter(connectionString.toString(), name, value));
     }
 
     /**
@@ -95,6 +101,10 @@ public final class ConnectionStrings {
                         credentials.getUserName(),
                         credentials.getSource(),
                         credentials.getPassword() != null ? String.valueOf(credentials.getPassword()) : null);
+    }
+
+    public static String mask(ConnectionString connectionString) {
+        return mask(connectionString.toString());
     }
 
     private static String connectionString(String rsName, String host) {

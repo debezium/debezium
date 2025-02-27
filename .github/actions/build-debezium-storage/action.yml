@@ -1,0 +1,61 @@
+name: "Build Debezium Storage Module"
+description: "Builds the Debezium Storage Module"
+
+inputs:
+  maven-cache-key:
+    description: "The maven build cache key"
+    required: true
+  shell:
+    description: "The shell to use"
+    required: false
+    default: bash
+
+runs:
+  using: "composite"
+  steps:
+    - uses: ./.github/actions/setup-java
+
+    - uses: ./.github/actions/maven-cache
+      with:
+        key: ${{ inputs.maven-cache-key }}
+
+    # Required by storage module
+    - name: Build Debezium (Core)
+      shell: ${{ inputs.shell }}
+      run: >
+        ./mvnw clean install
+        -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
+        -am
+        -DskipTests=true
+        -DskipITs=true
+        -Dcheckstyle.skip=true
+        -Dformat.skip=true
+        -Drevapi.skip
+        -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn          
+        -Dmaven.wagon.http.pool=false 
+        -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
+    # Required by storage module
+    - name: Build Debezium MySQL Connector
+      shell: ${{ inputs.shell }}
+      run: >
+        ./mvnw clean install -B -pl debezium-connector-binlog,debezium-connector-mysql 
+        -Passembly
+        -DskipTests=true
+        -DskipITs=true
+        -Dcheckstyle.skip=true
+        -Dformat.skip=true
+        -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        -Dmaven.wagon.http.pool=false
+        -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
+    - name: Build Storage Module
+      shell: ${{ inputs.shell }}
+      run: >
+        ./mvnw clean install -B -f debezium-storage/pom.xml 
+        -Passembly
+        -Dcheckstyle.skip=true
+        -Dformat.skip=true
+        -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        -Dmaven.wagon.http.pool=false
+        -Dmaven.wagon.httpconnectionManager.ttlSeconds=120

@@ -1,4 +1,4 @@
-FROM fedora:35 AS base
+FROM fedora:40 AS base
 
 RUN dnf -y install git unzip zip findutils rsync
 
@@ -10,8 +10,10 @@ ARG sdkman_init="/root/.sdkman/bin/sdkman-init.sh"
 
 RUN curl -s "https://get.sdkman.io" | bash
 RUN source $sdkman_init &&\
-    sdk install java 17.0.2-open &&\
-    sdk install maven
+    sdk install java 21.0.3-tem
+
+RUN source $sdkman_init &&\
+    sdk install java 21.0.3-tem
 
 RUN mkdir /root/testsuite
 COPY testsuite.sh /root/testsuite/testsuite.sh

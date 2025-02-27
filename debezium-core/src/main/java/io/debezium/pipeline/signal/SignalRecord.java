@@ -12,6 +12,9 @@ import java.util.Optional;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.data.Envelope;
+import io.debezium.engine.DebeziumEngine;
+import io.debezium.pipeline.signal.actions.snapshotting.CloseIncrementalSnapshotWindow;
 
 /**
  * The class represent the signal sent on a channel:
@@ -36,9 +39,24 @@ public class SignalRecord {
         this.additionalData = additionalData;
     }
 
+    public SignalRecord(DebeziumEngine.Signal signal) {
+        this(signal.id(), signal.type(), signal.data(), signal.additionalData());
+    }
+
     public static Optional<SignalRecord> buildSignalRecordFromChangeEventSource(Struct value, CommonConnectorConfig config) {
 
-        final Optional<String[]> parseSignal = config.parseSignallingMessage(value);
+        if (Envelope.Operation.DELETE.code().equals(value.get(Envelope.FieldName.OPERATION))) {
+            // here we are sure the INSERT_DELETE strategy is used
+
+            final Optional<String[]> parseSignal = config.parseSignallingMessage(value, Envelope.FieldName.BEFORE);
+
+            return parseSignal.map(signalMessage -> {
+                final String signalId = signalMessage[0].replace("open", "close");
+                return new SignalRecord(signalId, CloseIncrementalSnapshotWindow.NAME, signalMessage[2], Map.of());
+            });
+        }
+
+        final Optional<String[]> parseSignal = config.parseSignallingMessage(value, Envelope.FieldName.AFTER);
 
         return parseSignal.map(signalMessage -> new SignalRecord(signalMessage[0], signalMessage[1], signalMessage[2], Map.of()));
     }

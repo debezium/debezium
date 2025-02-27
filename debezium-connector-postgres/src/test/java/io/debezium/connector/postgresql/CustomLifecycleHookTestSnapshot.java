@@ -6,9 +6,14 @@
 
 package io.debezium.connector.postgresql;
 
-import io.debezium.connector.postgresql.snapshot.AlwaysSnapshotter;
+import io.debezium.snapshot.mode.AlwaysSnapshotter;
 
 public class CustomLifecycleHookTestSnapshot extends AlwaysSnapshotter {
+
+    @Override
+    public String name() {
+        return CustomLifecycleHookTestSnapshot.class.getName();
+    }
 
     private static final String INSERT_SNAPSHOT_COMPLETE_STATE = "INSERT INTO s1.lifecycle_state (hook, state) " +
             "VALUES ('snapshotComplete', 'complete');";

@@ -22,7 +22,7 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.transforms.outbox.EventRouter;
 
@@ -31,7 +31,7 @@ import io.debezium.transforms.outbox.EventRouter;
  *
  * @author Roman Kudryashov
  */
-public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector> extends AbstractConnectorTest {
+public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector> extends AbstractAsyncEngineConnectorTest {
 
     protected abstract Class<T> getConnectorClass();
 
@@ -133,6 +133,56 @@ public abstract class AbstractCloudEventsConverterTest<T extends SourceConnector
         assertThat(routedEvent.value()).isInstanceOf(Struct.class);
 
         CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithMetadataAndIdAndTypeInHeaders(routedEvent, getConnectorName(), getServerName());
+
+        headerFrom.close();
+        outboxEventRouter.close();
+    }
+
+    @Test
+    @FixFor("DBZ-7284")
+    public void shouldConvertToCloudEventsInJsonWithDataAsAvroAndAllMetadataInHeadersAfterOutboxEventRouter() throws Exception {
+        HeaderFrom<SourceRecord> headerFrom = new HeaderFrom.Value<>();
+        Map<String, String> headerFromConfig = new LinkedHashMap<>();
+        headerFromConfig.put("fields", "source,op,transaction");
+        headerFromConfig.put("headers", "source,op,transaction");
+        headerFromConfig.put("operation", "copy");
+        headerFromConfig.put("header.converter.schemas.enable", "true");
+        headerFrom.configure(headerFromConfig);
+
+        EventRouter<SourceRecord> outboxEventRouter = new EventRouter<>();
+        Map<String, String> outboxEventRouterConfig = new LinkedHashMap<>();
+        outboxEventRouterConfig.put("table.expand.json.payload", "true");
+        // this adds `type` and `dataSchemaName` headers with values from the DB columns. `id` header is added by Outbox Event Router by default
+        outboxEventRouterConfig.put("table.fields.additional.placement", "event_type:header:type,aggregatetype:header:dataSchemaName");
+        outboxEventRouter.configure(outboxEventRouterConfig);
+
+        createOutboxTable();
+
+        databaseConnection().execute(createInsertToOutbox(
+                "59a42efd-b015-44a9-9dde-cb36d9002425",
+                "UserCreated",
+                "User",
+                "10711fa5",
+                "{" +
+                        "\"someField1\": \"some value 1\"," +
+                        "\"someField2\": 7005" +
+                        "}",
+                ""));
+
+        SourceRecords streamingRecords = consumeRecordsByTopic(1);
+        assertThat(streamingRecords.allRecordsInOrder()).hasSize(1);
+
+        SourceRecord record = streamingRecords.recordsForTopic(topicNameOutbox()).get(0);
+        SourceRecord recordWithMetadataHeaders = headerFrom.apply(record);
+        SourceRecord routedEvent = outboxEventRouter.apply(recordWithMetadataHeaders);
+
+        assertThat(routedEvent).isNotNull();
+        assertThat(routedEvent.topic()).isEqualTo("outbox.event.User");
+        assertThat(routedEvent.keySchema()).isEqualTo(Schema.STRING_SCHEMA);
+        assertThat(routedEvent.key()).isEqualTo("10711fa5");
+        assertThat(routedEvent.value()).isInstanceOf(Struct.class);
+
+        CloudEventsConverterTest.shouldConvertToCloudEventsInJsonWithDataAsAvroAndAllMetadataInHeaders(routedEvent, getConnectorName(), getServerName());
 
         headerFrom.close();
         outboxEventRouter.close();

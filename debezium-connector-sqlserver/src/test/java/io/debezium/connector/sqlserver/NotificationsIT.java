@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -54,7 +55,7 @@ public class NotificationsIT extends AbstractNotificationsIT<SqlServerConnector>
     }
 
     protected List<String> collections() {
-        return List.of("tablea", "tableb");
+        return List.of("dbo.tablea", "dbo.tableb").stream().map(sch_tbl -> String.format("%s.%s", database(), sch_tbl)).collect(Collectors.toList());
     }
 
     @Override
@@ -96,7 +97,7 @@ public class NotificationsIT extends AbstractNotificationsIT<SqlServerConnector>
     @Test
     public void completeReadingFromACaptureInstanceNotificationEmitted() throws SQLException {
         startConnector(config -> config
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.NO_DATA)
                 .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification")
                 .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink"));
 

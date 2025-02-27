@@ -24,14 +24,14 @@ import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 
 /**
  * Integration tests for config skip.messages.without.change
  *
  * @author Ronak Jain
  */
-public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTest {
+public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractAsyncEngineConnectorTest {
 
     @Rule
     public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
@@ -69,7 +69,7 @@ public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTe
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.TEST")
                 .with(OracleConnectorConfig.COLUMN_INCLUDE_LIST, "DEBEZIUM\\.TEST\\.ID, DEBEZIUM\\.TEST\\.WHITE")
                 .with(OracleConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, true)
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         start(OracleConnector.class, config);
@@ -111,7 +111,7 @@ public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTe
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.TEST")
                 .with(OracleConnectorConfig.COLUMN_EXCLUDE_LIST, "DEBEZIUM\\.TEST\\.BLACK")
                 .with(OracleConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, true)
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         start(OracleConnector.class, config);
@@ -153,7 +153,7 @@ public class OracleSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTe
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.TEST")
                 .with(OracleConnectorConfig.COLUMN_INCLUDE_LIST, "DEBEZIUM\\.TEST\\.ID, DEBEZIUM\\.TEST\\.WHITE")
                 .with(OracleConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, false)
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         start(OracleConnector.class, config);

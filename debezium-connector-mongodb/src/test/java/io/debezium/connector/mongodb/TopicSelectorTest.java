@@ -48,7 +48,7 @@ public class TopicSelectorTest {
     }
 
     protected CollectionId dbAndCollection(String dbName, String collectionName) {
-        return new CollectionId("rs0", dbName, collectionName);
+        return new CollectionId(dbName, collectionName);
     }
 
 }

@@ -24,6 +24,7 @@ import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.connection.ServerInfo;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 
@@ -39,6 +40,8 @@ import io.debezium.relational.TableId;
 public class PostgresConnector extends RelationalBaseSourceConnector {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PostgresConnector.class);
+    public static final int READ_ONLY_SUPPORTED_VERSION = 13;
+
     private Map<String, String> props;
 
     public PostgresConnector() {
@@ -93,7 +96,7 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
                 // Prepare connection without initial statement execution
                 connection.connection(false);
                 testConnection(connection);
-                checkWalLevel(connection, postgresConfig);
+                checkReadOnlyMode(connection, postgresConfig);
                 checkLoginReplicationRoles(connection);
             }
             catch (SQLException e) {
@@ -101,6 +104,15 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
                         connection.username(), e);
                 hostnameValue.addErrorMessage("Error while validating connector config: " + e.getMessage());
             }
+        }
+    }
+
+    private static void checkReadOnlyMode(PostgresConnection connection, PostgresConnectorConfig postgresConfig) throws SQLException {
+
+        ServerInfo serverInfo = connection.serverInfo();
+
+        if (postgresConfig.isReadOnlyConnection() && serverInfo.version() < READ_ONLY_SUPPORTED_VERSION) {
+            throw new DebeziumException(String.format("Read only is not supported for version minor to %s", READ_ONLY_SUPPORTED_VERSION));
         }
     }
 
@@ -140,21 +152,6 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
                         "Could not fetch roles"))) {
             final String errorMessage = "Postgres roles LOGIN and REPLICATION are not assigned to user: " + connection.username();
             LOGGER.error(errorMessage);
-        }
-    }
-
-    private static void checkWalLevel(PostgresConnection connection, PostgresConnectorConfig config) throws SQLException {
-        final String walLevel = connection.queryAndMap(
-                "SHOW wal_level",
-                connection.singleResultMapper(rs -> rs.getString("wal_level"), "Could not fetch wal_level"));
-        if (!"logical".equals(walLevel)) {
-            if (config.getSnapshotter() != null && config.getSnapshotter().shouldStream()) {
-                // Logical WAL_LEVEL is only necessary for CDC snapshotting
-                throw new SQLException("Postgres server wal_level property must be 'logical' but is: '" + walLevel + "'");
-            }
-            else {
-                LOGGER.warn("WAL_LEVEL check failed but this is ignored as CDC was not requested");
-            }
         }
     }
 

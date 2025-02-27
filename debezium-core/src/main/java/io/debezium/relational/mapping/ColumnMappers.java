@@ -175,7 +175,7 @@ public class ColumnMappers {
          * @return this object so that methods can be chained together; never null
          */
         public Builder truncateStrings(String fullyQualifiedColumnNames, int maxLength) {
-            return map(fullyQualifiedColumnNames, new TruncateStrings(maxLength));
+            return map(fullyQualifiedColumnNames, new TruncateColumn(maxLength));
         }
 
         /**

@@ -87,7 +87,7 @@ public class TablesWithoutPrimaryKeyIT extends AbstractRecordsProducerTest {
     @Test
     public void shouldProcessFromStreaming() throws Exception {
         start(PostgresConnector.class, TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "nopk")
                 .build());
         assertConnectorIsRunning();
@@ -126,7 +126,7 @@ public class TablesWithoutPrimaryKeyIT extends AbstractRecordsProducerTest {
     @Test
     public void shouldProcessFromStreamingOld() throws Exception {
         start(PostgresConnector.class, TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "nopk")
                 .build());
         assertConnectorIsRunning();

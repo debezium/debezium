@@ -38,7 +38,7 @@ A directory named `debezium-server` will be created with these contents:
 ----
 debezium-server/
 |-- CHANGELOG.md
-|-- conf
+|-- config
 |-- CONTRIBUTE.md
 |-- COPYRIGHT.txt
 |-- debezium-server-{debezium-version}-runner.jar
@@ -49,7 +49,7 @@ debezium-server/
 `-- run.sh
 ----
 
-The server is started using `run.sh` script, dependencies are stored in the `lib` directory, and the directory `conf` contains configuration files.
+The server is started using `run.sh` script, dependencies are stored in the `lib` directory, and the directory `config` contains configuration files.
 [NOTE]
 ====
 In case of using the Oracle connector you will have to add to the `lib` directory the ORACLE JDBC driver (if using XStream also the XStream API files),
@@ -61,7 +61,7 @@ explained here: xref:{link-oracle-connector}#obtaining-oracle-jdbc-driver-and-xs
 {prodname} Server uses https://github.com/eclipse/microprofile-config[MicroProfile Configuration] for configuration.
 This means that the application can be configured from disparate sources like configuration files, environment variables, system properties etc.
 
-The main configuration file is _conf/application.properties_.
+The main configuration file is _config/application.properties_.
 There are multiple sections configured:
 
 * `debezium.source` is for source connector configuration; each instance of {prodname} Server runs exactly one connector
@@ -207,7 +207,12 @@ The source configuration uses the same configuration properties that are describ
 |[[debezium-source-offset-storage]]<<debezium-source-offset-storage, `debezium.source.offset.storage`>>
 |`org.apache.kafka.connect.storage.FileOffsetBackingStore`
 |Class to use for storing and retrieving offsets for non-Kafka deployments.
-To use Redis to store offsets, use `io.debezium.storage.redis.offset.RedisOffsetBackingStore`
+Available options
+
+* `org.apache.kafka.connect.storage.FileOffsetBackingStore` for non-Kafka deployments  
+* `org.apache.kafka.connect.storage.MemoryOffsetBackingStore` volatile store for test environments
+* `io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore` for database using JDBC
+* `io.debezium.storage.redis.offset.RedisOffsetBackingStore` for Redis deployments
 
 |[[debezium-source-offset-storage-file-filename]]<<debezium-source-offset-storage-file-filename, `debezium.source.offset.storage.file.filename`>>
 |
@@ -262,8 +267,9 @@ There are also other options available
 
 * `io.debezium.storage.file.history.FileSchemaHistory` for non-Kafka deployments
 * `io.debezium.relational.history.MemorySchemaHistory` volatile store for test environments
-* `io.debezium.storage.redis.history.RedisSchemaHistory` for Redis deploments
-* `io.debezium.storage.redis.history.RocketMqSchemaHistory` for RocketMQ deploments
+* `io.debezium.storage.redis.history.RedisSchemaHistory` for Redis deployments
+* `io.debezium.storage.rocketmq.history.RocketMqSchemaHistory` for RocketMQ deployments
+* `io.debezium.storage.azure.blob.history.AzureBlobSchemaHistory` for Azure Blob Storage deployments
 
 |[[debezium-source-database-history-file-filename]]<<debezium-source-database-history-file-filename, `debezium.source.schema.history.internal.file.filename`>>
 |
@@ -362,6 +368,21 @@ data during recovery.
 | `60000`
 |Timeout for sending messages to RocketMQ.
 
+|[[schema-history-internal-azure-storage-account-connectionstring]]<<schema-history-internal-azure-storage-account-connectionstring,`debezium.source.schema.history.internal.azure.storage.account.connectionstring`>>
+|
+|Azure Blob Storage account connection string.
+
+|[[schema-history-internal-azure-storage-account-name]]<<schema-history-internal-azure-storage-account-name,`debezium.source.schema.history.internal.azure.storage.account.name`>>
+|
+|Azure Blob Storage account name. This should be set if and only if `debezium.source.schema.history.internal.azure.storage.account.connectionstring` is empty, which will then use Azure Active Directory authentication.
+
+|[[schema-history-internal-azure-storage-account-container-name]]<<schema-history-internal-azure-storage-account-container-name,`debezium.source.schema.history.internal.azure.storage.account.container.name`>>
+|
+|Azure Blob Storage account container name.
+
+|[[schema-history-internal-azure-storage-blob-name]]<<schema-history-internal-azure-storage-blob-name,`debezium.source.schema.history.internal.azure.storage.blob.name`>>
+|
+|Azure Blob Storage blob name that persists schema history data.
 
 |===
 
@@ -379,7 +400,7 @@ By default the output is in JSON format but an arbitrary implementation of Kafka
 
 |[[debezium-format-key]]<<debezium-format-key, `debezium.format.key`>>
 |`json`
-|The name of the output format for key, one of `json`/`jsonbytearray`/`avro`/`protobuf`.
+|The name of the output format for key, one of `json`/`jsonbytearray`/`avro`/`protobuf`/`simplestring`/`binary`.
 
 |[[debezium-format-key-props]]<<debezium-format-key-props, `debezium.format.key.*`>>
 |
@@ -387,7 +408,7 @@ By default the output is in JSON format but an arbitrary implementation of Kafka
 
 |[[debezium-format-value]]<<debezium-format-value, `debezium.format.value`>>
 |`json`
-|The name of the output format for value, one of `json`/`jsonbytearray`/`avro`/`protobuf`/`cloudevents`.
+|The name of the output format for value, one of `json`/`jsonbytearray`/`avro`/`protobuf`/`cloudevents`/`simplestring`/`binary`.
 
 |[[debezium-format-value-props]]<<debezium-format-value-props, `debezium.format.value.*`>>
 |
@@ -473,6 +494,35 @@ The configuration will need to contain the list of predicates, implementation cl
 
 |===
 
+[id="debezium-async-engine-properties"]
+=== Asynchronous Engine Properties
+
+By default, {prodname} server uses the asynchronous embedded engine (`AsyncEmbeddedEngine`) as its processing engine.
+You can configure the following options for the asynchronous embedded engine:
+
+[cols="35%a,10%a,55%a"]
+|===
+|Property
+|Default
+|Description
+
+|[[debezium-server-property-record-processing-threads]]<<debezium-server-property-record-processing-threads, `+record.processing.threads+`>>
+|Threads allocated on demand, based on the workload and the number of available CPU cores.
+|The number of threads that are available to process change event records.
+If no value is specified (the default), the engine uses the Java https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/ThreadPoolExecutor.html[ThreadPoolExecutor] to dynamically adjust the number of threads, based on the current workload.
+Maximum number of threads is number of CPU cores on given machine.
+If a value is specified, the engine uses the Java https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/Executors.html#newFixedThreadPool(int)[fixed thread pool] method to create a thread pool with the specified number of threads.
+To use all available cores on given machine, set the placeholder value, `AVAILABLE_CORES`.
+
+|[[debezium-server-property-shutdown-timeout-ms]]<<debezium-server-property-shutdown-timeout-ms, `+record.processing.shutdown.timeout.ms+`>>
+|1000
+|Maximum time, in milliseconds, that the engine allows for processing pending records after a task shutdown is called.
+
+|[[debezium-server-property-task-management-timeout.ms]]<<debezium-server-property-task-management-timeout.ms, `+task.management.timeout.ms+`>>
+|180,000 (3 min)
+|Time, in milliseconds, that the engine waits for a task's lifecycle management operations (starting and stopping) to complete.
+|===
+
 [id="debezium-additional-configuration-options"]
 === Additional configuration
 
@@ -503,11 +553,11 @@ The most frequent used are:
 
 |===
 
-JSON logging can be disabled by setting `quarkus.log.console.json=false` in the _conf/application.properties_ file, as demonstrated in the _conf/application.properties.example_ file.
+JSON logging can be disabled by setting `quarkus.log.console.json=false` in the _config/application.properties_ file, as demonstrated in the _config/application.properties.example_ file.
 
 ==== Enabling message filtering
 
-{prodname} Server provides filter STM capability, see xref:transformations/filtering.adoc[Message Filtering] for more details.
+{prodname} Server provides filter SMTs (Single Message Transformations) capability. See xref:transformations/filtering.adoc[Message Filtering] for more details.
 However, for security reasons it's not enabled by default and has to be explicitly enabled when {prodname} Server is started.
 To enable it, set environment variable `ENABLE_DEBEZIUM_SCRIPTING` to `true`.
 This will add `debezium-scripting` jar file and https://jcp.org/en/jsr/detail?id=223[JSR 223] implementations (currently Groovy and graalvm.js) jar files into the server class path.
@@ -620,15 +670,15 @@ This is not supported by Pub/Sub so a surrogate key must be used.
 |`10000000L`
 |Once the number of bytes in the batched request reaches this threshold, send all of the messages in a single call, even if neither the delay or message count thresholds have been exceeded yet.
 
-|[[flowControl-enabled]]<<flowControl-enabled, `debezium.sink.pubsub.flowControl.enabled`>>
+|[[flowcontrol-enabled]]<<flowcontrol-enabled, `debezium.sink.pubsub.flowcontrol.enabled`>>
 |`false`
 |When enabled, configures your publisher client with flow control to limit the rate of publish requests.
 
-|[[flowControl-max-outstanding-messages]]<<flowControl-max-outstanding-messages, `debezium.sink.pubsub.flowControl.max.outstanding.messages`>>
+|[[flowcontrol-max-outstanding-messages]]<<flowcontrol-max-outstanding-messages, `debezium.sink.pubsub.flowcontrol.max.outstanding.messages`>>
 |`Long.MAX_VALUE`
 |(Optional) If flow control enabled, the maxmium number of messages before messages are blocked from being published
 
-|[[flowControl-max-outstanding-bytes]]<<flowControl-max-outstanding-bytes, `debezium.sink.pubsub.flowControl.max.outstanding.bytes`>>
+|[[flowcontrol-max-outstanding-bytes]]<<flowcontrol-max-outstanding-bytes, `debezium.sink.pubsub.flowcontrol.max.outstanding.bytes`>>
 |`Long.MAX_VALUE`
 |(Optional) If flow control enabled, the maxmium number of bytes before messages are blocked from being published
 
@@ -798,7 +848,13 @@ optional https://en.wikipedia.org/wiki/JSON_Web_Token[JSON Web Token (JWT) authe
 
 |[[httpclient-authentication-type]]<<httpclient-authentication-type, `debezium.sink.http.authentication.type` >>
 |
-|Specifies the authentication type to use.  If missing, no authentication is used.  Currently, only JSON Web Token (JWT) authentication (indicated by the value `jwt`) is supported.
+|Specifies the type of authentication the HTTP client sink uses when connecting to an HTTP server.  
+Supports one of the following options:
+
+`jwt`:: JSON Web Token (JWT) authentication.
+`standard-webhooks`:: link:https://www.standardwebhooks.com/[Standard Webhooks].
+
+If you omit this property, the HTTP client sink does not use authentication headers for the connection
 
 |[[httpclient-authentication-jwt-username]]<<httpclient-authentication-jwt-username, `debezium.sink.http.authentication.jwt.username` >>
 |
@@ -819,6 +875,13 @@ optional https://en.wikipedia.org/wiki/JSON_Web_Token[JSON Web Token (JWT) authe
 |[[httpclient-authentication-jwt-refresh-token-expiration]]<<httpclient-authentication-jwt-refresh-token-expiration, `debezium.sink.http.authentication.jwt.refresh_token_expiration` >>
 |
 |Requested duration (in minutes) before the refresh token expires.
+
+|[[httpclient-authentication-webhook-secret]]<<httpclient-authentication-webhook-secret, `debezium.sink.http.authentication.webhook.secret` >>
+|
+|The webhooks signing secret that {prodname} uses to generate HMAC-SHA256 signatures for the webhook request. 
+The secret must be Base64-encoded, with a size from 24 bytes to 64 bytes (192–512 bits).
+Optionally, you can add the prefix `whsec_` to the secret to help distinguish it from other types of keys or tokens.
+For more information about implementing or validating webhook signatures, see the link:https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md[Standard Webhooks specification]. 
 
 
 |===
@@ -855,6 +918,11 @@ At least `serviceUrl` must be provided.
 |The Pulsar module supports pass-through configuration.
 The message producer https://pulsar.apache.org/docs/en/client-libraries-java/#client-configuration[configuration properties] are passed to the producer with the prefix removed.
 The `topic` is set by {prodname}.
+
+|[[pulsar-producer-batching]]<<pulsar-producer-batching, `debezium.sink.pulsar.producer.batcherBuilder`>>
+| `DEFAULT`
+|Specifies the batcher builder for the producer. The producer uses the batcher builder to create a batch message container. This setting is applicable only when batching is enabled.
+Valid options are `DEFAULT` or `KEY_BASED`, which is used for https://pulsar.apache.org/docs/next/concepts-messaging/#batching-for-key_shared-subscriptions[KeyShared subscriptions].
 
 |[[pulsar-null-key]]<<pulsar-null-key, `debezium.sink.pulsar.null.key`>>
 |`default`
@@ -1183,6 +1251,31 @@ NATS has a built-in distributed persistence system called https://docs.nats.io/n
 | memory
 | Controls how the messages are saved in the stream. Can be memory or file.
 
+|[[nats-jetstream-auth-jwt]]<<nats-jetstream-auth-jwt, `debezium.sink.nats-jetstream.auth.jwt`>>
+|No default value
+|Specifies the identity of the NATS server client.
+Add this property to the configuration to enable JSON Web Token (JWT) authentication with NATS.
+To use JWT authentication with NATS, you must specify the xref:nats-jetstream-auth-seed[NKey seed].
+Do not enable JWT authentication, if xref:nats-jetstream-auth-user[password authentication] is enabled.
+
+|[[nats-jetstream-auth-seed]]<<nats-jetstream-auth-seed, `debezium.sink.nats-jetstream.auth.seed`>>
+|No default value
+|When xref:nats-jetstream-auth-jwt[JWT authentication] is enabled for NATS, use this property so specify the NKey seed that represents the {prodname} user.
+{prodname} uses the specified NKey seed to derive a private key.
+It then uses the private key to cryptographically sign the nonce challenge that the NATS server issues during the authentication process.
+{prodname} returns the signed nonce to the server, along with the public key for the specified xref:nats-jetstream-auth-jwt[`debezium.sink.nats-jetstream.auth.jwt`] client.
+
+|[[nats-jetstream-auth-user]]<<nats-jetstream-auth-user, `debezium.sink.nats-jetstream.auth.user`>>
+|No default value
+|Specifies the username of the authorized NAT user. +
+When this property is present in the configuration, password authentication with NATS is enabled. +
+To use password authentication with NATS, specify a xref:nats-jetstream-auth-password[`debezium.sink.nats-jetstream.auth.password`].
+Do not enable password authentication if xref:nats-jetstream-auth-jwt[JWT authentication] is enabled.
+
+|[[nats-jetstream-auth-password]]<<nats-jetstream-auth-password, `debezium.sink.nats-jetstream.auth.password`>>
+|No default value
+|Specifies the password to use when xref:nats-jetstream-auth-user[password authentication] is enabled.
+
 |===
 
 If you need a more configurable stream, it can be created with nats cli. More about streams at: https://docs.nats.io/nats-concepts/jetstream/streams
@@ -1229,6 +1322,11 @@ https://kafka.apache.org/[Apache Kafka] is a popular open-source platform for di
 This means that all Kafka producer https://kafka.apache.org/documentation/#producerconfigs[configuration properties] are passed to the producer with the prefix removed.
 At least `bootstrap.servers`, `key.serializer` and `value.serializer` properties must be provided. The `topic` is set by {prodname}.
 
+|[[kafka-producer-wait-message-delivery-timeout-ms]]<<kafka-producer-wait-message-delivery-timeout-ms, `debezium.sink.kafka.wait.message.delivery.timeout.ms`>>
+|`30000`
+|The maximum time, in milliseconds, that the server waits for a request to complete and return metadata for a record.
+The specified timeout also governs the interval that the server waits for Kafka to respond to a request.
+Set the value to `0` to disable the timeout.
 |===
 
 ===== Injection points
@@ -1241,7 +1339,6 @@ When the alternative implementations are not available then the default ones are
 |Interface
 |CDI classifier
 |Description
-
 |[[kafka-producer-ext-stream-name-mapper]]<<kafka-producer-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
 |
 |Custom implementation maps the original destination (topic) name into another Kafka topic. By default, the same name is used.
@@ -1530,7 +1627,7 @@ Debezium Server is enhanced to support publishing captured change events to nati
 |[[rabbitmqstream-connection]]<<rabbitmqstream-connection, `debezium.sink.rabbitmqstream.connection.*`>>
 |
 |The RabbitMQ module supports pass-through configuration.
-The connection https://github.com/rabbitmq/rabbitmqstream-java-client/blob/main/src/main/java/com/rabbitmq/client/ConnectionFactoryConfigurator.java[configuration properties] are passed to the RabbitMQ client with the prefix removed.
+The connection https://github.com/rabbitmq/rabbitmq-java-client/blob/main/src/main/java/com/rabbitmq/client/ConnectionFactoryConfigurator.java[configuration properties] are passed to the RabbitMQ client with the prefix removed.
 
 |[[rabbitmqstream-ack-timeout]]<<rabbitmqstream-ack-timeout, `debezium.sink.rabbitmqstream.ackTimeout`>>
 | 30000

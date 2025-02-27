@@ -313,12 +313,12 @@ public class SchemaUtil {
     }
 
     /**
-     * Copy all properties to a new schema builder
+     * Copy all schema basic properties, excluding fields.
      *
      * @param source Connect schema
-     * @return Connect schema build
+     * @return Connect schema builder
      */
-    public static SchemaBuilder copySchema(Schema source) {
+    public static SchemaBuilder copySchemaBasics(Schema source) {
         SchemaBuilder builder = org.apache.kafka.connect.transforms.util.SchemaUtil.copySchemaBasics(source);
         if (source.isOptional()) {
             builder.optional();
@@ -326,6 +326,17 @@ public class SchemaUtil {
         else {
             builder.required();
         }
+        return builder;
+    }
+
+    /**
+     * Copy all properties to a new schema builder
+     *
+     * @param source Connect schema
+     * @return Connect schema build
+     */
+    public static SchemaBuilder copySchema(Schema source) {
+        SchemaBuilder builder = copySchemaBasics(source);
         for (org.apache.kafka.connect.data.Field field : source.fields()) {
             builder.field(field.name(), field.schema());
         }

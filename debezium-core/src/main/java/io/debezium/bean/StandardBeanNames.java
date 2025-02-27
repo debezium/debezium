@@ -7,6 +7,8 @@ package io.debezium.bean;
 
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
+import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.ValueConverterProvider;
 
 /**
@@ -42,4 +44,14 @@ public interface StandardBeanNames {
     // all connector-specific connection details across all connectors (including MongoDB),
     // and then replace this name key as CONNECTION_FACTORY regardless of the connector.
     String JDBC_CONNECTION = JdbcConnection.class.getName();
+
+    /**
+     * The connector-specific offsets.
+     */
+    String OFFSETS = Offsets.class.getName();
+
+    /**
+     * The context used during snapshots.
+     */
+    String SNAPSHOT_CONTEXT = AbstractSnapshotChangeEventSource.SnapshotContext.class.getName();
 }

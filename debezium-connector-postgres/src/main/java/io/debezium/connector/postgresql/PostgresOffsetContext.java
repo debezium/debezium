@@ -15,7 +15,9 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.SnapshotType;
 import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
@@ -46,10 +48,10 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     private PostgresOffsetContext(PostgresConnectorConfig connectorConfig, Lsn lsn, Lsn lastCompletelyProcessedLsn, Lsn lastCommitLsn, Long txId, Operation messageType,
                                   Instant time,
-                                  boolean snapshot,
-                                  boolean lastSnapshotRecord, TransactionContext transactionContext,
+                                  SnapshotType snapshot,
+                                  boolean lastSnapshotRecord, boolean snapshotCompleted, TransactionContext transactionContext,
                                   IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
-        super(new SourceInfo(connectorConfig));
+        super(new SourceInfo(connectorConfig), snapshotCompleted);
 
         this.lastCompletelyProcessedLsn = lastCompletelyProcessedLsn;
         this.lastCommitLsn = lastCommitLsn;
@@ -58,11 +60,12 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfoSchema = sourceInfo.schema();
 
         this.lastSnapshotRecord = lastSnapshotRecord;
-        if (this.lastSnapshotRecord) {
+        if (this.lastSnapshotRecord || this.snapshotCompleted) {
             postSnapshotCompletion();
         }
         else {
-            sourceInfo.setSnapshot(snapshot ? SnapshotRecord.TRUE : SnapshotRecord.FALSE);
+            setSnapshot(snapshot);
+            sourceInfo.setSnapshot(snapshot != null ? SnapshotRecord.TRUE : SnapshotRecord.FALSE);
         }
         this.transactionContext = transactionContext;
         this.incrementalSnapshotContext = incrementalSnapshotContext;
@@ -83,9 +86,10 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
         if (sourceInfo.xmin() != null) {
             result.put(SourceInfo.XMIN_KEY, sourceInfo.xmin());
         }
-        if (sourceInfo.isSnapshot()) {
-            result.put(SourceInfo.SNAPSHOT_KEY, true);
+        if (getSnapshot().isPresent()) {
+            result.put(AbstractSourceInfo.SNAPSHOT_KEY, getSnapshot().get().toString());
             result.put(SourceInfo.LAST_SNAPSHOT_RECORD_KEY, lastSnapshotRecord);
+            result.put(SNAPSHOT_COMPLETED_KEY, snapshotCompleted);
         }
         if (lastCompletelyProcessedLsn != null) {
             result.put(LAST_COMPLETELY_PROCESSED_LSN_KEY, lastCompletelyProcessedLsn.asLong());
@@ -105,18 +109,14 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
     }
 
     @Override
-    public boolean isSnapshotRunning() {
-        return sourceInfo.isSnapshot();
-    }
-
-    @Override
-    public void preSnapshotStart() {
-        sourceInfo.setSnapshot(SnapshotRecord.TRUE);
+    public void preSnapshotStart(boolean onDemand) {
+        super.preSnapshotStart(onDemand);
         lastSnapshotRecord = false;
     }
 
     @Override
     public void preSnapshotCompletion() {
+        super.preSnapshotCompletion();
         lastSnapshotRecord = true;
     }
 
@@ -154,7 +154,7 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
         return lastCompletelyProcessedLsn;
     }
 
-    Lsn lastCommitLsn() {
+    public Lsn lastCommitLsn() {
         return lastCommitLsn;
     }
 
@@ -207,11 +207,18 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
             final String msgType = (String) offset.getOrDefault(SourceInfo.MSG_TYPE_KEY, null);
             final Operation messageType = msgType == null ? null : Operation.valueOf(msgType);
             final Instant useconds = Conversions.toInstantFromMicros((Long) ((Map<String, Object>) offset).getOrDefault(SourceInfo.TIMESTAMP_USEC_KEY, 0L));
-            final boolean snapshot = (boolean) ((Map<String, Object>) offset).getOrDefault(SourceInfo.SNAPSHOT_KEY, Boolean.FALSE);
+            final SnapshotType snapshot = loadSnapshot(offset).orElse(null);
+            boolean snapshotCompleted = loadSnapshotCompleted(offset);
             final boolean lastSnapshotRecord = (boolean) ((Map<String, Object>) offset).getOrDefault(SourceInfo.LAST_SNAPSHOT_RECORD_KEY, Boolean.FALSE);
-            return new PostgresOffsetContext(connectorConfig, lsn, lastCompletelyProcessedLsn, lastCommitLsn, txId, messageType, useconds, snapshot, lastSnapshotRecord,
-                    TransactionContext.load(offset), SignalBasedIncrementalSnapshotContext.load(offset, false));
+            return new PostgresOffsetContext(connectorConfig, lsn,
+                    lastCompletelyProcessedLsn, lastCommitLsn, txId, messageType, useconds, snapshot, lastSnapshotRecord,
+                    snapshotCompleted,
+                    TransactionContext.load(offset),
+                    connectorConfig.isReadOnlyConnection()
+                            ? PostgresReadOnlyIncrementalSnapshotContext.load(offset)
+                            : SignalBasedIncrementalSnapshotContext.load(offset, false));
         }
+
     }
 
     @Override
@@ -242,10 +249,13 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
                     txId,
                     null,
                     clock.currentTimeAsInstant(),
+                    null,
                     false,
                     false,
                     new TransactionContext(),
-                    new SignalBasedIncrementalSnapshotContext<>(false));
+                    connectorConfig.isReadOnlyConnection()
+                            ? new PostgresReadOnlyIncrementalSnapshotContext<>()
+                            : new SignalBasedIncrementalSnapshotContext<>(false));
         }
         catch (SQLException e) {
             throw new ConnectException("Database processing error", e);

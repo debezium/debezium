@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.kafka.docker.KafkaContainer;
+import io.debezium.testing.system.tools.kafka.docker.ZookeeperContainer;
 
 /**
  * This class provides control over Kafka instance deployed as DockerContainer
@@ -23,24 +24,29 @@ public class DockerKafkaController implements KafkaController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DockerKafkaController.class);
 
-    private final KafkaContainer container;
+    private final KafkaContainer kafkaContainer;
+    private ZookeeperContainer zookeeperContainer;
 
-    public DockerKafkaController(KafkaContainer container) {
-        this.container = container;
+    public KafkaContainer getKafkaContainer() {
+        return kafkaContainer;
     }
 
-    public KafkaContainer getContainer() {
-        return container;
+    public void setZookeeperContainer(ZookeeperContainer zookeeperContainer) {
+        this.zookeeperContainer = zookeeperContainer;
+    }
+
+    public DockerKafkaController(KafkaContainer container) {
+        this.kafkaContainer = container;
     }
 
     @Override
     public String getPublicBootstrapAddress() {
-        return container.getPublicBootstrapAddress();
+        return kafkaContainer.getPublicBootstrapAddress();
     }
 
     @Override
     public String getBootstrapAddress() {
-        return container.getBootstrapAddress();
+        return kafkaContainer.getBootstrapAddress();
     }
 
     @Override
@@ -50,14 +56,15 @@ public class DockerKafkaController implements KafkaController {
 
     @Override
     public boolean undeploy() {
-        container.stop();
-        return container.isRunning();
+        kafkaContainer.stop();
+        zookeeperContainer.stop();
+        return !zookeeperContainer.isRunning() && !kafkaContainer.isRunning();
     }
 
     @Override
     public void waitForCluster() {
         await()
                 .atMost(scaled(5), MINUTES)
-                .until(container::isRunning);
+                .until(kafkaContainer::isRunning);
     }
 }

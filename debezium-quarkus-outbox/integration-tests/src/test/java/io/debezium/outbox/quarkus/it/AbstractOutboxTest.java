@@ -5,6 +5,7 @@
  */
 package io.debezium.outbox.quarkus.it;
 
+import static io.debezium.outbox.quarkus.it.TestAsserts.assertIsType;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -17,7 +18,7 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 
 import org.hibernate.engine.spi.SessionImplementor;
-import org.hibernate.metamodel.spi.MetamodelImplementor;
+import org.hibernate.metamodel.spi.MappingMetamodelImplementor;
 import org.hibernate.persister.entity.EntityPersister;
 import org.junit.jupiter.api.Test;
 
@@ -40,21 +41,21 @@ public abstract class AbstractOutboxTest {
 
     @Test
     public void testOutboxEntityMetamodelExists() throws Exception {
-        final MetamodelImplementor metadata = entityManager.unwrap(SessionImplementor.class).getFactory().getMetamodel();
+        final MappingMetamodelImplementor metadata = entityManager.unwrap(SessionImplementor.class).getFactory().getMappingMetamodel();
 
-        final EntityPersister persister = metadata.entityPersister(OutboxConstants.OUTBOX_ENTITY_FULLNAME);
+        final EntityPersister persister = metadata.findEntityDescriptor(OutboxConstants.OUTBOX_ENTITY_FULLNAME);
         assertNotNull(persister);
 
         // this assumes the default mapping settings, no custom converters or column types
         assertEquals(UUID.class, persister.getIdentifierType().getReturnedClass());
-        assertEquals(String.class, persister.getPropertyType("aggregateType").getReturnedClass());
-        assertEquals(Long.class, persister.getPropertyType("aggregateId").getReturnedClass());
-        assertEquals(String.class, persister.getPropertyType("type").getReturnedClass());
-        assertEquals(Instant.class, persister.getPropertyType("timestamp").getReturnedClass());
-        assertEquals(String.class, persister.getPropertyType("payload").getReturnedClass());
-        assertEquals(String.class, persister.getPropertyType("name").getReturnedClass());
-        assertEquals(String.class, persister.getPropertyType("name_upper").getReturnedClass());
-        assertEquals(String.class, persister.getPropertyType("name_no_columndef").getReturnedClass());
+        assertIsType(persister, String.class, "aggregateType");
+        assertIsType(persister, Long.class, "aggregateId");
+        assertIsType(persister, String.class, "type");
+        assertIsType(persister, Instant.class, "timestamp");
+        assertIsType(persister, String.class, "payload");
+        assertIsType(persister, String.class, "name");
+        assertIsType(persister, String.class, "name_upper");
+        assertIsType(persister, String.class, "name_no_columndef");
     }
 
     @Test

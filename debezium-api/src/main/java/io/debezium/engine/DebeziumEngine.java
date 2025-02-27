@@ -16,9 +16,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 
-import org.slf4j.LoggerFactory;
-
 import io.debezium.DebeziumException;
+import io.debezium.common.annotation.Incubating;
 import io.debezium.engine.format.ChangeEventFormat;
 import io.debezium.engine.format.KeyValueChangeEventFormat;
 import io.debezium.engine.format.KeyValueHeaderChangeEventFormat;
@@ -45,6 +44,15 @@ import io.debezium.engine.spi.OffsetCommitPolicy;
 public interface DebeziumEngine<R> extends Runnable, Closeable {
 
     String OFFSET_FLUSH_INTERVAL_MS_PROP = "offset.flush.interval.ms";
+
+    /**
+     * @return this engine's signaler, if it supports signaling
+     * @throws UnsupportedOperationException if signaling is not supported by this engine
+     */
+    @Incubating
+    default Signaler getSignaler() {
+        throw new UnsupportedOperationException("Signaling is not supported by this engine");
+    }
 
     /**
      * A callback function to be notified when the connector completes.
@@ -177,6 +185,31 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
     }
 
     /**
+     * A record representing signal sent to the engine via {@link DebeziumEngine.Signaler}.
+     * @param id the unique identifier of the signal sent, usually UUID, can be used for deduplication
+     * @param type the unique logical name of the code executing the signal
+     * @param data  the data in JSON format that are passed to the signal code
+     * @param additionalData additional data which might be required by  specific signal types
+     */
+    @Incubating
+    record Signal(String id, String type, String data, Map<String, Object> additionalData) {
+    }
+
+    /**
+     * Signaler defines the contract for sending signals to connector tasks.
+     */
+    @Incubating
+    interface Signaler {
+
+        /**
+         * Send a signal to the connector.
+         *
+         * @param signal the signal to send
+         */
+        void signal(Signal signal);
+    }
+
+    /**
      * A builder to set up and create {@link DebeziumEngine} instances.
      */
     interface Builder<R> {
@@ -300,6 +333,13 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
         return create(KeyValueHeaderChangeEventFormat.of(keyFormat, valueFormat, headerFormat));
     }
 
+    static <K, V, H> Builder<ChangeEvent<K, V>> create(Class<? extends SerializationFormat<K>> keyFormat,
+                                                       Class<? extends SerializationFormat<V>> valueFormat,
+                                                       Class<? extends SerializationFormat<H>> headerFormat,
+                                                       String builderFactory) {
+        return create(KeyValueHeaderChangeEventFormat.of(keyFormat, valueFormat, headerFormat), builderFactory);
+    }
+
     static <S, T, K extends SerializationFormat<S>, V extends SerializationFormat<T>> Builder<ChangeEvent<S, T>> create(KeyValueChangeEventFormat<K, V> format) {
         final BuilderFactory builder = determineBuilderFactory();
         return builder.builder(format);
@@ -307,6 +347,12 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
 
     static <S, T, U, K extends SerializationFormat<S>, V extends SerializationFormat<T>, H extends SerializationFormat<U>> Builder<ChangeEvent<S, T>> create(KeyValueHeaderChangeEventFormat<K, V, H> format) {
         final BuilderFactory builder = determineBuilderFactory();
+        return builder.builder(format);
+    }
+
+    static <S, T, U, K extends SerializationFormat<S>, V extends SerializationFormat<T>, H extends SerializationFormat<U>> Builder<ChangeEvent<S, T>> create(KeyValueHeaderChangeEventFormat<K, V, H> format,
+                                                                                                                                                             String builderFactory) {
+        final BuilderFactory builder = determineBuilderFactory(builderFactory);
         return builder.builder(format);
     }
 
@@ -322,16 +368,27 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
     }
 
     private static BuilderFactory determineBuilderFactory() {
+        return determineBuilderFactory("io.debezium.embedded.ConvertingEngineBuilderFactory");
+    }
+
+    private static BuilderFactory determineBuilderFactory(String builderFactory) {
+        if (builderFactory == null || builderFactory.isBlank()) {
+            return determineBuilderFactory();
+        }
+
         final ServiceLoader<BuilderFactory> loader = ServiceLoader.load(BuilderFactory.class);
         final Iterator<BuilderFactory> iterator = loader.iterator();
         if (!iterator.hasNext()) {
             throw new DebeziumException("No implementation of Debezium engine builder was found");
         }
-        final BuilderFactory builder = iterator.next();
-        if (iterator.hasNext()) {
-            LoggerFactory.getLogger(Builder.class).warn("More than one Debezium engine builder implementation was found, using {}", builder.getClass());
+        BuilderFactory builder;
+        while (iterator.hasNext()) {
+            builder = iterator.next();
+            if (builder.getClass().getName().equalsIgnoreCase(builderFactory)) {
+                return builder;
+            }
         }
-        return builder;
+        throw new DebeziumException(String.format("No builder factory '%s' found.", builderFactory));
     }
 
     /**

@@ -20,10 +20,11 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.SnapshotType;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
@@ -36,7 +37,7 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec
  */
-public class SchemaHistoryTopicIT extends AbstractConnectorTest {
+public class SchemaHistoryTopicIT extends AbstractAsyncEngineConnectorTest {
 
     private SqlServerConnection connection;
 
@@ -71,7 +72,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         final int ID_START_2 = 100;
         final int ID_START_3 = 1000;
         final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(RelationalDatabaseConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .build();
 
@@ -96,7 +97,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         schemaRecords.forEach(record -> {
             assertThat(record.topic()).isEqualTo("server1");
             assertThat(((Struct) record.key()).getString("databaseName")).isEqualTo("testDB1");
-            assertThat(record.sourceOffset().get("snapshot")).isEqualTo(true);
+            assertThat(record.sourceOffset().get("snapshot")).isEqualTo(SnapshotType.INITIAL.toString());
         });
         assertThat(((Struct) schemaRecords.get(0).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
         assertThat(((Struct) schemaRecords.get(1).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
@@ -228,7 +229,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         schemaRecords.forEach(record -> {
             assertThat(record.topic()).isEqualTo("server1");
             assertThat(((Struct) record.key()).getString("databaseName")).isEqualTo("testDB1");
-            assertThat(record.sourceOffset().get("snapshot")).isEqualTo(true);
+            assertThat(record.sourceOffset().get("snapshot")).isEqualTo(SnapshotType.INITIAL.toString());
         });
         assertThat(((Struct) schemaRecords.get(0).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
         assertThat(((Struct) schemaRecords.get(1).value()).getStruct("source").getString("snapshot")).isEqualTo("true");
@@ -261,6 +262,7 @@ public class SchemaHistoryTopicIT extends AbstractConnectorTest {
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
+                .with(SqlServerConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, "true")
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.tablec")
                 .build();
 

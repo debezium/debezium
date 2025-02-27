@@ -73,7 +73,8 @@ If you are running {prodname} connectors in a Kafka Connect process,
 then Kafka Connect uses the Log4j configuration file (for example, `/opt/kafka/config/connect-log4j.properties`) in the Kafka installation.
 By default, this file contains the following configuration:
 
-.connect-log4j.properties
+.Default configuration in `connect-log4j.properties`
+====
 [source,properties,options="nowrap"]
 ----
 log4j.rootLogger=INFO, stdout  // <1>
@@ -83,12 +84,27 @@ log4j.appender.stdout.layout=org.apache.log4j.PatternLayout  // <3>
 log4j.appender.stdout.layout.ConversionPattern=[%d] %p %m (%c)%n  // <4>
 ...
 ----
-<1> The root logger, which defines the default logger configuration.
+====
+.Descriptions of default `connect-log4j.properties` settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Property |Description
+
+|1
+|The root logger, which defines the default logger configuration.
 By default, loggers include `INFO`, `WARN`, and `ERROR` messages.
 These log messages are written to the `stdout` appender.
-<2> The `stdout` appender writes log messages to the console (as opposed to a file).
-<3> The `stdout` appender uses a pattern matching algorithm to format the log messages.
-<4> The pattern for the `stdout` appender (see the https://logging.apache.org/log4j/1.2/apidocs/org/apache/log4j/PatternLayout.html[Log4j documentation] for details).
+
+|2
+|Directs the `stdout` appender to write log messages to the console, as opposed to a file.
+
+|3
+|Specifies that the `stdout` appender uses a pattern matching algorithm to format log messages.
+
+|4
+|The pattern that the `stdout` appender uses (see the https://logging.apache.org/log4j/1.2/apidocs/org/apache/log4j/PatternLayout.html[Log4j documentation] for details).
+
+|===
 
 Unless you configure other loggers,
 all of the loggers that {prodname} uses inherit the `rootLogger` configuration.
@@ -128,15 +144,15 @@ This means that you can control all of the log messages for a specific class or 
 
 .Procedure
 
-. Open the `log4j.properties` file.
+. Open the `connect-log4j.properties` file.
 
 . Configure a logger for the connector.
 +
---
-This example configures loggers for the MySQL connector and the database schema history implementation used by the connector,
-and sets them to log `DEBUG` level messages:
-
-.log4j.properties
+The following example configures loggers for the MySQL connector and for the database schema history implementation used by the connector,
+and sets them to log `DEBUG` level messages: +
++
+.connect-log4j.properties configuration to enable loggers and set the log level to `DEBUG`
+====
 [source,properties,options="nowrap"]
 ----
 ...
@@ -144,43 +160,52 @@ log4j.logger.io.debezium.connector.mysql=DEBUG, stdout  // <1>
 log4j.logger.io.debezium.relational.history=DEBUG, stdout  // <2>
 
 log4j.additivity.io.debezium.connector.mysql=false  // <3>
-log4j.additivity.io.debezium.storage.kafka.history=false  // <3>
+log4j.additivity.io.debezium.storage.kafka.history=false
 ...
 ----
-<1> Configures the logger named `io.debezium.connector.mysql` to send `DEBUG`, `INFO`, `WARN`, and `ERROR` messages to the `stdout` appender.
-<2> Configures the logger named `io.debezium.relational.history` to send `DEBUG`, `INFO`, `WARN`, and `ERROR` messages to the `stdout` appender.
-<3> Turns off _additivity_,
-which results in log messages not being sent to the appenders of parent loggers (this can prevent seeing duplicate log messages when using multiple appenders).
---
+====
++
+.Descriptions of `connect-log4j.properties` settings for enabling loggers and setting the log level
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Property |Description
+
+|1
+|Configures the logger named `io.debezium.connector.mysql` to send `DEBUG`, `INFO`, `WARN`, and `ERROR` messages to the `stdout` appender.
+
+|2
+|Configures the logger named `io.debezium.relational.history` to send `DEBUG`, `INFO`, `WARN`, and `ERROR` messages to the `stdout` appender.
+
+|3
+|This pair of `log4j.additivity.io` entries disable https://logging.apache.org/log4j/2.x/manual/configuration.html#additivity[additivity].
+If you use multiple appenders, set `additivity` values to `false` to prevent duplicate log messages from being sent to the appenders of the parent loggers.
+
+|===
 
 . If necessary, change the logging level for a specific subset of the classes within the connector.
 +
---
 Increasing the logging level for the entire connector increases the log verbosity,
 which can make it difficult to understand what is happening.
 In these cases,
 you can change the logging level just for the subset of classes that are related to the issue that you are troubleshooting.
---
 
 .. Set the connector's logging level to either `DEBUG` or `TRACE`.
 
 .. Review the connector's log messages.
 +
---
 Find the log messages that are related to the issue that you are troubleshooting.
 The end of each log message shows the name of the Java class that produced the message.
---
 
 .. Set the connector's logging level back to `INFO`.
 
 .. Configure a logger for each Java class that you identified.
 +
---
 For example, consider a scenario in which you are unsure why the MySQL connector is skipping some events when it is processing the binlog.
 Rather than turn on `DEBUG` or `TRACE` logging for the entire connector,
 you can keep the connector's logging level at `INFO` and then configure `DEBUG` or `TRACE` on just the class that is reading the binlog:
-
-.log4j.properties
++
+.connect-log4j.properties configuration that enables `DEBUG` logging for the `BinlogReader` class
+====
 [source,properties,options="nowrap"]
 ----
 ...
@@ -193,7 +218,7 @@ log4j.additivity.io.debezium.storage.kafka.history=false
 log4j.additivity.io.debezium.connector.mysql.BinlogReader=false
 ...
 ----
---
+====
 
 // Type: procedure
 // ModuleID: setting-the-debezium-logging-level-with-the-kafka-connect-rest-api
@@ -202,13 +227,13 @@ log4j.additivity.io.debezium.connector.mysql.BinlogReader=false
 === Dynamically setting the logging level with the Kafka Connect REST API
 
 You can use the Kafka Connect REST API to set logging levels for a connector dynamically at runtime.
-Unlike log level changes that you set in `log4j.properties`, changes that you make via the API take effect immediately, and do not require you to restart the worker.
+Unlike log level changes that you set in `connect-log4j.properties`, changes that you make via the API take effect immediately, and do not require you to restart the worker.
 
 The log level setting that you specify in the API applies only to the worker at the endpoint that receives the request.
 The log levels of other workers in the cluster remain unchanged.
 
 The specified level is not persisted after the worker restarts.
-To make persistent changes to the logging level, set the log level in `log4j.properties` by xref:changing-logging-level[configuring loggers] or xref:adding-mapped-diagnostic-contexts[adding mapped diagnostic contexts].
+To make persistent changes to the logging level, set the log level in `connect-log4j.properties` by xref:changing-logging-level[configuring loggers] or xref:adding-mapped-diagnostic-contexts[adding mapped diagnostic contexts].
 
 .Procedure
 
@@ -262,38 +287,37 @@ Each thread associated with a connector would use a distinct value,
 so you can find all of the log messages associated with this particular activity.
 
 To enable MDC for a connector,
-you configure an appender in the `log4j.properties` file.
+you configure an appender in the `connect-log4j.properties` file.
 
 .Procedure
 
-. Open the `log4j.properties` file.
+. Open the `connect-log4j.properties` file.
 
 . Configure an appender to use any of the supported {prodname} MDC properties.
+In the following example, the `stdout` appender is configured to use these MDC properties.
 +
---
-In the following example, the `stdout` appender is configured to use these MDC properties:
-
-.log4j.properties
+.connect-log4j.properties configuration that sets the `stdout` appender to use MDC properties
+====
 [source,properties,options="nowrap"]
 ----
 ...
 log4j.appender.stdout.layout.ConversionPattern=%d{ISO8601} %-5p  %X{dbz.connectorType}|%X{dbz.connectorName}|%X{dbz.connectorContext}  %m   [%c]%n
 ...
 ----
-
+====
 The configuration in the preceding example produces log messages similar to the ones in the following output:
-
++
 [source,shell,options="nowrap"]
 ----
 ...
 2017-02-07 20:49:37,692 INFO   MySQL|dbserver1|snapshot  Starting snapshot for jdbc:mysql://mysql:3306/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=false&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=convertToNull with user 'debezium'   [io.debezium.connector.mysql.SnapshotReader]
 2017-02-07 20:49:37,696 INFO   MySQL|dbserver1|snapshot  Snapshot is using user 'debezium' with these MySQL grants:   [io.debezium.connector.mysql.SnapshotReader]
-2017-02-07 20:49:37,697 INFO   MySQL|dbserver1|snapshot  	GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'debezium'@'%'   [io.debezium.connector.mysql.SnapshotReader]
+2017-02-07 20:49:37,697 INFO   MySQL|dbserver1|snapshot  GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'debezium'@'%'   [io.debezium.connector.mysql.SnapshotReader]
 ...
 ----
 
 Each line in the log includes the connector type (for example, `MySQL`), the name of the connector (for example, `dbserver1`), and the activity of the thread (for example, `snapshot`).
---
+
 ifdef::product[]
 
 // Category: debezium-using
@@ -302,7 +326,7 @@ ifdef::product[]
 == {prodname} logging on OpenShift
 
 If you are using {prodname} on OpenShift, you can use the Kafka Connect loggers to configure the {prodname} loggers and logging levels.
-For more information about configuring logging properties in a Kafka Connect schema, see link:{LinkStreamsOpenShift}#type-KafkaConnectSpec-schema-reference[{NameStreamsOpenShift}].
+For more information about configuring logging properties in a Kafka Connect schema, see link:{LinkDeployManageStreamsOpenShift}#external-logging_str[{NameDeployManageStreamsOpenShift}].
 
 endif::product[]
 

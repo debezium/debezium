@@ -5,20 +5,26 @@
  */
 package io.debezium.kcrestextension;
 
-import static io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure.DATABASE;
+import static io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper.DATABASE;
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.containsInRelativeOrder;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure;
+import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
 
 /**
  * Tests topic creation (which is enabled in Kafka version greater than 2.6.0) and transforms endpoints.
@@ -61,6 +67,10 @@ public class DebeziumResourceIT {
             "org.apache.kafka.connect.transforms.TimestampRouter",
             "org.apache.kafka.connect.transforms.ValueToKey");
 
+    private static final List<String> KAFKA_CONNECT_SMTs = SUPPORTED_TRANSFORMS.stream()
+            .filter(smt -> smt.startsWith("org.apache.kafka.connect.transforms."))
+            .collect(Collectors.toList());
+
     private static final List<String> SUPPORTED_PREDICATES = List.of(
             "org.apache.kafka.connect.transforms.predicates.HasHeaderKey",
             "org.apache.kafka.connect.transforms.predicates.RecordIsTombstone",
@@ -68,19 +78,19 @@ public class DebeziumResourceIT {
 
     @BeforeEach
     public void start() {
-        RestExtensionTestInfrastructure.setupDebeziumContainer(Module.version(), DebeziumConnectRestExtension.class.getName());
+        TestInfrastructureHelper.setupDebeziumContainer(Module.version(), DebeziumConnectRestExtension.class.getName());
     }
 
     @AfterEach
     public void stop() {
-        RestExtensionTestInfrastructure.stopContainers();
+        TestInfrastructureHelper.stopContainers();
     }
 
     @Test
     public void testTopicCreationEndpoint() {
-        RestExtensionTestInfrastructure.startContainers(DATABASE.NONE);
+        TestInfrastructureHelper.startContainers(DATABASE.NONE);
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when()
                 .get(DebeziumResource.BASE_PATH + DebeziumResource.TOPIC_CREATION_ENDPOINT)
                 .then().log().all()
@@ -90,10 +100,10 @@ public class DebeziumResourceIT {
 
     @Test
     public void testTopicCreationEndpointWhenExplicitlyDisabled() {
-        RestExtensionTestInfrastructure.getDebeziumContainer().withEnv("CONNECT_TOPIC_CREATION_ENABLE", "false");
-        RestExtensionTestInfrastructure.startContainers(DATABASE.NONE);
+        TestInfrastructureHelper.getDebeziumContainer().withEnv("CONNECT_TOPIC_CREATION_ENABLE", "false");
+        TestInfrastructureHelper.startContainers(DATABASE.NONE);
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when()
                 .get(DebeziumResource.BASE_PATH + DebeziumResource.TOPIC_CREATION_ENDPOINT)
                 .then().log().all()
@@ -102,22 +112,24 @@ public class DebeziumResourceIT {
     }
 
     @Test
+    @Disabled("See DBZ-7416 https://issues.redhat.com/browse/DBZ-7416")
     public void testTransformsEndpoint() {
-        RestExtensionTestInfrastructure.startContainers(DATABASE.NONE);
+        TestInfrastructureHelper.startContainers(DATABASE.NONE);
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().get(DebeziumResource.BASE_PATH + DebeziumResource.TRANSFORMS_ENDPOINT)
                 .then().log().all()
                 .statusCode(200)
-                .body("transform.size()", is(SUPPORTED_TRANSFORMS.size()))
+                .body("transform.size()", allOf(greaterThanOrEqualTo(KAFKA_CONNECT_SMTs.size()), lessThanOrEqualTo(SUPPORTED_TRANSFORMS.size() + 1)))
+                .body("transform", containsInRelativeOrder(KAFKA_CONNECT_SMTs.toArray()))
                 .body("transform", containsInAnyOrder(SUPPORTED_TRANSFORMS.toArray()));
     }
 
     @Test
     public void testPredicatesEndpoint() {
-        RestExtensionTestInfrastructure.startContainers(DATABASE.NONE);
+        TestInfrastructureHelper.startContainers(DATABASE.NONE);
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().get(DebeziumResource.BASE_PATH + DebeziumResource.PREDICATES_ENDPOINT)
                 .then().log().all()
                 .statusCode(200)
@@ -127,9 +139,9 @@ public class DebeziumResourceIT {
 
     @Test
     public void testConnectorPluginsEndpoint() {
-        RestExtensionTestInfrastructure.startContainers(DATABASE.NONE);
+        TestInfrastructureHelper.startContainers(DATABASE.NONE);
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().get(DebeziumResource.BASE_PATH + DebeziumResource.CONNECTOR_PLUGINS_ENDPOINT)
                 .then().log().all()
                 .statusCode(200)

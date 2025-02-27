@@ -27,7 +27,7 @@ public class MongoDbSchemaIT {
 
         final MongoDbSchema schema = getSchema(config, taskContext);
         for (int i = 0; i != 100; ++i) {
-            CollectionId id = new CollectionId("rs0", "dbA", "c" + i);
+            CollectionId id = new CollectionId("dbA", "c" + i);
             DataCollectionSchema collectionSchema = schema.schemaFor(id);
             assertThat(collectionSchema).isNotNull();
             assertThat(collectionSchema.id()).isSameAs(id);
@@ -36,7 +36,7 @@ public class MongoDbSchemaIT {
 
     private static MongoDbSchema getSchema(Configuration config, MongoDbTaskContext taskContext) {
         final MongoDbConnectorConfig connectorConfig = new MongoDbConnectorConfig(config);
-        return new MongoDbSchema(taskContext.filters(), taskContext.topicNamingStrategy(),
+        return new MongoDbSchema(taskContext.getFilters(), taskContext.getTopicNamingStrategy(),
                 connectorConfig.getSourceInfoStructMaker().schema(),
                 connectorConfig.schemaNameAdjuster());
     }

@@ -118,31 +118,40 @@ public class Key {
             // ex: message.key.columns=inventory.customers:pk1,pk2;(.*).purchaseorders:pk3,pk4
             // will become => [inventory.customers.pk1,inventory.customers.pk2,(.*).purchaseorders.pk3,(.*).purchaseorders.pk4]
             // then joining those values
-            String regexes = Arrays.stream(PATTERN_SPLIT.split(fullyQualifiedColumnNames))
+            List<Predicate<ColumnId>> predicates = new ArrayList<>(Arrays.stream(PATTERN_SPLIT.split(fullyQualifiedColumnNames))
                     .map(TABLE_SPLIT::split)
                     .collect(
                             ArrayList<String>::new,
                             (m, p) -> Arrays.asList(COLUMN_SPLIT.split(p[1])).forEach(c -> m.add(p[0] + "." + c)),
-                            ArrayList::addAll)
+                            ArrayList::addAll))
                     .stream()
-                    .collect(Collectors.joining(","));
-
-            Predicate<ColumnId> delegate = Predicates.includes(regexes, ColumnId::toString);
+                    .map(regex -> Predicates.includes(regex, ColumnId::toString))
+                    .collect(Collectors.toList());
 
             return (table) -> {
-                List<Column> candidates = table.columns()
-                        .stream()
-                        .filter(c -> {
-                            final TableId tableId = table.id();
-                            if (tableIdMapper == null) {
-                                return delegate.test(new ColumnId(tableId.catalog(), tableId.schema(), tableId.table(), c.name()));
-                            }
-                            return delegate.test(new ColumnId(tableId.catalog(), tableId.schema(), tableId.table(), c.name()))
-                                    || delegate.test(new ColumnId(new TableId(tableId.catalog(), tableId.schema(), tableId.table(), tableIdMapper), c.name()));
-                        })
-                        .collect(Collectors.toList());
+                List<Column> candidates = new ArrayList<>();
+                for (Predicate<ColumnId> predicate : predicates) {
+
+                    candidates.addAll(
+                            table.columns()
+                                    .stream()
+                                    .filter(c -> matchColumn(tableIdMapper, table, predicate, c))
+                                    .collect(Collectors.toList()));
+                }
+
                 return candidates.isEmpty() ? table.primaryKeyColumns() : candidates;
             };
         }
+    }
+
+    private static boolean matchColumn(TableIdToStringMapper tableIdMapper, Table table, Predicate<ColumnId> predicate, Column c) {
+
+        final TableId tableId = table.id();
+        if (tableIdMapper == null) {
+            return predicate.test(new ColumnId(tableId.catalog(), tableId.schema(), tableId.table(), c.name()));
+        }
+        return predicate.test(new ColumnId(tableId.catalog(), tableId.schema(), tableId.table(), c.name()))
+                || predicate.test(
+                        new ColumnId(new TableId(tableId.catalog(), tableId.schema(), tableId.table(), tableIdMapper), c.name()));
     }
 }

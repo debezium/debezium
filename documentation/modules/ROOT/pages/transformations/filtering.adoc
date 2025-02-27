@@ -141,15 +141,12 @@ The following table lists the variables that {prodname} binds into the evaluatio
 |`keySchema` |Schema of the message key.|`org.apache.kafka.connect{zwsp}.data{zwsp}.Schema`
 |`valueSchema`|Schema of the message value.| `org.apache.kafka.connect{zwsp}.data{zwsp}.Schema`
 |`topic`|Name of the target topic.| String
-|`headers`
-a|A Java map of message headers. The key field is the header name.
-The `headers` variable exposes the following properties:
+|`header`|A Java map of message headers. The key field is the header name.
+The `header` variable exposes the following properties:
 
 * `value` (of type `Object`)
-
 * `schema` (of type `org.apache.kafka{zwsp}.connect{zwsp}.data{zwsp}.Schema`)
-
-| `java.util.Map{zwsp}<String, {zwsp}io.debezium.transforms{zwsp}.scripting{zwsp}.RecordHeader>`
+|`java.util.Map{zwsp}<String, {zwsp}io.debezium.transforms{zwsp}.scripting{zwsp}.RecordHeader>`
 |===
 
 An expression can invoke arbitrary methods on its variables.

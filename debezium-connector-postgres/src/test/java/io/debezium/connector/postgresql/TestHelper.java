@@ -142,6 +142,16 @@ public final class TestHelper {
     }
 
     /**
+     * Obtain a default DB connection.
+     *
+     * @param jdbcConfiguration jdbc configuration to use
+     * @return the PostgresConnection instance; never null
+     */
+    public static PostgresConnection create(JdbcConfiguration jdbcConfiguration) {
+        return new PostgresConnection(jdbcConfiguration, CONNECTION_TEST);
+    }
+
+    /**
      * Obtain a DB connection providing type registry.
      *
      * @return the PostgresConnection instance; never null
@@ -189,6 +199,39 @@ public final class TestHelper {
             else {
                 jdbcConn.rollback();
             }
+        }
+        catch (RuntimeException e) {
+            throw e;
+        }
+        catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Executes a JDBC statement using the default jdbc config without committing the connection
+     *
+     * @param statement A SQL statement
+     * @param furtherStatements Further SQL statement(s)
+     *
+     * @return the PostgresConnection instance; never null
+     */
+    public static PostgresConnection executeWithoutCommit(String statement, String... furtherStatements) {
+        if (furtherStatements != null) {
+            for (String further : furtherStatements) {
+                statement = statement + further;
+            }
+        }
+
+        try {
+            PostgresConnection connection = create();
+            connection.setAutoCommit(false);
+            connection.executeWithoutCommitting(statement);
+            Connection jdbcConn = connection.connection();
+            if (statement.endsWith("ROLLBACK;")) {
+                jdbcConn.rollback();
+            }
+            return connection;
         }
         catch (RuntimeException e) {
             throw e;
@@ -262,18 +305,26 @@ public final class TestHelper {
     }
 
     public static JdbcConfiguration defaultJdbcConfig(String hostname, int port) {
+        return defaultJdbcConfigBuilder(hostname, port)
+                .build();
+    }
+
+    public static JdbcConfiguration.Builder defaultJdbcConfigBuilder(String hostname, int port) {
         return JdbcConfiguration.copy(Configuration.fromSystemProperties("database."))
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "dbserver1")
                 .withDefault(JdbcConfiguration.DATABASE, "postgres")
                 .withDefault(JdbcConfiguration.HOSTNAME, hostname)
                 .withDefault(JdbcConfiguration.PORT, port)
                 .withDefault(JdbcConfiguration.USER, "postgres")
-                .withDefault(JdbcConfiguration.PASSWORD, "postgres")
-                .build();
+                .withDefault(JdbcConfiguration.PASSWORD, "postgres");
     }
 
     public static JdbcConfiguration defaultJdbcConfig() {
         return defaultJdbcConfig("localhost", 5432);
+    }
+
+    public static JdbcConfiguration.Builder defaultJdbcConfigBuilder() {
+        return defaultJdbcConfigBuilder("localhost", 5432);
     }
 
     public static Configuration.Builder defaultConfig() {
@@ -305,7 +356,7 @@ public final class TestHelper {
         }
     }
 
-    protected static String topicName(String suffix) {
+    public static String topicName(String suffix) {
         return TestHelper.TEST_SERVER + "." + suffix;
     }
 
@@ -347,18 +398,18 @@ public final class TestHelper {
         }
     }
 
-    protected static void dropDefaultReplicationSlot() {
+    public static void dropDefaultReplicationSlot() {
         try {
             execute("SELECT pg_drop_replication_slot('" + ReplicationConnection.Builder.DEFAULT_SLOT_NAME + "')");
         }
         catch (Exception e) {
-            if (!Throwables.getRootCause(e).getMessage().equals("ERROR: replication slot \"debezium\" does not exist")) {
+            if (!Throwables.getRootCause(e).getMessage().startsWith("ERROR: replication slot \"debezium\" does not exist")) {
                 throw e;
             }
         }
     }
 
-    protected static void dropPublication() {
+    public static void dropPublication() {
         dropPublication(ReplicationConnection.Builder.DEFAULT_PUBLICATION_NAME);
     }
 

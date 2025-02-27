@@ -5,10 +5,6 @@
  */
 package io.debezium.pipeline.source.spi;
 
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import io.debezium.pipeline.signal.actions.snapshotting.AdditionalCondition;
 import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
 import io.debezium.pipeline.source.SnapshottingTask;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -45,11 +41,5 @@ public interface SnapshotChangeEventSource<P extends Partition, O extends Offset
     /**
      * Returns the blocking snapshotting task based on the snapshot configuration from the signal.
      */
-    default SnapshottingTask getBlockingSnapshottingTask(P partition, O previousOffset, SnapshotConfiguration snapshotConfiguration) {
-
-        Map<String, String> filtersByTable = snapshotConfiguration.getAdditionalConditions().stream()
-                .collect(Collectors.toMap(k -> k.getDataCollection().toString(), AdditionalCondition::getFilter));
-
-        return new SnapshottingTask(true, true, snapshotConfiguration.getDataCollections(), filtersByTable, true);
-    }
+    SnapshottingTask getBlockingSnapshottingTask(P partition, O previousOffset, SnapshotConfiguration snapshotConfiguration);
 }

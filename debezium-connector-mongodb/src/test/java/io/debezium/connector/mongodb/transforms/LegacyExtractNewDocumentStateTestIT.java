@@ -313,7 +313,7 @@ public class LegacyExtractNewDocumentStateTestIT extends AbstractExtractNewDocum
         waitForStreamingRunning();
 
         final Map<String, String> props = new HashMap<>();
-        props.put(ADD_FIELDS, "ord , db,rs");
+        props.put(ADD_FIELDS, "ord , db");
         transformation.configure(props);
 
         // insert
@@ -349,9 +349,7 @@ public class LegacyExtractNewDocumentStateTestIT extends AbstractExtractNewDocum
         final Struct value = (Struct) transformed.value();
         assertThat(value.get("__ord")).isEqualTo(source.getInt32("ord"));
         assertThat(value.get("__db")).isEqualTo(source.getString("db"));
-        assertThat(value.get("__rs")).isEqualTo(source.getString("rs"));
         assertThat(value.get("__db")).isEqualTo(DB_NAME);
-        assertThat(value.get("__rs")).isEqualTo("rs0");
     }
 
     @Test
@@ -360,7 +358,7 @@ public class LegacyExtractNewDocumentStateTestIT extends AbstractExtractNewDocum
         waitForStreamingRunning();
 
         final Map<String, String> props = new HashMap<>();
-        props.put(ADD_FIELDS, "ord,db,rs");
+        props.put(ADD_FIELDS, "ord,db");
         props.put(HANDLE_DELETES, "rewrite");
         transformation.configure(props);
 
@@ -396,9 +394,7 @@ public class LegacyExtractNewDocumentStateTestIT extends AbstractExtractNewDocum
         final Struct value = (Struct) transformed.value();
         assertThat(value.get("__ord")).isEqualTo(source.getInt32("ord"));
         assertThat(value.get("__db")).isEqualTo(source.getString("db"));
-        assertThat(value.get("__rs")).isEqualTo(source.getString("rs"));
         assertThat(value.get("__db")).isEqualTo(DB_NAME);
-        assertThat(value.get("__rs")).isEqualTo("rs0");
     }
 
     @Test
@@ -1387,9 +1383,8 @@ public class LegacyExtractNewDocumentStateTestIT extends AbstractExtractNewDocum
 
         final SourceRecord createRecord = createCreateRecord();
         final SourceRecord transformed = transformation.apply(createRecord);
-        assertThat(transformed.headers()).hasSize(3);
+        assertThat(transformed.headers()).hasSize(2);
         assertThat(getSourceRecordHeaderByKey(transformed, "prefix.op")).isEqualTo(Operation.CREATE.code());
-        assertThat(getSourceRecordHeaderByKey(transformed, "prefix.source_rs")).isEqualTo("rs0");
         assertThat(getSourceRecordHeaderByKey(transformed, "prefix.source_collection")).isEqualTo(getCollectionName());
     }
 
@@ -1466,13 +1461,12 @@ public class LegacyExtractNewDocumentStateTestIT extends AbstractExtractNewDocum
         waitForStreamingRunning();
 
         final Map<String, String> props = new HashMap<>();
-        props.put(ADD_FIELDS, "op,source.rs,source.collection");
+        props.put(ADD_FIELDS, "op,source.collection");
         transformation.configure(props);
 
         final SourceRecord createRecord = createCreateRecord();
         final SourceRecord transformed = transformation.apply(createRecord);
         assertThat(((Struct) transformed.value()).get("__op")).isEqualTo(Operation.CREATE.code());
-        assertThat(((Struct) transformed.value()).get("__source_rs")).isEqualTo("rs0");
         assertThat(((Struct) transformed.value()).get("__source_collection")).isEqualTo(getCollectionName());
     }
 
@@ -1516,14 +1510,13 @@ public class LegacyExtractNewDocumentStateTestIT extends AbstractExtractNewDocum
 
         final Map<String, String> props = new HashMap<>();
         props.put(HANDLE_DELETES, "rewrite");
-        props.put(ADD_FIELDS, "op,source.rs,source.collection");
+        props.put(ADD_FIELDS, "op,source.collection");
         transformation.configure(props);
 
         final SourceRecord deleteRecord = createDeleteRecordWithTombstone().allRecordsInOrder().get(0);
         final SourceRecord transformed = transformation.apply(deleteRecord);
         assertThat(((Struct) transformed.value()).get("__deleted")).isEqualTo(true);
         assertThat(((Struct) transformed.value()).get("__op")).isEqualTo(Operation.DELETE.code());
-        assertThat(((Struct) transformed.value()).get("__source_rs")).isEqualTo("rs0");
         assertThat(((Struct) transformed.value()).get("__source_collection")).isEqualTo(getCollectionName());
     }
 

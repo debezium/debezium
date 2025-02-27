@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
@@ -22,6 +23,7 @@ import io.debezium.config.Field;
 import io.debezium.transforms.scripting.Engine;
 import io.debezium.transforms.scripting.GraalJsEngine;
 import io.debezium.transforms.scripting.Jsr223Engine;
+import io.debezium.transforms.scripting.WasmEngine;
 import io.debezium.util.Strings;
 
 /**
@@ -37,12 +39,15 @@ import io.debezium.util.Strings;
  * @author Jiri Pechanec
  */
 @Incubating
-public abstract class ScriptingTransformation<R extends ConnectRecord<R>> implements Transformation<R> {
+public abstract class ScriptingTransformation<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
 
     private final Logger LOGGER = LoggerFactory.getLogger(getClass());
 
     private static final String JAVAX_SCRIPT_ENGINE_PREFIX = "jsr223.";
+    private static final String WASM_ENGINE_PREFIX = "wasm.";
     private static final String GRAAL_JS_ENGINE = "graal.js";
+    public static final String CHICORY_ENGINE = "chicory";
+    public static final String CHICORY_INTERPRETER_ENGINE = "chicory-interpreter";
 
     public enum NullHandling implements EnumeratedValue {
         DROP("drop"),
@@ -109,7 +114,8 @@ public abstract class ScriptingTransformation<R extends ConnectRecord<R>> implem
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.HIGH)
             .required()
-            .withDescription("An expression language used to evaluate the expression. Must begin with 'jsr223.', e.g.  'jsr223.groovy' or 'jsr223.graal.js'.");
+            .withDescription(
+                    "An expression language used to evaluate the expression. Must begin with 'jsr223.' or 'wasm.', e.g.  'jsr223.groovy' or 'jsr223.graal.js' or 'wasm.chicory'.");
 
     public static final Field NULL_HANDLING = Field.create("null.handling.mode")
             .withDisplayName("Handle null records")
@@ -142,19 +148,28 @@ public abstract class ScriptingTransformation<R extends ConnectRecord<R>> implem
         // currently only bootstrapping via JSR 223 is supported, but we could add
         // support for other means of bootstrapping later on, e.g. for "native"
         // bootstrap of GraalJS
-        if (!language.startsWith(JAVAX_SCRIPT_ENGINE_PREFIX)) {
-            throw new DebeziumException("Value for option '" + LANGUAGE + "' must begin with 'jsr223.', e.g. 'jsr223.groovy'");
-        }
-        else {
+        if (language.startsWith(JAVAX_SCRIPT_ENGINE_PREFIX)) {
             language = language.substring(JAVAX_SCRIPT_ENGINE_PREFIX.length());
         }
-
-        // graal.js needs a bit of extra-config...
-        if (language.equals(GRAAL_JS_ENGINE)) {
-            engine = new GraalJsEngine();
+        else if (language.startsWith(WASM_ENGINE_PREFIX)) {
+            language = language.substring(WASM_ENGINE_PREFIX.length());
         }
         else {
-            engine = new Jsr223Engine();
+            throw new DebeziumException("Value for option '" + LANGUAGE + "' must begin with 'jsr223.' or 'wasm', e.g. 'jsr223.groovy'");
+        }
+
+        switch (language) {
+            case GRAAL_JS_ENGINE:
+                // graal.js needs a bit of extra-config...
+                engine = new GraalJsEngine();
+                break;
+            case CHICORY_ENGINE:
+            case CHICORY_INTERPRETER_ENGINE:
+                engine = new WasmEngine();
+                break;
+            default:
+                engine = new Jsr223Engine();
+                break;
         }
 
         try {
@@ -202,5 +217,10 @@ public abstract class ScriptingTransformation<R extends ConnectRecord<R>> implem
 
     @Override
     public void close() {
+    }
+
+    @Override
+    public String version() {
+        return Module.version();
     }
 }

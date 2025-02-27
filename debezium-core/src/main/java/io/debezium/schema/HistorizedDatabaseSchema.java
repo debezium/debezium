@@ -51,4 +51,6 @@ public interface HistorizedDatabaseSchema<I extends DataCollectionId> extends Da
     boolean storeOnlyCapturedTables();
 
     boolean storeOnlyCapturedDatabases();
+
+    boolean historyExists();
 }

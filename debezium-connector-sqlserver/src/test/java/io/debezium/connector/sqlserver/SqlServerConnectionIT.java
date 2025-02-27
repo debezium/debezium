@@ -7,6 +7,7 @@
 package io.debezium.connector.sqlserver;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -26,6 +27,7 @@ import org.awaitility.Awaitility;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -103,7 +105,7 @@ public class SqlServerConnectionIT {
             // and issue a test call to a CDC wrapper function
             Thread.sleep(5_000); // Need to wait to make sure the min_lsn is available
 
-            Testing.Print.enable();
+            // Testing.Print.enable();
             connection.query(
                     "select * from cdc.fn_cdc_get_all_changes_dbo_testTable(sys.fn_cdc_get_min_lsn('dbo_testTable'), sys.fn_cdc_get_max_lsn(), N'all')",
                     rs -> {
@@ -197,14 +199,60 @@ public class SqlServerConnectionIT {
 
             // and issue a test call to a CDC wrapper function
             Thread.sleep(5_000); // Need to wait to make sure the min_lsn is available
-            List<String> capturedColumns = Arrays.asList("int_no_default_not_null", "int_no_default", "bigint_column", "int_column", "smallint_column", "tinyint_column",
-                    "bit_column", "decimal_column", "decimal_mismatch_default", "numeric_column", "numeric_mismatch_default", "money_column", "money_mismatch_default",
-                    "smallmoney_column", "smallmoney_mismatch_default", "float_column", "real_column",
-                    "date_column", "datetime_column", "datetime2_column", "datetime2_0_column", "datetime2_1_column", "datetime2_2_column", "datetime2_3_column",
-                    "datetime2_4_column", "datetime2_5_column", "datetime2_6_column", "datetime2_7_column", "datetimeoffset_column", "smalldatetime_column",
-                    "time_column", "time_0_column", "time_1_column", "time_2_column", "time_3_column", "time_4_column", "time_5_column", "time_6_column",
-                    "time_7_column", "char_column", "varchar_column", "text_column", "nchar_column", "nvarchar_column", "ntext_column", "binary_column",
-                    "varbinary_column", "image_column");
+            List<String> capturedColumns = Arrays
+                    .asList(
+                            "int_no_default_not_null",
+                            "int_no_default",
+                            "bigint_column",
+                            "int_column",
+                            "smallint_column",
+                            "tinyint_column",
+                            "bit_column",
+                            "decimal_column",
+                            "decimal_mismatch_default",
+                            "numeric_column",
+                            "numeric_mismatch_default",
+                            "money_column",
+                            "money_mismatch_default",
+                            "smallmoney_column",
+                            "smallmoney_mismatch_default",
+                            "float_column",
+                            "real_column",
+
+                            "date_column",
+                            "datetime_column",
+                            "datetime2_column",
+                            "datetime2_0_column",
+                            "datetime2_1_column",
+                            "datetime2_2_column",
+                            "datetime2_3_column",
+                            "datetime2_4_column",
+                            "datetime2_5_column",
+                            "datetime2_6_column",
+                            "datetime2_7_column",
+                            "datetimeoffset_column",
+                            "smalldatetime_column",
+
+                            "time_column",
+                            "time_0_column",
+                            "time_1_column",
+                            "time_2_column",
+                            "time_3_column",
+                            "time_4_column",
+                            "time_5_column",
+                            "time_6_column",
+                            "time_7_column",
+
+                            "char_column",
+                            "varchar_column",
+                            "text_column",
+                            "nchar_column",
+                            "nvarchar_column",
+                            "ntext_column",
+
+                            "binary_column",
+                            "varbinary_column",
+                            "image_column");
 
             SqlServerChangeTable changeTable = new SqlServerChangeTable(new TableId("testDB1", "dbo", "table_with_defaults"),
                     null, 0, null, capturedColumns);
@@ -257,7 +305,7 @@ public class SqlServerConnectionIT {
                     tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "datetimeoffset_column", "2019-01-01T00:00:00.1234567+02:00", tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "smalldatetime_column", toMillis(OffsetDateTime.of(2019, 1, 1, 12, 34, 0, 0, databaseZoneOffset)), tableSchemaBuilder);
-            assertColumnHasDefaultValue(table, "time_column", toNanos(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)), tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "time_column", toNanos(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_456_700, databaseZoneOffset)), tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "time_0_column", (int) toMillis(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 0, databaseZoneOffset)), tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "time_1_column", (int) toMillis(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 100_000_000, databaseZoneOffset)),
                     tableSchemaBuilder);
@@ -265,14 +313,13 @@ public class SqlServerConnectionIT {
                     tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "time_3_column", (int) toMillis(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)),
                     tableSchemaBuilder);
-            // JDBC connector does not support full precision for type time(n), n = 4, 5, 6, 7
-            assertColumnHasDefaultValue(table, "time_4_column", toMicros(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)),
+            assertColumnHasDefaultValue(table, "time_4_column", toMicros(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_400_000, databaseZoneOffset)),
                     tableSchemaBuilder);
-            assertColumnHasDefaultValue(table, "time_5_column", toMicros(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)),
+            assertColumnHasDefaultValue(table, "time_5_column", toMicros(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_450_000, databaseZoneOffset)),
                     tableSchemaBuilder);
-            assertColumnHasDefaultValue(table, "time_6_column", toMicros(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)),
+            assertColumnHasDefaultValue(table, "time_6_column", toMicros(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_456_000, databaseZoneOffset)),
                     tableSchemaBuilder);
-            assertColumnHasDefaultValue(table, "time_7_column", toNanos(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)),
+            assertColumnHasDefaultValue(table, "time_7_column", toNanos(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_456_700, databaseZoneOffset)),
                     tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "char_column", "aaa", tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "varchar_column", "bbb", tableSchemaBuilder);
@@ -333,6 +380,26 @@ public class SqlServerConnectionIT {
                     + "    real_no_default real,"
                     + "    real_default_null real default null,"
                     + "    real_column real default (1.2345e3),"
+
+                    + "    char_default_null_no_paren char(10) default null,"
+                    + "    char_default_null_single_paren char(10) default (NULL),"
+                    + "    char_default_null_double_paren char(10) default ((NULL)),"
+                    + "    varchar_default_null_no_paren varchar(10) default null,"
+                    + "    varchar_default_null_single_paren varchar(10) default (NULL),"
+                    + "    varchar_default_null_double_paren varchar(10) default ((NULL)),"
+                    + "    text_default_null_no_paren text default null,"
+                    + "    text_default_null_single_paren text default (NULL),"
+                    + "    text_default_null_double_paren text default ((NULL)),"
+                    + "    nchar_default_null_no_paren nchar(10) default null,"
+                    + "    nchar_default_null_single_paren nchar(10) default (NULL),"
+                    + "    nchar_default_null_double_paren nchar(10) default ((NULL)),"
+                    + "    nvarchar_default_null_no_paren nvarchar(10) default null,"
+                    + "    nvarchar_default_null_single_paren nvarchar(10) default (NULL),"
+                    + "    nvarchar_default_null_double_paren nvarchar(10) default ((NULL)),"
+                    + "    ntext_default_null_no_paren ntext default null,"
+                    + "    ntext_default_null_single_paren ntext default (NULL),"
+                    + "    ntext_default_null_double_paren ntext default ((NULL)),"
+
                     + ");";
 
             connection.execute(sql);
@@ -375,7 +442,26 @@ public class SqlServerConnectionIT {
                             "real_no_default_not_null",
                             "real_no_default",
                             "real_default_null",
-                            "real_column");
+                            "real_column",
+
+                            "char_default_null_no_paren",
+                            "char_default_null_single_paren",
+                            "char_default_null_double_paren",
+                            "varchar_default_null_no_paren",
+                            "varchar_default_null_single_paren",
+                            "varchar_default_null_double_paren",
+                            "text_default_null_no_paren",
+                            "text_default_null_single_paren",
+                            "text_default_null_double_paren",
+                            "nchar_default_null_no_paren",
+                            "nchar_default_null_single_paren",
+                            "nchar_default_null_double_paren",
+                            "nvarchar_default_null_no_paren",
+                            "nvarchar_default_null_single_paren",
+                            "nvarchar_default_null_double_paren",
+                            "ntext_default_null_no_paren",
+                            "ntext_default_null_single_paren",
+                            "ntext_default_null_double_paren");
 
             SqlServerChangeTable changeTable = new SqlServerChangeTable(new TableId("testDB1", "dbo", "table_with_defaults"),
                     null, 0, null, capturedColumns);
@@ -416,6 +502,25 @@ public class SqlServerConnectionIT {
             assertColumnHasDefaultValue(table, "real_no_default", null, tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "real_default_null", null, tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "real_column", 1234.5f, tableSchemaBuilder);
+
+            assertColumnHasDefaultValue(table, "char_default_null_no_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "char_default_null_single_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "char_default_null_double_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "varchar_default_null_no_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "varchar_default_null_single_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "varchar_default_null_double_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "text_default_null_no_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "text_default_null_single_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "text_default_null_double_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "nchar_default_null_no_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "nchar_default_null_single_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "nchar_default_null_double_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "nvarchar_default_null_no_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "nvarchar_default_null_single_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "nvarchar_default_null_double_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "ntext_default_null_no_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "ntext_default_null_single_paren", null, tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "ntext_default_null_double_paren", null, tableSchemaBuilder);
         }
     }
 
@@ -475,6 +580,22 @@ public class SqlServerConnectionIT {
         TestHelper.createTestDatabases(TestHelper.TEST_DATABASE_1, TestHelper.TEST_DATABASE_2);
         try (SqlServerConnection connection = TestHelper.multiPartitionTestConnection()) {
             assertThat(connection.connection().getCatalog()).isEqualTo("master");
+        }
+    }
+
+    @Test
+    public void whenQueryTakesMoreThenConfiguredQueryTimeoutAnExceptionMustBeThrown() throws SQLException {
+
+        TestHelper.createTestDatabase();
+        Configuration config = TestHelper.defaultConnectorConfig()
+                .with("database.query.timeout.ms", "1000").build();
+
+        try (SqlServerConnection conn = TestHelper.testConnection(config)) {
+            conn.connect();
+
+            assertThatThrownBy(() -> conn.execute("WAITFOR DELAY '00:01'"))
+                    .isInstanceOf(SQLException.class)
+                    .hasMessage("The query has timed out.");
         }
     }
 

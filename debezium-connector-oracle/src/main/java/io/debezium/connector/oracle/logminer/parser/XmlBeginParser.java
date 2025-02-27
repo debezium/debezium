@@ -13,7 +13,7 @@ import io.debezium.annotation.NotThreadSafe;
  * @author Chris Cranford
  */
 @NotThreadSafe
-public class XmlBeginParser extends PreambleSingleColumnReconstructedSelectParser {
+public class XmlBeginParser extends AbstractSelectSingleColumnSqlRedoPreambleParser {
 
     private static final String PREAMBLE = "XML DOC BEGIN:";
 

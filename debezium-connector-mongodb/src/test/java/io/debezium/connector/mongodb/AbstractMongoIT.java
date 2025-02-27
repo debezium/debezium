@@ -5,10 +5,6 @@
  */
 package io.debezium.connector.mongodb;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.util.Map;
-
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -16,11 +12,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
-import io.debezium.connector.mongodb.connection.ReplicaSet;
+import io.debezium.connector.mongodb.connection.MongoDbConnections;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
 import io.debezium.testing.testcontainers.MongoDbDeployment;
 import io.debezium.testing.testcontainers.util.DockerUtils;
@@ -32,8 +27,6 @@ public abstract class AbstractMongoIT {
     protected static MongoDbDeployment mongo;
 
     protected Configuration config;
-    protected MongoDbTaskContext context;
-    protected ReplicaSet replicaSet;
     protected MongoDbConnection connection;
 
     @BeforeClass
@@ -52,7 +45,7 @@ public abstract class AbstractMongoIT {
     }
 
     protected MongoClient connect() {
-        return MongoClients.create(mongo.getConnectionString());
+        return TestHelper.connect(mongo);
     }
 
     @Before
@@ -69,47 +62,13 @@ public abstract class AbstractMongoIT {
      */
     protected void useConfiguration(Configuration config) {
         this.config = config;
-        initialize(true);
-    }
-
-    /**
-     * A method that will initialize the state after the configuration is changed, reusing the same partition offsets that
-     * were previously used.
-     *
-     * @param config the configuration; may not be null
-     */
-    protected void reuseConfiguration(Configuration config) {
-        this.config = config;
-        initialize(false);
+        initialize();
     }
 
     /**
      * A method that will initialize the state after the configuration is changed.
-     *
-     * @param restartFromBeginning {@code true} if the context should have no prior partition offsets, or {@code false} if the
-     *            partition offsets that exist at this time should be reused
      */
-    private void initialize(boolean restartFromBeginning) {
-        // Record the partition offsets (if there are some) ...
-        Map<String, String> partition = null;
-        Map<String, ?> offsetForPartition = null;
-        if (!restartFromBeginning && context != null && replicaSet != null && context.source().hasOffset(replicaSet.replicaSetName())) {
-            partition = context.source().partition(replicaSet.replicaSetName());
-            offsetForPartition = context.source().lastOffset(replicaSet.replicaSetName());
-        }
-
-        context = new MongoDbTaskContext(config);
-        assertThat(context.getConnectionContext().connectionSeed()).isNotEmpty();
-
-        replicaSet = TestHelper.replicaSet(mongo);
-        context.configureLoggingContext(replicaSet.replicaSetName());
-
-        // Restore Source position (if there are some) ...
-        if (partition != null) {
-            context.source().setOffsetFor(partition, offsetForPartition);
-        }
-
-        // Get a connection to the primary ...
-        connection = context.getConnectionContext().connect(replicaSet, context.filters(), TestHelper.connectionErrorHandler(3));
+    private void initialize() {
+        connection = MongoDbConnections.create(config, TestHelper.connectionErrorHandler(3));
     }
 }

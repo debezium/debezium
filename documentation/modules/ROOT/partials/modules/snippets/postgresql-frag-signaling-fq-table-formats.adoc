@@ -1,0 +1,127 @@
+//include::{partialsdir}/modules/snippets/db2-frag-signaling-fq-table-formats.adoc[]
+= Shared snippets for Db2 and PG incremental snapshots
+
+
+== Triggering an incremental snapshot (SQL)
+
+=== `data-collections` note
+
+tag::fq-table-name-format-note[]
+[NOTE]
+====
+If the name of a table that you want to include in a snapshot contains a dot (`.`), a space, or some other non-alphanumeric character, you must escape the table name in double quotes. +
+For example, to include a table that exists in the `*public*` schema and that has the name `*My.Table*`, use the following format: `*"public.\"My.Table\""*`.
+====
+end::fq-table-name-format-note[]
+
+
+
+
+=== Using a source signaling channel to trigger an incremental snapshot
+
+// Example in Step 1 of procedure
+
+tag::snapshot-signal-example[]
+====
+[source,sql,indent=0,subs="+attributes"]
+----
+INSERT INTO myschema.debezium_signal (id, type, data) // <1>
+values ('ad-hoc-1',   // <2>
+    'execute-snapshot',  // <3>
+    '{"data-collections": ["schema1.table1", "schema1.table2"], // <4>
+    "type":"incremental", // <5>
+    "additional-conditions":[{"data-collection": "schema1.table1" ,"filter":"color=\'blue\'"}]}'); // <6>
+----
+====
++
+end::snapshot-signal-example[]
+
+
+
+
+
+=== Running an ad hoc snapshot with additional conditions
+
+tag::snapshot-additional-conditions-example[]
+[source,sql,indent=0,subs="+attributes"]
+----
+INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additional-conditions":[{"data-collection": "schema1.products", "filter": "color=blue"}]}');
+----
+end::snapshot-additional-conditions-example[]
+
+
+
+
+
+
+=== Running an ad hoc snapshot with multiple additional conditions
+
+tag::snapshot-multiple-additional-conditions-example[]
+[source,sql,indent=0,subs="+attributes"]
+----
+INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additional-conditions":[{"data-collection": "schema1.products", "filter": "color=blue AND quantity>10"}]}');
+----
+end::snapshot-multiple-additional-conditions-example[]
+
+
+
+
+
+
+=== Kafka snapshot with additional conditions example
+
+
+tag::triggering-incremental-snapshot-kafka-addtl-cond-example[]
+[source,json]
+----
+Key = `test_connector`
+
+Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.products"], "type": "INCREMENTAL", "additional-conditions": [{"data-collection": "schema1.products" ,"filter":"color='blue'"}]}}`
+----
+end::triggering-incremental-snapshot-kafka-addtl-cond-example[]
+
+
+
+=== Kafka snapshot with multiple additional conditions
+
+tag::triggering-incremental-snapshot-kafka-multi-addtl-cond-example[]
+[source,json]
+----
+Key = `test_connector`
+
+Value = `{"type":"execute-snapshot","data": {"data-collections": ["schema1.products"], "type": "INCREMENTAL", "additional-conditions": [{"data-collection": "schema1.products" ,"filter":"color='blue' AND brand='MyBrand'"}]}}`
+----
+end::triggering-incremental-snapshot-kafka-multi-addtl-cond-example[]
+
+
+
+
+
+=== Stopping an incremental snapshot
+
+tag::stopping-incremental-snapshot-example[]
+====
+[source,sql,indent=0,subs="+attributes"]
+----
+INSERT INTO myschema.debezium_signal (id, type, data) // <1>
+values ('ad-hoc-1',   // <2>
+    'stop-snapshot',  // <3>
+    '{"data-collections": ["schema1.table1", "schema1.table2"], // <4>
+    "type":"incremental"}'); // <5>
+----
+====
++
+end::stopping-incremental-snapshot-example[]
+
+
+
+=== Stopping an incremental snapshot using the Kafka signaling channel
+
+tag::stopping-incremental-snapshot-kafka-example[]
+[source,json]
+----
+Key = `test_connector`
+
+Value = `{"type":"stop-snapshot","data": {"data-collections": ["schema1.table1", "schema1.table2"], "type": "INCREMENTAL"}}`
+----
+end::stopping-incremental-snapshot-kafka-example[]

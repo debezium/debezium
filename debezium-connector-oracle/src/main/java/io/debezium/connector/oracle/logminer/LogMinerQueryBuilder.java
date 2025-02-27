@@ -35,8 +35,13 @@ public class LogMinerQueryBuilder {
     private static final String UNKNOWN_USERNAME = "UNKNOWN";
     private static final String UNKNOWN_SCHEMA_NAME = "UNKNOWN";
     private static final String UNKNOWN_TABLE_NAME_PREFIX = "OBJ#";
-    private static final List<Integer> OPERATION_CODES_LOB = Arrays.asList(1, 2, 3, 6, 7, 9, 10, 11, 29, 34, 36, 68, 70, 71, 255);
-    private static final List<Integer> OPERATION_CODES_NO_LOB = Arrays.asList(1, 2, 3, 6, 7, 34, 36, 255);
+    private static final List<Integer> OPERATION_CODES_LOB = Arrays.asList(1, 2, 3, 6, 7, 9, 10, 11, 27, 29, 34, 36, 68, 70, 71, 91, 92, 93, 255);
+    private static final List<Integer> OPERATION_CODES_NO_LOB = Arrays.asList(1, 2, 3, 6, 7, 27, 34, 36, 255);
+
+    /**
+     * The maximum number of permitted elements in an Oracle SQL in-clause list
+     */
+    public static final Integer IN_CLAUSE_MAX_ELEMENTS = 1000;
 
     /**
      * Builds the LogMiner contents view query.
@@ -59,7 +64,14 @@ public class LogMinerQueryBuilder {
      *     USERNAME - the name of the database user that caused the change
      *     ROW_ID - the unique identifier of the row that the change is for, may not always be set with valid value
      *     ROLLBACK - the rollback flag, value of 0 or 1.  1 implies the row was rolled back
-     *     RS_ID - the rollback segment idenifier where the change record was record from
+     *     RS_ID - the rollback segment identifier where the change record was record from
+     *     STATUS - the final LogMiner status for the row
+     *     INFO - any information data provided by LogMiner
+     *     SSN - the SQL sequence number for event ordering
+     *     THREAD# - the redo thread number
+     *     DATA_OBJ# - the data block object number identifying the object
+     *     DATA_OBJV# - the version number of the table being modified
+     *     DATA_OBJD# - the data block object number identifying the object within the tablespace
      * </pre>
      *
      * @param connectorConfig connector configuration, should not be {@code null}
@@ -68,7 +80,7 @@ public class LogMinerQueryBuilder {
     public static String build(OracleConnectorConfig connectorConfig) {
         final StringBuilder query = new StringBuilder(1024);
         query.append("SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, ");
-        query.append("USERNAME, ROW_ID, ROLLBACK, RS_ID, STATUS, INFO, SSN, THREAD# ");
+        query.append("USERNAME, ROW_ID, ROLLBACK, RS_ID, STATUS, INFO, SSN, THREAD#, DATA_OBJ#, DATA_OBJV#, DATA_OBJD# ");
         query.append("FROM ").append(LOGMNR_CONTENTS_VIEW).append(" ");
 
         // These bind parameters will be bound when the query is executed by the caller.
@@ -144,7 +156,13 @@ public class LogMinerQueryBuilder {
             operationInClause.withValues(OPERATION_CODES_LOB);
         }
         else {
-            operationInClause.withValues(OPERATION_CODES_NO_LOB);
+            final List<Integer> operationCodes = new ArrayList<>(OPERATION_CODES_NO_LOB);
+            // The transaction start event needs to be handled when a persistent buffer (Infinispan) is used
+            // because it is needed to reset the event id counter when re-mining transaction events.
+            if (connectorConfig.getLogMiningBufferType() == OracleConnectorConfig.LogMiningBufferType.MEMORY) {
+                operationCodes.removeIf(operationCode -> operationCode == 6);
+            }
+            operationInClause.withValues(operationCodes);
         }
         predicate.append("(").append(operationInClause.build());
 
@@ -221,8 +239,8 @@ public class LogMinerQueryBuilder {
             return resolveExcludedSchemaPredicate(fieldName);
         }
         else if (LogMiningQueryFilterMode.IN.equals(queryFilterMode)) {
-            final Set<String> includeSchemasList = Strings.setOf(includeList, String::new);
-            final Set<String> excludeSchemasList = Strings.setOf(excludeList, String::new);
+            final Set<String> includeSchemasList = Strings.setOfTrimmed(includeList, String::new);
+            final Set<String> excludeSchemasList = Strings.setOfTrimmed(excludeList, String::new);
 
             final StringBuilder predicate = new StringBuilder();
             predicate.append("(").append(fieldName).append(" IS NULL OR ");
@@ -412,7 +430,7 @@ public class LogMinerQueryBuilder {
     }
 
     private static List<String> getTableIncludeExcludeListAsInValueList(String list) {
-        return Strings.listOf(list, s -> s.split("[,]"), v -> v.replaceAll("\\\\", ""));
+        return Strings.listOfTrimmed(list, s -> s.split("[,]"), v -> v.replaceAll("\\\\", ""));
     }
 
     private static List<String> toUpperCase(Collection<String> values) {
@@ -460,19 +478,29 @@ public class LogMinerQueryBuilder {
             Objects.requireNonNull(values, "The values list must not be null");
 
             final StringBuilder sql = new StringBuilder();
-            if (caseInsensitive) {
-                sql.append("UPPER(").append(fieldName).append(")");
+            final List<?> listValues = Arrays.asList(values.toArray());
+            final int buckets = (listValues.size() + IN_CLAUSE_MAX_ELEMENTS - 1) / IN_CLAUSE_MAX_ELEMENTS;
+
+            for (int i = 0; i < buckets; i++) {
+                if (i > 0) {
+                    sql.append(negated ? " AND " : " OR ");
+                }
+                if (caseInsensitive) {
+                    sql.append("UPPER(").append(fieldName).append(")");
+                }
+                else {
+                    sql.append(fieldName);
+                }
+                if (negated) {
+                    sql.append(" NOT");
+                }
+
+                final int startIndex = (i * IN_CLAUSE_MAX_ELEMENTS);
+                final int endIndex = startIndex + Math.min(IN_CLAUSE_MAX_ELEMENTS, listValues.size() - startIndex);
+                sql.append(" IN (").append(commaSeparatedList(listValues.subList(startIndex, endIndex))).append(")");
             }
-            else {
-                sql.append(fieldName);
-            }
-            if (negated) {
-                sql.append(" NOT");
-            }
-            sql.append(" IN (");
-            sql.append(commaSeparatedList(values));
-            sql.append(")");
-            return sql.toString();
+
+            return (listValues.size() > IN_CLAUSE_MAX_ELEMENTS) ? "(" + sql + ")" : sql.toString();
         }
 
         private String commaSeparatedList(Collection<?> values) {
@@ -480,12 +508,7 @@ public class LogMinerQueryBuilder {
             for (Iterator<?> iterator = values.iterator(); iterator.hasNext();) {
                 final Object value = iterator.next();
                 if (value instanceof String) {
-                    if (caseInsensitive) {
-                        list.append("'").append(((String) value).toUpperCase()).append("'");
-                    }
-                    else {
-                        list.append("'").append(value).append("'");
-                    }
+                    list.append("'").append(sanitizeCommaSeparatedStringElement((String) value)).append("'");
                 }
                 else {
                     list.append(value);
@@ -495,6 +518,13 @@ public class LogMinerQueryBuilder {
                 }
             }
             return list.toString();
+        }
+
+        private String sanitizeCommaSeparatedStringElement(String element) {
+            if (caseInsensitive) {
+                return element.trim().toUpperCase();
+            }
+            return element.trim();
         }
     }
 

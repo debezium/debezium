@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>2.5.0.Final</version>
+        <version>3.1.0-SNAPSHOT</version>
         <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -16,7 +16,7 @@
           Note that the `dockerhost.ip` property is computed from the IP address of DOCKER_HOST, which will
           work on all platforms. We'll set some of these as system properties during integration testing.
       -->
-        <version.postgres.server>10</version.postgres.server>
+        <version.postgres.server>17</version.postgres.server>
         <postgres.host>${docker.host.address}</postgres.host>
         <postgres.port>5432</postgres.port>
         <postgres.user>postgres</postgres.user>
@@ -40,6 +40,7 @@
         <!-- Apicurion container properties -->
         <apicurio.port>8080</apicurio.port>
         <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
+        <apicurio.image>quay.io/apicurio/apicurio-registry-mem</apicurio.image>
     </properties>
 
     <dependencies>
@@ -58,6 +59,11 @@
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>connect-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>connect-transforms</artifactId>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -225,7 +231,7 @@
                             </external>
                         </image>
                         <image>
-                            <name>apicurio/apicurio-registry-mem:${version.apicurio}</name>
+                            <name>${apicurio.image}:${version.apicurio}</name>
                             <run>
                                 <namingStrategy>none</namingStrategy>
                                 <ports>
@@ -462,6 +468,12 @@
             </properties>
         </profile>
         <profile>
+            <id>postgres-12</id>
+            <properties>
+                <version.postgres.server>12</version.postgres.server>
+            </properties>
+        </profile>
+        <profile>
             <id>postgres-14</id>
             <properties>
                 <version.postgres.server>14</version.postgres.server>
@@ -477,6 +489,12 @@
             <id>postgres-16</id>
             <properties>
                 <version.postgres.server>16</version.postgres.server>
+            </properties>
+        </profile>
+        <profile>
+            <id>postgres-17</id>
+            <properties>
+                <version.postgres.server>17</version.postgres.server>
             </properties>
         </profile>
         <profile>
@@ -514,7 +532,7 @@
                 </plugins>
             </build>
             <properties>
-                <docker.filter>${docker.dbs},apicurio/apicurio-registry-mem:${version.apicurio}</docker.filter>
+                <docker.filter>${docker.dbs},${apicurio.image}:${version.apicurio}</docker.filter>
             </properties>
         </profile>
     </profiles>

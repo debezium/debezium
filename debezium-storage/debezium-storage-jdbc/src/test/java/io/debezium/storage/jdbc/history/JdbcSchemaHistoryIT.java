@@ -30,15 +30,14 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.mysql.MySqlConnector;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
-import io.debezium.connector.mysql.MySqlConnectorConfig.SnapshotMode;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.storage.jdbc.offset.JdbcOffsetBackingStoreConfig;
 import io.debezium.util.Testing;
 
-public class JdbcSchemaHistoryIT extends AbstractConnectorTest {
+public class JdbcSchemaHistoryIT extends AbstractAsyncEngineConnectorTest {
 
     private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("schema-history.db").toAbsolutePath();
 
@@ -48,7 +47,7 @@ public class JdbcSchemaHistoryIT extends AbstractConnectorTest {
     private static final String PRIVILEGED_PASSWORD = "mysqlpassword";
     private static final String ROOT_PASSWORD = "debezium";
     private static final String DBNAME = "inventory";
-    private static final String IMAGE = "debezium/example-mysql";
+    private static final String IMAGE = "quay.io/debezium/example-mysql";
     private static final Integer PORT = 3306;
     private static final String TOPIC_PREFIX = "test";
     private static final String TABLE_NAME = "schematest";
@@ -127,7 +126,7 @@ public class JdbcSchemaHistoryIT extends AbstractConnectorTest {
                 .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
                 .with(MySqlConnectorConfig.SCHEMA_HISTORY, JdbcSchemaHistory.class)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, TOPIC_PREFIX)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX + JdbcOffsetBackingStoreConfig.PROP_JDBC_URL.name(), jdbcUrl)
                 .with(JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX + JdbcOffsetBackingStoreConfig.PROP_USER.name(), "user")
@@ -172,7 +171,7 @@ public class JdbcSchemaHistoryIT extends AbstractConnectorTest {
         start(MySqlConnector.class, config);
         waitForStreamingRunning("mysql", TOPIC_PREFIX);
 
-        Testing.Print.enable();
+        // Testing.Print.enable();
         SourceRecords records = consumeRecordsByTopic(4); // 4 DML changes
         assertThat(records.topics().size()).isEqualTo(1);
         assertThat(records.recordsForTopic(topicName())).hasSize(4);

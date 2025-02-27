@@ -5,12 +5,12 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
+import static java.util.Comparator.comparing;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
@@ -25,7 +25,9 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
-import io.debezium.connector.mongodb.connection.ReplicaSet;
+import io.debezium.connector.mongodb.connection.ConnectionStrings;
+import io.debezium.connector.mongodb.connection.MongoDbConnection;
+import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
 import io.debezium.connector.mongodb.metrics.MongoDbChangeEventSourceMetricsFactory;
 import io.debezium.document.DocumentReader;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
@@ -37,6 +39,8 @@ import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.snapshot.SnapshotterService;
+import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext.PreviousContext;
 
@@ -59,12 +63,11 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
     private static final String CONTEXT_NAME = "mongodb-connector-task";
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
-
     // These are all effectively constants between start(...) and stop(...)
     private volatile ChangeEventQueue<DataChangeEvent> queue;
     private volatile String taskName;
     private volatile MongoDbTaskContext taskContext;
+    private volatile MongoDbConnectionContext connectionContext;
     private volatile ErrorHandler errorHandler;
     private volatile MongoDbSchema schema;
 
@@ -80,12 +83,12 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
         this.taskName = "task" + config.getInteger(MongoDbConnectorConfig.TASK_ID);
         this.taskContext = new MongoDbTaskContext(config);
+        this.connectionContext = new MongoDbConnectionContext(config);
 
         final Schema structSchema = connectorConfig.getSourceInfoStructMaker().schema();
-        this.schema = new MongoDbSchema(taskContext.filters(), taskContext.topicNamingStrategy(), structSchema, schemaNameAdjuster);
+        this.schema = new MongoDbSchema(taskContext.getFilters(), taskContext.getTopicNamingStrategy(), structSchema, schemaNameAdjuster);
 
-        final ReplicaSets replicaSets = getReplicaSets(connectorConfig);
-        final MongoDbOffsetContext previousOffset = getPreviousOffset(connectorConfig, replicaSets);
+        final Offsets<MongoDbPartition, MongoDbOffsetContext> previousOffsets = getPreviousOffsets(connectorConfig);
         final Clock clock = Clock.system();
 
         PreviousContext previousLogContext = taskContext.configureLoggingContext(taskName);
@@ -108,25 +111,31 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     MongoDbConnector.class, connectorConfig, Map.of(),
                     getAvailableSignalChannels(),
                     DocumentReader.defaultReader(),
-                    Offsets.of(Collections.singletonMap(new MongoDbPartition(), previousOffset)));
+                    previousOffsets);
 
             // Manually Register Beans
             connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
             connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
+            connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
 
             // Service providers
             registerServiceProviders(connectorConfig.getServiceRegistry());
 
+            final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
+
             final EventDispatcher<MongoDbPartition, CollectionId> dispatcher = new EventDispatcher<>(
                     connectorConfig,
-                    taskContext.topicNamingStrategy(),
+                    taskContext.getTopicNamingStrategy(),
                     schema,
                     queue,
-                    taskContext.filters().collectionFilter()::test,
+                    taskContext.getFilters().collectionFilter()::test,
                     DataChangeEvent::new,
                     metadataProvider,
                     schemaNameAdjuster,
                     signalProcessor);
+
+            validate(connectorConfig, taskContext.getConnection(dispatcher, previousOffsets.getTheOnlyPartition()), previousOffsets,
+                    snapshotterService.getSnapshotter());
 
             NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                     connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
@@ -134,8 +143,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
             MongoDbChangeEventSourceMetricsFactory metricsFactory = new MongoDbChangeEventSourceMetricsFactory();
 
             ChangeEventSourceCoordinator<MongoDbPartition, MongoDbOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
-                    // TODO pass offsets from all the partitions
-                    Offsets.of(Collections.singletonMap(new MongoDbPartition(), previousOffset)),
+                    previousOffsets,
                     errorHandler,
                     MongoDbConnector.class,
                     connectorConfig,
@@ -144,15 +152,15 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                             errorHandler,
                             dispatcher,
                             clock,
-                            replicaSets,
                             taskContext,
                             schema,
-                            metricsFactory.getStreamingMetrics(taskContext, queue, metadataProvider)),
+                            metricsFactory.getStreamingMetrics(taskContext, queue, metadataProvider),
+                            snapshotterService),
                     metricsFactory,
                     dispatcher,
                     schema,
                     signalProcessor,
-                    notificationService);
+                    notificationService, snapshotterService);
 
             coordinator.start(taskContext, this.queue, metadataProvider);
 
@@ -161,6 +169,69 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         finally {
             previousLogContext.restore();
         }
+    }
+
+    private Offsets<MongoDbPartition, MongoDbOffsetContext> getPreviousOffsets(MongoDbConnectorConfig connectorConfig) {
+        var partitionProvider = new MongoDbPartition.Provider(connectorConfig);
+        var offsetLoader = new MongoDbOffsetContext.Loader(connectorConfig);
+        var offsets = getPreviousOffsets(partitionProvider, offsetLoader);
+
+        if (offsets.getTheOnlyOffset() != null) {
+            return offsets;
+        }
+        LOGGER.info("Previous valid offset not found, checking compatible offsets from older versions");
+        var name = connectionContext.getRequiredReplicaSetName()
+                .orElse(ConnectionStrings.CLUSTER_RS_NAME);
+
+        var compatibleOffset = getPreviousOffsets(
+                new MongoDbPartition.Provider(connectorConfig, Set.of(name)),
+                new MongoDbOffsetContext.Loader(connectorConfig))
+                .getTheOnlyOffset();
+
+        if (compatibleOffset != null) {
+            LOGGER.warn("Found compatible offset from previous version");
+            offsets.getOffsets().put(offsets.getTheOnlyPartition(), compatibleOffset);
+            return offsets;
+        }
+
+        LOGGER.info("Compatible offset not found, checking shard specific offsets from replica_set connection mode.");
+        var shardNames = connectionContext.getShardNames();
+
+        var shardOffsets = getPreviousOffsets(
+                new MongoDbPartition.Provider(connectorConfig, shardNames),
+                new MongoDbOffsetContext.Loader(connectorConfig))
+                .getOffsets();
+
+        if (shardOffsets.values().stream().allMatch(Objects::isNull)) {
+            LOGGER.info("No shard specific offsets found");
+            return offsets;
+        }
+
+        LOGGER.warn("Found at least one shard specific offset from previous version");
+
+        if (shardOffsets.values().stream().anyMatch(Objects::isNull)) {
+            LOGGER.warn("At least one shard is missing previously recorded offset, so empty offset will be used");
+            return offsets;
+        }
+
+        if (!connectorConfig.isOffsetInvalidationAllowed()) {
+            LOGGER.warn("Offset invalidation is not allowed");
+            throw new DebeziumException("Offsets from previous version are invalid, either manually delete them or " +
+                    "set '" + MongoDbConnectorConfig.ALLOW_OFFSET_INVALIDATION.name() + "=true' " +
+                    "to allow streaming to resume from the oldest shard specific offset");
+        }
+
+        LOGGER.warn("Offset invalidation is allowed");
+        LOGGER.warn("The oldest shard specific offset will be used");
+
+        var oldestOffset = shardOffsets.values()
+                .stream()
+                .filter(offset -> offset.lastTimestampOrTokenTime() != null)
+                .min(comparing(MongoDbOffsetContext::lastTimestampOrTokenTime));
+
+        oldestOffset.ifPresent(offset -> offsets.getOffsets().put(offsets.getTheOnlyPartition(), offset));
+
+        return offsets;
     }
 
     @Override
@@ -187,70 +258,58 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         return MongoDbConnectorConfig.ALL_FIELDS;
     }
 
-    private MongoDbOffsetContext getPreviousOffset(MongoDbConnectorConfig connectorConfig, ReplicaSets replicaSets) {
-        MongoDbOffsetContext.Loader loader = new MongoDbOffsetContext.Loader(connectorConfig, replicaSets);
-        Collection<Map<String, String>> partitions = loader.getPartitions();
-
-        Map<Map<String, String>, Map<String, Object>> offsets = context.offsetStorageReader().offsets(partitions);
-        if (offsets != null && offsets.values().stream().anyMatch(Objects::nonNull)) {
-            MongoDbOffsetContext offsetContext = loader.loadOffsets(offsets);
-            logger.info("Found previous offsets {}", offsetContext);
-            return offsetContext;
-        }
-        else {
-            checkShardSpecificOffsetsIfNeeded(connectorConfig, replicaSets);
-            return null;
-        }
-    }
-
-    private void checkShardSpecificOffsetsIfNeeded(MongoDbConnectorConfig connectorConfig, ReplicaSets currentReplicaSets) {
-        if (currentReplicaSets.size() != 1 || !currentReplicaSets.getSnapshotReplicaSet().isClusterRs()) {
-            // We are not running in sharded connection mode, so no check is needed
-            return;
-        }
-
-        logger.info("Previous offset not found, checking shard specific offsets from replica_set connection mode.");
-        var discovery = new ReplicaSetDiscovery(taskContext);
-        var replicaSetSpecs = new HashSet<ReplicaSet>();
-
-        try (var client = taskContext.getConnectionContext().connect()) {
-            discovery.readReplicaSetsFromShardedCluster(replicaSetSpecs, client);
-        }
-        catch (Throwable t) {
-            logger.warn("Unable to read shard topology.");
-            return;
-        }
-
-        var replicaSets = new ReplicaSets(replicaSetSpecs);
-        var loader = new MongoDbOffsetContext.Loader(connectorConfig, replicaSets);
-        Collection<Map<String, String>> partitions = loader.getPartitions();
-        Map<Map<String, String>, Map<String, Object>> offsets = context.offsetStorageReader().offsets(partitions);
-
-        if (offsets != null && offsets.values().stream().anyMatch(Objects::nonNull)) {
-            logger.warn("Found at least one shard specific offset from previous run");
-            if (connectorConfig.isOffsetInvalidationAllowed()) {
-                logger.warn("Offset invalidation is allowed, previous shard specific offsets will be ignored and snapshot re-executed");
-                return;
-            }
-
-            throw new DebeziumException("Found at least one shard specific offset from previous run." +
-                    "The default connection mode for sharded has changed to 'sharded' and previous offsets would be invalidated." +
-                    "Either explicitly set '" + MongoDbConnectorConfig.CONNECTION_MODE.name() + "=replica_set' to postpone the migration " +
-                    "or set '" + MongoDbConnectorConfig.ALLOW_OFFSET_INVALIDATION.name() + "=true' to re-execute snapshot and reset offsets. " +
-                    "In next release the 'replica_set' connection mode will be removed.");
-        }
-    }
-
-    private ReplicaSets getReplicaSets(MongoDbConnectorConfig connectorConfig) {
-        final ReplicaSets replicaSets = connectorConfig.getReplicaSets();
-        if (replicaSets.size() == 0) {
-            throw new DebeziumException("Unable to start MongoDB connector task since no replica sets were found");
-        }
-        return replicaSets;
-    }
-
     @Override
     protected Configuration withMaskedSensitiveOptions(Configuration config) {
         return super.withMaskedSensitiveOptions(config).withMasked(MongoDbConnectorConfig.CONNECTION_STRING.name());
+    }
+
+    private void validate(MongoDbConnectorConfig connectorConfig, MongoDbConnection mongoDbConnection, Offsets<MongoDbPartition, MongoDbOffsetContext> previousOffsets,
+                          Snapshotter snapshotter) {
+
+        for (Map.Entry<MongoDbPartition, MongoDbOffsetContext> previousOffset : previousOffsets) {
+
+            MongoDbOffsetContext offset = previousOffset.getValue();
+
+            if (offset == null) {
+                LOGGER.info("Connector started for the first time.");
+                LOGGER.info("No previous offset has been found");
+                return;
+            }
+
+            if (offset.isInitialSnapshotRunning()) {
+                // The last offset was an incomplete snapshot and now the snapshot was disabled
+                if (!snapshotter.shouldSnapshotData(true, true)) {
+                    // No snapshots are allowed
+                    throw new DebeziumException("The connector previously stopped while taking a snapshot, but now the connector is configured "
+                            + "to never allow snapshots. Reconfigure the connector to use snapshots initially or when needed.");
+                }
+                LOGGER.info("The previous snapshot was incomplete, so restarting the snapshot");
+
+                return;
+            }
+
+            if (connectorConfig.isLogPositionCheckEnabled()) {
+                boolean logPositionAvailable = mongoDbConnection.validateLogPosition(offset, taskContext);
+
+                if (!logPositionAvailable) {
+                    LOGGER.warn("Last recorded offset is no longer available on the server.");
+
+                    if (snapshotter.shouldSnapshotOnDataError()) {
+
+                        LOGGER.info("The last recorded offset is no longer available but we are in {} snapshot mode. " +
+                                "Attempting to snapshot data to fill the gap.",
+                                snapshotter.name());
+
+                        previousOffsets.resetOffset(previousOffsets.getTheOnlyPartition());
+
+                        return;
+                    }
+
+                    LOGGER.warn("The connector is trying to read change stream starting at " + offset + ", but this is no longer "
+                            + "available on the server. Reconfigure the connector to use a snapshot when needed if you want to recover. " +
+                            "If not the connector will streaming from the last available position in the log");
+                }
+            }
+        }
     }
 }

@@ -2,7 +2,7 @@ With earlier versions of {kafka-streams}, to deploy {ProductName} connectors on 
 The current preferred method for deploying connectors on OpenShift is to use a build configuration in {kafka-streams} to automatically build a Kafka Connect container image that includes the {prodname} connector plug-ins that you want to use.
 
 During the build process, the {kafka-streams} Operator transforms input parameters in a `KafkaConnect` custom resource, including {prodname} connector definitions, into a Kafka Connect container image.
-The build downloads the necessary artifacts from the Red Hat Maven repository or another configured HTTP server.
+The build downloads the necessary artifacts from the Red Hat Maven repository or from another configured HTTP server.
 
 The newly created container is pushed to the container registry that is specified in `.spec.build.output`, and is used to deploy a Kafka Connect cluster.
 After {StreamsName} builds the Kafka Connect image, you create `KafkaConnector` custom resources to start the connectors that are included in the build.
@@ -10,8 +10,8 @@ After {StreamsName} builds the Kafka Connect image, you create `KafkaConnector` 
 .Prerequisites
 * You have access to an OpenShift cluster on which the cluster Operator is installed.
 * The {StreamsName} Operator is running.
-* An Apache Kafka cluster is deployed as documented in link:{LinkDeployStreamsOpenShift}#kafka-cluster-str[{NameDeployStreamsOpenShift}].
-* link:{LinkDeployStreamsOpenShift}#kafka-connect-str[Kafka Connect is deployed on {kafka-streams}]
+* An Apache Kafka cluster is deployed as documented in link:{LinkDeployManageStreamsOpenShift}#kafka-cluster-str[{NameDeployManageStreamsOpenShift}].
+* link:{LinkDeployManageStreamsOpenShift}#kafka-connect-str[Kafka Connect is deployed on {kafka-streams}]
 * You have a {prodnamefull} license.
 * The link:https://access.redhat.com/documentation/en-us/openshift_container_platform/{ocp-latest-version}/html-single/cli_tools/index#installing-openshift-cli[OpenShift `oc` CLI] client is installed or you have access to the OpenShift Container Platform web console.
 * Depending on how you intend to store the Kafka Connect build image, you need registry permissions or you must create an ImageStream resource:
@@ -106,7 +106,7 @@ oc create -n __<namespace>__ -f __<kafkaConnector>__.yaml
 +
 For example,
 +
-[source,shell,options="nowrap"]
+[source,shell,options="nowrap",subs="+attributes,+quotes"]
 ----
 oc create -n debezium -f {context}-inventory-connector.yaml
 ----

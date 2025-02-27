@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.errors.DataException;
@@ -19,6 +20,7 @@ import org.apache.kafka.connect.storage.HeaderConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.Module;
 import io.debezium.config.Configuration;
 import io.debezium.config.Instantiator;
 
@@ -31,7 +33,7 @@ import io.debezium.config.Instantiator;
  *
  * @author Nathan Bradshaw
  */
-public class ByteArrayConverter implements Converter, HeaderConverter {
+public class ByteArrayConverter implements Converter, HeaderConverter, Versioned {
     private static final Logger LOGGER = LoggerFactory.getLogger(ByteArrayConverter.class);
     private static final ConfigDef CONFIG_DEF;
 
@@ -97,6 +99,11 @@ public class ByteArrayConverter implements Converter, HeaderConverter {
     @Override
     public void close() throws IOException {
 
+    }
+
+    @Override
+    public String version() {
+        return Module.version();
     }
 
     private void assertDelegateProvided(String name, Object type) {

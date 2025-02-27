@@ -158,4 +158,18 @@ public abstract class MongoTests extends ConnectorTest {
         awaitAssert(() -> assertions.assertMinimalRecordsCount(topic, 7));
         awaitAssert(() -> assertions.assertRecordsContain(topic, "nibbles@test.com"));
     }
+
+    @Test
+    @Order(90)
+    public void shouldExtractNewRecordState(MongoDatabaseController dbController) throws Exception {
+        connectController.undeployConnector(connectorConfig.getConnectorName());
+        connectorConfig = connectorConfig.addMongoUnwrapSMT();
+        connectController.deployConnector(connectorConfig);
+
+        insertCustomer(dbController, "Eaton", "Beaver", "ebeaver@test.com");
+
+        String topic = connectorConfig.getDbServerName() + ".inventory.customers";
+        awaitAssert(() -> assertions.assertMinimalRecordsCount(topic, 8));
+        awaitAssert(() -> assertions.assertDocumentIsUnwrapped(topic, 1));
+    }
 }

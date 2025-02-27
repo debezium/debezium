@@ -19,6 +19,7 @@ import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
@@ -33,11 +34,12 @@ public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFacto
     private final Clock clock;
     private final SqlServerDatabaseSchema schema;
     private final NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService;
+    private final SnapshotterService snapshotterService;
 
     public SqlServerChangeEventSourceFactory(SqlServerConnectorConfig configuration, MainConnectionProvidingConnectionFactory<SqlServerConnection> connectionFactory,
                                              SqlServerConnection metadataConnection, ErrorHandler errorHandler, EventDispatcher<SqlServerPartition, TableId> dispatcher,
                                              Clock clock, SqlServerDatabaseSchema schema,
-                                             NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService) {
+                                             NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService, SnapshotterService snapshotterService) {
         this.configuration = configuration;
         this.connectionFactory = connectionFactory;
         this.metadataConnection = metadataConnection;
@@ -46,12 +48,14 @@ public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFacto
         this.clock = clock;
         this.schema = schema;
         this.notificationService = notificationService;
+        this.snapshotterService = snapshotterService;
     }
 
     @Override
     public SnapshotChangeEventSource<SqlServerPartition, SqlServerOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<SqlServerPartition> snapshotProgressListener,
                                                                                                               NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService) {
-        return new SqlServerSnapshotChangeEventSource(configuration, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService);
+        return new SqlServerSnapshotChangeEventSource(configuration, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService,
+                snapshotterService);
     }
 
     @Override
@@ -64,7 +68,8 @@ public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFacto
                 errorHandler,
                 clock,
                 schema,
-                notificationService);
+                notificationService,
+                snapshotterService);
     }
 
     @Override

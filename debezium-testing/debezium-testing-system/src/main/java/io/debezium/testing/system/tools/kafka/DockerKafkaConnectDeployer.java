@@ -36,7 +36,7 @@ public class DockerKafkaConnectDeployer
         }
 
         public Builder withKafka(DockerKafkaController kafka) {
-            container.withKafka(kafka.getContainer());
+            container.withKafka(kafka.getKafkaContainer());
             return self();
         }
 

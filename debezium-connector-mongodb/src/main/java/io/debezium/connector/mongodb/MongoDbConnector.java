@@ -9,9 +9,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
@@ -20,70 +17,30 @@ import org.apache.kafka.connect.connector.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.mongodb.ConnectionString;
 import com.mongodb.MongoException;
 import com.mongodb.client.MongoClient;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.BaseSourceConnector;
-import io.debezium.connector.mongodb.connection.ConnectionContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
-import io.debezium.connector.mongodb.connection.ReplicaSet;
-import io.debezium.util.Clock;
-import io.debezium.util.LoggingContext.PreviousContext;
-import io.debezium.util.Threads;
+import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
+import io.debezium.connector.mongodb.connection.MongoDbConnections;
 
 /**
- * A Kafka Connect source connector that creates {@link MongoDbConnectorTask tasks} that replicate the context of one or more
- * MongoDB replica sets.
- *
- * <h2>Sharded Clusters</h2>
- * This connector is able to fully replicate the content of one <a href="https://docs.mongodb.com/manual/sharding/">sharded
- * MongoDB 3.2 cluster</a>. In this case, simply configure the connector with the host addresses of the configuration replica set.
- * When the connector starts, it will discover and replicate the replica set for each shard.
- *
- * <h2>Replica Set</h2>
- * The connector is able to fully replicate the content of one <a href="https://docs.mongodb.com/manual/replication/">MongoDB
- * 3.2 replica set</a>. (Older MongoDB servers may be work but have not been tested.) In this case, simply configure the connector
- * with the host addresses of the replica set. When the connector starts, it will discover the primary node and use it to
- * replicate the contents of the replica set.
- * <p>
- *
- * <h2>Parallel Replication</h2>
- * The connector will concurrently and independently replicate each of the replica sets. When the connector is asked to
- * {@link #taskConfigs(int) allocate tasks}, it will attempt to allocate a separate task for each replica set. However, if the
- * maximum number of tasks exceeds the number of replica sets, then some tasks may replicate multiple replica sets. Note that
- * each task will use a separate thread to replicate each of its assigned replica sets.
- *
- * <h2>Initial Sync and Reading the Oplog</h2>
- * When a connector begins to replicate a sharded cluster or replica set for the first time, it will perform an <em>initial
- * sync</em> of the collections in the replica set by generating source records for each document in each collection. Only when
- * this initial sync completes successfully will the replication then use the replica set's primary node to read the oplog and
- * produce source records for each oplog event. The replication process records the position of each oplog event as an
- * <em>offset</em>, so that upon restart the replication process can use the last recorded offset to determine where in the
- * oplog it is to begin reading and processing events.
- *
- * <h2>Use of Topics</h2>
- * The connector will write to a separate topic all of the source records that correspond to a single collection. The topic will
- * be named "{@code <logicalName>.<databaseName>.<collectionName>}", where {@code <logicalName>} is set via the
- * "{@link io.debezium.config.CommonConnectorConfig.TOPIC_PREFIX topic.prefix}" configuration property.
- *
+ * A Kafka Connect source connector that creates tasks that read the MongoDB change stream and generate the corresponding
+ * data change events.
  * <h2>Configuration</h2>
  * <p>
- * This connector is configured with the set of properties described in {@link MongoDbConnectorConfig}.
- *
- * @author Randall Hauch
+ * This connector is configured with the set of properties described in {@link io.debezium.connector.mongodb.MongoDbConnectorConfig}.
  */
 public class MongoDbConnector extends BaseSourceConnector {
 
-    private final Logger logger = LoggerFactory.getLogger(getClass());
+    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbConnector.class);
+    public static final String DEPRECATED_SHARD_CS_PARAMS_FILED = "mongodb.connection.string.shard.params";
+    public static final String DEPRECATED_CONNECTION_MODE_FILED = "mongodb.connection.mode";
 
     private Configuration config;
-    private ReplicaSetMonitorThread monitorThread;
-    private MongoDbTaskContext taskContext;
-    private ConnectionContext connectionContext;
-    private ExecutorService replicaSetMonitorExecutor;
 
     public MongoDbConnector() {
     }
@@ -103,97 +60,30 @@ public class MongoDbConnector extends BaseSourceConnector {
         // Validate the configuration ...
         final Configuration config = Configuration.from(props);
 
-        if (!config.validateAndRecord(MongoDbConnectorConfig.ALL_FIELDS, logger::error)) {
+        if (!config.validateAndRecord(MongoDbConnectorConfig.ALL_FIELDS, LOGGER::error)) {
             throw new DebeziumException("Error configuring an instance of " + getClass().getSimpleName() + "; check the logs for details");
         }
         this.config = config;
-
-        // Set up the replication context ...
-        taskContext = new MongoDbTaskContext(config);
-        this.connectionContext = taskContext.getConnectionContext();
-
-        PreviousContext previousLogContext = taskContext.configureLoggingContext("conn");
-        try {
-            logger.info("Starting MongoDB connector and discovering replica set(s) at {}", connectionContext.maskedConnectionSeed());
-
-            // Set up and start the thread that monitors the members of all of the replica sets ...
-            replicaSetMonitorExecutor = Threads.newSingleThreadExecutor(MongoDbConnector.class, taskContext.serverName(), "replica-set-monitor");
-            ReplicaSetDiscovery monitor = new ReplicaSetDiscovery(taskContext);
-            monitorThread = new ReplicaSetMonitorThread(connectionContext, monitor::getReplicaSets, connectionContext.pollInterval(),
-                    Clock.SYSTEM, () -> taskContext.configureLoggingContext("disc"), this::replicaSetsChanged);
-            replicaSetMonitorExecutor.execute(monitorThread);
-            logger.info("Successfully started MongoDB connector, and continuing to discover changes in replica set(s) at {}", connectionContext.maskedConnectionSeed());
-        }
-        finally {
-            previousLogContext.restore();
-        }
-    }
-
-    protected void replicaSetsChanged(ReplicaSets replicaSets) {
-        if (logger.isInfoEnabled()) {
-            logger.info("Requesting task reconfiguration due to new/removed replica set(s) for MongoDB with seeds {}", connectionContext.maskedConnectionSeed());
-            logger.info("New replica sets include:");
-            replicaSets.onEachReplicaSet(replicaSet -> logger.info("  {}", replicaSet));
-        }
-        context.requestTaskReconfiguration();
+        LOGGER.info("Successfully started MongoDB connector");
     }
 
     @Override
     public List<Map<String, String>> taskConfigs(int maxTasks) {
-        PreviousContext previousLogContext = taskContext.configureLoggingContext("conn");
-        try {
-            if (config == null) {
-                logger.error("Configuring a maximum of {} tasks with no connector configuration available", maxTasks);
-                return Collections.emptyList();
-            }
-
-            // Partitioning the replica sets amongst the number of tasks ...
-            List<Map<String, String>> taskConfigs = new ArrayList<>(maxTasks);
-            ReplicaSets replicaSets = monitorThread.getReplicaSets(10, TimeUnit.SECONDS);
-            if (replicaSets != null) {
-                logger.info("Subdividing {} MongoDB replica set(s) into at most {} task(s)",
-                        replicaSets.size(), maxTasks);
-                replicaSets.subdivide(maxTasks, replicaSetsForTask -> {
-                    // Create the configuration for each task ...
-                    int taskId = taskConfigs.size();
-                    String rsConnectionStrings = replicaSetsForTask.all().stream()
-                            .map(ReplicaSet::connectionString)
-                            .map(ConnectionString::toString)
-                            .collect(Collectors.joining(ReplicaSets.SEPARATOR));
-                    logger.info("Configuring MongoDB connector task {} to capture events for connections to: {}", taskId, rsConnectionStrings);
-                    taskConfigs.add(config.edit()
-                            .with(MongoDbConnectorConfig.TASK_CONNECTION_STRINGS, rsConnectionStrings)
-                            .with(MongoDbConnectorConfig.TASK_ID, taskId)
-                            .build()
-                            .asMap());
-                });
-            }
-            logger.debug("Configuring {} MongoDB connector task(s)", taskConfigs.size());
-            return taskConfigs;
+        if (config == null) {
+            LOGGER.error("Configuring a maximum of {} tasks with no connector configuration available", maxTasks);
+            return Collections.emptyList();
         }
-        finally {
-            previousLogContext.restore();
-        }
+        LOGGER.debug("Configuring MongoDB connector task");
+        return List.of(config.asMap());
     }
 
     @Override
     public void stop() {
-        PreviousContext previousLogContext = taskContext != null ? taskContext.configureLoggingContext("conn") : null;
-        try {
-            logger.info("Stopping MongoDB connector");
-            this.config = null;
-            // Clear interrupt flag so the graceful termination is always attempted.
-            Thread.interrupted();
-            if (replicaSetMonitorExecutor != null) {
-                replicaSetMonitorExecutor.shutdownNow();
-            }
-            logger.info("Stopped MongoDB connector");
-        }
-        finally {
-            if (previousLogContext != null) {
-                previousLogContext.restore();
-            }
-        }
+        LOGGER.info("Stopping MongoDB connector");
+        this.config = null;
+        // Clear interrupt flag so the graceful termination is always attempted.
+        Thread.interrupted();
+        LOGGER.info("Stopped MongoDB connector");
     }
 
     @Override
@@ -205,51 +95,66 @@ public class MongoDbConnector extends BaseSourceConnector {
     public Config validate(Map<String, String> connectorConfigs) {
         final Configuration config = Configuration.from(connectorConfigs);
 
-        // First, validate all of the individual fields, which is easy since don't make any of the fields invisible ...
-        Map<String, ConfigValue> results = validateAllFields(config);
+        // Validate all fields and get connection string validation result
+        Map<String, ConfigValue> validation = validateAllFields(config);
+        ConfigValue csValidation = validation.get(MongoDbConnectorConfig.CONNECTION_STRING.name());
 
-        // Get the config values for each of the connection-related fields ...
-        ConfigValue connectionStringValue = results.get(MongoDbConnectorConfig.CONNECTION_STRING.name());
-        ConfigValue userValue = results.get(MongoDbConnectorConfig.USER.name());
-        ConfigValue passwordValue = results.get(MongoDbConnectorConfig.PASSWORD.name());
+        // Validate connection when connection string is otherwise valid
+        if (csValidation.errorMessages().isEmpty()) {
+            validateConnection(config, csValidation);
+        }
+        return new Config(new ArrayList<>(validation.values()));
+    }
 
-        // If there are no errors on any of these ...
-        if (userValue.errorMessages().isEmpty()
-                && passwordValue.errorMessages().isEmpty()
-                && connectionStringValue.errorMessages().isEmpty()) {
-            // Try to connect to the database ...
-            ConnectionContext connContext = new ConnectionContext(config);
-            try (MongoClient client = connContext.connect()) {
+    public void validateConnection(Configuration config, ConfigValue connectionStringValidation) {
+        // Shard specific parameters shouldn't be set after RS connection mode removal
+        if (config.hasKey(DEPRECATED_SHARD_CS_PARAMS_FILED)) {
+            LOGGER.warn("Field '{}' is deprecated. Use only '{}' to set connection parameters", DEPRECATED_SHARD_CS_PARAMS_FILED,
+                    MongoDbConnectorConfig.CONNECTION_STRING.name());
+            connectionStringValidation.addErrorMessage("Deprecated field '" + DEPRECATED_SHARD_CS_PARAMS_FILED + "' is used");
+        }
+
+        // RS connection mode should not be used
+        var mode = config.getString(DEPRECATED_CONNECTION_MODE_FILED);
+        if (mode != null && mode.equals("replica_set")) {
+            LOGGER.warn("Field '{}' is deprecated. Sharded mode is now used implicitly, please remove it. ", DEPRECATED_CONNECTION_MODE_FILED);
+            connectionStringValidation.addErrorMessage("Deprecated field '" + DEPRECATED_CONNECTION_MODE_FILED + "' is used set to removed 'replica_set' value");
+        }
+
+        MongoDbConnectionContext connectionContext = new MongoDbConnectionContext(config);
+
+        try {
+            // Check base connection by accessing first database name
+            try (MongoClient client = connectionContext.getMongoClient()) {
                 client.listDatabaseNames().first(); // only when we try to fetch results a connection gets established
             }
-            catch (MongoException e) {
-                connectionStringValue.addErrorMessage("Unable to connect: " + e.getMessage());
+
+            // For RS clusters check that replica set name is present
+            // Java driver is smart enough to work without it but the specs says it should be set
+            if (!connectionContext.hasReplicaSetNameIfRequired()) {
+                var type = connectionContext.getClusterType();
+                LOGGER.warn("Replica set not specified in connection string for {} cluster.", type);
+                connectionStringValidation.addErrorMessage("Replica set not specified in connection string for " + type + " cluster.");
             }
         }
-        return new Config(new ArrayList<>(results.values()));
+        catch (MongoException e) {
+            connectionStringValidation.addErrorMessage("Unable to connect: " + e.getMessage());
+        }
     }
 
     @Override
     protected Map<String, ConfigValue> validateAllFields(Configuration config) {
-        return config.validate(MongoDbConnectorConfig.EXPOSED_FIELDS);
+        return config.validate(MongoDbConnectorConfig.ALL_FIELDS);
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public List<CollectionId> getMatchingCollections(Configuration config) {
-        try (MongoDbConnection connection = getConnection(config)) {
+        try (MongoDbConnection connection = MongoDbConnections.create(config)) {
             return connection.collections();
         }
         catch (InterruptedException e) {
             throw new DebeziumException(e);
         }
-    }
-
-    private MongoDbConnection getConnection(Configuration config) {
-        MongoDbTaskContext context = new MongoDbTaskContext(config);
-        ReplicaSet replicaSet = new ReplicaSet(context.getConnectionContext().connectionString());
-        return context.getConnectionContext().connect(replicaSet, context.filters(), (s, throwable) -> {
-            throw new DebeziumException(s, throwable);
-        });
     }
 }

@@ -12,15 +12,14 @@ import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.common.BaseSourceConnector;
-import io.debezium.rest.model.DataCollection;
+import io.debezium.metadata.CollectionId;
 import io.debezium.rest.model.FilterValidationResults;
 
-public interface FilterValidationResource<T extends BaseSourceConnector> {
-
-    T getConnector();
+public interface FilterValidationResource extends ConnectorAware {
 
     String VALIDATE_FILTERS_ENDPOINT = "/validate/filters";
+
+    List<CollectionId> getMatchingCollections(Configuration configuration);
 
     @PUT
     @Path(VALIDATE_FILTERS_ENDPOINT)
@@ -34,5 +33,4 @@ public interface FilterValidationResource<T extends BaseSourceConnector> {
         return validationResults;
     }
 
-    List<DataCollection> getMatchingCollections(Configuration configuration);
 }

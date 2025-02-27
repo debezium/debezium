@@ -144,4 +144,18 @@ public abstract class OracleTests extends ConnectorTest {
         awaitAssert(() -> assertions.assertMinimalRecordsCount(topic, 7));
         awaitAssert(() -> assertions.assertRecordsContain(topic, "nibbles@test.com"));
     }
+
+    @Test
+    @Order(90)
+    public void shouldExtractNewRecordState(SqlDatabaseController dbController) throws Exception {
+        connectController.undeployConnector(connectorConfig.getConnectorName());
+        connectorConfig = connectorConfig.addJdbcUnwrapSMT();
+        connectController.deployConnector(connectorConfig);
+
+        insertCustomer(dbController, "Eaton", "Beaver", "ebeaver@test.com");
+
+        String topic = connectorConfig.getDbServerName() + ".DEBEZIUM.CUSTOMERS";
+        awaitAssert(() -> assertions.assertMinimalRecordsCount(topic, 8));
+        awaitAssert(() -> assertions.assertRecordIsUnwrapped(topic, 1));
+    }
 }

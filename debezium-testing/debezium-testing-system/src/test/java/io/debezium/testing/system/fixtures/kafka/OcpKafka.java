@@ -18,6 +18,7 @@ import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.YAML;
 import io.debezium.testing.system.tools.artifacts.OcpArtifactServerController;
 import io.debezium.testing.system.tools.artifacts.OcpArtifactServerDeployer;
+import io.debezium.testing.system.tools.databases.mongodb.sharded.OcpMongoCertGenerator;
 import io.debezium.testing.system.tools.kafka.KafkaConnectController;
 import io.debezium.testing.system.tools.kafka.KafkaController;
 import io.debezium.testing.system.tools.kafka.OcpKafkaConnectController;
@@ -99,6 +100,10 @@ public class OcpKafka extends TestFixture {
                 .withConnectorResources(STRIMZI_OPERATOR_CONNECTORS)
                 .withBuild(artifactServerController)
                 .withPullSecret(operatorController.getPullSecret());
+        if (ConfigProperties.DATABASE_MONGO_USE_TLS) {
+            OcpMongoCertGenerator.generateMongoTestCerts(ocp);
+            builder.withMongoCerts();
+        }
 
         OcpKafkaConnectDeployer connectDeployer = new OcpKafkaConnectDeployer(
                 project, builder, configMap, operatorController, ocp, new OkHttpClient());

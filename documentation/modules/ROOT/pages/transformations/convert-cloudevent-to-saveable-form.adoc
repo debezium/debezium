@@ -55,7 +55,7 @@ The following example shows the value of a record before and after the transform
 ====
 Value before the SMT processes the record::
 +
-[source]
+[source,json]
 ----
 {
 	"id": "624e6565-99ee-4fdb-9228-653138c3a7b3",
@@ -74,7 +74,7 @@ Value before the SMT processes the record::
 
 Value after the SMT processes the record::
 +
-[source, json]
+[source,json]
 ----
 {
 	"id": "624e6565-99ee-4fdb-9228-653138c3a7b3",
@@ -115,4 +115,10 @@ The following table lists the configuration options that you can use with the `C
 |No default value
 |`json` or `avro`
 |high
+|[[cloudevent-to-saveable-form-schema-cloudevents-name]]<<cloudevent-to-saveable-form-schema-cloudevents-name, `schema.cloudevents.name`>>
+|CloudEvents schema name under which the schema is registered in a Schema Registry.
+|string
+|No default value
+|
+|low
 |===

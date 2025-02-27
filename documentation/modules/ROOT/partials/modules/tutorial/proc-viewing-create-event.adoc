@@ -34,7 +34,7 @@ In this case, this contains the row's primary key.
 If you use Podman, run the following command:
 [source,shell,options="nowrap",subs="+attributes"]
 ----
-$ sudo podman run -it --rm --name watcher --pod dbz quay.io/debezium/kafka:{debezium-docker-label} watch-topic -a -k dbserver1.inventory.customers
+$ podman run -it --rm --name watcher --pod dbz quay.io/debezium/kafka:{debezium-docker-label} watch-topic -a -k dbserver1.inventory.customers
 ----
 ====
 
@@ -272,6 +272,16 @@ Here are the details of the _value_ of the last event (formatted for readability
         "type": "int64",
         "optional": true,
         "field": "ts_ms"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_us"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_ns"
       }
     ],
     "optional": false,
@@ -301,7 +311,9 @@ Here are the details of the _value_ of the last event (formatted for readability
       "table": "customers"
     },
     "op": "r",
-    "ts_ms": 1486500577691
+    "ts_ms": 1486500577691,
+    "ts_us": 1486500577691547,
+    "ts_ns": 1486500577691547930
   }
 }
 ----

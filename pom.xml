@@ -10,7 +10,7 @@
 
     <groupId>io.debezium</groupId>
     <artifactId>debezium-build-parent</artifactId>
-    <version>2.5.0.Final</version>
+    <version>3.1.0-SNAPSHOT</version>
     <name>Debezium Build Aggregator</name>
     <description>Debezium is an open source change data capture platform</description>
     <packaging>pom</packaging>
@@ -20,12 +20,12 @@
         <connection>scm:git:git@github.com:debezium/debezium.git</connection>
         <developerConnection>scm:git:git@github.com:debezium/debezium.git</developerConnection>
         <url>https://github.com/debezium/debezium</url>
-        <tag>v2.5.0.Final</tag>
+        <tag>HEAD</tag>
     </scm>
 
     <issueManagement>
         <system>jira</system>
-        <url>http://issues.jboss.org/browse/DBZ</url>
+        <url>https://issues.redhat.com/browse/DBZ</url>
     </issueManagement>
 
     <licenses>
@@ -55,19 +55,32 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <maven.compiler.release>11</maven.compiler.release>
-        <maven.compiler.testRelease>11</maven.compiler.testRelease>
+        <!-- Required Java versions -->
+        <debezium.java.source>21</debezium.java.source>
+
+        <!-- Java version used for connectors and core libraries -->
+        <debezium.java.connector.target>17</debezium.java.connector.target>
+
+        <!-- Java version used for Debezium spcific components - Server, Operator, Outbox -->
+        <debezium.java.specific.target>21</debezium.java.specific.target>
+
+
+        <maven.compiler.source>${debezium.java.source}</maven.compiler.source>
+        <maven.compiler.target>${debezium.java.connector.target}</maven.compiler.target>
+
+        <maven.compiler.release>${debezium.java.connector.target}</maven.compiler.release>
+        <maven.compiler.testRelease>${debezium.java.connector.target}</maven.compiler.testRelease>
 
         <!-- Enforce JDK 11 for building (handled via JBoss parent POM)-->
-        <jdk.min.version>11</jdk.min.version>
+        <jdk.min.version>${debezium.java.source}</jdk.min.version>
 
         <!-- Maven Plugins -->
-        <version.compiler.plugin>3.8.1</version.compiler.plugin>
+        <version.compiler.plugin>3.13.0</version.compiler.plugin>
         <version.resources.plugin>3.1.0</version.resources.plugin>
         <version.dependency.plugin>3.1.1</version.dependency.plugin>
         <version.enforcer.plugin>3.0.0-M2</version.enforcer.plugin>
 
-        <version.maven>3.8.4</version.maven>
+        <version.maven>3.9.8</version.maven>
         <version.jar.plugin>3.0.2</version.jar.plugin>
         <version.source.plugin>3.1.0</version.source.plugin>
         <version.assembly.plugin>3.1.1</version.assembly.plugin>
@@ -81,7 +94,7 @@
         <version.surefire.plugin>3.1.2</version.surefire.plugin>
         <version.checkstyle.plugin>3.1.1</version.checkstyle.plugin>
         <version.release.plugin>2.5.3</version.release.plugin>
-        <version.impsort>1.8.0</version.impsort>
+        <version.impsort>1.12.0</version.impsort>
         <version.failsafe.plugin>${version.surefire.plugin}</version.failsafe.plugin>
         <version.checkstyle>10.1</version.checkstyle>
         <version.revapi.plugin>0.11.5</version.revapi.plugin>
@@ -93,13 +106,14 @@
         <release.endpoint>https://s01.oss.sonatype.org/</release.endpoint>
 
         <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
-        <version.kafka>3.6.1</version.kafka>
-        <version.zookeeper>3.8.3</version.zookeeper>
+        <version.kafka>3.9.0</version.kafka>
+        <version.zookeeper>3.8.4</version.zookeeper>
         <!-- NOTE: These two versions are maintained separately due to decoupling jackson and databind for downstream -->
-        <version.jackson>2.13.5</version.jackson>
-        <version.jackson.databind>2.13.5</version.jackson.databind>
+        <version.jackson>2.16.2</version.jackson>
+        <version.jackson.databind>2.16.2</version.jackson.databind>
         <version.org.slf4j>1.7.36</version.org.slf4j>
-        <version.netty>4.1.100.Final</version.netty>
+        <version.netty>4.1.115.Final</version.netty>
+        <version.zstd-jni>1.5.6-4</version.zstd-jni>
 
         <!-- Scala version used to build Kafka -->
         <version.kafka.scala>2.13</version.kafka.scala>
@@ -111,28 +125,31 @@
 
         <!-- Quarkus -->
         <!-- Version used for Outbox extension development, changes frequently to align with latest Quarkus -->
-        <quarkus.version.extension>3.5.3</quarkus.version.extension>
+        <quarkus.version.extension>3.17.7</quarkus.version.extension>
 
         <!-- Version used in Debezium Server, Operator, etc., usually a LTS version -->
         <!-- Must be aligned with Apicurio version below -->
         <!-- Debezium Server Pravega must use the same Netty version as the one used by Quarkus -->
-        <quarkus.version.runtime>3.2.3.Final</quarkus.version.runtime>
+        <quarkus.version.runtime>3.15.3</quarkus.version.runtime>
 
         <!-- Apicurio -->
-        <version.apicurio>2.4.3.Final</version.apicurio>
+        <version.apicurio>2.6.2.Final</version.apicurio>
 
         <!-- Database drivers, should align with databases -->
-        <version.postgresql.driver>42.6.0</version.postgresql.driver>
-        <version.mysql.driver>8.0.33</version.mysql.driver>
-        <version.mysql.binlog>0.29.0</version.mysql.binlog>
-        <version.mongo.driver>4.11.0</version.mongo.driver>
+        <version.postgresql.driver>42.6.1</version.postgresql.driver>
+        <version.mysql.driver>9.1.0</version.mysql.driver>
+        <version.mysql.binlog>0.40.2</version.mysql.binlog>
+        <version.mongo.driver>5.2.0</version.mongo.driver>
         <version.sqlserver.driver>12.4.2.jre8</version.sqlserver.driver>
-        <version.oracle.driver>21.6.0.0</version.oracle.driver>
         <version.db2.driver>11.5.0.0</version.db2.driver>
         <version.informix.changestream.client>1.1.3</version.informix.changestream.client>
-        <version.informix.driver>4.50.10</version.informix.driver>
+        <version.informix.driver>4.50.11</version.informix.driver>
         <version.cassandra.driver>4.14.0</version.cassandra.driver>
-        <version.mariadb.driver>3.2.0</version.mariadb.driver>
+        <version.mariadb.driver>3.5.0</version.mariadb.driver>
+        <!-- These two should be aligned by major versions but minor could vary -->
+        <!-- Oracle publishes the driver versions more frequently than the instant client -->
+        <version.oracle.driver>21.15.0.0</version.oracle.driver>
+        <version.oracle.instantclient>21.15.0.0</version.oracle.instantclient>
 
         <!-- Databases, should align with database drivers -->
         <version.mysql.server>8.2</version.mysql.server>
@@ -140,21 +157,24 @@
         <version.mongo.server>6.0</version.mongo.server>
         <version.cassandra3>3.11.12</version.cassandra3>
         <version.cassandra4>4.0.2</version.cassandra4>
+        <version.cassandra5>5.0.2</version.cassandra5>
 
         <!-- Required in protoc plug-in config, too; can't be in BOM therefore -->
-        <version.com.google.protobuf>3.25.1</version.com.google.protobuf>
+        <version.com.google.protobuf>3.25.5</version.com.google.protobuf>
         <!-- The version is separate so different protoc can be used in product -->
-        <version.com.google.protobuf.protoc>3.25.1</version.com.google.protobuf.protoc>
+        <version.com.google.protobuf.protoc>3.25.5</version.com.google.protobuf.protoc>
 
         <!-- Infinispan version for Oracle and Debezium Server sink -->
-        <version.infinispan>14.0.20.Final</version.infinispan>
-        <version.infinispan.protostream>4.6.2.Final</version.infinispan.protostream>
+        <version.infinispan>15.0.8.Final</version.infinispan>
+        <version.infinispan.protostream>5.0.8.Final</version.infinispan.protostream>
+
+        <!-- EhCache Specific Versions -->
+        <version.ehcache>3.9.6</version.ehcache>
+        <!-- Must be aligned with the version.jaxb of the JAXB-API -->
+        <version.jaxb.implementation>2.3.1</version.jaxb.implementation>
 
         <!-- RocketMQ version for RocketMQ storage and Server sink -->
-        <version.rocketmq>4.9.4</version.rocketmq>
-
-        <!-- MySQL server image name -->
-        <mysql.server.image.source>container-registry.oracle.com/mysql/community-server</mysql.server.image.source>
+        <version.rocketmq>5.1.4</version.rocketmq>
     </properties>
 
     <modules>
@@ -173,6 +193,10 @@
         <module>debezium-connector-mongodb</module>
         <module>debezium-connector-sqlserver</module>
         <module>debezium-connector-oracle</module>
+        <module>debezium-connector-binlog</module>
+        <module>debezium-connector-mariadb</module>
+        <module>debezium-connector-jdbc</module>
+        <module>debezium-microbenchmark-engine</module>
         <module>debezium-microbenchmark</module>
         <module>debezium-microbenchmark-oracle</module>
         <module>debezium-quarkus-outbox-common</module>
@@ -184,6 +208,7 @@
         <module>debezium-schema-generator</module>
         <module>debezium-storage</module>
         <module>debezium-interceptor</module>
+        <module>debezium-sink</module>
     </modules>
 
     <distributionManagement>
@@ -195,7 +220,7 @@
       <snapshotRepository>
         <id>ossrh</id>
         <name>OSS Sonatype Nexus Snapshots</name>
-        <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
       </snapshotRepository>
     </distributionManagement>
 
@@ -341,7 +366,7 @@
                         <configuration>
                             <rules>
                                 <requireMavenVersion>
-                                    <version>[${version.maven},3.8.5),[3.8.6,)</version>
+                                    <version>[${version.maven},)</version>
                                 </requireMavenVersion>
                             </rules>
                         </configuration>

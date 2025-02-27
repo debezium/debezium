@@ -7,17 +7,19 @@ package io.debezium.converters.spi;
 
 import java.text.SimpleDateFormat;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.converters.recordandmetadata.RecordAndMetadata;
 import io.debezium.util.Collect;
 
 /**
  * An abstract class that builds CloudEvents attributes using fields of change records provided by
- * {@link RecordParser RecordParser}.
+ * {@link RecordAndMetadata RecordAndMetadata}.
  */
 public abstract class CloudEventsMaker {
 
@@ -59,25 +61,26 @@ public abstract class CloudEventsMaker {
     }
 
     public static final String CLOUDEVENTS_SPECVERSION = "1.0";
+    public static final String DATA_SCHEMA_NAME_PARAM = "dataSchemaName";
     public static final String CLOUDEVENTS_SCHEMA_SUFFIX = "CloudEvents.Envelope";
 
+    private final RecordAndMetadata recordAndMetadata;
     private final SerializerType dataContentType;
     private final String dataSchemaUriBase;
-    private final Schema ceDataAttributeSchema;
     private final String cloudEventsSchemaName;
-
-    protected final RecordParser recordParser;
+    private final String[] dataFields;
 
     static final Map<SerializerType, String> CONTENT_TYPE_NAME_MAP = Collect.hashMapOf(
             SerializerType.JSON, "application/json",
             SerializerType.AVRO, "application/avro");
 
-    protected CloudEventsMaker(RecordParser parser, SerializerType contentType, String dataSchemaUriBase, String cloudEventsSchemaName) {
-        this.recordParser = parser;
-        this.dataContentType = contentType;
+    protected CloudEventsMaker(RecordAndMetadata recordAndMetadata, SerializerType dataContentType, String dataSchemaUriBase,
+                               String cloudEventsSchemaName, String... dataFields) {
+        this.recordAndMetadata = recordAndMetadata;
+        this.dataContentType = dataContentType;
         this.dataSchemaUriBase = dataSchemaUriBase;
-        this.ceDataAttributeSchema = recordParser.dataSchema();
         this.cloudEventsSchemaName = cloudEventsSchemaName;
+        this.dataFields = dataFields;
     }
 
     /**
@@ -93,7 +96,7 @@ public abstract class CloudEventsMaker {
      * @return the source field of CloudEvents envelope
      */
     public String ceSource(String logicalName) {
-        return "/debezium/" + recordParser.connectorType() + "/" + logicalName;
+        return "/debezium/" + recordAndMetadata.connectorType() + "/" + logicalName;
     }
 
     /**
@@ -111,7 +114,7 @@ public abstract class CloudEventsMaker {
      * @return the type field of CloudEvents envelope
      */
     public String ceType() {
-        return "io.debezium.connector." + recordParser.connectorType() + ".DataChangeEvent";
+        return "io.debezium.connector." + recordAndMetadata.connectorType() + ".DataChangeEvent";
     }
 
     /**
@@ -140,7 +143,7 @@ public abstract class CloudEventsMaker {
      * @return the timestamp of CloudEvents envelope
      */
     public String ceTime() {
-        long time = (long) recordParser.getMetadata(AbstractSourceInfo.TIMESTAMP_KEY);
+        long time = (long) sourceField(AbstractSourceInfo.TIMESTAMP_KEY);
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
         formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
         return formatter.format(time);
@@ -152,7 +155,7 @@ public abstract class CloudEventsMaker {
      * @return the schema of the data attribute of CloudEvents
      */
     public Schema ceDataAttributeSchema() {
-        return ceDataAttributeSchema;
+        return recordAndMetadata.dataSchema(dataFields);
     }
 
     /**
@@ -161,7 +164,7 @@ public abstract class CloudEventsMaker {
      * @return the value of the data attribute of CloudEvents
      */
     public Struct ceDataAttribute() {
-        return recordParser.data();
+        return recordAndMetadata.data(dataFields);
     }
 
     /**
@@ -171,8 +174,14 @@ public abstract class CloudEventsMaker {
      */
     public String ceSchemaName() {
         return cloudEventsSchemaName != null ? cloudEventsSchemaName
-                : recordParser.getMetadata(AbstractSourceInfo.SERVER_NAME_KEY) + "."
-                        + recordParser.getMetadata(AbstractSourceInfo.DATABASE_NAME_KEY) + "."
+                : sourceField(AbstractSourceInfo.SERVER_NAME_KEY) + "."
+                        + sourceField(AbstractSourceInfo.DATABASE_NAME_KEY) + "."
                         + CLOUDEVENTS_SCHEMA_SUFFIX;
+    }
+
+    protected abstract Set<String> connectorSpecificSourceFields();
+
+    protected Object sourceField(String name) {
+        return recordAndMetadata.sourceField(name, connectorSpecificSourceFields());
     }
 }

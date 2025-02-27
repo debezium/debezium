@@ -44,7 +44,7 @@ public class OracleSignalBasedIncrementalSnapshotChangeEventSource extends Signa
     @Override
     protected String getSignalTableName(String dataCollectionId) {
         final TableId tableId = OracleTableIdParser.parse(dataCollectionId);
-        return tableId.schema() + "." + tableId.table();
+        return OracleTableIdParser.quoteIfNeeded(tableId, false, true, ((OracleConnection) jdbcConnection).getSQLKeywords());
     }
 
     @Override
@@ -75,5 +75,13 @@ public class OracleSignalBasedIncrementalSnapshotChangeEventSource extends Signa
         catch (SQLException e) {
             throw new DebeziumException("Failed to close snapshot connection", e);
         }
+    }
+
+    @Override
+    protected String getTableDDL(TableId dataCollectionId) throws SQLException {
+        this.connection.setAutoCommit(false);
+        String ddlString = this.connection.getTableMetadataDdl(dataCollectionId);
+        this.connection.setAutoCommit(true);
+        return ddlString;
     }
 }

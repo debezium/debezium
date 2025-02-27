@@ -39,7 +39,7 @@ public class OutboxEventHbmWriter {
 
         final JaxbHbmRootEntityType entityType = new JaxbHbmRootEntityType();
         entityType.setEntityName(OUTBOX_ENTITY_FULLNAME);
-        entityType.setTable(config.tableName);
+        entityType.setTable(config.tableName());
         mapping.getClazz().add(entityType);
 
         // Setup generator
@@ -55,13 +55,13 @@ public class OutboxEventHbmWriter {
         entityType.getAttributes().add(createTypeAttribute(config));
         entityType.getAttributes().add(createTimestampAttribute(config));
         entityType.getAttributes().add(createPayloadAttribute(config, outboxEventEntityBuildItem));
-        if (config.tracingEnabled) {
+        if (config.tracingEnabled()) {
             entityType.getAttributes().add(createTracingSpanAttribute(config));
         }
 
         // Additional fields
-        if (config.additionalFields.isPresent()) {
-            String[] fields = config.additionalFields.get().split(",");
+        if (config.additionalFields().isPresent()) {
+            String[] fields = config.additionalFields().get().split(",");
             for (int fieldIndex = 0; fieldIndex < fields.length; ++fieldIndex) {
                 String[] parts = fields[fieldIndex].split(":");
                 if (parts.length < 2) {
@@ -96,8 +96,8 @@ public class OutboxEventHbmWriter {
         attribute.setTypeAttribute(UUID.class.getName());
 
         final JaxbHbmColumnType column = new JaxbHbmColumnType();
-        column.setName(config.id.name);
-        config.id.columnDefinition.ifPresent(column::setSqlType);
+        column.setName(config.id().name());
+        config.id().columnDefinition().ifPresent(column::setSqlType);
         attribute.getColumn().add(column);
 
         final JaxbHbmGeneratorSpecificationType generator = new JaxbHbmGeneratorSpecificationType();
@@ -111,16 +111,16 @@ public class OutboxEventHbmWriter {
         final JaxbHbmBasicAttributeType attribute = new JaxbHbmBasicAttributeType();
         attribute.setName("aggregateType");
         attribute.setNotNull(true);
-        if (config.aggregateType.converter.isPresent()) {
-            attribute.setTypeAttribute("converted::" + config.aggregateType.converter.get());
+        if (config.aggregateType().converter().isPresent()) {
+            attribute.setTypeAttribute("converted::" + config.aggregateType().converter().get());
         }
         else {
             attribute.setTypeAttribute("string");
         }
 
         final JaxbHbmColumnType column = new JaxbHbmColumnType();
-        column.setName(config.aggregateType.name);
-        config.aggregateType.columnDefinition.ifPresent(column::setSqlType);
+        column.setName(config.aggregateType().name());
+        config.aggregateType().columnDefinition().ifPresent(column::setSqlType);
         attribute.getColumnOrFormula().add(column);
 
         return attribute;
@@ -131,16 +131,16 @@ public class OutboxEventHbmWriter {
         final JaxbHbmBasicAttributeType attribute = new JaxbHbmBasicAttributeType();
         attribute.setName("aggregateId");
         attribute.setNotNull(true);
-        if (config.aggregateId.converter.isPresent()) {
-            attribute.setTypeAttribute("converted::" + config.aggregateId.converter.get());
+        if (config.aggregateId().converter().isPresent()) {
+            attribute.setTypeAttribute("converted::" + config.aggregateId().converter().get());
         }
         else {
             attribute.setTypeAttribute(outboxEventEntityBuildItem.getAggregateIdType().name().toString());
         }
 
         final JaxbHbmColumnType column = new JaxbHbmColumnType();
-        column.setName(config.aggregateId.name);
-        config.aggregateId.columnDefinition.ifPresent(column::setSqlType);
+        column.setName(config.aggregateId().name());
+        config.aggregateId().columnDefinition().ifPresent(column::setSqlType);
         attribute.getColumnOrFormula().add(column);
 
         return attribute;
@@ -150,16 +150,16 @@ public class OutboxEventHbmWriter {
         final JaxbHbmBasicAttributeType attribute = new JaxbHbmBasicAttributeType();
         attribute.setName("type");
         attribute.setNotNull(true);
-        if (config.type.converter.isPresent()) {
-            attribute.setTypeAttribute("converted::" + config.type.converter.get());
+        if (config.type().converter().isPresent()) {
+            attribute.setTypeAttribute("converted::" + config.type().converter().get());
         }
         else {
             attribute.setTypeAttribute("string");
         }
 
         final JaxbHbmColumnType column = new JaxbHbmColumnType();
-        column.setName(config.type.name);
-        config.type.columnDefinition.ifPresent(column::setSqlType);
+        column.setName(config.type().name());
+        config.type().columnDefinition().ifPresent(column::setSqlType);
         attribute.getColumnOrFormula().add(column);
 
         return attribute;
@@ -169,8 +169,8 @@ public class OutboxEventHbmWriter {
         final JaxbHbmBasicAttributeType attribute = new JaxbHbmBasicAttributeType();
         attribute.setName("timestamp");
         attribute.setNotNull(true);
-        if (config.timestamp.converter.isPresent()) {
-            attribute.setTypeAttribute("converted::" + config.timestamp.converter.get());
+        if (config.timestamp().converter().isPresent()) {
+            attribute.setTypeAttribute("converted::" + config.timestamp().converter().get());
         }
         else {
             // Hibernate 6.x expects full qualified class names for this whereas Hibernate 5.x had
@@ -179,8 +179,8 @@ public class OutboxEventHbmWriter {
         }
 
         final JaxbHbmColumnType column = new JaxbHbmColumnType();
-        column.setName(config.timestamp.name);
-        config.timestamp.columnDefinition.ifPresent(column::setSqlType);
+        column.setName(config.timestamp().name());
+        config.timestamp().columnDefinition().ifPresent(column::setSqlType);
         attribute.getColumnOrFormula().add(column);
 
         return attribute;
@@ -195,13 +195,13 @@ public class OutboxEventHbmWriter {
         attribute.setName("payload");
         attribute.setNotNull(false);
 
-        if (config.payload.type.isPresent()) {
-            LOGGER.info("Using payload type: {}", config.payload.type.get());
-            attribute.setTypeAttribute(config.payload.type.get());
+        if (config.payload().type().isPresent()) {
+            LOGGER.info("Using payload type: {}", config.payload().type().get());
+            attribute.setTypeAttribute(config.payload().type().get());
         }
-        else if (config.payload.converter.isPresent()) {
-            LOGGER.info("Using payload attribute converter: {}", config.payload.converter.get());
-            attribute.setTypeAttribute("converted::" + config.payload.converter.get());
+        else if (config.payload().converter().isPresent()) {
+            LOGGER.info("Using payload attribute converter: {}", config.payload().converter().get());
+            attribute.setTypeAttribute("converted::" + config.payload().converter().get());
         }
         else if (isJacksonJsonNode) {
             LOGGER.info("Using payload attribute converter: {}", JsonNodeAttributeConverter.class.getName());
@@ -214,10 +214,10 @@ public class OutboxEventHbmWriter {
         }
 
         final JaxbHbmColumnType column = new JaxbHbmColumnType();
-        column.setName(config.payload.name);
+        column.setName(config.payload().name());
 
-        if (config.payload.columnDefinition.isPresent()) {
-            column.setSqlType(config.payload.columnDefinition.get());
+        if (config.payload().columnDefinition().isPresent()) {
+            column.setSqlType(config.payload().columnDefinition().get());
         }
         else if (isJacksonJsonNode) {
             column.setSqlType("varchar(8000)");
@@ -235,12 +235,10 @@ public class OutboxEventHbmWriter {
         attribute.setTypeAttribute("string");
 
         final JaxbHbmColumnType column = new JaxbHbmColumnType();
-        column.setName(config.tracingSpan.name);
+        column.setName(config.tracingSpan().name());
         column.setLength(256);
 
-        if (config.tracingSpan.columnDefinition.isPresent()) {
-            column.setSqlType(config.tracingSpan.columnDefinition.get());
-        }
+        config.tracingSpan().columnDefinition().ifPresent(column::setSqlType);
 
         attribute.getColumnOrFormula().add(column);
 

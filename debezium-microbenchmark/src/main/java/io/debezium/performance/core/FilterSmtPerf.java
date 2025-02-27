@@ -5,11 +5,13 @@
  */
 package io.debezium.performance.core;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -28,6 +30,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
 import io.debezium.data.Envelope;
+import io.debezium.performance.Module;
 import io.debezium.transforms.Filter;
 import io.debezium.util.Collect;
 
@@ -39,7 +42,7 @@ import io.debezium.util.Collect;
  */
 public class FilterSmtPerf {
 
-    private static class NativeFilter implements Transformation<SourceRecord> {
+    private static class NativeFilter implements Transformation<SourceRecord>, Versioned {
 
         @Override
         public void configure(Map<String, ?> configs) {
@@ -64,6 +67,11 @@ public class FilterSmtPerf {
         @Override
         public void close() {
         }
+
+        @Override
+        public String version() {
+            return Module.version();
+        }
     }
 
     @State(Scope.Thread)
@@ -72,8 +80,14 @@ public class FilterSmtPerf {
         public Transformation<SourceRecord> nativeFilter;
         public Transformation<SourceRecord> groovyFilter;
         public Transformation<SourceRecord> jsFilter;
+        public Transformation<SourceRecord> chicoryFilter;
+        public Transformation<SourceRecord> chicoryInterpreterFilter;
         public SourceRecord delete;
         public SourceRecord create;
+
+        private static String filterAbsolutePath(String filename) {
+            return "file:" + new File(".").getAbsolutePath() + "/debezium-microbenchmark/src/main/resources/wasm/" + filename + ".wasm";
+        }
 
         @Setup(Level.Trial)
         public void doSetup() {
@@ -95,6 +109,12 @@ public class FilterSmtPerf {
 
             jsFilter = new Filter<>();
             jsFilter.configure(Collect.hashMapOf("language", "jsr223.graal.js", "condition", "value.get('op') == 'd'"));
+
+            chicoryFilter = new Filter<>();
+            chicoryFilter.configure(Collect.hashMapOf("language", "wasm.chicory", "condition", filterAbsolutePath("filter_bench")));
+
+            chicoryInterpreterFilter = new Filter<>();
+            chicoryInterpreterFilter.configure(Collect.hashMapOf("language", "wasm.chicory-interpreter", "condition", filterAbsolutePath("filter_bench")));
         }
     }
 
@@ -132,5 +152,29 @@ public class FilterSmtPerf {
         state.jsFilter.apply(state.create);
         state.jsFilter.apply(state.create);
         state.jsFilter.apply(state.delete);
+    }
+
+    @Benchmark
+    @BenchmarkMode(Mode.Throughput)
+    @OutputTimeUnit(TimeUnit.MICROSECONDS)
+    @Fork(value = 1)
+    @Warmup(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
+    @Measurement(iterations = 3, time = 2, timeUnit = TimeUnit.SECONDS)
+    public void chicory(TransformState state) {
+        state.chicoryFilter.apply(state.create);
+        state.chicoryFilter.apply(state.create);
+        state.chicoryFilter.apply(state.delete);
+    }
+
+    @Benchmark
+    @BenchmarkMode(Mode.Throughput)
+    @OutputTimeUnit(TimeUnit.MICROSECONDS)
+    @Fork(value = 1)
+    @Warmup(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
+    @Measurement(iterations = 3, time = 2, timeUnit = TimeUnit.SECONDS)
+    public void chicoryInterpreter(TransformState state) {
+        state.chicoryInterpreterFilter.apply(state.create);
+        state.chicoryInterpreterFilter.apply(state.create);
+        state.chicoryInterpreterFilter.apply(state.delete);
     }
 }

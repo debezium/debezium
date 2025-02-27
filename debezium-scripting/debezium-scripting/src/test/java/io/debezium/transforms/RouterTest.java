@@ -5,15 +5,17 @@
  */
 package io.debezium.transforms;
 
+import static io.debezium.transforms.TransformsUtils.createDeleteCustomerRecord;
+import static io.debezium.transforms.TransformsUtils.createDeleteRecord;
+import static io.debezium.transforms.TransformsUtils.createMongoDbRecord;
+import static io.debezium.transforms.TransformsUtils.createNullRecord;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Test;
 
@@ -74,7 +76,7 @@ public class RouterTest {
             props.put(LANGUAGE, "jsr223.groovy");
             transform.configure(props);
             assertThat(transform.apply(createDeleteRecord(1)).topic()).isEqualTo("ones");
-            assertThat(transform.apply(createDeleteRecord(2)).topic()).isEqualTo("original");
+            assertThat(transform.apply(createDeleteRecord(2)).topic()).isEqualTo("dummy2");
         }
     }
 
@@ -98,7 +100,7 @@ public class RouterTest {
             props.put(EXPRESSION, "value == null ? 'nulls' : (value.before.id == 1 ? 'ones' : null)");
             props.put(LANGUAGE, "jsr223.groovy");
             transform.configure(props);
-            assertThat(transform.apply(createDeleteRecord(1)).topic()).describedAs("Matching topic").isEqualTo("ones");
+            assertThat(transform.apply(createDeleteRecord(1)).topic()).describedAs("Matching topic").isEqualTo("dummy1");
             assertThat(transform.apply(createDeleteCustomerRecord(1)).topic()).describedAs("Non-matching topic").isEqualTo("customer");
         }
     }
@@ -111,7 +113,7 @@ public class RouterTest {
             props.put(LANGUAGE, "jsr223.groovy");
             transform.configure(props);
             final SourceRecord record = createNullRecord();
-            assertThat(transform.apply(record).topic()).isEqualTo("original");
+            assertThat(transform.apply(record).topic()).isEqualTo("dummy");
         }
     }
 
@@ -139,76 +141,5 @@ public class RouterTest {
             final SourceRecord record = createNullRecord();
             assertThat(transform.apply(record).topic()).isEqualTo("nulls");
         }
-    }
-
-    private SourceRecord createDeleteRecord(int id) {
-        final Schema deleteSourceSchema = SchemaBuilder.struct()
-                .field("lsn", SchemaBuilder.int32())
-                .field("version", SchemaBuilder.string())
-                .build();
-
-        Envelope deleteEnvelope = Envelope.defineSchema()
-                .withName("dummy.Envelope")
-                .withRecord(recordSchema)
-                .withSource(deleteSourceSchema)
-                .build();
-
-        final Struct before = new Struct(recordSchema);
-        final Struct source = new Struct(deleteSourceSchema);
-
-        before.put("id", (byte) id);
-        before.put("name", "myRecord");
-        source.put("lsn", 1234);
-        source.put("version", "version!");
-        final Struct payload = deleteEnvelope.delete(before, source, Instant.now());
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "original", envelope.schema(), payload);
-    }
-
-    private SourceRecord createMongoDbRecord() {
-        final Schema insertSourceSchema = SchemaBuilder.struct()
-                .field("lsn", SchemaBuilder.int32())
-                .field("version", SchemaBuilder.string())
-                .build();
-
-        final Envelope insertEnvelope = Envelope.defineSchema()
-                .withName("dummy.Envelope")
-                .withRecord(Schema.STRING_SCHEMA)
-                .withSource(insertSourceSchema)
-                .build();
-
-        final Struct source = new Struct(insertSourceSchema);
-
-        source.put("lsn", 1234);
-        source.put("version", "version!");
-        final Struct payload = insertEnvelope.create(
-                "{\"_id\": {\"$numberLong\": \"1004\"},\"first_name\": \"Anne\",\"last_name\": \"Kretchmar\",\"email\": \"annek@noanswer.org\"}", source, Instant.now());
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "original", envelope.schema(), payload);
-    }
-
-    private SourceRecord createDeleteCustomerRecord(int id) {
-        final Schema deleteSourceSchema = SchemaBuilder.struct()
-                .field("lsn", SchemaBuilder.int32())
-                .field("version", SchemaBuilder.string())
-                .build();
-
-        Envelope deleteEnvelope = Envelope.defineSchema()
-                .withName("dummy.Envelope")
-                .withRecord(recordSchema)
-                .withSource(deleteSourceSchema)
-                .build();
-
-        final Struct before = new Struct(recordSchema);
-        final Struct source = new Struct(deleteSourceSchema);
-
-        before.put("id", (byte) id);
-        before.put("name", "myRecord");
-        source.put("lsn", 1234);
-        source.put("version", "version!");
-        final Struct payload = deleteEnvelope.delete(before, source, Instant.now());
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "customer", envelope.schema(), payload);
-    }
-
-    private SourceRecord createNullRecord() {
-        return new SourceRecord(new HashMap<>(), new HashMap<>(), "original", null, null, null, null);
     }
 }

@@ -29,6 +29,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -39,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.Module;
 import io.debezium.config.CommonConnectorConfig.SchemaNameAdjustmentMode;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -47,7 +49,7 @@ import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.util.BoundedConcurrentHashMap;
 
-public class ExtractSchemaToNewRecord<R extends ConnectRecord<R>> implements Transformation<R> {
+public class ExtractSchemaToNewRecord<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ExtractSchemaToNewRecord.class);
     public static final String SOURCE_SCHEMA_KEY = "sourceSchema";
@@ -125,6 +127,11 @@ public class ExtractSchemaToNewRecord<R extends ConnectRecord<R>> implements Tra
 
         schemaNameAdjuster = SchemaNameAdjustmentMode.parse(config.getString(SCHEMA_NAME_ADJUSTMENT_MODE))
                 .createAdjuster();
+    }
+
+    @Override
+    public String version() {
+        return Module.version();
     }
 
     private Iterable<Field> validateConfigFields() {

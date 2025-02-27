@@ -41,8 +41,10 @@ import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.CompletionCallback;
 import io.debezium.engine.format.Avro;
+import io.debezium.engine.format.Binary;
 import io.debezium.engine.format.CloudEvents;
 import io.debezium.engine.format.Json;
+import io.debezium.engine.format.SimpleString;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenKafkaVersion;
@@ -195,6 +197,48 @@ public class DebeziumEngineIT {
                         catch (IOException e) {
                             throw new IllegalStateException(e);
                         }
+                        allLatch.countDown();
+                        committer.markProcessed(r);
+                    }
+                    committer.markBatchFinished();
+                }).using(this.getClass().getClassLoader()).build()) {
+
+            executor.execute(() -> {
+                LoggingContext.forConnector(getClass().getSimpleName(), "debezium-engine", "engine");
+                engine.run();
+            });
+            allLatch.await(5000, TimeUnit.MILLISECONDS);
+            assertThat(allLatch.getCount()).isEqualTo(0);
+        }
+    }
+
+    @Test
+    public void shouldSerializeArbitraryPayloadFromOutbox() throws Exception {
+        TestHelper.execute(
+                "CREATE TABLE engine.outbox (id INT PRIMARY KEY, aggregateid TEXT, aggregatetype TEXT, payload BYTEA);",
+                "INSERT INTO engine.outbox VALUES(1, 'key1', 'event', 'value1'::BYTEA);");
+
+        final Properties props = new Properties();
+        props.putAll(TestHelper.defaultConfig().build().asMap());
+        props.setProperty("name", "debezium-engine");
+        props.setProperty("connector.class", "io.debezium.connector.postgresql.PostgresConnector");
+        props.setProperty(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG,
+                OFFSET_STORE_PATH.toAbsolutePath().toString());
+        props.setProperty("offset.flush.interval.ms", "0");
+        props.setProperty("converter.schemas.enable", "false");
+        props.setProperty("table.include.list", "engine.outbox");
+        props.setProperty("key.converter.schemas.enable", "false");
+        props.setProperty("transforms", "outbox");
+        props.setProperty("transforms.outbox.type", "io.debezium.transforms.outbox.EventRouter");
+
+        CountDownLatch allLatch = new CountDownLatch(1);
+
+        final ExecutorService executor = Executors.newFixedThreadPool(1);
+        try (DebeziumEngine<ChangeEvent<String, Object>> engine = DebeziumEngine.create(SimpleString.class, Binary.class).using(props)
+                .notifying((records, committer) -> {
+                    for (ChangeEvent<String, Object> r : records) {
+                        assertThat(r.key()).isEqualTo("key1");
+                        assertThat(r.value()).isEqualTo("value1".getBytes());
                         allLatch.countDown();
                         committer.markProcessed(r);
                     }

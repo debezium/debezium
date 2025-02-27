@@ -35,8 +35,9 @@ ifeval::['{page-version}' == 'master']
 * {link-db2-plugin-snapshot}[Db2 Connector plugin archive]
 * {link-cassandra-3-plugin-snapshot}[Cassandra 3.x plugin archive]
 * {link-cassandra-4-plugin-snapshot}[Cassandra 4.x plugin archive]
+* {link-cassandra-5-plugin-snapshot}[Cassandra 5.x plugin archive]
 * {link-vitess-plugin-snapshot}[Vitess plugin archive] (incubating)
-* {link-spanner-plugin-snapshot}[Spanner plugin archive] (incubating)
+* {link-spanner-plugin-snapshot}[Spanner plugin archive]
 * {link-jdbc-plugin-snapshot}[JDBC sink plugin archive] (incubating)
 * {link-informix-plugin-snapshot}[Informix plugin archive] (incubating)
 
@@ -49,17 +50,26 @@ ifeval::['{page-version}' != 'master']
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/{debezium-version}/debezium-connector-sqlserver-{debezium-version}-plugin.tar.gz[SQL Server Connector plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-oracle/{debezium-version}/debezium-connector-oracle-{debezium-version}-plugin.tar.gz[Oracle Connector plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-db2/{debezium-version}/debezium-connector-db2-{debezium-version}-plugin.tar.gz[Db2 Connector plugin archive]
-* https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra/{debezium-version}/debezium-connector-cassandra-3-{debezium-version}-plugin.tar.gz[Cassandra 3.x plugin archive]
-* https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra/{debezium-version}/debezium-connector-cassandra-4-{debezium-version}-plugin.tar.gz[Cassandra 4.x plugin archive]
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra-3/{debezium-version}/debezium-connector-cassandra-3-{debezium-version}-plugin.tar.gz[Cassandra 3.x plugin archive]
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra-4/{debezium-version}/debezium-connector-cassandra-4-{debezium-version}-plugin.tar.gz[Cassandra 4.x plugin archive]
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-cassandra-5/{debezium-version}/debezium-connector-cassandra-5-{debezium-version}-plugin.tar.gz[Cassandra 5.x plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-vitess/{debezium-version}/debezium-connector-vitess-{debezium-version}-plugin.tar.gz[Vitess plugin archive] (incubating)
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-spanner/{debezium-version}/debezium-connector-spanner-{debezium-version}-plugin.tar.gz[Spanner plugin archive] (incubating)
-* https://repo1.maven.org/maven2/io/debezium/debezium-connector-jdbc/${debezium-version}/debezium-connector-jdbc-{debezium-version}-plugin.tar.gz[JDBC sink plugin archive] (incubating)
-* https://repo1.maven.org/maven2/io/debezium/debezium-connector-informix/${debezium-version}/debezium-connector-informix-{debezium-version}-plugin.tar.gz[Informix plugin archive] (incubating)
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-jdbc/{debezium-version}/debezium-connector-jdbc-{debezium-version}-plugin.tar.gz[JDBC sink plugin archive]
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-informix/{debezium-version}/debezium-connector-informix-{debezium-version}-plugin.tar.gz[Informix plugin archive] (incubating)
 endif::[]
 
 NOTE: If you are interested in Debezium Server, please check the installation instructions xref:operations/debezium-server.adoc#_installation[here].
 
 If immutable containers are your thing, then check out https://quay.io/organization/debezium[{prodname}'s container images] (https://hub.docker.com/r/debezium/[alternative source] on DockerHub) for Apache Kafka, Kafka Connect and Apache Zookeeper, with the different {prodname} connectors already pre-installed and ready to go. Our xref:tutorial.adoc[tutorial] even walks you through using these images, and this is a great way to learn what {prodname} is all about.
+
+[IMPORTANT]
+====
+The {prodname} container images that you obtain from `quay.io` do not undergo rigorous testing or security analysis, and are provided for testing and evaluation purposes only.
+These images are not intended for use in production environments.
+To mitigate risk in production deployments, deploy only containers that are actively maintained by trusted vendors, and thoroughly tested for potential vulnerabilities.
+====
+
 Of course you also can run {prodname} on Kubernetes and xref:operations/openshift.adoc[OpenShift].
 Using the https://strimzi.io/[Strimzi] Kubernetes Operator is recommended for that.
 It allows to deploy Apache Kafka, Kafka Connect, and even connectors declaratively via custom Kubernetes resources.
@@ -76,7 +86,7 @@ ifeval::['{page-version}' != 'main']
 === Consuming Snapshot Releases
 
 {prodname} executes nightly builds and deployments into the Sonatype snapshot repository.
-If you want to try latest and fresh or verify a bug fix you are interested in, then use plugins from https://oss.sonatype.org/content/repositories/snapshots/io/debezium/[oss.sonatype.org] or view the xref:master@install.adoc[nightly] version of this document for direct links to each connector's plugin artifact.
+If you want to try latest and fresh or verify a bug fix you are interested in, then use plugins from https://s01.oss.sonatype.org/content/repositories/snapshots/io/debezium/[oss.sonatype.org] or view the xref:master@install.adoc[nightly] version of this document for direct links to each connector's plugin artifact.
 The installation procedure is the same as for regular releases.
 endif::[]
 

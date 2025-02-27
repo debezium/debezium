@@ -147,4 +147,18 @@ public abstract class Db2Tests extends ConnectorTest {
         awaitAssert(() -> assertions.assertMinimalRecordsCount(topic, 7));
         awaitAssert(() -> assertions.assertRecordsContain(topic, "nibbles@test.com"));
     }
+
+    @Test
+    @Order(90)
+    public void shouldExtractNewRecordState(SqlDatabaseController dbController) throws Exception {
+        connectController.undeployConnector(connectorConfig.getConnectorName());
+        connectorConfig = connectorConfig.addJdbcUnwrapSMT();
+        connectController.deployConnector(connectorConfig);
+
+        insertCustomer(dbController, "Eaton", "Beaver", "ebeaver@test.com");
+
+        String topic = connectorConfig.getDbServerName() + ".DB2INST1.CUSTOMERS";
+        awaitAssert(() -> assertions.assertMinimalRecordsCount(topic, 8));
+        awaitAssert(() -> assertions.assertRecordIsUnwrapped(topic, 1));
+    }
 }

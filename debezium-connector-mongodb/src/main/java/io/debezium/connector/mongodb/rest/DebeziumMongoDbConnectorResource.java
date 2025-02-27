@@ -21,11 +21,11 @@ import org.apache.kafka.connect.health.ConnectClusterState;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.Module;
 import io.debezium.connector.mongodb.MongoDbConnector;
+import io.debezium.metadata.CollectionId;
 import io.debezium.rest.ConnectionValidationResource;
 import io.debezium.rest.FilterValidationResource;
 import io.debezium.rest.MetricsResource;
 import io.debezium.rest.SchemaResource;
-import io.debezium.rest.model.DataCollection;
 import io.debezium.rest.model.MetricsDescriptor;
 
 /**
@@ -35,8 +35,7 @@ import io.debezium.rest.model.MetricsDescriptor;
 @Path(DebeziumMongoDbConnectorResource.BASE_PATH)
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-public class DebeziumMongoDbConnectorResource
-        implements SchemaResource, ConnectionValidationResource<MongoDbConnector>, FilterValidationResource<MongoDbConnector>, MetricsResource {
+public class DebeziumMongoDbConnectorResource implements SchemaResource, ConnectionValidationResource, FilterValidationResource, MetricsResource {
 
     public static final String BASE_PATH = "/debezium/mongodb";
     public static final String VERSION_ENDPOINT = "/version";
@@ -70,9 +69,9 @@ public class DebeziumMongoDbConnectorResource
     }
 
     @Override
-    public List<DataCollection> getMatchingCollections(Configuration configuration) {
+    public List<CollectionId> getMatchingCollections(Configuration configuration) {
         return getConnector().getMatchingCollections(configuration).stream()
-                .map(collectionId -> new DataCollection(collectionId.replicaSetName(), collectionId.dbName(), collectionId.name()))
+                .map(collectionId -> new CollectionId(collectionId.dbName(), collectionId.name()))
                 .collect(Collectors.toList());
     }
 }

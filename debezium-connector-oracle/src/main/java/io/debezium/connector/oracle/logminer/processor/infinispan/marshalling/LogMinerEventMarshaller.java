@@ -17,6 +17,6 @@ import org.infinispan.protostream.annotations.AutoProtoSchemaBuilder;
  */
 @AutoProtoSchemaBuilder(includeClasses = { LogMinerEventAdapter.class, DmlEventAdapter.class, SelectLobLocatorEventAdapter.class, LobWriteEventAdapter.class,
         LobEraseEventAdapter.class, LogMinerDmlEntryImplAdapter.class, TruncateEventAdapter.class, XmlBeginEventAdapter.class, XmlWriteEventAdapter.class,
-        XmlEndEventAdapter.class }, schemaFilePath = "/")
+        XmlEndEventAdapter.class, RedoSqlDmlEventAdapter.class, ExtendedStringBeginEventAdapter.class, ExtendedStringWriteEventAdapter.class }, schemaFilePath = "/")
 public interface LogMinerEventMarshaller extends SerializationContextInitializer {
 }

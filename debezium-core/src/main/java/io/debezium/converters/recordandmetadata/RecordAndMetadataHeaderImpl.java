@@ -15,6 +15,7 @@ import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.json.JsonConverter;
 
+import io.debezium.DebeziumException;
 import io.debezium.converters.CloudEventsConverterConfig.MetadataSource;
 import io.debezium.converters.CloudEventsConverterConfig.MetadataSourceValue;
 import io.debezium.converters.spi.CloudEventsMaker;
@@ -26,8 +27,8 @@ public class RecordAndMetadataHeaderImpl extends RecordAndMetadataBaseImpl imple
     private final MetadataSource metadataSource;
     private final JsonConverter jsonHeaderConverter;
 
-    public RecordAndMetadataHeaderImpl(Struct record, Schema dataSchema, Headers headers, MetadataSource metadataSource, JsonConverter jsonHeaderConverter) {
-        super(record, dataSchema);
+    public RecordAndMetadataHeaderImpl(Struct record, Schema originalDataSchema, Headers headers, MetadataSource metadataSource, JsonConverter jsonHeaderConverter) {
+        super(record, originalDataSchema);
         this.headers = headers;
         this.metadataSource = metadataSource;
         this.jsonHeaderConverter = jsonHeaderConverter;
@@ -68,6 +69,11 @@ public class RecordAndMetadataHeaderImpl extends RecordAndMetadataBaseImpl imple
     }
 
     @Override
+    public String dataSchemaName() {
+        return getValueFromHeaderOrByDefault(metadataSource.dataSchemaName(), CloudEventsMaker.DATA_SCHEMA_NAME_PARAM, false, null, super::dataSchemaName);
+    }
+
+    @Override
     public Schema dataSchema(String... dataFields) {
         return getValueFromHeaderOrByDefault(metadataSource.global(), null, null, super::dataSchema, () -> super.dataSchema(dataFields));
     }
@@ -88,8 +94,13 @@ public class RecordAndMetadataHeaderImpl extends RecordAndMetadataBaseImpl imple
 
     private SchemaAndValue getHeaderSchemaAndValue(Headers headers, String headerName, boolean isOptional) {
         Header header = headers.lastHeader(headerName);
-        if (header == null && !isOptional) {
-            throw new RuntimeException("Header `" + headerName + "` was not provided");
+        if (header == null) {
+            if (isOptional) {
+                return SchemaAndValue.NULL;
+            }
+            else {
+                throw new DebeziumException("Header `" + headerName + "` was not provided");
+            }
         }
         return jsonHeaderConverter.toConnectData(null, header.value());
     }

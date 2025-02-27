@@ -18,12 +18,15 @@ import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.connect.data.Struct;
 import org.bson.Document;
+import org.bson.UuidRepresentation;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mongodb.ConnectionString;
+import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
@@ -33,7 +36,6 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
 import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
-import io.debezium.connector.mongodb.connection.ReplicaSet;
 import io.debezium.testing.testcontainers.MongoDbDeployment;
 import io.debezium.util.Collect;
 
@@ -44,7 +46,7 @@ import io.debezium.util.Collect;
  *
  */
 public class TestHelper {
-    protected final static Logger logger = LoggerFactory.getLogger(TestHelper.class);
+    protected final static Logger LOGGER = LoggerFactory.getLogger(TestHelper.class);
 
     public static final List<Integer> MONGO_VERSION = getMongoVersion();
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
@@ -90,19 +92,23 @@ public class TestHelper {
             if (attempts.incrementAndGet() > numErrorsBeforeFailing) {
                 fail("Unable to connect to primary after " + numErrorsBeforeFailing + " errors trying to " + desc + ": " + error);
             }
-            logger.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
+            LOGGER.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
         };
     }
 
     public static MongoClient connect(MongoDbDeployment mongo) {
-        return MongoClients.create(mongo.getConnectionString());
+        var settings = MongoClientSettings.builder()
+                .applyConnectionString(new ConnectionString(mongo.getConnectionString()))
+                .uuidRepresentation(UuidRepresentation.STANDARD)
+                .build();
+        return MongoClients.create(settings);
     }
 
     public static void cleanDatabase(MongoDbDeployment mongo, String dbName) {
         try (var client = connect(mongo)) {
             MongoDatabase db1 = client.getDatabase(dbName);
             db1.listCollectionNames().forEach((String x) -> {
-                logger.info("Removing collection '{}' from database '{}'", x, dbName);
+                LOGGER.info("Removing collection '{}' from database '{}'", x, dbName);
                 db1.getCollection(x).drop();
             });
         }
@@ -115,6 +121,9 @@ public class TestHelper {
                     client.getDatabase(name).drop();
                 }
             });
+        }
+        catch (Exception e) {
+            LOGGER.error("Error while cleaning database", e);
         }
     }
 
@@ -184,8 +193,4 @@ public class TestHelper {
         }
     }
 
-    public static ReplicaSet replicaSet(MongoDbDeployment mongo) {
-        var cs = connectionString(mongo);
-        return new ReplicaSet(cs);
-    }
 }

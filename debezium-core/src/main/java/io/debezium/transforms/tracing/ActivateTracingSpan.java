@@ -8,6 +8,7 @@ package io.debezium.transforms.tracing;
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
@@ -16,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.Module;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
@@ -36,7 +38,7 @@ import io.opentelemetry.api.GlobalOpenTelemetry;
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Jiri Pechanec
  */
-public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transformation<R> {
+public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ActivateTracingSpan.class);
 
@@ -114,20 +116,16 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
             propagatedSpanContext = after.getString(spanContextField);
         }
 
-        if (propagatedSpanContext == null) {
-            if (requireContextField) {
-                return connectRecord;
-            }
+        if (propagatedSpanContext == null && requireContextField) {
+            return connectRecord;
         }
-        else {
-            try {
-                return TracingSpanUtil.traceRecord(connectRecord, envelope, source, propagatedSpanContext, operationName);
-            }
-            catch (NoClassDefFoundError e) {
-                throw new DebeziumException("Failed to record tracing information, tracing libraries not available", e);
-            }
+
+        try {
+            return TracingSpanUtil.traceRecord(connectRecord, envelope, source, propagatedSpanContext, operationName);
         }
-        return connectRecord;
+        catch (NoClassDefFoundError e) {
+            throw new DebeziumException("Failed to record tracing information, tracing libraries not available", e);
+        }
     }
 
     @Override
@@ -144,6 +142,11 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
                 TRACING_OPERATION_NAME,
                 TRACING_CONTEXT_FIELD_REQUIRED);
         return config;
+    }
+
+    @Override
+    public String version() {
+        return Module.version();
     }
 
     public static boolean isOpenTelemetryAvailable() {

@@ -11,7 +11,6 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.SlotState;
-import io.debezium.connector.postgresql.spi.Snapshotter;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.notification.NotificationService;
@@ -22,6 +21,7 @@ import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
@@ -35,12 +35,12 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
     private final Clock clock;
     private final PostgresSchema schema;
     private final PostgresTaskContext taskContext;
-    private final Snapshotter snapshotter;
+    private final SnapshotterService snapshotterService;
     private final ReplicationConnection replicationConnection;
     private final SlotCreationResult slotCreatedInfo;
     private final SlotState startingSlotInfo;
 
-    public PostgresChangeEventSourceFactory(PostgresConnectorConfig configuration, Snapshotter snapshotter,
+    public PostgresChangeEventSourceFactory(PostgresConnectorConfig configuration, SnapshotterService snapshotterService,
                                             MainConnectionProvidingConnectionFactory<PostgresConnection> connectionFactory,
                                             ErrorHandler errorHandler, PostgresEventDispatcher<TableId> dispatcher, Clock clock, PostgresSchema schema,
                                             PostgresTaskContext taskContext, ReplicationConnection replicationConnection, SlotCreationResult slotCreatedInfo,
@@ -52,7 +52,7 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
         this.clock = clock;
         this.schema = schema;
         this.taskContext = taskContext;
-        this.snapshotter = snapshotter;
+        this.snapshotterService = snapshotterService;
         this.replicationConnection = replicationConnection;
         this.slotCreatedInfo = slotCreatedInfo;
         this.startingSlotInfo = startingSlotInfo;
@@ -63,7 +63,7 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
                                                                                                             NotificationService<PostgresPartition, PostgresOffsetContext> notificationService) {
         return new PostgresSnapshotChangeEventSource(
                 configuration,
-                snapshotter,
+                snapshotterService,
                 connectionFactory,
                 schema,
                 dispatcher,
@@ -78,7 +78,7 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
     public StreamingChangeEventSource<PostgresPartition, PostgresOffsetContext> getStreamingChangeEventSource() {
         return new PostgresStreamingChangeEventSource(
                 configuration,
-                snapshotter,
+                snapshotterService,
                 connectionFactory.mainConnection(),
                 dispatcher,
                 errorHandler,
@@ -94,12 +94,26 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
                                                                                                                                                  SnapshotProgressListener<PostgresPartition> snapshotProgressListener,
                                                                                                                                                  DataChangeEventListener<PostgresPartition> dataChangeEventListener,
                                                                                                                                                  NotificationService<PostgresPartition, PostgresOffsetContext> notificationService) {
+        if (configuration.isReadOnlyConnection()) {
+
+            return Optional.of(new PostgresReadOnlyIncrementalSnapshotChangeEventSource<>(
+                    configuration,
+                    connectionFactory.mainConnection(),
+                    dispatcher,
+                    schema,
+                    clock,
+                    snapshotProgressListener,
+                    dataChangeEventListener,
+                    notificationService));
+        }
+
         // If no data collection id is provided, don't return an instance as the implementation requires
         // that a signal data collection id be provided to work.
         if (Strings.isNullOrEmpty(configuration.getSignalingDataCollectionId())) {
             return Optional.empty();
         }
-        final PostgresSignalBasedIncrementalSnapshotChangeEventSource incrementalSnapshotChangeEventSource = new PostgresSignalBasedIncrementalSnapshotChangeEventSource(
+
+        return Optional.of(new PostgresSignalBasedIncrementalSnapshotChangeEventSource(
                 configuration,
                 connectionFactory.mainConnection(),
                 dispatcher,
@@ -107,7 +121,6 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
                 clock,
                 snapshotProgressListener,
                 dataChangeEventListener,
-                notificationService);
-        return Optional.of(incrementalSnapshotChangeEventSource);
+                notificationService));
     }
 }

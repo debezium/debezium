@@ -30,8 +30,9 @@ import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.logwriter.CommitLogWriterFlushStrategy;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.relational.TableId;
 import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
@@ -40,7 +41,7 @@ import io.debezium.util.Testing;
  */
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Flush strategy only applies to LogMiner implementation")
 @SkipOnReadOnly(reason = "Test expects flush table, not applicable during read only.")
-public class FlushStrategyIT extends AbstractConnectorTest {
+public class FlushStrategyIT extends AbstractAsyncEngineConnectorTest {
 
     @Rule
     public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
@@ -141,7 +142,7 @@ public class FlushStrategyIT extends AbstractConnectorTest {
             if (!Strings.isNullOrEmpty(databasePdbName)) {
                 conn.setSessionToPdb(databasePdbName);
             }
-            assertThat(conn.getRowCount(getFlushTableName())).isEqualTo(1L);
+            assertThat(conn.getRowCount(getFlushTableId())).isEqualTo(1L);
         }
     }
 
@@ -166,6 +167,10 @@ public class FlushStrategyIT extends AbstractConnectorTest {
     }
 
     private static String getFlushTableName() {
-        return TestHelper.getConnectorUserName() + "." + flushTableName;
+        return TestHelper.getConnectorUserName().toUpperCase() + "." + flushTableName;
+    }
+
+    private static TableId getFlushTableId() {
+        return TableId.parse(getFlushTableName());
     }
 }

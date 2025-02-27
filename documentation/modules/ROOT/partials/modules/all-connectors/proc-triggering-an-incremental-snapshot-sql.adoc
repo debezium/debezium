@@ -1,25 +1,19 @@
-Currently, the only way to initiate an incremental snapshot is to send an {link-prefix}:{link-signalling}#debezium-signaling-ad-hoc-snapshots[ad hoc snapshot signal] to the signaling {data-collection} on the source database.
-
-You submit a signal to the signaling {data-collection} as SQL `INSERT` queries.
+To initiate an incremental snapshot, you can send an {link-prefix}:{link-signalling}#debezium-signaling-ad-hoc-incremental-snapshots[ad hoc snapshot signal] to the signaling {data-collection} on the source database.
+You submit snapshot signals as SQL `INSERT` queries.
 
 After {prodname} detects the change in the signaling {data-collection}, it reads the signal, and runs the requested snapshot operation.
 
-The query that you submit specifies the {data-collection}s to include in the snapshot, and, optionally, specifies the kind of snapshot operation.
-Currently, the only valid option for snapshots operations is the default value, `incremental`.
+The query that you submit specifies the {data-collection}s to include in the snapshot, and, optionally, specifies the type of snapshot operation.
+{prodname} currently supports the `incremental` and `blocking` snapshot types.
 
-To specify the {data-collection}s to include in the snapshot, provide a `data-collections` array that lists the {data-collection}s or an array of regular expressions used to match {data-collection}s, for example, +
+To specify the {data-collection}s to include in the snapshot, provide a `data-collections` array that lists the {data-collection}s, or an array of regular expressions used to match {data-collection}s, for example, +
 
 `{"data-collections": ["public.MyFirstTable", "public.MySecondTable"]}` +
 
 The `data-collections` array for an incremental snapshot signal has no default value.
-If the `data-collections` array is empty, {prodname} detects that no action is required and does not perform a snapshot.
+If the `data-collections` array is empty, {prodname} interprets the empty array to mean that no action is required, and it does not perform a snapshot.
 
-[NOTE]
-====
-If the name of a {data-collection} that you want to include in a snapshot contains a dot (`.`) in the name of the database, schema, or table, to add the {data-collection} to the `data-collections` array, you must escape each part of the name in double quotes. +
- +
-For example, to include a table that exists in the `*public*` schema and that has the name `*My.Table*`, use the following format: `*"public"."My.Table"*`.
-====
+include::{snippetsdir}/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=fq-table-name-format-note]
 
 .Prerequisites
 
@@ -33,23 +27,14 @@ For example, to include a table that exists in the `*public*` schema and that ha
 +
 [source,sql,indent=0,subs="+attributes,+quotes"]
 ----
-INSERT INTO _<signalTable>_ (id, type, data) VALUES (_'<id>'_, _'<snapshotType>'_, '{"data-collections": ["_<tableName>_","_<tableName>_"],"type":"_<snapshotType>_","additional-conditions":[{"data-collection": "_<tableName>_", "filter": "_<additional-condition>_"}]}');
+INSERT INTO _<signalTable>_ (id, type, data) VALUES (_'<id>'_, _'<snapshotType>'_, '{"data-collections": ["_<fullyQualfiedTableName>_","_<fullyQualfiedTableName>_"],"type":"_<snapshotType>_","additional-conditions":[{"data-collection": "_<fullyQualfiedTableName>_", "filter": "_<additional-condition>_"}]}');
 ----
 +
 For example,
 +
-[source,sql,indent=0,subs="+attributes"]
-----
-INSERT INTO myschema.debezium_signal (id, type, data) // <1>
-values ('ad-hoc-1',   // <2>
-    'execute-snapshot',  // <3>
-    '{"data-collections": ["schema1.table1", "schema2.table2"], // <4>
-    "type":"incremental", // <5>
-    "additional-conditions":[{"data-collection": "schema1.table1" ,"filter":"color=\'blue\'"}]}'); // <6>
-----
-+
-The values of the `id`,`type`, and `data` parameters in the command correspond to the {link-prefix}:{link-signalling}#debezium-signaling-description-of-required-structure-of-a-signaling-data-collection[fields of the signaling {data-collection}].
-+
+include::{snippetsdir}/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=snapshot-signal-example]
+
+The values of the `id`,`type`, and `data` parameters in the command correspond to the {link-prefix}:{link-signalling}#debezium-signaling-description-of-required-structure-of-a-signaling-data-collection[fields of the signaling {data-collection}]. +
 The following table describes the parameters in the example:
 +
 .Descriptions of fields in a SQL command for sending an incremental snapshot signal to the signaling {data-collection}
@@ -58,7 +43,7 @@ The following table describes the parameters in the example:
 |Item |Value |Description
 
 |1
-|`myschema.debezium_signal`
+|`{collection-container}.debezium_signal`
 |Specifies the fully-qualified name of the signaling {data-collection} on the source database.
 
 |2
@@ -75,102 +60,20 @@ Rather, during the snapshot, {prodname} generates its own `id` string as a water
 |4
 |`data-collections`
 |A required component of the `data` field of a signal that specifies an array of {data-collection} names or regular expressions to match {data-collection} names to include in the snapshot. +
-The array lists regular expressions which match {data-collection}s by their fully-qualified names, using the same format as you use to specify the name of the connector's signaling {data-collection} in the xref:{context}-property-signal-data-collection[`signal.data.collection`] configuration property.
+The array lists regular expressions that use the format `{collection-container}.table` to match the fully-qualified names of the {data-collection}s.
+This format is the same as the one that you use to specify the name of the connector's {link-prefix}:{link-signalling}#format-for-specifying-fully-qualified-names-for-data-collections[signaling {data-collection}].
 
 |5
 |`incremental`
-|An optional `type` component of the `data` field of a signal that specifies the kind of snapshot operation to run. +
-Currently, the only valid option is the default value, `incremental`. +
-If you do not specify a value, the connector runs an incremental snapshot.
+|An optional `type` component of the `data` field of a signal that specifies the type of snapshot operation to run. +
+Valid values are `incremental` and `blocking`. +
+If you do not specify a value, the connector defaults to performing an incremental snapshot.
 
 |6
 |`additional-conditions`
 | An optional array that specifies a set of additional conditions that the connector evaluates to determine the subset of records to include in a snapshot. +
-Each additional condition is an object with `data-collection` and `filter` properties. 
+Each additional condition is an object with `data-collection` and `filter` properties.
 You can specify different filters for each data collection. +
-* The `data-collection` property is the fully-qualified name of the data collection for which the filter will be applied.
+* The `data-collection` property is the fully-qualified name of the data collection that the filter applies to.
 For more information about the `additional-conditions` parameter, see xref:{context}-incremental-snapshots-additional-conditions[].
-|===
-
-[id="{context}-incremental-snapshots-additional-conditions"]
-.Ad hoc incremental snapshots with `additional-conditions`
-
-If you want a snapshot to include only a subset of the content in a {data-collection}, you can modify the signal request by appending an `additional-conditions` parameter to the snapshot signal.
-
-The SQL query for a typical snapshot takes the following form:
-
-[source,sql,subs="+attributes,+quotes"]
-----
-SELECT * FROM _<tableName>_ ....
-----
-
-By adding an `additional-conditions` parameter, you append a `WHERE` condition to the SQL query, as in the following example:
-
-[source,sql,subs="+attributes,+quotes"]
-----
-SELECT * FROM _<data-collection>_ WHERE _<filter>_ ....
-----
-
-The following example shows a SQL query to send an ad hoc incremental snapshot request with an additional condition to the signaling {data-collection}:
-[source,sql,indent=0,subs="+attributes,+quotes"]
-----
-INSERT INTO _<signalTable>_ (id, type, data) VALUES (_'<id>'_, _'<snapshotType>'_, '{"data-collections": ["_<tableName>_","_<tableName>_"],"type":"_<snapshotType>_","additional-conditions":[{"data-collection": "_<tableName>_", "filter": "_<additional-condition>_"}]}');
-----
-
-For example, suppose you have a `products` {data-collection} that contains the following columns:
-
-* `id` (primary key)
-* `color`
-* `quantity`
-
-If you want an incremental snapshot of the `products` {data-collection} to include only the data items where `color=blue`, you can use the following SQL statement to trigger the snapshot:
-
-[source,sql,indent=0,subs="+attributes"]
-----
-INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additional-conditions":[{"data-collection": "schema1.products", "filter": "color=blue"}]}');
-----
-
-The `additional-conditions` parameter also enables you to pass conditions that are based on more than one column.
-For example, using the `products` {data-collection} from the previous example, you can submit a query that triggers an incremental snapshot that includes the data of only those items for which `color=blue` and `quantity>10`:
-
-[source,sql,indent=0,subs="+attributes"]
-----
-INSERT INTO myschema.debezium_signal (id, type, data) VALUES('ad-hoc-1', 'execute-snapshot', '{"data-collections": ["schema1.products"],"type":"incremental", "additional-conditions":[{"data-collection": "schema1.products", "filter": "color=blue AND quantity>10"}]}');
-----
-
-The following example, shows the JSON for an incremental snapshot event that is captured by a connector.
-
-.Example: Incremental snapshot event message
-[source,json,index=0]
-----
-{
-    "before":null,
-    "after": {
-        "pk":"1",
-        "value":"New data"
-    },
-    "source": {
-        ...
-        "snapshot":"incremental" <1>
-    },
-    "op":"r", <2>
-    "ts_ms":"1620393591654",
-    "transaction":null
-}
-----
-[cols="1,1,4",options="header"]
-|===
-|Item |Field name |Description
-|1
-|`snapshot`
-|Specifies the type of snapshot operation to run. +
-Currently, the only valid option is the default value, `incremental`. +
-Specifying a `type` value in the SQL query that you submit to the signaling {data-collection} is optional. +
-If you do not specify a value, the connector runs an incremental snapshot.
-
-|2
-|`op`
-|Specifies the event type. +
-The value for snapshot events is `r`, signifying a `READ` operation.
-
 |===

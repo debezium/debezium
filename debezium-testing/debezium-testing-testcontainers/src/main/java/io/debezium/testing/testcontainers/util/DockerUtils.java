@@ -10,16 +10,27 @@ import java.util.Collection;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
-import org.testcontainers.DockerClientFactory;
+
+import io.debezium.testing.testcontainers.util.dns.FakeDns;
 
 public class DockerUtils {
 
-    public static final String DOCKER_DESKTOP_LOG_SKIP_PROPERTY = "docker.desktop.log.skip";
-    public static final String DOCKER_DESKTOP_DISABLE_FAKE_DNS = "docker.desktop.disable.fake.dns";
+    public static final String CONTAINER_VM_LOG_SKIP = "container.vm.log.skip";
+    public static final String CONTAINER_VM_FAKE_DNS = "container.vm.fake.dns";
 
-    public static boolean isDockerDesktop() {
-        var info = DockerClientFactory.instance().getInfo();
-        return "docker-desktop".equals(info.getName());
+    /**
+     * Checks if system is configured to deploy fake DNS.
+     */
+    public static boolean isContainerVM() {
+        String property = System.getProperty(CONTAINER_VM_FAKE_DNS, "auto");
+        return property.equals("true") || (property.equals("auto") && isMac());
+    }
+
+    /**
+     * Check if running OS is Mac.
+     */
+    public static boolean isMac() {
+        return System.getProperty("os.name").contains("Mac");
     }
 
     /**
@@ -29,7 +40,7 @@ public class DockerUtils {
      * <ul>
      *     <li>Containers are not running under Docker Desktop</li>
      *     <li>Skip parameter is {@code true}</li>
-     *     <li>{@link #DOCKER_DESKTOP_LOG_SKIP_PROPERTY} property is {@code true}</li>
+     *     <li>{@link #CONTAINER_VM_LOG_SKIP} property is {@code true}</li>
      *     <li>{@link FakeDns} is installed within JVM</li>
      * </ul>
      *
@@ -37,11 +48,11 @@ public class DockerUtils {
      * @param hosts list of container hostnames
      * @param skip if true the operation is skipped
      */
-    public static void logDockerDesktopBanner(Logger logger, Collection<String> hosts, boolean skip) {
-        var prop = System.getProperty(DOCKER_DESKTOP_LOG_SKIP_PROPERTY, "false");
+    public static void logContainerVMBanner(Logger logger, Collection<String> hosts, boolean skip) {
+        var prop = System.getProperty(CONTAINER_VM_LOG_SKIP, "false");
         var propertySkip = Boolean.parseBoolean(prop);
 
-        if (propertySkip || skip || !isDockerDesktop() || FakeDns.getInstance().isInstalled()) {
+        if (propertySkip || skip || !isContainerVM() || FakeDns.getInstance().isEnabled()) {
             return;
         }
 
@@ -53,7 +64,7 @@ public class DockerUtils {
                 .collect(Collectors.joining(newLine));
 
         var banner = new StringBuilder()
-                .append("\n>>> DOCKER DESKTOP DETECTED <<<")
+                .append("\n>>> VM BASED CONTAINER RUNTIME DETECTED <<<")
                 .append(doubleNewLine)
                 .append("Requires the following entries in /etc/hosts or equivalent of your platform")
                 .append(doubleNewLine)
@@ -68,10 +79,8 @@ public class DockerUtils {
      * Enables {@link FakeDns} on docker desktop (if
      */
     public static void enableFakeDnsIfRequired() {
-        var property = System.getProperty(DOCKER_DESKTOP_DISABLE_FAKE_DNS, "false");
-
-        if (isDockerDesktop() && !Boolean.parseBoolean(property)) {
-            FakeDns.getInstance().install();
+        if (isContainerVM()) {
+            FakeDns.getInstance().enable();
         }
     }
 
@@ -79,7 +88,7 @@ public class DockerUtils {
      * Disables {@link FakeDns} if enabled
      */
     public static void disableFakeDns() {
-        FakeDns.getInstance().restore();
+        FakeDns.getInstance().disable();
     }
 
     /**
@@ -98,7 +107,7 @@ public class DockerUtils {
      * @param address resolution address
      */
     public static void addFakeDnsEntry(String hostname, InetAddress address) {
-        if (FakeDns.getInstance().isInstalled()) {
+        if (FakeDns.getInstance().isEnabled()) {
             FakeDns.getInstance().addResolution(hostname, address);
         }
     }
@@ -119,7 +128,7 @@ public class DockerUtils {
      * @param address resolution address
      */
     public static void removeFakeDnsEntry(String hostname, InetAddress address) {
-        if (FakeDns.getInstance().isInstalled()) {
+        if (FakeDns.getInstance().isEnabled()) {
             FakeDns.getInstance().removeResolution(hostname, address);
         }
     }

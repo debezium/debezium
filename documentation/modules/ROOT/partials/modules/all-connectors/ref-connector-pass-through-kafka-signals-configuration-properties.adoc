@@ -18,28 +18,14 @@ The signaling topic must have a single partition.
 
 |[[{context}-property-signal-kafka-groupId]]<<{context}-property-signal-kafka-groupId, `+signal.kafka.groupId+`>>
 |kafka-signal
-|The name of the group ID  that is used by Kafka consumers.
+|The name of the group ID that is used by Kafka consumers.
 
 |[[{context}-property-signal-kafka-bootstrap-servers]]<<{context}-property-signal-kafka-bootstrap-servers, `+signal.kafka.bootstrap.servers+`>>
 |No default
-|A list of host/port pairs that the connector uses for establishing an initial connection to the Kafka cluster.
+|A list of the host and port pairs that the connector uses to establish its initial connection to the Kafka cluster.
 Each pair references the Kafka cluster that is used by the {prodname} Kafka Connect process.
 
 |[[{context}-property-signal-kafka-poll-timeout-ms]]<<{context}-property-signal-kafka-poll-timeout-ms, `+signal.kafka.poll.timeout.ms+`>>
 |`100`
 |An integer value that specifies the maximum number of milliseconds that the connector waits when polling signals.
-
-|[[{context}-kafka-consumer-offset-commit-enabled]]<<{context}-kafka-consumer-offset-commit-enabled, `+kafka.consumer.offset.commit.enabled+`>>
-|`false`
-|Enable the offset commit for the signal topic in order to guarantee At-Least-Once delivery. If disabled, only signals received when the consumer is up&running are processed. Any signals received when the consumer is down are lost.
-
 |===
-
-[id="debezium-{context}-connector-pass-through-signals-kafka-consumer-configuration-properties"]
-=== {prodname} connector pass-through signals Kafka consumer client configuration properties
-
-The {prodname} connector provides for pass-through configuration of the signals Kafka consumer.
-Pass-through signals properties begin with the prefix `signals.consumer.*`.
-For example, the connector passes properties such as `signal.consumer.security.protocol=SSL` to the Kafka consumer.
-
-{prodname} strips the prefixes from the properties before it passes the properties to the Kafka signals consumer.

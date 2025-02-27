@@ -74,12 +74,18 @@ public interface JdbcConfiguration extends Configuration {
             .withDefault(600000)
             .withValidation(Field::isOptional);
 
+    Field QUERY_TIMEOUT_MS = Field.create("query.timeout.ms")
+            .withDisplayName("Time to wait for a query to execute, given in milliseconds. Defaults to 600 seconds (600,000 ms); zero means there is no limit.")
+            .withType(Type.INT)
+            .withDefault(600000)
+            .withValidation(Field::isOptional);
+
     /**
      * The set of names of the pre-defined JDBC configuration fields, including {@link #DATABASE}, {@link #USER},
      * {@link #PASSWORD}, {@link #HOSTNAME}, and {@link #PORT}.
      */
     Set<String> ALL_KNOWN_FIELDS = Collect.unmodifiableSet(Field::name, DATABASE, USER, PASSWORD, HOSTNAME, PORT, ON_CONNECT_STATEMENTS,
-            CONNECTION_FACTORY_CLASS, CONNECTION_TIMEOUT_MS);
+            CONNECTION_FACTORY_CLASS, CONNECTION_TIMEOUT_MS, QUERY_TIMEOUT_MS);
 
     /**
      * Obtain a {@link JdbcConfiguration} adapter for the given {@link Configuration}.
@@ -188,6 +194,16 @@ public interface JdbcConfiguration extends Configuration {
          */
         default Builder withConnectionTimeoutMs(int connectionTimeoutMs) {
             return with(CONNECTION_TIMEOUT_MS, connectionTimeoutMs);
+        }
+
+        /**
+         * Use the given query timeout in the resulting configuration.
+         *
+         * @param queryTimeoutMs query timeout in ms
+         * @return this builder object so methods can be chained together; never null
+         */
+        default Builder withQueryTimeoutMs(int queryTimeoutMs) {
+            return with(QUERY_TIMEOUT_MS, queryTimeoutMs);
         }
     }
 
@@ -394,5 +410,14 @@ public interface JdbcConfiguration extends Configuration {
      */
     default Duration getConnectionTimeout() {
         return Duration.ofMillis(getInteger(CONNECTION_TIMEOUT_MS));
+    }
+
+    /**
+     * Get the query timeout from the configuration.
+     *
+     * @return the specified value, or null if there is none.
+     */
+    default Duration getQueryTimeout() {
+        return Duration.ofMillis(getInteger(QUERY_TIMEOUT_MS));
     }
 }
