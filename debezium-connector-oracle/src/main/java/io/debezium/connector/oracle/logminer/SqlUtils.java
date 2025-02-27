@@ -81,10 +81,21 @@ public class SqlUtils {
         sb.append("AND STATUS='A'");
 
         if (!archiveLogRetention.isNegative() && !archiveLogRetention.isZero()) {
-            sb.append("AND FIRST_TIME >= SYSDATE - (").append(archiveLogRetention.toHours()).append("/24)");
+            sb.append(" AND FIRST_TIME >= SYSDATE - (").append(archiveLogRetention.toHours()).append("/24)");
         }
 
         return sb.append(")").toString();
+    }
+
+    public static String allRedoThreadArchiveLogs(int threadId, String archiveDestinationName) {
+        final StringBuilder sb = new StringBuilder();
+        sb.append("SELECT NAME, SEQUENCE#, FIRST_CHANGE#, NEXT_CHANGE# ");
+        sb.append("FROM ").append(ARCHIVED_LOG_VIEW).append(" ");
+        sb.append("WHERE DEST_ID IN (").append(localArchiveLogDestinationsOnlyQuery(archiveDestinationName)).append(") ");
+        sb.append("AND STATUS='A' ");
+        sb.append("AND THREAD#=").append(threadId).append(" ");
+        sb.append("ORDER BY SEQUENCE# DESC");
+        return sb.toString();
     }
 
     /**

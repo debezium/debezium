@@ -40,6 +40,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.logminer.LogFile;
 import io.debezium.connector.oracle.logminer.SqlUtils;
+import io.debezium.connector.oracle.util.OracleUtils;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -247,8 +248,9 @@ public class OracleConnection extends JdbcConnection {
 
     @Override
     protected String resolveCatalogName(String catalogName) {
-        final String pdbName = config().getString("pdb.name");
-        return (!Strings.isNullOrEmpty(pdbName) ? pdbName : config().getString("dbname")).toUpperCase();
+        final String pdbName = OracleUtils.getObjectName(config().getString("pdb.name"));
+        final String databaseName = OracleUtils.getObjectName(config().getString("dbname"));
+        return !Strings.isNullOrEmpty(pdbName) ? pdbName : databaseName;
     }
 
     @Override

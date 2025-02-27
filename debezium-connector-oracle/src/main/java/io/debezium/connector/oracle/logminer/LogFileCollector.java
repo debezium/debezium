@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -264,9 +265,57 @@ public class LogFileCollector {
         else {
             // Check whether the redo logs have the read position
             if (threadLogs.stream().noneMatch(log -> log.isScnInLogFileRange(startScn))) {
-                logException(String.format("Redo Thread %d is inconsistent; does not have a log that contains scn %s." +
-                        "A recent log switch may not have been archived by the Oracle ARC process yet.", threadId, startScn));
-                return false;
+                try {
+                    // Collect all archive logs for a given redo thread that has an SCN range that comes
+                    // after or includes the startScn plus the archive log that has a range that comes
+                    // immediately before the startScn
+                    final List<LogFile> allThreadArchiveLogs = getAllRedoThreadArchiveLogs(threadId);
+
+                    if (allThreadArchiveLogs.isEmpty()) {
+                        logException(String.format("Redo Thread %d is inconsistent; at least one archive log expected.", threadId));
+                        return false;
+                    }
+                    else if (allThreadArchiveLogs.stream().anyMatch(l -> l.isScnInLogFileRange(startScn))) {
+                        logException(String.format("Redo thread %d is inconsistent; does not have a log that conatins scn %s. " +
+                                "A recent log switch may not have been archived by the Oracle ARC process yet.", threadId, startScn));
+                        return false;
+                    }
+                    else {
+                        // Collects all archive logs for a given redo thread and returns the first archive log
+                        // with an SCN range that comes immediately before the log with a range that includes the startScn.
+                        // As the query is specific to a singular archive log destination, there should always either
+                        // be one log or no log at all that matches this criteria.
+                        final Optional<LogFile> logWithRangeBeforeStartScn = allThreadArchiveLogs.stream()
+                                .filter(l -> l.getFirstScn().compareTo(startScn) < 0 && !l.isScnInLogFileRange(startScn))
+                                .findFirst();
+
+                        // We expect that there should be an archive log with a range just before startScn
+                        // If this doesn't exist, we cannot guarantee there is not a gap in archive log sequences next
+                        if (logWithRangeBeforeStartScn.isEmpty()) {
+                            logException(String.format("Redo Thread %d is inconsistent; expected archive log with range just before scn %s.",
+                                    threadId, startScn));
+                            return false;
+                        }
+
+                        final Optional<Long> missingSequence = getFirstLogMissingSequence(Stream.concat(
+                                threadLogs.stream(), logWithRangeBeforeStartScn.stream()).toList());
+                        if (missingSequence.isPresent()) {
+                            logException(String.format("Redo Thread %d is inconsistent; an archive log with sequence %d is not available",
+                                    threadId, missingSequence.get()));
+                            return false;
+                        }
+                    }
+
+                    // Reaching here means that the log set for mining have scn ranges that come after the startScn.
+                    // Since the curated log set of archive logs and the mined thread logs have no sequence gaps,
+                    // the thread is consistent and represents a recently opened redo thread that was previously
+                    // closed. The startScn in this case refers to a position in the archive logs where the thread
+                    // was currently closed, but due to no sequence gaps, thread can be treated as consistent.
+                }
+                catch (SQLException e) {
+                    logException(String.format("Redo thread %d is inconsistent; " + e.getMessage(), threadId), e);
+                    return false;
+                }
             }
 
             // Make sure the thread logs from the read position until now have no gaps
@@ -415,6 +464,32 @@ public class LogFileCollector {
     }
 
     /**
+     * Get all archive logs for a given redo thread, ordered by sequence in descending order.
+     *
+     * @param threadId the redo thread id
+     * @return all available archive logs for the given redo thread
+     * @throws SQLException if a database exception is thrown
+     */
+    @VisibleForTesting
+    public List<LogFile> getAllRedoThreadArchiveLogs(int threadId) throws SQLException {
+        return connection.queryAndMap(
+                SqlUtils.allRedoThreadArchiveLogs(threadId, archiveLogDestinationName),
+                rs -> {
+                    final List<LogFile> logs = new ArrayList<>();
+                    while (rs.next()) {
+                        logs.add(new LogFile(
+                                rs.getString(1),
+                                Scn.valueOf(rs.getString(3)),
+                                Scn.valueOf(rs.getString(4)),
+                                BigInteger.valueOf(rs.getLong(2)),
+                                LogFile.Type.ARCHIVE,
+                                threadId));
+                    }
+                    return logs;
+                });
+    }
+
+    /**
      * Logs a warning that the thread check was skipped because the specified thread has no matching {@code V$THREAD} entry.
      *
      * @param threadId the redo thread id with no matching database record.
@@ -490,6 +565,10 @@ public class LogFileCollector {
 
     private static void logException(String message) {
         LOGGER.info("{}", message, new DebeziumException(message));
+    }
+
+    private static void logException(String message, Throwable cause) {
+        LOGGER.info("{}", message, new DebeziumException(message, cause));
     }
 
     /**

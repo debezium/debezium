@@ -32,6 +32,11 @@ alter table add_test add index if not exists ix_add_test_col1 using btree (col1)
 alter table add_test add index if not exists ix_add_test_col4 using btree (col4) comment 'test index';
 alter table add_test alter index ix_add_test_col1 invisible;
 alter table add_test alter index ix_add_test_col1 visible;
+alter table add_test alter index if exists ix_add_test_col1 ignored;
+alter table add_test alter index ix_add_test_col1 ignored;
+alter table add_test alter index ix_add_test_col1 not ignored;
+alter table add_test alter key if exists fk ignored;
+alter table add_test alter key if exists fk not ignored;
 alter table add_test change column if exists col8 col9 tinyint;
 alter table add_test change column if exists col3 col5 tinyint;
 alter table add_test modify column if exists col9 tinyint;
@@ -125,6 +130,7 @@ alter user if exists 'user'@'%' identified with 'mysql_native_password' as '*247
     require none password expire default account unlock password history default;
 rename user user1@100.200.1.1 to user2@100.200.1.2;
 rename user user1@100.200.1.1 to user2@2001:0db8:85a3:0000:0000:8a2e:0370:7334;
+ALTER USER 'user'@'localhost' WITH MAX_USER_CONNECTIONS 100 MAX_STATEMENT_TIME 30
 #end
 ALTER TABLE t1 ADD PARTITION (PARTITION p3 VALUES LESS THAN (2002));
 ALTER TABLE t1 ADD PARTITION IF NOT EXISTS (PARTITION p3 VALUES LESS THAN (2002));

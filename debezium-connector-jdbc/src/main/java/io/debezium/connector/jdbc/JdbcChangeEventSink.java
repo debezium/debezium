@@ -88,12 +88,6 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 continue;
             }
 
-            if (record.isTombstone()) {
-                // Skip only Debezium Envelope tombstone not the one produced by ExtractNewRecordState SMT
-                LOGGER.debug("Skipping tombstone record {}", record);
-                continue;
-            }
-
             final CollectionId collectionId = optionalCollectionId.get();
 
             if (record.isTruncate()) {
@@ -116,7 +110,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 }
             }
 
-            if (record.isDelete()) {
+            if (record.isDelete() || record.isTombstone()) {
                 if (!config.isDeleteEnabled()) {
                     LOGGER.debug("Deletes are not enabled, skipping delete for topic '{}'", record.topicName());
                     continue;
@@ -129,8 +123,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     flushBufferWithRetries(collectionId, upsertBufferByTable.get(collectionId).flush());
                 }
 
-                Buffer tableIdBuffer = resolveBuffer(deleteBufferByTable, collectionId, record);
-                List<JdbcSinkRecord> toFlush = tableIdBuffer.add(record);
+                List<JdbcSinkRecord> toFlush = getRecordsToFlush(deleteBufferByTable, collectionId, record);
                 flushBufferWithRetries(collectionId, toFlush);
             }
             else {
@@ -140,18 +133,9 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     flushBufferWithRetries(collectionId, deleteBufferByTable.get(collectionId).flush());
                 }
 
-                Stopwatch updateBufferStopwatch = Stopwatch.reusable();
-                updateBufferStopwatch.start();
-
-                Buffer tableIdBuffer = resolveBuffer(upsertBufferByTable, collectionId, record);
-
-                List<JdbcSinkRecord> toFlush = tableIdBuffer.add(record);
-                updateBufferStopwatch.stop();
-
-                LOGGER.trace("[PERF] Update buffer execution time {}", updateBufferStopwatch.durations());
+                List<JdbcSinkRecord> toFlush = getRecordsToFlush(upsertBufferByTable, collectionId, record);
                 flushBufferWithRetries(collectionId, toFlush);
             }
-
         }
 
         flushBuffers(upsertBufferByTable);
@@ -165,13 +149,25 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         }
     }
 
-    private Buffer resolveBuffer(Map<CollectionId, Buffer> bufferMap, CollectionId collectionId, JdbcSinkRecord record) {
+    private List<JdbcSinkRecord> getRecordsToFlush(Map<CollectionId, Buffer> bufferMap, CollectionId collectionId, JdbcSinkRecord record) {
+        Stopwatch stopwatch = Stopwatch.reusable();
+        stopwatch.start();
+
+        final Buffer buffer;
+
         if (config.isUseReductionBuffer() && !record.keyFieldNames().isEmpty()) {
-            return bufferMap.computeIfAbsent(collectionId, k -> new ReducedRecordBuffer(config));
+            buffer = bufferMap.computeIfAbsent(collectionId, k -> new ReducedRecordBuffer(config));
         }
         else {
-            return bufferMap.computeIfAbsent(collectionId, k -> new RecordBuffer(config));
+            buffer = bufferMap.computeIfAbsent(collectionId, k -> new RecordBuffer(config));
         }
+
+        List<JdbcSinkRecord> toFlush = buffer.add(record);
+        stopwatch.stop();
+
+        LOGGER.trace("[PERF] Resolve and add record execution time for collection '{}': {}", collectionId.name(), stopwatch.durations());
+
+        return toFlush;
     }
 
     private void flushBuffers(Map<CollectionId, Buffer> bufferByTable) {
