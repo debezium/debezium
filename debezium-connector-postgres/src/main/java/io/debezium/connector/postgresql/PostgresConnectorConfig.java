@@ -740,19 +740,37 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDisplayName("Slot names for parallel consumption")
             .withImportance(Importance.LOW)
             .withDescription("Comma separated values for multiple slot names")
-            .withValidation(PostgresConnectorConfig::validateUsageWithParallelStreamingMode);
+            .withValidation((config, field, output) -> {
+                if (!config.getString(field, "").isEmpty() && !config.getString(STREAMING_MODE).equalsIgnoreCase("parallel")) {
+                    output.accept(field, "", "slot.names is only valid with streaming.mode 'parallel'");
+                    return 1;
+                }
+                return 0;
+            });
 
     public static final Field PUBLICATION_NAMES = Field.create("publication.names")
             .withDisplayName("Publication names for parallel consumption")
             .withImportance(Importance.LOW)
             .withDescription("Comma separated values for multiple publication names")
-            .withValidation(PostgresConnectorConfig::validateUsageWithParallelStreamingMode);
+            .withValidation((config, field, output) -> {
+                if (!config.getString(field, "").isEmpty() && !config.getString(STREAMING_MODE).equalsIgnoreCase("parallel")) {
+                    output.accept(field, "", "publication.names is only valid with streaming.mode 'parallel'");
+                    return 1;
+                }
+                return 0;
+            });
 
     public static final Field SLOT_RANGES = Field.create("slot.ranges")
             .withDisplayName("Ranges on which a slot is supposed to operate")
             .withImportance(Importance.LOW)
             .withDescription("Semi-colon separated values for hash ranges to be polled by tasks.")
-            .withValidation(PostgresConnectorConfig::validateUsageWithParallelStreamingMode);
+            .withValidation((config, field, output) -> {
+                if (!config.getString(field, "").isEmpty() && !config.getString(STREAMING_MODE).equalsIgnoreCase("parallel")) {
+                    output.accept(field, "", "slot.ranges is only valid with streaming.mode 'parallel'");
+                    return 1;
+                }
+                return 0;
+            });
 
     public static final Field YB_LOAD_BALANCE_CONNECTIONS = Field.create("yb.load.balance.connections")
             .withDisplayName("YB load balance connections")
@@ -1576,18 +1594,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                 problems.accept(field, hostName, hostName + " has invalid format (only the underscore, hyphen, dot, comma, colon and alphanumeric characters are allowed)");
                 ++problemCount;
             }
-        }
-
-        return problemCount;
-    }
-
-    protected static int validateUsageWithParallelStreamingMode(Configuration config, Field field, Field.ValidationOutput problems) {
-        String mode = config.getString(STREAMING_MODE);
-        int problemCount = 0;
-
-        if (!StreamingMode.parse(mode).isParallel()) {
-            problems.accept(field, config.getString(field), "Configuration is only valid with parallel streaming mode");
-            ++problemCount;
         }
 
         return problemCount;

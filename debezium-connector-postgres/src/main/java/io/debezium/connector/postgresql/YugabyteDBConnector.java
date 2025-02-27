@@ -144,6 +144,13 @@ public class YugabyteDBConnector extends RelationalBaseSourceConnector {
 
         // YB Note: Only applicable when snapshot mode is not parallel.
         // this will always have just one task with the given list of properties
+
+        // This is to ensure that whenever the connector runs with a single task model,
+        // the default task ID is populated as this is not done by debezium-core.
+        if (props != null) {
+            props.put(PostgresConnectorConfig.TASK_ID, "0");
+        }
+
         return props == null ? Collections.emptyList() : Collections.singletonList(new HashMap<>(props));
     }
 
