@@ -177,7 +177,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                     if (!isOnlyRead) {
                                         stmt.execute(createPublicationStmt);
                                     } else {
-                                        LOGGER.info("Server in standBy mode, skip create statement");
+                                        LOGGER.info("The Postgres server in stand by mode, skip create statement execution");
                                     }
                                     break;
                                 case FILTERED:
