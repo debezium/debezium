@@ -14,12 +14,14 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
+import java.sql.PreparedStatement;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -180,7 +182,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                     break;
                                 case FILTERED:
                                     if (isOnlyRead) {
-                                        LOGGER.info("Checking is database replication up to date");
                                         validatePublications(stmt);
                                     } else {
                                         createOrUpdatePublicationModeFiltered(stmt, true);
@@ -208,7 +209,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                                 publicationName, plugin, database()));
                                     } else {
                                         if (isOnlyRead) {
-                                            LOGGER.info("Checking is database replication up to date");
                                             validatePublications(stmt);
                                         } else {
                                             createOrUpdatePublicationModeFiltered(stmt, true);
@@ -249,6 +249,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     private void validatePublications(Statement stmt) throws Exception {
+        LOGGER.info("Checking is database replication up to date");
         String validatePublication = "Select schemaname, tablename from pg_catalog.pg_publication_tables where pubname=? ";
             Set<TableId> tablesToCapture = determineCapturedTables();
             if (tablesToCapture.isEmpty()) {
