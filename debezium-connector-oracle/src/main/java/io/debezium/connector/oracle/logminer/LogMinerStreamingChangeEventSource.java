@@ -11,7 +11,6 @@ import java.sql.SQLException;
 import java.text.DecimalFormat;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -185,7 +184,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                     Stopwatch sw = Stopwatch.accumulating().start();
                     while (context.isRunning()) {
                         // Calculate time difference before each mining session to detect time zone offset changes (e.g. DST) on database server
-                        streamingMetrics.setDatabaseTimeDifference(getDatabaseSystemTime(jdbcConnection));
+                        streamingMetrics.setDatabaseTimeDifference(jdbcConnection.getDatabaseSystemTime());
 
                         if (archiveLogOnlyMode && !waitForStartScnInArchiveLogs(context, startScn)) {
                             break;
@@ -589,17 +588,6 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         connection.executeWithoutCommitting(NLS_SESSION_PARAMETERS);
         // This is necessary so that TIMESTAMP WITH LOCAL TIME ZONE is returned in UTC
         connection.executeWithoutCommitting("ALTER SESSION SET TIME_ZONE = '00:00'");
-    }
-
-    /**
-     * Get the database system time in the database system's time zone.
-     *
-     * @param connection database connection, should not be {@code null}
-     * @return the database system time
-     * @throws SQLException if a database exception occurred
-     */
-    private OffsetDateTime getDatabaseSystemTime(OracleConnection connection) throws SQLException {
-        return connection.singleOptionalValue("SELECT SYSTIMESTAMP FROM DUAL", rs -> rs.getObject(1, OffsetDateTime.class));
     }
 
     /**

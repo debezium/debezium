@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -213,12 +214,13 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     @Override
     protected Instant getSnapshotSourceTimestamp(JdbcConnection jdbcConnection, OracleOffsetContext offset, TableId tableId) {
         try {
-            Optional<Instant> snapshotTs = ((OracleConnection) jdbcConnection).getScnToTimestamp(offset.getScn());
-            if (snapshotTs.isEmpty()) {
-                throw new ConnectException("Failed reading SCN timestamp from source database");
-            }
-
-            return snapshotTs.get();
+            final OracleConnection oracleConnection = (OracleConnection) jdbcConnection;
+            return oracleConnection.getScnToTimestamp(offset.getScn())
+                    .orElseThrow(() -> new ConnectException("Failed reading SCN timestamp from database"))
+                    // Database host timezone adjustment
+                    .minusSeconds(oracleConnection.getDatabaseSystemTime().getOffset().getTotalSeconds())
+                    // JVM timezone adjustment
+                    .plusSeconds(ZoneId.systemDefault().getRules().getOffset(Instant.now()).getTotalSeconds());
         }
         catch (SQLException e) {
             throw new ConnectException("Failed reading SCN timestamp from source database", e);
