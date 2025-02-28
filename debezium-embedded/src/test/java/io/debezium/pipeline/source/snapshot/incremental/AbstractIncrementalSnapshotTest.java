@@ -29,6 +29,7 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -46,6 +47,7 @@ import io.debezium.junit.SkipWhenConnectorUnderTest.Connector;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.kafka.KafkaCluster;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
+import io.debezium.pipeline.signal.actions.snapshotting.CloseIncrementalSnapshotWindow;
 import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
 import io.debezium.util.Testing;
 
@@ -614,9 +616,10 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         sendAdHocSnapshotStopSignalAndWait();
 
         // Consume any residual left-over events after stopping incremental snapshots such as open/close
-        // and wait for the stop message in the connector logs
-        assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
-                interceptor, "Removed collections from incremental snapshot: ")).isTrue();
+        consumeUntilWindowClosed();
+
+        // Should have logged collection was removed
+        assertThat(interceptor.containsMessage("Removed collections from incremental snapshot: ")).isTrue();
 
         try (JdbcConnection connection = databaseConnection()) {
             connection.execute(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
@@ -682,9 +685,10 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         sendAdHocSnapshotStopSignalAndWait(tableDataCollectionId());
 
         // Consume any residual left-over events after stopping incremental snapshots such as open/close
-        // and wait for the stop message in the connector logs
-        assertThat(consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(
-                interceptor, "Removing '[" + tableDataCollectionId() + "]' collections from incremental snapshot")).isTrue();
+        consumeUntilWindowClosed();
+
+        // Check for the stop message in the connector logs
+        assertThat(interceptor.containsMessage("Removing '[" + tableDataCollectionId() + "]' collections from incremental snapshot")).isTrue();
 
         try (JdbcConnection connection = databaseConnection()) {
             connection.execute(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
@@ -1285,22 +1289,40 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         };
     }
 
-    protected boolean consumeAnyRemainingIncrementalSnapshotEventsAndCheckForStopMessage(LogInterceptor interceptor, String stopMessage) throws Exception {
-        // When an incremental snapshot is stopped, there may be some residual open/close events that
-        // have been written concurrently to the signal table after the stop signal. We want to make
-        // sure that those have all been read before stopping the connector.
-        final AtomicBoolean stopMessageFound = new AtomicBoolean(false);
+    protected void consumeUntilWindowClosed() throws Exception {
+        // If not enabled, only enable for this method call.
+        // If enabled, leave untouched based on caller's state.
+        boolean testPrintEnabled = Testing.Print.isEnabled();
+        if (!testPrintEnabled) {
+            Testing.Print.enable();
+        }
+
+        Testing.print("Consuming until window closed.");
         Awaitility.await().atMost(60, TimeUnit.SECONDS)
                 .pollDelay(5, TimeUnit.SECONDS)
                 .pollInterval(1, TimeUnit.SECONDS)
                 .until(() -> {
-                    if (interceptor.containsMessage(stopMessage)) {
-                        stopMessageFound.set(true);
+                    final SourceRecords records = consumeAvailableRecordsByTopic();
+                    for (SourceRecord record : records.allRecordsInOrder()) {
+                        Testing.print("Received: " + record);
+                        if (record.topic().endsWith(signalTableNameSanitized())) {
+                            final Schema valueSchema = record.valueSchema();
+                            if (valueSchema != null && valueSchema.field(Envelope.FieldName.AFTER) != null) {
+                                Struct value = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+                                if (value.schema().field(getSignalTypeFieldName()) != null) {
+                                    String type = value.getString(getSignalTypeFieldName());
+                                    if (CloseIncrementalSnapshotWindow.NAME.equals(type)) {
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
                     }
-                    return consumeAvailableRecords(r -> {
-                    }) == 0;
+                    return false;
                 });
-        return stopMessageFound.get();
-    }
 
+        if (!testPrintEnabled) {
+            Testing.Print.disable();
+        }
+    }
 }
