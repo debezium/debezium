@@ -21,6 +21,7 @@ import java.math.BigInteger;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
@@ -5912,6 +5913,80 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "dbz8577");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-8740")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Applies to LogMiner")
+    public void shouldPopulateCommitScnAndTimestampInSourceInfoBlock() throws Exception {
+        TestHelper.dropTable(connection, "dbz8740");
+        try {
+            connection.execute("CREATE TABLE dbz8740 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz8740");
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8740")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Insert, wait 2 seconds, and insert to guarantee differing SCN values
+            connection.execute("INSERT INTO dbz8740 (id,data) values (1,'Test1')");
+            Thread.sleep(2000);
+            connection.execute("INSERT INTO dbz8740 (id,data) values (2,'Test2')");
+
+            final SourceRecords records = consumeRecordsByTopic(2);
+            final List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ8740");
+            assertThat(tableRecords).hasSize(2);
+
+            // Verify that the source info fields are populated
+
+            Struct after1 = ((Struct) tableRecords.get(0).value()).getStruct(FieldName.AFTER);
+            assertThat(after1.get("ID")).isEqualTo(1);
+            assertThat(after1.get("DATA")).isEqualTo("Test1");
+
+            Struct source1 = ((Struct) tableRecords.get(0).value()).getStruct(FieldName.SOURCE);
+            assertThat(source1.get(SourceInfo.COMMIT_SCN_KEY)).isNotNull();
+            assertThat(source1.get(SourceInfo.COMMIT_TIMESTAMP_KEY)).isNotNull();
+            assertThat(source1.get(SourceInfo.START_SCN_KEY)).isNotNull();
+            assertThat(source1.get(SourceInfo.START_TIMESTAMP_KEY)).isNotNull();
+
+            Struct after2 = ((Struct) tableRecords.get(1).value()).getStruct(FieldName.AFTER);
+            assertThat(after2.get("ID")).isEqualTo(2);
+            assertThat(after2.get("DATA")).isEqualTo("Test2");
+
+            Struct source2 = ((Struct) tableRecords.get(1).value()).getStruct(FieldName.SOURCE);
+            assertThat(source2.get(SourceInfo.COMMIT_SCN_KEY)).isNotNull();
+            assertThat(source2.get(SourceInfo.COMMIT_TIMESTAMP_KEY)).isNotNull();
+            assertThat(source2.get(SourceInfo.START_SCN_KEY)).isNotNull();
+            assertThat(source2.get(SourceInfo.START_TIMESTAMP_KEY)).isNotNull();
+
+            // Test that first transaction values are prior to second transaction values
+
+            final Scn startScn1 = Scn.valueOf(source1.getString(SourceInfo.START_SCN_KEY));
+            final Scn startScn2 = Scn.valueOf(source2.getString(SourceInfo.START_SCN_KEY));
+            assertThat(startScn1.compareTo(startScn2) < 0).isTrue();
+
+            final Instant startTime1 = Instant.ofEpochMilli(source1.getInt64(SourceInfo.START_TIMESTAMP_KEY));
+            final Instant startTime2 = Instant.ofEpochMilli(source2.getInt64(SourceInfo.START_TIMESTAMP_KEY));
+            assertThat(startTime1.isBefore(startTime2)).isTrue();
+
+            final Scn commitScn1 = Scn.valueOf(source1.getString(SourceInfo.COMMIT_SCN_KEY));
+            final Scn commitScn2 = Scn.valueOf(source2.getString(SourceInfo.COMMIT_SCN_KEY));
+            assertThat(commitScn1.compareTo(commitScn2) < 0).isTrue();
+
+            final Instant commitTime1 = Instant.ofEpochMilli(source1.getInt64(SourceInfo.COMMIT_TIMESTAMP_KEY));
+            final Instant commitTime2 = Instant.ofEpochMilli(source2.getInt64(SourceInfo.COMMIT_TIMESTAMP_KEY));
+            assertThat(commitTime1.isBefore(commitTime2)).isTrue();
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz8740");
         }
     }
 

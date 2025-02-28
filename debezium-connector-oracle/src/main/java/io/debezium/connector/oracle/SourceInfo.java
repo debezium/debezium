@@ -22,12 +22,15 @@ public class SourceInfo extends BaseSourceInfo {
     public static final String SCN_KEY = "scn";
     public static final String EVENT_SCN_KEY = "scn";
     public static final String COMMIT_SCN_KEY = "commit_scn";
+    public static final String COMMIT_TIMESTAMP_KEY = "commit_ts_ms";
     public static final String LCR_POSITION_KEY = "lcr_position";
     public static final String SNAPSHOT_KEY = "snapshot";
     public static final String USERNAME_KEY = "user_name";
     public static final String SCN_INDEX_KEY = "scn_idx";
     public static final String REDO_SQL = "redo_sql";
     public static final String ROW_ID = "row_id";
+    public static final String START_SCN_KEY = "start_scn";
+    public static final String START_TIMESTAMP_KEY = "start_ts_ms";
 
     // Tracks thread-specific values when using multiple threads during snapshot
     private final ThreadLocal<String> rowId = new ThreadLocal<>();
@@ -35,10 +38,13 @@ public class SourceInfo extends BaseSourceInfo {
     private Scn scn;
     private CommitScn commitScn;
     private Scn eventScn;
+    private Scn startScn;
     private String lcrPosition;
     private String transactionId;
     private String userName;
     private Instant sourceTime;
+    private Instant commitTime;
+    private Instant startTime;
     private Set<TableId> tableIds;
     private Integer redoThread;
     private String rsId;
@@ -54,8 +60,20 @@ public class SourceInfo extends BaseSourceInfo {
         return scn;
     }
 
+    public Scn getStartScn() {
+        return startScn;
+    }
+
+    public Instant getStartTime() {
+        return startTime;
+    }
+
     public CommitScn getCommitScn() {
         return commitScn;
+    }
+
+    public Instant getCommitTime() {
+        return commitTime;
     }
 
     public Scn getEventScn() {
@@ -66,8 +84,20 @@ public class SourceInfo extends BaseSourceInfo {
         this.scn = scn;
     }
 
+    public void setStartScn(Scn startScn) {
+        this.startScn = startScn;
+    }
+
+    public void setStartTime(Instant startTime) {
+        this.startTime = startTime;
+    }
+
     public void setCommitScn(CommitScn commitScn) {
         this.commitScn = commitScn;
+    }
+
+    public void setCommitTime(Instant commitTime) {
+        this.commitTime = commitTime;
     }
 
     public void setEventScn(Scn eventScn) {
