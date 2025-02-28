@@ -587,7 +587,7 @@ public class CloudEventsConverterTest {
             // before field may be null
             assertThat(dataJson.get(CloudEventsMaker.FieldName.PAYLOAD_FIELD_NAME).get(Envelope.FieldName.AFTER)).isNotNull();
 
-            assertThat(valueJson.fieldNames()).noneMatch(fieldName -> fieldName.startsWith("iodebezium"));
+            assertThat(valueJson.fieldNames()).toIterable().noneMatch(fieldName -> fieldName.startsWith("iodebezium"));
             // a cloud event should contain only "basic" attributes the number of which is 7
             assertThat(Iterators.size(valueJson.fields())).isEqualTo(7);
         }
