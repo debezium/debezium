@@ -701,6 +701,12 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                 offsetContext.setRedoThread(row.getThread());
                 offsetContext.setRsId(event.getRsId());
                 offsetContext.setRowId(event.getRowId());
+                offsetContext.setCommitTime(row.getChangeTime().minusSeconds(databaseOffset.getTotalSeconds()));
+
+                if (eventsProcessed == 1) {
+                    offsetContext.setStartScn(event.getScn());
+                    offsetContext.setStartTime(event.getChangeTime().minusSeconds(databaseOffset.getTotalSeconds()));
+                }
 
                 if (event instanceof RedoSqlDmlEvent) {
                     offsetContext.setRedoSql(((RedoSqlDmlEvent) event).getRedoSql());
@@ -759,6 +765,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         offsetContext.setEventScn(commitScn);
         offsetContext.setRsId(row.getRsId());
         offsetContext.setRowId("");
+        offsetContext.setStartScn(Scn.NULL);
+        offsetContext.setCommitTime(null);
+        offsetContext.setStartTime(null);
 
         if (dispatchTransactionCommittedEvent) {
             dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, transaction.getChangeTime());
