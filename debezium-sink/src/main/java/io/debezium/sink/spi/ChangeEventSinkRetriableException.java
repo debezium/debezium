@@ -1,6 +1,6 @@
 package io.debezium.sink.spi;
 
-public class ChangeEventSinkRetriableException extends RuntimeException{
+public class ChangeEventSinkRetriableException extends RuntimeException {
     public ChangeEventSinkRetriableException(String message) {
         super(message);
     }
