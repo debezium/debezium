@@ -142,7 +142,8 @@ public class JdbcSinkConnectorTask extends SinkTask {
             if (SinkErrorHandler.isRetriable(throwable)) {
                 LOGGER.warn("Encountered a retriable exception, triggering retry: {}", throwable.getMessage());
                 throw new RetriableException("Retriable error occurred in JDBC Sink Connector", throwable);
-            } else {
+            }
+            else {
                 previousPutException = throwable;
                 records.forEach(this::markNotProcessed);
                 throw new ConnectException("Non-retriable JDBC Sink error", throwable);
