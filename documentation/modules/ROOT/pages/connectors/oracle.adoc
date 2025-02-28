@@ -607,7 +607,10 @@ The message contains a logical representation of the table schema.
       "ssn": 1,
       "redo_thread": 1,
       "user_name": "user",
-      "row_id": "AAASgjAAMAAAACnAAA"
+      "row_id": "AAASgjAAMAAAACnAAA",
+      "commit_ts_ms": 1588252619012,
+      "start_scn": "1513734",
+      "start_ts_ms": 1588252618953
     },
     "ts_ms": 1588252618953, // <1>
     "ts_us": 1588252618953987, // <1>
@@ -1430,6 +1433,21 @@ The following example shows the value of a _create_ event value from the `custom
                         "type": "string",
                         "optional": true,
                         "field": "row_id"
+                    },
+                    {
+                        "type": "int64",
+                        "optional": true,
+                        "field": "commit_ts_ms"
+                    },
+                    {
+                        "type": "string",
+                        "optional": true,
+                        "field": "start_scn"
+                    },
+                    {
+                        "type": "int64",
+                        "optional": true,
+                        "field": "start_ts_ms"
                     }
                 ],
                 "optional": false,
@@ -1482,7 +1500,10 @@ The following example shows the value of a _create_ event value from the `custom
             "redo_thread": 1,
             "user_name": "user",
             "snapshot": false,
-            "row_id": "AAASgjAAMAAAACnAAA"
+            "row_id": "AAASgjAAMAAAACnAAA",
+            "commit_ts_ms": 1520085154000,
+            "start_scn": "2122185",
+            "start_ts_ms": 1520085154000
         },
         "op": "c",
         "ts_ms": 1532592105975,
@@ -1551,7 +1572,10 @@ The following example shows an _update_ change event that the connector captures
             "redo_thread": 1,
             "user_name": "user",
             "snapshot": false,
-            "row_id": "AAASgjAAMAAAACnAAA"
+            "row_id": "AAASgjAAMAAAACnAAA",
+            "commit_ts_ms": 152008581100,
+            "start_scn": "2125544",
+            "start_ts_ms": 152008581100
         },
         "op": "u",
         "ts_ms": 1532592713485,
@@ -1618,7 +1642,10 @@ The `schema` portion of the _delete_ event is identical to the `schema` portion 
             "redo_thread": 1,
             "user_name": "user",
             "snapshot": false,
-            "row_id": "AAASgjAAMAAAACnAAA"
+            "row_id": "AAASgjAAMAAAACnAAA",
+            "commit_ts_ms": 1520085153000,
+            "start_scn": "2122184",
+            "start_ts_ms": 1520085153000
         },
         "op": "d",
         "ts_ms": 1532592105960,
@@ -1681,7 +1708,10 @@ The message key is `null` in this case, the message value looks like this:
             "rs_id": "001234.00012345.0124",
             "ssn": 1,
             "redo_thread": 1,
-            "user_name": "user"
+            "user_name": "user",
+            "commit_ts_ms": 1638974538971,
+            "start_scn": "13234396",
+            "start_ts_ms": 1638974527000
         },
         "op": "t", // <2>
         "ts_ms": 1638974558961, // <3>
