@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle;
 
-import java.math.BigInteger;
 import java.sql.CallableStatement;
 import java.sql.Clob;
 import java.sql.DatabaseMetaData;
@@ -39,7 +38,6 @@ import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
-import io.debezium.connector.oracle.logminer.LogFile;
 import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.connector.oracle.util.OracleUtils;
 import io.debezium.jdbc.JdbcConfiguration;
@@ -848,33 +846,6 @@ public class OracleConnection extends JdbcConnection {
         catch (Exception e) {
             LOGGER.warn("Failed to check MAX_STRING_SIZE status, defaulting to STANDARD.", e);
             return false;
-        }
-    }
-
-    public LogFile getArchiveLogFile(int threadId, long sequenceId) {
-        try {
-            return prepareQueryAndMap(
-                    "SELECT NAME, FIRST_CHANGE#, NEXT_CHANGE#, SEQUENCE# FROM V$ARCHIVED_LOG WHERE THREAD#=? AND SEQUENCE#=?",
-                    ps -> {
-                        ps.setInt(1, threadId);
-                        ps.setLong(2, sequenceId);
-                    },
-                    rs -> {
-                        if (!rs.next()) {
-                            return null;
-                        }
-                        return new LogFile(
-                                rs.getString(1),
-                                Scn.valueOf(rs.getString(2)),
-                                Scn.valueOf(rs.getString(3)),
-                                BigInteger.valueOf(rs.getLong(4)),
-                                LogFile.Type.ARCHIVE,
-                                threadId);
-                    });
-        }
-        catch (SQLException e) {
-            LOGGER.warn("Failed to find archive log for redo thread {} and sequence {}", threadId, sequenceId, e);
-            return null;
         }
     }
 
