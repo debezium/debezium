@@ -183,7 +183,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
                 metrics.setGlobalLockAcquired();
             }
             catch (SQLException e) {
-                LOGGER.info("Unable to flush and acquire global read lock, will use table read locks after reading table names");
+                LOGGER.info("Unable to flush and acquire global read lock, will use table read locks after reading table names", e);
                 // Continue anyway, since RDS (among others) don't allow setting a global lock
                 assert !isGloballyLocked();
             }
@@ -438,6 +438,11 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
     }
 
     private boolean twoPhaseSchemaSnapshot() {
+        if (!isGloballyLocked() && connectorConfig.isPreventTableLocks()) {
+            // Prevent obtaining individual table-level read locks
+            // when table locks are disabled via configuration
+            throw new DebeziumException("Cannot perform two-phase schema snapshot because global read lock was not acquired and table locks are disabled.");
+        }
         return connectorConfig.getSnapshotLockingStrategy().isLockingEnabled() && !isGloballyLocked();
     }
 

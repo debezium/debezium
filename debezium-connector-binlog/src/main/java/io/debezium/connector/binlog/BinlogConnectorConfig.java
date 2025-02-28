@@ -575,6 +575,16 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     + "server with matching GTIDs defined by the `gtid.source.includes` or `gtid.source.excludes`, "
                     + "if they were specified.");
 
+    public static final Field PREVENT_TABLE_LOCKS = Field.create("snapshot.prevent.table.locks")
+            .withDisplayName("Prevent table locks during snapshot")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 22))
+            .withWidth(ConfigDef.Width.SHORT)
+            .withDefault(false)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Prevents the connector from obtaining table-level locks during schema snapshots. When enabled, the connector will fail " +
+                    "if it cannot acquire a global lock.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .excluding(
                     SCHEMA_INCLUDE_LIST,
@@ -600,6 +610,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     KEEP_ALIVE_INTERVAL_MS,
                     USE_NONGRACEFUL_DISCONNECT,
                     SNAPSHOT_MODE,
+                    PREVENT_TABLE_LOCKS,
                     SNAPSHOT_QUERY_MODE,
                     SNAPSHOT_QUERY_MODE_CUSTOM_NAME,
                     BIGINT_UNSIGNED_HANDLING_MODE,
@@ -629,6 +640,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     private final EventProcessingFailureHandlingMode inconsistentSchemaFailureHandlingMode;
     private final BigIntUnsignedHandlingMode bigIntUnsignedHandlingMode;
     private final boolean readOnlyConnection;
+    private final boolean preventTableLocks;
 
     /**
      * Create a binlog-based connector configuration.
@@ -654,6 +666,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
         this.connectionTimeout = Duration.ofMillis(config.getLong(CONNECTION_TIMEOUT_MS));
         this.inconsistentSchemaFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(INCONSISTENT_SCHEMA_HANDLING_MODE));
         this.bigIntUnsignedHandlingMode = BigIntUnsignedHandlingMode.parse(config.getString(BIGINT_UNSIGNED_HANDLING_MODE));
+        this.preventTableLocks = config.getBoolean(PREVENT_TABLE_LOCKS);
     }
 
     @Override
@@ -880,5 +893,9 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
 
     public boolean usesNonGracefulDisconnect() {
         return config.getBoolean(USE_NONGRACEFUL_DISCONNECT);
+    }
+
+    public boolean isPreventTableLocks() {
+        return preventTableLocks;
     }
 }
