@@ -119,10 +119,8 @@ public class SnapshotIsolationIT extends AbstractAsyncEngineConnectorTest {
             final Struct value1 = (Struct) record1.value();
             assertRecord(key1, expectedKey1);
             assertRecord((Struct) value1.get("after"), expectedRow1);
-            assertThat(record1.sourceOffset())
-                    .extracting("snapshot").containsExactly("INITIAL");
-            assertThat(record1.sourceOffset())
-                    .extracting("last_snapshot_record").containsExactly(i == 4 - 1);
+            assertThat(record1.sourceOffset()).extracting("snapshot").isEqualTo("INITIAL");
+            assertThat(record1.sourceOffset()).extracting("last_snapshot_record").isEqualTo(i == 4 - 1);
             assertNull(value1.get("before"));
         }
     }
