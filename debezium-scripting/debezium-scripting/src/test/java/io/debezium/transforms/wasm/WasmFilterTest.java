@@ -54,6 +54,9 @@ public class WasmFilterTest {
     // array access
     private static final String FILTER_7 = filterAbsolutePath("filter7");
 
+    // keySchema / valueSchema
+    private static final String FILTER_8 = filterAbsolutePath("filter8");
+
     private static String filterAbsolutePath(String filename) {
         return "file:" + new File(".").getAbsolutePath() + "/src/test/resources/wasm/compiled/" + filename + ".wasm";
     }
@@ -244,6 +247,18 @@ public class WasmFilterTest {
             transform.configure(props);
             final SourceRecord record = createArrayDataTypeRecord(true);
             assertThat(transform.apply(createArrayDataTypeRecord(false))).isNull();
+            assertThat(transform.apply(record)).isSameAs(record);
+        }
+    }
+
+    @Test
+    public void shouldAccessSchemaFields() {
+        try (Filter<SourceRecord> transform = new Filter<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(EXPRESSION, FILTER_8);
+            props.put(LANGUAGE, "wasm.chicory");
+            transform.configure(props);
+            final SourceRecord record = createDeleteRecord(1);
             assertThat(transform.apply(record)).isSameAs(record);
         }
     }
