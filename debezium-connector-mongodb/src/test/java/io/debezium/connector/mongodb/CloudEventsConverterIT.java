@@ -187,6 +187,7 @@ public class CloudEventsConverterIT extends AbstractMongoConnectorIT {
                             .append("aggregateid", "10711fa5")
                             .append("aggregatetype", "User")
                             .append("event_type", "UserCreated")
+                            .append("tracingspancontext", "traceparent=00-f99aefa4b9c40a436432b62f851a8159-526f14c08e12c3b9-01")
                             .append("payload", new Document()
                                     .append("_id", new ObjectId("000000000000000000000000"))
                                     .append("someField1", "some value 1")

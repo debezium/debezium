@@ -69,6 +69,11 @@ public class RecordAndMetadataHeaderImpl extends RecordAndMetadataBaseImpl imple
     }
 
     @Override
+    public String traceParent() {
+        return getValueFromHeaderOrByDefault(metadataSource.traceParent(), CloudEventsMaker.FieldName.TRACE_PARENT, true, null, super::traceParent);
+    }
+
+    @Override
     public String dataSchemaName() {
         return getValueFromHeaderOrByDefault(metadataSource.dataSchemaName(), CloudEventsMaker.DATA_SCHEMA_NAME_PARAM, false, null, super::dataSchemaName);
     }
