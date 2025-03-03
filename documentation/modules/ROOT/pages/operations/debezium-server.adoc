@@ -729,6 +729,10 @@ i.e. after this value is reached, the wait time will not increase further by the
 Only to be used in a dev or test environment with the https://cloud.google.com/pubsub/docs/emulator[pubsub emulator].
 Unless this value is set, debezium-server will connect to a cloud pubsub instance running in a gcp project, which is the desired behavior in a production environment.
 
+|[[pubsub-region]]<<pubsub-region, `debezium.sink.pubsub.region`>>
+|
+|The Google Cloud region to connect to (e.g., `us-central1`, `asia-northeast1`). When specified, Debezium will use the locational endpoint for Pub/Sub in the format `{region}-pubsub.googleapis.com:443`. This allows connecting to locational endpoints instead of the global endpoint. Note that this parameter is ignored if `debezium.sink.pubsub.address` is specified.
+
 |===
 
 
