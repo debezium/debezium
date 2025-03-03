@@ -2,6 +2,62 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+================================================================================
+## 3.0.8.Final
+March 3rd 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12443558)
+
+### New features since 3.0.7.Final
+
+* Add MariaDB SSL support [DBZ-8482](https://issues.redhat.com/browse/DBZ-8482)
+
+
+### Breaking changes since 3.0.7.Final
+
+* schema.history.internal.store.only.captured.databases.ddl not working properly [DBZ-8558](https://issues.redhat.com/browse/DBZ-8558)
+* Rename SparseVector and move to debezium-core [DBZ-8585](https://issues.redhat.com/browse/DBZ-8585)
+* Data loss when primary key update is last operation in a transaction [DBZ-8594](https://issues.redhat.com/browse/DBZ-8594)
+* Emit LOB columns when available even if lob.enabled is off [DBZ-8653](https://issues.redhat.com/browse/DBZ-8653)
+
+
+### Fixes since 3.0.7.Final
+
+* JDBC sink connector doesn't delete rows from a postgres db table [DBZ-8287](https://issues.redhat.com/browse/DBZ-8287)
+* MariaDB adapter fails on an ALTER USER statement [DBZ-8436](https://issues.redhat.com/browse/DBZ-8436)
+* Expressions cause SQL parser exception in Percona SEQUENCE_TABLE function [DBZ-8559](https://issues.redhat.com/browse/DBZ-8559)
+* MongoDataConverter does not recognize nested empty array [DBZ-8572](https://issues.redhat.com/browse/DBZ-8572)
+* ORA-65040 occurs on log switches when log.mining.restart.connection is enabled and connection defaults to PDB rather than CDB$ROOT [DBZ-8577](https://issues.redhat.com/browse/DBZ-8577)
+* Reduced record buffer doesn't handle RECORD_VALUE with primary key fields [DBZ-8593](https://issues.redhat.com/browse/DBZ-8593)
+* Events for tables with generated columns fail when using hybrid mining strategy [DBZ-8597](https://issues.redhat.com/browse/DBZ-8597)
+* ANTLR DDL Parsing error [DBZ-8600](https://issues.redhat.com/browse/DBZ-8600)
+* Remove misleading log entry about undo change failure [DBZ-8645](https://issues.redhat.com/browse/DBZ-8645)
+* Oracle metric OldestScnAgeInMilliseconds does not account for database timezone [DBZ-8646](https://issues.redhat.com/browse/DBZ-8646)
+* Using RECORD_VALUE with a DELETE event causes NullPointerException [DBZ-8648](https://issues.redhat.com/browse/DBZ-8648)
+* Batch size calculation is incorrectly using min-batch-size [DBZ-8652](https://issues.redhat.com/browse/DBZ-8652)
+* Oracle performance drop when transaction contains many constraint violations [DBZ-8665](https://issues.redhat.com/browse/DBZ-8665)
+* Skip empty transactions with commit with redo thread equal to 0 [DBZ-8681](https://issues.redhat.com/browse/DBZ-8681)
+* DDL statement couldn't be parsed: GRANT SENSITIVE_VARIABLES_OBSERVER [DBZ-8685](https://issues.redhat.com/browse/DBZ-8685)
+* Column scale is reset when a column's type is not changed during an ALTER TABLE [DBZ-8700](https://issues.redhat.com/browse/DBZ-8700)
+* Alter table modify column fails when using DEFAULT ON NULL clause [DBZ-8720](https://issues.redhat.com/browse/DBZ-8720)
+* ExtractChangedRecordState SMT Now Working With Default Values [DBZ-8721](https://issues.redhat.com/browse/DBZ-8721)
+* Restart of Oracle RAC node leads to redo thread being inconsistent indefinitely [DBZ-8724](https://issues.redhat.com/browse/DBZ-8724)
+* Specifying archive.log.hours with non-zero value generates bad SQL [DBZ-8725](https://issues.redhat.com/browse/DBZ-8725)
+* debezium/connect docker image is not available on arm64 [DBZ-8728](https://issues.redhat.com/browse/DBZ-8728)
+* Unknown DDL ALTER INDEX <name> IGNORED  [DBZ-8741](https://issues.redhat.com/browse/DBZ-8741)
+* Possibly  broken schema.history.internal.skip.unparseable.ddl for MariaDB [DBZ-8745](https://issues.redhat.com/browse/DBZ-8745)
+* Oracle snapshot's source.ts does not account for database zone differences [DBZ-8749](https://issues.redhat.com/browse/DBZ-8749)
+
+
+### Other changes since 3.0.7.Final
+
+* Align MySQL and MariaDB grammars with upstream versions [DBZ-8270](https://issues.redhat.com/browse/DBZ-8270)
+* Update Debezium Server and Operator to Quarkus 3.15.3 LTS [DBZ-8601](https://issues.redhat.com/browse/DBZ-8601)
+* Allow optional removal of ehcache form Oracle package [DBZ-8602](https://issues.redhat.com/browse/DBZ-8602)
+* Prepare Logical message decoder SMT docs for productization [DBZ-8641](https://issues.redhat.com/browse/DBZ-8641)
+* Document PostgreSQL snapshot.isolation.mode property [DBZ-8659](https://issues.redhat.com/browse/DBZ-8659)
+* Update the way tests calculates the default zoned times for MariaDB driver 3.5 [DBZ-8742](https://issues.redhat.com/browse/DBZ-8742)
+
+
+
 ## 3.0.7.Final
 January 15th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12440561)
 
