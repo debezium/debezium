@@ -47,8 +47,6 @@ import io.debezium.storage.file.history.FileSchemaHistory;
  */
 public abstract class UniqueDatabase {
 
-    public static final ZoneId TIMEZONE = ZoneId.of("US/Samoa");
-
     private static final String DEFAULT_DATABASE = "mysql";
     private static final String[] CREATE_DATABASE_DDL = new String[]{
             "CREATE DATABASE `$DBNAME$`;",
@@ -280,9 +278,7 @@ public abstract class UniqueDatabase {
     /**
      * @return timezone in which the database is located
      */
-    public ZoneId timezone() {
-        return TIMEZONE;
-    }
+    public abstract ZoneId getTimezone();
 
     protected Configuration.Builder applyConnectorDefaultJdbcConfiguration(Configuration.Builder builder) {
         return builder;
