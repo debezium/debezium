@@ -3,6 +3,8 @@ import java.util.stream.*
 
 import com.cloudbees.groovy.cps.NonCPS
 
+@Library("dbz-libs") _
+
 if (
     !RELEASE_VERSION ||
     !DEVELOPMENT_VERSION ||
@@ -265,9 +267,9 @@ def mvnRelease(repoDir, repoName, branchName, buildArgs = '', subDir = '.') {
 node('release-node') {
     catchError {
         stage('Validate parameters') {
-            if (!(RELEASE_VERSION ==~ /\d+\.\d+.\d+\.(Final|(Alpha|Beta|CR)\d+)/)) {
-                error "Release version '$RELEASE_VERSION' is not of the required format x.y.z.suffix"
-            }
+
+            common.validateVersionFormat(RELEASE_VERSION)
+
             if (!(DEVELOPMENT_VERSION ==~ /\d+\.\d+.\d+\-SNAPSHOT/)) {
                 error "Development version '$DEVELOPMENT_VERSION' is not of the required format x.y.z-SNAPSHOT"
             }
