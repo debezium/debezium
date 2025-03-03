@@ -23,6 +23,8 @@ Alexey Loubyansky
 Alexey Miroshnikov
 Alfusainey Jallow
 Alisa Houskova
+Alvar Viana
+Alvar Viana Gomez
 Amirmohammad Sadat Shokouhi
 Amit Sela
 Aman Garg
@@ -232,6 +234,7 @@ Jonas Thelemann
 Jordan Pittier
 Juan Fiallo
 Juanma Barea
+Julien Roy
 Jun Zhao
 Hady Willi
 Hang Ruan
@@ -322,6 +325,7 @@ Kevin Rothenberger
 Kewei Shang
 Kosta Kostelnik
 Krizhan Mariampillai
+Krzysztof Grzechnik
 Kunal Bhatnagar
 Kyley Jex
 Lairen Hightower
@@ -377,6 +381,7 @@ Martín Pérez
 Mehmet Firat Komurcu
 Meng Qiu
 Melissa Winstanley
+Michael Cambria
 Michael Cizmar
 Michael Wang
 Michal Augustýn
@@ -398,6 +403,7 @@ Muhammad Sufyian
 My Lang Pangzi
 Nancy Xu
 Nansen
+Naresh Gandi
 Narz David
 Nathan Bradshaw
 Nathan Mills
@@ -464,6 +470,7 @@ Renato Mefi
 René Kerner
 Robert Hana
 Robin Moffatt
+Rodolphe Quiedeville
 Roman Kuchar
 Roman Kudryashov
 Rotem Adhoh
@@ -504,6 +511,7 @@ Sergei Morozov
 Sergey Eizner
 Sergey Ivanov
 Sergey Kazakov
+Sergey Seroshtan
 Shane Paul
 Shantanu Sharma
 Sherafudheen PM
@@ -593,6 +601,7 @@ Xuan Shen
 Yang Wu
 Yang Yang
 Yanjie Wang
+Yannick Eisenschmidt
 yangrong688
 yangsanity
 Yashashree Chopada
@@ -660,8 +669,8 @@ Selman Genç
 Pradeep Nain
 Gaurav Miglani
 张展业
-남동민
 Ashish Binu
 Mohamed El Shaer
 Artyom Dubinin
 Giovanni Panice
+남동민
