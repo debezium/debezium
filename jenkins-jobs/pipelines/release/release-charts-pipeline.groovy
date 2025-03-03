@@ -3,6 +3,7 @@ import java.util.stream.*
 
 import com.cloudbees.groovy.cps.NonCPS
 
+@Library("dbz-libs") _
 
 if (
     !RELEASE_VERSION ||
@@ -28,28 +29,10 @@ DEBEZIUM_OPERATOR_DIR='operator'
 DEBEZIUM_PLATFORM_DIR='platform'
 
 
-def modifyFile(filename, modClosure) {
-    echo "========================================================================"
-    echo "Modifying file $filename"
-    echo "========================================================================"
-    def originalFile = readFile(filename)
-    echo "Content to be modified:\n$originalFile"
-    echo "========================================================================"
-    def updatedFile = modClosure.call(originalFile)
-    echo "Content after modification:\n$updatedFile"
-    echo "========================================================================"
-    writeFile(
-        file: filename,
-        text: updatedFile
-    )
-}
-
 node('release-node') {
     catchError {
         stage('Validate parameters') {
-            if (!(RELEASE_VERSION ==~ /\d+\.\d+.\d+\.(Final|(Alpha|Beta|CR)\d+)/)) {
-                error "Release version '$RELEASE_VERSION' is not of the required format x.y.z.suffix"
-            }
+            common.validateVersionFormat(RELEASE_VERSION)
         }
 
         stage('Initialize') {
@@ -138,7 +121,7 @@ node('release-node') {
                     def credentials = USERNAME_PASSWORD.split(':')
                     sh """
                         set +x
-                        helm registry login -u ${credentials[0]} -p ${credentials[1]} quay.io"
+                        helm registry login -u ${credentials[0]} -p ${credentials[1]} quay.io
                     """
                 }
                 sh "helm push $TMP_WORKDIR/debezium-operator-${RELEASE_SEM_VERSION}.tgz $OCI_ARTIFACT_REPO_URL"
@@ -151,7 +134,7 @@ node('release-node') {
             dir(DEBEZIUM_PLATFORM_DIR) {
                 echo "Update version for chart dependency"
                 dir("helm/charts/database") {
-                    modifyFile("Chart.yaml") {
+                    fileUtils.modifyFile("Chart.yaml") {
                         it.replaceFirst(/version: .*/, "version: \"${RELEASE_SEM_VERSION}\"")
                     }
                 }
@@ -174,7 +157,7 @@ node('release-node') {
 
                         return updatedContent
                     }
-                    modifyFile("Chart.yaml", modifyVersions)
+                    fileUtils.modifyFile("Chart.yaml", modifyVersions)
                 }
                 sh "mv $TMP_WORKDIR/debezium-operator-${RELEASE_SEM_VERSION}.tgz helm/charts"
                 sh "helm show chart helm/charts/debezium-operator-${RELEASE_SEM_VERSION}.tgz"
@@ -193,7 +176,7 @@ node('release-node') {
                         def credentials = USERNAME_PASSWORD.split(':')
                         sh """
                             set +x
-                            helm registry login -u ${credentials[0]} -p ${credentials[1]} quay.io"
+                            helm registry login -u ${credentials[0]} -p ${credentials[1]} quay.io
                         """
                     }
                     sh "helm push debezium-platform-${RELEASE_SEM_VERSION}.tgz $OCI_ARTIFACT_REPO_URL"
