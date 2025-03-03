@@ -10,18 +10,18 @@ import static java.lang.Math.toIntExact;
 
 import java.nio.ByteBuffer;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
-import java.sql.PreparedStatement;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -176,14 +176,16 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                     // Publication doesn't exist, create it.
                                     if (!isOnlyRead) {
                                         stmt.execute(createPublicationStmt);
-                                    } else {
+                                    }
+                                    else {
                                         LOGGER.info("The Postgres server in stand by mode, skip create statement execution");
                                     }
                                     break;
                                 case FILTERED:
                                     if (isOnlyRead) {
                                         validatePublications(stmt);
-                                    } else {
+                                    }
+                                    else {
                                         createOrUpdatePublicationModeFiltered(stmt, false);
                                     }
                                     break;
@@ -193,7 +195,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                     stmt.execute(createPublicationWithNoTablesStmt);
                                     break;
                             }
-                        } else {
+                        }
+                        else {
                             switch (publicationAutocreateMode) {
                                 case FILTERED:
                                     // Checking that publication can be altered
@@ -207,10 +210,12 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                                         "or let plugin recreate it by dropping existing publication. " +
                                                         "Otherwise please change the 'publication.autocreate.mode' property to 'all_tables'.",
                                                 publicationName, plugin, database()));
-                                    } else {
+                                    }
+                                    else {
                                         if (isOnlyRead) {
                                             validatePublications(stmt);
-                                        } else {
+                                        }
+                                        else {
                                             createOrUpdatePublicationModeFiltered(stmt, true);
                                         }
                                     }
@@ -226,14 +231,18 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                     }
                     conn.commit();
                     conn.setAutoCommit(true);
-                }catch (DebeziumException e){
+                }
+                catch (DebeziumException e) {
                     throw new DebeziumException(e);
-                } catch (SQLException e) {
+                }
+                catch (SQLException e) {
                     throw new JdbcConnectionException(e);
-                }catch (Exception e){
+                }
+                catch (Exception e) {
                     throw new RuntimeException(e);
                 }
-            }catch (SQLException e) {
+            }
+            catch (SQLException e) {
                 throw new JdbcConnectionException(e);
             }
         }
