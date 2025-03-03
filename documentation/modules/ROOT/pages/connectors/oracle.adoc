@@ -889,8 +889,7 @@ However, before you choose a log mining strategy, it's important to consider the
 
 ==== Writing the data dictionary to redo logs
 
-The default mining strategy is called `redo_log_catalog`.
-In this strategy, the database flushes a copy of the data dictionary to the redo logs immediately after each redo log switch.
+The `redo_log_catalog` mining strategy instructs the database to flush a copy of the data dictionary to the redo logs immediately after each redo log switch.
 This is the most reliable strategy for tracking schema changes that are interwoven with data changes, because Oracle LogMiner has a way to interpolate between the starting and ending data dictionary states across a series of change vectors.
 
 However, the `redo_log_catalog` mode is also the most expensive, because it requires several key steps to function.
@@ -905,7 +904,7 @@ If you configure the connector to use the `redo_log_catalog` mode, do not use mu
 
 ==== Using the online catalog directly
 
-The next strategy mode, `online_catalog`, works differently from the `redo_log_catalog` mode.
+The default strategy mode, `online_catalog`, works differently from the `redo_log_catalog` mode.
 When the strategy is set to `online_catalog`, the database never flushes the data dictionary to the redo logs.
 Instead, Oracle LogMiner always uses the most current data dictionary state to perform comparisons.
 By always using the current dictionary, and eliminating flushing to the redo logs, this strategy requires less overhead, and operates more efficiently.
