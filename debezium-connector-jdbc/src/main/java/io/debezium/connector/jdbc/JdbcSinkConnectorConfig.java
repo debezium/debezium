@@ -98,7 +98,6 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 3))
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
-            .required()
             .withDescription("Password of the database user to be used when connecting to the connection.");
 
     public static final Field CONNECTION_POOL_MIN_SIZE_FIELD = Field.create(CONNECTION_POOL_MIN_SIZE)
@@ -511,7 +510,10 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         hibernateConfig.setProperty(AvailableSettings.CONNECTION_PROVIDER, config.getString(CONNECTION_PROVIDER_FIELD));
         hibernateConfig.setProperty(AvailableSettings.JAKARTA_JDBC_URL, config.getString(CONNECTION_URL_FIELD));
         hibernateConfig.setProperty(AvailableSettings.JAKARTA_JDBC_USER, config.getString(CONNECTION_USER_FIELD));
-        hibernateConfig.setProperty(AvailableSettings.JAKARTA_JDBC_PASSWORD, config.getString(CONNECTION_PASSWORD_FIELD));
+        String password = config.getString(CONNECTION_PASSWORD_FIELD);
+        if (password != null && !password.isEmpty()) {
+            hibernateConfig.setProperty(AvailableSettings.JAKARTA_JDBC_PASSWORD, password);
+        }
         hibernateConfig.setProperty(AvailableSettings.C3P0_MIN_SIZE, config.getString(CONNECTION_POOL_MIN_SIZE_FIELD));
         hibernateConfig.setProperty(AvailableSettings.C3P0_MAX_SIZE, config.getString(CONNECTION_POOL_MAX_SIZE_FIELD));
         hibernateConfig.setProperty(AvailableSettings.C3P0_ACQUIRE_INCREMENT, config.getString(CONNECTION_POOL_ACQUIRE_INCREMENT_FIELD));
