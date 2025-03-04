@@ -53,7 +53,7 @@ node('release-node') {
             checkout([$class                           : 'GitSCM',
                       branches                         : [[name: "*/$DEBEZIUM_OPERATOR_BRANCH"]],
                       doGenerateSubmoduleConfigurations: false,
-                      extensions                       : [[$class: 'RelativeTargetDirectory', relativeTargetDir: DEBEZIUM_OPERATOR_DIR]],
+                      extensions                       : [[$class: 'RelativeTargetDirectory', relativeTargetDir: DEBEZIUM_OPERATOR_DIR], [$class: 'CloneOption', noTags: false, depth: 1]],
                       submoduleCfg                     : [],
                       userRemoteConfigs                : [[url: "https://$DEBEZIUM_OPERATOR_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
             ]
@@ -62,7 +62,7 @@ node('release-node') {
             checkout([$class                           : 'GitSCM',
                       branches                         : [[name: "*/$DEBEZIUM_PLATFORM_BRANCH"]],
                       doGenerateSubmoduleConfigurations: false,
-                      extensions                       : [[$class: 'RelativeTargetDirectory', relativeTargetDir: DEBEZIUM_PLATFORM_DIR]],
+                      extensions                       : [[$class: 'RelativeTargetDirectory', relativeTargetDir: DEBEZIUM_PLATFORM_DIR], [$class: 'CloneOption', noTags: false, depth: 1]],
                       submoduleCfg                     : [],
                       userRemoteConfigs                : [[url: "https://$DEBEZIUM_PLATFORM_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
             ]
