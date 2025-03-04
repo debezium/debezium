@@ -70,6 +70,13 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
         MINIMAL_PERCONA("minimal_percona"),
 
         /**
+         * Similar to MINIMAL_PERCONA mode but prevents any table-level locks. The connector will fail if it cannot acquire a global lock.
+         * This mode ensures table locks are never used, which can be important in environments where table locks are not allowed
+         * or can cause issues.
+         */
+        MINIMAL_PERCONA_NO_TABLE_LOCKS("minimal_percona_no_table_locks"),
+
+        /**
          * This mode will avoid using ANY table locks during the snapshot process.  This mode can only be used with SnapShotMode
          * set to schema_only or schema_only_recovery.
          */
@@ -92,7 +99,7 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
         }
 
         public boolean usesMinimalLocking() {
-            return value.equals(MINIMAL.value) || value.equals(MINIMAL_PERCONA.value);
+            return value.equals(MINIMAL.value) || value.equals(MINIMAL_PERCONA.value) || value.equals(MINIMAL_PERCONA_NO_TABLE_LOCKS.value);
         }
 
         public boolean usesLocking() {
@@ -100,7 +107,11 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
         }
 
         public boolean flushResetsIsolationLevel() {
-            return !value.equals(MINIMAL_PERCONA.value);
+            return !value.equals(MINIMAL_PERCONA.value) && !value.equals(MINIMAL_PERCONA_NO_TABLE_LOCKS.value);
+        }
+
+        public boolean preventsTableLocks() {
+            return value.equals(MINIMAL_PERCONA_NO_TABLE_LOCKS.value);
         }
 
         /**
@@ -412,6 +423,11 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
         @Override
         public boolean isIsolationLevelResetOnFlush() {
             return snapshotLockingMode.flushResetsIsolationLevel();
+        }
+
+        @Override
+        public boolean preventsTableLocks() {
+            return snapshotLockingMode.preventsTableLocks();
         }
     }
 

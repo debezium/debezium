@@ -112,7 +112,7 @@ public class MySqlTestConnection extends BinlogTestConnection {
 
     @Override
     public boolean isPercona() {
-        return getMySqlVersionString().startsWith("Percona");
+        return getMySqlVersionComment().startsWith("Percona");
     }
 
     @Override
