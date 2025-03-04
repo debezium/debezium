@@ -139,7 +139,7 @@ When this SMT is invoked with a message then it will:
 * extract the parent span context if present in the message
 * create the event `db-log-write` span context with the start timestamp set to the database log write timestamp
 * insert fields from `source` block into the span as *tags*
-* create the processing `debezium-read` span as a child of `db-log-write` span with the start timestamp set to the processing time of the even
+* create the processing `debezium-read` span as a child of `db-log-write` span with the start timestamp set to the processing time of the event
 * insert fields from envelope such as `op` into the processing span as *tags*
 * injects the processing span context into message headers
 
