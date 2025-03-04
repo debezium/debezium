@@ -36,6 +36,7 @@ import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.data.Envelope;
 import io.debezium.function.LogPositionValidator;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.notification.channels.NotificationChannel;
@@ -373,9 +374,23 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         // error handler is passed into the new error handler, propagating the retry count. This method
         // allows resetting that counter when a successful poll iteration step contains new records so that when a
         // future failure is thrown, the maximum retry count can be utilized.
-        if (!records.isEmpty() && coordinator != null && coordinator.getErrorHandler().getRetries() > 0) {
+        if (containsMessages(records) && coordinator != null && coordinator.getErrorHandler().getRetries() > 0) {
             coordinator.getErrorHandler().resetRetries();
         }
+    }
+
+    private boolean containsMessages(List<SourceRecord> records) {
+        if (records == null || records.isEmpty()) {
+            return false;
+        }
+
+        for (SourceRecord record : records) {
+            if (record.valueSchema() != null && record.valueSchema().field(Envelope.FieldName.AFTER) != null) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
