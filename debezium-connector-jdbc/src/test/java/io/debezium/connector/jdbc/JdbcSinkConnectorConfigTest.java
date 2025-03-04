@@ -213,6 +213,24 @@ public class JdbcSinkConnectorConfigTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-7810")
+    public void testEmptyPassword() {
+        final Map<String, String> properties = new HashMap<>();
+        properties.put(JdbcSinkConnectorConfig.CONNECTION_PROVIDER, "io.debezium.AcmeConnectionProvider");
+        properties.put(JdbcSinkConnectorConfig.CONNECTION_URL, "jdbc://url");
+        properties.put(JdbcSinkConnectorConfig.CONNECTION_USER, "user");
+        properties.put(JdbcSinkConnectorConfig.CONNECTION_PASSWORD, ""); // Empty password
+
+        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        final Properties ormProperties = config.getHibernateConfiguration().getProperties();
+        assertThat(ormProperties).isNotNull();
+        assertThat(ormProperties.get(AvailableSettings.CONNECTION_PROVIDER)).isEqualTo("io.debezium.AcmeConnectionProvider");
+        assertThat(ormProperties.get(AvailableSettings.JAKARTA_JDBC_URL)).isEqualTo("jdbc://url");
+        assertThat(ormProperties.get(AvailableSettings.JAKARTA_JDBC_USER)).isEqualTo("user");
+        assertThat(ormProperties.get(AvailableSettings.JAKARTA_JDBC_PASSWORD)).isNull(); // Password should be null
+    }
+
     // @Test
     // public void testNonDefaultSchemaEvolutionProperty() {
     // final Map<String, String> properties = new HashMap<>();
