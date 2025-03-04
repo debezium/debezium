@@ -11,8 +11,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.ConnectException;
 import org.junit.Test;
 
 import io.debezium.config.Field;
@@ -69,6 +71,30 @@ public class SnapshotSourceIT extends BinlogSnapshotSourceIT<MySqlConnector> imp
         SourceRecords sourceRecords = consumeRecordsByTopic(recordCount);
         assertThat(sourceRecords.allRecordsInOrder()).hasSize(recordCount);
         connection.connection().close();
+    }
+
+    @Test(expected = ConnectException.class)
+    public void shouldFailOnTableLock() throws Exception {
+        config = simpleConfig()
+                .with(MySqlConnectorConfig.USER, "cloud")
+                .with(MySqlConnectorConfig.PASSWORD, "cloudpass")
+                .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, MySqlConnectorConfig.SnapshotLockingMode.MINIMAL_PERCONA_NO_TABLE_LOCKS)
+                .with("test.disable.global.locking", "true")
+                .build();
+
+        if (!isPerconaServer()) {
+            throw new ConnectException("Not a percona server, skip the test");
+        }
+
+        // Start the connector ...
+        AtomicReference<Throwable> exception = new AtomicReference<>();
+        start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
+        waitForEngineShutdown();
+        stopConnector();
+        final Throwable e = exception.get();
+        if (e != null) {
+            throw (RuntimeException) e;
+        }
     }
 
     @Test
