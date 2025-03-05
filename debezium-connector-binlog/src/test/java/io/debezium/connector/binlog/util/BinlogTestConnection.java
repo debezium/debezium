@@ -56,6 +56,20 @@ public abstract class BinlogTestConnection extends JdbcConnection {
         return versionString;
     }
 
+    public String getMySqlVersionComment() {
+        String versionString;
+        try {
+            versionString = connect().queryAndMap("SHOW GLOBAL VARIABLES LIKE 'version_comment'", rs -> {
+                rs.next();
+                return rs.getString(2);
+            });
+        }
+        catch (SQLException e) {
+            throw new IllegalStateException("Couldn't obtain MySQL Server version", e);
+        }
+        return versionString;
+    }
+
     public String binaryLogStatusStatement() {
         final var binaryLogStatus = "SHOW BINARY LOG STATUS";
         try {

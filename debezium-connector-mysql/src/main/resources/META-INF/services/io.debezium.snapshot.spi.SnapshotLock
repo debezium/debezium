@@ -1,4 +1,5 @@
 io.debezium.connector.mysql.snapshot.lock.ExtendedSnapshotLock
 io.debezium.connector.mysql.snapshot.lock.MinimalSnapshotLock
 io.debezium.connector.mysql.snapshot.lock.MinimalPerconaSnapshotLock
+io.debezium.connector.mysql.snapshot.lock.MinimalPerconaNoTableLocksSnapshotLock
 io.debezium.connector.mysql.snapshot.lock.NoneSnapshotLock
