@@ -30,6 +30,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.kafka.KafkaCluster;
 import io.debezium.pipeline.signal.actions.snapshotting.ExecuteSnapshot;
@@ -45,6 +46,7 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
             .toAbsolutePath();
     protected final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase(SERVER_NAME, "incremental_snapshot-test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
     protected static KafkaCluster kafka;
+    public static final String EXCLUDED_TABLE = "a";
 
     @BeforeClass
     public static void startKafka() throws Exception {
@@ -88,6 +90,7 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
 
     protected Configuration.Builder config() {
         return DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.TABLE_EXCLUDE_LIST, DATABASE.getDatabaseName() + "." + EXCLUDED_TABLE)
                 .with(BinlogConnectorConfig.INCLUDE_SQL_QUERY, true)
                 .with(BinlogConnectorConfig.USER, "mysqluser")
                 .with(BinlogConnectorConfig.PASSWORD, "mysqlpw")
@@ -196,6 +199,18 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
                 "{\"type\":\"execute-snapshot\",\"data\": {\"data-collections\": [\"%s\"], \"type\": \"INCREMENTAL\"}}",
                 table);
         sendKafkaSignal(signalValue, signalTopic);
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            connection.executeWithoutCommitting(String.format("INSERT INTO %s (aa) VALUES (%s)", EXCLUDED_TABLE, 1));
+            connection.commit();
+        }
+        catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    protected JdbcConnection databaseConnection() {
+        return getTestDatabaseConnection(DATABASE.getDatabaseName());
     }
 
     protected void sendKafkaSignal(String signalValue, String signalTopic) throws ExecutionException, InterruptedException {
