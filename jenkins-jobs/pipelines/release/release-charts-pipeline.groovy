@@ -16,6 +16,8 @@ if (
     error 'Input parameters not provided'
 }
 
+common.setDryRun()
+
 GIT_CREDENTIALS_ID = 'debezium-github'
 QUAYIO_CREDENTIALS_ID = 'debezium-charts-quay'
 HOME_DIR = '/home/cloud-user'
@@ -110,9 +112,11 @@ node('release-node') {
 
             stage('Create a GH release') {
                 dir(DEBEZIUM_OPERATOR_DIR) {
-                    withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
-                        withEnv(["GH_TOKEN=$GIT_PASSWORD"]) {
-                            sh "gh release create v${RELEASE_VERSION} --verify-tag  -t 'Debezium Operator Chart v${RELEASE_VERSION}' --latest '$TMP_WORKDIR/debezium-operator-${RELEASE_SEM_VERSION}.tgz'"
+                    if (!DRY_RUN) {
+                        withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                            withEnv(["GH_TOKEN=$GIT_PASSWORD"]) {
+                                sh "gh release create v${RELEASE_VERSION} --verify-tag  -t 'Debezium Operator Chart v${RELEASE_VERSION}' --latest '$TMP_WORKDIR/debezium-operator-${RELEASE_SEM_VERSION}.tgz'"
+                            }
                         }
                     }
                 }
@@ -126,7 +130,9 @@ node('release-node') {
                         helm registry login -u ${credentials[0]} -p ${credentials[1]} quay.io
                     """
                 }
-                sh "helm push $TMP_WORKDIR/debezium-operator-${RELEASE_SEM_VERSION}.tgz $OCI_ARTIFACT_REPO_URL"
+                if (!DRY_RUN) {
+                    sh "helm push $TMP_WORKDIR/debezium-operator-${RELEASE_SEM_VERSION}.tgz $OCI_ARTIFACT_REPO_URL"
+                }
             }
 
         }
@@ -166,9 +172,11 @@ node('release-node') {
                 sh "helm package --app-version=${RELEASE_SEM_VERSION} --version=${RELEASE_SEM_VERSION} helm/"
 
                 stage('Create a GH release') {
-                    withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
-                        withEnv(["GH_TOKEN=$GIT_PASSWORD"]) {
-                            sh "gh release create v${RELEASE_VERSION} --verify-tag  -t 'Debezium Platform Chart v${RELEASE_VERSION}' --latest 'debezium-platform-${RELEASE_SEM_VERSION}.tgz'"
+                    if (!DRY_RUN) {
+                        withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                            withEnv(["GH_TOKEN=$GIT_PASSWORD"]) {
+                                sh "gh release create v${RELEASE_VERSION} --verify-tag  -t 'Debezium Platform Chart v${RELEASE_VERSION}' --latest 'debezium-platform-${RELEASE_SEM_VERSION}.tgz'"
+                            }
                         }
                     }
                 }
@@ -181,7 +189,9 @@ node('release-node') {
                             helm registry login -u ${credentials[0]} -p ${credentials[1]} quay.io
                         """
                     }
-                    sh "helm push debezium-platform-${RELEASE_SEM_VERSION}.tgz $OCI_ARTIFACT_REPO_URL"
+                    if (!DRY_RUN) {
+                        sh "helm push debezium-platform-${RELEASE_SEM_VERSION}.tgz $OCI_ARTIFACT_REPO_URL"
+                    }
                 }
             }
         }
