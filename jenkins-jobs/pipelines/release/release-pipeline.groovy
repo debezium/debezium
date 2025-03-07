@@ -3,10 +3,12 @@ import java.util.stream.*
 
 import com.cloudbees.groovy.cps.NonCPS
 
+@Library("dbz-libs") _
+
 if (
     !RELEASE_VERSION ||
     !DEVELOPMENT_VERSION ||
-    !DEBEZIUM_REPOSITORY ||
+    !DEBEZIUM_REPOSITORY_URL ||
     !DEBEZIUM_BRANCH ||
     !DEBEZIUM_ADDITIONAL_REPOSITORIES ||
     !IMAGES_REPOSITORY ||
@@ -20,13 +22,7 @@ if (
     error 'Input parameters not provided'
 }
 
-if (DRY_RUN == null) {
-    DRY_RUN = false
-}
-else if (DRY_RUN instanceof String) {
-    DRY_RUN = Boolean.valueOf(DRY_RUN)
-}
-echo "Dry run: ${DRY_RUN}"
+common.setDryRun()
 
 if (IGNORE_SNAPSHOTS == null) {
     IGNORE_SNAPSHOTS = false
@@ -261,9 +257,9 @@ def mvnRelease(repoDir, repoName, branchName, buildArgs = '') {
 node('release-node') {
     catchError {
         stage('Validate parameters') {
-            if (!(RELEASE_VERSION ==~ /\d+\.\d+.\d+\.(Final|(Alpha|Beta|CR)\d+)/)) {
-                error "Release version '$RELEASE_VERSION' is not of the required format x.y.z.suffix"
-            }
+
+            common.validateVersionFormat(RELEASE_VERSION)
+
             if (!(DEVELOPMENT_VERSION ==~ /\d+\.\d+.\d+\-SNAPSHOT/)) {
                 error "Development version '$DEVELOPMENT_VERSION' is not of the required format x.y.z-SNAPSHOT"
             }
@@ -289,7 +285,7 @@ node('release-node') {
                       doGenerateSubmoduleConfigurations: false,
                       extensions                       : [[$class: 'RelativeTargetDirectory', relativeTargetDir: DEBEZIUM_DIR]],
                       submoduleCfg                     : [],
-                      userRemoteConfigs                : [[url: "https://$DEBEZIUM_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
+                      userRemoteConfigs                : [[url: "https://$DEBEZIUM_REPOSITORY_URL", credentialsId: GIT_CREDENTIALS_ID]]
             ]
             )
             ADDITIONAL_REPOSITORIES.each { id, repo ->
@@ -417,7 +413,7 @@ node('release-node') {
                 }
                 sh "git commit -a -m '[release] Stable $RELEASE_VERSION for testing module deps'"
             }
-            STAGING_REPO_ID = mvnRelease(DEBEZIUM_DIR, DEBEZIUM_REPOSITORY, CANDIDATE_BRANCH, '-Poracle-all')
+            STAGING_REPO_ID = mvnRelease(DEBEZIUM_DIR, DEBEZIUM_REPOSITORY_URL, CANDIDATE_BRANCH, '-Poracle-all')
             dir(DEBEZIUM_DIR) {
                 modifyFile('debezium-testing/debezium-testing-system/pom.xml') {
                     it.replaceFirst('<version.debezium.connector>.+</version.debezium.connector>', '<version.debezium.connector>\\${project.version}</version.debezium.connector>')
@@ -426,7 +422,7 @@ node('release-node') {
                 if (!DRY_RUN) {
                     withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
                         sh """
-                           git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${DEBEZIUM_REPOSITORY} HEAD:${CANDIDATE_BRANCH}
+                           git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${DEBEZIUM_REPOSITORY_URL} HEAD:${CANDIDATE_BRANCH}
                         """
                     }
                 }
@@ -762,11 +758,11 @@ node('release-node') {
                 dir(DEBEZIUM_DIR) {
                     withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
                         sh """
-                           git pull --rebase https://\${GIT_USERNAME}:\${GIT_PASSWORD}@$DEBEZIUM_REPOSITORY $CANDIDATE_BRANCH && \\
+                           git pull --rebase https://\${GIT_USERNAME}:\${GIT_PASSWORD}@$DEBEZIUM_REPOSITORY_URL $CANDIDATE_BRANCH && \\
                            git checkout $DEBEZIUM_BRANCH && \\
                            git rebase $CANDIDATE_BRANCH && \\
-                           git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@$DEBEZIUM_REPOSITORY HEAD:$DEBEZIUM_BRANCH && \\
-                           git push --delete https://\${GIT_USERNAME}:\${GIT_PASSWORD}@$DEBEZIUM_REPOSITORY $CANDIDATE_BRANCH
+                           git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@$DEBEZIUM_REPOSITORY_URL HEAD:$DEBEZIUM_BRANCH && \\
+                           git push --delete https://\${GIT_USERNAME}:\${GIT_PASSWORD}@$DEBEZIUM_REPOSITORY_URL $CANDIDATE_BRANCH
                         """
                     }
                 }
