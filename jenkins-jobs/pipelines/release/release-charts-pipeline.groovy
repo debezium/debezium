@@ -20,7 +20,9 @@ GIT_CREDENTIALS_ID = 'debezium-github'
 QUAYIO_CREDENTIALS_ID = 'debezium-charts-quay'
 HOME_DIR = '/home/cloud-user'
 GPG_DIR = 'gpg'
+GITHUB_CLI_VERSION= '2.67.0'
 
+// Helm uses the semantic version format 3.1.0-final instead of the one used by Debezium 3.1.0.Final
 RELEASE_SEM_VERSION=RELEASE_VERSION.replaceAll(/\.(?=[^.]*$)/, '-').toLowerCase()
 
 MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
@@ -77,8 +79,8 @@ node('release-node') {
         }
 
         stage("Install GitHub CLI") {
-            sh 'curl -fLjsO https://github.com/cli/cli/releases/download/v2.67.0/gh_2.67.0_linux_amd64.tar.gz'
-            sh 'tar -xvzf gh_2.67.0_linux_amd64.tar.gz --one-top-level=gh-cli --strip-components=1'
+            sh "curl -fLjsO https://github.com/cli/cli/releases/download/v${GITHUB_CLI_VERSION}/gh_${GITHUB_CLI_VERSION}_linux_amd64.tar.gz"
+            sh "tar -xvzf gh_${GITHUB_CLI_VERSION}_linux_amd64.tar.gz --one-top-level=gh-cli --strip-components=1"
             sh 'sudo mv gh-cli/bin/gh /usr/local/bin'
             sh 'gh --version'
         }
