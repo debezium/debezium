@@ -53,6 +53,8 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     private final DatabaseDialect dialect;
     private final StatelessSession session;
 
+    private final Map<CollectionId, TableDescriptor> tableDescriptorCache = new LinkedHashMap<>();
+
     private final RecordWriter recordWriter;
     private final int flushMaxRetries;
     private final Duration flushRetryDelay;
@@ -254,6 +256,20 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     throw ae;
                 }
             }
+        }
+
+        if (NONE.equals(config.getSchemaEvolutionMode())) {
+            // Schema evolution is disabled, reuse cached table descriptor if available.
+            TableDescriptor cachedTableDescriptor = tableDescriptorCache.get(collectionId);
+            if (cachedTableDescriptor != null) {
+                LOGGER.debug("Using cached table descriptor for '{}', schema evolution is disabled.", collectionId.toFullIdentiferString());
+                return cachedTableDescriptor;
+            }
+
+            LOGGER.debug("Skipping table existence and schema validation for '{}', schema evolution is disabled.", collectionId.toFullIdentiferString());
+            TableDescriptor tableDescriptor = readTable(collectionId);
+            tableDescriptorCache.put(collectionId, tableDescriptor);
+            return tableDescriptor;
         }
         else {
             // Table exists, lets attempt to alter it if necessary.
