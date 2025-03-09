@@ -11,6 +11,9 @@ import java.util.Objects;
 
 import org.apache.kafka.connect.data.Schema;
 
+import io.debezium.annotation.VisibleForTesting;
+import io.debezium.connector.jdbc.relational.TableDescriptor;
+
 /**
  * A buffer of {@link JdbcSinkRecord}. It contains the logic of when is the time to flush
  *
@@ -22,12 +25,20 @@ public class RecordBuffer implements Buffer {
     private Schema keySchema;
     private Schema valueSchema;
     private final ArrayList<JdbcSinkRecord> records = new ArrayList<>();
+    private final TableDescriptor tableDescriptor;
 
+    @VisibleForTesting
     public RecordBuffer(JdbcSinkConnectorConfig connectorConfig) {
-
         this.connectorConfig = connectorConfig;
+        this.tableDescriptor = null;
     }
 
+    public RecordBuffer(JdbcSinkConnectorConfig connectorConfig, TableDescriptor tableDescriptor) {
+        this.connectorConfig = connectorConfig;
+        this.tableDescriptor = tableDescriptor;
+    }
+
+    @Override
     public List<JdbcSinkRecord> add(JdbcSinkRecord record) {
         List<JdbcSinkRecord> flushed = new ArrayList<>();
         boolean isSchemaChanged = false;
@@ -59,6 +70,7 @@ public class RecordBuffer implements Buffer {
         return flushed;
     }
 
+    @Override
     public List<JdbcSinkRecord> flush() {
 
         List<JdbcSinkRecord> flushed = new ArrayList<>(records);
@@ -67,7 +79,13 @@ public class RecordBuffer implements Buffer {
         return flushed;
     }
 
+    @Override
     public boolean isEmpty() {
         return records.isEmpty();
+    }
+
+    @Override
+    public TableDescriptor getTableDescriptor() {
+        return tableDescriptor;
     }
 }

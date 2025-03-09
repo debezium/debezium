@@ -15,6 +15,9 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 
+import io.debezium.annotation.VisibleForTesting;
+import io.debezium.connector.jdbc.relational.TableDescriptor;
+
 /**
  * A reduced implementation buffer of {@link JdbcSinkRecord}.
  * It reduces events in buffer before submit to external database.
@@ -28,9 +31,17 @@ public class ReducedRecordBuffer implements Buffer {
     private Schema valueSchema;
 
     private final Map<Struct, JdbcSinkRecord> records = new HashMap<>();
+    private final TableDescriptor tableDescriptor;
 
+    @VisibleForTesting
     public ReducedRecordBuffer(JdbcSinkConnectorConfig connectorConfig) {
         this.connectorConfig = connectorConfig;
+        this.tableDescriptor = null;
+    }
+
+    public ReducedRecordBuffer(JdbcSinkConnectorConfig connectorConfig, TableDescriptor tableDescriptor) {
+        this.connectorConfig = connectorConfig;
+        this.tableDescriptor = tableDescriptor;
     }
 
     @Override
@@ -81,5 +92,10 @@ public class ReducedRecordBuffer implements Buffer {
     @Override
     public boolean isEmpty() {
         return records.isEmpty();
+    }
+
+    @Override
+    public TableDescriptor getTableDescriptor() {
+        return tableDescriptor;
     }
 }
