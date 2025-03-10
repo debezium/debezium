@@ -153,13 +153,34 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         Stopwatch stopwatch = Stopwatch.reusable();
         stopwatch.start();
 
-        final Buffer buffer;
+        Buffer buffer;
+        TableDescriptor tableDescriptor;
 
-        if (config.isUseReductionBuffer() && !record.keyFieldNames().isEmpty()) {
-            buffer = bufferMap.computeIfAbsent(collectionId, k -> new ReducedRecordBuffer(config));
+        if (bufferMap.containsKey(collectionId)) {
+            buffer = bufferMap.get(collectionId);
+            tableDescriptor = buffer.getTableDescriptor();
         }
         else {
-            buffer = bufferMap.computeIfAbsent(collectionId, k -> new RecordBuffer(config));
+            try {
+                tableDescriptor = checkAndApplyTableChangesIfNeeded(collectionId, record);
+            }
+            catch (SQLException e) {
+                throw new ConnectException("Error while checking and applying table changes for collection '{}'", e);
+            }
+            buffer = createBuffer(config, tableDescriptor, record);
+            bufferMap.put(collectionId, buffer);
+        }
+
+        if (isSchemaChanged(record, tableDescriptor)) {
+            flushBufferWithRetries(collectionId, buffer.flush());
+            try {
+                tableDescriptor = checkAndApplyTableChangesIfNeeded(collectionId, record);
+            }
+            catch (SQLException e) {
+                throw new ConnectException("Error while checking and applying table changes for collection '{}'", e);
+            }
+            buffer = createBuffer(config, tableDescriptor, record);
+            bufferMap.put(collectionId, buffer);
         }
 
         List<JdbcSinkRecord> toFlush = buffer.add(record);
@@ -168,6 +189,21 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         LOGGER.trace("[PERF] Resolve and add record execution time for collection '{}': {}", collectionId.name(), stopwatch.durations());
 
         return toFlush;
+    }
+
+    private Buffer createBuffer(JdbcSinkConnectorConfig config, TableDescriptor tableDescriptor, JdbcSinkRecord record) {
+        if (config.isUseReductionBuffer() && !record.keyFieldNames().isEmpty()) {
+            return new ReducedRecordBuffer(config, tableDescriptor);
+        }
+        else {
+            return new RecordBuffer(config, tableDescriptor);
+        }
+    }
+
+    private boolean isSchemaChanged(JdbcSinkRecord record, TableDescriptor tableDescriptor) {
+        Set<String> missingFields = dialect.resolveMissingFields(record, tableDescriptor);
+        LOGGER.debug("Schema change detected for '{}', missing fields: {}", tableDescriptor.getId().toFullIdentiferString(), missingFields);
+        return !missingFields.isEmpty();
     }
 
     private void flushBuffers(Map<CollectionId, Buffer> bufferByTable) {
