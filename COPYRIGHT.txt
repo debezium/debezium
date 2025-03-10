@@ -328,6 +328,7 @@ Krizhan Mariampillai
 Krzysztof Grzechnik
 Kunal Bhatnagar
 Kyley Jex
+kesompochy
 Lairen Hightower
 laoflch
 Lars M. Johansson
@@ -381,6 +382,7 @@ Martín Pérez
 Mehmet Firat Komurcu
 Meng Qiu
 Melissa Winstanley
+Michael Cambria
 Michael Cizmar
 Michael Wang
 Michal Augustýn
@@ -393,6 +395,7 @@ Mikhail Dubrovin
 Mincong Huang
 Ming Luo
 Minh Son Nguyen
+Minjae Lee
 Mohamed Pudukulathan
 Mohammad Yousuf Minhaj Zia
 Moira Tagle
@@ -575,6 +578,7 @@ Vasily Ulianko
 Vedit Firat Arig
 Vincenzo Santonastaso
 Victar Malinouski
+Victor Castaño
 Victor Xiang
 Vivek Wassan
 Vladimir Osin
@@ -600,6 +604,7 @@ Xuan Shen
 Yang Wu
 Yang Yang
 Yanjie Wang
+Yannick Eisenschmidt
 yangrong688
 yangsanity
 Yashashree Chopada
