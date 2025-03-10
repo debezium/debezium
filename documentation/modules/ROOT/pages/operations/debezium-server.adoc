@@ -1579,7 +1579,7 @@ The connection https://github.com/rabbitmq/rabbitmq-java-client/blob/main/src/ma
 
 |[[rabbitmq-routing-key-from-topic-name]]<<rabbitmq-routing-key-from-topic-name, `debezium.sink.rabbitmq.routingKeyFromTopicName`>>
 | false
-|(Optional) If `true` the routing key is used from topic name instead of a static value.
+|(Optional) Deprecated, see `debezium.sink.rabbitmq.routingKey.source`.
 
 |[[rabbitmq-delivery-mode]]<<rabbitmq-delivery-mode, `debezium.sink.rabbitmq.deliveryMode`>>
 | 2
@@ -1592,6 +1592,14 @@ The connection https://github.com/rabbitmq/rabbitmq-java-client/blob/main/src/ma
 |`default`
 |RabbitMQ does not support the notion of null payloads, as is the case with tombstone events.
 So this string will be used as value for records without a payload.
+
+|[[rabbitmq-routing-key-source]]<<rabbitmq-routing-key-source, `debezium.sink.rabbitmq.routingKey.source`>>
+|`static`
+|(Optional) The way the routing key for the event is going to be obtained.
+
+* `static` (default): the routing key will be obtained from `debezium.sink.rabbitmq.routingKey`.
+* `topic`: the routing key is the same as the exchange name.
+* `key`: the routing key will be obtained from the record key.
 
 |===
 
