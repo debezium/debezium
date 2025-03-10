@@ -2348,25 +2348,47 @@ host    replication     <youruser>  ::1/128                 trust   // <3>
 For more information about network masks, see link:https://www.postgresql.org/docs/current/static/datatype-net-types.html[the PostgreSQL documentation].
 ====
 
-ifdef::community[]
 [[supported-postgresql-topologies]]
 === Supported PostgreSQL topologies
 
 The PostgreSQL connector can be used with a standalone PostgreSQL server or with a cluster of PostgreSQL servers.
 
-PostgreSQL (for all versions <= 16) supports logical replication slots on only `primary` servers. This means that a replica in a PostgreSQL cluster cannot be configured for logical replication, and consequently that the {prodname} PostgreSQL connector can connect and communicate with only the primary server. Should this server fail, the connector stops. When the cluster is repaired, if the original primary server is once again promoted to `primary`, you can restart the connector. However, if a different PostgreSQL server _with the plug-in and proper configuration_ is promoted to `primary`, you must change the connector configuration to point to the new `primary` server and then you can restart the connector.
+==== PostgreSQL 15 or earlier clusters
 
-When using PostgreSQL 16 or newer, you can set up logical replication slots also on replica servers,
-and {prodname} does not need to connect to your primary server for ingesting change events.
-In comparison to connecting to the primary,
-connecting to a replica will yield slightly increased latencies, though.
+When you deploy {prodname} in environments that run PostgreSQL 15 or earlier, you can configure logical replication slots only on the primary server in the cluster.
+You cannot configure logical replication on replica servers in the cluster.
+Consequently, the {prodname} PostgreSQL connector can connect and communicate only with the primary server.
+If the primary server fails, the connector stops.
 
-When using PostgreSQL 17 or newer, you can set up logical replication slots on primary serves which are enabled for failover.
-The state of such a failover slot can automatically be propagated to one or more replica servers,
-allowing {prodname} to continue to ingest changes from a replica promoted to primary after a failure,
-without missing any events.
+Following a failure, after the cluster is repaired, you can once again promote the original primary server to `primary`, and then restart the connector.
+Alternately, you might promote a different PostgreSQL server to `primary`.
+Before you can promote a different server to primary, you must xref:setting-up-postgresql[properly configure] the server.
+Then, to enable the connector to consume from the new `primary` server, update properties in the connector configuration to match the details of the new server, for example, xref:postgresql-property-database-hostname[`database.hostname`], xref:postgresql-property-database-port[`database.port`], xref:postgresql-property-database-dbname[`database.dbname`], and xref:postgresql-property-slot-name[`slot.name`].
+After you update the configuration to point to the new primary, you can restart the connector.
 
-endif::community[]
+==== PostgreSQL 16 or later clusters
+
+When you deploy {prodname} with PostgreSQL 16 or later, you can set up logical replication slots on replica servers.
+In a PostgreSQL 16 cluster, {prodname} can capture change events from servers other than the primary server.
+However, be aware that {prodname} connections to replica servers generally experience higher latency than connections to a primary server.
+
+==== {prodname} with PostgreSQL 17 or later clusters
+
+When you deploy {prodname} with PostgreSQL 17 or later, you can set up logical replication slots on primary servers and enable those slots for failover.
+PostgreSQL can automatically propagate the state of a failover slot to one or more replica servers.
+In environments where automatic replication is enabled, if a failure occurs, an available replica is automatically promoted to primary.
+{prodname} can continue to ingest changes from the new primary server, without requiring any configuration changes, thus helping to ensure that the connector does not miss any events.
+
+ifdef::product[]
+[IMPORTANT]
+====
+The use of {prodname} with PostgreSQL 17 and the ability to configure replication slots for failover to replica servers is a Technology Preview feature.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 // Type: concept
 // ModuleID: configuring-postgresql-to-manage-debezium-wal-disk-space-consumption
