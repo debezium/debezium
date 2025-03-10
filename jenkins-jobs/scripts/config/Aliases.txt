@@ -294,3 +294,5 @@ AndreiLeib,Andrei Leibovski
 iamseki,Christian Seki
 AlvarVG,Alvar Viana
 sergey.siroshtan@signanthealth.com,Sergey Seroshtan
+minleejae,Minjae Lee
+mj-db,Minjae Lee
