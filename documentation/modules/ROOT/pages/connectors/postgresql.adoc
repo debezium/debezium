@@ -4307,38 +4307,57 @@ For information about failure cases in which a slot has been removed, see the ne
 [id="postgresql-cluster-failures"]
 === Cluster failures
 
-Prior to version 16, PostgreSQL allows logical replication slots _only on primary servers_. This means that you can point a {prodname} PostgreSQL connector to only the active primary server of a database cluster.
-Also, replication slots themselves are not propagated to replicas.
-If the primary server goes down, a new primary must be promoted.
+PostgreSQL 15 or earlier permits logical replication slots _only on primary servers_.
+As a result, a {prodname} PostgreSQL connector can only capture events from the active primary server in a database cluster.
+In this environment, replication slots are not propagated to replica servers.
+If the primary server goes down, you must promote a new server to be primary.
 
-When using version 16 or newer, you can create logical replication slots also on replicas, but you need to take care of keeping them in sync with the corresponding slot on the primary server yourself.
+When you use {prodname} with PostgreSQL 16 or later, you can create logical replication slots on replicas, but you must manually synchronize the replication slot on the replica with the corresponding slot on the primary server.
+Synchronization is not automatic.
 
-When using version 17 or newer, replication slots on a primary can be enabled for automatic failover.
-In this case Postgres itself can take care of synchronizing a slot from primary to replica automatically,
-allowing {prodname} to continue reading from that slot after promoting a replica to new primary,
-without missing any change events.
+When you use {prodname} with PostgreSQL 17 or later, you can configure replication slots on a primary server for automatic failover, so that {prodname} does not miss any change events.
+When a replication slot is configured for failover, PostgreSQL automatically synchronizes the replication slot from the primary to the replica, enabling {prodname} to continue reading from the slot after the replica is promoted and becomes the new primary.
+
+
+ifdef::product[]
+[IMPORTANT]
+====
+The use of {prodname} with PostgreSQL 17 and the ability to configure replication slots for failover to replica servers is a Technology Preview feature.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 [NOTE]
 ====
-Some managed PostgresSQL services (AWS RDS and GCP CloudSQL for example) implement replication to a standby via disk replication. This means that the replication slot does get replicated and will remain available after a failover.
+Some managed PostgreSQL services (for example, AWS RDS and GCP CloudSQL) use disk replication to implement replication to a standby.
+As a result, these services automatically replicate the replication slot so that it is available after a failover.
 ====
 
 ifdef::community[]
-The new primary must have the xref:installing-postgresql-output-plugin[logical decoding plug-in] installed and a replication slot that is configured for use by the plug-in and the database for which you want to capture changes. Only then can you point the connector to the new server and restart the connector.
+The new primary must have the xref:installing-postgresql-output-plugin[logical decoding plug-in] installed and a replication slot that is configured for use by the plug-in and the database for which you want to capture changes.
+Only then can you point the connector to the new server and restart the connector.
 endif::community[]
 
 ifdef::product[]
-The new primary must have a replication slot that is configured for use by the `pgoutput` plug-in and the database in which you want to capture changes. Only then can you point the connector to the new server and restart the connector.
+The new primary must have a replication slot that is configured to use the `pgoutput` plug-in, and must include the database for which you want to capture changes.
+Only then can you point the connector to the new server and restart the connector.
 endif::product[]
 
-When not using failover replication slots, as supported by Postgres 17 and newer,
-there are important caveats when failovers occur and you should pause {prodname} until you can verify that you have an intact replication slot that has not lost data. After a failover:
+If you configure the user of failover replication slots in environments that run PostgreSQL 17 or later, after a failover occurs, it's important to take the following steps:
 
-* There must be a process that re-creates the {prodname} replication slot before allowing the application to write to the *new* primary. This is crucial. Without this process, your application can miss change events.
+* Pause {prodname} until you can verify that you have an intact replication slot that has not lost data.
 
-* You might need to verify that {prodname} was able to read all changes in the slot **before the old primary failed**.
+* Re-create the {prodname} replication slot before you allow applications to write to the *new* primary.
+  This is crucial.
+  Without this process, your application can miss change events.
 
-One reliable method of recovering and verifying whether any changes were lost is to recover a backup of the failed primary to the point immediately before it failed. While this can be administratively difficult, it allows you to inspect the replication slot for any unconsumed changes.
+* Verify that {prodname} is able to read all changes in the slot from **before the old primary failed**.
+
+One reliable method of recovering and verifying whether any changes are lost is to recover a backup of the failed primary from the point immediately before it failed.
+Although this can be administratively difficult, it permits you to inspect the replication slot for any unconsumed changes.
 
 [id="postgresql-kafka-connect-process-stops-gracefully"]
 === Kafka Connect process stops gracefully
