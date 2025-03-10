@@ -2,6 +2,65 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.1.0.Beta1
+March 11th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12446461)
+
+### New features since 3.1.0.Alpha2
+
+* A CloudEvent can contain `traceparent` field which value is obtained from header [DBZ-8669](https://issues.redhat.com/browse/DBZ-8669)
+* Disable the delete option for the resources(source, destination, transform) that are in use in pipeline. [DBZ-8683](https://issues.redhat.com/browse/DBZ-8683)
+* Differentiate between epoch & zero dates when columns it not nullable [DBZ-8689](https://issues.redhat.com/browse/DBZ-8689)
+* Set string data type for medium/tiny/long text cols with binary collation [DBZ-8694](https://issues.redhat.com/browse/DBZ-8694)
+* Dependencies in connect-base can be excluded in build time [DBZ-8709](https://issues.redhat.com/browse/DBZ-8709)
+* Add concurrency and compression to pub/sub change consumer [DBZ-8715](https://issues.redhat.com/browse/DBZ-8715)
+* Prevent table-level read locks when minimal locking is enabled [DBZ-8717](https://issues.redhat.com/browse/DBZ-8717)
+* Refactor JdbcChangeEventSink execute method for buffer resolution [DBZ-8726](https://issues.redhat.com/browse/DBZ-8726)
+* Add support for Google Cloud Pub/Sub locational endpoints [DBZ-8735](https://issues.redhat.com/browse/DBZ-8735)
+* Wasm SMT effective access to schema fields [DBZ-8737](https://issues.redhat.com/browse/DBZ-8737)
+* Oracle Connector: Additional timestamp fields from LogMiner (V$LOGMNR_CONTENTS) [DBZ-8740](https://issues.redhat.com/browse/DBZ-8740)
+* Trim extra spaces in property keys when transforming to config [DBZ-8748](https://issues.redhat.com/browse/DBZ-8748)
+* Add support for event key routing in RabbitMQ sink [DBZ-8752](https://issues.redhat.com/browse/DBZ-8752)
+
+
+### Breaking changes since 3.1.0.Alpha2
+
+None
+
+
+### Fixes since 3.1.0.Alpha2
+
+* SQL Server Connector cannot be upgraded to 2.0 [DBZ-5845](https://issues.redhat.com/browse/DBZ-5845)
+* JDBC sink connector doesn't delete rows from a postgres db table [DBZ-8287](https://issues.redhat.com/browse/DBZ-8287)
+* MariaDB adapter fails on an ALTER USER statement [DBZ-8436](https://issues.redhat.com/browse/DBZ-8436)
+* Expressions cause SQL parser exception in Percona SEQUENCE_TABLE function [DBZ-8559](https://issues.redhat.com/browse/DBZ-8559)
+* Slow Debezium startup for large number of tables [DBZ-8595](https://issues.redhat.com/browse/DBZ-8595)
+* Debezium doesn't shut down correctly when encountering message delivery timeout from pub/sub [DBZ-8672](https://issues.redhat.com/browse/DBZ-8672)
+* Broken pipe on streaming connection after blocking snapshot (Postgres) [DBZ-8680](https://issues.redhat.com/browse/DBZ-8680)
+* ts_ms in source may default to 0 instead of Instant.now()  [DBZ-8708](https://issues.redhat.com/browse/DBZ-8708)
+* PDB database name default considering as UPPERCASE [DBZ-8710](https://issues.redhat.com/browse/DBZ-8710)
+* Alter table modify column fails when using DEFAULT ON NULL clause [DBZ-8720](https://issues.redhat.com/browse/DBZ-8720)
+* ExtractChangedRecordState SMT Now Working With Default Values [DBZ-8721](https://issues.redhat.com/browse/DBZ-8721)
+* Restart of Oracle RAC node leads to redo thread being inconsistent indefinitely [DBZ-8724](https://issues.redhat.com/browse/DBZ-8724)
+* Specifying archive.log.hours with non-zero value generates bad SQL [DBZ-8725](https://issues.redhat.com/browse/DBZ-8725)
+* debezium/connect docker image is not available on arm64 [DBZ-8728](https://issues.redhat.com/browse/DBZ-8728)
+* Debezium Server: Nats consumer crashes with binary serialization [DBZ-8734](https://issues.redhat.com/browse/DBZ-8734)
+* Possibly  broken schema.history.internal.skip.unparseable.ddl for MariaDB [DBZ-8745](https://issues.redhat.com/browse/DBZ-8745)
+* Oracle snapshot's source.ts does not account for database zone differences [DBZ-8749](https://issues.redhat.com/browse/DBZ-8749)
+
+
+### Other changes since 3.1.0.Alpha2
+
+* Support debezium platform in the release pipeline [DBZ-8682](https://issues.redhat.com/browse/DBZ-8682)
+* Create pipeline for package helm charts and publish on quay.io [DBZ-8706](https://issues.redhat.com/browse/DBZ-8706)
+* Add more unit tests for deciding if the row was handled or not [DBZ-8716](https://issues.redhat.com/browse/DBZ-8716)
+* Test debezium scale down reads offsets [DBZ-8719](https://issues.redhat.com/browse/DBZ-8719)
+* Create an orchestrator pipeline to run the release [DBZ-8731](https://issues.redhat.com/browse/DBZ-8731)
+* MySqlConnectorConvertingFailureIT.shouldRecoverToSyncSchemaWhenFailedValueConvertByDdlWithSqlLogBinIsOff fails randomly [DBZ-8736](https://issues.redhat.com/browse/DBZ-8736)
+* Update the way tests calculates the default zoned times for MariaDB driver 3.5 [DBZ-8742](https://issues.redhat.com/browse/DBZ-8742)
+* Bump assertj-core to 3.27.3 [DBZ-8751](https://issues.redhat.com/browse/DBZ-8751)
+
+
+
 ## 3.1.0.Alpha2
 February 20th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12443609)
 
