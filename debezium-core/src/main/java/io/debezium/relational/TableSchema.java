@@ -17,6 +17,7 @@ import io.debezium.annotation.Immutable;
 import io.debezium.data.Envelope;
 import io.debezium.data.SchemaUtil;
 import io.debezium.schema.DataCollectionSchema;
+import io.debezium.util.Loggings;
 
 /**
  * Defines the Kafka Connect {@link Schema} functionality associated with a given {@link Table table definition}, and which can
@@ -125,7 +126,7 @@ public class TableSchema implements DataCollectionSchema {
      */
     public Struct keyFromColumnData(Object[] columnData) {
         if (LOGGER.isTraceEnabled()) {
-            LOGGER.trace("columnData from current stack: {}", Arrays.toString(columnData));
+            Loggings.logTraceAndTraceRecord(LOGGER, Arrays.toString(columnData), "columnData from current stack");
         }
         return columnData == null ? null : keyGenerator.generateValue(columnData);
     }
