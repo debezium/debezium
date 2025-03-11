@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
-import java.util.TreeMap;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -255,12 +254,15 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
     }
 
     private R newRecord(R record, BsonDocument keyDocument, BsonDocument valueDocument) {
-        TreeMap<String, Map<Object, BsonType>> keyMap = converter.parse(keyDocument);
+        Map<String, Map<Object, BsonType>> keyMap = converter.parseBsonDocument(keyDocument);
         SchemaBuilder keySchemaBuilder = SchemaBuilder.struct();
         converter.buildSchema(keyMap, keySchemaBuilder);
         Schema keySchema = keySchemaBuilder.build();
         Struct keyStruct = new Struct(keySchema);
-        converter.buildStruct(keyDocument, keySchema, keyStruct);
+
+        for (Entry<String, BsonValue> entry : keyDocument.entrySet()) {
+            converter.buildStruct(entry, keySchema, keyStruct);
+        }
 
         String newValueSchemaName;
         SchemaBuilder valueSchemaBuilder;
@@ -273,7 +275,7 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
                 newValueSchemaName = newValueSchemaName.substring(0, newValueSchemaName.length() - 9);
             }
 
-            TreeMap<String, Map<Object, BsonType>> valueMap = converter.parse(valueDocument);
+            Map<String, Map<Object, BsonType>> valueMap = converter.parseBsonDocument(valueDocument);
 
             valueSchemaBuilder = SchemaBuilder.struct().name(newValueSchemaName);
             converter.buildSchema(valueMap, valueSchemaBuilder);
@@ -284,7 +286,10 @@ public class ExtractNewDocumentState<R extends ConnectRecord<R>> extends Abstrac
 
             valueSchema = valueSchemaBuilder.build();
             valueStruct = new Struct(valueSchema);
-            converter.buildStruct(valueDocument, valueSchema, valueStruct);
+
+            for (Entry<String, BsonValue> entry : valueDocument.entrySet()) {
+                converter.buildStruct(entry, valueSchema, valueStruct);
+            }
 
             if (!additionalFields.isEmpty()) {
                 addFields(additionalFields, record, valueStruct);

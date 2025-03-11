@@ -14,7 +14,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Map;
-import java.util.TreeMap;
 
 import org.apache.avro.generic.GenericData;
 import org.apache.kafka.connect.data.Schema;
@@ -22,6 +21,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.bson.BsonDocument;
 import org.bson.BsonType;
+import org.bson.BsonValue;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -53,12 +53,14 @@ public class ToAvroMongoDataConverterTest {
 
     @Test
     public void shouldCreateStructWithNestedObject() {
-        TreeMap<String, Map<Object, BsonType>> entry = converter.parse(val);
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
         converter.buildSchema(entry, builder);
 
         final Schema finalSchema = builder.build();
         final Struct struct = new Struct(finalSchema);
-        converter.buildStruct(val, finalSchema, struct);
+        for (Map.Entry<String, BsonValue> bsonValueEntry : val.entrySet()) {
+            converter.buildStruct(bsonValueEntry, finalSchema, struct);
+        }
 
         final GenericData.Record avro = (GenericData.Record) avroData.fromConnectData(finalSchema, struct);
         assertThat(avro.toString()).isEqualTo(
@@ -70,7 +72,7 @@ public class ToAvroMongoDataConverterTest {
     @Test
     @FixFor("DBZ-650")
     public void shouldCreateSchemaWithNestedObject() {
-        TreeMap<String, Map<Object, BsonType>> entry = converter.parse(val);
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
         converter.buildSchema(entry, builder);
 
         final Schema finalSchema = builder.build();

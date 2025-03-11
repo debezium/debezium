@@ -15,15 +15,17 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Map;
 import java.util.TimeZone;
-import java.util.TreeMap;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.bson.BsonDocument;
 import org.bson.BsonType;
+import org.bson.BsonValue;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
 import io.debezium.doc.FixFor;
@@ -35,6 +37,7 @@ import io.debezium.doc.FixFor;
  */
 public class MongoDataConverterTest {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDataConverterTest.class);
     private String record;
     private BsonDocument val;
     private SchemaBuilder builder;
@@ -50,12 +53,14 @@ public class MongoDataConverterTest {
 
     @Test
     public void shouldCreateCorrectStructFromInsertJson() {
-        TreeMap<String, Map<Object, BsonType>> entry = converter.parse(val);
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
         converter.buildSchema(entry, builder);
 
         final Schema finalSchema = builder.build();
         final Struct struct = new Struct(finalSchema);
-        converter.buildStruct(val, finalSchema, struct);
+        for (Map.Entry<String, BsonValue> bsonValueEntry : val.entrySet()) {
+            converter.buildStruct(bsonValueEntry, finalSchema, struct);
+        }
 
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
 
@@ -63,12 +68,14 @@ public class MongoDataConverterTest {
 
     @Test
     public void shouldCreateCorrectSchemaFromInsertJson() {
-        TreeMap<String, Map<Object, BsonType>> entry = converter.parse(val);
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
         converter.buildSchema(entry, builder);
 
         final Schema finalSchema = builder.build();
         final Struct struct = new Struct(finalSchema);
-        converter.buildStruct(val, finalSchema, struct);
+        for (Map.Entry<String, BsonValue> bsonValueEntry : val.entrySet()) {
+            converter.buildStruct(bsonValueEntry, finalSchema, struct);
+        }
 
     }
 
@@ -92,12 +99,14 @@ public class MongoDataConverterTest {
         builder = SchemaBuilder.struct().name("withnull");
         converter = new MongoDataConverter(ArrayEncoding.ARRAY);
 
-        TreeMap<String, Map<Object, BsonType>> entry = converter.parse(val);
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
         converter.buildSchema(entry, builder);
 
         final Schema finalSchema = builder.build();
         final Struct struct = new Struct(finalSchema);
-        converter.buildStruct(val, finalSchema, struct);
+        for (Map.Entry<String, BsonValue> bsonValueEntry : val.entrySet()) {
+            converter.buildStruct(bsonValueEntry, finalSchema, struct);
+        }
 
         assertThat(finalSchema).isEqualTo(
                 SchemaBuilder.struct().name("withnull")
@@ -130,12 +139,14 @@ public class MongoDataConverterTest {
         builder = SchemaBuilder.struct().name("withundefined");
         converter = new MongoDataConverter(ArrayEncoding.DOCUMENT);
 
-        TreeMap<String, Map<Object, BsonType>> entry = converter.parse(val);
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
         converter.buildSchema(entry, builder);
 
         final Schema finalSchema = builder.build();
         final Struct struct = new Struct(finalSchema);
-
+        for (Map.Entry<String, BsonValue> bsonValueEntry : val.entrySet()) {
+            converter.buildStruct(bsonValueEntry, finalSchema, struct);
+        }
         assertThat(finalSchema).isEqualTo(
                 SchemaBuilder.struct().name("withundefined")
                         .field("_id", Schema.OPTIONAL_STRING_SCHEMA)
