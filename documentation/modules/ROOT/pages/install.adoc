@@ -80,7 +80,7 @@ Alternatively, you can add further directories to the plugin path by specifying 
 (e.g. `-e KAFKA_CONNECT_PLUGINS_DIR=/kafka/connect/,/path/to/further/plugins`).
 When using the container image for Kafka Connect provided by Confluent, you can specify the `CONNECT_PLUGIN_PATH` environment variable to achieve the same.
 
-Note that Java 11 or later is required to run the {prodname} connectors or {prodname} UI.
+Note that Java {min-java-connectors-version} or later is required to run the {prodname} connectors or {prodname} UI.
 
 ifeval::['{page-version}' != 'main']
 === Consuming Snapshot Releases
