@@ -21,6 +21,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
 import io.debezium.schema.SchemaFactory;
+import io.debezium.util.Loggings;
 
 /**
  * A class used by all Debezium supplied SMTs to centralize common logic.
@@ -66,7 +67,7 @@ public class SmtManager<R extends ConnectRecord<R>> {
         if (record.keySchema() == null ||
                 record.keySchema().name() == null ||
                 !record.keySchema().name().endsWith(RECORD_ENVELOPE_KEY_SCHEMA_NAME_SUFFIX)) {
-            LOGGER.debug("Expected Key Schema for transformation, passing it unchanged. Message key: \"{}\"", record.key());
+            Loggings.logDebugAndTraceRecord(LOGGER, record.key(), "Expected Key Schema for transformation, passing it unchanged.");
             return false;
         }
         return true;
