@@ -39,9 +39,11 @@ public class DebeziumZonedTimestampType extends AbstractTimestampType {
         return dialect.getFormattedTimestampWithTimeZone((String) value);
     }
 
-    @Override
-    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
+    protected Object convertInfinityTimestampValue(Object value) {
+        throw new UnsupportedOperationException();
+    }
 
+    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value, boolean oracleInifinityConverterEnable) {
         if (value == null) {
             return List.of(new ValueBindDescriptor(index, null));
         }
@@ -51,11 +53,18 @@ public class DebeziumZonedTimestampType extends AbstractTimestampType {
                 return infinityTimestampValue(index, value);
             }
 
+            convertInfinityTimestampValue(value);
+
             return normalTimestampValue(index, value);
         }
 
         throw new ConnectException(String.format("Unexpected %s value '%s' with type '%s'", getClass().getSimpleName(),
                 value, value.getClass().getName()));
+    }
+
+    @Override
+    public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
+        return bind(index, schema, value, false);
     }
 
     protected List<ValueBindDescriptor> infinityTimestampValue(int index, Object value) {
