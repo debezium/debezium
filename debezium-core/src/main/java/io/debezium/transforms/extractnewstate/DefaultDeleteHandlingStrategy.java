@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DeleteTombstoneHandling;
+import io.debezium.util.Loggings;
 
 /**
  * A default implementation of {@link AbstractExtractRecordStrategy}
@@ -34,7 +35,7 @@ public class DefaultDeleteHandlingStrategy<R extends ConnectRecord<R>> extends A
             case DROP:
             case TOMBSTONE:
             case REWRITE:
-                LOGGER.trace("Tombstone {} arrived and requested to be dropped", record.key());
+                Loggings.logTraceAndTraceRecord(LOGGER, record.key(), "Tombstone record arrived and requested to be dropped");
                 return null;
             case REWRITE_WITH_TOMBSTONE:
                 return record;
@@ -47,7 +48,7 @@ public class DefaultDeleteHandlingStrategy<R extends ConnectRecord<R>> extends A
     public R handleDeleteRecord(R record) {
         switch (deleteTombstoneHandling) {
             case DROP:
-                LOGGER.trace("Delete message {} requested to be dropped", record.key());
+                Loggings.logTraceAndTraceRecord(LOGGER, record.key(), "Delete message requested to be dropped");
                 return null;
             case TOMBSTONE:
                 // NOTE
@@ -57,7 +58,7 @@ public class DefaultDeleteHandlingStrategy<R extends ConnectRecord<R>> extends A
                 return afterDelegate.apply(record);
             case REWRITE:
             case REWRITE_WITH_TOMBSTONE:
-                LOGGER.trace("Delete message {} requested to be rewritten", record.key());
+                Loggings.logTraceAndTraceRecord(LOGGER, record.key(), "Delete message requested to be rewritten");
                 R oldRecord = beforeDelegate.apply(record);
                 // need to add the rewrite "__deleted" field manually since mongodb's value is a string type
                 if (oldRecord.value() instanceof Struct) {
@@ -75,7 +76,7 @@ public class DefaultDeleteHandlingStrategy<R extends ConnectRecord<R>> extends A
         switch (deleteTombstoneHandling) {
             case REWRITE:
             case REWRITE_WITH_TOMBSTONE:
-                LOGGER.trace("Insert/update message {} requested to be rewritten", record.key());
+                Loggings.logTraceAndTraceRecord(LOGGER, record.key(), "Insert/update message requested to be rewritten");
                 // need to add the rewrite "__deleted" field manually since mongodb's value is a string type
                 if (newRecord.value() instanceof Struct) {
                     return updatedDelegate.apply(newRecord);

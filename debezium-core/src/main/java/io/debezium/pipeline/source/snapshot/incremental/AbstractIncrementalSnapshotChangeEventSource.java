@@ -57,6 +57,7 @@ import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.ColumnUtils;
+import io.debezium.util.Loggings;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
@@ -109,7 +110,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     @SuppressWarnings("unchecked")
     public void closeWindow(P partition, String id, OffsetContext offsetContext) throws InterruptedException {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
-        LOGGER.trace("Closing Window {}", context.toString());
+        Loggings.logTraceAndTraceRecord(LOGGER, context.toString(), "Closing Window");
         if (!context.closeWindow(id)) {
             return;
         }
@@ -199,7 +200,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         }
         if (key instanceof Struct) {
             if (window.remove((Struct) key) != null) {
-                LOGGER.info("Removed '{}' from window", key);
+                Loggings.logInfoAndTraceRecord(LOGGER, key, "Removed key from window");
             }
         }
     }
@@ -302,8 +303,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                         continue;
                     }
                     if (LOGGER.isInfoEnabled()) {
-                        LOGGER.info("Incremental snapshot for table '{}' will end at position {}", currentTableId,
-                                context.maximumKey().orElse(new Object[0]));
+                        Loggings.logInfoAndTraceRecord(LOGGER, context.maximumKey().orElse(new Object[0]),
+                                "Incremental snapshot for table '{}' will end at position", currentTableId);
                     }
                 }
 
@@ -505,7 +506,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         if (dataCollectionsToStop.isEmpty()) {
             return;
         }
-        LOGGER.trace("Stopping incremental snapshot with context {}", context);
+        Loggings.logTraceAndTraceRecord(LOGGER, context, "Stopping incremental snapshot");
         if (!context.snapshotRunning()) {
             LOGGER.warn("No active incremental snapshot, stop ignored");
             context.unsetCorrelationId();
@@ -581,8 +582,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         LOGGER.debug("Exporting data chunk from table '{}' (total {} tables)", currentTable.id(), context.dataCollectionsToBeSnapshottedCount());
 
         final String selectStatement = chunkQueryBuilder.buildChunkQuery(context, currentTable, context.currentDataCollectionId().getAdditionalCondition());
-        LOGGER.debug("\t For table '{}' using select statement: '{}', key: '{}', maximum key: '{}'", currentTable.id(),
-                selectStatement, context.chunkEndPosititon(), context.maximumKey().get());
+        Loggings.logDebugAndTraceRecord(LOGGER, context.maximumKey().get(), "\t For table '{}' using select statement: '{}', key: '{}'",
+                currentTable.id(), selectStatement, context.chunkEndPosititon());
 
         final TableSchema tableSchema = databaseSchema.schemaFor(currentTable.id());
 
