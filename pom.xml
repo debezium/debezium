@@ -71,7 +71,7 @@
         <maven.compiler.release>${debezium.java.connector.target}</maven.compiler.release>
         <maven.compiler.testRelease>${debezium.java.connector.target}</maven.compiler.testRelease>
 
-        <!-- Enforce JDK 11 for building (handled via JBoss parent POM)-->
+        <!-- Minimum JDK version required for building the project -->
         <jdk.min.version>${debezium.java.source}</jdk.min.version>
 
         <!-- Maven Plugins -->
