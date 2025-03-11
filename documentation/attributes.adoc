@@ -1,0 +1,2 @@
+include::gen-attributes.adoc[]
+:partialsdir: ../../../../modules/ROOT/partials/
