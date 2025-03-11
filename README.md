@@ -54,7 +54,7 @@ The [Command Query Responsibility Separation (CQRS)](http://martinfowler.com/bli
 The following software is required to work with the Debezium codebase and build it locally:
 
 * [Git](https://git-scm.com) 2.2.1 or later
-* JDK 17 or later, e.g. [OpenJDK](http://openjdk.java.net/projects/jdk/)
+* JDK 21 or later, e.g. [OpenJDK](http://openjdk.java.net/projects/jdk/)
 * [Docker Engine](https://docs.docker.com/engine/install/) or [Docker Desktop](https://docs.docker.com/desktop/) 1.9 or later
 * [Apache Maven](https://maven.apache.org/index.html) 3.9.8 or later  
   (or invoke the wrapper with `./mvnw` for Maven commands)
