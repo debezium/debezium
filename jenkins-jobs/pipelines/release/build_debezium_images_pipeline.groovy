@@ -182,7 +182,7 @@ node('Slave') {
             echo "Building images for streams $streamsToBuild"
             dir(IMAGES_DIR) {
                 sh """
-                DRY_RUN=$DRY_RUN DEBEZIUM_VERSIONS=\"${streamsToBuild.join(' ')}\" LATEST_STREAM=\"$stableStream\" ./build-all-multiplatform.sh
+                DRY_RUN=$DRY_RUN DEBEZIUM_VERSIONS=\"${streamsToBuild.join(' ')}\" LATEST_STREAM=\"$stableStream\" PLATFORM_CONDUCTOR_PLATFORM=linux/amd64 PLATFORM_STAGE_PLATFORM=linux/amd64 ./build-all-multiplatform.sh
                 """
             }
         }
