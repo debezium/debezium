@@ -596,7 +596,7 @@ node('release-node') {
                 modifyFile("Dockerfile") {
                     it
                             .replaceFirst('BRANCH=\\S+', "BRANCH=$VERSION_TAG")
-                            .replaceFirst(/RUN git clone -b \$\{BRANCH\} https:\/\/[^\s]+\.git/, "COPY $PLATFORM_STAGE_DIR ./debezium-platform")
+                            .replaceFirst(/RUN git clone -b \$\{BRANCH\} https:\/\/github.com\/debezium\/debezium-platform.git/, "COPY $PLATFORM_STAGE_DIR ./debezium-platform")
                 }
             }
 
@@ -703,8 +703,11 @@ node('release-node') {
                             .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$MAVEN_CENTRAL\"")
                 }
             }
-
+           
             dir("$IMAGES_DIR/platform-stage/$IMAGE_TAG/") {
+                modifyFile("Dockerfile") {
+                    it.replaceFirst(/COPY $PLATFORM_STAGE_DIR .\/debezium-platform/, "RUN git clone -b \\\$\\{BRANCH\\} https://github.com/debezium/debezium-platform.git")
+                }
                 sh "rm -rf $PLATFORM_STAGE_DIR"
             }
         }
