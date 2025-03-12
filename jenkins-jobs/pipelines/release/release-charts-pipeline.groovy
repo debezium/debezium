@@ -16,7 +16,7 @@ if (
     error 'Input parameters not provided'
 }
 
-common.setDryRun()
+DRY_RUN = common.getDryRun()
 
 GIT_CREDENTIALS_ID = 'debezium-github'
 QUAYIO_CREDENTIALS_ID = 'debezium-charts-quay'
