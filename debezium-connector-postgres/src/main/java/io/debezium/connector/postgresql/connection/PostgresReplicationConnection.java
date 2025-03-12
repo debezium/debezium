@@ -200,7 +200,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                             switch (publicationAutocreateMode) {
                                 case FILTERED:
                                     // Checking that publication can be altered
-                                    Boolean allTables = rs.getBoolean(1);
+                                    boolean allTables = rs.getBoolean(1);
                                     if (allTables) {
                                         throw new DebeziumException(String.format(
                                                 "A logical publication for all tables named '%s' for plugin '%s' and database '%s' " +
@@ -232,14 +232,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                     conn.commit();
                     conn.setAutoCommit(true);
                 }
-                catch (DebeziumException e) {
-                    throw new DebeziumException(e);
-                }
                 catch (SQLException e) {
                     throw new JdbcConnectionException(e);
-                }
-                catch (Exception e) {
-                    throw new RuntimeException(e);
                 }
             }
             catch (SQLException e) {
@@ -257,11 +251,17 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         return isStandBy;
     }
 
-    private void validatePublications(Statement stmt) throws Exception {
+    private void validatePublications(Statement stmt) throws SQLException {
         String validatePublication = "Select schemaname, tablename from pg_catalog.pg_publication_tables where pubname=? ";
-        Set<TableId> tablesToCapture = determineCapturedTables();
-        if (tablesToCapture.isEmpty()) {
-            throw new DebeziumException(String.format("No table filters found for filtered publication %s", publicationName));
+        Set<TableId> tablesToCapture = null;
+        try {
+            tablesToCapture = determineCapturedTables();
+            if (tablesToCapture.isEmpty()) {
+                throw new SQLException(String.format("No table filters found for filtered publication %s", publicationName));
+            }
+        }
+        catch (Exception e) {
+            throw new SQLException("Failed to determine captured tables", e);
         }
 
         List<String> tableNames = tablesToCapture.stream().map(entity -> entity.schema() + "." + entity.table()).collect(Collectors.toList());
@@ -272,7 +272,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             while (rs.next()) {
                 String tableName = String.format("%s.%s", rs.getString(1), rs.getString(2));
                 if (!tableNames.contains(tableName)) {
-                    throw new DebeziumException(String.format("Database replication is not up to date, there is no table %s in filtered list", tableName));
+                    throw new SQLException(String.format("Database replication is not up to date, there is no table %s in filtered list", tableName));
                 }
                 dbTableNamesHashSet.add(tableName);
             }
@@ -280,7 +280,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
         long diff = tableNames.stream().filter(tableName -> !dbTableNamesHashSet.contains(tableName)).count();
         if (diff > 0) {
-            throw new DebeziumException("Database replication is not up to date");
+            throw new SQLException("Database replication is not up to date");
         }
     }
 
