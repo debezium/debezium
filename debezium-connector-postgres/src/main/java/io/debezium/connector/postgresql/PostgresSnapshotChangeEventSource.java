@@ -14,6 +14,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import io.debezium.DebeziumException;
 import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -260,11 +261,25 @@ public class PostgresSnapshotChangeEventSource extends RelationalSnapshotChangeE
 
     @Override
     protected void completed(SnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext) {
+        try {
+            jdbcConnection.commit();
+        } catch (SQLException sqle) {
+            LOGGER.error("Exception while committing prior to reporting snapshot completion {}", sqle);
+            throw new DebeziumException(sqle);
+        }
+
         snapshotter.snapshotCompleted();
     }
 
     @Override
     protected void aborted(SnapshotContext<PostgresPartition, PostgresOffsetContext> snapshotContext) {
+        try {
+            jdbcConnection.rollback();
+        } catch (SQLException sqle) {
+            LOGGER.error("Exception while rolling back prior to reporting snapshot abortion {}", sqle);
+            throw new DebeziumException(sqle);
+        }
+
         snapshotter.snapshotAborted();
     }
 
