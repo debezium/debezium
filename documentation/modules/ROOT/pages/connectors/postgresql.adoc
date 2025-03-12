@@ -2147,7 +2147,7 @@ The default `false` setting causes the custom converter to always return `null` 
 // ModuleID: setting-up-postgresql-to-run-a-debezium-connector
 // Title: Setting up PostgreSQL to run a {prodname} connector
 [[setting-up-postgresql]]
-== Setting up Postgres
+== Setting up PostgreSQL
 
 ifdef::community[]
 Before using the PostgreSQL connector to monitor the changes committed on a PostgreSQL server, decide which logical decoding plug-in you intend to use.
@@ -2516,30 +2516,38 @@ host    replication     <youruser>  ::1/128                 trust   // <3>
 For more information about network masks, see link:https://www.postgresql.org/docs/current/static/datatype-net-types.html[the PostgreSQL documentation].
 ====
 
+
+// Type: concept
 [[supported-postgresql-topologies]]
 === Supported PostgreSQL topologies
 
 The PostgreSQL connector can be used with a standalone PostgreSQL server or with a cluster of PostgreSQL servers.
 
+// Type: concept
+[id="postgresql-supported-topologies-pg15"]
 ==== PostgreSQL 15 or earlier clusters
 
 When you deploy {prodname} in environments that run PostgreSQL 15 or earlier, you can configure logical replication slots only on the primary server in the cluster.
 You cannot configure logical replication on replica servers in the cluster.
+
 Consequently, the {prodname} PostgreSQL connector can connect and communicate only with the primary server.
 If the primary server fails, the connector stops.
+To recover from a failure, you must repair the cluster and then either promote the original primary server to `primary`, or promote a different PostgreSQL server to `primary`.
+For more information, see xref:postgresql-cluster-failures-capturing-from-new-primary[Capturing data from a new primary after a failure].
 
-Following a failure, after the cluster is repaired, you can once again promote the original primary server to `primary`, and then restart the connector.
-Alternately, you might promote a different PostgreSQL server to `primary`.
-Before you can promote a different server to primary, you must xref:setting-up-postgresql[properly configure] the server.
-Then, to enable the connector to consume from the new `primary` server, update properties in the connector configuration to match the details of the new server, for example, xref:postgresql-property-database-hostname[`database.hostname`], xref:postgresql-property-database-port[`database.port`], xref:postgresql-property-database-dbname[`database.dbname`], and xref:postgresql-property-slot-name[`slot.name`].
-After you update the configuration to point to the new primary, you can restart the connector.
-
+// Type: concept
+[id="postgresql-supported-topologies-pg16"]
 ==== PostgreSQL 16 or later clusters
 
-When you deploy {prodname} with PostgreSQL 16 or later, you can set up logical replication slots on replica servers.
-In a PostgreSQL 16 cluster, {prodname} can capture change events from servers other than the primary server.
+When you deploy {prodname} with a PostgreSQL 16 or later cluster, you can set up logical replication slots on replica servers.
+This feature enables {prodname} to capture change events from servers other than the primary server.
 However, be aware that {prodname} connections to replica servers generally experience higher latency than connections to a primary server.
 
+Also, bear in mind that replication slots on PostgreSQL replica servers are not automatically synchronized with corresponding slots on the primary server.
+To facilitate recovery after a failure in a PostgreSQL 16 cluster, you should periodically perform a manual synchronization to advance the position of the replication slot on the standby server to match the position on the primary server.
+
+// Type: concept
+[id="postgresql-supported-topologies-pg17"]
 ==== {prodname} with PostgreSQL 17 or later clusters
 
 When you deploy {prodname} with PostgreSQL 17 or later, you can set up logical replication slots on primary servers and enable those slots for failover.
@@ -4307,17 +4315,19 @@ For information about failure cases in which a slot has been removed, see the ne
 [id="postgresql-cluster-failures"]
 === Cluster failures
 
-PostgreSQL 15 or earlier permits logical replication slots _only on primary servers_.
-As a result, a {prodname} PostgreSQL connector can only capture events from the active primary server in a database cluster.
-In this environment, replication slots are not propagated to replica servers.
-If the primary server goes down, you must promote a new server to be primary.
+.PostgreSQL 15 or earlier
+In a PostgreSQL 15 or earlier cluster, you can create a logical replication slot only on the primary server.
+As a result, in a PostgreSQL 15 environment, a {prodname} PostgreSQL connector can capture events only from the active primary server in the cluster.
+In a PostgreSQL 15 cluster, replication slots on the primary node are not propagated to replica servers.
+If the primary server goes down, you must promote a standby node to primary.
 
+.PostgreSQL 16 or later
 When you use {prodname} with PostgreSQL 16 or later, you can create logical replication slots on replicas, but you must manually synchronize the replication slot on the replica with the corresponding slot on the primary server.
-Synchronization is not automatic.
+Synchronization of replica slots is not automatic.
 
+.PostgreSQL 17 or later
 When you use {prodname} with PostgreSQL 17 or later, you can configure replication slots on a primary server for automatic failover, so that {prodname} does not miss any change events.
 When a replication slot is configured for failover, PostgreSQL automatically synchronizes the replication slot from the primary to the replica, enabling {prodname} to continue reading from the slot after the replica is promoted and becomes the new primary.
-
 
 ifdef::product[]
 [IMPORTANT]
@@ -4346,18 +4356,53 @@ The new primary must have a replication slot that is configured to use the `pgou
 Only then can you point the connector to the new server and restart the connector.
 endif::product[]
 
-If you configure the user of failover replication slots in environments that run PostgreSQL 17 or later, after a failover occurs, it's important to take the following steps:
+// Type: procedure
+[id="postgresql-cluster-failures-recovering-from-failures-pg17-cluster"]
+==== Recovering from failures in a PostgreSQL 17 cluster
 
-* Pause {prodname} until you can verify that you have an intact replication slot that has not lost data.
+Environments that run PostgreSQL 17 or later support the use of failover replication slots.
+If a failure occurs in a PostgreSQL 17 or later cluster, and a standby is configured with a failover replication slot, complete the following steps to enable {prodname} to resume capture:
 
-* Re-create the {prodname} replication slot before you allow applications to write to the *new* primary.
-  This is crucial.
-  Without this process, your application can miss change events.
+. Pause {prodname} until you can verify that you have an intact replication slot that has not lost data.
 
-* Verify that {prodname} is able to read all changes in the slot from **before the old primary failed**.
+. Re-create the {prodname} replication slot before you allow applications to write to the *new* primary.
+  If you permit applications to write to the new primary before you re-create the replication slot, your application can miss change events.
 
-One reliable method of recovering and verifying whether any changes are lost is to recover a backup of the failed primary from the point immediately before it failed.
-Although this can be administratively difficult, it permits you to inspect the replication slot for any unconsumed changes.
+. Restart the connector.
+
+. Verify that {prodname} can read the LSN from the replication slot for any change that occurred before the original primary failed.
+ +
+For example, recover a backup of the failed primary from the point immediately before failure, and identify the last position that is recorded in the slot.
+Although retrieving backup data can be administratively difficult, inspecting the backup provides a mechanism for reliably determining whether {prodname} has consumed all changes.
+
+// Type: procedure
+[id="postgresql-cluster-failures-capturing-from-new-pg15-primary"]
+==== Capturing data from a new primary server after a failure in a PostgreSQL 15 or earlier cluster
+
+Following the failure of the primary server in a PostgreSQL 15 or earlier cluster, you might decide to configure {prodname} to capture data from one of the former replica servers rather than from the original primary server.
+To enable {prodname} to capture data from a former replica server, complete the following procedure.
+
+.Procedure
+. Repair the condition that caused the cluster to fail.
+. While the connector is stopped, update the values of properties in the connector configuration to reflect the details of the new server.
+For example, verify that the configuration includes the correct values for the following properties:
+
+* xref:postgresql-property-database-hostname[`database.hostname`]
+* xref:postgresql-property-database-port[`database.port`]
+* xref:postgresql-property-database-dbname[`database.dbname`]
+* xref:postgresql-property-database-user[`database.user`]
+* xref:postgresql-property-database-password[`database.password`]
+* xref:postgresql-property-slot-name[`slot.name`]
+. Configure the new primary server to work with {prodname} by completing the following tasks:
+
+* xref:configuring-a-replication-slot-for-the-debezium-pgoutput-plug-in[Configure a replication slot] on the server.
+* Ensure that {prodname} can xref:setting-up-postgresql-permissions-required-by-debezium-connectors[perform replications] and xref:postgresql-replication-user-privileges[create publications] on the server.
++
+For more information about how to configure the PostgreSQL server to work with {prodname}, see xref:setting-up-postgresql[Setting up PostgreSQL].
+
+. Promote the standby PostgreSQL node to `primary`.
+. Restart the connector.
+. Perform a snapshot on the new primary server to capture the initial state of the data on the server and ensure that no data is lost.
 
 [id="postgresql-kafka-connect-process-stops-gracefully"]
 === Kafka Connect process stops gracefully
