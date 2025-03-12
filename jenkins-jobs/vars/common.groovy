@@ -4,7 +4,8 @@ def validateVersionFormat(version) {
     }
 }
 
-def setDryRun() {
+def getDryRun() {
+
     if (DRY_RUN == null) {
         DRY_RUN = false
     }
@@ -12,4 +13,6 @@ def setDryRun() {
         DRY_RUN = Boolean.valueOf(DRY_RUN)
     }
     echo "Dry run: ${DRY_RUN}"
+
+    return DRY_RUN
 }
