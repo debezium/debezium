@@ -212,5 +212,5 @@ public class ExtractNewRecordStateConfigDefinition {
             .withDescription("When this option is enabled, null field values are replaced by source-defined defaults when rewriting the record.");
 
     public static final Field.Set CONFIG_FIELDS = Field.setOf(
-        HANDLE_TOMBSTONE_DELETES, DROP_TOMBSTONES, HANDLE_DELETES, ROUTE_BY_FIELD, ADD_FIELDS_PREFIX, ADD_FIELDS, ADD_HEADERS_PREFIX, ADD_HEADERS);
+            HANDLE_TOMBSTONE_DELETES, DROP_TOMBSTONES, HANDLE_DELETES, ROUTE_BY_FIELD, ADD_FIELDS_PREFIX, ADD_FIELDS, ADD_HEADERS_PREFIX, ADD_HEADERS);
 }
