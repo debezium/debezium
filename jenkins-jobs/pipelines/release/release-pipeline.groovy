@@ -631,7 +631,7 @@ node('release-node') {
                     docker run --privileged --rm mirror.gcr.io/tonistiigi/binfmt --install all
                     ./setup-local-builder.sh
                     docker compose -f local-registry/docker-compose.yml up -d
-                    env DRY_RUN=false SKIP_UI=false ./build-all-multiplatform.sh
+                    env DRY_RUN=false SKIP_UI=false MULTIPLATFORM_PLATFORMS="linux/amd64" ./build-all-multiplatform.sh
                 """
             }
             sh """
