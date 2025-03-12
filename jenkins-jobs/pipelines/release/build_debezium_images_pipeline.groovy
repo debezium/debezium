@@ -4,7 +4,7 @@ import com.cloudbees.groovy.cps.NonCPS
 
 @Library("dbz-libs") _
 
-common.setDryRun()
+DRY_RUN = common.getDryRun()
 
 IMAGES_DIR = 'images'
 TAG_REST_ENDPOINT = "https://api.github.com/repos/${params.DEBEZIUM_REPOSITORY}/tags"
