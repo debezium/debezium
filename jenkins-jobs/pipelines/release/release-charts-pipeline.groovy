@@ -166,7 +166,20 @@ node('release-node') {
                         return updatedContent
                     }
                     fileUtils.modifyFile("Chart.yaml", modifyVersions)
+
+                    def modifyImages = { content ->
+
+                        return content.replaceAll(
+                                /nightly/,
+                                "${RELEASE_VERSION}"
+                        )
+
+                    }
+
+                    fileUtils.modifyFile("values.yaml", modifyImages)
                 }
+
+
                 sh "mv $TMP_WORKDIR/debezium-operator-${RELEASE_SEM_VERSION}.tgz helm/charts"
                 sh "helm show chart helm/charts/debezium-operator-${RELEASE_SEM_VERSION}.tgz"
                 sh "helm package --app-version=${RELEASE_SEM_VERSION} --version=${RELEASE_SEM_VERSION} helm/"
