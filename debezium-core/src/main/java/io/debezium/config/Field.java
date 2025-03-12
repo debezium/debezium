@@ -776,7 +776,7 @@ public final class Field {
      * @return the new field; never null
      */
     public <T extends Enum<T>> Field withEnum(Class<T> enumType, T defaultOption) {
-        EnumRecommender<T> recommendator = new EnumRecommender<>(enumType);
+        EnumRecommender<T> recommendator = new EnumRecommender<>(enumType, defaultOption);
         Field result = withType(Type.STRING).withRecommender(recommendator).withValidation(recommendator)
                 .withAllowedValues(getEnumLiterals(enumType));
         // Not all enums support EnumeratedValue yet
@@ -1123,12 +1123,14 @@ public final class Field {
         private final List<Object> validValues;
         private final java.util.Set<String> literals;
         private final String literalsStr;
+        private final String defaultOption;
 
-        public EnumRecommender(Class<T> enumType) {
+        public EnumRecommender(Class<T> enumType, T defaultOption) {
             // Not all enums support EnumeratedValue yet
             this.literals = getEnumLiterals(enumType);
             this.validValues = Collections.unmodifiableList(new ArrayList<>(this.literals));
             this.literalsStr = Strings.join(", ", validValues);
+            this.defaultOption = defaultOption != null ? defaultOption.name().toLowerCase() : null;
         }
 
         @Override
@@ -1145,8 +1147,11 @@ public final class Field {
         public int validate(Configuration config, Field field, ValidationOutput problems) {
             String value = config.getString(field);
             if (value == null) {
-                problems.accept(field, value, "Value must be one of " + literalsStr);
-                return 1;
+                if (defaultOption != null) {
+                    problems.accept(field, value, "Value must be one of " + literalsStr);
+                    return 1;
+                }
+                return 0;
             }
             String trimmed = value.trim().toLowerCase();
             if (!literals.contains(trimmed)) {
