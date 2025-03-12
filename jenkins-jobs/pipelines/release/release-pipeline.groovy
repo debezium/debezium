@@ -22,7 +22,7 @@ if (
     error 'Input parameters not provided'
 }
 
-common.setDryRun()
+DRY_RUN = common.getDryRun()
 
 if (IGNORE_SNAPSHOTS == null) {
     IGNORE_SNAPSHOTS = false
