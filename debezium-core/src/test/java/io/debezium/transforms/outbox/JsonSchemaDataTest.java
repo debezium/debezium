@@ -210,7 +210,8 @@ public class JsonSchemaDataTest {
 
         // have conflicting struct types in the nested array
         assertThatThrownBy(() -> jsonSchemaData.toConnectSchema(key, mapper
-                .readTree("{\"array\":[{\"subarray\":[{\"code\":\"100\",\"description\":\"some description\"}]},{\"subarray\":[{\"code\":\"200\",\"description\":true}]},{\"subarray\":[{\"code\":\"300\"}]}]}")))
+                .readTree(
+                        "{\"array\":[{\"subarray\":[{\"code\":\"100\",\"description\":\"some description\"}]},{\"subarray\":[{\"code\":\"200\",\"description\":true}]},{\"subarray\":[{\"code\":\"300\"}]}]}")))
                 .isInstanceOf(ConnectException.class)
                 .hasMessageStartingWith("Schemas are of different types")
                 .hasMessageContaining("STRING")
@@ -218,7 +219,8 @@ public class JsonSchemaDataTest {
 
         // set null value in subarray
         assertThatThrownBy(() -> jsonSchemaData.toConnectSchema(key, mapper
-                .readTree("{\"array\":[{\"subarray\":[null, {\"code\":\"100\",\"description\":null}, null]},{\"subarray\":[null, {\"code\":\"200\",\"description\":\"another description\"}]},{\"subarray\":[{\"code\":\"300\"}, null]},{\"subarray\":[null]}]}")))
+                .readTree(
+                        "{\"array\":[{\"subarray\":[null, {\"code\":\"100\",\"description\":null}, null]},{\"subarray\":[null, {\"code\":\"200\",\"description\":\"another description\"}]},{\"subarray\":[{\"code\":\"300\"}, null]},{\"subarray\":[null]}]}")))
                 .isInstanceOf(ConnectException.class)
                 .hasMessage("Array '' has unrecognized member schema.");
     }
