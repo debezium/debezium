@@ -227,7 +227,6 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                                          OffsetContext offset,
                                          ConnectHeaders headers)
                         throws InterruptedException {
-
                     Loggings.logTraceAndTraceRecord(LOGGER, "Key: " + key + ", Value: " + value, "Received change record for {} operation with context {}", operation,
                             offset);
 
