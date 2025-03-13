@@ -2558,7 +2558,7 @@ In environments where automatic replication is enabled, if a failure occurs, an 
 ifdef::product[]
 [IMPORTANT]
 ====
-The use of {prodname} with PostgreSQL 17 and the ability to configure replication slots for failover to replica servers is a Technology Preview feature.
+The use of {prodname} with PostgreSQL 17 and the ability to configure failover replication slots are Technology Preview features.
 Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
 Red Hat does not recommend using them in production.
 These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
@@ -4332,7 +4332,7 @@ When a replication slot is configured for failover, PostgreSQL automatically syn
 ifdef::product[]
 [IMPORTANT]
 ====
-The use of {prodname} with PostgreSQL 17 and the ability to configure replication slots for failover to replica servers is a Technology Preview feature.
+The use of {prodname} with PostgreSQL 17 and the ability to configure failover replication slots are Technology Preview features.
 Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
 Red Hat does not recommend using them in production.
 These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
