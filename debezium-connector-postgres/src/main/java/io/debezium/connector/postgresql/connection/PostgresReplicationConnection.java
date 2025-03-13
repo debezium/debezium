@@ -525,13 +525,17 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         // For pgoutput specifically, the publication must be created prior to the slot.
         initPublication();
 
+        // YB Note: We will only be specifying the LSN type when it is HYBRID_TIME, for other case(s)
+        // i.e. SEQUENCE, we will let the service handle it with the default value. This is to ensure
+        // that we stay backward compatible as the syntax is not recognizable by initial versions
+        // of logical replication in YugabyteDB.
         try (Statement stmt = pgConnection().createStatement()) {
             String createCommand = String.format(
                     "CREATE_REPLICATION_SLOT \"%s\" %s LOGICAL %s %s %s",
                     slotName,
                     tempPart,
                     plugin.getPostgresPluginName(),
-                    lsnType.getLsnTypeName(),
+                    lsnType.getLsnTypeName().equalsIgnoreCase("SEQUENCE") ? "" : "HYBRID_TIME",
                     streamingMode.isParallel() ? "USE_SNAPSHOT" : "");
 
             // Begin a read-only transaction when it is the parallel streaming mode because
