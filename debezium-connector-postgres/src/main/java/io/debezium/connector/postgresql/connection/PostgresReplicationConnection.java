@@ -18,7 +18,6 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
@@ -252,7 +251,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     private void validatePublications(Statement stmt) throws SQLException {
-        String validatePublication = "Select schemaname, tablename from pg_catalog.pg_publication_tables where pubname=? ";
+        String validatePublication = "SELECT schemaname, tablename FROM pg_catalog.pg_publication_tables WHERE pubname=? ";
         Set<TableId> tablesToCapture = null;
         try {
             tablesToCapture = determineCapturedTables();
@@ -264,22 +263,18 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             throw new SQLException("Failed to determine captured tables", e);
         }
 
-        List<String> tableNames = tablesToCapture.stream().map(entity -> entity.schema() + "." + entity.table()).collect(Collectors.toList());
-        HashSet<String> dbTableNamesHashSet = new HashSet<>();
+        final Set<String> tableNames = tablesToCapture.stream().map(entity -> entity.schema() + "." + entity.table()).collect(Collectors.toSet());
+        final Set<String> dbTableNamesHashSet = new HashSet<>();
         try (PreparedStatement prepStmt = stmt.getConnection().prepareStatement(validatePublication)) {
             prepStmt.setString(1, publicationName);
             ResultSet rs = prepStmt.executeQuery();
             while (rs.next()) {
-                String tableName = String.format("%s.%s", rs.getString(1), rs.getString(2));
-                if (!tableNames.contains(tableName)) {
-                    throw new SQLException(String.format("Database replication is not up to date, there is no table %s in filtered list", tableName));
-                }
+                final var tableName = String.format("%s.%s", rs.getString(1), rs.getString(2));
                 dbTableNamesHashSet.add(tableName);
             }
         }
 
-        long diff = tableNames.stream().filter(tableName -> !dbTableNamesHashSet.contains(tableName)).count();
-        if (diff > 0) {
+        if (dbTableNamesHashSet.equals(tableNames)) {
             throw new SQLException("Database replication is not up to date");
         }
     }
