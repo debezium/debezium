@@ -6,12 +6,14 @@ import com.cloudbees.groovy.cps.NonCPS
 @Library("dbz-libs") _
 
 if (
-    !RELEASE_VERSION ||
-    !DEBEZIUM_OPERATOR_REPOSITORY ||
-    !DEBEZIUM_OPERATOR_BRANCH ||
-    !DEBEZIUM_PLATFORM_REPOSITORY ||
-    !DEBEZIUM_PLATFORM_BRANCH ||
-    !OCI_ARTIFACT_REPO_URL
+        !RELEASE_VERSION ||
+        !DEBEZIUM_OPERATOR_REPOSITORY ||
+        !DEBEZIUM_OPERATOR_BRANCH ||
+        !DEBEZIUM_PLATFORM_REPOSITORY ||
+        !DEBEZIUM_PLATFORM_BRANCH ||
+        !DEBEZIUM_CHART_REPOSITORY ||
+        !DEBEZIUM_CHART_BRANCH ||
+        !OCI_ARTIFACT_REPO_URL
 ) {
     error 'Input parameters not provided'
 }
@@ -31,6 +33,9 @@ MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
 
 DEBEZIUM_OPERATOR_DIR='operator'
 DEBEZIUM_PLATFORM_DIR='platform'
+DEBEZIUM_CHARTS_DIR='charts'
+HELM_CHART_OUTPUT_DIR='charts-output'
+DEBEZIUM_CHART_URL='charts.debezium.io'
 
 
 node('release-node') {
@@ -44,6 +49,10 @@ node('release-node') {
                 deleteDir()
                 sh "git config user.email || git config --global user.email \"debezium@gmail.com\" && git config --global user.name \"Debezium Builder\""
                 sh "ssh-keyscan github.com >> $HOME_DIR/.ssh/known_hosts"
+
+                sh "mkdir ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}"
+                sh "mkdir ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-operator"
+                sh "mkdir ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-platform"
             }
             dir(GPG_DIR) {
                 withCredentials([
@@ -71,6 +80,15 @@ node('release-node') {
                       userRemoteConfigs                : [[url: "https://$DEBEZIUM_PLATFORM_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
             ]
             )
+
+            checkout([$class                           : 'GitSCM',
+                      branches                         : [[name: "*/$DEBEZIUM_CHART_BRANCH"]],
+                      doGenerateSubmoduleConfigurations: false,
+                      extensions                       : [[$class: 'RelativeTargetDirectory', relativeTargetDir: DEBEZIUM_CHARTS_DIR], [$class: 'CloneOption', noTags: false, depth: 1]],
+                      submoduleCfg                     : [],
+                      userRemoteConfigs                : [[url: "https://$DEBEZIUM_CHART_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
+            ]
+            )
         }
 
         stage("Install helm") {
@@ -88,6 +106,7 @@ node('release-node') {
         }
 
         def TMP_WORKDIR = sh(script: 'mktemp -d', returnStdout: true).trim()
+
         stage('Release operator chart') {
             echo "=== Downloading Debezium operator chart ==="
             def INPUT_URL = "$MAVEN_CENTRAL/io/debezium/debezium-operator-dist/$RELEASE_VERSION/debezium-operator-dist-$RELEASE_VERSION-helm-chart.tar.gz"
@@ -104,7 +123,8 @@ node('release-node') {
                 sh(     label: 'Unzip and repackage',
                         script: """
                             tar -xvzf debezium-operator-${RELEASE_SEM_VERSION}.tar.gz --one-top-level=debezium-operator-${RELEASE_SEM_VERSION} --strip-components=1
-                               helm package debezium-operator-${RELEASE_SEM_VERSION}
+                            helm package debezium-operator-${RELEASE_SEM_VERSION}
+                            cp debezium-operator-${RELEASE_SEM_VERSION}.tgz ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-operator
                         """
                 )
 
@@ -183,6 +203,7 @@ node('release-node') {
                 sh "mv $TMP_WORKDIR/debezium-operator-${RELEASE_SEM_VERSION}.tgz helm/charts"
                 sh "helm show chart helm/charts/debezium-operator-${RELEASE_SEM_VERSION}.tgz"
                 sh "helm package --app-version=${RELEASE_SEM_VERSION} --version=${RELEASE_SEM_VERSION} helm/"
+                sh "cp debezium-platform-${RELEASE_SEM_VERSION}.tgz ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-platform"
 
                 stage('Create a GH release') {
                     if (!DRY_RUN) {
@@ -204,6 +225,23 @@ node('release-node') {
                     }
                     if (!DRY_RUN) {
                         sh "helm push debezium-platform-${RELEASE_SEM_VERSION}.tgz $OCI_ARTIFACT_REPO_URL"
+                    }
+                }
+            }
+        }
+
+        stage("Add charts to ${DEBEZIUM_CHART_URL}") {
+
+            dir(DEBEZIUM_CHARTS_DIR) {
+                sh "helm repo index ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-operator --merge ./index.yaml --url https://github.com/debezium/debezium-operator/releases/download/v${RELEASE_VERSION}/debezium-operator-${RELEASE_SEM_VERSION}.tgz"
+                sh "cp ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-operator/index.yaml index.yaml"
+                sh "helm repo index ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-platform --merge ./index.yaml --url https://github.com/debezium/debezium-platform/releases/download/v${RELEASE_VERSION}"
+                sh "cp ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-platform/index.yaml index.yaml"
+                if (!DRY_RUN) {
+                    withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                        sh "git commit -a -m '[release] Stable $RELEASE_VERSION for Debezium Charts'"
+                        sh "git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${DEBEZIUM_CHART_REPOSITORY}"
+                        sh "git tag v$RELEASE_VERSION && git push \"https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${DEBEZIUM_CHART_REPOSITORY}\" v$RELEASE_VERSION"
                     }
                 }
             }
