@@ -230,17 +230,17 @@ node('release-node') {
             }
         }
 
-        stage("Add charts to ${DEBEZIUM_CHART_URL}") {
+        stage("Publish charts to ${DEBEZIUM_CHART_URL}") {
 
             dir(DEBEZIUM_CHARTS_DIR) {
-                sh "helm repo index ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-operator --merge ./index.yaml --url https://github.com/debezium/debezium-operator/releases/download/v${RELEASE_VERSION}/debezium-operator-${RELEASE_SEM_VERSION}.tgz"
+                sh "helm repo index ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-operator --merge ./index.yaml --url https://github.com/debezium/debezium-operator/releases/download/v${RELEASE_VERSION}"
                 sh "cp ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-operator/index.yaml index.yaml"
                 sh "helm repo index ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-platform --merge ./index.yaml --url https://github.com/debezium/debezium-platform/releases/download/v${RELEASE_VERSION}"
                 sh "cp ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-platform/index.yaml index.yaml"
                 if (!DRY_RUN) {
                     withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
                         sh "git commit -a -m '[release] Stable $RELEASE_VERSION for Debezium Charts'"
-                        sh "git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${DEBEZIUM_CHART_REPOSITORY}"
+                        sh "git push https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${DEBEZIUM_CHART_REPOSITORY} HEAD:${DEBEZIUM_CHART_BRANCH}"
                         sh "git tag v$RELEASE_VERSION && git push \"https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${DEBEZIUM_CHART_REPOSITORY}\" v$RELEASE_VERSION"
                     }
                 }
