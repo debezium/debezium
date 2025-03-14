@@ -33,6 +33,7 @@ import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.metadata.CollectionId;
 import io.debezium.sink.DebeziumSinkRecord;
 import io.debezium.sink.spi.ChangeEventSink;
+import io.debezium.sink.spi.ChangeEventSinkRetriableException;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 import io.debezium.util.Stopwatch;
@@ -106,7 +107,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     continue;
                 }
                 catch (SQLException e) {
-                    throw new ConnectException("Failed to process a sink record", e);
+                    throw new ChangeEventSinkRetriableException("Failed to process a sink record", e);
                 }
             }
 
@@ -224,7 +225,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                         Metronome.parker(flushRetryDelay, Clock.SYSTEM).pause();
                     }
                     catch (InterruptedException e) {
-                        throw new ConnectException("Interrupted while waiting to retry flush records", e);
+                        throw new ChangeEventSinkRetriableException("Interrupted while waiting to retry flush records", e);
                     }
                 }
                 flushBuffer(collectionId, toFlush);
@@ -236,11 +237,11 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     retries++;
                 }
                 else {
-                    throw new ConnectException("Failed to process a sink record", e);
+                    throw new ChangeEventSinkRetriableException("Failed to process a sink record", e);
                 }
             }
         }
-        throw new ConnectException("Exceeded max retries " + flushMaxRetries + " times, failed to process sink records", lastException);
+        throw new ChangeEventSinkRetriableException("Exceeded max retries " + flushMaxRetries + " times, failed to process sink records", lastException);
     }
 
     private void flushBuffer(CollectionId collectionId, List<JdbcSinkRecord> toFlush) throws SQLException {
