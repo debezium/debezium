@@ -33,6 +33,7 @@ import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
 import io.debezium.transforms.SmtManager;
+import io.debezium.util.Loggings;
 import io.debezium.util.MurmurHash3;
 
 /**
@@ -171,7 +172,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
                     .collect(Collectors.toList());
 
             if (fieldsValue.isEmpty()) {
-                LOGGER.trace("None of the configured fields found on record {}. Skipping it.", envelope);
+                Loggings.logTraceAndTraceRecord(LOGGER, envelope, "None of the configured fields found on record. Skipping it.");
                 return originalRecord;
             }
 
@@ -199,7 +200,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
             return Optional.ofNullable(lastStruct.get(subFields[subFields.length - 1]));
         }
         catch (DataException e) {
-            LOGGER.trace("Field {} not found on payload {}. It will not be considered", fieldName, envelope);
+            Loggings.logTraceAndTraceRecord(LOGGER, envelope, "Field {} not found on payload. It will not be considered", fieldName);
             return Optional.empty();
         }
 
@@ -227,7 +228,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
     }
 
     private R buildNewRecord(R originalRecord, Struct envelope, int partition) {
-        LOGGER.trace("Message {} will be sent to partition {}", envelope, partition);
+        Loggings.logTraceAndTraceRecord(LOGGER, envelope, "Message will be sent to partition {}", partition);
 
         return originalRecord.newRecord(originalRecord.topic(), partition,
                 originalRecord.keySchema(),
