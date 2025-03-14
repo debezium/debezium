@@ -37,7 +37,7 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
     private static final String DEFAULT_TABLE_DDL = "CREATE TABLE %s" +
             "(" +
             "id VARCHAR(36) NOT NULL," +
-            "history_data VARCHAR(65000)," +
+            "history_data TEXT," +
             "history_data_seq INTEGER," +
             "record_insert_ts TIMESTAMP NOT NULL," +
             "record_insert_seq INTEGER NOT NULL" +
