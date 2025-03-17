@@ -28,4 +28,23 @@ public class MariaDbErrorHandler extends ErrorHandler {
     protected Set<Class<? extends Exception>> communicationExceptions() {
         return Collect.unmodifiableSet(IOException.class, SQLException.class);
     }
+
+    @Override
+    protected boolean isRetriable(Throwable throwable) {
+        if (throwable == null) {
+            return false;
+        }
+
+        Throwable current = throwable;
+        while (current != null) {
+            String message = current.getMessage();
+            // Indicates a server_id/server_uuid misconfiguration requiring manual intervention, so retries won't resolve it.
+            if (message != null && message.contains("A replica with the same server_uuid/server_id as this replica has connected to the source")) {
+                return false;
+            }
+            current = current.getCause();
+        }
+
+        return super.isRetriable(throwable);
+    }
 }
