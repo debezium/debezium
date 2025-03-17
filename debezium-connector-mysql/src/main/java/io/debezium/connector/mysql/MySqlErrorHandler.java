@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Set;
 
+import io.debezium.annotation.Immutable;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.util.Collect;
@@ -24,6 +25,11 @@ public class MySqlErrorHandler extends ErrorHandler {
         super(MySqlConnector.class, connectorConfig, queue, replacedErrorHandler);
     }
 
+    @Immutable
+    private static final Set<Integer> NON_RETRIABLE_ERROR_CODES = Collect.unmodifiableSet(
+            1236 // ER_MASTER_FATAL_ERROR_READING_BINLOG
+    );
+
     @Override
     protected Set<Class<? extends Exception>> communicationExceptions() {
         return Collect.unmodifiableSet(IOException.class, SQLException.class);
@@ -31,20 +37,14 @@ public class MySqlErrorHandler extends ErrorHandler {
 
     @Override
     protected boolean isRetriable(Throwable throwable) {
-        if (throwable == null) {
-            return false;
-        }
-
-        Throwable current = throwable;
-        while (current != null) {
-            String message = current.getMessage();
-            // Indicates a server_id/server_uuid misconfiguration requiring manual intervention, so retries won't resolve it.
-            if (message != null && message.contains("A replica with the same server_uuid/server_id as this replica has connected to the source")) {
-                return false;
+        while (throwable != null) {
+            if (throwable instanceof SQLException sqlException) {
+                if (NON_RETRIABLE_ERROR_CODES.contains(sqlException.getErrorCode())) {
+                    return false;
+                }
             }
-            current = current.getCause();
+            throwable = throwable.getCause();
         }
-
         return super.isRetriable(throwable);
     }
 }
