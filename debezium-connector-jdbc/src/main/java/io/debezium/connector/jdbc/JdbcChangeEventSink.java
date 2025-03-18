@@ -438,7 +438,8 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             if (config.isConnectionRestartOnErrors()) {
                 LOGGER.warn("Connection error detected, restarting connection. `connection.restart.on.errors` is enabled.");
                 return true;
-            } else {
+            }
+            else {
                 LOGGER.error("Connection error detected, connection restart is disabled. `connection.restart.on.errors` is disabled.");
             }
         }
