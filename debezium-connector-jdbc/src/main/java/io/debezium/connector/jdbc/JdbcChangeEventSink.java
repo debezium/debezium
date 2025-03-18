@@ -24,7 +24,6 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import org.hibernate.StatelessSession;
 import org.hibernate.Transaction;
 import org.hibernate.dialect.DatabaseVersion;
-import org.hibernate.exception.JDBCConnectionException;
 import org.hibernate.query.NativeQuery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -433,17 +432,6 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 return true;
             }
         }
-
-        if (throwable instanceof JDBCConnectionException) {
-            if (config.isConnectionRestartOnErrors()) {
-                LOGGER.warn("Connection error detected, restarting connection. `connection.restart.on.errors` is enabled.");
-                return true;
-            }
-            else {
-                LOGGER.error("Connection error detected, connection restart is disabled. `connection.restart.on.errors` is disabled.");
-            }
-        }
-
         return isRetriable(throwable.getCause());
     }
 
