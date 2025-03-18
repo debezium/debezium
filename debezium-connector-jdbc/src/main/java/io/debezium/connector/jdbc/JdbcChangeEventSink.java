@@ -24,6 +24,7 @@ import org.apache.kafka.connect.sink.SinkRecord;
 import org.hibernate.StatelessSession;
 import org.hibernate.Transaction;
 import org.hibernate.dialect.DatabaseVersion;
+import org.hibernate.exception.JDBCConnectionException;
 import org.hibernate.query.NativeQuery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +34,6 @@ import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.metadata.CollectionId;
 import io.debezium.sink.DebeziumSinkRecord;
 import io.debezium.sink.spi.ChangeEventSink;
-import io.debezium.sink.spi.ChangeEventSinkRetriableException;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
 import io.debezium.util.Stopwatch;
@@ -107,7 +107,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     continue;
                 }
                 catch (SQLException e) {
-                    throw new ChangeEventSinkRetriableException("Failed to process a sink record", e);
+                    throw new ConnectException("Failed to process a sink record", e);
                 }
             }
 
@@ -225,7 +225,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                         Metronome.parker(flushRetryDelay, Clock.SYSTEM).pause();
                     }
                     catch (InterruptedException e) {
-                        throw new ChangeEventSinkRetriableException("Interrupted while waiting to retry flush records", e);
+                        throw new ConnectException("Interrupted while waiting to retry flush records", e);
                     }
                 }
                 flushBuffer(collectionId, toFlush);
@@ -237,11 +237,11 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     retries++;
                 }
                 else {
-                    throw new ChangeEventSinkRetriableException("Failed to process a sink record", e);
+                    throw new ConnectException("Failed to process a sink record", e);
                 }
             }
         }
-        throw new ChangeEventSinkRetriableException("Exceeded max retries " + flushMaxRetries + " times, failed to process sink records", lastException);
+        throw new ConnectException("Exceeded max retries " + flushMaxRetries + " times, failed to process sink records", lastException);
     }
 
     private void flushBuffer(CollectionId collectionId, List<JdbcSinkRecord> toFlush) throws SQLException {
@@ -433,6 +433,16 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 return true;
             }
         }
+
+        if (throwable instanceof JDBCConnectionException) {
+            if (config.isConnectionRestartOnErrors()) {
+                LOGGER.warn("Connection error detected, restarting connection. `connection.restart.on.errors` is enabled.");
+                return true;
+            } else {
+                LOGGER.error("Connection error detected, connection restart is disabled. `connection.restart.on.errors` is disabled.");
+            }
+        }
+
         return isRetriable(throwable.getCause());
     }
 
