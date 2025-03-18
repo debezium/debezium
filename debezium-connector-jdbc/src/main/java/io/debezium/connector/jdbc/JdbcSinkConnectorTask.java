@@ -17,7 +17,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.runtime.InternalSinkRecord;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.sink.SinkTask;
@@ -30,7 +29,6 @@ import io.debezium.DebeziumException;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectResolver;
-import io.debezium.sink.spi.SinkErrorHandler;
 import io.debezium.util.Stopwatch;
 import io.debezium.util.Strings;
 
@@ -137,17 +135,10 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
             // Capture failure
             LOGGER.error("Failed to process record: {}", throwable.getMessage(), throwable);
+            previousPutException = throwable;
 
-            // Classify error
-            if (SinkErrorHandler.isRetriable(throwable)) {
-                LOGGER.warn("Encountered a retriable exception, triggering retry: {}", throwable.getMessage());
-                throw new RetriableException("Retriable error occurred in JDBC Sink Connector", throwable);
-            }
-            else {
-                previousPutException = throwable;
-                records.forEach(this::markNotProcessed);
-                throw new ConnectException("Non-retriable JDBC Sink error", throwable);
-            }
+            // Stash all records
+            records.forEach(this::markNotProcessed);
         }
 
         putStopWatch.stop();
