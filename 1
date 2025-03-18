@@ -1,0 +1,679 @@
+[INFO] Scanning for projects...
+[INFO] Inspecting build with total of 10 modules...
+[INFO] Installing Nexus Staging features:
+[INFO]   ... total of 10 executions of maven-deploy-plugin replaced with nexus-staging-maven-plugin
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] Debezium Build Aggregator                                          [pom]
+[INFO] Debezium IDE Formatting Rules                                      [jar]
+[INFO] Debezium Checkstyle Rules                                          [jar]
+[INFO] Debezium Revapi Rules                                              [jar]
+[INFO] Debezium Parent POM                                                [pom]
+[INFO] Debezium API                                                       [jar]
+[INFO] Debezium Core                                                      [jar]
+[INFO] Debezium Embedded                                                  [jar]
+[INFO] Debezium Sink                                                      [jar]
+[INFO] Debezium JDBC Sink Connector                                       [jar]
+[INFO] 
+[INFO] -----------------< io.debezium:debezium-build-parent >------------------
+[INFO] Building Debezium Build Aggregator 3.1.0-SNAPSHOT                 [1/10]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-java-version) @ debezium-build-parent ---
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-maven-version) @ debezium-build-parent ---
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-maven) @ debezium-build-parent ---
+[INFO] 
+[INFO] --- buildnumber:1.4:create (get-scm-revision) @ debezium-build-parent ---
+[INFO] Executing: /bin/sh -c cd '/source/debfork2/debezium' && 'git' 'rev-parse' '--verify' 'HEAD'
+[INFO] Working directory: /source/debfork2/debezium
+[WARNING] Cannot get the revision information from the scm repository, proceeding with revision of UNKNOWN : 
+Exception while executing SCM command.
+[INFO] Storing buildNumber: UNKNOWN at timestamp: 1742282984478
+[WARNING] Cannot get the branch information from the git repository: 
+Error while executing command.
+[INFO] Executing: /bin/sh -c cd '/source/debfork2/debezium' && 'git' 'rev-parse' '--verify' 'HEAD'
+[INFO] Working directory: /source/debfork2/debezium
+[WARNING] Cannot get the branch information from the scm repository, proceeding with UNKNOWN_BRANCH : 
+Exception while executing SCM command.
+[INFO] Storing buildScmBranch: UNKNOWN_BRANCH
+[INFO] 
+[INFO] --- source:3.1.0:jar-no-fork (attach-sources) @ debezium-build-parent ---
+[INFO] 
+[INFO] ------------------< io.debezium:debezium-ide-configs >------------------
+[INFO] Building Debezium IDE Formatting Rules 3.1.0-SNAPSHOT             [2/10]
+[INFO]   from support/ide-configs/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-java-version) @ debezium-ide-configs ---
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-maven-version) @ debezium-ide-configs ---
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-maven) @ debezium-ide-configs ---
+[INFO] 
+[INFO] --- buildnumber:1.4:create (get-scm-revision) @ debezium-ide-configs ---
+[INFO] 
+[INFO] --- resources:3.1.0:resources (default-resources) @ debezium-ide-configs ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] Copying 10 resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ debezium-ide-configs ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- resources:3.1.0:testResources (default-testResources) @ debezium-ide-configs ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] skip non existing resourceDirectory /source/debfork2/debezium/support/ide-configs/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ debezium-ide-configs ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- surefire:3.1.2:test (default-test) @ debezium-ide-configs ---
+[WARNING]  Parameter 'systemProperties' is deprecated: Use systemPropertyVariables instead.
+[INFO] No tests to run.
+[INFO] 
+[INFO] --- jar:3.0.2:jar (default-jar) @ debezium-ide-configs ---
+[INFO] 
+[INFO] --- source:3.1.0:jar-no-fork (attach-sources) @ debezium-ide-configs ---
+[INFO] 
+[INFO] ------------------< io.debezium:debezium-checkstyle >-------------------
+[INFO] Building Debezium Checkstyle Rules 3.1.0-SNAPSHOT                 [3/10]
+[INFO]   from support/checkstyle/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-java-version) @ debezium-checkstyle ---
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-maven-version) @ debezium-checkstyle ---
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-maven) @ debezium-checkstyle ---
+[INFO] 
+[INFO] --- buildnumber:1.4:create (get-scm-revision) @ debezium-checkstyle ---
+[INFO] 
+[INFO] --- resources:3.1.0:resources (default-resources) @ debezium-checkstyle ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] Copying 4 resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ debezium-checkstyle ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.1.0:testResources (default-testResources) @ debezium-checkstyle ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] skip non existing resourceDirectory /source/debfork2/debezium/support/checkstyle/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ debezium-checkstyle ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- surefire:3.1.2:test (default-test) @ debezium-checkstyle ---
+[WARNING]  Parameter 'systemProperties' is deprecated: Use systemPropertyVariables instead.
+[INFO] No tests to run.
+[INFO] 
+[INFO] --- jar:3.0.2:jar (default-jar) @ debezium-checkstyle ---
+[INFO] 
+[INFO] --- source:3.1.0:jar-no-fork (attach-sources) @ debezium-checkstyle ---
+[INFO] Building jar: /source/debfork2/debezium/support/checkstyle/target/debezium-checkstyle-3.1.0-SNAPSHOT-sources.jar
+[INFO] 
+[INFO] --------------------< io.debezium:debezium-revapi >---------------------
+[INFO] Building Debezium Revapi Rules 3.1.0-SNAPSHOT                     [4/10]
+[INFO]   from support/revapi/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-java-version) @ debezium-revapi ---
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-maven-version) @ debezium-revapi ---
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-maven) @ debezium-revapi ---
+[INFO] 
+[INFO] --- buildnumber:1.4:create (get-scm-revision) @ debezium-revapi ---
+[INFO] 
+[INFO] --- resources:3.1.0:resources (default-resources) @ debezium-revapi ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] Copying 2 resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ debezium-revapi ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- resources:3.1.0:testResources (default-testResources) @ debezium-revapi ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] skip non existing resourceDirectory /source/debfork2/debezium/support/revapi/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ debezium-revapi ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- surefire:3.1.2:test (default-test) @ debezium-revapi ---
+[WARNING]  Parameter 'systemProperties' is deprecated: Use systemPropertyVariables instead.
+[INFO] No tests to run.
+[INFO] 
+[INFO] --- jar:3.0.2:jar (default-jar) @ debezium-revapi ---
+[INFO] 
+[INFO] --- source:3.1.0:jar-no-fork (attach-sources) @ debezium-revapi ---
+[INFO] 
+[INFO] --------------------< io.debezium:debezium-parent >---------------------
+[INFO] Building Debezium Parent POM 3.1.0-SNAPSHOT                       [5/10]
+[INFO]   from debezium-parent/pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-java-version) @ debezium-parent ---
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-maven-version) @ debezium-parent ---
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-maven) @ debezium-parent ---
+[INFO] 
+[INFO] --- build-helper:1.9.1:parse-version (parse-version) @ debezium-parent ---
+[INFO] 
+[INFO] --- buildnumber:1.4:create (get-scm-revision) @ debezium-parent ---
+[INFO] 
+[INFO] --- formatter:2.20.0:format (default) @ debezium-parent ---
+[INFO] 
+[INFO] --- impsort:1.12.0:sort (sort-imports) @ debezium-parent ---
+[INFO] Processed 0 files in 00:00.002 (Already Sorted: 0, Needed Sorting: 0)
+[INFO] 
+[INFO] --- source:3.1.0:test-jar-no-fork (attach-test-sources) @ debezium-parent ---
+[INFO] 
+[INFO] --- jar:3.0.2:test-jar (test-jar) @ debezium-parent ---
+[WARNING] JAR will be empty - no content was marked for inclusion!
+[INFO] 
+[INFO] --- source:3.1.0:jar-no-fork (attach-sources) @ debezium-parent ---
+[INFO] 
+[INFO] --- checkstyle:3.1.1:checkstyle (check-style) @ debezium-parent ---
+[INFO] 
+[INFO] --- revapi:0.11.5:check (default) @ debezium-parent ---
+[INFO] 
+[INFO] ----------------------< io.debezium:debezium-api >----------------------
+[INFO] Building Debezium API 3.1.0-SNAPSHOT                              [6/10]
+[INFO]   from debezium-api/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-java-version) @ debezium-api ---
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-maven-version) @ debezium-api ---
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-maven) @ debezium-api ---
+[INFO] 
+[INFO] --- build-helper:1.9.1:parse-version (parse-version) @ debezium-api ---
+[INFO] 
+[INFO] --- buildnumber:1.4:create (get-scm-revision) @ debezium-api ---
+[INFO] 
+[INFO] --- formatter:2.20.0:format (default) @ debezium-api ---
+[INFO] Processed 29 files in 491ms (Formatted: 0, Unchanged: 29, Failed: 0, Readonly: 0)
+[INFO] 
+[INFO] --- impsort:1.12.0:sort (sort-imports) @ debezium-api ---
+[INFO] Processed 29 files in 00:00.017 (Already Sorted: 29, Needed Sorting: 0)
+[INFO] 
+[INFO] --- resources:3.1.0:resources (default-resources) @ debezium-api ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] skip non existing resourceDirectory /source/debfork2/debezium/debezium-api/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ debezium-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.1.0:testResources (default-testResources) @ debezium-api ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] skip non existing resourceDirectory /source/debfork2/debezium/debezium-api/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ debezium-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.1.2:test (default-test) @ debezium-api ---
+[WARNING]  Parameter 'systemProperties' is deprecated: Use systemPropertyVariables instead.
+[INFO] 
+[INFO] --- jar:3.0.2:jar (default-jar) @ debezium-api ---
+[INFO] 
+[INFO] --- source:3.1.0:test-jar-no-fork (attach-test-sources) @ debezium-api ---
+[INFO] Building jar: /source/debfork2/debezium/debezium-api/target/debezium-api-3.1.0-SNAPSHOT-test-sources.jar
+[INFO] 
+[INFO] --- jar:3.0.2:test-jar (test-jar) @ debezium-api ---
+[INFO] 
+[INFO] --- source:3.1.0:jar-no-fork (attach-sources) @ debezium-api ---
+[INFO] Building jar: /source/debfork2/debezium/debezium-api/target/debezium-api-3.1.0-SNAPSHOT-sources.jar
+[INFO] 
+[INFO] --- checkstyle:3.1.1:checkstyle (check-style) @ debezium-api ---
+[INFO] Starting audit...
+Audit done.
+[INFO] 
+[INFO] --- revapi:0.11.5:check (default) @ debezium-api ---
+Downloading from confluent: https://packages.confluent.io/maven/io/debezium/debezium-api/maven-metadata.xml
+Downloading from central: https://repo.maven.apache.org/maven2/io/debezium/debezium-api/maven-metadata.xml
+Downloading from ossrh: https://s01.oss.sonatype.org//content/groups/public/io/debezium/debezium-api/maven-metadata.xml
+Progress (1): 1.4/6.0 kBProgress (1): 2.8/6.0 kBProgress (1): 4.1/6.0 kBProgress (1): 5.5/6.0 kBProgress (1): 6.0 kB                        Downloaded from central: https://repo.maven.apache.org/maven2/io/debezium/debezium-api/maven-metadata.xml (6.0 kB at 8.9 kB/s)
+Progress (1): 6.3 kB                    Downloaded from ossrh: https://s01.oss.sonatype.org//content/groups/public/io/debezium/debezium-api/maven-metadata.xml (6.3 kB at 3.0 kB/s)
+[INFO] Comparing [io.debezium:debezium-api:jar:3.0.8.Final] against [io.debezium:debezium-api:jar:3.1.0-SNAPSHOT] (including their transitive dependencies).
+[INFO] API checks completed without failures.
+[INFO] 
+[INFO] ---------------------< io.debezium:debezium-core >----------------------
+[INFO] Building Debezium Core 3.1.0-SNAPSHOT                             [7/10]
+[INFO]   from debezium-core/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-java-version) @ debezium-core ---
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-maven-version) @ debezium-core ---
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-maven) @ debezium-core ---
+[INFO] 
+[INFO] --- build-helper:1.9.1:parse-version (parse-version) @ debezium-core ---
+[INFO] 
+[INFO] --- buildnumber:1.4:create (get-scm-revision) @ debezium-core ---
+[INFO] 
+[INFO] --- dependency:3.1.1:properties (default) @ debezium-core ---
+[INFO] 
+[INFO] --- formatter:2.20.0:format (default) @ debezium-core ---
+[INFO] Processed 575 files in 311ms (Formatted: 0, Unchanged: 575, Failed: 0, Readonly: 0)
+[INFO] 
+[INFO] --- impsort:1.12.0:sort (sort-imports) @ debezium-core ---
+[INFO] Processed 575 files in 00:00.115 (Already Sorted: 575, Needed Sorting: 0)
+[INFO] 
+[INFO] --- resources:3.1.0:resources (default-resources) @ debezium-core ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] Copying 9 resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ debezium-core ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.1.0:testResources (default-testResources) @ debezium-core ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] Copying 15 resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ debezium-core ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- surefire:3.1.2:test (default-test) @ debezium-core ---
+[WARNING]  Parameter 'systemProperties' is deprecated: Use systemPropertyVariables instead.
+[INFO] 
+[INFO] --- jar:3.0.2:jar (default-jar) @ debezium-core ---
+[INFO] Building jar: /source/debfork2/debezium/debezium-core/target/debezium-core-3.1.0-SNAPSHOT.jar
+[INFO] 
+[INFO] --- source:3.1.0:test-jar-no-fork (attach-test-sources) @ debezium-core ---
+[INFO] Building jar: /source/debfork2/debezium/debezium-core/target/debezium-core-3.1.0-SNAPSHOT-test-sources.jar
+[INFO] 
+[INFO] --- jar:3.0.2:test-jar (test-jar) @ debezium-core ---
+[INFO] 
+[INFO] --- source:3.1.0:jar-no-fork (attach-sources) @ debezium-core ---
+[INFO] Building jar: /source/debfork2/debezium/debezium-core/target/debezium-core-3.1.0-SNAPSHOT-sources.jar
+[INFO] 
+[INFO] --- checkstyle:3.1.1:checkstyle (check-style) @ debezium-core ---
+[INFO] Starting audit...
+Audit done.
+[INFO] 
+[INFO] --- revapi:0.11.5:check (default) @ debezium-core ---
+[INFO] 
+[INFO] -------------------< io.debezium:debezium-embedded >--------------------
+[INFO] Building Debezium Embedded 3.1.0-SNAPSHOT                         [8/10]
+[INFO]   from debezium-embedded/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-java-version) @ debezium-embedded ---
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-maven-version) @ debezium-embedded ---
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-maven) @ debezium-embedded ---
+[INFO] 
+[INFO] --- build-helper:1.9.1:parse-version (parse-version) @ debezium-embedded ---
+[INFO] 
+[INFO] --- buildnumber:1.4:create (get-scm-revision) @ debezium-embedded ---
+[INFO] 
+[INFO] --- formatter:2.20.0:format (default) @ debezium-embedded ---
+[INFO] Processed 65 files in 51ms (Formatted: 0, Unchanged: 65, Failed: 0, Readonly: 0)
+[INFO] 
+[INFO] --- impsort:1.12.0:sort (sort-imports) @ debezium-embedded ---
+[INFO] Processed 65 files in 00:00.007 (Already Sorted: 65, Needed Sorting: 0)
+[INFO] 
+[INFO] --- resources:3.1.0:resources (default-resources) @ debezium-embedded ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] Copying 1 resource
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ debezium-embedded ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 38 source files with javac [debug deprecation release 17] to target/classes
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/ConverterBuilder.java:[87,40] unchecked cast
+  required: R
+  found:    io.debezium.embedded.EmbeddedEngineChangeEvent<java.lang.Void,org.apache.kafka.connect.source.SourceRecord,java.lang.Object>
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/ConverterBuilder.java:[116,43] unchecked conversion
+  required: java.util.List<io.debezium.engine.Header<?>>
+  found:    java.util.List
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/ConverterBuilder.java:[130,28] unchecked method invocation: constructor <init> in class io.debezium.embedded.EmbeddedEngineChangeEvent is applied to given types
+  required: K,V,java.util.List<io.debezium.engine.Header<H>>,org.apache.kafka.connect.source.SourceRecord
+  found:    java.lang.Object,java.lang.Object,java.util.List,org.apache.kafka.connect.source.SourceRecord
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/ConverterBuilder.java:[130,90] unchecked conversion
+  required: java.util.List<io.debezium.engine.Header<H>>
+  found:    java.util.List
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/ConverterBuilder.java:[130,28] unchecked cast
+  required: R
+  found:    io.debezium.embedded.EmbeddedEngineChangeEvent
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/ConvertingEngineBuilder.java:[54,29] io.debezium.embedded.EmbeddedEngine in io.debezium.embedded has been deprecated
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/ConvertingEngineBuilder.java:[54,43] io.debezium.embedded.EmbeddedEngine.EngineBuilder in io.debezium.embedded.EmbeddedEngine has been deprecated
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/ConvertingEngineBuilder.java:[56,36] unchecked call to using(io.debezium.engine.format.KeyValueHeaderChangeEventFormat<?,?,?>) as a member of the raw type io.debezium.embedded.ConverterBuilder
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/EmbeddedEngine.java:[123,24] using(io.debezium.engine.spi.OffsetCommitPolicy) in io.debezium.embedded.EmbeddedEngine.EngineBuilder implements using(io.debezium.engine.spi.OffsetCommitPolicy) in io.debezium.engine.DebeziumEngine.Builder
+  return type requires unchecked conversion from io.debezium.engine.DebeziumEngine.Builder to io.debezium.engine.DebeziumEngine.Builder<org.apache.kafka.connect.source.SourceRecord>
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/EmbeddedEngine.java:[117,24] using(io.debezium.engine.DebeziumEngine.ConnectorCallback) in io.debezium.embedded.EmbeddedEngine.EngineBuilder implements using(io.debezium.engine.DebeziumEngine.ConnectorCallback) in io.debezium.engine.DebeziumEngine.Builder
+  return type requires unchecked conversion from io.debezium.engine.DebeziumEngine.Builder to io.debezium.engine.DebeziumEngine.Builder<org.apache.kafka.connect.source.SourceRecord>
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/EmbeddedEngine.java:[111,24] using(io.debezium.engine.DebeziumEngine.CompletionCallback) in io.debezium.embedded.EmbeddedEngine.EngineBuilder implements using(io.debezium.engine.DebeziumEngine.CompletionCallback) in io.debezium.engine.DebeziumEngine.Builder
+  return type requires unchecked conversion from io.debezium.engine.DebeziumEngine.Builder to io.debezium.engine.DebeziumEngine.Builder<org.apache.kafka.connect.source.SourceRecord>
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/EmbeddedEngine.java:[145,24] using(java.time.Clock) in io.debezium.embedded.EmbeddedEngine.EngineBuilder implements using(java.time.Clock) in io.debezium.engine.DebeziumEngine.Builder
+  return type requires unchecked conversion from io.debezium.engine.DebeziumEngine.Builder to io.debezium.engine.DebeziumEngine.Builder<org.apache.kafka.connect.source.SourceRecord>
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/EmbeddedEngine.java:[105,24] using(java.lang.ClassLoader) in io.debezium.embedded.EmbeddedEngine.EngineBuilder implements using(java.lang.ClassLoader) in io.debezium.engine.DebeziumEngine.Builder
+  return type requires unchecked conversion from io.debezium.engine.DebeziumEngine.Builder to io.debezium.engine.DebeziumEngine.Builder<org.apache.kafka.connect.source.SourceRecord>
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/EmbeddedEngine.java:[99,24] using(java.util.Properties) in io.debezium.embedded.EmbeddedEngine.EngineBuilder implements using(java.util.Properties) in io.debezium.engine.DebeziumEngine.Builder
+  return type requires unchecked conversion from io.debezium.engine.DebeziumEngine.Builder to io.debezium.engine.DebeziumEngine.Builder<org.apache.kafka.connect.source.SourceRecord>
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/EmbeddedEngine.java:[135,24] notifying(io.debezium.engine.DebeziumEngine.ChangeConsumer<org.apache.kafka.connect.source.SourceRecord>) in io.debezium.embedded.EmbeddedEngine.EngineBuilder implements notifying(io.debezium.engine.DebeziumEngine.ChangeConsumer<R>) in io.debezium.engine.DebeziumEngine.Builder
+  return type requires unchecked conversion from io.debezium.engine.DebeziumEngine.Builder to io.debezium.engine.DebeziumEngine.Builder<org.apache.kafka.connect.source.SourceRecord>
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/EmbeddedEngine.java:[129,24] notifying(java.util.function.Consumer<org.apache.kafka.connect.source.SourceRecord>) in io.debezium.embedded.EmbeddedEngine.EngineBuilder implements notifying(java.util.function.Consumer<R>) in io.debezium.engine.DebeziumEngine.Builder
+  return type requires unchecked conversion from io.debezium.engine.DebeziumEngine.Builder to io.debezium.engine.DebeziumEngine.Builder<org.apache.kafka.connect.source.SourceRecord>
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/EmbeddedEngine.java:[731,44] unchecked method invocation: method handleBatch in interface io.debezium.engine.DebeziumEngine.ChangeConsumer is applied to given types
+  required: java.util.List<R>,io.debezium.engine.DebeziumEngine.RecordCommitter<R>
+  found:    java.util.List<org.apache.kafka.connect.source.SourceRecord>,io.debezium.engine.DebeziumEngine.RecordCommitter
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/EmbeddedEngine.java:[731,60] unchecked conversion
+  required: io.debezium.engine.DebeziumEngine.RecordCommitter<R>
+  found:    io.debezium.engine.DebeziumEngine.RecordCommitter
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/EmbeddedEngine.java:[825,81] unchecked cast
+  required: java.util.Map<java.lang.String,java.lang.Object>
+  found:    java.util.Map<java.lang.String,capture#1 of ?>
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/EmbeddedEngine.java:[825,126] unchecked cast
+  required: java.util.Map<java.lang.String,java.lang.Object>
+  found:    java.util.Map<java.lang.String,capture#2 of ?>
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/EmbeddedEngineChangeEvent.java:[42,28] headers() in io.debezium.embedded.EmbeddedEngineChangeEvent implements <H>headers() in io.debezium.engine.ChangeEvent
+  return type requires unchecked conversion from java.util.List<io.debezium.engine.Header<H>> to java.util.List<io.debezium.engine.Header<H>>
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/EmbeddedEngineHeader.java:[22,38] unchecked cast
+  required: T
+  found:    java.lang.Object
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/AsyncEmbeddedEngine.java:[157,29] unchecked method invocation: constructor <init> in class java.util.concurrent.ThreadPoolExecutor is applied to given types
+  required: int,int,long,java.util.concurrent.TimeUnit,java.util.concurrent.BlockingQueue<java.lang.Runnable>
+  found:    int,int,long,java.util.concurrent.TimeUnit,java.util.concurrent.LinkedBlockingQueue
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/AsyncEmbeddedEngine.java:[157,113] unchecked conversion
+  required: java.util.concurrent.BlockingQueue<java.lang.Runnable>
+  found:    java.util.concurrent.LinkedBlockingQueue
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/AsyncEmbeddedEngine.java:[181,31] unchecked cast
+  required: java.lang.Class<org.apache.kafka.connect.source.SourceConnector>
+  found:    java.lang.Class<capture#3 of ?>
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/AsyncEmbeddedEngine.java:[418,71] unchecked conversion
+  required: java.util.concurrent.ExecutorCompletionService<java.lang.Void>
+  found:    java.util.concurrent.ExecutorCompletionService
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/AsyncEmbeddedEngine.java:[479,71] unchecked conversion
+  required: java.util.concurrent.ExecutorCompletionService<java.lang.Void>
+  found:    java.util.concurrent.ExecutorCompletionService
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/AsyncEmbeddedEngine.java:[543,129] unchecked cast
+  required: io.debezium.engine.DebeziumEngine.ChangeConsumer<org.apache.kafka.connect.source.SourceRecord>
+  found:    io.debezium.engine.DebeziumEngine.ChangeConsumer<R>
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/AsyncEmbeddedEngine.java:[546,20] unchecked call to ParallelSmtAndConvertBatchProcessor(io.debezium.engine.DebeziumEngine.RecordCommitter,io.debezium.engine.DebeziumEngine.ChangeConsumer<R>,java.util.function.Function<org.apache.kafka.connect.source.SourceRecord,R>) as a member of the raw type io.debezium.embedded.async.ParallelSmtAndConvertBatchProcessor
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/AsyncEmbeddedEngine.java:[549,111] unchecked cast
+  required: java.util.function.Consumer<org.apache.kafka.connect.source.SourceRecord>
+  found:    java.util.function.Consumer<R>
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/AsyncEmbeddedEngine.java:[552,20] unchecked call to ParallelSmtAndConvertConsumerProcessor(io.debezium.engine.DebeziumEngine.RecordCommitter,java.util.function.Consumer<R>,java.util.function.Function<org.apache.kafka.connect.source.SourceRecord,R>) as a member of the raw type io.debezium.embedded.async.ParallelSmtAndConvertConsumerProcessor
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/AsyncEmbeddedEngine.java:[555,116] unchecked cast
+  required: java.util.function.Consumer<org.apache.kafka.connect.source.SourceRecord>
+  found:    java.util.function.Consumer<R>
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/AsyncEmbeddedEngine.java:[558,20] unchecked call to ParallelSmtAndConvertAsyncConsumerProcessor(io.debezium.engine.DebeziumEngine.RecordCommitter,java.util.function.Consumer<R>,java.util.function.Function<org.apache.kafka.connect.source.SourceRecord,R>) as a member of the raw type io.debezium.embedded.async.ParallelSmtAndConvertAsyncConsumerProcessor
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/AsyncEmbeddedEngine.java:[603,75] unchecked conversion
+  required: java.util.concurrent.ExecutorCompletionService<java.lang.Void>
+  found:    java.util.concurrent.ExecutorCompletionService
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/AsyncEmbeddedEngine.java:[779,123] unchecked cast
+  required: java.lang.Class<org.apache.kafka.connect.storage.OffsetBackingStore>
+  found:    java.lang.Class<capture#4 of ?>
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/AsyncEmbeddedEngine.java:[884,44] unchecked call to using(io.debezium.engine.format.KeyValueHeaderChangeEventFormat<?,?,?>) as a member of the raw type io.debezium.embedded.ConverterBuilder
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/AsyncEmbeddedEngine.java:[894,88] unchecked cast
+  required: java.util.function.Consumer<org.apache.kafka.connect.source.SourceRecord>
+  found:    java.util.function.Consumer<R>
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/AsyncEmbeddedEngine.java:[956,60] unchecked conversion
+  required: java.util.function.Function<org.apache.kafka.connect.source.SourceRecord,R>
+  found:    java.util.function.Function
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/AsyncEmbeddedEngine.java:[958,20] unchecked call to AsyncEmbeddedEngine(java.util.Properties,java.util.function.Consumer<R>,io.debezium.engine.DebeziumEngine.ChangeConsumer<R>,java.lang.ClassLoader,io.debezium.util.Clock,io.debezium.engine.DebeziumEngine.CompletionCallback,io.debezium.engine.DebeziumEngine.ConnectorCallback,io.debezium.engine.spi.OffsetCommitPolicy,org.apache.kafka.connect.storage.HeaderConverter,java.util.function.Function<org.apache.kafka.connect.source.SourceRecord,R>) as a member of the raw type io.debezium.embedded.async.AsyncEmbeddedEngine
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/AsyncEmbeddedEngine.java:[958,20] unchecked conversion
+  required: io.debezium.engine.DebeziumEngine<R>
+  found:    io.debezium.embedded.async.AsyncEmbeddedEngine
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/AsyncEmbeddedEngine.java:[1015,40] unchecked call to accept(T) as a member of the raw type java.util.function.Consumer
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/AsyncEmbeddedEngine.java:[1191,45] unchecked call to processRecords(java.util.List<org.apache.kafka.connect.source.SourceRecord>) as a member of the raw type io.debezium.embedded.async.RecordProcessor
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/AsyncEmbeddedEngine.java:[1233,17] commitRecord(org.apache.kafka.connect.source.SourceRecord) in org.apache.kafka.connect.source.SourceTask has been deprecated
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/ParallelSmtAndConvertAsyncConsumerProcessor.java:[44,46] unchecked conversion
+  required: java.util.concurrent.Future<java.lang.Void>[]
+  found:    java.util.concurrent.Future[]
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/ParallelSmtAndConvertAsyncConsumerProcessor.java:[55,36] unchecked call to markProcessed(R) as a member of the raw type io.debezium.engine.DebeziumEngine.RecordCommitter
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/ParallelSmtAndConvertBatchProcessor.java:[56,32] unchecked method invocation: method handleBatch in interface io.debezium.engine.DebeziumEngine.ChangeConsumer is applied to given types
+  required: java.util.List<R>,io.debezium.engine.DebeziumEngine.RecordCommitter<R>
+  found:    java.util.List<R>,io.debezium.engine.DebeziumEngine.RecordCommitter
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/ParallelSmtAndConvertBatchProcessor.java:[56,51] unchecked conversion
+  required: io.debezium.engine.DebeziumEngine.RecordCommitter<R>
+  found:    io.debezium.engine.DebeziumEngine.RecordCommitter
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/ParallelSmtAndConvertConsumerProcessor.java:[43,43] unchecked conversion
+  required: java.util.concurrent.Future<R>[]
+  found:    java.util.concurrent.Future[]
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/ParallelSmtAndConvertConsumerProcessor.java:[46,53] unchecked call to TransformAndConvertRecord(org.apache.kafka.connect.source.SourceRecord,io.debezium.embedded.Transformations,java.util.function.Function<org.apache.kafka.connect.source.SourceRecord,R>) as a member of the raw type io.debezium.embedded.async.ProcessingCallables.TransformAndConvertRecord
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/ParallelSmtAndConvertConsumerProcessor.java:[46,52] unchecked method invocation: method submit in interface java.util.concurrent.ExecutorService is applied to given types
+  required: java.util.concurrent.Callable<T>
+  found:    io.debezium.embedded.async.ProcessingCallables.TransformAndConvertRecord
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/ParallelSmtAndConvertConsumerProcessor.java:[46,53] unchecked conversion
+  required: java.util.concurrent.Callable<T>
+  found:    io.debezium.embedded.async.ProcessingCallables.TransformAndConvertRecord
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/ParallelSmtAndConvertConsumerProcessor.java:[46,52] unchecked conversion
+  required: java.util.concurrent.Future<R>
+  found:    java.util.concurrent.Future
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/ParallelSmtAndConvertConsumerProcessor.java:[56,36] unchecked call to markProcessed(R) as a member of the raw type io.debezium.engine.DebeziumEngine.RecordCommitter
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/ParallelSmtAsyncConsumerProcessor.java:[40,46] unchecked conversion
+  required: java.util.concurrent.Future<java.lang.Void>[]
+  found:    java.util.concurrent.Future[]
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/ParallelSmtAsyncConsumerProcessor.java:[50,36] unchecked call to markProcessed(R) as a member of the raw type io.debezium.engine.DebeziumEngine.RecordCommitter
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/ParallelSmtBatchProcessor.java:[51,32] unchecked method invocation: method handleBatch in interface io.debezium.engine.DebeziumEngine.ChangeConsumer is applied to given types
+  required: java.util.List<R>,io.debezium.engine.DebeziumEngine.RecordCommitter<R>
+  found:    java.util.List<org.apache.kafka.connect.source.SourceRecord>,io.debezium.engine.DebeziumEngine.RecordCommitter
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/ParallelSmtBatchProcessor.java:[51,53] unchecked conversion
+  required: io.debezium.engine.DebeziumEngine.RecordCommitter<R>
+  found:    io.debezium.engine.DebeziumEngine.RecordCommitter
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/ParallelSmtConsumerProcessor.java:[40,54] unchecked conversion
+  required: java.util.concurrent.Future<org.apache.kafka.connect.source.SourceRecord>[]
+  found:    java.util.concurrent.Future[]
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/main/java/io/debezium/embedded/async/ParallelSmtConsumerProcessor.java:[53,36] unchecked call to markProcessed(R) as a member of the raw type io.debezium.engine.DebeziumEngine.RecordCommitter
+[INFO] 
+[INFO] --- resources:3.1.0:testResources (default-testResources) @ debezium-embedded ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] Copying 22 resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ debezium-embedded ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 27 source files with javac [debug deprecation release 17] to target/test-classes
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/test/java/io/debezium/embedded/ConnectorOutputTest.java:[63,28] io.debezium.embedded.EmbeddedEngine in io.debezium.embedded has been deprecated
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/test/java/io/debezium/embedded/async/AbstractAsyncEngineConnectorTest.java:[23,16] unchecked conversion
+  required: io.debezium.engine.DebeziumEngine.Builder<org.apache.kafka.connect.source.SourceRecord>
+  found:    io.debezium.embedded.async.AsyncEmbeddedEngine.AsyncEngineBuilder
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/test/java/io/debezium/embedded/EmbeddedEngineTest.java:[122,20] io.debezium.embedded.EmbeddedEngine in io.debezium.embedded has been deprecated
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/test/java/io/debezium/embedded/EmbeddedEngineTest.java:[122,34] io.debezium.embedded.EmbeddedEngine.EngineBuilder in io.debezium.embedded.EmbeddedEngine has been deprecated
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/test/java/io/debezium/embedded/EmbeddedEngineTest.java:[126,43] io.debezium.embedded.EmbeddedEngine in io.debezium.embedded has been deprecated
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/test/java/io/debezium/embedded/EmbeddedEngineTest.java:[487,35] unchecked conversion
+  required: java.util.Map<byte[],byte[]>
+  found:    java.util.Map
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/test/java/io/debezium/embedded/TestingEmbeddedEngine.java:[19,19] io.debezium.embedded.EmbeddedEngine in io.debezium.embedded has been deprecated
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/test/java/io/debezium/embedded/TestingEmbeddedEngine.java:[21,34] io.debezium.embedded.EmbeddedEngine in io.debezium.embedded has been deprecated
+[WARNING] /source/debfork2/debezium/debezium-embedded/src/test/java/io/debezium/pipeline/notification/AbstractNotificationsIT.java:[394,52] unchecked cast
+  required: java.util.List<javax.management.Notification>
+  found:    java.lang.Object
+[INFO] 
+[INFO] --- surefire:3.1.2:test (default-test) @ debezium-embedded ---
+[WARNING]  Parameter 'systemProperties' is deprecated: Use systemPropertyVariables instead.
+[INFO] 
+[INFO] --- jar:3.0.2:jar (default-jar) @ debezium-embedded ---
+[INFO] Building jar: /source/debfork2/debezium/debezium-embedded/target/debezium-embedded-3.1.0-SNAPSHOT.jar
+[INFO] 
+[INFO] --- source:3.1.0:test-jar-no-fork (attach-test-sources) @ debezium-embedded ---
+[INFO] Building jar: /source/debfork2/debezium/debezium-embedded/target/debezium-embedded-3.1.0-SNAPSHOT-test-sources.jar
+[INFO] 
+[INFO] --- jar:3.0.2:test-jar (test-jar) @ debezium-embedded ---
+[INFO] Building jar: /source/debfork2/debezium/debezium-embedded/target/debezium-embedded-3.1.0-SNAPSHOT-tests.jar
+[INFO] 
+[INFO] --- source:3.1.0:jar-no-fork (attach-sources) @ debezium-embedded ---
+[INFO] Building jar: /source/debfork2/debezium/debezium-embedded/target/debezium-embedded-3.1.0-SNAPSHOT-sources.jar
+[INFO] 
+[INFO] --- checkstyle:3.1.1:checkstyle (check-style) @ debezium-embedded ---
+[INFO] Starting audit...
+Audit done.
+[INFO] 
+[INFO] --- revapi:0.11.5:check (default) @ debezium-embedded ---
+[INFO] 
+[INFO] ---------------------< io.debezium:debezium-sink >----------------------
+[INFO] Building Debezium Sink 3.1.0-SNAPSHOT                             [9/10]
+[INFO]   from debezium-sink/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-java-version) @ debezium-sink ---
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-maven-version) @ debezium-sink ---
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-maven) @ debezium-sink ---
+[INFO] 
+[INFO] --- build-helper:1.9.1:parse-version (parse-version) @ debezium-sink ---
+[INFO] 
+[INFO] --- buildnumber:1.4:create (get-scm-revision) @ debezium-sink ---
+[INFO] 
+[INFO] --- formatter:2.20.0:format (default) @ debezium-sink ---
+[INFO] Processed 10 files in 26ms (Formatted: 0, Unchanged: 10, Failed: 0, Readonly: 0)
+[INFO] 
+[INFO] --- impsort:1.12.0:sort (sort-imports) @ debezium-sink ---
+[INFO] Processed 10 files in 00:00.002 (Already Sorted: 10, Needed Sorting: 0)
+[INFO] 
+[INFO] --- resources:3.1.0:resources (default-resources) @ debezium-sink ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] skip non existing resourceDirectory /source/debfork2/debezium/debezium-sink/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ debezium-sink ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 10 source files with javac [debug deprecation release 17] to target/classes
+[INFO] 
+[INFO] --- resources:3.1.0:testResources (default-testResources) @ debezium-sink ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] skip non existing resourceDirectory /source/debfork2/debezium/debezium-sink/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ debezium-sink ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- surefire:3.1.2:test (default-test) @ debezium-sink ---
+[WARNING]  Parameter 'systemProperties' is deprecated: Use systemPropertyVariables instead.
+[INFO] No tests to run.
+[INFO] 
+[INFO] --- jar:3.0.2:jar (default-jar) @ debezium-sink ---
+[INFO] Building jar: /source/debfork2/debezium/debezium-sink/target/debezium-sink-3.1.0-SNAPSHOT.jar
+[INFO] 
+[INFO] --- source:3.1.0:test-jar-no-fork (attach-test-sources) @ debezium-sink ---
+[INFO] No sources in project. Archive not created.
+[INFO] 
+[INFO] --- jar:3.0.2:test-jar (test-jar) @ debezium-sink ---
+[WARNING] JAR will be empty - no content was marked for inclusion!
+[INFO] 
+[INFO] --- source:3.1.0:jar-no-fork (attach-sources) @ debezium-sink ---
+[INFO] Building jar: /source/debfork2/debezium/debezium-sink/target/debezium-sink-3.1.0-SNAPSHOT-sources.jar
+[INFO] 
+[INFO] --- checkstyle:3.1.1:checkstyle (check-style) @ debezium-sink ---
+[INFO] Starting audit...
+Audit done.
+[INFO] 
+[INFO] --- revapi:0.11.5:check (default) @ debezium-sink ---
+[INFO] 
+[INFO] ----------------< io.debezium:debezium-connector-jdbc >-----------------
+[INFO] Building Debezium JDBC Sink Connector 3.1.0-SNAPSHOT             [10/10]
+[INFO]   from debezium-connector-jdbc/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-java-version) @ debezium-connector-jdbc ---
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-maven-version) @ debezium-connector-jdbc ---
+[INFO] 
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-maven) @ debezium-connector-jdbc ---
+[INFO] 
+[INFO] --- build-helper:1.9.1:parse-version (parse-version) @ debezium-connector-jdbc ---
+[INFO] 
+[INFO] --- buildnumber:1.4:create (get-scm-revision) @ debezium-connector-jdbc ---
+[INFO] 
+[INFO] --- formatter:2.20.0:format (default) @ debezium-connector-jdbc ---
+[INFO] Processed 231 files in 953ms (Formatted: 1, Unchanged: 230, Failed: 0, Readonly: 0)
+[INFO] 
+[INFO] --- impsort:1.12.0:sort (sort-imports) @ debezium-connector-jdbc ---
+[INFO] Processed 231 files in 00:00.380 (Already Sorted: 230, Needed Sorting: 1)
+[INFO] 
+[INFO] --- resources:3.1.0:resources (default-resources) @ debezium-connector-jdbc ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] Copying 4 resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ debezium-connector-jdbc ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 145 source files with javac [debug deprecation release 17] to target/classes
+[INFO] -------------------------------------------------------------
+[WARNING] COMPILATION WARNING : 
+[INFO] -------------------------------------------------------------
+[WARNING] /source/debfork2/debezium/debezium-connector-jdbc/src/main/java/io/debezium/connector/jdbc/JdbcSinkConnectorConfig.java:[387,45] io.debezium.connector.jdbc.naming.TemporaryBackwardCompatibleCollectionNamingStrategyProxy in io.debezium.connector.jdbc.naming has been deprecated
+[WARNING] /source/debfork2/debezium/debezium-connector-jdbc/src/main/java/io/debezium/connector/jdbc/JdbcSinkConnectorTask.java:[279,104] non-varargs call of varargs method with inexact argument type for last parameter;
+  cast to java.lang.Object for a varargs call
+  cast to java.lang.Object[] for a non-varargs call and to suppress this warning
+[WARNING] /source/debfork2/debezium/debezium-connector-jdbc/src/main/java/io/debezium/connector/jdbc/JdbcSinkConnectorTask.java:[279,95] unchecked cast
+  required: org.apache.kafka.clients.consumer.ConsumerRecord<byte[],byte[]>
+  found:    java.lang.Object
+[WARNING] /source/debfork2/debezium/debezium-connector-jdbc/src/main/java/io/debezium/connector/jdbc/PreparedStatementQueryBinder.java:[27,102] unchecked cast
+  required: java.util.Collection<java.lang.Object>
+  found:    java.lang.Object
+[WARNING] /source/debfork2/debezium/debezium-connector-jdbc/src/main/java/io/debezium/connector/jdbc/dialect/GeneralDatabaseDialect.java:[534,31] getTypeName(int,org.hibernate.engine.jdbc.Size) in org.hibernate.type.descriptor.sql.spi.DdlTypeRegistry has been deprecated
+[WARNING] /source/debfork2/debezium/debezium-connector-jdbc/src/main/java/io/debezium/connector/jdbc/transforms/ConvertCloudEventToSaveableForm.java:[169,50] unchecked cast
+  required: java.util.Map<java.lang.String,java.lang.Object>
+  found:    java.lang.Object
+[INFO] 6 warnings 
+[INFO] -------------------------------------------------------------
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /source/debfork2/debezium/debezium-connector-jdbc/src/main/java/io/debezium/connector/jdbc/dialect/sqlserver/BytesType.java:[47,17] cannot find symbol
+  symbol:   class ValueBindDescriptor
+  location: class io.debezium.connector.jdbc.dialect.sqlserver.BytesType
+[ERROR] /source/debfork2/debezium/debezium-connector-jdbc/src/main/java/io/debezium/connector/jdbc/dialect/sqlserver/BytesType.java:[49,32] cannot find symbol
+  symbol:   class ValueBindDescriptor
+  location: class io.debezium.connector.jdbc.dialect.sqlserver.BytesType
+[ERROR] /source/debfork2/debezium/debezium-connector-jdbc/src/main/java/io/debezium/connector/jdbc/dialect/sqlserver/BytesType.java:[51,32] cannot find symbol
+  symbol:   class ValueBindDescriptor
+  location: class io.debezium.connector.jdbc.dialect.sqlserver.BytesType
+[ERROR] /source/debfork2/debezium/debezium-connector-jdbc/src/main/java/io/debezium/connector/jdbc/dialect/sqlserver/BytesType.java:[51,77] cannot find symbol
+  symbol:   method array()
+  location: variable value of type java.lang.Object
+[ERROR] /source/debfork2/debezium/debezium-connector-jdbc/src/main/java/io/debezium/connector/jdbc/dialect/sqlserver/BytesType.java:[54,19] cannot find symbol
+  symbol:   class ConnectException
+  location: class io.debezium.connector.jdbc.dialect.sqlserver.BytesType
+[INFO] 5 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for Debezium Build Aggregator 3.1.0-SNAPSHOT:
+[INFO] 
+[INFO] Debezium Build Aggregator .......................... SUCCESS [  0.859 s]
+[INFO] Debezium IDE Formatting Rules ...................... SUCCESS [  0.587 s]
+[INFO] Debezium Checkstyle Rules .......................... SUCCESS [  0.128 s]
+[INFO] Debezium Revapi Rules .............................. SUCCESS [  0.032 s]
+[INFO] Debezium Parent POM ................................ SUCCESS [  0.831 s]
+[INFO] Debezium API ....................................... SUCCESS [  5.941 s]
+[INFO] Debezium Core ...................................... SUCCESS [  3.696 s]
+[INFO] Debezium Embedded .................................. SUCCESS [  7.986 s]
+[INFO] Debezium Sink ...................................... SUCCESS [  0.434 s]
+[INFO] Debezium JDBC Sink Connector ....................... FAILURE [  3.546 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  25.209 s
+[INFO] Finished at: 2025-03-18T07:30:08Z
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:compile (default-compile) on project debezium-connector-jdbc: Compilation failure: Compilation failure: 
+[ERROR] /source/debfork2/debezium/debezium-connector-jdbc/src/main/java/io/debezium/connector/jdbc/dialect/sqlserver/BytesType.java:[47,17] cannot find symbol
+[ERROR]   symbol:   class ValueBindDescriptor
+[ERROR]   location: class io.debezium.connector.jdbc.dialect.sqlserver.BytesType
+[ERROR] /source/debfork2/debezium/debezium-connector-jdbc/src/main/java/io/debezium/connector/jdbc/dialect/sqlserver/BytesType.java:[49,32] cannot find symbol
+[ERROR]   symbol:   class ValueBindDescriptor
+[ERROR]   location: class io.debezium.connector.jdbc.dialect.sqlserver.BytesType
+[ERROR] /source/debfork2/debezium/debezium-connector-jdbc/src/main/java/io/debezium/connector/jdbc/dialect/sqlserver/BytesType.java:[51,32] cannot find symbol
+[ERROR]   symbol:   class ValueBindDescriptor
+[ERROR]   location: class io.debezium.connector.jdbc.dialect.sqlserver.BytesType
+[ERROR] /source/debfork2/debezium/debezium-connector-jdbc/src/main/java/io/debezium/connector/jdbc/dialect/sqlserver/BytesType.java:[51,77] cannot find symbol
+[ERROR]   symbol:   method array()
+[ERROR]   location: variable value of type java.lang.Object
+[ERROR] /source/debfork2/debezium/debezium-connector-jdbc/src/main/java/io/debezium/connector/jdbc/dialect/sqlserver/BytesType.java:[54,19] cannot find symbol
+[ERROR]   symbol:   class ConnectException
+[ERROR]   location: class io.debezium.connector.jdbc.dialect.sqlserver.BytesType
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+[ERROR] 
+[ERROR] After correcting the problems, you can resume the build with the command
+[ERROR]   mvn <args> -rf :debezium-connector-jdbc
