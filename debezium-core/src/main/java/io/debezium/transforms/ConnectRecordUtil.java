@@ -19,7 +19,6 @@ import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.transforms.ExtractField;
 import org.apache.kafka.connect.transforms.Flatten;
 import org.apache.kafka.connect.transforms.InsertField;
@@ -40,6 +39,9 @@ public class ConnectRecordUtil {
     public static final String ROOT_FIELD_NAME = "payload";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectRecordUtil.class);
+
+    record NewEntry(String name, Schema schema, Object value) {
+    };
 
     public static <R extends ConnectRecord<R>> ExtractField<R> extractAfterDelegate() {
         return extractValueDelegate(AFTER);
@@ -95,25 +97,20 @@ public class ConnectRecordUtil {
         return recordFlattener;
     }
 
-    public static Struct makeUpdatedValue(List<String> fields, List<String> headers, Struct originalValue, Map<String, Header> headerToProcess, Schema updatedSchema) {
-
-        List<String> nestedFields = fields.stream().filter(field -> field.contains(NESTING_SEPARATOR)).collect(Collectors.toList());
-
-        return buildUpdatedValue(fields, headers, ROOT_FIELD_NAME, originalValue, headerToProcess, updatedSchema, nestedFields, 0);
+    public static Struct makeUpdatedValue(Struct originalValue, List<NewEntry> newEntries, Schema updatedSchema) {
+        List<String> nestedFields = newEntries.stream().filter(e -> e.name().contains(NESTING_SEPARATOR)).map(e -> e.name()).collect(Collectors.toList());
+        return buildUpdatedValue(ROOT_FIELD_NAME, originalValue, newEntries, updatedSchema, nestedFields, 0);
     }
 
-    private static Struct buildUpdatedValue(List<String> fields, List<String> headers, String fieldName, Struct originalValue, Map<String, Header> headerToProcess,
-                                            Schema updatedSchema, List<String> nestedFields,
+    private static Struct buildUpdatedValue(String fieldName, Struct originalValue, List<NewEntry> newEntries, Schema updatedSchema, List<String> nestedFields,
                                             int level) {
-
         Struct updatedValue = new Struct(updatedSchema);
         for (org.apache.kafka.connect.data.Field field : originalValue.schema().fields()) {
             if (originalValue.get(field) != null) {
                 if (isContainedIn(field.name(), nestedFields)) {
                     Struct nestedField = requireStruct(originalValue.get(field), "Nested field");
                     updatedValue.put(field.name(),
-                            buildUpdatedValue(fields, headers, field.name(), nestedField, headerToProcess, updatedSchema.field(field.name()).schema(), nestedFields,
-                                    ++level));
+                            buildUpdatedValue(field.name(), nestedField, newEntries, updatedSchema.field(field.name()).schema(), nestedFields, ++level));
                 }
                 else {
                     updatedValue.put(field.name(), originalValue.get(field));
@@ -121,29 +118,20 @@ public class ConnectRecordUtil {
             }
         }
 
-        for (int i = 0; i < headers.size(); i++) {
-
-            Header currentHeader = headerToProcess.get(headers.get(i));
-
-            if (currentHeader != null) {
-                Optional<String> fieldNameToAdd = getFieldName(fields.get(i), fieldName, level);
-                fieldNameToAdd.ifPresent(s -> updatedValue.put(s, currentHeader.value()));
-            }
+        for (NewEntry entry : newEntries) {
+            Optional<String> fieldNameToAdd = getFieldName(entry.name(), fieldName, level);
+            fieldNameToAdd.ifPresent(s -> updatedValue.put(s, entry.value()));
         }
 
         return updatedValue;
     }
 
-    public static Schema makeNewSchema(List<String> fields, List<String> headers, Schema oldSchema, Map<String, Header> headerToProcess) {
-
-        List<String> nestedFields = fields.stream().filter(field -> field.contains(NESTING_SEPARATOR)).collect(Collectors.toList());
-
-        return buildNewSchema(fields, headers, ROOT_FIELD_NAME, oldSchema, headerToProcess, nestedFields, 0);
+    public static Schema makeNewSchema(Schema oldSchema, List<NewEntry> newEntries) {
+        List<String> nestedFields = newEntries.stream().filter(e -> e.name().contains(NESTING_SEPARATOR)).map(e -> e.name()).collect(Collectors.toList());
+        return buildNewSchema(ROOT_FIELD_NAME, oldSchema, newEntries, nestedFields, 0);
     }
 
-    private static Schema buildNewSchema(List<String> fields, List<String> headers, String fieldName, Schema oldSchema, Map<String, Header> headerToProcess,
-                                         List<String> nestedFields, int level) {
-
+    private static Schema buildNewSchema(String fieldName, Schema oldSchema, List<NewEntry> newEntries, List<String> nestedFields, int level) {
         if (oldSchema.type().isPrimitive()) {
             return oldSchema;
         }
@@ -153,7 +141,7 @@ public class ConnectRecordUtil {
         for (org.apache.kafka.connect.data.Field field : oldSchema.fields()) {
             if (isContainedIn(field.name(), nestedFields)) {
 
-                newSchemabuilder.field(field.name(), buildNewSchema(fields, headers, field.name(), field.schema(), headerToProcess, nestedFields, ++level));
+                newSchemabuilder.field(field.name(), buildNewSchema(field.name(), field.schema(), newEntries, nestedFields, ++level));
             }
             else {
                 newSchemabuilder.field(field.name(), field.schema());
@@ -161,13 +149,11 @@ public class ConnectRecordUtil {
         }
 
         LOGGER.debug("Fields copied from the old schema {}", newSchemabuilder.fields());
-        for (int i = 0; i < headers.size(); i++) {
-
-            Header currentHeader = headerToProcess.get(headers.get(i));
-            Optional<String> currentFieldName = getFieldName(fields.get(i), fieldName, level);
-            Loggings.logTraceAndTraceRecord(LOGGER, List.of(headers.get(i), currentFieldName), "CurrentHeader and currentFieldName");
-            if (currentFieldName.isPresent() && currentHeader != null) {
-                newSchemabuilder = newSchemabuilder.field(currentFieldName.get(), currentHeader.schema());
+        for (NewEntry entry : newEntries) {
+            Optional<String> currentFieldName = getFieldName(entry.name(), fieldName, level);
+            Loggings.logTraceAndTraceRecord(LOGGER, List.of(entry.name(), currentFieldName), "CurrentHeader and currentFieldName");
+            if (currentFieldName.isPresent()) {
+                newSchemabuilder = newSchemabuilder.field(currentFieldName.get(), entry.schema());
             }
         }
         LOGGER.debug("Fields added from headers {}", newSchemabuilder.fields());
