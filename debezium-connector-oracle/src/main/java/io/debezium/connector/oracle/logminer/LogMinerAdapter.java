@@ -327,7 +327,7 @@ public class LogMinerAdapter extends AbstractStreamingAdapter<LogMinerStreamingC
                 startSession(connection);
 
                 LOGGER.info("\tQuerying transaction logs, please wait...");
-                connection.query("SELECT START_SCN, XID FROM V$LOGMNR_CONTENTS WHERE OPERATION_CODE=7 AND SCN >= " + currentScn + " AND START_SCN < " + currentScn,
+                connection.query("SELECT START_SCN, XID FROM V$LOGMNR_CONTENTS WHERE OPERATION_CODE=7 AND SCN >= " + currentScn + " AND START_SCN <= " + currentScn,
                         rs -> {
                             while (rs.next()) {
                                 final String transactionId = HexConverter.convertToHexString(rs.getBytes("XID"));
