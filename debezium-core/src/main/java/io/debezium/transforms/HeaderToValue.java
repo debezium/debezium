@@ -9,11 +9,11 @@ import static io.debezium.transforms.HeaderToValue.Operation.MOVE;
 import static java.lang.String.format;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
@@ -150,25 +150,24 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
         final Struct value = requireStruct(record.value(), "Header field insertion");
 
         Loggings.logTraceAndTraceRecord(LOGGER, value, "Processing record");
-        Map<String, Header> headerToProcess = StreamSupport.stream(record.headers().spliterator(), false)
-                .filter(header -> headers.contains(header.key()))
-                .collect(Collectors.toMap(Header::key, Function.identity()));
 
-        if (LOGGER.isTraceEnabled()) {
-            Loggings.logTraceAndTraceRecord(LOGGER, headersToString(headerToProcess), "Header to be processed");
+        final List<ConnectRecordUtil.NewEntry> newEntries = new LinkedList<>();
+        final Iterator<Header> iter = record.headers().iterator();
+        while (iter.hasNext()) {
+            final Header header = iter.next();
+            int headerIndex = headers.indexOf(header.key());
+            if (headerIndex > -1) {
+                newEntries.add(new ConnectRecordUtil.NewEntry(fields.get(headerIndex), header.schema(), header.value()));
+            }
         }
 
-        if (headerToProcess.isEmpty()) {
+        if (newEntries.isEmpty()) {
             return record;
         }
 
-        Schema updatedSchema = schemaUpdateCache.computeIfAbsent(value.schema(),
-                valueSchema -> ConnectRecordUtil.makeNewSchema(fields, headers, valueSchema, headerToProcess));
-
+        Schema updatedSchema = schemaUpdateCache.computeIfAbsent(value.schema(), valueSchema -> ConnectRecordUtil.makeNewSchema(valueSchema, newEntries));
         LOGGER.trace("Updated schema fields: {}", updatedSchema.fields());
-
-        Struct updatedValue = ConnectRecordUtil.makeUpdatedValue(fields, headers, value, headerToProcess, updatedSchema);
-
+        Struct updatedValue = ConnectRecordUtil.makeUpdatedValue(value, newEntries, updatedSchema);
         Loggings.logTraceAndTraceRecord(LOGGER, updatedValue, "Updated value");
 
         Headers updatedHeaders = record.headers();
