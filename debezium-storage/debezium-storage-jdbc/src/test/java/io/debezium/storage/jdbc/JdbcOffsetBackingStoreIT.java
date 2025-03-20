@@ -136,6 +136,40 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
                 .with("schema.history.internal.jdbc.password" , "pass");
     }
 
+    private Configuration.Builder config(String jdbcUrl) {
+        return Configuration.create()
+                .with(MySqlConnectorConfig.HOSTNAME, container.getHost())
+                .with(MySqlConnectorConfig.PORT, container.getMappedPort(PORT))
+                .with(MySqlConnectorConfig.USER, USER)
+                .with(MySqlConnectorConfig.PASSWORD, PASSWORD)
+                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, DBNAME)
+                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DBNAME + "." + TABLE_NAME)
+                .with(MySqlConnectorConfig.SERVER_ID, 18765)
+                .with(MySqlConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MySqlConnectorConfig.SCHEMA_HISTORY, JdbcSchemaHistory.class)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, TOPIC_PREFIX)
+                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
+                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with("offset.storage.jdbc.connection.url", jdbcUrl)
+                .with("offset.storage.jdbc.connection.user", "user")
+                .with("offset.storage.jdbc.connection.password", "pass")
+                .with("offset.storage.jdbc.table.name", "offsets_jdbc")
+                .with("offset.storage.jdbc.table.ddl",
+                        "CREATE TABLE %s(id VARCHAR(36) NOT NULL, " +
+                                "offset_key VARCHAR(1255), offset_val VARCHAR(1255)," +
+                                "record_insert_ts TIMESTAMP NOT NULL," +
+                                "record_insert_seq INTEGER NOT NULL" +
+                                ")")
+                .with("offset.storage.jdbc.table.select",
+                        "SELECT id, offset_key, offset_val FROM %s " +
+                                "ORDER BY record_insert_ts, record_insert_seq")
+                .with("offset.flush.interval.ms", "1000")
+                .with("offset.storage", "io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore")
+                .with("schema.history.internal.jdbc.connection.url", "jdbc:sqlite:" + SCHEMA_HISTORY_PATH)
+                .with("schema.history.internal.jdbc.connection.user", "user")
+                .with("schema.history.internal.jdbc.connection.password" , "pass");
+    }
+
     private JdbcConnection testConnection() {
         final JdbcConfiguration jdbcConfig = JdbcConfiguration.create()
                 .withHostname(container.getHost())
@@ -164,6 +198,31 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
         // Use the DB configuration to define the connector's configuration to use the "replica"
         // which may be the same as the "master" ...
         Configuration config = deprecatedConfig(jdbcUrl).build();
+
+        // Start the connector ...
+        start(MySqlConnector.class, config);
+        waitForStreamingRunning("mysql", TOPIC_PREFIX);
+
+        consumeRecordsByTopic(4);
+        validateIfDataIsCreatedInJDBCDatabase(jdbcUrl, "user", "pass", "offsets_jdbc");
+    }
+
+    @Test
+    public void shouldStartCorrectlyWithJdbcOffsetStorage() throws InterruptedException, IOException {
+        String masterPort = System.getProperty("database.port", "3306");
+        String replicaPort = System.getProperty("database.replica.port", "3306");
+        boolean replicaIsMaster = masterPort.equals(replicaPort);
+        if (!replicaIsMaster) {
+            // Give time for the replica to catch up to the master ...
+            Thread.sleep(5000L);
+        }
+
+        File dbFile = File.createTempFile("test-", "db");
+        String jdbcUrl = String.format("jdbc:sqlite:%s", dbFile.getAbsolutePath());
+
+        // Use the DB configuration to define the connector's configuration to use the "replica"
+        // which may be the same as the "master" ...
+        Configuration config = config(jdbcUrl).build();
 
         // Start the connector ...
         start(MySqlConnector.class, config);
