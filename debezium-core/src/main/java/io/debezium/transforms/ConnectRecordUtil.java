@@ -27,8 +27,6 @@ import org.apache.kafka.connect.transforms.util.SchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.util.Loggings;
-
 /**
  * A set of utilities for more easily creating various kinds of transformations.
  */
@@ -151,12 +149,11 @@ public class ConnectRecordUtil {
         LOGGER.debug("Fields copied from the old schema {}", newSchemabuilder.fields());
         for (NewEntry entry : newEntries) {
             Optional<String> currentFieldName = getFieldName(entry.name(), fieldName, level);
-            Loggings.logTraceAndTraceRecord(LOGGER, List.of(entry.name(), currentFieldName), "CurrentHeader and currentFieldName");
             if (currentFieldName.isPresent()) {
                 newSchemabuilder = newSchemabuilder.field(currentFieldName.get(), entry.schema());
             }
         }
-        LOGGER.debug("Fields added from headers {}", newSchemabuilder.fields());
+        LOGGER.debug("Newly added fields {}", newSchemabuilder.fields());
         return newSchemabuilder.build();
     }
 
