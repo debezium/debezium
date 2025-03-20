@@ -35,8 +35,6 @@ import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.storage.jdbc.history.JdbcSchemaHistory;
-import io.debezium.storage.jdbc.history.JdbcSchemaHistoryConfig;
-import io.debezium.storage.jdbc.offset.JdbcOffsetBackingStoreConfig;
 import io.debezium.util.Testing;
 
 /**
@@ -104,7 +102,7 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
-    private Configuration.Builder config(String jdbcUrl) {
+    private Configuration.Builder deprecatedConfig(String jdbcUrl) {
         return Configuration.create()
                 .with(MySqlConnectorConfig.HOSTNAME, container.getHost())
                 .with(MySqlConnectorConfig.PORT, container.getMappedPort(PORT))
@@ -151,7 +149,7 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldStartCorrectlyWithJdbcOffsetStorage() throws InterruptedException, IOException {
+    public void shouldStartCorrectlyWithDeprecatedJdbcOffsetStorage() throws InterruptedException, IOException {
         String masterPort = System.getProperty("database.port", "3306");
         String replicaPort = System.getProperty("database.replica.port", "3306");
         boolean replicaIsMaster = masterPort.equals(replicaPort);
@@ -165,7 +163,7 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
 
         // Use the DB configuration to define the connector's configuration to use the "replica"
         // which may be the same as the "master" ...
-        Configuration config = config(jdbcUrl).build();
+        Configuration config = deprecatedConfig(jdbcUrl).build();
 
         // Start the connector ...
         start(MySqlConnector.class, config);
