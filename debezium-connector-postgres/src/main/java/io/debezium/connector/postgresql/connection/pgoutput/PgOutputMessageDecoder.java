@@ -250,7 +250,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @param buffer The replication stream buffer
      * @param processor The replication message processor
      */
-    private Boolean isEE = null;
+    volatile private Boolean isEE = null;
 
     private void handleBeginMessage(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
         final Lsn lsn = Lsn.valueOf(buffer.getLong()); // LSN
