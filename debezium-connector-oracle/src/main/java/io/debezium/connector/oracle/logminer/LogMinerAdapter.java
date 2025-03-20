@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.oracle.AbstractStreamingAdapter;
@@ -262,14 +263,16 @@ public class LogMinerAdapter extends AbstractStreamingAdapter<LogMinerStreamingC
                 .build();
     }
 
-    private void addLogsToSession(List<LogFile> logs, OracleConnection connection) throws SQLException {
+    @VisibleForTesting
+    void addLogsToSession(List<LogFile> logs, OracleConnection connection) throws SQLException {
         for (LogFile logFile : logs) {
             LOGGER.debug("\tAdding log: {}", logFile.getFileName());
             connection.executeWithoutCommitting(SqlUtils.addLogFileStatement("DBMS_LOGMNR.ADDFILE", logFile.getFileName()));
         }
     }
 
-    private void startSession(OracleConnection connection) throws SQLException {
+    @VisibleForTesting
+    void startSession(OracleConnection connection) throws SQLException {
         // We explicitly use the ONLINE data dictionary mode here.
         // Since we are only concerned about non-SQL columns, it is safe to always use this mode
         final String query = "BEGIN sys.dbms_logmnr.start_logmnr("
@@ -295,7 +298,8 @@ public class LogMinerAdapter extends AbstractStreamingAdapter<LogMinerStreamingC
         }
     }
 
-    private Scn getOldestScnAvailableInLogs(OracleConnectorConfig config, OracleConnection connection) throws SQLException {
+    @VisibleForTesting
+    Scn getOldestScnAvailableInLogs(OracleConnectorConfig config, OracleConnection connection) throws SQLException {
         final Duration archiveLogRetention = config.getArchiveLogRetention();
         final String archiveLogDestinationName = config.getArchiveLogDestinationName();
         return connection.queryAndMap(SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveLogDestinationName),
@@ -310,7 +314,8 @@ public class LogMinerAdapter extends AbstractStreamingAdapter<LogMinerStreamingC
                 });
     }
 
-    private List<LogFile> getOrderedLogsFromScn(OracleConnectorConfig config, Scn sinceScn, OracleConnection connection) throws SQLException {
+    @VisibleForTesting
+    List<LogFile> getOrderedLogsFromScn(OracleConnectorConfig config, Scn sinceScn, OracleConnection connection) throws SQLException {
         final LogFileCollector collector = new LogFileCollector(config, connection);
         return collector.getLogs(sinceScn)
                 .stream()
@@ -318,7 +323,8 @@ public class LogMinerAdapter extends AbstractStreamingAdapter<LogMinerStreamingC
                 .collect(Collectors.toList());
     }
 
-    private void getPendingTransactionsFromLogs(OracleConnection connection, Scn currentScn, Map<String, Scn> pendingTransactions) throws SQLException {
+    @VisibleForTesting
+    void getPendingTransactionsFromLogs(OracleConnection connection, Scn currentScn, Map<String, Scn> pendingTransactions) throws SQLException {
         final Scn oldestScn = getOldestScnAvailableInLogs(connectorConfig, connection);
         final List<LogFile> logFiles = getOrderedLogsFromScn(connectorConfig, oldestScn, connection);
         if (!logFiles.isEmpty()) {
@@ -351,7 +357,8 @@ public class LogMinerAdapter extends AbstractStreamingAdapter<LogMinerStreamingC
         }
     }
 
-    private List<LogFile> getMostRecentLogFilesForSearch(List<LogFile> allLogFiles) {
+    @VisibleForTesting
+    List<LogFile> getMostRecentLogFilesForSearch(List<LogFile> allLogFiles) {
         Map<Integer, List<LogFile>> recentLogsPerThread = new HashMap<>();
         for (LogFile logFile : allLogFiles) {
             if (!recentLogsPerThread.containsKey(logFile.getThread())) {
