@@ -40,7 +40,7 @@ public class ConnectRecordUtil {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectRecordUtil.class);
 
-    record NewEntry(String name, Schema schema, Object value) {
+    public record NewEntry(String name, Schema schema, Object value) {
     };
 
     public static <R extends ConnectRecord<R>> ExtractField<R> extractAfterDelegate() {
