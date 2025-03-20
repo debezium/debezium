@@ -34,7 +34,6 @@ import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipWhenDatabaseVersion;
-import io.debezium.relational.history.SchemaHistory;
 import io.debezium.storage.jdbc.history.JdbcSchemaHistory;
 import io.debezium.storage.jdbc.history.JdbcSchemaHistoryConfig;
 import io.debezium.storage.jdbc.offset.JdbcOffsetBackingStoreConfig;
@@ -105,16 +104,8 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
-    protected Configuration.Builder schemaHistory(Configuration.Builder builder) {
-        return builder
-                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_JDBC_URL.name(), "jdbc:sqlite:" + SCHEMA_HISTORY_PATH)
-                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_USER.name(), "user")
-                .with(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + JdbcSchemaHistoryConfig.PROP_PASSWORD.name(), "pass");
-    }
-
     private Configuration.Builder config(String jdbcUrl) {
-
-        final Configuration.Builder builder = Configuration.create()
+        return Configuration.create()
                 .with(MySqlConnectorConfig.HOSTNAME, container.getHost())
                 .with(MySqlConnectorConfig.PORT, container.getMappedPort(PORT))
                 .with(MySqlConnectorConfig.USER, USER)
@@ -127,23 +118,24 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
                 .with(CommonConnectorConfig.TOPIC_PREFIX, TOPIC_PREFIX)
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.INITIAL)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX + JdbcOffsetBackingStoreConfig.PROP_JDBC_URL.name(), jdbcUrl)
-                .with(JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX + JdbcOffsetBackingStoreConfig.PROP_USER.name(), "user")
-                .with(JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX + JdbcOffsetBackingStoreConfig.PROP_PASSWORD.name(), "pass")
-                .with(JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX + JdbcOffsetBackingStoreConfig.PROP_TABLE_NAME.name(), "offsets_jdbc")
-                .with(JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX + JdbcOffsetBackingStoreConfig.PROP_TABLE_DDL.name(),
+                .with("offset.storage.jdbc.url", jdbcUrl)
+                .with("offset.storage.jdbc.user", "user")
+                .with("offset.storage.jdbc.password", "pass")
+                .with("offset.storage.jdbc.offset.table.name", "offsets_jdbc")
+                .with("offset.storage.jdbc.offset.table.ddl",
                         "CREATE TABLE %s(id VARCHAR(36) NOT NULL, " +
                                 "offset_key VARCHAR(1255), offset_val VARCHAR(1255)," +
                                 "record_insert_ts TIMESTAMP NOT NULL," +
                                 "record_insert_seq INTEGER NOT NULL" +
                                 ")")
-                .with(JdbcOffsetBackingStoreConfig.OFFSET_STORAGE_PREFIX + JdbcOffsetBackingStoreConfig.PROP_TABLE_SELECT.name(),
+                .with("offset.storage.jdbc.offset.table.select",
                         "SELECT id, offset_key, offset_val FROM %s " +
                                 "ORDER BY record_insert_ts, record_insert_seq")
                 .with("offset.flush.interval.ms", "1000")
-                .with("offset.storage", "io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore");
-
-        return schemaHistory(builder);
+                .with("offset.storage", "io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore")
+                .with("schema.history.internal.jdbc.url", "jdbc:sqlite:" + SCHEMA_HISTORY_PATH)
+                .with("schema.history.internal.jdbc.user", "user")
+                .with("schema.history.internal.jdbc.password" , "pass");
     }
 
     private JdbcConnection testConnection() {
