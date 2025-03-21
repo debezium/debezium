@@ -13,13 +13,14 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Map.Entry;
+import java.util.Map;
 
 import org.apache.avro.generic.GenericData;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.bson.BsonDocument;
+import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.junit.Before;
 import org.junit.Test;
@@ -52,15 +53,13 @@ public class ToAvroMongoDataConverterTest {
 
     @Test
     public void shouldCreateStructWithNestedObject() {
-        for (Entry<String, BsonValue> entry : val.entrySet()) {
-            converter.addFieldSchema(entry, builder);
-        }
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
+        converter.buildSchema(entry, builder);
 
-        Schema finalSchema = builder.build();
-        Struct struct = new Struct(finalSchema);
-
-        for (Entry<String, BsonValue> entry : val.entrySet()) {
-            converter.convertRecord(entry, finalSchema, struct);
+        final Schema finalSchema = builder.build();
+        final Struct struct = new Struct(finalSchema);
+        for (Map.Entry<String, BsonValue> bsonValueEntry : val.entrySet()) {
+            converter.buildStruct(bsonValueEntry, finalSchema, struct);
         }
 
         final GenericData.Record avro = (GenericData.Record) avroData.fromConnectData(finalSchema, struct);
@@ -73,10 +72,10 @@ public class ToAvroMongoDataConverterTest {
     @Test
     @FixFor("DBZ-650")
     public void shouldCreateSchemaWithNestedObject() {
-        for (Entry<String, BsonValue> entry : val.entrySet()) {
-            converter.addFieldSchema(entry, builder);
-        }
-        Schema finalSchema = builder.build();
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
+        converter.buildSchema(entry, builder);
+
+        final Schema finalSchema = builder.build();
 
         final org.apache.avro.Schema avroSchema = avroData.fromConnectSchema(finalSchema);
         assertThat(avroSchema.toString()).isEqualTo(
