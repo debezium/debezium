@@ -80,7 +80,7 @@
         <version.dependency.plugin>3.1.1</version.dependency.plugin>
         <version.enforcer.plugin>3.0.0-M2</version.enforcer.plugin>
 
-        <version.maven>3.9.8</version.maven>
+        <version.maven>3.9.4</version.maven>
         <version.jar.plugin>3.0.2</version.jar.plugin>
         <version.source.plugin>3.1.0</version.source.plugin>
         <version.assembly.plugin>3.1.1</version.assembly.plugin>
