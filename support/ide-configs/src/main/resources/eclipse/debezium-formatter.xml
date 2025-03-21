@@ -2,9 +2,10 @@
 <profiles version="12">
     <profile kind="CodeFormatterProfile" name="Debezium" version="12">
         <setting id="org.eclipse.jdt.core.compiler.codegen.inlineJsrBytecode" value="enabled"/>
-        <setting id="org.eclipse.jdt.core.compiler.codegen.targetPlatform" value="1.7"/>
-        <setting id="org.eclipse.jdt.core.compiler.compliance" value="1.7"/>
-        <setting id="org.eclipse.jdt.core.compiler.source" value="1.7"/>
+        <!-- These values need to align with Java source version expectations -->
+        <setting id="org.eclipse.jdt.core.compiler.codegen.targetPlatform" value="21"/>
+        <setting id="org.eclipse.jdt.core.compiler.compliance" value="21"/>
+        <setting id="org.eclipse.jdt.core.compiler.source" value="21"/>
         <setting id="org.eclipse.jdt.core.compiler.problem.assertIdentifier" value="error"/>
         <setting id="org.eclipse.jdt.core.compiler.problem.enumIdentifier" value="error"/>
 
