@@ -1,0 +1,13 @@
+name: debezium
+lang: java
+lang_version: 21
+git:
+  enable: true
+codeowners:
+  enable: true
+semaphore:
+  enable: true
+  pipeline_type: cp
+  cve_scan: true
+  extra_build_args: "-Dcloud -Passembly -pl debezium-connector-mysql,debezium-connector-postgres,debezium-connector-sqlserver -am"
+  extra_deploy_args: "-Dcloud -Passembly -pl debezium-connector-mysql,debezium-connector-postgres,debezium-connector-sqlserver -am"
