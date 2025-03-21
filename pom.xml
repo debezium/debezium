@@ -193,15 +193,11 @@
         <module>debezium-embedded</module>
         <module>debezium-connector-mysql</module>
         <module>debezium-connector-postgres</module>
-        <module>debezium-connector-mongodb</module>
         <module>debezium-connector-sqlserver</module>
-        <module>debezium-connector-oracle</module>
         <module>debezium-connector-binlog</module>
         <module>debezium-connector-mariadb</module>
-        <module>debezium-connector-jdbc</module>
         <module>debezium-microbenchmark-engine</module>
         <module>debezium-microbenchmark</module>
-        <module>debezium-microbenchmark-oracle</module>
         <module>debezium-quarkus-outbox-common</module>
         <module>debezium-quarkus-outbox</module>
         <module>debezium-quarkus-outbox-reactive</module>
@@ -211,7 +207,6 @@
         <module>debezium-schema-generator</module>
         <module>debezium-storage</module>
         <module>debezium-interceptor</module>
-        <module>debezium-sink</module>
     </modules>
 
     <distributionManagement>
