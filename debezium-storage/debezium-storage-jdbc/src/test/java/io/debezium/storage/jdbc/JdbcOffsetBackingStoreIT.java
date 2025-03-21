@@ -133,7 +133,7 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
                 .with("offset.storage", "io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore")
                 .with("schema.history.internal.jdbc.url", "jdbc:sqlite:" + SCHEMA_HISTORY_PATH)
                 .with("schema.history.internal.jdbc.user", "user")
-                .with("schema.history.internal.jdbc.password" , "pass");
+                .with("schema.history.internal.jdbc.password", "pass");
     }
 
     private Configuration.Builder config(String jdbcUrl) {
@@ -167,7 +167,7 @@ public class JdbcOffsetBackingStoreIT extends AbstractAsyncEngineConnectorTest {
                 .with("offset.storage", "io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore")
                 .with("schema.history.internal.jdbc.connection.url", "jdbc:sqlite:" + SCHEMA_HISTORY_PATH)
                 .with("schema.history.internal.jdbc.connection.user", "user")
-                .with("schema.history.internal.jdbc.connection.password" , "pass");
+                .with("schema.history.internal.jdbc.connection.password", "pass");
     }
 
     private JdbcConnection testConnection() {

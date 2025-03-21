@@ -28,9 +28,6 @@ public class JdbcOffsetBackingStoreConfig extends JdbcCommonConfig {
             .withDefault(DEFAULT_TABLE_NAME)
             .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "offset.table.name");
 
-
-
-
     /**
      * JDBC Offset storage CREATE TABLE syntax.
      */
@@ -53,7 +50,6 @@ public class JdbcOffsetBackingStoreConfig extends JdbcCommonConfig {
             .withDefault(DEFAULT_TABLE_DDL)
             .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "offset.table.ddl");
 
-
     public static final String DEFAULT_TABLE_SELECT = "SELECT id, offset_key, offset_val FROM %s " +
             "ORDER BY record_insert_ts, record_insert_seq";
 
@@ -75,7 +71,6 @@ public class JdbcOffsetBackingStoreConfig extends JdbcCommonConfig {
             .withDescription("Insert syntax to add offset data to the jdbc table")
             .withDefault(DEFAULT_TABLE_INSERT)
             .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "offset.table.insert");
-
 
     private String tableCreate;
     private String tableSelect;
