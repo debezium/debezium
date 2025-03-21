@@ -27,7 +27,6 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
             .withDefault(DEFAULT_TABLE_NAME)
             .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.name");
 
-
     /**
      * Table that will store database history.
      * id - Unique identifier(UUID)
@@ -64,7 +63,6 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
             .withDefault(DEFAULT_TABLE_SELECT)
             .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.select");
 
-
     private static final String DEFAULT_TABLE_DATA_EXISTS_SELECT = "SELECT * FROM %s LIMIT 1";
 
     /**
@@ -75,14 +73,12 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
             .withDefault(DEFAULT_TABLE_DATA_EXISTS_SELECT)
             .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.exists");
 
-
     private static final String DEFAULT_TABLE_DATA_INSERT = "INSERT INTO %s(id, history_data, history_data_seq, record_insert_ts, record_insert_seq) VALUES ( ?, ?, ?, ?, ? )";
 
     public static final Field PROP_TABLE_DATA_INSERT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "table.insert")
             .withDescription("INSERT statement to add new records to the schema storage table")
             .withDefault(DEFAULT_TABLE_DATA_INSERT)
             .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.insert");
-
 
     private String tableName;
     private String tableCreate;
