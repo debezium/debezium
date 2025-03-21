@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class FieldTest {
 
     @Test
-    @FixFor("")
+    @FixFor("DBZ-8832")
     public void shouldHaveDeprecatedAliasesAndDefault() {
         Field field = Field.create("new.field")
                 .withDescription("a description")
@@ -20,7 +20,7 @@ public class FieldTest {
     }
 
     @Test
-    @FixFor("")
+    @FixFor("DBZ-8832")
     public void shouldHaveDefaultAndDeprecatedAliases() {
         Field field = Field.create("new.field")
                 .withDescription("a description")
