@@ -117,9 +117,29 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         }
     }
 
+    private Boolean is64BitXid;
+
     public PgOutputMessageDecoder(MessageDecoderContext decoderContext, PostgresConnection connection) {
         this.decoderContext = decoderContext;
         this.connection = connection;
+
+        try {
+            var cn = this.connection.connection();
+            is64BitXid = false;
+            try (var sth = cn.prepareStatement(
+                    "select exists(select * from information_schema.routines where routine_name='pgpro_version' and routine_schema='pg_catalog')")) {
+                sth.execute();
+                try (var rs = sth.getResultSet()) {
+                    if (rs.next() && rs.getBoolean(1)) {
+                        is64BitXid = true;
+                        LOGGER.info("Working with PgPro Enterprise");
+                    }
+                }
+            }
+        }
+        catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -250,28 +270,11 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * @param buffer The replication stream buffer
      * @param processor The replication message processor
      */
-    volatile private Boolean isEE = null;
 
     private void handleBeginMessage(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
         final Lsn lsn = Lsn.valueOf(buffer.getLong()); // LSN
         this.commitTimestamp = PG_EPOCH.plus(buffer.getLong(), ChronoUnit.MICROS);
-        synchronized (this) {
-            if (isEE == null) {
-                var cn = connection.connection();
-                isEE = false;
-                try (var sth = cn.prepareStatement(
-                        "select exists(select * from information_schema.routines where routine_name='pgpro_version' and routine_schema='pg_catalog')")) {
-                    sth.execute();
-                    try (var rs = sth.getResultSet()) {
-                        if (rs.next() && rs.getBoolean(1)) {
-                            isEE = true;
-                            LOGGER.info("Working with PgPro Enterprise");
-                        }
-                    }
-                }
-            }
-        }
-        this.transactionId = isEE ? buffer.getLong() : Integer.toUnsignedLong(buffer.getInt());
+        this.transactionId = is64BitXid ? buffer.getLong() : Integer.toUnsignedLong(buffer.getInt());
         LOGGER.trace("Event: {}", MessageType.BEGIN);
         LOGGER.trace("Final LSN of transaction: {}", lsn);
         LOGGER.trace("Commit timestamp of transaction: {}", commitTimestamp);
