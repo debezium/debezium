@@ -23,9 +23,13 @@ public class JdbcOffsetBackingStoreConfig extends JdbcCommonConfig {
     public static final String OFFSET_STORAGE_PREFIX = "offset.storage.";
 
     public static final String DEFAULT_TABLE_NAME = "debezium_offset_storage";
-    public static final Field PROP_TABLE_NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "offset.table.name")
+    public static final Field PROP_TABLE_NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "table.name")
             .withDescription("Name of the table to store offsets")
-            .withDefault(DEFAULT_TABLE_NAME);
+            .withDefault(DEFAULT_TABLE_NAME)
+            .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "offset.table.name");
+
+
+
 
     /**
      * JDBC Offset storage CREATE TABLE syntax.
@@ -44,9 +48,11 @@ public class JdbcOffsetBackingStoreConfig extends JdbcCommonConfig {
      * record_insert_ts - Timestamp when the record was inserted
      * record_insert_seq - Sequence number of record
      */
-    public static final Field PROP_TABLE_DDL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "offset.table.ddl")
+    public static final Field PROP_TABLE_DDL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "table.ddl")
             .withDescription("Create table syntax for offset jdbc table")
-            .withDefault(DEFAULT_TABLE_DDL);
+            .withDefault(DEFAULT_TABLE_DDL)
+            .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "offset.table.ddl");
+
 
     public static final String DEFAULT_TABLE_SELECT = "SELECT id, offset_key, offset_val FROM %s " +
             "ORDER BY record_insert_ts, record_insert_seq";
@@ -55,17 +61,21 @@ public class JdbcOffsetBackingStoreConfig extends JdbcCommonConfig {
 
     public static final String DEFAULT_TABLE_INSERT = "INSERT INTO %s(id, offset_key, offset_val, record_insert_ts, record_insert_seq) " +
             "VALUES ( ?, ?, ?, ?, ? )";
-    public static final Field PROP_TABLE_SELECT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "offset.table.select")
+    public static final Field PROP_TABLE_SELECT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "table.select")
             .withDescription("Select syntax to get offset data from jdbc table")
-            .withDefault(DEFAULT_TABLE_SELECT);
+            .withDefault(DEFAULT_TABLE_SELECT)
+            .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "offset.table.select");
 
-    public static final Field PROP_TABLE_DELETE = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "offset.table.delete")
+    public static final Field PROP_TABLE_DELETE = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "table.delete")
             .withDescription("Delete syntax to delete offset data from jdbc table")
-            .withDefault(DEFAULT_TABLE_DELETE);
+            .withDefault(DEFAULT_TABLE_DELETE)
+            .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "offset.table.delete");
 
-    public static final Field PROP_TABLE_INSERT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "offset.table.insert")
+    public static final Field PROP_TABLE_INSERT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "table.insert")
             .withDescription("Insert syntax to add offset data to the jdbc table")
-            .withDefault(DEFAULT_TABLE_INSERT);
+            .withDefault(DEFAULT_TABLE_INSERT)
+            .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "offset.table.insert");
+
 
     private String tableCreate;
     private String tableSelect;
