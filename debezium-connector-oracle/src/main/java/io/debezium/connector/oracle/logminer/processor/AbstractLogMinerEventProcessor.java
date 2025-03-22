@@ -387,10 +387,13 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
      * @throws SQLException if a database exception occurred creating the statement
      */
     protected PreparedStatement createQueryStatement() throws SQLException {
-        return jdbcConnection.connection().prepareStatement(getQueryString(),
-                ResultSet.TYPE_FORWARD_ONLY,
-                ResultSet.CONCUR_READ_ONLY,
-                ResultSet.HOLD_CURSORS_OVER_COMMIT);
+        final PreparedStatement statement = jdbcConnection.connection()
+                .prepareStatement(getQueryString(),
+                        ResultSet.TYPE_FORWARD_ONLY,
+                        ResultSet.CONCUR_READ_ONLY,
+                        ResultSet.HOLD_CURSORS_OVER_COMMIT);
+        statement.setQueryTimeout((int) jdbcConnection.config().getQueryTimeout().toSeconds());
+        return statement;
     }
 
     /**
