@@ -839,7 +839,7 @@ public final class Field {
      */
     public Field withDefault(String defaultValue) {
         return new Field(name(), displayName(), type(), width, description(), importance(), dependents,
-                () -> defaultValue, validator, recommender, isRequired, group, allowedValues);
+                () -> defaultValue, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
     }
 
     /**
