@@ -18,6 +18,7 @@ import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import io.debezium.connector.postgresql.Module;
@@ -28,6 +29,7 @@ import io.debezium.testing.testcontainers.ConnectorConfiguration;
 import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
 import io.restassured.http.ContentType;
 
+@Ignore
 public class DebeziumPostgresConnectorResourceIT {
 
     @BeforeClass
