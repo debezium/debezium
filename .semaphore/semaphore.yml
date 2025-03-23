@@ -37,7 +37,7 @@ blocks:
       jobs:
         - name: Test
           commands:
-            - mvn -Dcloud -Passembly -pl debezium-connector-mysql,debezium-connector-postgres,debezium-connector-sqlserver -am -U -Dmaven.wagon.http.retryHandler.count=10 --batch-mode --no-transfer-progress
+            - mvn -Dcloud -Passembly -Ppgoutput-decoder -pl debezium-connector-mysql,debezium-connector-postgres,debezium-connector-sqlserver -am -U -Dmaven.wagon.http.retryHandler.count=10 --batch-mode --no-transfer-progress
               clean verify install validate
             - . cve-scan
             - . cache-maven store
