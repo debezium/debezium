@@ -27,7 +27,7 @@ public class JdbcCommonConfig {
     private static final Logger LOGGER = LoggerFactory.getLogger(JdbcCommonConfig.class);
 
     public static final String CONFIGURATION_FIELD_PREFIX_STRING = "jdbc.";
-    public static final String CONFIGURATION_FIELD_CONNECTION_GROUP = "connection.";
+    public static final String CONFIGURATION_FIELD_CONNECTION_GROUP = CONFIGURATION_FIELD_PREFIX_STRING + "connection.";
 
     public static final Field PROP_JDBC_URL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + CONFIGURATION_FIELD_CONNECTION_GROUP + "url")
             .withDescription("URL of the database which will be used to access the database storage")
