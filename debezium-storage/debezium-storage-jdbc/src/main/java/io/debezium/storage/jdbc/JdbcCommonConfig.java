@@ -29,29 +29,29 @@ public class JdbcCommonConfig {
     public static final String CONFIGURATION_FIELD_PREFIX_STRING = "jdbc.";
     public static final String CONFIGURATION_FIELD_CONNECTION_GROUP = CONFIGURATION_FIELD_PREFIX_STRING + "connection.";
 
-    public static final Field PROP_JDBC_URL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + CONFIGURATION_FIELD_CONNECTION_GROUP + "url")
+    public static final Field PROP_JDBC_URL = Field.create(CONFIGURATION_FIELD_CONNECTION_GROUP + "url")
             .withDescription("URL of the database which will be used to access the database storage")
             .withValidation(Field::isRequired)
             .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "url");
 
-    public static final Field PROP_USER = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + CONFIGURATION_FIELD_CONNECTION_GROUP + "user")
+    public static final Field PROP_USER = Field.create(CONFIGURATION_FIELD_CONNECTION_GROUP + "user")
             .withDescription("Username of the database which will be used to access the database storage")
             .withValidation(Field::isRequired)
             .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "user");
 
-    public static final Field PROP_PASSWORD = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + CONFIGURATION_FIELD_CONNECTION_GROUP + "password")
+    public static final Field PROP_PASSWORD = Field.create(CONFIGURATION_FIELD_CONNECTION_GROUP + "password")
             .withDescription("Password of the database which will be used to access the database storage")
             .withValidation(Field::isRequired)
             .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "password");
 
     private static final long DEFAULT_WAIT_RETRY_DELAY = 3000L;
-    public static final Field PROP_WAIT_RETRY_DELAY = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + CONFIGURATION_FIELD_CONNECTION_GROUP + "wait.retry.delay.ms")
+    public static final Field PROP_WAIT_RETRY_DELAY = Field.create(CONFIGURATION_FIELD_CONNECTION_GROUP + "wait.retry.delay.ms")
             .withDescription("Delay of retry on wait for connection failure")
             .withDefault(DEFAULT_WAIT_RETRY_DELAY)
             .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "wait.retry.delay.ms");
 
     private static final int DEFAULT_MAX_RETRIES = 5;
-    public static final Field PROP_MAX_RETRIES = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + CONFIGURATION_FIELD_CONNECTION_GROUP + "retry.max.attempts")
+    public static final Field PROP_MAX_RETRIES = Field.create(CONFIGURATION_FIELD_CONNECTION_GROUP + "retry.max.attempts")
             .withDescription("Maximum number of retry attempts before giving up.")
             .withDefault(DEFAULT_MAX_RETRIES)
             .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "retry.max.attempts");
