@@ -12,10 +12,10 @@ import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationS
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -60,6 +60,7 @@ import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.DataCollection;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
+import io.debezium.pipeline.source.snapshot.incremental.SignalDataCollection;
 import io.debezium.pipeline.source.snapshot.incremental.WatermarkWindowCloser;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
@@ -468,15 +469,13 @@ public class MongoDbIncrementalSnapshotChangeEventSource
             LOGGER.warn("Context is null, skipping check and add data collections");
             return;
         }
-        LOGGER.debug("Check and add data collections {}", context.getDataCollectionsToAdd().keySet());
-        Map<SignalPayload, SnapshotConfiguration> map = context.getDataCollectionsToAdd();
-        Iterator<Map.Entry<SignalPayload, SnapshotConfiguration>> iterator = map.entrySet().iterator();
-        while (iterator.hasNext()) {
-            Map.Entry<SignalPayload, SnapshotConfiguration> entry = iterator.next();
-            SignalPayload signalPayload = entry.getKey();
-            SnapshotConfiguration snapshotConfiguration = entry.getValue();
+        LOGGER.debug("Check and add data collections");
+        Queue<SignalDataCollection> queue = context.getDataCollectionsToAdd();
+        SignalDataCollection dataCollectionToAdd;
+        while ((dataCollectionToAdd = queue.poll()) != null) {
+            SignalPayload signalPayload = dataCollectionToAdd.getSignalPayload();
+            SnapshotConfiguration snapshotConfiguration = dataCollectionToAdd.getSnapshotConfiguration();
             addDataCollectionNamesToSnapshot(partition, offsetContext, signalPayload, snapshotConfiguration);
-            map.remove(signalPayload);
         }
     }
 
