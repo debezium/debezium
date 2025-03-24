@@ -1,0 +1,214 @@
+[id="debezium-platform"]
+= {prodname} Management Platform
+
+:linkattrs:
+:icons: font
+:toc:
+:toclevels: 3
+:toc-placement: macro
+
+toc::[]
+
+{prodname} Management Platform aims to simplify the deployment of {prodname} to various environments in a highly opinionated manner.
+To achieve this goal, the platform uses a data-centric view of {prodname} components.
+
+It is for us a normal evolution from {prodname} Server. We have provided the operator - to easily operate it in Kubernetes environments - and now we are providing a high-level abstraction to deploy your data pipelines in different environments leveraging on {prodname} Server.
+
+== Basic concepts
+In {prodname} Management Platform there are four main concepts:
+
+Source:: Defines the source of your data
+Destination:: Defines the destination of your data
+Transform:: Define how a single data is transformed
+Pipeline:: Defines how your data flows from a source to a destination while being transformed along the way.
+
+Once you define a pipeline, how it will be deployed is in charge of the platform.
+
+=== Architecture
+The platform is composed of two main components:
+
+Conductor:: The back-end component which provides a set of APIs to orchestrate and control {prodname} deployments.
+Stage:: The front-end component which provides a user interface to interact with the Conductor.
+
+The conductor component itself is composed of several subcomponents:
+
+API Server:: The main entry point, it provides a set of APIs to interact with the platform.
+Watcher:: Component responsible for the actual communication with deployment environment (e.g. {prodname} Operator in K8s cluster).
+
+image::debezium-platform-architecture.svg[{prodname} Platform Architecture]
+
+== Installation
+
+[NOTE]
+====
+Currently, the only supported environment is Kubernetes.
+====
+
+**Prerequisites**
+
+* Helm
+* Kubernetes cluster with an ingress controller
+
+Installation is provided trough https://helm.sh/[Helm] chart.
+The first step is to add the {prodname} charts repos with the following command:
+
+[source,bash]
+----
+helm repo add debezium https://charts.debezium.io
+----
+
+after that, you can install a specific version with the following command:
+
+[source, bash]
+----
+helm install debezium-platform debezium/debezium-platform --version 3.1.0-beta1 --set database.enabled=true --set domain.url=platform.debezium.io
+----
+
+as an alternative to this, you can also install it via OCI artifact with the following command:
+
+[source, bash]
+----
+helm install debezium-platform --set database.enabled=true --set domain.url=platform.debezium.io --version 3.1.0-beta1 oci://quay.io/debezium-charts/debezium-platform
+----
+
+the `domain.url` is the only required property, and it is used as `host` in the `Ingress` definition.
+The `database.enabled` properties has been added for simplicity since in that way the PostgreSQL database, required by the conductor service, is automatically deployed.
+This is discouraged in production environment, so in that case please do not use it and provide instead your database instance.
+
+The following tables lists all the chart's properties:
+
+[cols="1,3,1", options="header"]
+|===
+|Name |Description |Default
+
+|domain.url
+|domain used as ingress host
+|""
+
+|stage.image
+|Image for the stage (UI)
+|quay.io/debezium/platform-stage:<release_tag>
+
+|conductor.image
+|Image for the conductor
+|quay.io/debezium/platform-conductor:<release_tag>
+
+|conductor.offset.existingConfigMap
+|Name of the config map used to store conductor offsets. If empty it will be automatically created.
+|""
+
+|database.enabled
+|Enable the installation of PostgreSQL by the chart
+|false
+
+|database.name
+|Name of the database used by the platform
+|postgres
+
+|database.host
+|Host of the database used by the platform
+|postgres
+
+|database.auth.existingSecret
+|Name of the secret where `username` and `password` - of the database used by the platform - are stored . If empty a secret will be created using the `username` and `password` properties.
+
+When this is used, you don't need to set `database.auth.username` and `database.auth.password`.
+|""
+
+|database.auth.username
+|Username of the database used by the platform
+|user
+
+|database.auth.password
+|Password of the database used by the platform
+|password
+
+|offset.reusePlatformDatabase
+|Pipelines will use database to store offsets. By default, the database used by the platform is used.
+If you want to use a dedicated one set this property to false
+|true
+
+|offset.database.name
+|Name of the database used by the platform for storing the offsets
+|postgres
+
+|offset.database.host
+|Host of the database used by the platform for storing the offsets
+|postgres
+
+|offset.database.port
+|Port of the database used by the platform for storing the offsets
+|5432
+
+|offset.database.auth.existingSecret
+|Name of the secret where `username` and `password` - of the database used by the platform for storing the offsets - are stored. If not set `offset.database.auth.username` and `offset.database.auth.password` will be used.
+
+When this is used, you don't need to set `offset.database.auth.username` and `offset.database.auth.password`.
+|""
+
+|offset.database.auth.username
+|Username of the database used by the platform for storing the offsets
+|user
+
+|offset.database.auth.password
+|Password of the database used by the platform for storing the offsets
+|password
+
+|schemaHistory.reusePlatformDatabase
+|Pipelines will use database to store schema history. By default, the database used by the conductor service is used. If you want to use a dedicated one set this property to false
+|true
+
+|schemaHistory.database.name
+|Name of the database used by the platform for storing the schema history
+|postgres
+
+|schemaHistory.database.host
+|Host of the database used by the platform for storing the schema history
+|postgres
+
+|schemaHistory.database.port
+|Port of the database used by the platform for storing the schema history
+|5432
+
+|schemaHistory.database.auth.existingSecret
+|Name of the secret where `username` and `password` - of the database used by the platform for storing the schema history -are stored. If not set `schemaHistory.database.auth.username` and `schemaHistory.database.auth.password` will be used.
+
+When this is used, you don't need to set `schemaHistory.database.auth.username` and `schemaHistory.database.auth.password`.
+|""
+
+|schemaHistory.database.auth.username
+|Username of the database used by the platform for storing the schema history
+|user
+
+|schemaHistory.database.auth.password
+|Password of the database used by the platform for storing the schema history
+|password
+
+|env
+|List of env variable to pass to the conductor
+|[]
+|===
+
+=== Using the platform
+
+In this section we will do a walkthrough of the different functionalities of the UI.
+
+=== Source
+==== Create
+===== Smart Editor
+==== Delete
+=== Destination
+==== Create
+===== Smart Editor
+==== Delete
+=== Transforms
+==== Create
+==== Edit
+==== Delete
+=== Pipeline
+==== Create
+==== Delete
+==== Edit
+===== Transformations
+==== Monitor
+

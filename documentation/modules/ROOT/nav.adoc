@@ -63,3 +63,4 @@
 ** xref:operations/kubernetes.adoc[Running on Kubernetes]
 ** xref:operations/openshift.adoc[Running on Openshift]
 ** xref:operations/debezium-ui.adoc[Debezium UI]
+** xref:operations/debezium-platform.adoc[Debezium Management Platform]
