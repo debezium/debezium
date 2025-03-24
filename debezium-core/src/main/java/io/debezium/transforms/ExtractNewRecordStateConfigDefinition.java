@@ -72,7 +72,9 @@ public class ExtractNewRecordStateConfigDefinition {
         DROP("drop"),
         TOMBSTONE("tombstone"),
         REWRITE("rewrite"),
-        REWRITE_WITH_TOMBSTONE("rewrite-with-tombstone");
+        REWRITE_WITH_TOMBSTONE("rewrite-with-tombstone"),
+        // Added `legacy` mode to keep the legacy behaviour of `drop.tombstones` set to `false` and `delete.handling.mode` set to `none`
+        LEGACY("legacy");
 
         private final String value;
 
@@ -130,7 +132,8 @@ public class ExtractNewRecordStateConfigDefinition {
                     + "drop - Remove the delete event and tombstone from the stream."
                     + "tombstone (default) - For each delete event, leave only a tombstone in the stream."
                     + "rewrite - Remove tombstone from the record, and add a `__deleted` field with the value `true`."
-                    + "rewrite-with-tombstone - Retain tombstone in record and add a `__deleted` field with the value `true`.");
+                    + "rewrite-with-tombstone - Retain tombstone in record and add a `__deleted` field with the value `true`."
+                    + "legacy - For each delete event, leave a tombstone in the stream and a record with `null` value.");
 
     @Deprecated
     public static final Field DROP_TOMBSTONES = Field.create("drop.tombstones")

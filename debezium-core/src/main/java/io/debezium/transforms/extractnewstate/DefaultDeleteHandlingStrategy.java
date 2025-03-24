@@ -36,7 +36,7 @@ public class DefaultDeleteHandlingStrategy<R extends ConnectRecord<R>> extends A
             case REWRITE:
                 LOGGER.trace("Tombstone {} arrived and requested to be dropped", record.key());
                 return null;
-            case REWRITE_WITH_TOMBSTONE:
+            case REWRITE_WITH_TOMBSTONE, LEGACY:
                 return record;
             default:
                 throw new DebeziumException("Unknown delete handling mode: " + deleteTombstoneHandling);
@@ -64,6 +64,8 @@ public class DefaultDeleteHandlingStrategy<R extends ConnectRecord<R>> extends A
                     return removedDelegate.apply(oldRecord);
                 }
                 return oldRecord;
+            case LEGACY:
+                return afterDelegate.apply(record);
             default:
                 throw new DebeziumException("Unknown delete handling mode: " + deleteTombstoneHandling);
         }
