@@ -51,6 +51,7 @@ def jiraURL(path, params = [:]) {
 }
 
 def jiraGET(path, params = [:]) {
+    Thread.sleep(1000)
     jiraURL(path, params).openConnection().with {
         doOutput = true
         requestMethod = 'GET'
