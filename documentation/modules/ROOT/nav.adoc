@@ -58,6 +58,7 @@
 ** xref:integrations/testcontainers.adoc[Integration Testing with Testcontainers]
 * Standalone Debezium
 ** xref:operations/debezium-server.adoc[Debezium Server]
+** xref:operations/debezium-platform.adoc[Debezium Management Platform]
 * Operations
 ** xref:operations/logging.adoc[Logging]
 ** xref:operations/monitoring.adoc[Monitoring]
