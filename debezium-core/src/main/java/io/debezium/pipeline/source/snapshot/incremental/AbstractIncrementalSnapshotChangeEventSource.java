@@ -304,7 +304,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                     }
                     if (LOGGER.isInfoEnabled()) {
                         Loggings.logInfoAndTraceRecord(LOGGER, context.maximumKey().orElse(new Object[0]),
-                                "Incremental snapshot for table '{}' will end at position", currentTableId);
+                                "Incremental snapshot for table '{}' will end at maximum key", currentTableId);
                     }
                 }
 
