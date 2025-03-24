@@ -19,7 +19,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
@@ -100,7 +100,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
      */
     private final AtomicBoolean paused = new AtomicBoolean(false);
     private final LinkedBlockingQueue<String> dataCollectionsToStop = new LinkedBlockingQueue<>();
-    private final ConcurrentHashMap<SignalPayload, SnapshotConfiguration> dataCollectionsToAdd = new ConcurrentHashMap<>();
+    private final ConcurrentLinkedQueue<SignalDataCollection> dataCollectionsToAdd = new ConcurrentLinkedQueue<>();
 
     public AbstractIncrementalSnapshotContext(boolean useCatalogBeforeSchema) {
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
@@ -186,7 +186,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     @Override
     public void requestAddDataCollectionNamesToSnapshot(SignalPayload signalPayload, SnapshotConfiguration snapshotConfiguration) {
-        dataCollectionsToAdd.put(signalPayload, snapshotConfiguration);
+        dataCollectionsToAdd.add(new SignalDataCollection(signalPayload, snapshotConfiguration));
     }
 
     public boolean snapshotRunning() {
@@ -243,13 +243,11 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     @Override
     public void requestSnapshotStop(List<String> dataCollectionIds) {
-        if (snapshotRunning()) {
-            if (dataCollectionIds == null || dataCollectionIds.isEmpty()) {
-                dataCollectionsToStop.add(".*");
-            }
-            else {
-                dataCollectionsToStop.addAll(dataCollectionIds);
-            }
+        if (dataCollectionIds == null || dataCollectionIds.isEmpty()) {
+            dataCollectionsToStop.add(".*");
+        }
+        else {
+            dataCollectionsToStop.addAll(dataCollectionIds);
         }
     }
 
@@ -275,7 +273,8 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         return this.correlationId;
     }
 
-    public Map<SignalPayload, SnapshotConfiguration> getDataCollectionsToAdd() {
+    @Override
+    public Queue<SignalDataCollection> getDataCollectionsToAdd() {
         return dataCollectionsToAdd;
     }
 
