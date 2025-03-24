@@ -167,6 +167,7 @@ def jiraURL(path, params = [:]) {
 
 @NonCPS
 def jiraGET(path, params = [:]) {
+    Thread.sleep(1000)
     jiraURL(path, params).openConnection().with {
         doOutput = true
         requestMethod = 'GET'
@@ -178,6 +179,7 @@ def jiraGET(path, params = [:]) {
 
 @NonCPS
 def jiraUpdate(path, payload, method = 'POST') {
+    Thread.sleep(1000)
     path.toURL().openConnection().with {
         doOutput = true
         requestMethod = method
