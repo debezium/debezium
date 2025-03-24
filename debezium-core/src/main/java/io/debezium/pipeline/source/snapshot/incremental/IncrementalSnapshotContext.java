@@ -8,6 +8,7 @@ package io.debezium.pipeline.source.snapshot.incremental;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Queue;
 
 import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.signal.actions.snapshotting.AdditionalCondition;
@@ -81,5 +82,5 @@ public interface IncrementalSnapshotContext<T> {
 
     void requestAddDataCollectionNamesToSnapshot(SignalPayload signalPayload, SnapshotConfiguration snapshotConfiguration);
 
-    Map<SignalPayload, SnapshotConfiguration> getDataCollectionsToAdd();
+    Queue<SignalDataCollection> getDataCollectionsToAdd();
 }
