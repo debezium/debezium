@@ -2,6 +2,55 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.1.0.CR1
+March 24th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12447571)
+
+### New features since 3.1.0.Beta1
+
+* Centralise sensitive data logging using the Loggings Class [DBZ-8525](https://issues.redhat.com/browse/DBZ-8525)
+* Reduce frequency table exists and column metadata queries [DBZ-8570](https://issues.redhat.com/browse/DBZ-8570)
+* Unify helm charts [DBZ-8705](https://issues.redhat.com/browse/DBZ-8705)
+* Implement ErrorHandler to throw RetriableException during SinkTask put operations [DBZ-8727](https://issues.redhat.com/browse/DBZ-8727)
+* Add support for event key routing in RabbitMQ sink [DBZ-8752](https://issues.redhat.com/browse/DBZ-8752)
+* Develop a Quarkus Application Example with Debezium Optimized for GraalVM [DBZ-8754](https://issues.redhat.com/browse/DBZ-8754)
+* Support keyspace heartbeats feature [DBZ-8775](https://issues.redhat.com/browse/DBZ-8775)
+* Improve Error Handling for Duplicate server_id / server_uuid in MySQL Connector [DBZ-8786](https://issues.redhat.com/browse/DBZ-8786)
+* Handle BYTES as VARBINARY in SQLServer sink [DBZ-8790](https://issues.redhat.com/browse/DBZ-8790)
+* Support string with temporal precision mode [DBZ-8826](https://issues.redhat.com/browse/DBZ-8826)
+
+
+### Breaking changes since 3.1.0.Beta1
+
+* Oracle connector remains waiting indefinitely for Logminer response upon starting new session [DBZ-8830](https://issues.redhat.com/browse/DBZ-8830)
+
+
+### Fixes since 3.1.0.Beta1
+
+* The first cdc message always lost when using debezium engine to capture oracle data [DBZ-8141](https://issues.redhat.com/browse/DBZ-8141)
+* Signal Channel Kafka restart snapshot multiple snapshot after connector restart [DBZ-8780](https://issues.redhat.com/browse/DBZ-8780)
+* Sources and home in debezium platform helm chart points to old repo [DBZ-8784](https://issues.redhat.com/browse/DBZ-8784)
+* DebeziumServerPostgresIT randomly fails [DBZ-8821](https://issues.redhat.com/browse/DBZ-8821)
+* Unexpected null value for Field Configuration deprecated aliases [DBZ-8832](https://issues.redhat.com/browse/DBZ-8832)
+
+
+### Other changes since 3.1.0.Beta1
+
+* Update format-maven-plugin to 2.26.0 [DBZ-8695](https://issues.redhat.com/browse/DBZ-8695)
+* Centralize helm chart repo [DBZ-8707](https://issues.redhat.com/browse/DBZ-8707)
+* OTEL libs are not loaded to Docker image [DBZ-8767](https://issues.redhat.com/browse/DBZ-8767)
+* Change the documentation of minimum Java version requirement from 11 to 21 [DBZ-8771](https://issues.redhat.com/browse/DBZ-8771)
+* Add delete.tombstone.handling.mode to ConfigDef returned by config method and change its display name [DBZ-8776](https://issues.redhat.com/browse/DBZ-8776)
+* Update Debezium platform images in values.yaml [DBZ-8781](https://issues.redhat.com/browse/DBZ-8781)
+* Allow Debezium server to use Kafka Connect format for the records [DBZ-8782](https://issues.redhat.com/browse/DBZ-8782)
+* Write README for debezium-chart repo [DBZ-8785](https://issues.redhat.com/browse/DBZ-8785)
+* Remove Helm from Debezium operator manifest README [DBZ-8791](https://issues.redhat.com/browse/DBZ-8791)
+* Write blog post about the recent changes on charts.debezium.io [DBZ-8792](https://issues.redhat.com/browse/DBZ-8792)
+* Test keyspace heartbeats during snapshot [DBZ-8824](https://issues.redhat.com/browse/DBZ-8824)
+* Make methods for adding fields into the record reuseable [DBZ-8825](https://issues.redhat.com/browse/DBZ-8825)
+* Enable build of debezium platform images  [DBZ-8829](https://issues.redhat.com/browse/DBZ-8829)
+
+
+
 ## 3.1.0.Beta1
 March 11th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12446461)
 
