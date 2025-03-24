@@ -296,3 +296,6 @@ AlvarVG,Alvar Viana
 sergey.siroshtan@signanthealth.com,Sergey Seroshtan
 minleejae,Minjae Lee
 mj-db,Minjae Lee
+miyajimakatsumi,Katsumi Miyajima
+Zakariae BEN ALLAL,Zakariae Ben Allal
+Bhagyashree,Bhagyashree Goyal
