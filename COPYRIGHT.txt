@@ -77,6 +77,7 @@ Bartosz Miedlar
 Ben Hardesty
 Ben Williams
 Bertrand Paquet
+Bhagyashree Goyal
 Biel Garau Estarellas
 Bin Li
 Bingqin Zhou
@@ -314,6 +315,7 @@ Justin Hiza
 Kanha Gupta
 Kanthi Subramanian
 Katerina Galieva
+Katsumi Miyajima
 Kaushik Iyer
 Kaustuv Chakrabarti
 Kavya Ramaiah
@@ -618,6 +620,8 @@ Yossi Shirizli
 Yuan Zhang
 Yue Wang
 Yuiham Chan
+Yuriy Vikulov
+Zakariae Ben Allal
 Zheng Wang
 Zongwen Li
 Zoran Regvart
