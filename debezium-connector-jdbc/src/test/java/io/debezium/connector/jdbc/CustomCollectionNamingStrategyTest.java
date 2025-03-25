@@ -140,7 +140,6 @@ public class CustomCollectionNamingStrategyTest {
     @Test
     public void testInvalidNamingStyle() {
         CustomCollectionNamingStrategy strategy = new CustomCollectionNamingStrategy();
-        assertThrows(DebeziumException.class, () ->
-                strategy.configure(Map.of("collection.naming.style", "invalidStyle")));
+        assertThrows(DebeziumException.class, () -> strategy.configure(Map.of("collection.naming.style", "invalidStyle")));
     }
 }
