@@ -9,6 +9,14 @@
 
 toc::[]
 
+ifdef::community[]
+[NOTE]
+====
+This project is currently in an incubating state.
+The exact semantics, configuration options, and so forth are subject to change, based on the feedback that we receive.
+====
+endif::community[]
+
 {prodname} Management Platform aims to simplify the deployment of {prodname} to various environments in a highly opinionated manner.
 To achieve this goal, the platform uses a data-centric view of {prodname} components.
 
@@ -189,18 +197,136 @@ When this is used, you don't need to set `schemaHistory.database.auth.username` 
 |[]
 |===
 
-=== Using the platform
+== Using the platform
 
 In this section we will do a walkthrough of the different functionalities of the UI.
 
 === Source
-==== Create
-===== Smart Editor
-==== Delete
+In this section, you can define the sources of your data.
+All {prodname} supported databases are available.
+When you create a source, it can be shared between different pipelines, which means that every change to a source will be reflected in every pipeline that uses it.
+
+==== Create a new source
+In this section, you can configure your source in two different ways. You can use the `Form Editor`, where you can enter the name of the source and a description, and then specify the list of properties for the specific source.
+Refer to the connector-specific documentation page for the available properties.
+
+==== Configure the source with Smart Editor
+The other option is the `Smart Editor`, where you can directly edit the `JSON` configuration.
+For those familiar with {prodname}, this is quite similar to the Kafka Connect configuration or {prodname} Server with small differences.
+The common part is the `config` section, in fact you can more or less copy the standard {prodname} configuration `config` section under the `config` property.
+
+For example, if you have the following configuration:
+
+[source,json,options="nowrap"]
+----
+{
+  "name": "inventory-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+    "tasks.max": "1",
+    "database.hostname": "mysql",
+    "database.port": "3306",
+    "database.user": "debezium",
+    "database.password": "dbz",
+    "database.server.id": "184054",
+    "topic.prefix": "dbserver1",
+    "database.include.list": "inventory"
+  }
+}
+----
+
+You just need to copy the `config` section, removing the `connector.class`, since it is already provided with the `type`.
+In the future we will eventually support the Kafka Connect and/or Debezium Server format directly.
+
+[source,json,options="nowrap"]
+----
+{
+    "name": "my-source",
+    "description": "This is my first source",
+    "type": "io.debezium.connector.mysql.MySqlConnector",
+    "schema": "schema123",
+    "vaults": [],
+    "config": {
+        "database.hostname": "mysql",
+        "database.port": "3306",
+        "database.user": "debezium",
+        "database.password": "dbz",
+        "database.server.id": "184054",
+        "topic.prefix": "dbserver1",
+        "database.include.list": "inventory"
+    }
+}
+----
+
+==== Delete a source
+To delete a source, go to the `Source` menu and then click the `action` menu of the source you want to delete, then click `Delete`.
+A source can be deleted only if it is not used in any pipeline; otherwise, you will receive an error.
+When the source is no longer used in any pipeline, you can delete it using the `Delete` option.
+
+==== Edit a source
+To edit a source, go to the `Source` menu and then click the `action` menu of the source you want to edit, then click `Edit`.
+
+[NOTE]
+====
+Editing a source will affect all pipelines that use it.
+====
+
 === Destination
-==== Create
-===== Smart Editor
-==== Delete
+In this section, you can define the destinations where your source data will be sent.
+All {prodname} supported databases and systems are available.
+When you create a destination, it can be shared between different pipelines, which means that every change to a destination will be reflected in every pipeline that uses it.
+
+==== Create a new destination
+In this section, you can configure your destination in two different ways. You can use the Form Editor, where you can enter the name of the destination and a description, and then specify the list of properties for the specific destination system.
+Refer to the {prodname} sink-specific documentation page for the available properties.
+
+==== Configure the destination with Smart Editor
+The other option is the Smart Editor, where you can directly edit the JSON configuration.
+For those familiar with {prodname}, this is quite similar to {prodname} Server `sink` configuration section with small differences.
+Usually you have that the configuration of a particular sink are prefixed with `debezium.sink.<sink_name>` where `<sink_name` is the sink `type`.
+
+For example, if you have the following configuration:
+
+[source,properties,options="nowrap"]
+----
+# ...
+
+debezium.sink.type=pubsub
+debezium.sink.pubsub.project.id=debezium-tutorial-local
+debezium.sink.pubsub.address=pubsub:8085
+
+# ..
+----
+
+You just need to take all properties prefixed with `debezium.sink.pubsub` and transform in `json` format.
+In the future we will eventually support the Kafka Connect and/or Debezium Server format directly.
+
+[source,json,options="nowrap"]
+----
+{
+  "name": "test-destination",
+  "type": "pubsub",
+  "description": "Some funny destination",
+  "schema": "dummy",
+  "vaults": [],
+  "config": {
+    "project.id": "debezium-tutorial-local",
+    "address": "pubsub:8085"
+  }
+}
+----
+
+==== Delete a destination
+To delete a destination, go to the `Destination` menu and then click the `action` menu of the destination you want to delete, then click `Delete`.
+A destination can be deleted only if it is not used in any pipeline; otherwise, you will receive an error.
+When the destination is no longer used in any pipeline, you can delete it using the `Delete` button.
+
+==== Edit a destination
+To edit a destination, go to the `Destination` menu and then click the `action` menu of the destination you want to edit, then click `Edit`.
+
+[NOTE]
+Editing a destination will affect all pipelines that use it.
+
 === Transforms
 ==== Create
 ==== Edit
@@ -210,5 +336,5 @@ In this section we will do a walkthrough of the different functionalities of the
 ==== Delete
 ==== Edit
 ===== Transformations
-==== Monitor
+=== Monitoring
 
