@@ -11,14 +11,14 @@ import io.debezium.DebeziumException;
 
 /**
  * Enum representing different naming styles for transforming string values.
- * Supported styles include snake_case, camelCase, upper_case, lower_case, and default (no transformation).
+ * Supported styles include snake_case, camelCase, UPPER_CASE, lower_case, and default (no transformation).
  *
  * @author Gustavo Lira
  */
 public enum NamingStyle {
     SNAKE_CASE("snake_case"),
     CAMEL_CASE("camel_case"),
-    UPPER_CASE("upper_case"),
+    UPPER_CASE("UPPER_CASE"), // Alterado para refletir o nome correto
     LOWER_CASE("lower_case"),
     DEFAULT("default");
 
@@ -33,11 +33,11 @@ public enum NamingStyle {
      *
      * @param value the string representation of the naming style
      * @return the corresponding {@link NamingStyle}
-     * @throws IllegalArgumentException if the value does not match any naming style
+     * @throws DebeziumException if the value does not match any naming style
      */
     public static NamingStyle from(String value) {
         return Stream.of(values())
-                .filter(style -> style.value.equalsIgnoreCase(value))
+                .filter(style -> style.value.equalsIgnoreCase(value) || style.name().equalsIgnoreCase(value))
                 .findFirst()
                 .orElseThrow(() -> new DebeziumException(
                         "Invalid naming style: " + value + ". Allowed styles are: " + String.join(", ", valuesAsString())));
@@ -59,8 +59,7 @@ public enum NamingStyle {
      */
     public static String[] valuesAsString() {
         return Stream.of(values())
-                .map(NamingStyle::getValue)
+                .map(NamingStyle::name)
                 .toArray(String[]::new);
     }
-
 }

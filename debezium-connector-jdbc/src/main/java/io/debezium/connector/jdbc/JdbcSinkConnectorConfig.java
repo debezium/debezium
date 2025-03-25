@@ -65,6 +65,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     public static final String COLLECTION_NAMING_PREFIX = "collection.naming.prefix";
     public static final String COLLECTION_NAMING_SUFFIX = "collection.naming.suffix";
     public static final String COLLECTION_NAMING_STYLE = "collection.naming.style";
+    public static final String TABLE_NAME_FORMAT = "table.name.format";
 
     public static final String COLUMN_NAMING_SUFFIX = "column.naming.suffix";
     public static final String POSTGRES_POSTGIS_SCHEMA = "dialect.postgres.postgis.schema";
@@ -316,6 +317,23 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     "Defaults to false. " +
                     "In environments where the sink database uses asynchronous replication, enabling this option may risk data loss or inconsistencies " +
                     "during failover if the replica has not fully caught up with the primary.");
+
+    // Você também precisa definir a constante TABLE_NAME_FORMAT_FIELD que é usada como alias
+    public static final Field TABLE_NAME_FORMAT_FIELD = Field.create("table.name.format")
+            .withDisplayName("Format string for table names")
+            .withType(Type.STRING)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.MEDIUM);
+
+    public static final Field COLLECTION_NAME_FORMAT_FIELD = Field.create("collection.name.format")
+            .withDisplayName("Format string for collection names")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 3))
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDefault("${table}")
+            .withDescription("Format string for the collection name. Use ${schema} for schema name and ${table} for table name.")
+            .withDeprecatedAliases(TABLE_NAME_FORMAT);
 
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
