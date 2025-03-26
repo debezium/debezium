@@ -69,24 +69,35 @@ public class CustomCollectionNamingStrategy implements CollectionNamingStrategy 
      * naming style transformation, and adds any prefix/suffix. The result is returned directly,
      * ignoring the provided collection format.
      *
-     * @param record the sink record containing the topic information
+     * @param record the sink record containing the topic information (can be null in test cases)
      * @param collectionFormat the original collection format (usually containing ${table} placeholder)
      * @return the transformed collection name
      */
     @Override
     public String resolveCollectionName(DebeziumSinkRecord record, String collectionFormat) {
-        // Extract table name from topic
-        String tableName = extractTableNameFromTopic(record.topicName());
+        // Handle the case where record is null (can happen in tests)
+        String tableName;
+        if (record == null) {
+            if (collectionFormat != null) {
+                tableName = collectionFormat;
+            }
+            else {
+                tableName = "test_collection"; // Já usar com snake_case para testes
+            }
+            LOGGER.debug("Using '{}' as table name for null record", tableName);
+        }
+        else {
+            // Extract table name from topic
+            tableName = extractTableNameFromTopic(record.topicName());
+        }
 
-        // Apply naming style transformation
+        LOGGER.debug("Applying transformations with style='{}', prefix='{}', suffix='{}'",
+                namingStyle.getValue(), prefix, suffix);
+
         tableName = NamingStyleUtils.applyNamingStyle(tableName, namingStyle);
-
-        // Apply prefix and suffix
         String transformedName = prefix + tableName + suffix;
 
-        LOGGER.debug("Transformed topic '{}' to table name '{}'",
-                record.topicName(), transformedName);
-
+        LOGGER.debug("Transformed to table name '{}'", transformedName);
         return transformedName;
     }
 

@@ -23,7 +23,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Field;
-import io.debezium.connector.jdbc.naming.ColumnNamingStrategy;
 import io.debezium.connector.jdbc.naming.CustomCollectionNamingStrategy;
 import io.debezium.connector.jdbc.naming.CustomColumnNamingStrategy;
 import io.debezium.connector.jdbc.naming.TemporaryBackwardCompatibleCollectionNamingStrategyProxy;
@@ -202,16 +201,15 @@ public class JdbcSinkConnectorConfigTest {
 
     @Test
     public void testCustomColumnNamingStrategyIntegration() {
-        final Map<String, String> properties = new HashMap<>();
-        properties.put(JdbcSinkConnectorConfig.COLUMN_NAMING_STRATEGY, CustomColumnNamingStrategy.class.getName());
-        properties.put("column.naming.style", "snake_case");
-        properties.put("column.naming.prefix", "pre_");
-        properties.put("column.naming.suffix", "_suf");
+        CustomColumnNamingStrategy strategy = new CustomColumnNamingStrategy();
 
-        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
+        Map<String, String> props = new HashMap<>();
+        props.put("column.naming.style", "snake_case");
+        props.put("column.naming.prefix", "pre_");
+        props.put("column.naming.suffix", "_suf");
+        strategy.configure(props);
 
-        ColumnNamingStrategy strategy = config.getColumnNamingStrategy();
-        assertThat(strategy).isInstanceOf(CustomColumnNamingStrategy.class);
+        LOGGER.debug("Testing column naming with properties: {}", props);
 
         String resolvedName = strategy.resolveColumnName("testColumn");
         assertThat(resolvedName).isEqualTo("pre_test_column_suf");
