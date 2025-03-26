@@ -17,14 +17,15 @@ import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.Module;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.data.vector.FloatVector;
 import io.debezium.transforms.ConnectRecordUtil;
 import io.debezium.transforms.SmtManager;
 import io.debezium.util.BoundedConcurrentHashMap;
@@ -62,7 +63,7 @@ public abstract class AbstractEmbeddingsSmt<R extends ConnectRecord<R>> implemen
                     "Name of the field which which will be appended to the record and which would contain the embeddings of the content `filed.source` field. Supports also nested fields.");
 
     private static final Field.Set ALL_FIELDS = Field.setOf(TEXT_FIELD, EMBEDDGINS_FIELD);
-    private static final Schema VECTOR_SCHEMA = SchemaBuilder.array(Schema.FLOAT32_SCHEMA).schema();
+    private static final Schema VECTOR_SCHEMA = FloatVector.schema();
 
     private SmtManager<R> smtManager;
     private String sourceField;
@@ -113,7 +114,7 @@ public abstract class AbstractEmbeddingsSmt<R extends ConnectRecord<R>> implemen
 
     @Override
     public String version() {
-        return "0.1";
+        return Module.version();
     }
 
     private void validateConfiguration() {
