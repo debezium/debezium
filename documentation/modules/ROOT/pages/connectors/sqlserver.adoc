@@ -3277,7 +3277,7 @@ If a snapshot for one table requires significantly more time to complete than th
 In some environments, a network device such as a load balancer or firewall, terminates connections that remain idle for an extended interval.
 After the snapshot completes, the connector is unable to close the connection, resulting in an exception, and an incomplete snapshot, even in cases where the connector successfully transmitted all snapshot data. +
  +
-If you experience this problem, revert the value of `snapshot.max.threads` to `1`.
+If you experience this problem, revert the value of `snapshot.max.threads` to `1`, and retry the snapshot.
 ====
 
 |[[sqlserver-property-custom-metric-tags]]<<sqlserver-property-custom-metric-tags, `custom.metric.tags`>>
