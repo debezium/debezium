@@ -57,6 +57,9 @@
         <!-- K8s Config Map Storage -->
         <version.kubernetes.client>6.13.4</version.kubernetes.client>
 
+        <!-- Debezium AI -->
+        <version.langchain4j>1.0.0-beta2</version.langchain4j>
+
         <!-- Testing -->
         <version.junit>4.13.1</version.junit>
         <version.junit5>5.9.1</version.junit5>
@@ -556,6 +559,18 @@
                 <version>${version.kubernetes.client}</version>
             </dependency>
 
+            <!-- Debezium AI dependencies-->
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-core</artifactId>
+                <version>${version.langchain4j}</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
+                <version>${version.langchain4j}</version>
+            </dependency>
+
             <!-- Testing utilities -->
             <dependency>
                 <groupId>org.testcontainers</groupId>
@@ -847,6 +862,11 @@
                 <artifactId>debezium-quarkus-outbox-deployment</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-ai-embeddings-base</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- Debezium test artifacts -->
             <dependency>
@@ -870,6 +890,12 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-connector-binlog</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-ai-embeddings-base</artifactId>
                 <version>${project.version}</version>
                 <type>test-jar</type>
             </dependency>
