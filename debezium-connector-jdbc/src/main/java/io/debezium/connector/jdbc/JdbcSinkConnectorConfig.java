@@ -732,9 +732,34 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             return new TemporaryBackwardCompatibleCollectionNamingStrategyProxy(customStrategy, this);
         }
         else {
-            // Use original behavior
-            return new TemporaryBackwardCompatibleCollectionNamingStrategyProxy(
-                    config.getInstance(COLLECTION_NAMING_STRATEGY_FIELD, CollectionNamingStrategy.class), this);
+            // Check if we're using the deprecated table naming strategy name
+            String strategyClassName = config.getString(COLLECTION_NAMING_STRATEGY_FIELD);
+            if ("table.naming.strategy".equals(strategyClassName)) {
+                LOGGER.warn("The 'table.naming.strategy' configuration is deprecated. Using default strategy instead.");
+                DefaultCollectionNamingStrategy defaultStrategy = new DefaultCollectionNamingStrategy();
+                defaultStrategy.configure(props);
+                return new TemporaryBackwardCompatibleCollectionNamingStrategyProxy(defaultStrategy, this);
+            }
+
+            try {
+                // Use original behavior with standard instance resolution
+                CollectionNamingStrategy strategy = config.getInstance(COLLECTION_NAMING_STRATEGY_FIELD, CollectionNamingStrategy.class);
+
+                // Important: configure the strategy with the original properties
+                strategy.configure(props);
+
+                return new TemporaryBackwardCompatibleCollectionNamingStrategyProxy(strategy, this);
+            }
+            catch (Exception e) {
+                LOGGER.warn("Failed to instantiate collection naming strategy '{}', falling back to default: {}",
+                        strategyClassName, e.getMessage());
+                LOGGER.debug("Strategy instantiation exception", e);
+
+                // Fallback to default strategy if instantiation fails
+                DefaultCollectionNamingStrategy defaultStrategy = new DefaultCollectionNamingStrategy();
+                defaultStrategy.configure(props);
+                return new TemporaryBackwardCompatibleCollectionNamingStrategyProxy(defaultStrategy, this);
+            }
         }
     }
 
