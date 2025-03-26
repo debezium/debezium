@@ -23,9 +23,8 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
-import io.debezium.connector.jdbc.naming.CollectionNamingStrategyFactory;
 import io.debezium.connector.jdbc.naming.ColumnNamingStrategy;
-import io.debezium.connector.jdbc.naming.ColumnNamingStrategyFactory;
+import io.debezium.connector.jdbc.naming.CustomCollectionNamingStrategy;
 import io.debezium.connector.jdbc.naming.DefaultColumnNamingStrategy;
 import io.debezium.connector.jdbc.naming.TemporaryBackwardCompatibleCollectionNamingStrategyProxy;
 import io.debezium.sink.SinkConnectorConfig;
@@ -65,7 +64,6 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     public static final String COLLECTION_NAMING_PREFIX = "collection.naming.prefix";
     public static final String COLLECTION_NAMING_SUFFIX = "collection.naming.suffix";
     public static final String COLLECTION_NAMING_STYLE = "collection.naming.style";
-    public static final String TABLE_NAME_FORMAT = "table.name.format";
 
     public static final String COLUMN_NAMING_SUFFIX = "column.naming.suffix";
     public static final String POSTGRES_POSTGIS_SCHEMA = "dialect.postgres.postgis.schema";
@@ -318,22 +316,23 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     "In environments where the sink database uses asynchronous replication, enabling this option may risk data loss or inconsistencies " +
                     "during failover if the replica has not fully caught up with the primary.");
 
-    // Você também precisa definir a constante TABLE_NAME_FORMAT_FIELD que é usada como alias
-    public static final Field TABLE_NAME_FORMAT_FIELD = Field.create("table.name.format")
-            .withDisplayName("Format string for table names")
-            .withType(Type.STRING)
-            .withWidth(ConfigDef.Width.LONG)
-            .withImportance(ConfigDef.Importance.MEDIUM);
-
-    public static final Field COLLECTION_NAME_FORMAT_FIELD = Field.create("collection.name.format")
-            .withDisplayName("Format string for collection names")
+    public static final Field COLLECTION_TABLE_FORMAT_FIELD = Field.create("collection.table.format")
+            .withDisplayName("Format string using table name")
             .withType(Type.STRING)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 3))
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.MEDIUM)
             .withDefault("${table}")
-            .withDescription("Format string for the collection name. Use ${schema} for schema name and ${table} for table name.")
-            .withDeprecatedAliases(TABLE_NAME_FORMAT);
+            .withDescription("Alternative format that uses table name instead of topic name. Use ${schema} for schema name and ${table} for table name.");
+
+    public static final Field COLLECTION_NAMING_STYLE_ENABLED_FIELD = Field.create("collection.naming.style.enabled")
+            .withDisplayName("Enable enhanced collection naming")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 2))
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(false)
+            .withDescription("When enabled, uses enhanced collection naming with support for styles, prefixes and suffixes.");
 
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
@@ -360,6 +359,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     COLUMN_NAMING_STYLE_FIELD,
                     COLUMN_NAMING_PREFIX_FIELD,
                     COLUMN_NAMING_SUFFIX_FIELD,
+                    COLLECTION_TABLE_FORMAT_FIELD,
                     USE_TIME_ZONE_FIELD,
                     POSTGRES_POSTGIS_SCHEMA_FIELD,
                     SQLSERVER_IDENTITY_INSERT_FIELD,
@@ -485,7 +485,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
 
     public JdbcSinkConnectorConfig(Map<String, String> props) {
         config = Configuration.from(props);
-        this.columnNamingStrategy = ColumnNamingStrategyFactory.createColumnNamingStrategy(config, props);
+        this.columnNamingStrategy = config.getInstance(COLUMN_NAMING_STRATEGY_FIELD, ColumnNamingStrategy.class);
         this.insertMode = InsertMode.parse(config.getString(INSERT_MODE));
         this.deleteEnabled = config.getBoolean(DELETE_ENABLED_FIELD);
         this.truncateEnabled = config.getBoolean(TRUNCATE_ENABLED_FIELD);
@@ -494,8 +494,8 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         this.primaryKeyFields = Strings.setOf(config.getString(PRIMARY_KEY_FIELDS_FIELD), String::new);
         this.schemaEvolutionMode = SchemaEvolutionMode.parse(config.getString(SCHEMA_EVOLUTION));
         this.quoteIdentifiers = config.getBoolean(QUOTE_IDENTIFIERS_FIELD);
-        this.collectionNamingStrategy = new TemporaryBackwardCompatibleCollectionNamingStrategyProxy(
-                CollectionNamingStrategyFactory.createCollectionNamingStrategy(config, props), this);
+        this.collectionNamingStrategy = configureCollectionNamingStrategy(config, props);
+
         this.databaseTimezone = config.getString(USE_TIME_ZONE_FIELD);
         this.postgresPostgisSchema = config.getString(POSTGRES_POSTGIS_SCHEMA_FIELD);
         this.sqlServerIdentityInsert = config.getBoolean(SQLSERVER_IDENTITY_INSERT_FIELD);
@@ -710,4 +710,32 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
 
         return 0; // No problem
     }
+
+    /**
+     * Configures and returns an appropriate collection naming strategy
+     * based on user configuration.
+     *
+     * @param config the connector configuration
+     * @param props the original connector properties
+     * @return the configured naming strategy wrapped in a compatibility proxy
+     */
+    private CollectionNamingStrategy configureCollectionNamingStrategy(Configuration config, Map<String, String> props) {
+        // Check if enhanced naming mode is enabled
+        if (config.getBoolean(COLLECTION_NAMING_STYLE_ENABLED_FIELD)) {
+            LOGGER.info("Using enhanced collection naming strategy with style support");
+
+            // Create and configure the custom strategy
+            CustomCollectionNamingStrategy customStrategy = new CustomCollectionNamingStrategy();
+            customStrategy.configure(props);
+
+            // Wrap in compatibility proxy
+            return new TemporaryBackwardCompatibleCollectionNamingStrategyProxy(customStrategy, this);
+        }
+        else {
+            // Use original behavior
+            return new TemporaryBackwardCompatibleCollectionNamingStrategyProxy(
+                    config.getInstance(COLLECTION_NAMING_STRATEGY_FIELD, CollectionNamingStrategy.class), this);
+        }
+    }
+
 }
