@@ -24,7 +24,7 @@ runs:
       shell: ${{ inputs.shell }}
       run: >
         ./mvnw clean install
-        -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
+        -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi,:debezium-schema-generator
         -am
         -DskipTests=true
         -DskipITs=true
