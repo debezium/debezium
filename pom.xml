@@ -156,7 +156,7 @@
         <version.mysql.percona.server>8.0</version.mysql.percona.server>
         <version.mongo.server>6.0</version.mongo.server>
         <version.cassandra3>3.11.12</version.cassandra3>
-        <version.cassandra4>4.0.2</version.cassandra4>
+        <version.cassandra4>4.1.8</version.cassandra4>
         <version.cassandra5>5.0.2</version.cassandra5>
 
         <!-- Required in protoc plug-in config, too; can't be in BOM therefore -->
