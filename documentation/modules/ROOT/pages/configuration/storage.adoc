@@ -13,7 +13,7 @@ toc::[]
 endif::community[]
 
 Debezium connectors require a persistent storage to keep their state between restarts.
-All connectors requires a store for the offsets.
+All connectors require a store for the offsets.
 In addition to it some of the connectors (MySQL, SQL Server, Db2, Oracle) require an additional storage to record the history of schema evolution, so-called internal schema history.
 
 The offset store is provided automatically for the deployments inside the Kafka Connect runtime:
@@ -41,13 +41,14 @@ The internal schema history is configured in all cases via connector configurati
 
 
 == JDBC
-The store uses arbitrary relational database to store the data for which an approriate link:https://en.wikipedia.org/wiki/JDBC_driver[JDBC driver] is provided.
-Either the source source database can be used as the storage or any other database.
+The store uses arbitrary relational database to store the data for which an appropriate link:https://en.wikipedia.org/wiki/JDBC_driver[JDBC driver] is provided.
+Either the source database can be used as the storage or any other database.
 
-The users either use the default pre-configured DML and DDL statements or can override them with thier own either for database dialect compatibility or to tailor them to their use case/
+The users either use the default pre-configured DML and DDL statements or can override them with their own either for database dialect compatibility or to tailor them to their use case/
 
 
 === Offset Store
+
 [cols="35%a,10%a,55%a",options="header"]
 |===
 |Property
@@ -58,35 +59,96 @@ The users either use the default pre-configured DML and DDL statements or can ov
 |
 |Must be set to `io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore`.
 
-|[[jdbc-offset-url]]<<jdbc-offset-url, `offset.storage.jdbc.url`>>
+|[[jdbc-offset-url]]<<jdbc-offset-url, `offset.storage.jdbc.connection.url`>>
 |No default
 |JDBC driver connection string to connect to the database.
 
-|[[jdbc-offset-user]]<<jdbc-offset-user, `offset.storage.jdbc.user`>>
+|[[jdbc-offset-user]]<<jdbc-offset-user, `offset.storage.jdbc.connection.user`>>
 |No default
 |(Optional) Username of the database which will be used to access the database storage.
 
-|[[jdbc-offset-password]]<<jdbc-offset-password, `offset.storage.jdbc.password`>>
+|[[jdbc-offset-password]]<<jdbc-offset-password, `offset.storage.jdbc.connection.password`>>
 |No default
 |(Optional) Password of the database which will be used to access the database storage.
 
-|[[jdbc-offset-table-name]]<<jdbc-offset-table-name, `offset.storage.jdbc.offset.table.name`>>
+|[[wait-retry-delay-ms]]<<wait-retry-delay-ms, `offset.storage.jdbc.connection.wait.retry.delay.ms`>>
+|3 seconds
+|(Optional) Delay of retry on wait for connection failure.
+
+|[[retry-max-attempts]]<<retry-max-attempts, `offset.storage.jdbc.connection.retry.max.attempts`>>
+|5
+|(Optional) Maximum number of retry attempts before giving up.
+
+|[[jdbc-offset-table-name]]<<jdbc-offset-table-name, `offset.storage.jdbc.table.name`>>
 |`debezium_offset_storage`
 |The name of the table to which the offsets will be stored.
 
-|[[jdbc-offset-table-ddl]]<<jdbc-offset-table-ddl, `offset.storage.jdbc.offset.table.ddl`>>
+|[[jdbc-offset-table-ddl]]<<jdbc-offset-table-ddl, `offset.storage.jdbc.table.ddl`>>
 |link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/offset/JdbcOffsetBackingStoreConfig.java[source code]
 |DDL statement to create the offset table.
 
-|[[jdbc-offset-table-select]]<<jdbc-offset-table-select, `offset.storage.jdbc.offset.table.select`>>
+|[[jdbc-offset-table-select]]<<jdbc-offset-table-select, `offset.storage.jdbc.table.select`>>
 |link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/offset/JdbcOffsetBackingStoreConfig.java[source code]
 |DML statement to read offsets stored from the table.
 
-|[[jdbc-offset-table-insert]]<<jdbc-offset-table-insert, `offset.storage.jdbc.offset.table.insert`>>
+|[[jdbc-offset-table-insert]]<<jdbc-offset-table-insert, `offset.storage.jdbc.table.insert`>>
 |link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/offset/JdbcOffsetBackingStoreConfig.java[source code]
 |DML statement to write offsets to the table.
 
-|[[jdbc-offset-table-delete]]<<jdbc-offset-table-delete, `offset.storage.jdbc.offset.table.delete`>>
+|[[jdbc-offset-table-delete]]<<jdbc-offset-table-delete, `offset.storage.jdbc.table.delete`>>
+|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/offset/JdbcOffsetBackingStoreConfig.java[source code]
+|DML statement to remove offsets from the table.
+
+|===
+
+==== Deprecated configuration prior to 3.2
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[deprecated-jdbc-offset-type]]<<deprecated-jdbc-offset-type, `offset.storage`>>
+|
+|Must be set to `io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore`.
+
+|[[deprecated-jdbc-offset-url]]<<deprecated-jdbc-offset-url, `offset.storage.jdbc.url`>>
+|No default
+|JDBC driver connection string to connect to the database.
+
+|[[deprecated-jdbc-offset-user]]<<deprecated-jdbc-offset-user, `offset.storage.jdbc.user`>>
+|No default
+|(Optional) Username of the database which will be used to access the database storage.
+
+|[[deprecated-jdbc-offset-password]]<<deprecated-jdbc-offset-password, `offset.storage.jdbc.password`>>
+|No default
+|(Optional) Password of the database which will be used to access the database storage.
+
+|[[deprecated-wait-retry-delay-ms]]<<deprecated-wait-retry-delay-ms, `offset.storage.jdbc.wait.retry.delay.ms`>>
+|3 seconds
+|(Optional) Delay of retry on wait for connection failure.
+
+|[[deprecated-retry-max-attempts]]<<deprecated-retry-max-attempts, `offset.storage.jdbc.retry.max.attempts`>>
+|5
+|(Optional) Maximum number of retry attempts before giving up.
+
+|[[deprecated-jdbc-offset-table-name]]<<deprecated-jdbc-offset-table-name, `offset.storage.jdbc.offset.table.name`>>
+|`debezium_offset_storage`
+|The name of the table to which the offsets will be stored.
+
+|[[deprecated-jdbc-offset-table-ddl]]<<deprecated-jdbc-offset-table-ddl, `offset.storage.jdbc.offset.table.ddl`>>
+|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/offset/JdbcOffsetBackingStoreConfig.java[source code]
+|DDL statement to create the offset table.
+
+|[[deprecated-jdbc-offset-table-select]]<<deprecated-jdbc-offset-table-select, `offset.storage.jdbc.offset.table.select`>>
+|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/offset/JdbcOffsetBackingStoreConfig.java[source code]
+|DML statement to read offsets stored from the table.
+
+|[[deprecated-jdbc-offset-table-insert]]<<deprecated-jdbc-offset-table-insert, `offset.storage.jdbc.offset.table.insert`>>
+|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/offset/JdbcOffsetBackingStoreConfig.java[source code]
+|DML statement to write offsets to the table.
+
+|[[deprecated-jdbc-offset-table-delete]]<<deprecated-jdbc-offset-table-delete, `offset.storage.jdbc.offset.table.delete`>>
 |link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/offset/JdbcOffsetBackingStoreConfig.java[source code]
 |DML statement to remove offsets from the table.
 
@@ -105,35 +167,101 @@ The users either use the default pre-configured DML and DDL statements or can ov
 |
 |Must be set to `io.debezium.storage.jdbc.history.JdbcSchemaHistory`.
 
-|[[jdbc-history-schema-history-url]]<<jdbc-history-schema-history-url, `schema.history.internal.jdbc.url`>>
+|[[jdbc-history-schema-history-url]]<<jdbc-history-schema-history-url, `schema.history.internal.jdbc.connection.url`>>
 |No default
 |JDBC driver connection string to connect to the database.
 
-|[[jdbc-history-schema-history-user]]<<jdbc-history-schema-history-user, `schema.history.internal.jdbc.user`>>
+|[[jdbc-history-schema-history-user]]<<jdbc-history-schema-history-user, `schema.history.internal.jdbc.connection.user`>>
 |No default
 |(Optional) Username of the database which will be used to access the database storage.
 
-|[[jdbc-history-schema-history-password]]<<jdbc-history-schema-history-password, `schema.history.internal.jdbc.password`>>
+|[[jdbc-history-schema-history-password]]<<jdbc-history-schema-history-password, `schema.history.internal.jdbc.connection.password`>>
 |No default
 |(Optional) Password of the database which will be used to access the database storage.
 
-|[[jdbc-history-schema-history-table-name]]<<jdbc-history-schema-history-table-name, `schema.history.internal.jdbc.schema.history.table.name`>>
+|[[jdbc-history-wait-retry-delay-ms]]<<jdbc-history-wait-retry-delay-ms, `schema.history.internal.jdbc.connection.retry.delay.ms`>>
+|3 seconds
+|(Optional) Delay of retry on wait for connection failure.
+
+|[[jdbc-history-retry-max-attempts]]<<jdbc-history-retry-max-attempts, `schema.history.internal.jdbc.connection.retry.max.attempts`>>
+|5
+|(Optional) Maximum number of retry attempts before giving up.
+
+|[[jdbc-history-schema-history-table-name]]<<jdbc-history-schema-history-table-name, `schema.history.internal.jdbc.table.name`>>
 |`debezium_database_history`
 |The name of the table to which the history will be stored.
 
-|[[jdbc-history-schema-history-table-ddl]]<<jdbc-history-schema-history-table-ddl, `schema.history.internal.jdbc.schema.history.table.ddl`>>
+|[[jdbc-history-schema-history-table-ddl]]<<jdbc-history-schema-history-table-ddl, `schema.history.internal.jdbc.table.ddl`>>
 |link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/history/JdbcSchemaHistoryConfig.java[source code]
 |The DDL statement used to create the storage table.
 
-|[[jdbc-history-schema-history-table-select]]<<jdbc-history-schema-history-table-select, `schema.history.internal.jdbc.schema.history.table.select`>>
+|[[jdbc-history-schema-history-table-select]]<<jdbc-history-schema-history-table-select, `schema.history.internal.jdbc.table.select`>>
 |link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/history/JdbcSchemaHistoryConfig.java[source code]
 |The `SELECT` statement to read the internal schema history form the table.
 
-|[[jdbc-history-schema-history-table-exists-select]]<<jdbc-history-schema-history-table-exists-select, `schema.history.internal.jdbc.schema.history.table.exists.select`>>
+|[[jdbc-history-schema-history-table-exists-select]]<<jdbc-history-schema-history-table-exists-select, `schema.history.internal.jdbc.table.exists.select`>>
 |link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/history/JdbcSchemaHistoryConfig.java[source code]
 |The `SELECT` statement to check the existence of the storage table.
 
-|[[jdbc-history-schema-history-table-insert]]<<jdbc-history-schema-history-table-insert, `schema.history.internal.jdbc.schema.history.table.insert`>>
+|[[jdbc-history-schema-history-table-insert]]<<jdbc-history-schema-history-table-insert, `schema.history.internal.jdbc.table.insert`>>
+|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/history/JdbcSchemaHistoryConfig.java[source code]
+|The `INSERT` statement to record the schema history to the table.
+
+|===
+
+==== Deprecated configuration prior to 3.2
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[deprecated-jdbc-history-type]]<<deprecated-jdbc-history-type, `schema.history.internal`>>
+|
+|Must be set to `io.debezium.storage.jdbc.history.JdbcSchemaHistory`.
+
+|[[deprecated-jdbc-history-schema-history-url]]<<deprecated-jdbc-history-schema-history-url, `schema.history.internal.jdbc.url`>>
+|No default
+|JDBC driver connection string to connect to the database.
+
+|[[deprecated-jdbc-history-schema-history-user]]<<deprecated-jdbc-history-schema-history-user, `schema.history.internal.jdbc.user`>>
+|No default
+|(Optional) Username of the database which will be used to access the database storage.
+
+|[[deprecated-jdbc-history-schema-history-password]]<<deprecated-jdbc-history-schema-history-password, `schema.history.internal.jdbc.password`>>
+|No default
+|(Optional) Password of the database which will be used to access the database storage.
+
+|[[deprecated-jdbc-history-wait-retry-delay-ms]]<<deprecated-jdbc-history-wait-retry-delay-ms, `schema.history.internal.jdbc.retry.delay.ms`>>
+|3 seconds
+|(Optional) Delay of retry on wait for connection failure.
+
+|[[deprecated-jdbc-history-retry-max-attempts]]<<deprecated-jdbc-history-retry-max-attempts, `schema.history.internal.jdbc.retry.max.attempts`>>
+|5
+|(Optional) Maximum number of retry attempts before giving up.
+
+|[[jdbc-history-schema-history-table-name]]<<jdbc-history-schema-history-table-name, `schema.history.internal.jdbc.table.name`>>
+|`debezium_database_history`
+|The name of the table to which the history will be stored.
+
+|[[deprecated-jdbc-history-schema-history-table-name]]<<deprecated-jdbc-history-schema-history-table-name, `schema.history.internal.jdbc.schema.history.table.name`>>
+|`debezium_database_history`
+|The name of the table to which the history will be stored.
+
+|[[deprecated-jdbc-history-schema-history-table-ddl]]<<deprecated-jdbc-history-schema-history-table-ddl, `schema.history.internal.jdbc.schema.history.table.ddl`>>
+|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/history/JdbcSchemaHistoryConfig.java[source code]
+|The DDL statement used to create the storage table.
+
+|[[deprecated-jdbc-history-schema-history-table-select]]<<deprecated-jdbc-history-schema-history-table-select, `schema.history.internal.jdbc.schema.history.table.select`>>
+|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/history/JdbcSchemaHistoryConfig.java[source code]
+|The `SELECT` statement to read the internal schema history form the table.
+
+|[[deprecated-jdbc-history-schema-history-table-exists-select]]<<deprecated-jdbc-history-schema-history-table-exists-select, `schema.history.internal.jdbc.schema.history.table.exists.select`>>
+|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/history/JdbcSchemaHistoryConfig.java[source code]
+|The `SELECT` statement to check the existence of the storage table.
+
+|[[deprecated-jdbc-history-schema-history-table-insert]]<<deprecated-jdbc-history-schema-history-table-insert, `schema.history.internal.jdbc.schema.history.table.insert`>>
 |link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/history/JdbcSchemaHistoryConfig.java[source code]
 |The `INSERT` statement to record the schema history to the table.
 
@@ -145,7 +273,7 @@ The users either use the default pre-configured DML and DDL statements or can ov
 
 == S3
 The store uses link:https://aws.amazon.com/s3/[Amazon S3] object storage service.
-It is typically used when Debezium is deployed in link:https://aws.amazon.com/msk/[Amazon Mnagaed Streaming] service.
+It is typically used when Debezium is deployed in link:https://aws.amazon.com/msk/[Amazon Managed Streaming] service.
 
 === Internal schema history store
 
