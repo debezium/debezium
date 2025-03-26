@@ -211,7 +211,7 @@ In this section, you can configure your source in two different ways. You can us
 Refer to the connector-specific documentation page for the available properties.
 
 ==== Configure the source with Smart Editor
-The other option is the `Smart Editor`, where you can directly edit the `JSON` configuration.
+The other option is the `Smart Editor`, where you can directly edit/paste the `JSON` configuration.
 For those familiar with {prodname}, this is quite similar to the Kafka Connect configuration or {prodname} Server with small differences.
 The common part is the `config` section, in fact you can more or less copy the standard {prodname} configuration `config` section under the `config` property.
 
@@ -238,6 +238,7 @@ For example, if you have the following configuration:
 You just need to copy the `config` section, removing the `connector.class`, since it is already provided with the `type`.
 In the future we will eventually support the Kafka Connect and/or Debezium Server format directly.
 
+The final `json` should something like the following
 [source,json,options="nowrap"]
 ----
 {
@@ -277,11 +278,11 @@ All {prodname} supported databases and systems are available.
 When you create a destination, it can be shared between different pipelines, which means that every change to a destination will be reflected in every pipeline that uses it.
 
 ==== Create a new destination
-In this section, you can configure your destination in two different ways. You can use the Form Editor, where you can enter the name of the destination and a description, and then specify the list of properties for the specific destination system.
+In this section, you can configure your destination in two different ways. You can use the `Form Editor`, where you can enter the name of the destination and a description, and then specify the list of properties for the specific destination system.
 Refer to the {prodname} sink-specific documentation page for the available properties.
 
 ==== Configure the destination with Smart Editor
-The other option is the Smart Editor, where you can directly edit the JSON configuration.
+The other option is the Smart Editor, where you can directly edit/paste the JSON configuration.
 For those familiar with {prodname}, this is quite similar to {prodname} Server `sink` configuration section with small differences.
 Usually you have that the configuration of a particular sink are prefixed with `debezium.sink.<sink_name>` where `<sink_name` is the sink `type`.
 
@@ -301,6 +302,7 @@ debezium.sink.pubsub.address=pubsub:8085
 You just need to take all properties prefixed with `debezium.sink.pubsub` and transform in `json` format.
 In the future we will eventually support the Kafka Connect and/or Debezium Server format directly.
 
+The final `json` should something like the following
 [source,json,options="nowrap"]
 ----
 {
@@ -328,9 +330,82 @@ To edit a destination, go to the `Destination` menu and then click the `action` 
 Editing a destination will affect all pipelines that use it.
 
 === Transforms
+In this section you can manage the transformations that you want to use on your data pipeline.
+
+Currently, we support all {prodname} provided transforms and also Kafka Connect ones.
+
+As for `Source` and `Destination`, the transform is shared between pipeline meaning that any changes will be reflected to all pipeline that uses it.
+
 ==== Create
+In this section, you can configure your transform in two different ways. You can use the `Form Editor`, where you can choose the type of transform and give it a name and a description.
+Then you can set the configuration specific to the transform type.
+
+You can optionally specify also a `Predicate` so that the transform will be applied only to records that meets the specified condition.
+You just need to choose the predicate from the list and set its properties.
+
+==== Configure the transform with Smart Editor
+The other option is the `Smart Editor`, where you can directly edit/paste the JSON configuration.
+
+For those familiar with {prodname}, this format sounds different, but it can be easily adapted.
+
+Usually you have that the configuration of a particular transform are prefixed with `transofrms.<transform_name>` where `<transform_name` is the name you give to the transform.
+
+For example, if you have the following configuration:
+
+[source,properties,options="nowrap"]
+----
+# ...
+
+transforms=unwrap
+transforms.unwrap.type=io.debezium.transforms.ExtractNewRecordState
+transforms.unwrap.add.fields=op
+transforms.unwrap.add.headers=db,table
+predicates=onlyProducts
+predicates.onlyProducts.type=org.apache.kafka.connect.transforms.predicates.TopicNameMatches
+predicates.onlyProducts.pattern=inventory.inventory.products
+
+# ..
+----
+
+You just need to take all properties prefixed with `transforms.unwrap`, except for the `transforms.unwrap.type`, and convert to `json` format.
+Same logic applies to predicates.
+
+In the future we will eventually support the Kafka Connect format directly.
+
+The final `json` should something like the following
+
+[source,json,options="nowrap"]
+----
+{
+  "name": "Debezium marker",
+  "description": "Extract Debezium payloa d",
+  "type": "io.debezium.transforms.ExtractNewRecordState",
+  "schema": "string",
+  "vaults": [],
+  "config": {
+    "add.fields": "op",
+    "add.headers": "db,table"
+  },
+  "predicate": {
+    "type": "org.apache.kafka.connect.transforms.predicates.TopicNameMatches",
+    "config": {
+      "pattern": "inventory.inventory.products"
+    },
+    "negate": false
+  }
+}
+----
 ==== Edit
+To edit a transform, go to the `Transform` menu and then click the `action` menu of the destination you want to edit, then click `Edit`.
+
+[NOTE]
+Editing a destination will affect all pipelines that use it.
+
 ==== Delete
+To delete a transform, go to the `Transform` menu and then click the `action` menu of the transform you want to delete, then click `Delete`.
+A transform can be deleted only if it is not used in any pipeline; otherwise, you will receive an error.
+When the transform is no longer used in any pipeline, you can delete it using the `Delete` button.
+
 === Pipeline
 ==== Create
 ==== Delete
