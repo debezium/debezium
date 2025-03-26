@@ -360,7 +360,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             }
 
             // set start SCN to minScn
-            if (minScn.compareTo(startScn) < 0) {
+            if (minScn.compareTo(startScn) <= 0) {
                 LOGGER.info("Resetting start SCN from {} (snapshot SCN) to {} (start of oldest complete pending transaction)", startScn, minScn);
                 startScn = minScn.subtract(Scn.ONE);
             }
