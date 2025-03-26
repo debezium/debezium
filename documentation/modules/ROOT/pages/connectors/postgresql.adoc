@@ -4132,19 +4132,16 @@ For example, if the topic prefix is `fulfillment`, the default topic name is `fu
 |Specifies the number of threads that the connector uses when performing an initial snapshot.
 To enable parallel initial snapshots, set the property to a value greater than 1.
 In a parallel initial snapshot, the connector processes multiple tables concurrently.
-ifdef::community[]
-This feature is incubating.
-endif::community[]
-ifdef::product[]
-[IMPORTANT]
+ +
+[NOTE]
 ====
-Parallel initial snapshots is a Technology Preview feature only.
-Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
-Red Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+When you enable parallel initial snapshots, the threads that perform each table snapshot can require varying times to complete their work.
+If a snapshot for one table requires significantly more time to complete than the snapshots for other tables, threads that have completed their work sit idle.
+In some environments, a network device such as a load balancer or firewall, terminates connections that remain idle for an extended interval.
+After the snapshot completes, the connector is unable to close the connection, resulting in an exception, and an incomplete snapshot, even in cases where the connector successfully transmitted all snapshot data. +
+ +
+If you experience this problem, revert the value of `snapshot.max.threads` to `1`.
 ====
-endif::product[]
 
 |[[postgresql-property-custom-metric-tags]]<<postgresql-property-custom-metric-tags, `custom.metric.tags`>>
 |`No default`
