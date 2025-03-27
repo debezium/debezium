@@ -3468,7 +3468,7 @@ You can set the following values:
 `logminer` (default):: The connector uses the native Oracle LogMiner API.
 ifdef::community[]
 `olr`:: The connector uses OpenLogReplicator.
-`xstream`:: The connector uses the Oracle XStreams API.
+`xstream`:: The connector uses the Oracle XStream API.
 endif::community[]
 |[[oracle-property-snapshot-mode]]<<oracle-property-snapshot-mode, `+snapshot.mode+`>>
 |_initial_
@@ -5222,7 +5222,7 @@ Consequently, in environments that use the OpenLogReplicator adapter, the {prodn
 To capture XML columns using {prodname} Oracle connector with OpenLogReplicator, OpenLogReplicator should be 1.5.0 or later.
 
 [[oracle-xstreams-support]]
-== XStreams support
+== XStream support
 
 The {prodname} Oracle connector by default ingests changes using native Oracle LogMiner.
 The connector can be toggled to use Oracle XStream instead.
@@ -5384,7 +5384,7 @@ Each connector requires a unique XStream Outbound connector to be configured.
 === Configuring the XStream adapter
 
 By default, {prodname} uses Oracle LogMiner to ingest change events from Oracle.
-You can adjust the connector configuration to enable the connector to use the Oracle XStreams adapter.
+You can adjust the connector configuration to enable the connector to use the Oracle XStream adapter.
 
 The following configuration example adds the properties `database.connection.adapter` and `database.out.server.name` to enable the connector to use the XStream API implementation.
 
@@ -5457,7 +5457,7 @@ LD_LIBRARY_PATH=/path/to/instant_client/
 [[oracle-xstreams-connector-properties]]
 === XStream connector properties
 
-The following configuration properties are _required_ when using XStreams unless a default value is available.
+The following configuration properties are _required_ when using XStream unless a default value is available.
 
 [cols="30%a,25%a,45%a"]
 |===
