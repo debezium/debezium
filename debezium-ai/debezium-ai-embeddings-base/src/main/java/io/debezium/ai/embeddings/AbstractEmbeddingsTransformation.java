@@ -36,14 +36,14 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 
 /**
  * Base class of the embeddings SMT, which provides common configuration and manipulations with the Connect record.
- * Child classes has to implement at least {@link AbstractEmbeddingsSmt#getModel()} class, which provides specific
+ * Child classes has to implement at least {@link AbstractEmbeddingsTransformation#getModel()} class, which provides specific
  * model which will be used for creating the embeddings.
  *
  * @author vjuranek
  */
-public abstract class AbstractEmbeddingsSmt<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
+public abstract class AbstractEmbeddingsTransformation<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractEmbeddingsSmt.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractEmbeddingsTransformation.class);
 
     private static final Field TEXT_FIELD = Field.create("field.source")
             .withDisplayName("Name of the record field from which embeddings should be created.")
@@ -62,8 +62,8 @@ public abstract class AbstractEmbeddingsSmt<R extends ConnectRecord<R>> implemen
             .withDescription(
                     "Name of the field which which will be appended to the record and which would contain the embeddings of the content `filed.source` field. Supports also nested fields.");
 
-    private static final Field.Set ALL_FIELDS = Field.setOf(TEXT_FIELD, EMBEDDGINS_FIELD);
-    private static final Schema VECTOR_SCHEMA = FloatVector.schema();
+    public static final Field.Set ALL_FIELDS = Field.setOf(TEXT_FIELD, EMBEDDGINS_FIELD);
+    private static final Schema EMBEDDING_SCHEMA = FloatVector.schema();
 
     private SmtManager<R> smtManager;
     private String sourceField;
@@ -155,7 +155,7 @@ public abstract class AbstractEmbeddingsSmt<R extends ConnectRecord<R>> implemen
         final TextSegment segment = TextSegment.from(text);
         final Embedding embedding = model.embed(segment).content();
 
-        final List<ConnectRecordUtil.NewEntry> newEntries = List.of(new ConnectRecordUtil.NewEntry(embeddingsField, VECTOR_SCHEMA, embedding.vectorAsList()));
+        final List<ConnectRecordUtil.NewEntry> newEntries = List.of(new ConnectRecordUtil.NewEntry(embeddingsField, EMBEDDING_SCHEMA, embedding.vectorAsList()));
         final Schema updatedSchema = schemaUpdateCache.computeIfAbsent(value.schema(), valueSchema -> ConnectRecordUtil.makeNewSchema(valueSchema, newEntries));
         final Struct updatedValue = ConnectRecordUtil.makeUpdatedValue(value, newEntries, updatedSchema);
 

@@ -25,7 +25,7 @@ public class EmbeddingsMiniLmSmtTest {
         embeddingSmt.configure(Map.of(
                 "field.source", "after.product",
                 "field.embeddings", "after.prod_embedding"));
-        SourceRecord transformedRecord = embeddingSmt.apply(AbstractEmbeddingsSmtTest.SOURCE_RECORD);
+        SourceRecord transformedRecord = embeddingSmt.apply(AbstractEmbeddingsTransformationTest.SOURCE_RECORD);
 
         Struct payloadStruct = (Struct) transformedRecord.value();
         assertThat(payloadStruct.getStruct("after").getString("product")).contains("a product");
