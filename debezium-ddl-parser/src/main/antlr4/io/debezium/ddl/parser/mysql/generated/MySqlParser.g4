@@ -2748,6 +2748,7 @@ keywordsCanBeId
     | AVG_ROW_LENGTH
     | ATTRIBUTE
     | BACKUP_ADMIN
+    | BEFORE
     | BEGIN
     | BINLOG
     | BINLOG_ADMIN
