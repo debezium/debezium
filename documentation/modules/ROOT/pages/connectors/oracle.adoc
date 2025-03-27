@@ -5219,7 +5219,7 @@ ALTER TABLE inventory.customers ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
 // Type: procedure
 // ModuleID: creating-xstream-users-for-the-debezium-oracle-connector
 // Title: Creating XStream users for the {prodname} Oracle connector
-[id="creating-users-for-the-connector"]
+[id="creating-xstream-users-for-the-connector"]
 === Creating XStream users for the connector
 
 The {prodname} Oracle connector requires that users accounts be set up with specific permissions so that the connector can capture change events.
