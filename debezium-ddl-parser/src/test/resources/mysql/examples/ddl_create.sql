@@ -534,6 +534,17 @@ PRIMARY KEY (id),
 UNIQUE KEY idx_unique_key (trace_code,order_no,sku_code),
 KEY idx_order_no (order_no)
 ) ENGINE=InnoDB AUTO_INCREMENT=123 DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+
+CREATE TABLE sku_history (
+id bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键id',
+sku_code varchar(64) NOT NULL DEFAULT '' COMMENT '促销品code',
+before_1 longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT json_object() COMMENT '变更前详情',
+after_1 longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT json_object() COMMENT '变更后详情',
+operator_employee_id varchar(64) NOT NULL DEFAULT '' COMMENT '操作人 employee ID',
+create_time timestamp NOT NULL DEFAULT current_timestamp() COMMENT '创建时间',
+update_time timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT '更新时间',
+PRIMARY KEY (id),
+KEY idx_sku_code (sku_code)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='促销品修改历史';
 #end
 -- Comments
 -- SELECT V_PAYABLE_AMT, DIS_ADJUST_TOTAL_PAYABLE;

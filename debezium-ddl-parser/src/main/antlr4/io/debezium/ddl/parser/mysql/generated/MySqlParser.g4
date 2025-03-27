@@ -2333,6 +2333,7 @@ defaultValue
     | currentTimestamp (ON UPDATE currentTimestamp)?
     | '(' expression ')'
     | '(' fullId ')'
+    | scalarFunctionName '(' functionArgs? ')'
     ;
 
 currentTimestamp
