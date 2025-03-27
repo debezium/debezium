@@ -58,7 +58,6 @@ public abstract class AbstractEmbeddingsTransformation<R extends ConnectRecord<R
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
-            .required()
             .withDescription(
                     "Name of the field which which will be appended to the record and which would contain the embeddings of the content `filed.source` field. Supports also nested fields.");
 
@@ -118,8 +117,8 @@ public abstract class AbstractEmbeddingsTransformation<R extends ConnectRecord<R
     }
 
     private void validateConfiguration() {
-        if (sourceField.isBlank() || embeddingsField.isBlank()) {
-            throw new ConfigException(format("Both '%s' and '%s' must be set to non-empty value.", TEXT_FIELD, EMBEDDGINS_FIELD));
+        if (sourceField.isBlank()) {
+            throw new ConfigException(format("'%s' must be set to non-empty value.", TEXT_FIELD));
         }
     }
 
@@ -151,13 +150,21 @@ public abstract class AbstractEmbeddingsTransformation<R extends ConnectRecord<R
      * Copies the original record and appends to it embeddings of the text contained in the source field of the records.
      */
     protected R buildUpdatedRecord(R original, String text) {
-        final Struct value = (Struct) original.value();
+        final Struct value = requireStruct(original.value(), "Original value must be struct");
         final TextSegment segment = TextSegment.from(text);
         final Embedding embedding = model.embed(segment).content();
 
-        final List<ConnectRecordUtil.NewEntry> newEntries = List.of(new ConnectRecordUtil.NewEntry(embeddingsField, EMBEDDING_SCHEMA, embedding.vectorAsList()));
-        final Schema updatedSchema = schemaUpdateCache.computeIfAbsent(value.schema(), valueSchema -> ConnectRecordUtil.makeNewSchema(valueSchema, newEntries));
-        final Struct updatedValue = ConnectRecordUtil.makeUpdatedValue(value, newEntries, updatedSchema);
+        final Schema updatedSchema;
+        final Object updatedValue;
+        if (embeddingsField == null) {
+            updatedSchema = EMBEDDING_SCHEMA;
+            updatedValue = embedding.vectorAsList();
+        }
+        else {
+            final List<ConnectRecordUtil.NewEntry> newEntries = List.of(new ConnectRecordUtil.NewEntry(embeddingsField, EMBEDDING_SCHEMA, embedding.vectorAsList()));
+            updatedSchema = schemaUpdateCache.computeIfAbsent(value.schema(), valueSchema -> ConnectRecordUtil.makeNewSchema(valueSchema, newEntries));
+            updatedValue = ConnectRecordUtil.makeUpdatedValue(value, newEntries, updatedSchema);
+        }
 
         return original.newRecord(
                 original.topic(),
