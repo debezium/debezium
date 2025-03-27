@@ -197,7 +197,7 @@ When this is used, you don't need to set `schemaHistory.database.auth.username` 
 |[]
 |===
 
-== Using the platform
+== Use the platform
 
 In this section we will do a walkthrough of the different functionalities of the UI.
 
@@ -209,6 +209,10 @@ When you create a source, it can be shared between different pipelines, which me
 ==== Create a new source
 In this section, you can configure your source in two different ways. You can use the `Form Editor`, where you can enter the name of the source and a description, and then specify the list of properties for the specific source.
 Refer to the connector-specific documentation page for the available properties.
+
+[.responsive]
+video::CVY4Y4kAs_E[youtube, title="Create, edit and remove a source"]
+
 
 ==== Configure the source with Smart Editor
 The other option is the `Smart Editor`, where you can directly edit/paste the `JSON` configuration.
@@ -274,7 +278,7 @@ Editing a source will affect all pipelines that use it.
 
 === Destination
 In this section, you can define the destinations where your source data will be sent.
-All {prodname} supported databases and systems are available.
+All {prodname} Server sinks are available as destination.
 When you create a destination, it can be shared between different pipelines, which means that every change to a destination will be reflected in every pipeline that uses it.
 
 ==== Create a new destination
@@ -407,9 +411,20 @@ A transform can be deleted only if it is not used in any pipeline; otherwise, yo
 When the transform is no longer used in any pipeline, you can delete it using the `Delete` button.
 
 === Pipeline
+The pipeline section is the place where you connect the "dots". You can define where your data comes, how to eventually transform them and where they should go.
+
 ==== Create
+In the pipeline menu you can click on `Create your first pipeline` and you will get into the `Pipeline Designer`.
+Here you can add the pieces that composes you data pipeline. First of all, you need to add a source clicking on the `+ Source` box and the you can either choose a previously created source or directly create a new one.
+
+Similarly, you can add a destination clicking on the `+ Destination` box.
+
+If you want to apply some transformation to your data, you can add it in the same way just clicking on the `+ Transform` box.
+
+When a transform as a predicate configured, you will see a image:predicate-icon.png[alt text] on top of it. A tooltip will show the name of the predicate used.
+
 ==== Delete
 ==== Edit
 ===== Transformations
-=== Monitoring
+==== Monitoring
 
