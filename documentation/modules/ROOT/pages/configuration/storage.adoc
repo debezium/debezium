@@ -279,6 +279,9 @@ The store uses Redis cache to store the data using https://redis.io/docs/latest/
 |Default
 |Description
 
+|[[offset-storage-redis]]<<offset-storage-redis, `offset.storage`>>
+|
+|Must be set to `io.debezium.storage.redis.offset.RedisOffsetBackingStore`
 |[[offset-storage-redis-key]]<<offset-storage-redis-key, `offset.storage.redis.key`>>
 |metadata:debezium:offsets
 |The Redis key that will be used to store the offsets.
@@ -335,6 +338,9 @@ The store uses Redis cache to store the data using https://redis.io/docs/latest/
 |Default
 |Description
 
+|[[schema-history-internal-redis]]<<schema-history-internal-redis, `schema.history.internal`>>
+|
+|Must be set to `io.debezium.storage.redis.history.RedisSchemaHistory`
 |[[schema-history-internal-redis-key]]<<schema-history-internal-redis-key, `schema.history.internal.redis.key`>>
 |metadata:debezium:schema_history
 |The Redis key that will be used to store the database schema history.
