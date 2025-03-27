@@ -919,7 +919,6 @@ If the {prodname} connector is configured to use the `online_catalog` mode, and 
 
 Following this procedure helps to ensure that Oracle LogMiner can safely reconstruct the SQL for all data changes.
 
-ifdef::community[]
 ==== Hybrid approach
 
 This is a new, experimental strategy that can be enabled by setting the strategy to `hybrid`.
@@ -935,7 +934,6 @@ The connector reports a failure only if both Oracle LogMiner and the connector a
 You cannot use the `hybrid` mining strategy if the xref:oracle-property-lob-enabled[`lob.enabled`] property is set to `true`.
 If you require streaming `CLOB`, `BLOB`, or `XML` data, only the `online_catalog` or `redo_log_catalog` strategies can be used.
 ====
-endif::community[]
 
 [[oracle-logminer-query-modes]]
 === Query Modes
@@ -1812,22 +1810,7 @@ The following table describes how the connector maps basic character types.
 
 [id="oracle-binary-character-lob-types"]
 === Binary and Character LOB types
-ifdef::community[]
-[NOTE]
-====
-Support for `BLOB`, `CLOB`, and `NCLOB` is currently in incubating state, that is, the exact semantics, configuration options and so forth might change in future revisions, based on feedback we receive.
-Please let us know if you encounter any problems while using these data types.
-====
-endif::community[]
-ifdef::product[]
-[IMPORTANT]
-====
-Use of the `BLOB`, `CLOB`, and `NCLOB` with the {prodname} Oracle connector is a Technology Preview feature only.
-Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
-Red Hat does not recommend using them in production. These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview[https://access.redhat.com/support/offerings/techpreview].
-====
-endif::product[]
+
 The following table describes how the connector maps binary and character large object (LOB) data types.
 
 .Mappings for Oracle binary and character LOB types
@@ -4194,10 +4177,6 @@ endif::community[]
 By default, change events have large object columns, but the columns contain no values.
 There is a certain amount of overhead in processing and managing large object column types and payloads.
 To capture large object values and serialized them in change events, set this option to `true`.
-
-ifdef::product[]
-NOTE: Use of large object data types is a Technology Preview feature.
-endif::product[]
 
 |[[oracle-property-unavailable-value-placeholder]]<<oracle-property-unavailable-value-placeholder, `+unavailable.value.placeholder+`>>
 |`__debezium_unavailable_value`
