@@ -76,6 +76,15 @@ public class AbstractEmbeddingsTransformationTest {
         assertThat(payloadStruct.getStruct("after").getArray("prod_embedding")).contains(0.0f, 1.0f, 2.0f, 3.0f);
     }
 
+    @Test
+    public void testNoEmbeddingsConfProvided() {
+        embeddingSmt.configure(Map.of("field.source", "after.product"));
+        SourceRecord transformedRecord = embeddingSmt.apply(SOURCE_RECORD);
+
+        List<Float> payloadStruct = (List<Float>) transformedRecord.value();
+        assertThat(payloadStruct).contains(0.0f, 1.0f, 2.0f, 3.0f);
+    }
+
     /**
      * Implementation of {@link AbstractEmbeddingsTransformation}, which provides dummy embeddings model for basic testing.
      */
