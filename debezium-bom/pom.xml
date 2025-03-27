@@ -52,7 +52,7 @@
         <version.azure.blob>12.29.0</version.azure.blob>
 
         <!-- Azure Identity -->
-        <version.azure.identity>1.14.1</version.azure.identity>
+        <version.azure.identity>1.15.4</version.azure.identity>
 
         <!-- K8s Config Map Storage -->
         <version.kubernetes.client>6.13.4</version.kubernetes.client>
