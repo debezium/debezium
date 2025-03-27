@@ -335,7 +335,13 @@ jobs:
 
   # Approx 45m
   build_informix:
-    name: "Informix"
+    strategy:
+      # Run each MariaDB job sequentially
+      max-parallel: 1
+      matrix:
+        profile: [ 'assembly,informix12', 'assembly,informix14' ]
+      fail-fast: false
+    name: "Informix - ${{ matrix.profile }}"
     needs: [ check_style ]
     runs-on: ubuntu-latest
     steps:
@@ -362,6 +368,7 @@ jobs:
         with:
           path-core: core
           path-informix: informix
+          profile: ${{ matrix.profile }}
 
   build_ibmi:
     name: "IBMi"
