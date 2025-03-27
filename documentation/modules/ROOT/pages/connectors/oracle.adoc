@@ -2795,9 +2795,21 @@ And because these operation types very closely resemble `CLOB` operations, the r
 
 [WARNING]
 ====
-When storing strings when `EXTENDED` is enabled that contain apostrophe. (`'`) characters and the byte length does not exceed the legacy maximum lengths.
-In this use case, Oracle LogMiner does not properly escape the single apostrophe characters in the reconstructed SQL, which leads to invalid SQL that cannot be handled by the {prodname} Oracle connector.
-Please see https://issues.redhat.com/browse/DBZ-8034[DBZ-8034] for more details.
+When Oracle is configured to use EXTENDED string sizes, LogMiner sometimes fails to escape single quote characters (`'`) when it reconstructs the SQL for an extended string field.
+This problem can occur if the byte length of the extended string field does not exceed the legacy maximum length.
+As a result, values in these fields can be truncated, resulting in invalid SQL statements, which the Oracle connector is unable to parse. +
+
+To help resolve some instances of the problem, you can configure the connector to relax single-quote detection by setting the following property to `true`:
+
+`internal.log.mining.sql.relaxed.quote.detection` +
+
+ifdef::product[]
+For more information, see the link:{LinkPreviousDebeziumReleaseNotes}#debezium-release-notes-tech-preview-oracle-extended-max-string-size-support[{NameDebeziumReleaseNotes}].
+endif::product[]
+ifdef::community[]
+Note that the use of this internal setting is not currently a supported feature. +
+For more information, see https://issues.redhat.com/browse/DBZ-8034[DBZ-8034].
+endif::community[]
 ====
 
 // Type: assembly
