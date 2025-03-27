@@ -28,7 +28,7 @@ import dev.langchain4j.model.output.Response;
 /**
  * @author vjuranek
  */
-public class AbstractEmbeddingsSmtTest {
+public class AbstractEmbeddingsTransformationTest {
     public static final Schema VALUE_SCHEMA = SchemaBuilder.struct()
             .name("mysql.inventory.products.Value")
             .field("id", Schema.INT64_SCHEMA)
@@ -77,9 +77,9 @@ public class AbstractEmbeddingsSmtTest {
     }
 
     /**
-     * Implementation of {@link AbstractEmbeddingsSmt}, which provides dummy embeddings model for basic testing.
+     * Implementation of {@link AbstractEmbeddingsTransformation}, which provides dummy embeddings model for basic testing.
      */
-    private static class DummyEmbeddingSmt extends AbstractEmbeddingsSmt<SourceRecord> {
+    private static class DummyEmbeddingSmt extends AbstractEmbeddingsTransformation<SourceRecord> {
         @Override
         public EmbeddingModel getModel() {
             return new DummyEmbeddingModel();
