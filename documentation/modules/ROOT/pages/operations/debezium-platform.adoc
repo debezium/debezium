@@ -32,6 +32,8 @@ Pipeline:: Defines how your data flows from a source to a destination while bein
 
 Once you define a pipeline, how it will be deployed is in charge of the platform.
 
+Every pipeline will be mapped to a Debezium Server instance. For the Kubernetes environment (the only supported as of now) this will correspond to a DebeziumServer custom resource.
+
 === Architecture
 The platform is composed of two main components:
 
@@ -423,8 +425,22 @@ If you want to apply some transformation to your data, you can add it in the sam
 
 When a transform as a predicate configured, you will see a image:predicate-icon.png[alt text] on top of it. A tooltip will show the name of the predicate used.
 
+Once finished designing your pipeline you can click on `Configure Pipeline` and then you can now configure the name, the description and the logging level.
+
 ==== Delete
+To delete a pipeline, go to the `Pipeline` menu and then click the `action` menu of the pipeline you want to delete, then click `Delete`.
+Only the pipeline will be removed, the source, the destination and the transformations will not be deleted.
+
 ==== Edit
-===== Transformations
-==== Monitoring
+To edit a pipeline, go to the `Pipeline` menu and then click the `action` menu of the destination you want to edit, then click `Edit pipeline`.
+As first step you can modify the transformations through the pipeline designer, we will go deeper in this part in the next section, and then you can edit the name, the description and the log level.
+
+===== Remove or ordering transformations
+Once you are in the `Pipeline designer` you can modify the order of transformations or delete one by clicking on the image:transformation-box-edit.png[alt text] icon.
+
+==== Observability
+Currently, th observability is limited to logs that can be accessed from two places.
+You can go to `Pipeline` then click on the pipeline name of your interest and then click on the `Pipeline logs`.
+The other ways is to go to `Pipeline` and then click the `action` menu of the pipeline you are interested, then click `View logs`.
+
 
