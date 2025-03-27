@@ -514,6 +514,26 @@ CREATE TABLE `tab1` (
   l LONG,
   mi MIDDLEINT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE trace_info (
+id bigint(20) NOT NULL AUTO_INCREMENT,
+trace_code varchar(20) NOT NULL DEFAULT '' COMMENT '溯源码',
+whole_order_no varchar(20) NOT NULL DEFAULT '' COMMENT '购物订单号',
+order_no varchar(20) NOT NULL DEFAULT '' COMMENT '购物子订单号',
+express_no varchar(30) NOT NULL DEFAULT '' COMMENT '快递单号',
+shipped_time datetime DEFAULT NULL COMMENT '发货时间',
+received_time datetime DEFAULT NULL COMMENT '收货时间',
+sku_code varchar(50) DEFAULT NULL COMMENT '商品sku',
+sku_name varchar(255) DEFAULT '' COMMENT '商品名称',
+is_refund tinyint(4) DEFAULT 0 COMMENT '是否退货，0，否，1是',
+is_exchange tinyint(4) DEFAULT 0 COMMENT '是否换货，0，否，1是',
+sap_code varchar(50) NOT NULL DEFAULT CURDATE() COMMENT '商品物料号',
+create_time datetime DEFAULT CURTIME() COMMENT '创建时间',
+update_time datetime DEFAULT NULL COMMENT '更新时间',
+PRIMARY KEY (id),
+UNIQUE KEY idx_unique_key (trace_code,order_no,sku_code),
+KEY idx_order_no (order_no)
+) ENGINE=InnoDB AUTO_INCREMENT=123 DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
 #end
 -- Comments
 -- SELECT V_PAYABLE_AMT, DIS_ADJUST_TOTAL_PAYABLE;

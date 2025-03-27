@@ -2337,7 +2337,7 @@ defaultValue
 
 currentTimestamp
     : (
-        (CURRENT_TIMESTAMP | LOCALTIME | LOCALTIMESTAMP) ('(' decimalLiteral? ')')?
+        (CURRENT_TIMESTAMP | LOCALTIME | LOCALTIMESTAMP  | CURDATE | CURTIME) ('(' decimalLiteral? ')')?
         | NOW '(' decimalLiteral? ')'
     )
     ;
