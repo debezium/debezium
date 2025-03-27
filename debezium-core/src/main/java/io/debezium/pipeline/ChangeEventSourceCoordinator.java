@@ -240,7 +240,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
             streaming = true;
 
             try {
-
+                streaming = snapshotterService.getSnapshotter().shouldStream();
                 context.waitStreamingPaused();
 
                 previousLogContext.set(taskContext.configureLoggingContext("snapshot"));
