@@ -44,7 +44,7 @@ The internal schema history is configured in all cases via connector configurati
 The store uses arbitrary relational database to store the data for which an appropriate link:https://en.wikipedia.org/wiki/JDBC_driver[JDBC driver] is provided.
 Either the source database can be used as the storage or any other database.
 
-The users either use the default pre-configured DML and DDL statements or can override them with their own either for database dialect compatibility or to tailor them to their use case/
+The users either use the default pre-configured DML and DDL statements or can override them with their own either for database dialect compatibility or to tailor them to their use case.
 
 
 === Offset Store
@@ -268,8 +268,120 @@ The users either use the default pre-configured DML and DDL statements or can ov
 |===
 
 == Redis
+
+The store uses Redis cache to store the data using https://redis.io/docs/latest/develop/clients/jedis/[Jedis client].
+
 === Offset Store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[offset-storage-redis-key]]<<offset-storage-redis-key, `offset.storage.redis.key`>>
+|metadata:debezium:offsets
+|The Redis key that will be used to store the offsets.
+|[[offset-storage-redis-address]]<<offset-storage-redis-address, `offset.storage.redis.address`>>
+|No default
+|The url that will be used to access Redis.
+|[[offset-storage-redis-user]]<<offset-storage-redis-user, `offset.storage.redis.user`>>
+|No default
+|The user that will be used to access Redis.
+|[[offset-storage-redis-password]]<<offset-storage-redis-password, `offset.storage.redis.password`>>
+|No default
+|The password that will be used to access Redis.
+|[[offset-storage-redis-db-index]]<<offset-storage-redis-db-index, `offset.storage.redis.db.index`>>
+|0
+|The database index (0..15) that will be used to access Redis.
+|[[offset-storage-redis-ssl-enabled]]<<offset-storage-redis-ssl-enabled,`offset.storage.redis.ssl.enabled`>>
+|false
+|Use SSL for Redis connection.
+|[[offset-storage-redis-connection-timeout-ms]]<<offset-storage-redis-connection-timeout-ms, `offset.storage.redis.connection.timeout.ms`>>
+|2000
+|Connection timeout (in ms).
+|[[offset-storage-redis-socket-timeout-ms]]<<offset-storage-redis-socket-timeout-ms, `offset.storage.redis.socket.timeout.ms`>>
+|2000
+|Socket timeout (in ms).
+|[[offset-storage-redis-retry-initial-delay-ms]]<<offset-storage-redis-retry-initial-delay-ms, `offset.storage.redis.retry.initial.delay.ms`>>
+|300
+|Initial retry delay (in ms).
+|[[offset-storage-redis-retry-max-delay-ms]]<<offset-storage-redis-retry-max-delay-ms, `offset.storage.redis.retry.max.delay.ms`>>
+|10000
+|Maximum retry delay (in ms).
+|[[offset-storage-redis-retry-max-attempts]]<<offset-storage-redis-retry-max-attempts, `offset.storage.redis.retry.max.attempts`>>
+|10
+|Maximum number of retry attempts before giving up.
+|[[offset-storage-redis-wait-enabled]]<<offset-storage-redis-wait-enabled,`offset.storage.redis.wait.enabled`>>
+|false
+|Enables wait for replica. In case Redis is configured with a replica shard, this allows to verify that the data has been written to the replica.
+|[[offset-storage-redis-wait-timeout-ms]]<<offset-storage-redis-wait-timeout-ms,`offset.storage.redis.wait.timeout.ms`>>
+|1000
+|Timeout when wait for replica.
+|[[offset-storage-redis-wait-retry-enabled]]<<offset-storage-redis-wait-retry-enabled, `offset.storage.redis.wait.retry.enabled`>>
+|false
+|Enables retry on wait for replica failure.
+|[[offset-storage-redis-wait-retry-delay-ms]]<<offset-storage-redis-wait-retry-delay-ms, `offset.storage.redis.wait.retry.delay.ms`>>
+|1000
+|Delay of retry on wait for replica failure.
+
+|===
+
 === Internal schema history store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[schema-history-internal-redis-key]]<<schema-history-internal-redis-key, `schema.history.internal.redis.key`>>
+|metadata:debezium:schema_history
+|The Redis key that will be used to store the database schema history.
+|[[schema-history-internal-redis-address]]<<schema-history-internal-redis-address, `schema.history.internal.redis.address`>>
+|No default
+|The url that will be used to access Redis.
+|[[schema-history-internal-redis-user]]<<schema-history-internal-redis-user, `schema.history.internal.redis.user`>>
+|No default
+|The user that will be used to access Redis.
+|[[schema-history-internal-redis-password]]<<schema-history-internal-redis-password, `schema.history.internal.redis.password`>>
+|No default
+|The password that will be used to access Redis.
+|[[schema-history-internal-redis-db-index]]<<schema-history-internal-redis-db-index, `schema.history.internal.redis.db.index`>>
+|0
+|The database index (0..15) that will be used to access Redis.
+|[[schema-history-internal-redis-ssl-enabled]]<<schema-history-internal-redis-ssl-enabled,`schema.history.internal.storage.redis.ssl.enabled`>>
+|false
+|Use SSL for Redis connection.
+|[[schema-history-internal-redis-connection-timeout-ms]]<<schema-history-internal-redis-connection-timeout-ms, `schema.history.internal.storage.redis.connection.timeout.ms`>>
+|2000
+|Connection timeout (in ms).
+|[[schema-history-internal-redis-socket-timeout-ms]]<<schema-history-internal-redis-socket-timeout-ms, `schema.history.internal.storage.redis.socket.timeout.ms`>>
+|2000
+|Socket timeout (in ms).
+|[[schema-history-internal-redis-retry-initial-delay-ms]]<<schema-history-internal-redis-retry-initial-delay-ms, `schema.history.internal.storage.redis.retry.initial.delay.ms`>>
+|300
+|Initial retry delay (in ms).
+|[[schema-history-internal-redis-retry-max-delay-ms]]<<schema-history-internal-redis-retry-max-delay-ms, `schema.history.internal.storage.redis.retry.max.delay.ms`>>
+|10000
+|Maximum retry delay (in ms).
+|[[schema-history-internal-redis-retry-max-attempts]]<<schema-history-internal-redis-retry-max-attempts, `schema.history.internal.storage.redis.retry.max.attempts`>>
+|10
+|Maximum number of retry attempts before giving up.
+|[[schema-history-internal-redis-wait-enabled]]<<schema-history-internal-redis-wait-enabled,`schema.history.internal.storage.redis.wait.enabled`>>
+|false
+|Enables wait for replica. In case Redis is configured with a replica shard, this allows to verify that the data has been written to the replica.
+|[[schema-history-internal-redis-wait-timeout-ms]]<<schema-history-internal-redis-wait-timeout-ms,`schema.history.internal.storage.redis.wait.timeout.ms`>>
+|1000
+|Timeout when wait for replica.
+|[[schema-history-internal-redis-wait-retry-enabled]]<<schema-history-internal-redis-wait-retry-enabled, `schema.history.internal.storage.redis.wait.retry.enabled`>>
+|false
+|Enables retry on wait for replica failure.
+|[[schema-history-internal-redis-wait-retry-delay-ms]]<<schema-history-internal-redis-wait-retry-delay-ms, `schema.history.internal.storage.redis.wait.retry.delay.ms`>>
+|1000
+|Delay of retry on wait for replica failure.
+
+|===
 
 == S3
 The store uses link:https://aws.amazon.com/s3/[Amazon S3] object storage service.
