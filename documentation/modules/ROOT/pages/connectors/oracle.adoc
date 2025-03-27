@@ -37,6 +37,9 @@ For information about the Oracle Database versions that are compatible with this
 endif::product[]
 
 {prodname} ingests change events from Oracle by using the native LogMiner database package
+ifdef::product[]
+or the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API].
+endif::product[]
 ifdef::community[]
 , the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API], or https://www.bersler.com/openlogreplicator/[OpenLogReplicator].
 endif::community[]
@@ -1263,17 +1266,13 @@ In the case of the Oracle connector, the structure includes the following fields
 [TIP]
 ====
 The `commit_scn` field is optional and describes the SCN of the transaction commit that the change event participates within.
-ifdef::community[]
 This field is only present when using the LogMiner connection adapter.
-endif::community[]
 ====
-ifdef::community[]
 +
 [TIP]
 ====
 The `user_name` field is only populated when using the LogMiner connection adapter.
 ====
-endif::community[]
 
 `ts_ms`:: An optional field that, if present, contains the time (based on the system clock in the JVM that runs the Kafka Connect task) at which the connector processed the event.
 
@@ -2199,12 +2198,7 @@ The following table describes how the connector maps ROWID (row address) data ty
 |`ROWID`
 |`STRING`
 |
-ifdef::community[]
 _This data type is not supported when using Oracle XStream._
-endif::community[]
-ifdef::product[]
-n/a
-endif::product[]
 
 |`UROWID`
 |n/a
@@ -3451,8 +3445,9 @@ You can set the following values:
 `logminer` (default):: The connector uses the native Oracle LogMiner API.
 ifdef::community[]
 `olr`:: The connector uses OpenLogReplicator.
-`xstream`:: The connector uses the Oracle XStream API.
 endif::community[]
+`xstream`:: The connector uses the Oracle XStream API.
+
 |[[oracle-property-snapshot-mode]]<<oracle-property-snapshot-mode, `+snapshot.mode+`>>
 |_initial_
 |Specifies the mode that the connector uses to take snapshots of a captured table.
@@ -3493,7 +3488,7 @@ ifdef::community[]
 endif::community[]
 
 ifdef::community[]
-`custom`:: The connector performs a snapshot according to the implementation specified by the xref:postgresql-property-snapshot-mode-custom-name[`snapshot.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+`custom`:: The connector performs a snapshot according to the implementation specified by the xref:oracle-property-snapshot-mode-custom-name[`snapshot.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
 endif::community[]
 
 For more information, see the xref:oracle-connector-snapshot-mode-options[table of `snapshot.mode` options].
@@ -3587,12 +3582,7 @@ In a multitenant container database (CDB) environment, the regular expression mu
 
 To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name. +
-ifdef::product[]
-Only POSIX regular expressions are valid.
-endif::product[]
-ifdef::community[]
 In environments that use the LogMiner implementation, you must use POSIX regular expressions only.
-endif::community[]
 
 A snapshot can only include tables that are named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
 
@@ -3634,12 +3624,7 @@ In the resulting snapshot, the connector includes only the records for which `de
 |[[oracle-property-schema-include-list]]<<oracle-property-schema-include-list, `+schema.include.list+`>>
 |No default
 |An optional, comma-separated list of regular expressions that match names of schemas for which you *want* to capture changes.
-ifdef::product[]
-Only POSIX regular expressions are valid.
-endif::product[]
-ifdef::community[]
 In environments that use the LogMiner implementation, you must use POSIX regular expressions only.
-endif::community[]
 Any schema name not included in `schema.include.list` is excluded from having its changes captured.
 By default, all non-system schemas have their changes captured. +
 
@@ -3654,12 +3639,7 @@ If you include this property in the configuration, do not also set the `schema.e
 |[[oracle-property-schema-exclude-list]]<<oracle-property-schema-exclude-list, `+schema.exclude.list+`>>
 |No default
 |An optional, comma-separated list of regular expressions that match names of schemas for which you *do not* want to capture changes.
-ifdef::product[]
-Only POSIX regular expressions are valid.
-endif::product[]
-ifdef::community[]
 In environments that use the LogMiner implementation, you must use POSIX regular expressions only. +
-endif::community[]
 Any schema whose name is not included in `schema.exclude.list` has its changes captured, with the exception of system schemas. +
 
 To match the name of a schema, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
@@ -3669,12 +3649,7 @@ If you include this property in the configuration, do not set the`schema.include
 |[[oracle-property-table-include-list]]<<oracle-property-table-include-list, `+table.include.list+`>>
 |No default
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be captured.
-ifdef::product[]
-Only POSIX regular expressions are valid.
-endif::product[]
-ifdef::community[]
 If you use the LogMiner implementation, use only POSIX regular expressions with this property.
-endif::community[]
 When this property is set, the connector captures changes only from the specified tables.
 Each table identifier uses the following format: +
  +
@@ -3689,12 +3664,7 @@ If you include this property in the configuration, do not also set the `table.ex
 |[[oracle-property-table-exclude-list]]<<oracle-property-table-exclude-list, `+table.exclude.list+`>>
 |No default
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring.
-ifdef::product[]
-Only POSIX regular expressions are valid.
-endif::product[]
-ifdef::community[]
 If you use the LogMiner implementation, use only POSIX regular expressions with this property.
-endif::community[]
 The connector captures change events from any table that is not specified in the exclude list.
 Specify the identifier for each table using the following format: +
  +
@@ -3707,12 +3677,7 @@ If you include this property in the configuration, do not also set the `table.in
 |[[oracle-property-column-include-list]]<<oracle-property-column-include-list, `+column.include.list+`>>
 |No default
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that want to include in the change event message values.
-ifdef::product[]
-Only POSIX regular expressions are valid.
-endif::product[]
-ifdef::community[]
 In environments that use the LogMiner implementation, you must use POSIX regular expressions only.
-endif::community[]
 Fully-qualified names for columns use the following format: +
  +
 `_<Schema_name>.<table_name>.<column_name>_` +
@@ -3726,12 +3691,7 @@ If you include this property in the configuration, do not also set the `column.e
 |[[oracle-property-column-exclude-list]]<<oracle-property-column-exclude-list, `+column.exclude.list+`>>
 |No default
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that you want to exclude from change event message values.
-ifdef::product[]
-Only POSIX regular expressions are valid.
-endif::product[]
-ifdef::community[]
 In environments that use the LogMiner implementation, you must use POSIX regular expressions only.
-endif::community[]
 Fully-qualified column names use the following format: +
  +
 `_<schema_name>.<table_name>.<column_name>_` +
@@ -4199,8 +4159,11 @@ However, if connectors encounter table lock contention errors, use this property
 |[[oracle-property-log-mining-include-redo-sql]]<<oracle-property-log-mining-include-redo-sql, `+log.mining.include.redo.sql+`>>
 |`false`
 |Specifies whether the redo log constructed SQL statement is included in `source.redo_sql` field.
+ifdef::product[]
+This configuration is ignored when using the XStream adapter.
+endif::product[]
 ifdef::community[]
-This configuration is ignored when using XStream or OpenLogReplicator adapters.
+This configuration is ignored when using the XStream or OpenLogReplicator adapters.
 endif::community[]
 
 |[[oracle-property-lob-enabled]]<<oracle-property-lob-enabled, `+lob.enabled+`>>
@@ -5204,7 +5167,11 @@ Consequently, in environments that use the OpenLogReplicator adapter, the {prodn
 === OpenLogReplicator XML support
 
 To capture XML columns using {prodname} Oracle connector with OpenLogReplicator, OpenLogReplicator should be 1.5.0 or later.
+endif::community[]
 
+// Type: assembly
+// ModuleID: using-oracle-xstream-databases-with-debezium
+// Title: Using Oracle XStream databases with {prodname}
 [[oracle-xstreams-support]]
 == XStream support
 
@@ -5217,6 +5184,9 @@ To configure the connector to use Oracle XStream, you must apply specific databa
 * To use the XStream API, you must have a license for the GoldenGate product.
 Installing GoldenGate is not required.
 
+// Type: procedure
+// ModuleID: preparing-oracle-xstream-databases-for-use-with-debezium
+// Title: Preparing Oracle XStream databases for use with {prodname}
 === Preparing the Database
 
 .Configuration needed for Oracle XStream
@@ -5246,14 +5216,20 @@ The following illustrates how to configure this on a specific table, which is th
 ALTER TABLE inventory.customers ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
 ----
 
+// Type: procedure
+// ModuleID: creating-xstream-users-for-the-debezium-oracle-connector
+// Title: Creating XStream users for the {prodname} Oracle connector
+[id="creating-users-for-the-connector"]
 === Creating XStream users for the connector
 
 The {prodname} Oracle connector requires that users accounts be set up with specific permissions so that the connector can capture change events.
-The following briefly describes these user configurations using a multi-tenant database model.
+The following examples provide provide information about how to create user configurations in a multi-tenant database model.
 
-
+// Type: procedure
+// ModuleID: creating-an-xstream-administrator-user-for-the-debezium-oracle-connector
+// Title: Creating an XStream administrator for the {prodname} Oracle connector
 [[oracle-create-users-xstream]]
-.Creating an XStream Administrator user
+==== Creating an XStream Administrator user
 [source,indent=0]
 ----
 sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
@@ -5287,7 +5263,10 @@ sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
   exit;
 ----
 
-.Creating the connector's XStream user
+// Type: procedure
+// ModuleID: creating-an-xstream-user-for-the-debezium-oracle-connector
+// Title: Creating an XStream user for the {prodname} Oracle connector
+==== Creating the connector's XStream user
 [source,indent=0]
 ----
 sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
@@ -5315,10 +5294,15 @@ sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
   exit;
 ----
 
+// Type: procedure
+// ModuleID: creating-an-xstream-outbound-server
+// Title: Creating an XStream outbound server
 === Create an XStream Outbound Server
 
-Create an https://docs.oracle.com/cd/E11882_01/server.112/e16545/xstrm_cncpt.htm#XSTRM1088[XStream Outbound server]
+Create an https://docs.oracle.com/cd/E11882_01/server.112/e16545/xstrm_cncpt.htm#XSTRM1088[XStream Outbound server].
+ifdef::community[]
 (given the right privileges, this might be done automatically by the connector going forward, see {jira-url}/browse/DBZ-721[DBZ-721]):
+endif::community[]
 
 .Create an XStream Outbound Server
 [source,indent=0]
@@ -5341,8 +5325,7 @@ exit;
 
 [NOTE]
 ====
-When setting up an XStream Outbound Server to capture changes from a pluggable database,
-the `source_container_name` parameter should be provided specifying the pluggable database name.
+When you set up an XStream Outbound Server to capture changes from a pluggable database, specify the pluggable database name as value for the `source_container_name` parameter.
 ====
 
 .Configure the XStream user account to connect to the XStream Outbound Server
@@ -5364,6 +5347,9 @@ A single XStream Outbound server cannot be shared by multiple {prodname} Oracle 
 Each connector requires a unique XStream Outbound connector to be configured.
 ====
 
+// Type: procedure
+// ModuleID: configuring-debezium-to-use-the-xstream-adapter
+// Title: Configuring {prodname} to use the XStream adapter
 [[selecting-the-xstream-adapter]]
 === Configuring the XStream adapter
 
@@ -5393,7 +5379,7 @@ The following configuration example adds the properties `database.connection.ada
     }
 }
 ----
-
+// Type: procedure
 [id="obtaining-oracle-jdbc-driver-and-xstreams-api-files"]
 === Obtaining the Oracle JDBC driver and XStream API files
 
@@ -5438,6 +5424,7 @@ instantclient_21_1/
 LD_LIBRARY_PATH=/path/to/instant_client/
 ----
 
+// Type: reference
 [[oracle-xstreams-connector-properties]]
 === XStream connector properties
 
@@ -5455,6 +5442,8 @@ The following configuration properties are _required_ when using XStream unless 
 
 |===
 
+// Title: Oracle Xstream and the `DBMS_LOB` package
+// Type: concept
 [[oracle-xstreams-dbms-lob-package]]
 === XStream and DBMS_LOB
 
@@ -5462,10 +5451,10 @@ Oracle provides a database package called `DBMS_LOB` that consists of a collecti
 Most of these programs manipulate the LOB column in totality, however, one program, `WRITEAPPEND`, is capable of manipulating a subset of the LOB data buffer.
 
 When using XStream, `WRITEAPPEND` emits a logical change record (LCR) event for each invocation of the program.
-These LCR events are not combined into a single change event like they are when using the Oracle LogMiner adapter, and so consumers of the topic should be prepared to receive events with partial column values.
+These LCR events are not combined into a single change event as they are when using the Oracle LogMiner adapter.
+As a result, consumers of the topic might receive events with partial column values.
+ifdef::community[]
 This diverged behavior is captured in https://issues.redhat.com/browse/DBZ-4741[DBZ-4741] and will be addressed in a future release.
-
-
 endif::community[]
 
 // Type: concept
