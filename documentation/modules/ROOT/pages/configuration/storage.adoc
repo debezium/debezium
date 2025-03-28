@@ -39,19 +39,19 @@ Debezium can use Kafka to store its state, including source offsets, schema hist
 |Description
 
 |[[offset-storage-kafka]]<<offset-storage-kafka,`offset.storage`>>
-|
+|No default
 |Must be set to `org.apache.kafka.connect.storage.KafkaOffsetBackingStore`.
 
 |[[offset-storage-topic]]<<offset-storage-topic,`offset.storage.topic`>>
-|
+|No default
 |Defines the Kafka topic where offsets will be stored. It's essential that this topic is configured with log compaction enabled to retain the latest offset information.
 
 |[[offset-storage-partitions]]<<offset-storage-partitions,`offset.storage.partitions`>>
-|
+|25
 |Indicates the number of partitions for the offset storage topic. This should align with your Kafka cluster's partitioning strategy.
 
 |[[offset-storage-replication-factor]]<<offset-storage-replication-factor,`offset.storage.replication.factor`>>
-|
+|3
 |Sets the replication factor for the offset storage topic, ensuring fault tolerance by replicating data across multiple brokers.
 
 |===
@@ -65,15 +65,15 @@ Debezium can use Kafka to store its state, including source offsets, schema hist
 |Description
 
 |[[schema-history-internal-kafka]]<<schema-history-internal-kafka,`schema.history.internal.kafka`>>
-|
+|No default
 |Must be set to `io.debezium.storage.kafka.history.KafkaSchemaHistory`.
 
 |[[schema-history-internal-kafka-topic]]<<schema-history-internal-kafka-topic,`schema.history.internal.kafka.topic`>>
-|
+|No default
 |The name of the topic for the database schema history
 
 |[[schema-history-internal-kafka-bootstrap-servers]]<<schema-history-internal-kafka-bootstrap-servers,`schema.history.internal.kafka.bootstrap.servers`>>
-|
+|No default
 |A list of host/port pairs that the connector will use for establishing the initial connection to the Kafka cluster for retrieving database schema history previously stored by the connector. This should point to the same Kafka cluster used by the Kafka Connect process.
 
 |[[schema-history-internal-kafka-recovery-poll-interval-ms]]<<schema-history-internal-kafka-recovery-poll-interval-ms,`schema.history.internal.kafka.recovery.poll.interval.ms`>>
@@ -107,7 +107,7 @@ It's possible to persist the position (offsets) of the connector in a local file
 |Description
 
 |[[offset-storage-file]]<<offset-storage-file,`offset.storage`>>
-|
+|No default
 |Must be set to `org.apache.kafka.connect.storage.FileOffsetBackingStore`
 
 |[[offset-storage-file-filename]]<<offset-storage-file-filename,`offset.storage.file.filename`>>
@@ -186,7 +186,7 @@ The users either use the default pre-configured DML and DDL statements or can ov
 |Description
 
 |[[jdbc-offset-type]]<<jdbc-offset-type, `offset.storage`>>
-|
+|No default
 |Must be set to `io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore`.
 
 |[[jdbc-offset-url]]<<jdbc-offset-url, `offset.storage.jdbc.connection.url`>>
@@ -239,7 +239,7 @@ The users either use the default pre-configured DML and DDL statements or can ov
 |Description
 
 |[[deprecated-jdbc-offset-type]]<<deprecated-jdbc-offset-type, `offset.storage`>>
-|
+|No default
 |Must be set to `io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore`.
 
 |[[deprecated-jdbc-offset-url]]<<deprecated-jdbc-offset-url, `offset.storage.jdbc.url`>>
@@ -294,7 +294,7 @@ The users either use the default pre-configured DML and DDL statements or can ov
 |Description
 
 |[[jdbc-history-type]]<<jdbc-history-type, `schema.history.internal`>>
-|
+|No default
 |Must be set to `io.debezium.storage.jdbc.history.JdbcSchemaHistory`.
 
 |[[jdbc-history-schema-history-url]]<<jdbc-history-schema-history-url, `schema.history.internal.jdbc.connection.url`>>
@@ -348,7 +348,7 @@ The users either use the default pre-configured DML and DDL statements or can ov
 |Description
 
 |[[deprecated-jdbc-history-type]]<<deprecated-jdbc-history-type, `schema.history.internal`>>
-|
+|No default
 |Must be set to `io.debezium.storage.jdbc.history.JdbcSchemaHistory`.
 
 |[[deprecated-jdbc-history-schema-history-url]]<<deprecated-jdbc-history-schema-history-url, `schema.history.internal.jdbc.url`>>
@@ -410,7 +410,7 @@ The store uses Redis cache to store the data using https://redis.io/docs/latest/
 |Description
 
 |[[offset-storage-redis]]<<offset-storage-redis, `offset.storage`>>
-|
+|No default
 |Must be set to `io.debezium.storage.redis.offset.RedisOffsetBackingStore`
 |[[offset-storage-redis-key]]<<offset-storage-redis-key, `offset.storage.redis.key`>>
 |metadata:debezium:offsets
@@ -469,7 +469,7 @@ The store uses Redis cache to store the data using https://redis.io/docs/latest/
 |Description
 
 |[[schema-history-internal-redis]]<<schema-history-internal-redis, `schema.history.internal`>>
-|
+|No default
 |Must be set to `io.debezium.storage.redis.history.RedisSchemaHistory`
 |[[schema-history-internal-redis-key]]<<schema-history-internal-redis-key, `schema.history.internal.redis.key`>>
 |metadata:debezium:schema_history
@@ -532,7 +532,7 @@ It is typically used when Debezium is deployed in link:https://aws.amazon.com/ms
 |Description
 
 |[[s3-history-type]]<<s3-history-type, `schema.history.internal`>>
-|
+|No default
 |Must be set to `io.debezium.storage.s3.history.S3SchemaHistory`.
 
 |[[s3-history-access.key.id]]<<s3-history-access.key.id, `schema.history.internal.s3.access.key.id`>>
