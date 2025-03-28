@@ -138,8 +138,36 @@ It's possible to persist the position (offsets) of the connector in a local file
 |===
 
 == Memory
+
+`MemoryOffsetBackingStore` is a volatile, in-memory store used by Debezium Embedded to track source offsets. It keeps the offset state only during the application's runtime and loses it on shutdown or crash. It's ideal for testing or short-lived tasks but not suitable for production where offset persistence is needed.
+
 === Offset Store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[offset-storage-memory]]<<offset-storage-memory,`offset.storage`>>
+|No default
+|Must be set to `org.apache.kafka.connect.storage.MemoryOffsetBackingStore`
+
+|===
+
 === Internal schema history store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[schema-history-internal-memory]]<<schema-history-internal-memory,`schema.history.internal`>>
+|No default
+|Must be set to `io.debezium.relational.history.MemorySchemaHistory`
+
+|===
 
 
 == JDBC
