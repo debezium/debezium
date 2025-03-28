@@ -1,0 +1,465 @@
+[id="debezium-platform"]
+= {prodname} Management Platform
+
+:linkattrs:
+:icons: font
+:toc:
+:toclevels: 3
+:toc-placement: macro
+
+toc::[]
+
+ifdef::community[]
+[NOTE]
+====
+This project is currently in an incubating state.
+The exact semantics, configuration options, and so forth are subject to change, based on the feedback that we receive.
+====
+endif::community[]
+
+{prodname} Management Platform aims to simplify the deployment of {prodname} to various environments in a highly opinionated manner.
+To achieve this goal, the platform uses a data-centric view of {prodname} components.
+
+Implementing the platform represents a natural evolution from {prodname} Server. Past releases provided the {prodname} operator to simplify operation in Kubernetes environments. With the introduction of the platform, {prodname} now provides a high-level abstraction to deploy your data pipelines in different environments while leveraging {prodname} Server.
+
+== Basic concepts
+In {prodname} Management Platform there are four main concepts:
+
+Source:: Defines the source of your data
+Destination:: Defines the destination of your data
+Transform:: Define how a single data is transformed
+Pipeline:: Defines how your data flows from a source to a destination while being transformed along the way.
+
+After you define a pipeline, it is deployed based on how you configure the platform.
+
+Each pipeline is mapped to a {prodname} Server instance. 
+For the Kubernetes environment (currently, the only supported environment) the server instance corresponds to a `DebeziumServer` custom resource.
+
+=== Architecture
+
+The platform is composed of the following components:
+
+Conductor:: The back-end component that provides a set of APIs to orchestrate and control {prodname} deployments.
+Stage:: The front-end component that provides a user interface to interact with the Conductor.
+
+The conductor component itself is composed of the following subcomponents:
+
+API Server:: The main entry point.
+It provides a set of APIs to interact with the platform.
+Watcher:: The component that is responsible for the actual communication with the deployment environment (for example, the {prodname} Operator in a Kubernetes cluster).
+
+image::debezium-platform-architecture.svg[{prodname} Platform Architecture]
+
+== Installation
+
+[NOTE]
+====
+Currently, the only supported environment is Kubernetes.
+====
+
+.Prerequisites
+
+* Helm
+* Kubernetes cluster with an ingress controller
+
+Installation is provided through a https://helm.sh/[Helm] chart.
+
+.Procedure
+
+1. Enter the following command to add the {prodname} charts repository:
++
+[source,bash]
+----
+helm repo add debezium https://charts.debezium.io
+----
+
+2.  Enter one of the following commands to install the version of the platform that you want:
++
+[source, bash]
+----
+helm install debezium-platform debezium/debezium-platform --version 3.1.0-beta1 --set database.enabled=true --set domain.url=platform.debezium.io
+----
++
+Or, to use an OCI artifact to install the platform, enter the following command:
++
+[source, bash]
+----
+helm install debezium-platform --set database.enabled=true --set domain.url=platform.debezium.io --version 3.1.0-beta1 oci://quay.io/debezium-charts/debezium-platform
+----
++
+The `domain.url` is the only required property; it is used as `host` in the `Ingress` definition.
++
+[NOTE]
+====
+In the preceding examples, the `database.enabled` property is used.
+This property helps to simplify deployment in testing environments by automatically deploying the PostgreSQL database that is required by the conductor service. 
+When deploying in a production environment, do not enable automatic deployment of the PostgreSQL database.
+Instead, specify an existing database instance, by setting the `database.name`, `database.host`, and other properties required to connect to the database. 
+See the following table for more information.
+====
+
+The following tables lists all the chart's properties:
+
+[cols="1,3,1", options="header"]
+|===
+|Name |Description |Default
+
+|domain.url
+|Domain used as the ingress host
+|""
+
+|stage.image
+|Image for the stage (UI)
+|quay.io/debezium/platform-stage:<release_tag>
+
+|conductor.image
+|Image for the conductor
+|quay.io/debezium/platform-conductor:<release_tag>
+
+|conductor.offset.existingConfigMap
+|Name of the ConfigMap that stores conductor offsets. 
+If no value is specified, Helm creates a ConfigMap automatically. 
+|""
+
+|database.enabled
+|Enables Helm to install PostgreSQL.
+|false
+
+|database.name
+|Name of an existing database where you want the platform to store data.
+|postgres
+
+|database.host
+|Host of the database that you want the platform to use.
+|postgres
+
+|database.auth.existingSecret
+|Name of the secret that stores the `username` and `password` that the platform uses to authenticate with the database. 
+If no value is specified, a secret is created using the `username` and `password` properties.
+
+If you provide a value for this property, do not set `database.auth.username` or `database.auth.password`.
+|""
+
+|database.auth.username
+|Username through which the platform connects to the database. 
+|user
+
+|database.auth.password
+|Password for the user specified by `database.auth.username`.
+|password
+
+|offset.reusePlatformDatabase
+|Specifies whether pipelines use the configured platform database to store offsets. 
+To configure pipelines to use a different, dedicated database to store offsets, set the value to `false`.
+|true
+
+|offset.database.name
+|Name of the database that the platform uses to store offsets.
+|postgres
+
+|offset.database.host
+|Host of the database where the platform stores offsets.
+|postgres
+
+|offset.database.port
+|Port through which the platform connects to the database where it stores offsets.
+|5432
+
+|offset.database.auth.existingSecret
+|Name of the secret that stores the `username` and `password` that the platform uses to authenticate with the database that stores offsets. 
+If you do not specify value, instead of using a secret to store credentials, the platform uses the values of  the `offset.database.auth.username` and `offset.database.auth.password` properties to authenticate with the database.
+
+If you provide the name of a secret, do not set the `offset.database.auth.username` and `offset.database.auth.password` properties.
+|""
+
+|offset.database.auth.username
+|Username through which the platform connects to the offsets database. 
+|user
+
+|offset.database.auth.password
+|Password for the offsets database user specified by `offset.database.auth.username`.
+
+|password
+
+|schemaHistory.reusePlatformDatabase
+|Specifies whether pipelines use the configured platform database to store the schema history. 
+To configure pipelines to use a different, dedicated database to store the schema history, set the value to `false`.
+|true
+
+|schemaHistory.database.name
+|Name of the dedicated database where the platform stores the schema history.
+|postgres
+
+|schemaHistory.database.host
+|Host for the dedicated database where the platform stores the schema history.
+|postgres
+
+|schemaHistory.database.port
+|Port through which the platform connects to the dedicated database where it stores the schema history.
+|5432
+
+|schemaHistory.database.auth.existingSecret
+|Name of the secret that stores the `username` and `password` that the platform uses to authenticate with the database that stores the schema history. 
+If you do not specify value, instead of using a secret to store credentials, the platform uses the values of the `schemaHistory.database.auth.username` and `schemaHistory.database.auth.password` properties to authenticate with the database.
+
+If you provide the name of a secret, do not set the `schemaHistory.database.auth.username` and `schemaHistory.database.auth.password` properties.
+|""
+
+|schemaHistory.database.auth.username
+|Username through which the platform connects to the schema history database.
+|user
+
+|schemaHistory.database.auth.password
+|Password for the schema history database user specified by `schemaHistory.database.auth.username` property.
+|password
+
+|env
+|List of environment variables to pass to the conductor.
+|[]
+|===
+
+== Use the platform
+
+In this section we will do a walkthrough of the different functionalities of the UI.
+
+=== Source
+In this section, you can define the sources of your data.
+All {prodname} supported databases are available.
+When you create a source, it can be shared between different pipelines, which means that every change to a source will be reflected in every pipeline that uses it.
+
+==== Create a new source
+In this section, you can configure your source in two different ways. You can use the `Form Editor`, where you can enter the name of the source and a description, and then specify the list of properties for the specific source.
+Refer to the connector-specific documentation page for the available properties.
+
+[.responsive]
+video::CVY4Y4kAs_E[youtube, title="Create, edit and remove a source"]
+
+
+==== Configure the source with Smart Editor
+The other option is the `Smart Editor`, where you can directly edit/paste the `JSON` configuration.
+For those familiar with {prodname}, this is quite similar to the Kafka Connect configuration or {prodname} Server with small differences.
+The common part is the `config` section, in fact you can more or less copy the standard {prodname} configuration `config` section under the `config` property.
+
+For example, if you have the following configuration:
+
+[source,json,options="nowrap"]
+----
+{
+  "name": "inventory-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+    "tasks.max": "1",
+    "database.hostname": "mysql",
+    "database.port": "3306",
+    "database.user": "debezium",
+    "database.password": "dbz",
+    "database.server.id": "184054",
+    "topic.prefix": "dbserver1",
+    "database.include.list": "inventory"
+  }
+}
+----
+
+You just need to copy the `config` section, removing the `connector.class`, since it is already provided with the `type`.
+In the future we will eventually support the Kafka Connect and/or Debezium Server format directly.
+
+The final `json` should something like the following
+[source,json,options="nowrap"]
+----
+{
+    "name": "my-source",
+    "description": "This is my first source",
+    "type": "io.debezium.connector.mysql.MySqlConnector",
+    "schema": "schema123",
+    "vaults": [],
+    "config": {
+        "database.hostname": "mysql",
+        "database.port": "3306",
+        "database.user": "debezium",
+        "database.password": "dbz",
+        "database.server.id": "184054",
+        "topic.prefix": "dbserver1",
+        "database.include.list": "inventory"
+    }
+}
+----
+
+==== Delete a source
+To delete a source, go to the `Source` menu and then click the `action` menu of the source you want to delete, then click `Delete`.
+A source can be deleted only if it is not used in any pipeline; otherwise, you will receive an error.
+When the source is no longer used in any pipeline, you can delete it using the `Delete` option.
+
+==== Edit a source
+To edit a source, go to the `Source` menu and then click the `action` menu of the source you want to edit, then click `Edit`.
+
+[NOTE]
+====
+Editing a source will affect all pipelines that use it.
+====
+
+=== Destination
+In this section, you can define the destinations where your source data will be sent.
+All {prodname} Server sinks are available as destination.
+When you create a destination, it can be shared between different pipelines, which means that every change to a destination will be reflected in every pipeline that uses it.
+
+==== Create a new destination
+In this section, you can configure your destination in two different ways. You can use the `Form Editor`, where you can enter the name of the destination and a description, and then specify the list of properties for the specific destination system.
+Refer to the {prodname} sink-specific documentation page for the available properties.
+
+==== Configure the destination with Smart Editor
+The other option is the Smart Editor, where you can directly edit/paste the JSON configuration.
+For those familiar with {prodname}, this is quite similar to {prodname} Server `sink` configuration section with small differences.
+Usually you have that the configuration of a particular sink are prefixed with `debezium.sink.<sink_name>` where `<sink_name>` is the sink `type`.
+
+For example, if you have the following configuration:
+
+[source,properties,options="nowrap"]
+----
+# ...
+
+debezium.sink.type=pubsub
+debezium.sink.pubsub.project.id=debezium-tutorial-local
+debezium.sink.pubsub.address=pubsub:8085
+
+# ..
+----
+
+You just need to take all properties prefixed with `debezium.sink.pubsub` and transform in `json` format.
+In the future we will eventually support the Kafka Connect and/or Debezium Server format directly.
+
+The final `json` should something like the following
+[source,json,options="nowrap"]
+----
+{
+  "name": "test-destination",
+  "type": "pubsub",
+  "description": "Some funny destination",
+  "schema": "dummy",
+  "vaults": [],
+  "config": {
+    "project.id": "debezium-tutorial-local",
+    "address": "pubsub:8085"
+  }
+}
+----
+
+==== Delete a destination
+To delete a destination, go to the `Destination` menu and then click the `action` menu of the destination you want to delete, then click `Delete`.
+A destination can be deleted only if it is not used in any pipeline; otherwise, you will receive an error.
+When the destination is no longer used in any pipeline, you can delete it using the `Delete` button.
+
+==== Edit a destination
+To edit a destination, go to the `Destination` menu and then click the `action` menu of the destination you want to edit, then click `Edit`.
+
+[NOTE]
+Editing a destination will affect all pipelines that use it.
+
+=== Transforms
+In this section you can manage the transformations that you want to use on your data pipeline.
+
+Currently, we support all {prodname} provided transforms and also Kafka Connect ones.
+
+As for `Source` and `Destination`, the transform is shared between pipeline meaning that any changes will be reflected to all pipeline that uses it.
+
+==== Create
+In this section, you can configure your transform in two different ways. You can use the `Form Editor`, where you can choose the type of transform and give it a name and a description.
+Then you can set the configuration specific to the transform type.
+
+You can optionally specify also a `Predicate` so that the transform will be applied only to records that meets the specified condition.
+You just need to choose the predicate from the list and set its properties.
+
+==== Configure the transform with Smart Editor
+The other option is the `Smart Editor`, where you can directly edit/paste the JSON configuration.
+
+For those familiar with {prodname}, this format sounds different, but it can be easily adapted.
+
+Usually you have that the configuration of a particular transform are prefixed with `transofrms.<transform_name>` where `<transform_name` is the name you give to the transform.
+
+For example, if you have the following configuration:
+
+[source,properties,options="nowrap"]
+----
+# ...
+
+transforms=unwrap
+transforms.unwrap.type=io.debezium.transforms.ExtractNewRecordState
+transforms.unwrap.add.fields=op
+transforms.unwrap.add.headers=db,table
+predicates=onlyProducts
+predicates.onlyProducts.type=org.apache.kafka.connect.transforms.predicates.TopicNameMatches
+predicates.onlyProducts.pattern=inventory.inventory.products
+
+# ..
+----
+
+You just need to take all properties prefixed with `transforms.unwrap`, except for the `transforms.unwrap.type`, and convert to `json` format.
+Same logic applies to predicates.
+
+In the future we will eventually support the Kafka Connect format directly.
+
+The final `json` should something like the following
+
+[source,json,options="nowrap"]
+----
+{
+  "name": "Debezium marker",
+  "description": "Extract Debezium payloa d",
+  "type": "io.debezium.transforms.ExtractNewRecordState",
+  "schema": "string",
+  "vaults": [],
+  "config": {
+    "add.fields": "op",
+    "add.headers": "db,table"
+  },
+  "predicate": {
+    "type": "org.apache.kafka.connect.transforms.predicates.TopicNameMatches",
+    "config": {
+      "pattern": "inventory.inventory.products"
+    },
+    "negate": false
+  }
+}
+----
+==== Edit
+To edit a transform, go to the `Transform` menu and then click the `action` menu of the destination you want to edit, then click `Edit`.
+
+[NOTE]
+Editing a destination will affect all pipelines that use it.
+
+==== Delete
+To delete a transform, go to the `Transform` menu and then click the `action` menu of the transform you want to delete, then click `Delete`.
+A transform can be deleted only if it is not used in any pipeline; otherwise, you will receive an error.
+When the transform is no longer used in any pipeline, you can delete it using the `Delete` button.
+
+=== Pipeline
+The pipeline section is the place where you connect the "dots". You can define where your data comes, how to eventually transform them and where they should go.
+
+==== Create
+In the pipeline menu you can click on `Create your first pipeline` and you will get into the `Pipeline Designer`.
+Here you can add the pieces that composes you data pipeline. First of all, you need to add a source clicking on the `+ Source` box and the you can either choose a previously created source or directly create a new one.
+
+Similarly, you can add a destination clicking on the `+ Destination` box.
+
+If you want to apply some transformation to your data, you can add it in the same way just clicking on the `+ Transform` box.
+
+When a transform as a predicate configured, you will see a image:predicate-icon.png[alt text] on top of it. A tooltip will show the name of the predicate used.
+
+Once finished designing your pipeline you can click on `Configure Pipeline` and then you can now configure the name, the description and the logging level.
+
+==== Delete
+To delete a pipeline, go to the `Pipeline` menu and then click the `action` menu of the pipeline you want to delete, then click `Delete`.
+Only the pipeline will be removed, the source, the destination and the transformations will not be deleted.
+
+==== Edit
+To edit a pipeline, go to the `Pipeline` menu and then click the `action` menu of the destination you want to edit, then click `Edit pipeline`.
+As first step you can modify the transformations through the pipeline designer, we will go deeper in this part in the next section, and then you can edit the name, the description and the log level.
+
+===== Remove or ordering transformations
+Once you are in the `Pipeline designer` you can modify the order of transformations or delete one by clicking on the image:transformation-box-edit.png[alt text] icon.
+
+==== Observability
+Observability is currently limited to viewing the Debezium Server logs.
+You can go to `Pipeline` then click on the pipeline name of your interest and then click on the `Pipeline logs`.
+The other ways is to go to `Pipeline` and then click the `action` menu of the pipeline you are interested, then click `View logs`.
+
+
