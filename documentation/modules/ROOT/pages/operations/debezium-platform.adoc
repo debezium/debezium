@@ -165,7 +165,8 @@ To configure pipelines to use a different, dedicated database to store offsets, 
 |5432
 
 |offset.database.auth.existingSecret
-|Name of the secret where `username` and `password` - of the database used by the platform for storing the offsets - are stored. If not set `offset.database.auth.username` and `offset.database.auth.password` will be used.
+|Name of the secret that stores the `username` and `password` that the platform uses to authenticate with the database that stores offsets. 
+If you do not specify value, instead of using a secret to store credentials, the platform uses the values of  the `offset.database.auth.username` and `offset.database.auth.password` properties to authenticate with the database.
 
 If you provide the name of a secret, do not set the `offset.database.auth.username` and `offset.database.auth.password` properties.
 |""
