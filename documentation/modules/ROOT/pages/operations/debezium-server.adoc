@@ -1715,6 +1715,79 @@ By default, dots in a name are replaced with underscores.
 |===
 
 
+==== InstructLab
+
+InstructLab is a community-driven approach to build truly open-source large language models (LLMs).
+InstructLab augments models using **taxonomies**, a collection of skills and knowledge to help to identify gaps in desired capabilities and used to tune base models efficiently.
+
+Debezium Server supports automating the addition of skills and knowledge directly into taxonomies by creating or updating InstructLab's question and answer (`qna.yml`) files.
+The sink configuration defines a series of mappings that are used to derive question, answer, and context values from an event stream.
+The mappings can source values directly from fields within the event payload, headers, or statically configured constants.
+Periodically, users can then use InstructLab to train the model to take advantage of the new skills and knowledge added to the taxonomies.
+
+[cols="40%a,10%a,50%a",options="header"]
+|===
+|Property |Default |Description
+
+|[[instructlab-type]]<<instructlab-type, `debezium.sink.type`>>
+|
+|Must be set to `instructlab`.
+
+|[[instructlab-taxonomy-base-path]]<<instructlab-taxonomy-base-path, `debezium.sink.instructlab.taxonomy.base.path`>>
+|
+|The absolute path to the root directory where taxonomy skills and knowledge are stored.
+This will be used in conjunction with taxonomy domain properties to construct the full path to the `qna.yml`.
+
+|[[instructlab-taxonomies]]<<instructlab-taxonomies, `debezium.sink.instructlab.taxonomies`>>
+|
+|The comma separated list of symbolic names of taxonomy mappings.
+
+|[[instructlab-taxonomy-topic]]<<instructlab-taxonomy-topic, `debezium.sink.instructlab.taxonomy._<name>_.topic`>>
+|`.*`
+|A regular expression used to match topics to determine if the _<name>_ taxonomy mapping is applied.
+
+|[[instructlab-taxonomy-question]]<<instructlab-taxonomy-question, `debezium.sink.instructlab.taxonomy._<name>_.question`>>
+|
+|Specifies a xref:#instructlab-mapping-definition[] that will be used as the seed example's `question` attribute in the `qna.yml` file.
+This is required.
+
+|[[instructlab-taxonomy-answer]]<<instructlab-taxonomy-answer, `debezium.sink.instructlab.taxonomy._<name>_.answer`>>
+|
+|Specifies a xref:#instructlab-mapping-definition[] that will be used as the seed example's `answer` attribute in the `qna.yml` file.
+This is required.
+
+|[[instructlab-taxonomy-context]]<<instructlab-taxonomy-context, `debezium.sink.instructlab.taxonomy._<name>_.context`>>
+|
+|Specifies a xref:#instructlab-mapping-definition[] that will be used as the seed example's `context` attribute in the `qna.yml` file.
+This is optional.
+
+|[[instructlab-taxonomy-domain]]<<instructlab-taxonomy-domain, `debezium.sink.instructlab.taxonomy._<name>_.domain`>>
+|
+|Specifies the taxonomy domain, a series of directories separated by `/` to the `qna.yml`, excluding the taxonomy base path.
+For example, a value of `a/b` and a base path of `/taxonomy` will represent `/taxonomy/a/b/qna.yml`.
+
+|===
+
+[id="instructlab-mapping-definition"]
+===== Mapping Definition
+
+A mapping definition represents one of three options:
+
+Value::
+When the mapping is prefixed with `value:`, it is interpreted as a specific field in the event's payload that supplies the value used.
+For example, given a mapping of `value:abc`, the sink expects a field named `abc` to source the value from.
+If the event is a {prodname}-structured payload, the field will be sourced from the `after` section of the payload.
+If the event is flattened, the field will be sourced directly from the event's value.
+
+Header::
+When the mapping is prefixed with `header:`, it is interpreted as a specific header in the event that supplies the value used.
+For example, given a mapping of `header:h1`, the sink expects a header named `h1` to source the value from.
+
+Constant::
+Any value that is not prefixed with `header:` or `value:` will be treated as a constant value, and will be used as-is.
+This permits setting a specific mapping to a static, constant value via configuration.
+
+
 == Extensions
 
 {prodname} Server uses the https://quarkus.io/[Quarkus framework] and relies on dependency injection to enable developer to extend its behaviour.
