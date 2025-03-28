@@ -326,6 +326,13 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 
 include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=enabling-binlog]
 
+[IMPORTANT]
+====
+MariaDB 11.4 and later changed binary log format.
+To make it compatible with Debezium it is necessary to set server configuration option `binlog_legacy_event_pos` to
+value `ON`.
+When not set the connector might be unable to find the resume point after restart.
+====
 
 // Type: procedure
 // ModuleID: enabling-mariadb-gtids-for-debezium
