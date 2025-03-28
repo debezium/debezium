@@ -5,6 +5,10 @@ inputs:
   maven-cache-key:
     description: "The maven build cache key"
     required: true
+  profile:
+    description: "The profiles to use to run tests with"
+    required: false
+    default: "infinispan-buffer,oracle-tests"
   shell:
     description: "The shell to use"
     required: false
@@ -25,7 +29,7 @@ runs:
       shell: ${{ inputs.shell }}
       run: >
         ./mvnw clean install -B -pl debezium-connector-oracle -am
-        -Pinfinispan-buffer,oracle-tests
+        -P${{ inputs.profile }}
         -DskipITs=true
         -Dcheckstyle.skip=true
         -Dformat.skip=true
