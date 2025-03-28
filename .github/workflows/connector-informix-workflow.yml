@@ -1,0 +1,52 @@
+name: Informix Builds
+on:
+  workflow_call:
+    inputs:
+      maven-cache-key:
+        description: "The cache key to use to restore/save build caches."
+        required: true
+        type: string
+      checkout-ref:
+        description: "The checkout reference to be used for the Cassandra repository."
+        required: true
+        type: string
+      max-parallel:
+        description: "The maximum number of workers to consume, by default uses all available."
+        required: false
+        type: number
+
+jobs:
+  build-informix:
+    strategy:
+      max-parallel: ${{ inputs.max-parallel }}
+      fail-fast: false
+      matrix:
+        profile: [ "assembly,informix12", "assembly,informix14" ]
+    name: Informix - ${{ matrix.profile }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (Debezium Core)
+        uses: actions/checkout@v4
+        with:
+          path: core
+
+      - name: Checkout (Informix)
+        uses: actions/checkout@v4
+        with:
+          repository: debezium/debezium-connector-informix
+          path: informix
+          ref: ${{ inputs.checkout-ref }}
+
+      - uses: ./core/.github/actions/setup-java
+
+      - uses: ./core/.github/actions/maven-cache
+        with:
+          key: ${{ inputs.maven-cache-key }}-${{ hashFiles('core/**/pom.xml') }}
+
+      - name: Build Informix - ${{ matrix.profile }}
+        uses: ./core/.github/actions/build-debezium-informix
+        with:
+          path-core: core
+          path-informix: informix
+          profile: ${{ matrix.profile }}

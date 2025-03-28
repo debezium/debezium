@@ -5,6 +5,10 @@ inputs:
   maven-cache-key:
     description: "The maven build cache key"
     required: true
+  tags:
+    description: "Test tags to run"
+    required: false
+    default: "it-sqlserver,e2e-sqlserver,it-postgresql,e2e-postgresql,it-mysql,e2e-mysql"
   shell:
     description: "The shell to use"
     required: false
@@ -24,7 +28,7 @@ runs:
       run: >
         ./mvnw clean install -B -pl debezium-connector-jdbc -am
         -Passembly        
-        -Dtest.tags=it-sqlserver,e2e-sqlserver,it-postgresql,e2e-postgresql,it-mysql,e2e-mysql
+        -Dtest.tags=${{ inputs.tags }}
         -Dcheckstyle.skip=true
         -Dformat.skip=true
         -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn

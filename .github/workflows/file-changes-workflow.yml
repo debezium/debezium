@@ -1,0 +1,218 @@
+name: Detect Repository Changes
+on:
+  workflow_call:
+    outputs:
+      # Map all file_changes outputs here for calling workflow to access
+      common-changed:
+        value: ${{ jobs.file_changes.outputs.common-changed }}
+      mongodb-changed:
+        value: ${{ jobs.file_changes.outputs.mongodb-changed }}
+      mariadb-changed:
+        value: ${{ jobs.file_changes.outputs.mariadb-changed }}
+      mysql-changed:
+        value: ${{ jobs.file_changes.outputs.mysql-changed }}
+      postgresql-changed:
+        value: ${{ jobs.file_changes.outputs.postgresql-changed }}
+      oracle-changed:
+        value: ${{ jobs.file_changes.outputs.oracle-changed }}
+      sqlserver-changed:
+        value: ${{ jobs.file_changes.outputs.sqlserver-changed }}
+      jdbc-changed:
+        value: ${{ jobs.file_changes.outputs.jdbc-changed }}
+      outbox-changed:
+        value: ${{ jobs.file_changes.outputs.outbox-changed }}
+      rest-extension-changed:
+        value: ${{ jobs.file_changes.outputs.rest-extension-changed }}
+      schema-generator-changed:
+        value: ${{ jobs.file_changes.outputs.schema-generator-changed }}
+      debezium-testing-changed:
+        value: ${{ jobs.file_changes.outputs.debezium-testing-changed }}
+      debezium-testing-mongodb-changed:
+        value: ${{ jobs.file_changes.outputs.debezium-testing-mongodb-changed }}
+      mysql-ddl-parser-changed:
+        value: ${{ jobs.file_changes.outputs.mysql-ddl-parser-changed }}
+      oracle-ddl-parser-changed:
+        value: ${{ jobs.file_changes.outputs.oracle-ddl-parser-changed }}
+      mariadb-ddl-parser-changed:
+        value: ${{ jobs.file_changes.outputs.mariadb-ddl-parser-changed }}
+      documentation-only-changed:
+        value: ${{ jobs.file_changes.outputs.documentation-only-changed }}
+      storage-only-changed:
+        value: ${{ jobs.file_changes.outputs.storage-only-changed }}
+
+jobs:
+  # This job is responsible for inspecting the changes in the repository and setting specific output variables
+  # that subsequent jobs can use to determine whether a particular job should be skipped or included.
+  file_changes:
+    name: "Detect Repository changes"
+    runs-on: ubuntu-latest
+    outputs:
+      common-changed: ${{ steps.changed-files-common.outputs.any_changed }}
+      mongodb-changed: ${{ steps.changed-files-mongodb.outputs.any_changed }}
+      mariadb-changed: ${{ steps.changed-files-mariadb.outputs.any_changed }}
+      mysql-changed: ${{ steps.changed-files-mysql.outputs.any_changed }}
+      postgresql-changed: ${{ steps.changed-files-postgresql.outputs.any_changed }}
+      oracle-changed: ${{ steps.changed-files-oracle.outputs.any_changed }}
+      sqlserver-changed: ${{ steps.changed-files-sqlserver.outputs.any_changed }}
+      jdbc-changed: ${{ steps.changed-files-jdbc.outputs.any_changed }}
+      outbox-changed: ${{ steps.changed-files-outbox.outputs.any_changed }}
+      rest-extension-changed: ${{ steps.changed-files-rest-extension.outputs.any_changed }}
+      schema-generator-changed: ${{ steps.changed-files-schema-generator.outputs.any_changed }}
+      debezium-testing-changed: ${{ steps.changed-files-debezium-testing.outputs.any_changed }}
+      debezium-testing-mongodb-changed: ${{ steps.changed-files-debezium-testing-mongodb.outputs.any_changed }}
+      mysql-ddl-parser-changed: ${{ steps.changed-files-mysql-ddl-parser.outputs.any_changed }}
+      oracle-ddl-parser-changed: ${{ steps.changed-files-oracle-ddl-parser.outputs.any_changed }}
+      mariadb-ddl-parser-changed: ${{ steps.changed-files-mariadb-ddl-parser.outputs.any_changed }}
+      documentation-only-changed: ${{ steps.changed-files-documentation.outputs.only_changed }}
+      storage-only-changed: ${{ steps.changed-files-storage.outputs.only_changed }}
+
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get modified files (Common)
+        id: changed-files-common
+        uses: tj-actions/changed-files@v46.0.3
+        with:
+          files: |
+            support/checkstyle/**
+            support/revapi/**
+            debezium-api/**
+            debezium-assembly-descriptors/**
+            debezium-core/**
+            debezium-embedded/**
+            debezium-revapi/**
+            debezium-ide-configs/**
+            debezium-parent/pom.xml
+            debezium-bom/pom.xml
+            debezium-storage/** 
+            debezium-scripting/**          
+            pom.xml
+            .mvn/**
+            .github/actions/**
+            .github/workflows/debezium-workflow-pr.yml
+
+      - name: Get modified files (MongoDB)
+        id: changed-files-mongodb
+        uses: tj-actions/changed-files@v46.0.3
+        with:
+          files: |
+            debezium-sink/**
+            debezium-connector-mongodb/**
+
+      - name: Get modified files (MySQL)
+        id: changed-files-mysql
+        uses: tj-actions/changed-files@v46.0.3
+        with:
+          files: |
+            debezium-connector-mysql/**
+            debezium-connector-binlog/**
+
+      - name: Get modified files (MariaDB)
+        id: changed-files-mariadb
+        uses: tj-actions/changed-files@v46.0.3
+        with:
+          files: |
+            debezium-connector-mariadb/**
+            debezium-connector-binlog/**
+
+      - name: Get modified files (PostgreSQL)
+        id: changed-files-postgresql
+        uses: tj-actions/changed-files@v46.0.3
+        with:
+          files: |
+            debezium-connector-postgres/**
+
+      - name: Get modified files (Oracle)
+        id: changed-files-oracle
+        uses: tj-actions/changed-files@v46.0.3
+        with:
+          files: |
+            debezium-connector-oracle/**
+
+      - name: Get modified files (SQL Server)
+        id: changed-files-sqlserver
+        uses: tj-actions/changed-files@v46.0.3
+        with:
+          files: |
+            debezium-connector-sqlserver/**
+
+      - name: Get modified files (JDBC)
+        id: changed-files-jdbc
+        uses: tj-actions/changed-files@v46.0.3
+        with:
+          files: |
+            debezium-sink/**
+            debezium-connector-jdbc/**
+
+      - name: Get modified files (Quarkus Outbox)
+        id: changed-files-outbox
+        uses: tj-actions/changed-files@v46.0.3
+        with:
+          files: |
+            debezium-quarkus-outbox/**
+            debezium-quarkus-outbox-common/**
+            debezium-quarkus-outbox-reactive/**
+
+      - name: Get modified files (REST Extension)
+        id: changed-files-rest-extension
+        uses: tj-actions/changed-files@v46.0.3
+        with:
+          files: |
+            debezium-connect-rest-extension/**
+
+      - name: Get modified files (Schema Generator)
+        id: changed-files-schema-generator
+        uses: tj-actions/changed-files@v46.0.3
+        with:
+          files: |
+            debezium-schema-generator/**
+
+      - name: Get modified files (Debezium Testing)
+        id: changed-files-debezium-testing
+        uses: tj-actions/changed-files@v46.0.3
+        with:
+          files: |
+            debezium-testing/**
+
+      - name: Get modified files (Debezium Testing MongoDB)
+        id: changed-files-debezium-testing-mongodb
+        uses: tj-actions/changed-files@v46.0.3
+        with:
+          files: |
+            debezium-testing/**/MongoDb*.java
+
+      - name: Get modified files (MySQL DDL parser)
+        id: changed-files-mysql-ddl-parser
+        uses: tj-actions/changed-files@v46.0.3
+        with:
+          files: |
+            debezium-ddl-parser/src/main/antlr4/io/debezium/ddl/parser/mysql/**
+            debezium-ddl-parser/src/main/java/io/debezium/antlr/**
+            debezium-ddl-parser/src/test/resources/mysql/examples/**
+
+      - name: Get modified files (Oracle DDL parser)
+        id: changed-files-oracle-ddl-parser
+        uses: tj-actions/changed-files@v46.0.3
+        with:
+          files: |
+            debezium-ddl-parser/src/main/antlr4/io/debezium/ddl/parser/oracle/**
+            debezium-ddl-parser/src/main/java/io/debezium/antlr/**
+            debezium-ddl-parser/src/main/java/io/debezium/ddl/parser/oracle/**
+            debezium-ddl-parser/src/test/resources/oracle/examples/**
+
+      - name: Get modified files (Documentation)
+        id: changed-files-documentation
+        uses: tj-actions/changed-files@v46.0.3
+        with:
+          files: |
+            documentation/**
+
+      - name: Get modified files (Storage)
+        id: changed-files-storage
+        uses: tj-actions/changed-files@v46.0.3
+        with:
+          files: |
+            debezium-storage/**
