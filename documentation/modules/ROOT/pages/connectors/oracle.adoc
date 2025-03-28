@@ -44,7 +44,6 @@ ifdef::community[]
 , the https://docs.oracle.com/en/database/oracle/oracle-database/19/xstrm/introduction-to-xstream.html[XStream API], or https://www.bersler.com/openlogreplicator/[OpenLogReplicator].
 endif::community[]
 ifdef::product[]
-or the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API].
 
 Information and procedures for using a {prodname} Oracle connector are organized as follows:
 
@@ -1257,8 +1256,8 @@ In the case of the Oracle connector, the structure includes the following fields
 * The {prodname} version.
 * The connector name.
 * Whether the event is part of an ongoing snapshot or not.
-* The transaction id (not includes for snapshots).
-* The SCN of the change.
+* The transaction id (not included for snapshots).
+* The `commit_scn` for the change.
 * A timestamp that indicates when the record in the source database changed (for snapshots, the timestamp indicates when the snapshot occurred).
 * Username who made the change
 * The ROWID associated with the row
@@ -5223,7 +5222,7 @@ ALTER TABLE inventory.customers ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
 === Creating XStream users for the connector
 
 The {prodname} Oracle connector requires that users accounts be set up with specific permissions so that the connector can capture change events.
-The following examples provide provide information about how to create user configurations in a multi-tenant database model.
+The following examples provide information about how to create user configurations in a multi-tenant database model.
 
 // Type: procedure
 // ModuleID: creating-an-xstream-administrator-user-for-the-debezium-oracle-connector
@@ -5628,7 +5627,13 @@ As a workaround, the include/exclude configuration options can be adjusted to pr
 
 
 *How to solve SAX feature external-general-entities not supported*::
-Debezium 2.4 introduced support for Oracle's `XMLTYPE` column type and to support this feature, the Oracle `xdb` and `xmlparserv2` dependencies are required. +
+ifdef::community[]
+Debezium 2.4 introduced support for Oracle's `XMLTYPE` column type.
+endif::community[]
+ifdef::product[]
+Use of the `XMLTYPE` with the {prodname} Oracle connector is available as a Technology Preview feature.
+endif::product[]
+To use this feature, the Oracle `xdb` and `xmlparserv2` dependencies are required. +
  +
 Oracle's `xmlparserv2` dependency implements a SAX-based parser and if the runtime finds an uses this implementation rather than the other on the classpath, this error will occur.
 In order to influence specifically which SAX implementation is used generally, the JVM will need to be started with a specific argument. +
