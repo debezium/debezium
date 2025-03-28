@@ -21,7 +21,7 @@
     <logger name="io.debezium" level="info" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
-    <logger name="io.debezium.connector.jdbc" level="trace" additivity="false">
+    <logger name="io.debezium.connector.jdbc" level="info" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
     <logger name="io.debezium.embedded.EmbeddedEngine$EmbeddedConfig" level="warn" additivity="false">
