@@ -20,7 +20,7 @@ endif::community[]
 {prodname} Management Platform aims to simplify the deployment of {prodname} to various environments in a highly opinionated manner.
 To achieve this goal, the platform uses a data-centric view of {prodname} components.
 
-It is for us a normal evolution from {prodname} Server. We have provided the operator - to easily operate it in Kubernetes environments - and now we are providing a high-level abstraction to deploy your data pipelines in different environments leveraging on {prodname} Server.
+Implementing the platform represents a natural evolution from {prodname} Server. Past releases provided the {prodname} operator to simplify operation in Kubernetes environments. With the introduction of the platform, {prodname} now provides a high-level abstraction to deploy your data pipelines in different environments while leveraging {prodname} Server.
 
 == Basic concepts
 In {prodname} Management Platform there are four main concepts:
@@ -30,20 +30,23 @@ Destination:: Defines the destination of your data
 Transform:: Define how a single data is transformed
 Pipeline:: Defines how your data flows from a source to a destination while being transformed along the way.
 
-Once you define a pipeline, how it will be deployed is in charge of the platform.
+After you define a pipeline, it is deployed based on how you configure the platform.
 
-Every pipeline will be mapped to a Debezium Server instance. For the Kubernetes environment (the only supported as of now) this will correspond to a DebeziumServer custom resource.
+Each pipeline is mapped to a {prodname} Server instance. 
+For the Kubernetes environment (currently, the only supported environment) the server instance corresponds to a `DebeziumServer` custom resource.
 
 === Architecture
-The platform is composed of two main components:
 
-Conductor:: The back-end component which provides a set of APIs to orchestrate and control {prodname} deployments.
-Stage:: The front-end component which provides a user interface to interact with the Conductor.
+The platform is composed of the following components:
 
-The conductor component itself is composed of several subcomponents:
+Conductor:: The back-end component that provides a set of APIs to orchestrate and control {prodname} deployments.
+Stage:: The front-end component that provides a user interface to interact with the Conductor.
 
-API Server:: The main entry point, it provides a set of APIs to interact with the platform.
-Watcher:: Component responsible for the actual communication with deployment environment (e.g. {prodname} Operator in K8s cluster).
+The conductor component itself is composed of the following subcomponents:
+
+API Server:: The main entry point.
+It provides a set of APIs to interact with the platform.
+Watcher:: The component that is responsible for the actual communication with the deployment environment (for example, the {prodname} Operator in a Kubernetes cluster).
 
 image::debezium-platform-architecture.svg[{prodname} Platform Architecture]
 
@@ -54,36 +57,45 @@ image::debezium-platform-architecture.svg[{prodname} Platform Architecture]
 Currently, the only supported environment is Kubernetes.
 ====
 
-**Prerequisites**
+.Prerequisites
 
 * Helm
 * Kubernetes cluster with an ingress controller
 
-Installation is provided trough https://helm.sh/[Helm] chart.
-The first step is to add the {prodname} charts repos with the following command:
+Installation is provided through a https://helm.sh/[Helm] chart.
+.Procedure
 
+1. Enter the following command to add the {prodname} charts repository:
++
 [source,bash]
 ----
 helm repo add debezium https://charts.debezium.io
 ----
 
-after that, you can install a specific version with the following command:
-
+2.  Enter one of the following commands to install the version of the platform that you want:
++
 [source, bash]
 ----
 helm install debezium-platform debezium/debezium-platform --version 3.1.0-beta1 --set database.enabled=true --set domain.url=platform.debezium.io
 ----
-
-as an alternative to this, you can also install it via OCI artifact with the following command:
-
++
+Or, to use an OCI artifact to install the platform, enter the following command:
++
 [source, bash]
 ----
 helm install debezium-platform --set database.enabled=true --set domain.url=platform.debezium.io --version 3.1.0-beta1 oci://quay.io/debezium-charts/debezium-platform
 ----
-
-the `domain.url` is the only required property, and it is used as `host` in the `Ingress` definition.
-The `database.enabled` properties has been added for simplicity since in that way the PostgreSQL database, required by the conductor service, is automatically deployed.
-This is discouraged in production environment, so in that case please do not use it and provide instead your database instance.
++
+The `domain.url` is the only required property; it is used as `host` in the `Ingress` definition.
++
+[NOTE]
+====
+In the preceding examples, the `database.enabled` property is used.
+This property helps to simplify deployment in testing environments by automatically deploying the PostgreSQL database that is required by the conductor service. 
+When deploying in a production environment, do not enable automatic deployment of the PostgreSQL database.
+Instead, specify an existing database instance, by setting the `database.name`, `database.host`, and other properties required to connect to the database. 
+See the following table for more information.
+====
 
 The following tables lists all the chart's properties:
 
@@ -92,7 +104,7 @@ The following tables lists all the chart's properties:
 |Name |Description |Default
 
 |domain.url
-|domain used as ingress host
+|Domain used as the ingress host
 |""
 
 |stage.image
@@ -104,98 +116,103 @@ The following tables lists all the chart's properties:
 |quay.io/debezium/platform-conductor:<release_tag>
 
 |conductor.offset.existingConfigMap
-|Name of the config map used to store conductor offsets. If empty it will be automatically created.
+|Name of the ConfigMap that stores conductor offsets. 
+If no value is specified, Helm creates a ConfigMap automatically. 
 |""
 
 |database.enabled
-|Enable the installation of PostgreSQL by the chart
+|Enables Helm to install PostgreSQL.
 |false
 
 |database.name
-|Name of the database used by the platform
+|Name of an existing database where you want the platform to store data.
 |postgres
 
 |database.host
-|Host of the database used by the platform
+|Host of the database that you want the platform to use.
 |postgres
 
 |database.auth.existingSecret
-|Name of the secret where `username` and `password` - of the database used by the platform - are stored . If empty a secret will be created using the `username` and `password` properties.
+|Name of the secret that stores the `username` and `password` that the platform uses to authenticate with the database. 
+If no value is specified, a secret is created using the `username` and `password` properties.
 
-When this is used, you don't need to set `database.auth.username` and `database.auth.password`.
+If you provide a value for this property, do not set `database.auth.username` or `database.auth.password`.
 |""
 
 |database.auth.username
-|Username of the database used by the platform
+|Username through which the platform connects to the database. 
 |user
 
 |database.auth.password
-|Password of the database used by the platform
+|Password for the user specified by `database.auth.username`.
 |password
 
 |offset.reusePlatformDatabase
-|Pipelines will use database to store offsets. By default, the database used by the platform is used.
-If you want to use a dedicated one set this property to false
+|Specifies whether pipelines use the configured platform database to store offsets. 
+To configure pipelines to use a different, dedicated database to store offsets, set the value to `false`.
 |true
 
 |offset.database.name
-|Name of the database used by the platform for storing the offsets
+|Name of the database that the platform uses to store offsets.
 |postgres
 
 |offset.database.host
-|Host of the database used by the platform for storing the offsets
+|Host of the database where the platform stores offsets.
 |postgres
 
 |offset.database.port
-|Port of the database used by the platform for storing the offsets
+|Port through which the platform connects to the database where it stores offsets.
 |5432
 
 |offset.database.auth.existingSecret
 |Name of the secret where `username` and `password` - of the database used by the platform for storing the offsets - are stored. If not set `offset.database.auth.username` and `offset.database.auth.password` will be used.
 
-When this is used, you don't need to set `offset.database.auth.username` and `offset.database.auth.password`.
+If you provide the name of a secret, do not set the `offset.database.auth.username` and `offset.database.auth.password` properties.
 |""
 
 |offset.database.auth.username
-|Username of the database used by the platform for storing the offsets
+|Username through which the platform connects to the offsets database. 
 |user
 
 |offset.database.auth.password
-|Password of the database used by the platform for storing the offsets
+|Password for the offsets database user specified by `offset.database.auth.username`.
+
 |password
 
 |schemaHistory.reusePlatformDatabase
-|Pipelines will use database to store schema history. By default, the database used by the conductor service is used. If you want to use a dedicated one set this property to false
+|Specifies whether pipelines use the configured platform database to store the schema history. 
+To configure pipelines to use a different, dedicated database to store the schema history, set the value to `false`.
 |true
 
 |schemaHistory.database.name
-|Name of the database used by the platform for storing the schema history
+|Name of the dedicated database where the platform stores the schema history.
 |postgres
 
 |schemaHistory.database.host
-|Host of the database used by the platform for storing the schema history
+|Host for the dedicated database where the platform stores the schema history.
 |postgres
 
 |schemaHistory.database.port
-|Port of the database used by the platform for storing the schema history
+|Port through which the platform connects to the dedicated database where it stores the schema history.
 |5432
 
 |schemaHistory.database.auth.existingSecret
-|Name of the secret where `username` and `password` - of the database used by the platform for storing the schema history -are stored. If not set `schemaHistory.database.auth.username` and `schemaHistory.database.auth.password` will be used.
+|Name of the secret that stores the `username` and `password` that the platform uses to authenticate with the database that stores the schema history. 
+If you do not specify value, instead of using a secret to store credentials, the platform uses the values of the `schemaHistory.database.auth.username` and `schemaHistory.database.auth.password` properties to authenticate with the database.
 
-When this is used, you don't need to set `schemaHistory.database.auth.username` and `schemaHistory.database.auth.password`.
+If you provide the name of a secret, do not set the `schemaHistory.database.auth.username` and `schemaHistory.database.auth.password` properties.
 |""
 
 |schemaHistory.database.auth.username
-|Username of the database used by the platform for storing the schema history
+|Username through which the platform connects to the schema history database.
 |user
 
 |schemaHistory.database.auth.password
-|Password of the database used by the platform for storing the schema history
+|Password for the schema history database user specified by `schemaHistory.database.auth.username` property.
 |password
 
 |env
-|List of env variable to pass to the conductor
+|List of environment variables to pass to the conductor.
 |[]
 |===
 
@@ -290,7 +307,7 @@ Refer to the {prodname} sink-specific documentation page for the available prope
 ==== Configure the destination with Smart Editor
 The other option is the Smart Editor, where you can directly edit/paste the JSON configuration.
 For those familiar with {prodname}, this is quite similar to {prodname} Server `sink` configuration section with small differences.
-Usually you have that the configuration of a particular sink are prefixed with `debezium.sink.<sink_name>` where `<sink_name` is the sink `type`.
+Usually you have that the configuration of a particular sink are prefixed with `debezium.sink.<sink_name>` where `<sink_name>` is the sink `type`.
 
 For example, if you have the following configuration:
 
@@ -439,7 +456,7 @@ As first step you can modify the transformations through the pipeline designer, 
 Once you are in the `Pipeline designer` you can modify the order of transformations or delete one by clicking on the image:transformation-box-edit.png[alt text] icon.
 
 ==== Observability
-Currently, th observability is limited to logs that can be accessed from two places.
+Observability is currently limited to viewing the Debezium Server logs.
 You can go to `Pipeline` then click on the pipeline name of your interest and then click on the `Pipeline logs`.
 The other ways is to go to `Pipeline` and then click the `action` menu of the pipeline you are interested, then click `View logs`.
 
