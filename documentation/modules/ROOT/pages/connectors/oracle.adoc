@@ -5299,7 +5299,7 @@ sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
 // Title: Creating an XStream outbound server
 === Create an XStream Outbound Server
 
-Create an https://docs.oracle.com/cd/E11882_01/server.112/e16545/xstrm_cncpt.htm#XSTRM1088[XStream Outbound server].
+Create an https://docs.oracle.com/en/database/oracle/oracle-database/19/xstrm/xstream-out-concepts.html[XStream Outbound server].
 ifdef::community[]
 (given the right privileges, this might be done automatically by the connector going forward, see {jira-url}/browse/DBZ-721[DBZ-721]):
 endif::community[]
