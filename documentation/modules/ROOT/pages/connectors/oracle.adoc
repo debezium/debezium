@@ -41,7 +41,7 @@ ifdef::product[]
 or the https://docs.oracle.com/en/database/oracle/oracle-database/19/xstrm/introduction-to-xstream.html[XStream API].
 endif::product[]
 ifdef::community[]
-, the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API], or https://www.bersler.com/openlogreplicator/[OpenLogReplicator].
+, the https://docs.oracle.com/en/database/oracle/oracle-database/19/xstrm/introduction-to-xstream.html[XStream API], or https://www.bersler.com/openlogreplicator/[OpenLogReplicator].
 endif::community[]
 ifdef::product[]
 or the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API].
