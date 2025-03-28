@@ -1,0 +1,74 @@
+name: Cassandra Builds
+on:
+  workflow_call:
+    inputs:
+      cache-key:
+        description: "The cache key to use to restore/save build caches."
+        required: true
+        type: string
+      checkout-ref:
+        description: "The checkout reference to be used for the Cassandra repository."
+        required: true
+        type: string
+      # Currently not used as Cassandra does not perform matrix-style builds
+      max-parallel:
+        description: "The maximum number of workers to consume, by default uses all available."
+        required: false
+        type: number
+
+jobs:
+  build-cassandra:
+    name: Cassandra
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (Debezium Core)
+        uses: actions/checkout@v4
+        with:
+          path: core
+
+      - name: Checkout (Cassandra)
+        uses: actions/checkout@v4
+        with:
+          repository: debezium/debezium-connector-cassandra
+          path: cassandra
+          ref: ${{ inputs.checkout-ref }}
+
+      - uses: ./.github/actions/setup-java
+
+      - uses: ./.github/actions/maven-cache
+        with:
+          key: ${{ inputs.cache-key }}-${{ hashFiles('core/**/pom.xml') }}
+
+      - name: Build Debezium Core
+        shell: bash
+        run: >
+          ./core/mvnw clean install -B -ntp -f core/pom.xml
+          -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
+          -am
+          -DskipTests=true
+          -DskipITs=true
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Drevapi.skip
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+          -Dmaven.wagon.http.pool=false
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+
+      - name: Install DSE dependencies
+        working-directory: cassandra
+        shell: bash
+        run: sh ./install-artifacts.sh
+
+      - name: Build Cassandra
+        shell: bash
+        run: >
+          ./core/mvnw clean install -B -ntp -f cassandra/pom.xml
+          -Passembly
+          -Dcheckstyle.skip=false
+          -Dformat.skip=false
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+          -Dmaven.wagon.http.pool=false
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+          -DfailFlakyTests=false
+

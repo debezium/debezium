@@ -1,0 +1,49 @@
+name: Oracle Builds
+on:
+  workflow_call:
+    inputs:
+      cache-key:
+        description: "The cache key to use to restore/save build caches."
+        required: true
+        type: string
+      max-parallel:
+        description: "The maximum number of workers to consume, by default uses all available."
+        required: false
+        type: number
+
+jobs:
+  build-oracle:
+    strategy:
+      max-parallel: ${{ inputs.max-parallel }}
+      fail-fast: false
+      matrix:
+        profile: [ 'oracle-tests', 'infinispan-buffer,oracle-tests', 'oracle-ehcache,oracle-tests' ]
+    name: Oracle - ${{ matrix.profile }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-java
+
+      - uses: ./.github/actions/maven-cache
+        with:
+          key: ${{ inputs.cache-key }}-${{ hashFiles('**/pom.xml') }}
+
+      # We intentionally do not run the integration tests here because the runner does not have adequate space
+      # for the docker container and pull requests are not permitted to fetch the container image. These are
+      # ran using pack-it-service to execute integration tests on the testing farm infrastructure.
+      - name: Build Oracle - ${{ matrix.profile }}
+        shell: bash
+        run: >
+          ./mvnw clean install -B -pl debezium-connector-oracle -am
+          -P${{ matrix.profile }}
+          -DskipITs=true
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+          -Dmaven.wagon.http.pool=false
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+          -DfailFlakyTests=false     
+
