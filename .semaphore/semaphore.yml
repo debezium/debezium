@@ -35,10 +35,59 @@ blocks:
       when: "change_in('/', {exclude: ['/.deployed-versions/', '.github/']})"
     task:
       jobs:
-        - name: Test
+        - name: MySQL 9.1 (mysql-ci-gtids)
           commands:
-            - mvn -Dcloud -Passembly -Ppgoutput-decoder -pl debezium-connector-mysql,debezium-connector-postgres,debezium-connector-sqlserver -am -U -Dmaven.wagon.http.retryHandler.count=10 --batch-mode --no-transfer-progress
-              clean verify install validate
+            - mvn -Dcloud -Dversion.mysql.server=9.1 -Pmysql-ci-gtids -Dcheckstyle.skip=true -Dformat.skip=true -DfailFlakyTests=false -pl debezium-connector-mysql -am -U -Dmaven.wagon.http.retryHandler.count=10 --batch-mode --no-transfer-progress verify
+            - . cve-scan
+            - . cache-maven store
+        - name: MySQL 9.1 (mysql-ci)
+          commands:
+            - mvn -Dcloud -Dversion.mysql.server=9.1 -Pmysql-ci -Dcheckstyle.skip=true -Dformat.skip=true -DfailFlakyTests=false -pl debezium-connector-mysql -am -U -Dmaven.wagon.http.retryHandler.count=10 --batch-mode --no-transfer-progress verify
+            - . cve-scan
+            - . cache-maven store
+        - name: MySQL 9.1 (mysql-ci-percona)
+          commands:
+            - mvn -Dcloud -Dversion.mysql.server=9.1 -Pmysql-ci-percona -Dcheckstyle.skip=true -Dformat.skip=true -DfailFlakyTests=false -pl debezium-connector-mysql -am -U -Dmaven.wagon.http.retryHandler.count=10 --batch-mode --no-transfer-progress verify
+            - . cve-scan
+            - . cache-maven store
+        - name: MySQL 9.1 (mysql-ci-ssl)
+          commands:
+            - mvn -Dcloud -Dversion.mysql.server=9.1 -Pmysql-ci-ssl -Dcheckstyle.skip=true -Dformat.skip=true -DfailFlakyTests=false -pl debezium-connector-mysql -am -U -Dmaven.wagon.http.retryHandler.count=10 --batch-mode --no-transfer-progress verify
+            - . cve-scan
+            - . cache-maven store
+        - name: MySQL 8.4 (mysql-ci-gtids)
+          commands:
+            - mvn -Dcloud -Dversion.mysql.server=8.4 -Pmysql-ci-gtids -Dcheckstyle.skip=true -Dformat.skip=true -DfailFlakyTests=false -pl debezium-connector-mysql -am -U -Dmaven.wagon.http.retryHandler.count=10 --batch-mode --no-transfer-progress verify
+            - . cve-scan
+            - . cache-maven store
+        - name: MySQL 8.4 (mysql-ci)
+          commands:
+            - mvn -Dcloud -Dversion.mysql.server=8.4 -Pmysql-ci -Dcheckstyle.skip=true -Dformat.skip=true -DfailFlakyTests=false -pl debezium-connector-mysql -am -U -Dmaven.wagon.http.retryHandler.count=10 --batch-mode --no-transfer-progress verify
+            - . cve-scan
+            - . cache-maven store
+        - name: MySQL 8.4 (mysql-ci-percona)
+          commands:
+            - mvn -Dcloud -Dversion.mysql.server=8.4 -Pmysql-ci-percona -Dcheckstyle.skip=true -Dformat.skip=true -DfailFlakyTests=false -pl debezium-connector-mysql -am -U -Dmaven.wagon.http.retryHandler.count=10 --batch-mode --no-transfer-progress verify
+            - . cve-scan
+            - . cache-maven store
+        - name: MySQL 8.4 (mysql-ci-ssl)
+          commands:
+            - mvn -Dcloud -Dversion.mysql.server=8.4 -Pmysql-ci-ssl -Dcheckstyle.skip=true -Dformat.skip=true -DfailFlakyTests=false -pl debezium-connector-mysql -am -U -Dmaven.wagon.http.retryHandler.count=10 --batch-mode --no-transfer-progress verify
+            - . cve-scan
+            - . cache-maven store
+        - name: Postgres 12 (assembly,postgres-12)
+          commands:
+            - mvn -Dcloud -Passembly,postgres-12 -Dcheckstyle.skip=true -Dformat.skip=true -DfailFlakyTests=false -pl debezium-connector-postgres -am -U -Dmaven.wagon.http.retryHandler.count=10 --batch-mode --no-transfer-progress verify
+            - . cve-scan
+            - . cache-maven store
+        - name: Postgres 17 (assembly,postgres-17,pgoutput-decoder)
+          commands:
+            - mvn -Dcloud -Passembly,postgres-17,pgoutput-decoder -Dcheckstyle.skip=true -Dformat.skip=true -DfailFlakyTests=false -pl debezium-connector-postgres -am -U -Dmaven.wagon.http.retryHandler.count=10 --batch-mode --no-transfer-progress verify
+            - . cve-scan
+            - . cache-maven store
+        - name: SqlServer
+          commands:
+            - mvn -Dcloud -Passembly -Dcheckstyle.skip=true -Dformat.skip=true -DfailFlakyTests=false -pl debezium-connector-sqlserver -am -U -Dmaven.wagon.http.retryHandler.count=10 --batch-mode --no-transfer-progress verify
             - . cve-scan
             - . cache-maven store
       env_vars:
