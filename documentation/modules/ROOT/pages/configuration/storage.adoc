@@ -95,9 +95,47 @@ Debezium can use Kafka to store its state, including source offsets, schema hist
 
 
 == File
+
+It's possible to persist the position (offsets) of the connector in a local file on disk. This allows Debezium to resume from where it left off after a restart. It's simple, fast, and ideal for single-node applications or testing scenarios.
+
 === Offset Store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[offset-storage-file]]<<offset-storage-file,`offset.storage`>>
+|
+|Must be set to `org.apache.kafka.connect.storage.FileOffsetBackingStore`
+
+|[[offset-storage-file-filename]]<<offset-storage-file-filename,`offset.storage.file.filename`>>
+|No default
+|Path to the file where Debezium stores source offsets.
+
+|[[offset-flush-interval-ms]]<<offset-flush-interval-ms,`offset.flush.interval.ms`>>
+|6000ms
+|Interval in milliseconds to flush the current offset state to the file.
+
+|===
+
 === Internal schema history store
 
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[schema-history-internal-file]]<<schema-history-internal-file,`schema.history.internal`>>
+|No default
+|Must be set to `io.debezium.storage.file.history.FileSchemaHistory`
+|[[schema-history-internal-file-file]]<<schema-history-internal-file-file,`schema.history.internal.file`>>
+|No default
+|The path to the file that will be used to record the database schema history`
+
+|===
 
 == Memory
 === Offset Store
