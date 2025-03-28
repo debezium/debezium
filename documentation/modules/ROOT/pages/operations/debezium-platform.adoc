@@ -63,6 +63,7 @@ Currently, the only supported environment is Kubernetes.
 * Kubernetes cluster with an ingress controller
 
 Installation is provided through a https://helm.sh/[Helm] chart.
+
 .Procedure
 
 1. Enter the following command to add the {prodname} charts repository:
