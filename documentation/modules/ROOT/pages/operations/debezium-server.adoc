@@ -1620,6 +1620,7 @@ When the alternative implementations are not available then the default ones are
 |Custom implementation maps the planned destination (stream) name into a RabbitMQ exchange name and (if enabled) into the routing key name.
 By default the same name is used.
 |===
+
 ==== RabbitMQ Native Stream
 
 Since https://www.rabbitmq.com/[RabbitMQ 3.9], https://www.rabbitmq.com/streams.html[Streams] were introduced to RabbitMQ, utilizing a new blazingly-fast protocol that can be used alongside AMQP 0.9.1.
@@ -1658,6 +1659,61 @@ The connection https://github.com/rabbitmq/rabbitmq-java-client/blob/main/src/ma
 So this string will be used as value for records without a payload.
 
 |===
+
+
+==== Milvus
+
+Milvus is an open-source vector database designed for similarity search and retrieval of high-dimensional data, like embeddings from machine learning models (e.g. text, image, audio).
+It is possible to either use to to process vector datatypes captured from a source database or use a transformation to calculate vector out of message field(s) and use it as an embedding.
+
+Milvus sink taks the incoming message and upserts the `after` part into a collection.
+The collection cannot contain dots so the sink replaces all dots with underscore characters.
+When delete message arrives the appropriate record is removed from a collection.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[milvus-type]]<<milvus-type, `debezium.sink.type`>>
+|
+|Must be set to `milvus`.
+
+|[[milvus-uri]]<<milvus-uri, `debezium.sink.milvus.uri`>>
+|_http://localhost:19530_
+|(Optional) A URL to access Milvus database instance.
+
+|[[milvus-database]]<<milvus-database, `debezium.sink.milvus.database`>>
+| _default_
+|(Optional) The name of the database containing target collections.
+
+|===
+
+
+===== Injection points
+
+The Milvus sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
+When the alternative implementations are not available then the default ones are used.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[milvus-ext-client]]<<milvus-ext-client, `io.milvus.v2.client.MilvusClientV2.MilvusClientV2`>>
+|`@CustomConsumerBuilder`
+|Custom configured instance of a `MilvusClientV2` used to access target collections.
+
+|[[milvus-ext-stream-name-mapper]]<<milvus-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
+|
+|Custom implementation maps the planned destination (topic) name into a Milvus collection.
+By default the name with dots replaced with underscores is used.
+
+|===
+
+
 == Extensions
 
 {prodname} Server uses the https://quarkus.io/[Quarkus framework] and relies on dependency injection to enable developer to extend its behaviour.
