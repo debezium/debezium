@@ -179,7 +179,7 @@ After the snapshot completes, the connector continues streaming changes from ste
 This mode is useful in the following situations: +
 
 * It is known that some WAL segments have been deleted and are no longer available. +
-* After a cluster failure, a new primary has been promoted.
+* After a cluster failure, if a new primary is promoted.
   The `always` snapshot mode ensures that the connector does not miss any changes that were made after the new primary had been promoted but before the connector was restarted on the new primary.
 
 |`initial` (default)
@@ -2533,7 +2533,7 @@ You cannot configure logical replication on replica servers in the cluster.
 Consequently, the {prodname} PostgreSQL connector can connect and communicate only with the primary server.
 If the primary server fails, the connector stops.
 To recover from a failure, you must repair the cluster and then either promote the original primary server to `primary`, or promote a different PostgreSQL server to `primary`.
-For more information, see xref:postgresql-cluster-failures-capturing-from-new-primary[Capturing data from a new primary after a failure].
+For more information, see xref:postgresql-cluster-failures-capturing-from-new-pg15-primary[Capturing data from a new primary after a failure].
 
 // Type: concept
 [id="postgresql-supported-topologies-pg16"]
@@ -4390,6 +4390,7 @@ For example, verify that the configuration includes the correct values for the f
 * xref:postgresql-property-database-user[`database.user`]
 * xref:postgresql-property-database-password[`database.password`]
 * xref:postgresql-property-slot-name[`slot.name`]
+
 . Configure the new primary server to work with {prodname} by completing the following tasks:
 
 * xref:configuring-a-replication-slot-for-the-debezium-pgoutput-plug-in[Configure a replication slot] on the server.
@@ -4399,7 +4400,7 @@ For more information about how to configure the PostgreSQL server to work with {
 
 . Promote the standby PostgreSQL node to `primary`.
 . Restart the connector.
-. Perform a snapshot on the new primary server to capture the initial state of the data on the server and ensure that no data is lost.
+. xref:postgresql-connector-snapshot-mode-options[Set the snapshot mode] to `always`, and perform a snapshot on the new primary server to capture the initial state of the data on the server and ensure that no data is lost.
 
 [id="postgresql-kafka-connect-process-stops-gracefully"]
 === Kafka Connect process stops gracefully
