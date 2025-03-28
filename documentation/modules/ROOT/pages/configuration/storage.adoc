@@ -26,8 +26,72 @@ The internal schema history is configured in all cases via connector configurati
 
 
 == Kafka
+
+Debezium can use Kafka to store its state, including source offsets, schema history. Offsets are stored in a Kafka topic (e.g., `connect-offsets`) via the `KafkaOffsetBackingStore`, ensuring connectors resume from the correct position after restarts. Schema history is saved in a separate compacted topic (e.g., `schema-changes.inventory`).
+
 === Offset Store
+
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[offset-storage-kafka]]<<offset-storage-kafka,`offset.storage`>>
+|
+|Must be set to `org.apache.kafka.connect.storage.KafkaOffsetBackingStore`.
+
+|[[offset-storage-topic]]<<offset-storage-topic,`offset.storage.topic`>>
+|
+|Defines the Kafka topic where offsets will be stored. It's essential that this topic is configured with log compaction enabled to retain the latest offset information.
+
+|[[offset-storage-partitions]]<<offset-storage-partitions,`offset.storage.partitions`>>
+|
+|Indicates the number of partitions for the offset storage topic. This should align with your Kafka cluster's partitioning strategy.
+
+|[[offset-storage-replication-factor]]<<offset-storage-replication-factor,`offset.storage.replication.factor`>>
+|
+|Sets the replication factor for the offset storage topic, ensuring fault tolerance by replicating data across multiple brokers.
+
+|===
+
 === Internal schema history store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[schema-history-internal-kafka]]<<schema-history-internal-kafka,`schema.history.internal.kafka`>>
+|
+|Must be set to `io.debezium.storage.kafka.history.KafkaSchemaHistory`.
+
+|[[schema-history-internal-kafka-topic]]<<schema-history-internal-kafka-topic,`schema.history.internal.kafka.topic`>>
+|
+|The name of the topic for the database schema history
+
+|[[schema-history-internal-kafka-bootstrap-servers]]<<schema-history-internal-kafka-bootstrap-servers,`schema.history.internal.kafka.bootstrap.servers`>>
+|
+|A list of host/port pairs that the connector will use for establishing the initial connection to the Kafka cluster for retrieving database schema history previously stored by the connector. This should point to the same Kafka cluster used by the Kafka Connect process.
+
+|[[schema-history-internal-kafka-recovery-poll-interval-ms]]<<schema-history-internal-kafka-recovery-poll-interval-ms,`schema.history.internal.kafka.recovery.poll.interval.ms`>>
+|100
+|The number of milliseconds to wait while polling for persisted data during recovery.
+
+|[[schema-history-internal-kafka-recovery-attempts]]<<schema-history-internal-kafka-recovery-attempts,`schema.history.internal.kafka.recovery.attempts`>>
+|100
+|The number of attempts in a row that no data are returned from Kafka before recover completes. The maximum amount of time to wait after receiving no data is (recovery.attempts) x (recovery.poll.interval.ms).
+
+|[[schema-history-internal-kafka-query-timeout-ms]]<<schema-history-internal-kafka-query-timeout-ms,`schema.history.internal.kafka.query.timeout.ms`>>
+|3
+|The number of milliseconds to wait while fetching cluster information using Kafka admin client.
+
+|[[schema-history-internal-kafka-create-timeout-ms]]<<schema-history-internal-kafka-create-timeout-ms,`schema.history.internal.kafka.create.timeout.ms`>>
+|30
+|The number of milliseconds to wait while create kafka history topic using Kafka admin client.
+|===
 
 
 == File
