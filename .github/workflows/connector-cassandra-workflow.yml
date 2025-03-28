@@ -34,9 +34,9 @@ jobs:
           path: cassandra
           ref: ${{ inputs.checkout-ref }}
 
-      - uses: ./.github/actions/setup-java
+      - uses: ./core/.github/actions/setup-java
 
-      - uses: ./.github/actions/maven-cache
+      - uses: ./core/.github/actions/maven-cache
         with:
           key: ${{ inputs.cache-key }}-${{ hashFiles('core/**/pom.xml') }}
 
