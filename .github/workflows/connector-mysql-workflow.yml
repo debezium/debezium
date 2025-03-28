@@ -1,0 +1,44 @@
+name: MySQL Builds
+on:
+  workflow_call:
+    inputs:
+      maven-cache-key:
+        description: "The cache key to use to restore/save build caches."
+        required: true
+        type: string
+      max-parallel:
+        description: "The maximum number of workers to consume, by default uses all available."
+        required: false
+        type: number
+
+jobs:
+  build-mysql:
+    strategy:
+      max-parallel: ${{ inputs.max-parallel }}
+      fail-fast: false
+      matrix:
+        profile: [ "mysql-ci", "mysql-ci-gtids", "mysql-ci-percona", "mysql-ci-ssl" ]
+        version-mysql-server: [ "8.0", "8.4", "9.1" ]
+        # Always exclude mysql-ci-gtids and mysql-ci-ssl profiles for all versions except most recent
+        exclude:
+          - profile: "mysql-ci-gtids"
+            version-mysql-server: "8.0"
+          - profile: "mysql-ci-gtids"
+            version-mysql-server: "8.4"
+          - profile: "mysql-ci-ssl"
+            version-mysql-server: "8.0"
+          - profile: "mysql-ci-ssl"
+            version-mysql-server: "8.4"
+    name: MySQL ${{ matrix.version-mysql-server }} - ${{ matrix.profile }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build MySQL ${{ matrix.version-mysql-server }} - ${{ matrix.profile }}
+        uses: ./.github/actions/build-debezium-mysql
+        with:
+          maven-cache-key: ${{ inputs.maven-cache-key }}
+          version-mysql-server: ${{ matrix.version-mysql-server }}
+          profile: ${{ matrix.profile }}
