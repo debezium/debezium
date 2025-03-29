@@ -1853,6 +1853,7 @@ The following table describes how the connector maps basic character types.
 
 [id="oracle-binary-character-lob-types"]
 === Binary and Character LOB types
+
 The following table describes how the connector maps binary and character large object (LOB) data types.
 
 .Mappings for Oracle binary and character LOB types
