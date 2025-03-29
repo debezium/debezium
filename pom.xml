@@ -215,6 +215,7 @@
         <module>debezium-storage</module>
         <module>debezium-interceptor</module>
         <module>debezium-sink</module>
+        <module>debezium-ai</module>
     </modules>
 
     <distributionManagement>

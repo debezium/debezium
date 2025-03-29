@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-parent</artifactId>
+        <version>3.1.0-SNAPSHOT</version>
+        <relativePath>../debezium-parent/pom.xml</relativePath>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>debezium-ai</artifactId>
+    <version>3.1.0-SNAPSHOT</version>
+    <name>Debezium AI</name>
+    <packaging>pom</packaging>
+
+    <properties>
+        <!-- JDK version is controlled by Debezium Parent, do not change! -->
+        <maven.compiler.source>${debezium.java.source}</maven.compiler.source>
+        <maven.compiler.target>${debezium.java.specific.target}</maven.compiler.target>
+        <maven.compiler.release>${debezium.java.specific.target}</maven.compiler.release>
+        <maven.compiler.testSource>${debezium.java.source}</maven.compiler.testSource>
+        <maven.compiler.testTarget>${debezium.java.specific.target}</maven.compiler.testTarget>
+        <maven.compiler.testRelease>${debezium.java.specific.target}</maven.compiler.testRelease>
+    </properties>
+
+    <modules>
+        <module>debezium-ai-embeddings-base</module>
+        <module>debezium-ai-embeddings-minilm</module>
+    </modules>
+</project>
