@@ -937,9 +937,10 @@ If the {prodname} connector is configured to use the `online_catalog` mode, and 
 
 Following this procedure helps to ensure that Oracle LogMiner can safely reconstruct the SQL for all data changes.
 
+ifdef::community[]
 ==== Hybrid approach
 
-You can enable this strategy by setting the value of the xref:oracle-property-log-mining-strategy[`log.mining.strategy`] configuration property to `hybrid`.
+This is a new, experimental strategy that can be enabled by setting the strategy to `hybrid`.
 The goal of this strategy is to provide the reliability of the `redo_log_catalog` strategy with the performance and low overhead of the `online_catalog` strategy, without incurring the disadvantages of either strategy.
 
 The `hybrid` strategy works by primarily operating in the `online_catalog` mode, meaning that the {prodname} Oracle connector first delegates event reconstruction to Oracle LogMiner.
@@ -952,6 +953,7 @@ The connector reports a failure only if both Oracle LogMiner and the connector a
 You cannot use the `hybrid` mining strategy if the xref:oracle-property-lob-enabled[`lob.enabled`] property is set to `true`.
 If you require streaming `CLOB`, `BLOB`, or `XML` data, only the `online_catalog` or `redo_log_catalog` strategies can be used.
 ====
+endif::community[]
 
 [[oracle-logminer-query-modes]]
 === Query Modes
@@ -1851,7 +1853,6 @@ The following table describes how the connector maps basic character types.
 
 [id="oracle-binary-character-lob-types"]
 === Binary and Character LOB types
-
 The following table describes how the connector maps binary and character large object (LOB) data types.
 
 .Mappings for Oracle binary and character LOB types
@@ -4012,7 +4013,7 @@ ifdef::community[]
 `infinispan_embedded` - This option uses an embedded Infinispan cache to buffer transaction data and persist it to disk. +
  +
 `infinispan_remote` - This option uses a remote Infinispan cluster to buffer transaction data and persist it to disk.
-endif::community[]
+
 
 |[[oracle-property-log-mining-buffer-transaction-events-threshold]]<<oracle-property-log-mining-buffer-transaction-events-threshold, `+log.mining.buffer.transaction.events.threshold+`>>
 |`0`
@@ -4020,7 +4021,6 @@ endif::community[]
 Transactions with event counts that exceed this threshold not be emitted and will be abandoned.
 The default behavior is there is no transaction event threshold.
 
-ifdef::community[]
 |[[oracle-property-log-mining-buffer-infinispan-cache-global]]<<oracle-property-log-mining-buffer-infinispan-cache-global, `+log.mining.buffer.infinispan.cache.global+`>>
 |No default
 |The XML configuration for the Infinispan global configuration.
@@ -4603,11 +4603,11 @@ For more information, see xref:oracle-property-log-mining-transaction-retention-
 |[[oracle-streaming-metrics-number-of-committed-transactions]]<<oracle-streaming-metrics-number-of-committed-transactions, `+NumberOfCommittedTransactions+`>>
 |`long`
 |The number of committed transactions in the transaction buffer.
-
+ifdef::community[]
 |[[oracle-streaming-metrics-number-of-oversized-transactions]]<<oracle-streaming-metrics-number-of-oversized-transactions, `+NumberOfOversizedTransactions+`>>
 |`long`
 |The number of transactions that were discarded because their size exceeded <<oracle-property-log-mining-buffer-transaction-events-threshold, `log.mining.buffer.transaction.events.threshold`>>.
-
+endif::community[]
 |[[oracle-streaming-metrics-number-of-rolledback-transactions]]<<oracle-streaming-metrics-number-of-rolledback-transactions, `+NumberOfRolledBackTransactions+`>>
 |`long`
 |The number of rolled back transactions in the transaction buffer.
