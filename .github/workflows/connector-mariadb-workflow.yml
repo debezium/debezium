@@ -1,0 +1,46 @@
+name: MariaDB Builds
+on:
+  workflow_call:
+    inputs:
+      cache-key:
+        description: "The cache key to use to restore/save build caches."
+        required: true
+        type: string
+      max-parallel:
+        description: "The maximum number of workers to consume, by default uses all available."
+        required: false
+        type: number
+
+jobs:
+  build-mariadb:
+    strategy:
+      max-parallel: ${{ inputs.max-parallel }}
+      fail-fast: false
+      matrix:
+        profile: [ 'mariadb-ci', 'mariadb-ci-gtids', 'mariadb-ci-ssl']
+    name: MariaDB - ${{ matrix.profile }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-java
+
+      - uses: ./.github/actions/maven-cache
+        with:
+          key: ${{ inputs.cache-key }}-${{ hashFiles('**/pom.xml') }}
+
+      - name: Build MariaDB - ${{ matrix.profile }}
+        shell: bash
+        run: >
+          ./mvnw clean install -B -pl debezium-connector-mariadb -am
+          -P${{ matrix.profile }}
+          -Dcheckstyle.skip=true
+          -Dformat.skip=true
+          -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+          -Dmaven.wagon.http.pool=false
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+          -DfailFlakyTests=false
+          -Ddebezium.test.mongo.replica.primary.startup.timeout.seconds=120
+
