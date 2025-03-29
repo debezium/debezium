@@ -75,7 +75,7 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
                     throw new DebeziumException(
                             "Incremental snapshot is not properly configured, either sinalling data collection is not provided or connector-specific snapshotting not set");
                 }
-                dispatcher.getIncrementalSnapshotChangeEventSource().addDataCollectionNamesToSnapshot(
+                dispatcher.getIncrementalSnapshotChangeEventSource().requestAddDataCollectionNamesToSnapshot(
                         signalPayload, snapsthoConfigurationBuilder.build());
                 break;
             case BLOCKING:
