@@ -806,7 +806,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     private static boolean commitOffsets(final OffsetStorageWriter offsetWriter, final io.debezium.util.Clock clock, final long commitTimeout, final SourceTask task)
             throws InterruptedException, TimeoutException {
         final long timeout = clock.currentTimeInMillis() + commitTimeout;
-        if (!offsetWriter.beginFlush(commitTimeout, TimeUnit.MICROSECONDS)) {
+        if (!offsetWriter.beginFlush(commitTimeout, TimeUnit.MILLISECONDS)) {
             LOGGER.trace("No offset to be committed.");
             return false;
         }
