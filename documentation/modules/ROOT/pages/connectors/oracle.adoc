@@ -36,7 +36,10 @@ ifdef::product[]
 For information about the Oracle Database versions that are compatible with this connector, see the link:{LinkDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
 endif::product[]
 
-{prodname} ingests change events from Oracle by using the native LogMiner database package
+{prodname} ingests change events from Oracle by using the native LogMiner database package,
+ifdef::community[]
+the https://docs.oracle.com/en/database/oracle/oracle-database/19/xstrm/introduction-to-xstream.html[XStream API], or https://www.bersler.com/openlogreplicator/[OpenLogReplicator].
+endif::community[]
 ifdef::product[]
 or the https://docs.oracle.com/en/database/oracle/oracle-database/19/xstrm/introduction-to-xstream.html[XStream API].
 
@@ -53,9 +56,6 @@ Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software
 For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
 ====
 endif::product[]
-ifdef::community[]
-, the https://docs.oracle.com/en/database/oracle/oracle-database/19/xstrm/introduction-to-xstream.html[XStream API], or https://www.bersler.com/openlogreplicator/[OpenLogReplicator].
-endif::community[]
 
 ifdef::product[]
 
@@ -5189,6 +5189,7 @@ The {prodname} Oracle connector by default ingests changes using native Oracle L
 The connector can be toggled to use Oracle XStream instead.
 To configure the connector to use Oracle XStream, you must apply specific database and connector configurations that differ from those that you use with LogMiner.
 
+ifdef::product[]
 [IMPORTANT]
 ====
 Use of the {prodname} Oracle connector with XStream is a Developer Preview feature.
@@ -5201,7 +5202,7 @@ Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software
 
 For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
 ====
-
+endif::product[]
 .Prerequisites
 
 * To use the XStream API, you must have a license for the GoldenGate product.
