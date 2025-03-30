@@ -19,10 +19,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # This job is responsible for inspecting the changes in the repository and setting specific output variables
+  # that subsequent jobs can use to determine whether a particular job should be skipped or included.
+  file_changes:
+    name: "Detect repository changes"
+    uses: ./.github/workflows/file-changes-workflow.yml
 
   # Approx 1m
   build_cache:
     name: "Update Dependencies"
+    needs: [ file_changes ]
+    # If documentation is all that changed, no need to build code on branch
+    if: ${{ needs.file_changes.documentation-only-changed == 'false' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Core)
@@ -101,86 +109,39 @@ jobs:
 
   # Approx 40m each
   build_mongodb:
-    strategy:
-      # Run each MongoDB job sequentially
-      max-parallel: 1
-      matrix:
-        version-mongo-server: [ "5.0", "8.0" ]
-      fail-fast: false
-    name: "MongoDB ${{ matrix.version-mongo-server }}"
+    name: "MongoDB"
     needs: [ check_style ]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Action
-        uses: actions/checkout@v4
-
-      - uses: ./.github/actions/build-debezium-mongodb
-        with:
-          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
-          version-mongo-server: ${{ matrix.version-mongo-server }}
+    uses: ./.github/workflows/connector-mongodb-workflow.yml
+    with:
+      maven-cache-key: maven-debezium-test-push-build
+      max-parallel: 1
 
   # Approx 40m each
   build_mysql:
-    strategy:
-      # Run 2 matrix jobs concurrently
-      max-parallel: 2
-      matrix:
-        profile: [ "mysql-ci", "mysql-ci-gtids", "mysql-ci-percona", "mysql-ci-ssl" ]
-        version-mysql-server: [ "8.0", "8.4", "9.1" ]
-      fail-fast: false
-    name: "MySQL ${{ matrix.version-mysql-server }} - ${{ matrix.profile }}"
+    name: "MySQL"
     needs: [ check_style ]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Action
-        uses: actions/checkout@v4
-
-      - uses: ./.github/actions/build-debezium-mysql
-        with:
-          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
-          version-mysql-server: ${{ matrix.version-mysql-server }}
-          profile: ${{ matrix.profile }}
+    uses: ./.github/workflows/connector-mysql-workflow.yml
+    with:
+      maven-cache-key: maven-debezium-test-push-build
+      max-parallel: 2
 
   # Approx 40m each
   build_mariadb:
-    strategy:
-      # Run each MariaDB job sequentially
-      max-parallel: 1
-      matrix:
-        profile: [ 'mariadb-ci', 'mariadb-ci-gtids', 'mariadb-ci-ssl' ]
-      fail-fast: false
-    name: "MariaDB - ${{ matrix.profile }}"
+    name: "MariaDB"
     needs: [ check_style ]
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Action
-        uses: actions/checkout@v4
-
-      - uses: ./.github/actions/build-debezium-mariadb
-        with:
-          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
-          profile: ${{ matrix.profile }}
+    uses: ./.github/workflows/connector-mariadb-workflow.yml
+    with:
+      maven-cache-key: maven-debezium-test-push-build
+      max-parallel: 1
 
   # Approx 40m each
   build_postgresql:
-    strategy:
-      # Run each PostgreSQL job sequentially
-      max-parallel: 1
-      matrix:
-        profile: [ "assembly,postgres-12", "assembly,postgres-17,pgoutput-decoder" ]
-      fail-fast: false
-    name: "PostgreSQL - ${{ matrix.profile }}"
+    name: "PostgreSQL"
     needs: [ check_style ]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Action
-        uses: actions/checkout@v4
-
-      - uses: ./.github/actions/build-debezium-postgres
-        with:
-          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
-          profile: ${{ matrix.profile }}
+    uses: ./.github/workflows/connector-postgresql-workflow.yml
+    with:
+      maven-cache-key: maven-debezium-test-push-build
+      max-parallel: 1
 
   # Approx 1h 45m
   build_sqlserver:
@@ -199,14 +160,10 @@ jobs:
   build_oracle:
     name: "Oracle"
     needs: [ check_style ]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Action
-        uses: actions/checkout@v4
-
-      - uses: ./.github/actions/build-debezium-oracle
-        with:
-          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+    uses: ./.github/workflows/connector-oracle-workflow.yml
+    with:
+      maven-cache-key: maven-debezium-test-push-build
+      max-parallel: 1
 
   # Approx 2m
   build_outbox:
@@ -335,40 +292,13 @@ jobs:
 
   # Approx 45m
   build_informix:
-    strategy:
-      # Run each MariaDB job sequentially
-      max-parallel: 1
-      matrix:
-        profile: [ 'assembly,informix12', 'assembly,informix14' ]
-      fail-fast: false
-    name: "Informix - ${{ matrix.profile }}"
+    name: "Informix"
     needs: [ check_style ]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Action (Debezium Core)
-        uses: actions/checkout@v4
-        with:
-          path: core
-
-      - name: Checkout Action (Informix)
-        uses: actions/checkout@v4
-        with:
-          repository: debezium/debezium-connector-informix
-          path: informix
-          ref: ${{ github.ref_name }}
-
-      - uses: ./core/.github/actions/setup-java
-
-      - uses: ./core/.github/actions/maven-cache
-        with:
-          # We specifically only use the hash of the pom files from the core repository
-          key: maven-debezium-test-push-build-${{ hashFiles('core/**/pom.xml') }}
-
-      - uses: ./core/.github/actions/build-debezium-informix
-        with:
-          path-core: core
-          path-informix: informix
-          profile: ${{ matrix.profile }}
+    uses: ./.github/workflows/connector-informix-workflow.yml
+    with:
+      maven-cache-key: maven-debezium-test-push-build
+      max-parallel: 1
+      checkout-ref: ${{ github.ref_name }}
 
   build_ibmi:
     name: "IBMi"
@@ -463,14 +393,9 @@ jobs:
   build_jdbc:
     name: "JDBC"
     needs: [ check_style, build_spanner ]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Action
-        uses: actions/checkout@v4
-
-      - uses: ./.github/actions/build-debezium-jdbc
-        with:
-          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+    uses: ./.github/workflows/connector-jdbc-workflow.yml
+    with:
+      maven-cache-key: maven-debezium-test-push-build
 
   # Approx 26m
   build_debezium_server:
