@@ -328,10 +328,9 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 
 [IMPORTANT]
 ====
-MariaDB 11.4 and later changed binary log format.
-To make it compatible with Debezium it is necessary to set server configuration option `binlog_legacy_event_pos` to
-value `ON`.
-When not set the connector might be unable to find the resume point after restart.
+A new binary log format was introduced in MariaDB 11.4.
+When you use {prodname} with MariaDB 11.4 or later, you must set the MariaDB server variable https://mariadb.com/kb/en/replication-and-binary-log-system-variables/#binlog_legacy_event_pos[`binlog_legacy_event_pos`] to `1` (ON) to ensure that the connector can consume events in the new format.
+If you leave this variable at its default setting (`0`, or OFF), after a connector restart, {prodname} might not be able to find the resume point.
 ====
 
 // Type: procedure
