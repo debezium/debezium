@@ -3299,6 +3299,44 @@ endif::community[]
 When connecting to Oracle using mutual TLS authentication (mTLS), this involves both the connector and the database service proving their identities.
 The {prodname} for Oracle connector relies on the Oracle JDBC driver's built-in functionality to support mTLS authentication.
 
+There are two ways to establish mTLS connections:
+
+* xref:#using-mtls-secure-connections-java-key-trust-stores[]
+* xref:#using-mtls-secure-connections-oracle-wallet[]
+
+[[using-mtls-secure-connections-java-key-trust-stores]]
+==== Java key/trust stores
+
+.Prerequisites
+* Verify connector can access key/trust store files directly.
+* Verify database TNS listener supports `tcps` secure connections.
+
+.Procedure
+* Configure the {prodname} Oracle connector, as illustrated below in the example.
+
+.Example: {prodname} Oracle connector TLS configuration
+[source,json,indent=0]
+----
+{
+  "database.url": "jdbc:oracle:thin@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=<host>)(PORT=<port>))(CONNECT_DATA(SERVICE_NAME=<service>)))",
+  "driver.javax.net.ssl.keyStore": "<path-to-jks-keystore>",
+  "driver.javax.net.ssl.keyStorePassword": "<keystore-password>",
+  "driver.javax.net.ssl.keyStoreType": "JKS",
+  "driver.javax.net.ssl.trustStore": "<path-to-jks-truststore>",
+  "driver.javax.net.ssl.trustStorePassword": "<truststore-password>",
+  "driver.javax.net.ssl.trustStoreType": "JKS"
+}
+----
+
+[NOTE]
+====
+It is important for TLS encryption to use `database.url` rather than `database.host`.
+The URL provides a TNS connection string which is what explicitly controls the secure connection requirement by setting the protocol to `tcps`.
+====
+
+[[using-mtls-secure-connections-oracle-wallet]]
+==== Oracle Wallet
+
 .Prerequisites
 * Verify Oracle Wallet is configured on the Oracle database server with your database administrators
 * Locate the `oraclepki.jar` inside the Oracle JDBC driver archive
