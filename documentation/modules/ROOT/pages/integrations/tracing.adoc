@@ -127,7 +127,7 @@ For information about how to configure OpenTelemetry, see the https://openteleme
 
 == ActivateTracingSpan SMT
 
-The main implementation point of tracing in Debezium is `ActivateTracingSpan` SMT.
+The main implementation point of tracing in Debezium is `io.debezium.transforms.tracing.ActivateTracingSpan` SMT.
 In this case, the application writing to a database is responsible for providing the tracing span context.
 The writer must inject the span context into a `java.util.Properties` instance that is serialized and written to the database as a distinct field of the table.
 
