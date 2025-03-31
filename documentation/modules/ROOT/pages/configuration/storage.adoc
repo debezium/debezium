@@ -519,7 +519,7 @@ The store uses Redis cache to store the data using https://redis.io/docs/latest/
 
 |===
 
-== S3
+== Amazon S3
 The store uses link:https://aws.amazon.com/s3/[Amazon S3] object storage service.
 It is typically used when Debezium is deployed in link:https://aws.amazon.com/msk/[Amazon Managed Streaming] service.
 
@@ -558,5 +558,78 @@ It is typically used when Debezium is deployed in link:https://aws.amazon.com/ms
 |[[s3-history-endpoint]]<<s3-history-endpoint, `schema.history.internal.s3.endpoint`>>
 |No default
 |(Optional) A custom URL used to access S3 service.
+
+|===
+
+== Azure Blob Storage
+
+The store uses link:https://azure.microsoft.com/en-us/products/storage/blobs[Azure Blob] storage service.
+It is typically used when Debezium is deployed in link:https://learn.microsoft.com/en-us/azure/hdinsight/kafka/apache-kafka-introduction[Apache Kafka in Azure HDInsight] service.
+
+=== Internal schema history store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[schema-history-internal-azure]]<<schema-history-internal-azure, `schema.history.internal`>>
+|No default
+|Must be set to `io.debezium.storage.azure.blob.history.AzureBlobSchemaHistory`.
+|[[schema-history-internal-azure-storage-account-connectionstring]]<<schema-history-internal-azure-storage-account-connectionstring,`schema.history.internal.azure.storage.account.connectionstring`>>
+|No default
+|The Storage connection string to Azure blob storage
+|[[schema-history-internal-azure-storage-account-name]]<<schema-history-internal-azure-storage-account-name,`schema.history.internal.azure.storage.account.name`>>
+|No default
+|The account name
+|[[schema-history-internal-azure-storage-account-container-name]]<<schema-history-internal-azure-storage-account-container-name,`schema.history.internal.azure.storage.account.container.name`>>
+|No default
+|The container name
+|[[schema-history-internal-azure-storage-blob-name]]<<schema-history-internal-azure-storage-blob-name,`schema.history.internal.azure.storage.blob.name`>>
+|No default
+|The blob name
+
+|===
+
+== RocketMQ
+
+Debezium supports storing schema history in Apache RocketMQ by utilizing the `RocketMqSchemaHistory` class. This integration allows Debezium to persist and retrieve database schema changes using RocketMQ as the storage medium.
+
+=== Internal schema history store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[schema-history-internal-rochetmq]]<<schema-history-internal-rochetmq, `schema.history.internal`>>
+|No default
+|Must be set to `io.debezium.storage.rocketmq.history.RocketMqSchemaHistory`.
+|[[schema-history-internal-rocketmq-topic]]<<schema-history-internal-rocketmq-topic,`schema.history.internal.rocketmq.topic`>>
+|No Default
+|The name of the topic for the database schema history.
+|[[schema-history-internal-rocketmq-name-srv-addr]]<<schema-history-internal-rocketmq-name-srv-addr,`schema.history.internal.rocketmq.name.srv.addr`>>
+|No Default
+|RocketMQ service discovery service nameserver address configuration.
+|[[schema-history-internal-rocketmq-acl-enabled]]<<schema-history-internal-rocketmq-acl-enabled,`schema.history.internal.rocketmq.acl.enabled`>>
+|false
+|RocketMQ access control enable configuration.
+|[[schema-history-internal-rocketmq-access-key]]<<schema-history-internal-rocketmq-access-key,`schema.history.internal.rocketmq.access.key`>>
+|No Default
+|RocketMQ access key. If  `schema.history.internal.rocketmq.acl.enabled` is true, the value cannot be empty.
+|[[schema-history-internal-rocketmq-secret-key]]<<schema-history-internal-rocketmq-secret-key,`schema.history.internal.rocketmq.secret.key`>>
+|No Default
+|RocketMQ secret key. If  `schema.history.internal.rocketmq.acl.enabled`  is true, the value cannot be empty.
+|[[schema-history-internal-rocketmq-recovery-attempts]]<<schema-history-internal-rocketmq-recovery-attempts,`schema.history.internal.rocketmq.recovery.attempts`>>
+|No Default
+|The number of attempts in a row that no data are returned from RocketMQ before recover.
+|[[schema-history-internal-rocketmq-recovery-poll-interval-ms]]<<schema-history-internal-rocketmq-recovery-poll-interval-ms,`schema.history.internal.rocketmq.recovery.poll.interval.ms`>>
+|No Default
+|The number of milliseconds to wait while polling for persisted data during recovery.
+|[[schema-history-internal-rocketmq-store-record-timeout.ms]]<<schema-history-internal-rocketmq-store-record-timeout.ms,`schema.history.internal.rocketmq.store.record.timeout.ms`>>
+|No Default
+|Timeout for sending messages to RocketMQ.
 
 |===
