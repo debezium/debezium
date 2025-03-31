@@ -56,10 +56,10 @@
 ** xref:integrations/cloudevents.adoc[CloudEvents]
 ** xref:integrations/tracing.adoc[OpenTelemetry]
 ** xref:integrations/testcontainers.adoc[Integration Testing with Testcontainers]
-* Operations
+* Standalone Debezium
 ** xref:operations/debezium-server.adoc[Debezium Server]
+* Operations
 ** xref:operations/logging.adoc[Logging]
 ** xref:operations/monitoring.adoc[Monitoring]
 ** xref:operations/kubernetes.adoc[Running on Kubernetes]
 ** xref:operations/openshift.adoc[Running on Openshift]
-** xref:operations/debezium-ui.adoc[Debezium UI]
