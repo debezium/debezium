@@ -570,6 +570,11 @@
                 <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
                 <version>${version.langchain4j}</version>
             </dependency>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-ollama</artifactId>
+                <version>${version.langchain4j}</version>
+            </dependency>
 
             <!-- Testing utilities -->
             <dependency>
