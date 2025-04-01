@@ -17,14 +17,14 @@ import org.junit.Test;
 /**
  * @author vjuranek
  */
-public class EmbeddingsMiniLmSmtTest {
-    private final EmbeddingsMiniLmSmt<SourceRecord> embeddingSmt = new EmbeddingsMiniLmSmt<>();
+public class EmbeddingsMiniLmL6V2Test {
+    private final EmbeddingsMiniLmL6V2<SourceRecord> embeddingSmt = new EmbeddingsMiniLmL6V2<>();
 
     @Test
     public void testMiniLmEmbeddings() {
         embeddingSmt.configure(Map.of(
-                "field.source", "after.product",
-                "field.embeddings", "after.prod_embedding"));
+                "embeddings.field.source", "after.product",
+                "embeddings.field.embedding", "after.prod_embedding"));
         SourceRecord transformedRecord = embeddingSmt.apply(AbstractEmbeddingsTransformationTest.SOURCE_RECORD);
 
         Struct payloadStruct = (Struct) transformedRecord.value();
