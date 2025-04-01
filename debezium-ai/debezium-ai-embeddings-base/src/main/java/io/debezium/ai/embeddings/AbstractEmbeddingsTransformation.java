@@ -45,7 +45,9 @@ public abstract class AbstractEmbeddingsTransformation<R extends ConnectRecord<R
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractEmbeddingsTransformation.class);
 
-    private static final Field TEXT_FIELD = Field.create("field.source")
+    public static final String EMBEDDINGS_PREFIX = "embeddings.";
+
+    private static final Field TEXT_FIELD = Field.create(EMBEDDINGS_PREFIX + "field.source")
             .withDisplayName("Name of the record field from which embeddings should be created.")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.SHORT)
@@ -53,7 +55,7 @@ public abstract class AbstractEmbeddingsTransformation<R extends ConnectRecord<R
             .required()
             .withDescription("Name of the field of the record which content will be used as an input for embeddings. Supports also nested fields.");
 
-    private static final Field EMBEDDGINS_FIELD = Field.create("field.embeddings")
+    private static final Field EMBEDDGINS_FIELD = Field.create(EMBEDDINGS_PREFIX + "field.embedding")
             .withDisplayName("Name of the field which would contain the embeddings of the input field.")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.SHORT)
@@ -80,11 +82,12 @@ public abstract class AbstractEmbeddingsTransformation<R extends ConnectRecord<R
     public void configure(Map<String, ?> configs) {
         final Configuration config = Configuration.from(configs);
         smtManager = new SmtManager<>(config);
-        smtManager.validate(config, Field.setOf(TEXT_FIELD, EMBEDDGINS_FIELD));
+        smtManager.validate(config, ALL_FIELDS);
+
         sourceField = config.getString(TEXT_FIELD);
         embeddingsField = config.getString(EMBEDDGINS_FIELD);
-
         validateConfiguration();
+
         sourceFiledPath = Arrays.asList(sourceField.split(NESTING_SPLIT_REG_EXP));
         model = getModel();
     }
@@ -116,8 +119,8 @@ public abstract class AbstractEmbeddingsTransformation<R extends ConnectRecord<R
         return Module.version();
     }
 
-    private void validateConfiguration() {
-        if (sourceField.isBlank()) {
+    protected void validateConfiguration() {
+        if (sourceField == null || sourceField.isBlank()) {
             throw new ConfigException(format("'%s' must be set to non-empty value.", TEXT_FIELD));
         }
     }

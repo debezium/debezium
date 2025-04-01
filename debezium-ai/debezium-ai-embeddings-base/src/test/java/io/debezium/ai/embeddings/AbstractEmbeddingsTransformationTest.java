@@ -55,8 +55,8 @@ public class AbstractEmbeddingsTransformationTest {
     @Test
     public void testNonNestedFieldIsEmbeddedNonNested() {
         embeddingSmt.configure(Map.of(
-                "field.source", "op",
-                "field.embeddings", "op_embedding"));
+                "embeddings.field.source", "op",
+                "embeddings.field.embedding", "op_embedding"));
         SourceRecord transformedRecord = embeddingSmt.apply(SOURCE_RECORD);
 
         Struct payloadStruct = (Struct) transformedRecord.value();
@@ -67,8 +67,8 @@ public class AbstractEmbeddingsTransformationTest {
     @Test
     public void testNestedFieldIsEmbeddedNested() {
         embeddingSmt.configure(Map.of(
-                "field.source", "after.product",
-                "field.embeddings", "after.prod_embedding"));
+                "embeddings.field.source", "after.product",
+                "embeddings.field.embedding", "after.prod_embedding"));
         SourceRecord transformedRecord = embeddingSmt.apply(SOURCE_RECORD);
 
         Struct payloadStruct = (Struct) transformedRecord.value();
@@ -78,7 +78,7 @@ public class AbstractEmbeddingsTransformationTest {
 
     @Test
     public void testNoEmbeddingsConfProvided() {
-        embeddingSmt.configure(Map.of("field.source", "after.product"));
+        embeddingSmt.configure(Map.of("embeddings.field.source", "after.product"));
         SourceRecord transformedRecord = embeddingSmt.apply(SOURCE_RECORD);
 
         List<Float> payloadStruct = (List<Float>) transformedRecord.value();

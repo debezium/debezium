@@ -15,7 +15,7 @@ import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2Embedding
  *
  * @author vjuranek
  */
-public class EmbeddingsMiniLmSmt<R extends ConnectRecord<R>> extends AbstractEmbeddingsTransformation<R> {
+public class EmbeddingsMiniLmL6V2<R extends ConnectRecord<R>> extends AbstractEmbeddingsTransformation<R> {
     public EmbeddingModel getModel() {
         return new AllMiniLmL6V2EmbeddingModel();
     }
