@@ -19,18 +19,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # This job is responsible for inspecting the changes in the repository and setting specific output variables
-  # that subsequent jobs can use to determine whether a particular job should be skipped or included.
-  file_changes:
-    name: "Detect repository changes"
-    uses: ./.github/workflows/file-changes-workflow.yml
+#  # This job is responsible for inspecting the changes in the repository and setting specific output variables
+#  # that subsequent jobs can use to determine whether a particular job should be skipped or included.
+#  file_changes:
+#    name: "Detect repository changes"
+#    uses: ./.github/workflows/file-changes-workflow.yml
 
   # Approx 1m
   build_cache:
     name: "Update Dependencies"
-    needs: [ file_changes ]
+#    needs: [ file_changes ]
     # If documentation is all that changed, no need to build code on branch
-    if: ${{ needs.file_changes.documentation-only-changed == 'false' }}
+#    if: ${{ needs.file_changes.documentation-only-changed == 'false' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Core)
