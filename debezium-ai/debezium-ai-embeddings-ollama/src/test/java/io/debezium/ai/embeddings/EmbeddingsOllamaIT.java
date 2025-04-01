@@ -21,7 +21,7 @@ import org.testcontainers.ollama.OllamaContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Integrations tests for emebeddings created by models served by Ollama server.
+ * Integrations tests for {@link FieldToEmbedding} SMT which uses {@link OllamaModelFactory}.
  *
  * @author vjuranek
  */
@@ -29,11 +29,11 @@ public class EmbeddingsOllamaIT {
     private static final String OLLAMA_IMAGE_NAME = "mirror.gcr.io/ollama/ollama:0.6.2";
     private static final String OLLAMA_TEST_MODEL = "all-minilm";
 
-    private final EmbeddingsOllama<SourceRecord> embeddingSmt = new EmbeddingsOllama<>();
-
     private static final OllamaContainer ollama = new OllamaContainer(
             DockerImageName.parse(OLLAMA_IMAGE_NAME).asCompatibleSubstituteFor("ollama/ollama"))
             .withStartupTimeout(Duration.ofSeconds(180));
+
+    private final FieldToEmbedding<SourceRecord> embeddingSmt = new FieldToEmbedding();
 
     @BeforeClass
     public static void startDatabase() {
@@ -54,7 +54,7 @@ public class EmbeddingsOllamaIT {
                 "embeddings.field.embedding", "after.prod_embedding",
                 "embeddings.ollama.url", ollama.getEndpoint(),
                 "embeddings.ollama.model.name", OLLAMA_TEST_MODEL));
-        SourceRecord transformedRecord = embeddingSmt.apply(AbstractEmbeddingsTransformationTest.SOURCE_RECORD);
+        SourceRecord transformedRecord = embeddingSmt.apply(FieldToEmbeddingTest.SOURCE_RECORD);
 
         Struct payloadStruct = (Struct) transformedRecord.value();
         assertThat(payloadStruct.getStruct("after").getString("product")).contains("a product");

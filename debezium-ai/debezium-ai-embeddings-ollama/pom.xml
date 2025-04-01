@@ -19,7 +19,7 @@
         </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-ai-embeddings-base</artifactId>
+            <artifactId>debezium-ai-embeddings</artifactId>
         </dependency>
 
         <!-- Test dependencies -->
@@ -30,7 +30,7 @@
         </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-ai-embeddings-base</artifactId>
+            <artifactId>debezium-ai-embeddings</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
