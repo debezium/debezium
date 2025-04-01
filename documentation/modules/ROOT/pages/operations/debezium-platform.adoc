@@ -25,10 +25,10 @@ Implementing the platform represents a natural evolution from {prodname} Server.
 == Basic concepts
 In {prodname} Management Platform there are four main concepts:
 
-Source:: Defines the source of your data
-Destination:: Defines the destination of your data
-Transform:: Define how a single data is transformed
-Pipeline:: Defines how your data flows from a source to a destination while being transformed along the way.
+Source:: Defines the source of your data.
+Destination:: Defines the destination of your data.
+Transform:: Defines how a single data event is transformed as it flows through the pipeline.
+Pipeline:: Defines how data flows from a source to a destination while being transformed along the way.
 
 After you define a pipeline, it is deployed based on how you configure the platform.
 
@@ -112,11 +112,11 @@ The following tables lists all the chart's properties:
 |""
 
 |stage.image
-|Image for the stage (UI)
+|Image that Helm uses to deploy the stage (UI) pod.
 |quay.io/debezium/platform-stage:<release_tag>
 
 |conductor.image
-|Image for the conductor
+|Image that Helm uses to deploy  the conductor pod.
 |quay.io/debezium/platform-conductor:<release_tag>
 
 |conductor.offset.existingConfigMap
@@ -137,8 +137,8 @@ If no value is specified, Helm creates a ConfigMap automatically.
 |postgres
 
 |database.auth.existingSecret
-|Name of the secret that stores the `username` and `password` that the platform uses to authenticate with the database. 
-If no value is specified, a secret is created using the `username` and `password` properties.
+|Name of the secret that stores the `username` and `password` that the platform uses to authenticate with the database.
+If no value is specified, Helm automatically creates a secret based on the credentials that you provide in the`database.auth.username` and `database.auth.password` properties.
 
 If you provide a value for this property, do not set `database.auth.username` or `database.auth.password`.
 |""
@@ -161,7 +161,7 @@ To configure pipelines to use a different, dedicated database to store offsets, 
 |postgres
 
 |offset.database.host
-|Host of the database where the platform stores offsets.
+|Host for the database where the platform stores offsets.
 |postgres
 
 |offset.database.port
@@ -221,29 +221,42 @@ If you provide the name of a secret, do not set the `schemaHistory.database.auth
 |[]
 |===
 
-== Use the platform
+== Using the platform
 
-In this section we will do a walkthrough of the different functionalities of the UI.
+You can use the platform UI to perform a number of different tasks.
 
-=== Source
-In this section, you can define the sources of your data.
-All {prodname} supported databases are available.
-When you create a source, it can be shared between different pipelines, which means that every change to a source will be reflected in every pipeline that uses it.
+=== Defining sources
 
-==== Create a new source
-In this section, you can configure your source in two different ways. You can use the `Form Editor`, where you can enter the name of the source and a description, and then specify the list of properties for the specific source.
-Refer to the connector-specific documentation page for the available properties.
+Use the **Source** section of the UI to specify the database that hosts your data.
+You can configure any database that {prodname} supports as a source.
+The source that you create can be shared among multiple pipelines.
+Changes to a source are reflected in every pipeline that uses it.
+
+==== Creating a source
+
+You can use either of the following editors to configure a source:
+
+**Form Editor**:: Enables you to specify the name and description of the source, along with a list of properties.
+For a complete list of the properties that are available for a connector, see the connector documentation.
+
+**Smart Editor**:: Enables you to use JSON to define the source configuration.
+
 
 [.responsive]
 video::CVY4Y4kAs_E[youtube, title="Create, edit and remove a source"]
 
 
-==== Configure the source with Smart Editor
-The other option is the `Smart Editor`, where you can directly edit/paste the `JSON` configuration.
-For those familiar with {prodname}, this is quite similar to the Kafka Connect configuration or {prodname} Server with small differences.
-The common part is the `config` section, in fact you can more or less copy the standard {prodname} configuration `config` section under the `config` property.
+==== Configuring a source with the Smart Editor
 
-For example, if you have the following configuration:
+You can use the **Smart Editor** to specify the JSON that defines the source configuration.
+You can enter and edit `JSON` directly in the editor, or paste `JSON` from an external source into the editor.
+With a few small differences, the JSON that you use to configure a data source in the **Smart Editor** is nearly identical to the JSON in the `config` section that defines the configuration for a {prodname} connector on Kafka Connect or in the {prodname} Server.
+In fact, you can more or less directly copy the section from the `config` property of a standard {prodname} configuration into the **Smart Editor**.
+You need only remove the `connector.class`, because for the data source configuration, the `type` is already provided.
+
+NOTE: **Smart Editor** support for directly using the Kafka Connect or {prodname} Server format for configuring a connector is planned for a future release.
+
+For example, consider the following JSON for specifying the configuration for a {prodname} MySQL connector:
 
 [source,json,options="nowrap"]
 ----
@@ -263,10 +276,10 @@ For example, if you have the following configuration:
 }
 ----
 
-You just need to copy the `config` section, removing the `connector.class`, since it is already provided with the `type`.
-In the future we will eventually support the Kafka Connect and/or Debezium Server format directly.
+To adapt the preceding configuration for use in defining a MySQL data source in the **Smart Editor**, copy the `config` section and remove the `connector.class`.
 
-The final `json` should something like the following
+The following example shows the JSON that you would use to define a MySQL data source in the **Smart Editor**.
+
 [source,json,options="nowrap"]
 ----
 {
@@ -287,37 +300,57 @@ The final `json` should something like the following
 }
 ----
 
-==== Delete a source
-To delete a source, go to the `Source` menu and then click the `action` menu of the source you want to delete, then click `Delete`.
-A source can be deleted only if it is not used in any pipeline; otherwise, you will receive an error.
-When the source is no longer used in any pipeline, you can delete it using the `Delete` option.
+==== Deleting a source
 
-==== Edit a source
-To edit a source, go to the `Source` menu and then click the `action` menu of the source you want to edit, then click `Edit`.
+.Prerequisites
+
+* The source that you want to delete is not in use in any pipeline.
+
+.Procedure
+
+* From the platform UI, open the **Source** menu, click the **Action** menu for the source that you want to delete, and then click **Delete**.
++
+An error results if you attempt to delete a source that is in use.
+If the operation returns an error, verify that the source is no longer used in any pipeline, and then repeat the delete operation.
+
+==== Editing a source
+
+To edit a source, from the platform UI, open to the **Source** menu, click the **Action** menu of the source that you want to edit, and then click **Edit**.
 
 [NOTE]
 ====
 Editing a source will affect all pipelines that use it.
 ====
 
-=== Destination
-In this section, you can define the destinations where your source data will be sent.
+=== Creating destinations
+
+Use the **Destination** section of the UI to specify the data sink to which the platform sends source data.
 All {prodname} Server sinks are available as destination.
 When you create a destination, it can be shared between different pipelines, which means that every change to a destination will be reflected in every pipeline that uses it.
 
 [.responsive]
 video::vijxIYwOR4k[youtube, title="Create, edit and remove a destination"]
 
-==== Create a new destination
-In this section, you can configure your destination in two different ways. You can use the `Form Editor`, where you can enter the name of the destination and a description, and then specify the list of properties for the specific destination system.
-Refer to the {prodname} sink-specific documentation page for the available properties.
+==== Creating a destination
 
-==== Configure the destination with Smart Editor
-The other option is the Smart Editor, where you can directly edit/paste the JSON configuration.
-For those familiar with {prodname}, this is quite similar to {prodname} Server `sink` configuration section with small differences.
-Usually you have that the configurations of a particular sink are prefixed with `debezium.sink.<sink_name>` where `<sink_name>` is the sink `type`.
+Use the **Destination** section of the UI to configure the sink destinations to which the platform sends data. 
+You can use either of the following editors to configure a destination:
 
-For example, if you have the following configuration:
+**Form Editor**:: Enables you to specify the name and description of the destination, along with a list of properties.
+For a complete list of the properties that are available for a sink connector, see the connector documentation.
+**Smart Editor**:: Enables you to use JSON to define the sink configuration.
+
+
+==== Configuring a destination with the Smart Editor
+
+You can use the **Smart Editor** to specify the JSON that defines the source configuration.
+You can enter and edit `JSON` directly in the editor, or paste `JSON` from an external source into the editor.
+With a few small differences, the JSON that you use to configure a destination in the **Smart Editor** is nearly identical to the configuration that you use to define a {prodname} Server `sink`.
+
+NOTE: **Smart Editor** support for directly using the {prodname} Server configuration format is planned for a future release.
+Typically, in {prodname} Server, the configuration of a sink is prefixed with `debezium.sink._<sink_name>_` where `_<sink_name>_` is the sink `type`.
+
+For example, consider the following JSON for configuring a sink destination in {prodname} Server:
 
 [source,properties,options="nowrap"]
 ----
@@ -330,10 +363,10 @@ debezium.sink.pubsub.address=pubsub:8085
 # ..
 ----
 
-You just need to take all properties prefixed with `debezium.sink.pubsub` and transform in `json` format.
-In the future we will eventually support the Kafka Connect and/or Debezium Server format directly.
+To adapt the preceding configuration for use in defining a sink destination in the **Smart Editor**,  remove the prefix `debezium.sink.pubsub` and convert the configuration to JSON format.
 
-The final `json` should something like the following
+The following example shows the JSON that you might use to define a sink destination in the **Smart Editor**.
+
 [source,json,options="nowrap"]
 ----
 {
@@ -349,42 +382,61 @@ The final `json` should something like the following
 }
 ----
 
-==== Delete a destination
-To delete a destination, go to the `Destination` menu and then click the `action` menu of the destination you want to delete, then click `Delete`.
-A destination can be deleted only if it is not used in any pipeline; otherwise, you will receive an error.
-When the destination is no longer used in any pipeline, you can delete it using the `Delete` button.
+==== Deleting a destination
+.Prerequisites
 
-==== Edit a destination
+* The sink that you want to delete is not in use in any pipeline.
+
+.Procedure
+
+*  From the platform UI, open the **Destination** menu, click the **Action** menu of the destination you want to delete, and then click **Delete**.
++
+An error results if you attempt to delete a destination that is in use.
+If the operation returns an error, verify that the destination is no longer used in any pipeline, and then repeat the delete operation.
+
+==== Editing a destination
+
 To edit a destination, go to the `Destination` menu and then click the `action` menu of the destination you want to edit, then click `Edit`.
 
 [NOTE]
 Editing a destination will affect all pipelines that use it.
 
-=== Transforms
-In this section you can manage the transformations that you want to use on your data pipeline.
+=== Managing transforms
 
-Currently, we support all {prodname} provided transforms and also Kafka Connect ones.
+Use the **Transforms** section of the platform UI to manage the transformations that you want to use in your data pipeline.
 
-As for `Source` and `Destination`, the transform is shared between pipeline meaning that any changes will be reflected to all pipeline that uses it.
+Currently, the platform supports all single message transformations provided by {prodname} as well as any Kafka Connect transformations.
+
+Transformations are shared among pipelines.
+When you modify a transformation, the changes are reflected in all pipelines that use the transformation.
 
 [.responsive]
 video::UCc4A4o6HiU[youtube, title="Create, edit and remove a transform"]
 
-==== Create
-In this section, you can configure your transform in two different ways. You can use the `Form Editor`, where you can choose the type of transform and give it a name and a description.
-Then you can set the configuration specific to the transform type.
+==== Creating a transformation
 
-You can optionally specify also a `Predicate` so that the transform will be applied only to records that meets the specified condition.
-You just need to choose the predicate from the list and set its properties.
+Use the **Transforms** section of the platform UI to specify the configure and manage single message transformations.
 
-==== Configure the transform with Smart Editor
-The other option is the `Smart Editor`, where you can directly edit/paste the JSON configuration.
+You can use either of the following editors to configure transformations:
 
-For those familiar with {prodname}, this format sounds different, but it can be easily adapted.
+**Form Editor**:: Enables you to specify the name, type, and description of the transformation.
+You can also set additional configuration options that are specific to the transform type.
++
+Optionally, if you want to apply the transformation only to records that meet specific criteria, you can specify a predicate.
+You can choose the predicate from a list, and set its properties.
 
-Usually you have that the configurations of a particular transform are prefixed with `transofrms.<transform_name>` where `<transform_name` is the name you give to the transform.
+**Smart Editor**:: Enables you to use JSON to configure the transformation.
 
-For example, if you have the following configuration:
+==== Using the Smart Editor to configure transformations
+
+You can use the **Smart Editor** to specify the JSON that defines the transform configuration.
+You can enter and edit `JSON` directly in the editor, or paste `JSON` from an external source into the editor.
+
+The format for configuring transformations in the Smart Editor differs from the Kafka Connect format that {prodname} uses to configure transformations, but you can easily convert between formats.
+
+Typically, entries in the configuration of a transformation are prefixed with `transforms._<transform_name>_` where `_<transform_name_` is the name assigned to the transformation.
+
+For example, in {prodname}, the following configuration is used with the `unwrap` (`ExtractNewRecordState`) transformation:
 
 [source,properties,options="nowrap"]
 ----
@@ -401,12 +453,12 @@ predicates.onlyProducts.pattern=inventory.inventory.products
 # ..
 ----
 
-You just need to take all properties prefixed with `transforms.unwrap`, except for the `transforms.unwrap.type`, and convert to `json` format.
-Same logic applies to predicates.
+To adapt this configuration for use in {prodname} platform, convert the properties that include the prefix `transforms.unwrap`, except for `transforms.unwrap.type`, to JSON format.
+Apply the same process to convert predicate statements.
 
-In the future we will eventually support the Kafka Connect format directly.
+NOTE: **Smart Editor** support for directly using the Kafka Connect configuration format is planned for a future release.
 
-The final `json` should something like the following
+After you convert the {prodname} configuration for the `unwrap` transformation, the following JSON results: 
 
 [source,json,options="nowrap"]
 ----
@@ -429,49 +481,82 @@ The final `json` should something like the following
   }
 }
 ----
-==== Edit
-To edit a transform, go to the `Transform` menu and then click the `action` menu of the destination you want to edit, then click `Edit`.
+==== Editing transformations
+
+From the platform UI, open the **Transform** menu, click the **Action** menu for the transformation that you want to edit, and then click **Edit**.
 
 [NOTE]
-Editing a transform will affect all pipelines that use it.
+Editing a transformation affects all pipelines that use it.
 
-==== Delete
-To delete a transform, go to the `Transform` menu and then click the `action` menu of the transform you want to delete, then click `Delete`.
-A transform can be deleted only if it is not used in any pipeline; otherwise, you will receive an error.
-When the transform is no longer used in any pipeline, you can delete it using the `Delete` button.
+==== Deleting a transformation
 
-=== Pipeline
+.Prerequisites
+
+* The transformation that you want to delete is not in use in any pipeline.
+
+.Procedure
+
+*  From the platform UI, open the **Transform** menu, click the **Action** menu of the transformation you want to delete, and then click **Delete**.
++
+An error results if you attempt to delete a transformation that is in use.
+If the operation returns an error, verify that the transformation is no longer used in any pipeline, and then repeat the delete operation.
+
+=== Creating and managing pipelines
+
 The pipeline section is the place where you connect the "dots". You can define where your data comes, how to eventually transform them and where they should go.
 
 [.responsive]
 video::cY7TS0nWBoY[youtube, title="Create, edit and remove a pipeline"]
 
-==== Create
-In the pipeline menu you can click on `Create your first pipeline` and you will get into the `Pipeline Designer`.
-Here you can add the pieces that composes you data pipeline. First of all, you need to add a source clicking on the `+ Source` box and the you can either choose a previously created source or directly create a new one.
+==== Creating pipelines
 
-Similarly, you can add a destination clicking on the `+ Destination` box.
+. From the platform UI, open the **Pipeline** menu and click **Create your first pipeline**  to open the **Pipeline Designer**.
++
+From the **Pipeline Designer** you can add the pieces for your data pipeline.
+. Click the **+ Source** box to add a source, and then choose a previously created source, or create a new source.
 
-If you want to apply some transformation to your data, you can add it in the same way just clicking on the `+ Transform` box.
+Click the **+ Destination** box to add a destination .
 
-When a transform as a predicate configured, you will see a image:predicate-icon.png[alt text] on top of it. A tooltip will show the name of the predicate used.
+. (Optional) Click the **+ Transform** box to apply one or more transformations.
 
-Once finished designing your pipeline you can click on `Configure Pipeline` and then you can now configure the name, the description and the logging level.
+Transformations that are configured with a predicate are marked with a predicate icon (image:predicate-icon.png[Transformation configured with a predicate]).
+A tooltip shows the name of the predicate.
 
-==== Delete
-To delete a pipeline, go to the `Pipeline` menu and then click the `action` menu of the pipeline you want to delete, then click `Delete`.
-Only the pipeline will be removed, the source, the destination and the transformations will not be deleted.
+After you finish designing your pipeline, click **Configure Pipeline**, and then specify the name, description, and logging level for the pipeline.
 
-==== Edit
-To edit a pipeline, go to the `Pipeline` menu and then click the `action` menu of the destination you want to edit, then click `Edit pipeline`.
-As first step you can modify the transformations through the pipeline designer, we will go deeper in this part in the next section, and then you can edit the name, the description and the log level.
+==== Deleting a pipeline
 
-===== Remove or ordering transformations
-Once you are in the `Pipeline designer` you can modify the order of transformations or delete one by clicking on the image:transformation-box-edit.png[alt text] icon.
+From the platform UI, open the **Pipeline** menu, click the **Action** menu for the pipeline that you want to delete, and then click **Delete**.
+The deletion removes only the pipeline: the source, destination, and any transformations are not deleted.
 
-==== Observability
-Observability is currently limited to viewing the Debezium Server logs.
-You can go to `Pipeline` then click on the pipeline name of your interest and then click on the `Pipeline logs`.
-The other ways is to go to `Pipeline` and then click the `action` menu of the pipeline you are interested, then click `View logs`.
+==== Editing a pipeline
+
+. From the platform UI, open the **Pipeline** menu, click the **Action** menu for the pipeline that you want to edit, and then click **Edit pipeline**.
+. Use the pipeline designer to modify transformations as needed.
+You can edit the name, description, and log level for the transformation.
+For more information about using the pipeline designer, see xref:debezium-platform-using-the-pipeline-designer-to-remove-and-order-transformations[Using the Pipeline designer to remove and order transformations].
+
+[id="debezium-platform-using-the-pipeline-designer-to-remove-and-order-transformations"]
+===== Using the Pipeline designer to remove and order transformations
+
+From the **Pipeline designer**, you can delete transformations, or rearrange the order in which they run.
+
+.Deleting a transformation
+
+. From the **Pipeline designer**, click the pencil icon (image:transformation-box-edit.png[pencil]) in the **Transform** box.
+. From the **Transform list**, click the trash icon next to the name of the transform.
+
+.Rearranging transformations
+
+If you configure a connector to use multiple transformations, you can use the **Transform list** in the **Pipeline designer** to specify the order in which they are applied.
+The first transformation in the list processes the message first.
+
+. From the **Pipeline designer**, click the pencil icon (image:transformation-box-edit.png[pencil]) in the **Transform** box.
+. From the  **Transform list**, drag transformations into the order in which you want to apply them, and then click **Apply**.
+
+==== Monitoring the pipeline
+
+The {prodname} platform provides easy access to the pipeline logs.
+. From the platform UI, click **Pipeline**, click the name of the pipeline you want to monitor, and then click **Pipeline logs**.
 
 
