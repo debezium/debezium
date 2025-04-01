@@ -27,7 +27,7 @@ This top-level workflow is designed to use as many runners that are available fo
 ### Pushes
 
 The workflow `debezium-workflow-push.yml` defines the behavior to execute when a commit is pushed to the repository.
-This top-level workflow is designed to consumer fewer runners, maximizing those available to pull requests while also allowing the push tests to be completed in a reasonable period of time.
+This top-level workflow is designed to consume fewer runners, maximizing those available to pull requests while also allowing the push tests to be completed in a reasonable period of time.
 
 ## Callable workflows
 
