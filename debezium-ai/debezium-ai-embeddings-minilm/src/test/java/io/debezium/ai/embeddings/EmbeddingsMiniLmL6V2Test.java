@@ -15,17 +15,18 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.Test;
 
 /**
+ * Basic tests for {@link FieldToEmbedding} SMT which uses {@link MiniLmL6V2ModeFactory}.
+ *
  * @author vjuranek
  */
 public class EmbeddingsMiniLmL6V2Test {
-    private final EmbeddingsMiniLmL6V2<SourceRecord> embeddingSmt = new EmbeddingsMiniLmL6V2<>();
-
     @Test
     public void testMiniLmEmbeddings() {
+        FieldToEmbedding<SourceRecord> embeddingSmt = new FieldToEmbedding();
         embeddingSmt.configure(Map.of(
                 "embeddings.field.source", "after.product",
                 "embeddings.field.embedding", "after.prod_embedding"));
-        SourceRecord transformedRecord = embeddingSmt.apply(AbstractEmbeddingsTransformationTest.SOURCE_RECORD);
+        SourceRecord transformedRecord = embeddingSmt.apply(FieldToEmbeddingTest.SOURCE_RECORD);
 
         Struct payloadStruct = (Struct) transformedRecord.value();
         assertThat(payloadStruct.getStruct("after").getString("product")).contains("a product");

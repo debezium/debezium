@@ -869,7 +869,7 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
-                <artifactId>debezium-ai-embeddings-base</artifactId>
+                <artifactId>debezium-ai-embeddings</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -900,7 +900,7 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
-                <artifactId>debezium-ai-embeddings-base</artifactId>
+                <artifactId>debezium-ai-embeddings</artifactId>
                 <version>${project.version}</version>
                 <type>test-jar</type>
             </dependency>
