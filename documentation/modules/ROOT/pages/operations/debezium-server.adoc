@@ -1663,12 +1663,12 @@ So this string will be used as value for records without a payload.
 
 ==== Milvus
 
-Milvus is an open-source vector database designed for similarity search and retrieval of high-dimensional data, like embeddings from machine learning models (e.g. text, image, audio).
-It is possible to either use to to process vector datatypes captured from a source database or use a transformation to calculate vector out of message field(s) and use it as an embedding.
+Milvus is an open-source vector database designed for similarity search and the retrieval of high-dimensional data, such as embeddings from machine learning models (for example. text, images, and audio).
+You can use Milvus to process vector datatypes that are captured from a source database, or use it with a transformation to calculate vectors from message fields and then use them as embeddings.
 
-Milvus sink taks the incoming message and upserts the `after` part into a collection.
-The collection cannot contain dots so the sink replaces all dots with underscore characters.
-When delete message arrives the appropriate record is removed from a collection.
+Milvus sink ingests incoming messages and upserts the `after` part of each message into a collection.
+The collection cannot contain dots, so the sink replaces all dots with underscore characters.
+When a delete message arrives, the matching record is removed from the collection.
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -1678,23 +1678,24 @@ When delete message arrives the appropriate record is removed from a collection.
 
 |[[milvus-type]]<<milvus-type, `debezium.sink.type`>>
 |
-|Must be set to `milvus`.
+|Specifies the type of sink.
+Must be set to `milvus`.
 
 |[[milvus-uri]]<<milvus-uri, `debezium.sink.milvus.uri`>>
 |_http://localhost:19530_
-|(Optional) A URL to access Milvus database instance.
+|(Optional) The URL to access the Milvus database instance.
 
 |[[milvus-database]]<<milvus-database, `debezium.sink.milvus.database`>>
 | _default_
-|(Optional) The name of the database containing target collections.
+|(Optional) The name of the database that contains the target collections.
 
 |===
 
 
 ===== Injection points
 
-The Milvus sink behaviour can be modified by a custom logic providing alternative implementations for specific functionalities.
-When the alternative implementations are not available then the default ones are used.
+You can modify the behavior of the Milvus sink connector by applying custom logic that provides alternative implementations for specific functions.
+If the alternative implementations are not available, the connector uses the default implementations.
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -1704,12 +1705,12 @@ When the alternative implementations are not available then the default ones are
 
 |[[milvus-ext-client]]<<milvus-ext-client, `io.milvus.v2.client.MilvusClientV2.MilvusClientV2`>>
 |`@CustomConsumerBuilder`
-|Custom configured instance of a `MilvusClientV2` used to access target collections.
+|An instance of a custom `MilvusClientV2` client that is configured to access target collections.
 
 |[[milvus-ext-stream-name-mapper]]<<milvus-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
 |
-|Custom implementation maps the planned destination (topic) name into a Milvus collection.
-By default the name with dots replaced with underscores is used.
+|Custom implementation that maps the name of the planned destination topic to a Milvus collection.
+By default, dots in a name are replaced with underscores.
 
 |===
 
