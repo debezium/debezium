@@ -3299,21 +3299,24 @@ endif::community[]
 When connecting to Oracle using mutual TLS authentication (mTLS), this involves both the connector and the database service proving their identities.
 The {prodname} for Oracle connector relies on the Oracle JDBC driver's built-in functionality to support mTLS authentication.
 
-There are two ways to establish mTLS connections:
+You can use either of the following methods to establish mTLS connections between {prodname} and Oracle:
 
-* xref:#using-mtls-secure-connections-java-key-trust-stores[]
-* xref:#using-mtls-secure-connections-oracle-wallet[]
+* xref:#using-mtls-secure-connections-java-key-trust-stores[Using Java key and trust stores to configure mTLS connections]
+* xref:#using-mtls-secure-connections-oracle-wallet[Using Oracle Wallet to configure mTLS connections]
 
+// Type: procedure
+// ModuleID: oracle-connector-using-java-key-trust-stores-to-configure-mtls
+// Title: Using Java key and trust stores to configure the Oracle connector to use mTLS
 [[using-mtls-secure-connections-java-key-trust-stores]]
 ==== Java key/trust stores
 
 .Prerequisites
-* Verify connector can access key/trust store files directly.
-* Verify database TNS listener supports `tcps` secure connections.
+* Verify connector can access the configured key and trust store files.
+* Verify that the database TNS (Transparent Network Substrate) listener supports TCPS secure connections.
 
 .Procedure
-* Configure the {prodname} Oracle connector, as illustrated below in the example.
-
+* Configure the {prodname} Oracle connector, as illustrated in the following example.
++
 .Example: {prodname} Oracle connector TLS configuration
 [source,json,indent=0]
 ----
@@ -3327,13 +3330,18 @@ There are two ways to establish mTLS connections:
   "driver.javax.net.ssl.trustStoreType": "JKS"
 }
 ----
++
 
 [NOTE]
 ====
-It is important for TLS encryption to use `database.url` rather than `database.host`.
-The URL provides a TNS connection string which is what explicitly controls the secure connection requirement by setting the protocol to `tcps`.
+For {prodname} to use TLS encryption to communicate with Oracle, requires a TCPS connection with the server.
+To establish a TCPS connection, you must configure the connector to use the `database.url` property, and not the `database.host` property.
+Unlike the `database.host` property, the `database.url` property permits you to define an Oracle TNS (Transparent Network Substrate) connection string that explicitly requires use of the `TCPS` protocol.
 ====
 
+// Type: procedure
+// ModuleID: oracle-connector-using-oracle-wallet-to-configure-mtls
+// Title: Using Oracle wallet to configure the connector to use mTLS
 [[using-mtls-secure-connections-oracle-wallet]]
 ==== Oracle Wallet
 
