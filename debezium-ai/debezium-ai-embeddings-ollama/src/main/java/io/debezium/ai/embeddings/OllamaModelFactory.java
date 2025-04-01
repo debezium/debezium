@@ -5,9 +5,8 @@
  */
 package io.debezium.ai.embeddings;
 
+import static io.debezium.ai.embeddings.FieldToEmbedding.EMBEDDINGS_PREFIX;
 import static java.lang.String.format;
-
-import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
@@ -20,11 +19,11 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
 
 /**
- * Embeddings SMT which uses <a href="https://ollama.com/">Ollama</a> for serving models for creating embeddings.
+ * {@link EmbeddingsModelFactory}  for {@link FieldToEmbedding} SMT, which uses <a href="https://ollama.com/">Ollama</a> for serving embedding models.
  *
  * @author vjuranek
  */
-public class EmbeddingsOllama<R extends ConnectRecord<R>> extends AbstractEmbeddingsTransformation<R> {
+public class OllamaModelFactory<R extends ConnectRecord<R>> implements EmbeddingsModelFactory {
 
     public static final String OLLAMA_PREFIX = EMBEDDINGS_PREFIX + "ollama.";
 
@@ -44,22 +43,24 @@ public class EmbeddingsOllama<R extends ConnectRecord<R>> extends AbstractEmbedd
             .withDescription("Name of the model which should be served by Ollama server.")
             .required();
 
-    public static final Field.Set ALL_FIELDS = AbstractEmbeddingsTransformation.ALL_FIELDS.with(OLLAMA_BASE_URL, MODEL_NAME);
+    public static final Field.Set ALL_FIELDS = Field.setOf(OLLAMA_BASE_URL, MODEL_NAME);
 
     private String baseUrl;
     private String modelName;
 
     @Override
-    public void configure(Map<String, ?> configs) {
-        final Configuration config = Configuration.from(configs);
-        baseUrl = config.getString(OLLAMA_BASE_URL);
-        modelName = config.getString(MODEL_NAME);
-        super.configure(configs);
+    public Field.Set getConfigFields() {
+        return ALL_FIELDS;
     }
 
     @Override
-    protected void validateConfiguration() {
-        super.validateConfiguration();
+    public void configure(Configuration config) {
+        baseUrl = config.getString(OLLAMA_BASE_URL);
+        modelName = config.getString(MODEL_NAME);
+    }
+
+    @Override
+    public void validateConfiguration() {
         if (baseUrl == null || baseUrl.isBlank()) {
             throw new ConfigException(format("'%s' must be set to non-empty value.", OLLAMA_BASE_URL));
         }

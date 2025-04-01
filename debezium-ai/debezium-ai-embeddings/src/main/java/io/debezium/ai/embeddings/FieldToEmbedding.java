@@ -3,6 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
+
 package io.debezium.ai.embeddings;
 
 import static java.lang.String.format;
@@ -11,6 +12,8 @@ import static org.apache.kafka.connect.transforms.util.Requirements.requireStruc
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.ServiceLoader;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
@@ -22,6 +25,7 @@ import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.Module;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -35,15 +39,17 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 
 /**
- * Base class of the embeddings SMT, which provides common configuration and manipulations with the Connect record.
- * Child classes has to implement at least {@link AbstractEmbeddingsTransformation#getModel()} class, which provides specific
- * model which will be used for creating the embeddings.
+ * Single message transform which appends to the record payload embedding of selected {@link String} field.
+ * Embedding model is provided via appropriate {@link EmbeddingsModelFactory} factory, which under the hood
+ * uses <a href="https://docs.langchain4j.dev/">LangChain4j</a> project. Model factory class is loaded via
+ * SPI. You have to place one of the Debezium AI Embeddings modules with model of your choice on the class
+ * path or implement your own model factory provider and place it on the class path.
  *
  * @author vjuranek
  */
-public abstract class AbstractEmbeddingsTransformation<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
+public class FieldToEmbedding<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractEmbeddingsTransformation.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(FieldToEmbedding.class);
 
     public static final String EMBEDDINGS_PREFIX = "embeddings.";
 
@@ -63,8 +69,9 @@ public abstract class AbstractEmbeddingsTransformation<R extends ConnectRecord<R
             .withDescription(
                     "Name of the field which which will be appended to the record and which would contain the embeddings of the content `filed.source` field. Supports also nested fields.");
 
-    public static final Field.Set ALL_FIELDS = Field.setOf(TEXT_FIELD, EMBEDDGINS_FIELD);
     private static final Schema EMBEDDING_SCHEMA = FloatVector.schema();
+    private static final EmbeddingsModelFactory MODEL_FACTORY = EmbeddingsModelFactoryLoader.getModelFactory();
+    public static final Field.Set ALL_FIELDS = Field.setOf(TEXT_FIELD, EMBEDDGINS_FIELD).with(MODEL_FACTORY.getConfigFields());
 
     private SmtManager<R> smtManager;
     private String sourceField;
@@ -76,8 +83,6 @@ public abstract class AbstractEmbeddingsTransformation<R extends ConnectRecord<R
     private static final int CACHE_SIZE = 64;
     private final BoundedConcurrentHashMap<Schema, Schema> schemaUpdateCache = new BoundedConcurrentHashMap<>(CACHE_SIZE);
 
-    public abstract EmbeddingModel getModel();
-
     @Override
     public void configure(Map<String, ?> configs) {
         final Configuration config = Configuration.from(configs);
@@ -86,10 +91,11 @@ public abstract class AbstractEmbeddingsTransformation<R extends ConnectRecord<R
 
         sourceField = config.getString(TEXT_FIELD);
         embeddingsField = config.getString(EMBEDDGINS_FIELD);
+        MODEL_FACTORY.configure(config);
         validateConfiguration();
 
         sourceFiledPath = Arrays.asList(sourceField.split(NESTING_SPLIT_REG_EXP));
-        model = getModel();
+        model = MODEL_FACTORY.getModel();
     }
 
     @Override
@@ -123,6 +129,7 @@ public abstract class AbstractEmbeddingsTransformation<R extends ConnectRecord<R
         if (sourceField == null || sourceField.isBlank()) {
             throw new ConfigException(format("'%s' must be set to non-empty value.", TEXT_FIELD));
         }
+        MODEL_FACTORY.validateConfiguration();
     }
 
     /**
@@ -178,5 +185,27 @@ public abstract class AbstractEmbeddingsTransformation<R extends ConnectRecord<R
                 updatedValue,
                 original.timestamp(),
                 original.headers());
+    }
+
+    /**
+     * {@link EmbeddingsModelFactory} loader which loads model factory supplied by the user via SPI.
+     */
+    public static class EmbeddingsModelFactoryLoader<R extends ConnectRecord<R>> {
+        private static final Logger LOGGER = LoggerFactory.getLogger(FieldToEmbedding.EmbeddingsModelFactoryLoader.class);
+
+        static EmbeddingsModelFactory getModelFactory() {
+            final ServiceLoader<EmbeddingsModelFactory> loader = ServiceLoader.load(EmbeddingsModelFactory.class);
+            final Optional<EmbeddingsModelFactory> factory = loader.findFirst();
+            if (factory.isEmpty()) {
+                throw new DebeziumException("No implementation of Debezium embeddings model factory found.");
+            }
+            if (loader.stream().count() > 1) {
+                LOGGER.warn(
+                        "More then one Debezium embeddings model factory found. Order of loading is not defined and you may load different factory than you intended.");
+                LOGGER.warn("Found following factories:");
+                loader.stream().forEach(f -> LOGGER.warn(f.get().getClass().getName()));
+            }
+            return factory.get();
+        }
     }
 }

@@ -24,7 +24,7 @@
     </properties>
 
     <modules>
-        <module>debezium-ai-embeddings-base</module>
+        <module>debezium-ai-embeddings</module>
         <module>debezium-ai-embeddings-minilm</module>
         <module>debezium-ai-embeddings-ollama</module>
     </modules>
