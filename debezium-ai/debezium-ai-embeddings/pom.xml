@@ -20,6 +20,7 @@
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-core</artifactId>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>
@@ -51,45 +52,6 @@
     </dependencies>
 
     <profiles>
-        <profile>
-            <id>assembly</id>
-            <activation>
-                <activeByDefault>false</activeByDefault>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <version>${version.assembly.plugin}</version>
-                        <dependencies>
-                            <dependency>
-                                <groupId>io.debezium</groupId>
-                                <artifactId>debezium-assembly-descriptors</artifactId>
-                                <version>${project.version}</version>
-                            </dependency>
-                        </dependencies>
-                        <executions>
-                            <execution>
-                                <id>default</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>single</goal>
-                                </goals>
-                                <configuration>
-                                    <finalName>${project.artifactId}-${project.version}</finalName>
-                                    <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
-                                    <descriptorRefs>
-                                        <descriptorRef>${assembly.descriptor}</descriptorRef>
-                                    </descriptorRefs>
-                                    <tarLongFileMode>posix</tarLongFileMode>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
         <profile>
             <id>quick</id>
             <activation>

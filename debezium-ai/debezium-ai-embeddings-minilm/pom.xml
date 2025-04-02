@@ -21,6 +21,11 @@
             <groupId>io.debezium</groupId>
             <artifactId>debezium-ai-embeddings</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-core</artifactId>
+            <scope>provided</scope>
+        </dependency>
 
         <!-- Test dependencies -->
         <dependency>
