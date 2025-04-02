@@ -21,6 +21,8 @@
         <maven.compiler.testSource>${debezium.java.source}</maven.compiler.testSource>
         <maven.compiler.testTarget>${debezium.java.specific.target}</maven.compiler.testTarget>
         <maven.compiler.testRelease>${debezium.java.specific.target}</maven.compiler.testRelease>
+        <!-- Assembly configuration -->
+        <assembly.descriptor>ai-embeddings-distribution</assembly.descriptor>
     </properties>
 
     <modules>
