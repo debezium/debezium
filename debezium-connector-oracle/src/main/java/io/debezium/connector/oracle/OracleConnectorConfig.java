@@ -971,7 +971,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     @Override
-    protected HistoryRecordComparator getHistoryRecordComparator() {
+    public HistoryRecordComparator getHistoryRecordComparator() {
         return getAdapter().getHistoryRecordComparator();
     }
 
