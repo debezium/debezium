@@ -2,6 +2,51 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.1.0.Final
+April 2nd 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12448671)
+
+### New features since 3.1.0.CR1
+
+* Add incremental snapshot configuration to the Debezium UI [DBZ-5326](https://issues.redhat.com/browse/DBZ-5326)
+* [DOC] Documentation for using the JDBC Sink Connector in an OpenShift environment [DBZ-8549](https://issues.redhat.com/browse/DBZ-8549)
+* Milvus sink in Debezium Server [DBZ-8634](https://issues.redhat.com/browse/DBZ-8634)
+* InstructLab sink [DBZ-8637](https://issues.redhat.com/browse/DBZ-8637)
+* Implement SMT for adding embeddings to the records [DBZ-8702](https://issues.redhat.com/browse/DBZ-8702)
+* Improve debezium-vitess-connector enqueue speed [DBZ-8757](https://issues.redhat.com/browse/DBZ-8757)
+* Doc should mention the the correlation ID does not map 1:1 with the original signal when multiple signals are sent. [DBZ-8817](https://issues.redhat.com/browse/DBZ-8817)
+* Create a dedicated section in the doc for Debezium Server and related components [DBZ-8846](https://issues.redhat.com/browse/DBZ-8846)
+* ExtractChangedRecordState should always add configured headers, even if field list is empty [DBZ-8855](https://issues.redhat.com/browse/DBZ-8855)
+* Use the clustered index in sqlserver connector queries  [DBZ-8858](https://issues.redhat.com/browse/DBZ-8858)
+* All queries issued by Debezium should be marked with workload tag [DBZ-8861](https://issues.redhat.com/browse/DBZ-8861)
+
+
+### Breaking changes since 3.1.0.CR1
+
+* Align JDBC storage configuration naming [DBZ-8573](https://issues.redhat.com/browse/DBZ-8573)
+
+
+### Fixes since 3.1.0.CR1
+
+* Negative binlog position values for MariaDB [DBZ-8755](https://issues.redhat.com/browse/DBZ-8755)
+* Support CURDATE and CURTIME functions for MySQL DDL [DBZ-8834](https://issues.redhat.com/browse/DBZ-8834)
+* ibmi connector leaks jobs when interrupted [DBZ-8839](https://issues.redhat.com/browse/DBZ-8839)
+* In-progress transaction over boundary detected but skipped during streaming [DBZ-8844](https://issues.redhat.com/browse/DBZ-8844)
+* Unparseable statements : Default column values can be scalar functions [DBZ-8849](https://issues.redhat.com/browse/DBZ-8849)
+* AsyncEmbeddedEngine treats millisecond commit timeout as microseconds mistakenly [DBZ-8856](https://issues.redhat.com/browse/DBZ-8856)
+* Transitive filtering of debezium-connector-dse excludes snakeyaml from /lib/ [DBZ-8863](https://issues.redhat.com/browse/DBZ-8863)
+
+
+### Other changes since 3.1.0.CR1
+
+* Implement the storybook for UI component [DBZ-6868](https://issues.redhat.com/browse/DBZ-6868)
+* Document Debezium Platform  [DBZ-8827](https://issues.redhat.com/browse/DBZ-8827)
+* Conditionalize note about Extended max string size in oracle.adoc that refers to Jira issue [DBZ-8838](https://issues.redhat.com/browse/DBZ-8838)
+* cassandra4-connector: Update to cassandra 4.1 [DBZ-8842](https://issues.redhat.com/browse/DBZ-8842)
+* Add missing oracle and mariadb source in UI [DBZ-8851](https://issues.redhat.com/browse/DBZ-8851)
+* Change JDBC sink test default logging level to INFO [DBZ-8853](https://issues.redhat.com/browse/DBZ-8853)
+
+
+
 ## 3.1.0.CR1
 March 24th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12447571)
 
