@@ -385,7 +385,7 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
     }
 
     @Override
-    protected HistoryRecordComparator getHistoryRecordComparator() {
+    public HistoryRecordComparator getHistoryRecordComparator() {
         return new MySqlHistoryRecordComparator(gtidSourceFilter, getGtidSetFactory());
     }
 
