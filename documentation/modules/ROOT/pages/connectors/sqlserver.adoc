@@ -2078,7 +2078,7 @@ The SQL Server connector can capture changes from an Always On read-only replica
 .Prerequisites
 * Change data capture is configured and enabled on the primary node.
 SQL Server does not support CDC directly on replicas.
-* The configuration option `database.applicationIntent` is set to `ReadOnly`.
+* The configuration option `driver.applicationIntent` is set to `ReadOnly`.
 This is required by SQL Server.
 When {prodname} detects this configuration option, it responds by taking the following actions:
 
