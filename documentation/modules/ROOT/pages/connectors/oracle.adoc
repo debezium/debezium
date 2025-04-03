@@ -5663,7 +5663,8 @@ Oracle's `xmlparserv2` dependency implements a SAX-based parser and if the runti
 In order to influence specifically which SAX implementation is used generally, the JVM will need to be started with a specific argument. +
  +
 When the following JVM argument is provided, the Oracle connector will start successfully without this error.
-[source,bash]
++
+[%nowrap,bash]
 ----
 -Djavax.xml.parsers.SAXParserFactory=com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl
 ----
