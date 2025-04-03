@@ -234,6 +234,7 @@ jobs:
     manual_trigger: true
     labels:
       - oracle
+      - oracle-logminer
     tf_extra_params:
       test:
         tmt:
@@ -255,6 +256,7 @@ jobs:
     manual_trigger: true
     labels:
       - oracle
+      - oracle-xstream
     tf_extra_params:
       test:
         tmt:
@@ -277,6 +279,7 @@ jobs:
     manual_trigger: true
     labels:
       - oracle
+      - oracle-logminer
     tf_extra_params:
       test:
         tmt:
@@ -298,6 +301,7 @@ jobs:
     manual_trigger: true
     labels:
       - oracle
+      - oracle-xstream
     tf_extra_params:
       test:
         tmt:
@@ -321,6 +325,7 @@ jobs:
     labels:
       - oracle
       - oracle-23
+      - oracle-logminer
     tf_extra_params:
       test:
         tmt:
