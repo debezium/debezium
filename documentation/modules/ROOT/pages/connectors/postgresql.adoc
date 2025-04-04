@@ -3148,9 +3148,16 @@ Set to `true` in only testing or development environments. Dropping the slot all
 
 |[[postgresql-property-slot-failover]]<<postgresql-property-slot-failover, `+slot.failover+`>>
 |`false`
-|Whether or not to create a failover slot. When not specified, or when not connecting to a Postgres 17+ primary, no failover slot will be created.
+|Specifies whether the connector creates a failover slot.
+If you omit this setting, or if the primary server runs PostgreSQL 16 or earlier, the connector does not create a failover slot.
 
-When using failover slots, make sure to add the physical replication slot(s) used for updating read replicas in the cluster to the `synchronized_standby_slots` configuration setting of the Postgres primary.
+NOTE: PostgreSQL uses the https://www.postgresql.org/docs/current/runtime-config-replication.html#GUC-SYNCHRONIZED-STANDBY-SLOTS[`synchronized_standby_slots`] parameter to configure replication slot synchronization between primary and standby servers.
+Set this parameter on the primary server to specify the physical replication slots that it synchronizes with on standby servers.
+
+ifdef::product[]
+IMPORTANT: The use of {prodname} with PostgreSQL 17 and the ability to configure failover replication slots are Technology Preview features. +
+For more information, see xref:postgresql-supported-topologies-pg17[PostgreSQL supported topologies].
+endif::product[]
 
 |[[postgresql-property-publication-name]]<<postgresql-property-publication-name, `+publication.name+`>>
 |`dbz_publication`
