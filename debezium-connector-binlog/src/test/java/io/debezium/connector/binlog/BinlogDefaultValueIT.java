@@ -43,7 +43,6 @@ import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
-import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -79,10 +78,6 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();
         Files.delete(SCHEMA_HISTORY_PATH);
-        // TODO: remove once we upgrade Apicurio version (DBZ-7357)
-        if (VerifyRecord.isApucurioAvailable()) {
-            skipAvroValidation();
-        }
     }
 
     @After
@@ -92,17 +87,6 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
         }
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
-        }
-    }
-
-    @Override
-    protected void validate(SourceRecord record) {
-        // TODO: remove once we upgrade Apicurio version (DBZ-7357)
-        if (VerifyRecord.isApucurioAvailable()) {
-            VerifyRecord.isValid(record, true);
-        }
-        else {
-            super.validate(record);
         }
     }
 
