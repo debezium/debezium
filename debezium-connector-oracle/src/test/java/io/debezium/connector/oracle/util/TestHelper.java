@@ -212,8 +212,8 @@ public class TestHelper {
 
     private static String getEhcacheBasicCacheConfig() {
         return "<resources>" +
-                "<heap unit=\"entries\">50</heap>" +
-                "<disk unit=\"B\">10485760</disk>" +
+                "<heap unit=\"entries\">512</heap>" +
+                "<disk unit=\"MB\">1024</disk>" +
                 "</resources>";
     }
 
