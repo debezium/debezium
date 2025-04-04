@@ -15,7 +15,6 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -709,17 +708,14 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                 offsetContext.setRedoSql(null);
             };
             try (TransactionCommitConsumer commitConsumer = new TransactionCommitConsumer(delegate, connectorConfig, schema)) {
-                int dispatchedEventCount = 0;
-                final Iterator<LogMinerEvent> iterator = getTransactionCache().eventsIterator(transaction);
-                while (iterator.hasNext()) {
+                getTransactionCache().forEachEvent(transaction, event -> {
                     if (!context.isRunning()) {
-                        return;
+                        return false;
                     }
-
-                    final LogMinerEvent event = iterator.next();
-                    LOGGER.trace("Dispatching event {} {}", ++dispatchedEventCount, event.getEventType());
+                    LOGGER.trace("Dispatching event {}", event.getEventType());
                     commitConsumer.accept(event);
-                }
+                    return true;
+                });
             }
         }
 
@@ -1915,15 +1911,15 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
      *
      * @param transaction the transaction to inspect events for
      * @return details about abandoned transactions, or an empty string if logging level is INFO or higher.
+     * @throws InterruptedException thrown if the thread is interrupted
      */
-    protected String getLoggedAbandonedTransactionTableNames(T transaction) {
+    protected String getLoggedAbandonedTransactionTableNames(T transaction) throws InterruptedException {
         if (ABANDONED_DETAILS_LOGGER.isDebugEnabled()) {
             final Set<String> tableNames = new HashSet<>();
-            final Iterator<LogMinerEvent> eventIterator = getTransactionCache().eventsIterator(transaction);
-            while (eventIterator.hasNext()) {
-                final LogMinerEvent event = eventIterator.next();
+            getTransactionCache().forEachEvent(transaction, event -> {
                 tableNames.add(event.getTableId().identifier());
-            }
+                return true;
+            });
             return String.format(", %d tables [%s]", tableNames.size(), String.join(",", tableNames));
         }
         return "";
