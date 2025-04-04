@@ -13,6 +13,7 @@ import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFF
 import java.util.Map;
 import java.util.Objects;
 
+import org.infinispan.commons.api.BasicCache;
 import org.infinispan.configuration.cache.Configuration;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.configuration.global.GlobalConfiguration;
@@ -32,9 +33,9 @@ import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
-import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.processor.CacheProvider;
 import io.debezium.connector.oracle.logminer.processor.LogMinerCache;
+import io.debezium.connector.oracle.logminer.processor.LogMinerTransactionCache;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.TableId;
@@ -55,8 +56,7 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
     private final EmbeddedCacheManager cacheManager;
     private final boolean dropBufferOnStop;
 
-    private final LogMinerCache<String, InfinispanTransaction> transactionCache;
-    private final LogMinerCache<String, LogMinerEvent> eventCache;
+    private final LogMinerTransactionCache<InfinispanTransaction> transactionCache;
     private final LogMinerCache<String, String> processedTransactionsCache;
     private final LogMinerCache<String, String> schemaChangesCache;
 
@@ -75,21 +75,25 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
                 parseAndGetGlobalConfiguration(connectorConfig));
         this.dropBufferOnStop = connectorConfig.isLogMiningBufferDropOnStop();
 
-        this.transactionCache = createCache(TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS);
-        this.processedTransactionsCache = createCache(PROCESSED_TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS);
-        this.schemaChangesCache = createCache(SCHEMA_CHANGES_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES);
-        this.eventCache = createCache(EVENTS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS);
+        this.transactionCache = new InfinispanLogMinerTransactionCache(
+                createCache(TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS),
+                createCache(EVENTS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS));
+        this.processedTransactionsCache = new InfinispanLogMinerCache<>(
+                createCache(PROCESSED_TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS));
+        this.schemaChangesCache = new InfinispanLogMinerCache<>(
+                createCache(SCHEMA_CHANGES_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES));
 
-        reCreateInMemoryCache();
         displayCacheStatistics();
     }
 
     @Override
     public void close() throws Exception {
+        // Makes sure asynchronous operations have completed before shutting down
+        transactionCache.close();
+
         if (dropBufferOnStop) {
             LOGGER.info("Clearing infinispan caches");
             transactionCache.clear();
-            eventCache.clear();
             schemaChangesCache.clear();
             processedTransactionsCache.clear();
 
@@ -104,13 +108,8 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
     }
 
     @Override
-    public LogMinerCache<String, InfinispanTransaction> getTransactionCache() {
+    public LogMinerTransactionCache<InfinispanTransaction> getTransactionCache() {
         return transactionCache;
-    }
-
-    @Override
-    public LogMinerCache<String, LogMinerEvent> getEventCache() {
-        return eventCache;
     }
 
     @Override
@@ -123,7 +122,7 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
         return processedTransactionsCache;
     }
 
-    private <K, V> LogMinerCache<K, V> createCache(String cacheName, OracleConnectorConfig connectorConfig, Field field) {
+    private <K, V> BasicCache<K, V> createCache(String cacheName, OracleConnectorConfig connectorConfig, Field field) {
         Objects.requireNonNull(cacheName);
 
         final String cacheConfiguration = connectorConfig.getConfig().getString(field);
@@ -131,7 +130,7 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
 
         // define the cache, parsing the supplied XML configuration
         cacheManager.defineConfiguration(cacheName, parseAndGetConfiguration(cacheName, cacheConfiguration));
-        return new InfinispanLogMinerCache<>(cacheManager.getCache(cacheName));
+        return cacheManager.getCache(cacheName);
     }
 
     private Configuration parseAndGetConfiguration(String cacheName, String configuration) {
