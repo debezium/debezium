@@ -130,8 +130,10 @@ jobs:
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
     if: >
-      ${{ needs.file_changes.outputs.common-changed == 'true' || 
-      needs.file_changes.outputs.debezium-testing-changed == 'true' }}
+      ${{ 
+        needs.file_changes.outputs.common-changed == 'true' || 
+        needs.file_changes.outputs.debezium-testing-changed == 'true' 
+      }}
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v4
@@ -157,8 +159,10 @@ jobs:
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
     if: >
-      ${{ needs.file_changes.outputs.common-changed == 'true' || 
-      needs.file_changes.outputs.debezium-testing-changed == 'true' }}
+      ${{ 
+        needs.file_changes.outputs.common-changed == 'true' || 
+        needs.file_changes.outputs.debezium-testing-changed == 'true' 
+      }}
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v4
@@ -184,8 +188,10 @@ jobs:
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
     if: >
-      ${{ needs.file_changes.outputs.common-changed == 'true' || 
-      needs.file_changes.outputs.debezium-testing-changed == 'true' }}
+      ${{ 
+        needs.file_changes.outputs.common-changed == 'true' || 
+        needs.file_changes.outputs.debezium-testing-changed == 'true' 
+      }}
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v4
@@ -210,8 +216,10 @@ jobs:
     name: Informix
     needs: [ check_style, file_changes ]
     if: >
-      ${{ needs.file_changes.outputs.common-changed == 'true' || 
-      needs.file_changes.outputs.debezium-testing-changed == 'true' }}
+      ${{ 
+        needs.file_changes.outputs.common-changed == 'true' || 
+        needs.file_changes.outputs.debezium-testing-changed == 'true' 
+      }}
     uses: ./.github/workflows/connector-informix-workflow.yml
     with:
       maven-cache-key: maven-debezium-test-build
@@ -222,16 +230,18 @@ jobs:
     name: JDBC
     needs: [ check_style, file_changes ]
     if: >
-      ${{ needs.file_changes.outputs.common-changed == 'true' || 
-      needs.file_changes.outputs.mysql-changed == 'true' || 
-      needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || 
-      needs.file_changes.outputs.mariadb-changed == 'true' || 
-      needs.file_changes.outputs.postgresql-changed == 'true' || 
-      needs.file_changes.outputs.sqlserver-changed == 'true' || 
-      needs.file_changes.outputs.sqlserver-changed == 'true' || 
-      needs.file_changes.outputs.db2-changed == 'true' || 
-      needs.file_changes.outputs.jdbc-changed == 'true' || 
-      needs.file_changes.outputs.debezium-testing-changed == 'true' }}
+      ${{ 
+        needs.file_changes.outputs.common-changed == 'true' || 
+        needs.file_changes.outputs.mysql-changed == 'true' || 
+        needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || 
+        needs.file_changes.outputs.mariadb-changed == 'true' || 
+        needs.file_changes.outputs.postgresql-changed == 'true' || 
+        needs.file_changes.outputs.sqlserver-changed == 'true' || 
+        needs.file_changes.outputs.sqlserver-changed == 'true' || 
+        needs.file_changes.outputs.db2-changed == 'true' || 
+        needs.file_changes.outputs.jdbc-changed == 'true' || 
+        needs.file_changes.outputs.debezium-testing-changed == 'true' 
+      }}
     uses: ./.github/workflows/connector-jdbc-workflow.yml
     with:
       maven-cache-key: maven-debezium-test-build
@@ -240,11 +250,13 @@ jobs:
     name: MariaDB
     needs: [ check_style, file_changes ]
     if: >
-      ${{ needs.file_changes.outputs.common-changed == 'true' || 
-      needs.file_changes.outputs.mariadb-changed == 'true' || 
-      needs.file_changes.outputs.mariadb-ddl-parser-changed == 'true' || 
-      needs.file_changes.outputs.schema-generator-changed == 'true' || 
-      needs.file_changes.outputs.debezium-testing-changed == 'true' }}
+      ${{ 
+        needs.file_changes.outputs.common-changed == 'true' || 
+        needs.file_changes.outputs.mariadb-changed == 'true' || 
+        needs.file_changes.outputs.mariadb-ddl-parser-changed == 'true' || 
+        needs.file_changes.outputs.schema-generator-changed == 'true' || 
+        needs.file_changes.outputs.debezium-testing-changed == 'true' 
+      }}
     uses: ./.github/workflows/connector-mariadb-workflow.yml
     with:
       maven-cache-key: maven-debezium-test-build
@@ -253,10 +265,12 @@ jobs:
     name: MongoDB
     needs: [ check_style, file_changes ]
     if: >
-      ${{ needs.file_changes.outputs.common-changed == 'true' || 
-      needs.file_changes.outputs.mongodb-changed == 'true' || 
-      needs.file_changes.outputs.debezium-testing-mongodb-changed == 'true' || 
-      needs.file_changes.outputs.schema-generator-changed == 'true' }}
+      ${{ 
+        needs.file_changes.outputs.common-changed == 'true' || 
+        needs.file_changes.outputs.mongodb-changed == 'true' || 
+        needs.file_changes.outputs.debezium-testing-mongodb-changed == 'true' || 
+        needs.file_changes.outputs.schema-generator-changed == 'true' 
+      }}
     uses: ./.github/workflows/connector-mongodb-workflow.yml
     with:
       maven-cache-key: maven-debezium-test-build
@@ -265,11 +279,13 @@ jobs:
     name: MySQL
     needs: [ check_style, file_changes ]
     if: >
-      ${{ needs.file_changes.outputs.common-changed == 'true' || 
-      needs.file_changes.outputs.mysql-changed == 'true' || 
-      needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || 
-      needs.file_changes.outputs.schema-generator-changed == 'true' || 
-      needs.file_changes.outputs.debezium-testing-changed == 'true' }}
+      ${{ 
+        needs.file_changes.outputs.common-changed == 'true' || 
+        needs.file_changes.outputs.mysql-changed == 'true' || 
+        needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || 
+        needs.file_changes.outputs.schema-generator-changed == 'true' || 
+        needs.file_changes.outputs.debezium-testing-changed == 'true' 
+      }}
     uses: ./.github/workflows/connector-mysql-workflow.yml
     with:
       maven-cache-key: maven-debezium-test-build
@@ -278,11 +294,13 @@ jobs:
     name: Oracle
     needs: [ check_style, file_changes ]
     if: >
-      ${{ needs.file_changes.outputs.common-changed == 'true' || 
-      needs.file_changes.outputs.oracle-changed == 'true' || 
-      needs.file_changes.outputs.oracle-ddl-parser-changed == 'true' || 
-      needs.file_changes.outputs.schema-generator-changed == 'true' || 
-      needs.file_changes.outputs.debezium-testing-changed == 'true' }}
+      ${{ 
+        needs.file_changes.outputs.common-changed == 'true' || 
+        needs.file_changes.outputs.oracle-changed == 'true' || 
+        needs.file_changes.outputs.oracle-ddl-parser-changed == 'true' || 
+        needs.file_changes.outputs.schema-generator-changed == 'true' || 
+        needs.file_changes.outputs.debezium-testing-changed == 'true' 
+      }}
     uses: ./.github/workflows/connector-oracle-workflow.yml
     with:
       maven-cache-key: maven-debezium-test-build
@@ -291,9 +309,11 @@ jobs:
     name: PostgreSQL
     needs: [ check_style, file_changes ]
     if: >
-      ${{ needs.file_changes.outputs.common-changed == 'true' || 
-      needs.file_changes.outputs.postgresql-changed == 'true' || 
-      needs.file_changes.outputs.schema-generator-changed == 'true' }}
+      ${{ 
+        needs.file_changes.outputs.common-changed == 'true' || 
+        needs.file_changes.outputs.postgresql-changed == 'true' || 
+        needs.file_changes.outputs.schema-generator-changed == 'true' 
+      }}
     uses: ./.github/workflows/connector-postgresql-workflow.yml
     with:
       maven-cache-key: maven-debezium-test-build
@@ -303,9 +323,11 @@ jobs:
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
     if: >
-      ${{ needs.file_changes.outputs.common-changed == 'true' || 
-      needs.file_changes.outputs.sqlserver-changed == 'true' || 
-      needs.file_changes.outputs.schema-generator-changed == 'true' }}
+      ${{ 
+        needs.file_changes.outputs.common-changed == 'true' || 
+        needs.file_changes.outputs.sqlserver-changed == 'true' || 
+        needs.file_changes.outputs.schema-generator-changed == 'true' 
+      }}
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v4
@@ -318,8 +340,10 @@ jobs:
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
     if: >
-      ${{ needs.file_changes.outputs.common-changed == 'true' || 
-      needs.file_changes.outputs.debezium-testing-changed == 'true' }}
+      ${{ 
+        needs.file_changes.outputs.common-changed == 'true' || 
+        needs.file_changes.outputs.debezium-testing-changed == 'true' 
+      }}
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v4
@@ -345,8 +369,10 @@ jobs:
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
     if: >
-      ${{ needs.file_changes.outputs.common-changed == 'true' || 
-      needs.file_changes.outputs.debezium-testing-changed == 'true' }}
+      ${{ 
+        needs.file_changes.outputs.common-changed == 'true' || 
+        needs.file_changes.outputs.debezium-testing-changed == 'true' 
+      }}
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v4
@@ -377,9 +403,11 @@ jobs:
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
     if: >
-      ${{ needs.file_changes.outputs.common-changed == 'true' || 
-      needs.file_changes.outputs.debezium-testing-changed == 'true' || 
-      needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' }}
+      ${{ 
+        needs.file_changes.outputs.common-changed == 'true' || 
+        needs.file_changes.outputs.debezium-testing-changed == 'true' || 
+        needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' 
+      }}
     steps:
       - name: Checkout Action (Core)
         uses: actions/checkout@v4
@@ -405,8 +433,10 @@ jobs:
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
     if: >
-      ${{ needs.file_changes.outputs.common-changed == 'true' || 
-      needs.file_changes.outputs.outbox-changed == 'true' }}
+      ${{ 
+        needs.file_changes.outputs.common-changed == 'true' || 
+        needs.file_changes.outputs.outbox-changed == 'true' 
+      }}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v4
@@ -419,9 +449,11 @@ jobs:
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
     if: >
-      ${{ needs.file_changes.outputs.common-changed == 'true' || 
-      needs.file_changes.outputs.rest-extension-changed == 'true' || 
-      needs.file_changes.outputs.debezium-testing-changed == 'true' }}
+      ${{ 
+        needs.file_changes.outputs.common-changed == 'true' || 
+        needs.file_changes.outputs.rest-extension-changed == 'true' || 
+        needs.file_changes.outputs.debezium-testing-changed == 'true' 
+      }}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v4
@@ -434,8 +466,10 @@ jobs:
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
     if: >
-      ${{ needs.file_changes.outputs.common-changed == 'true' || 
-      needs.file_changes.outputs.schema-generator-changed == 'true' }}
+      ${{ 
+        needs.file_changes.outputs.common-changed == 'true' || 
+        needs.file_changes.outputs.schema-generator-changed == 'true' 
+      }}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v4
@@ -448,10 +482,12 @@ jobs:
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
     if: >
-      ${{ needs.file_changes.outputs.common-changed == 'true' || 
-      needs.file_changes.outputs.mysql-changed == 'true' || 
-      needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || 
-      needs.file_changes.outputs.storage-only-changed == 'true' }}
+      ${{ 
+        needs.file_changes.outputs.common-changed == 'true' || 
+        needs.file_changes.outputs.mysql-changed == 'true' || 
+        needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || 
+        needs.file_changes.outputs.storage-only-changed == 'true' 
+      }}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v4
@@ -464,8 +500,10 @@ jobs:
     needs: [ check_style, file_changes ]
     runs-on: ubuntu-latest
     if: >
-      ${{ needs.file_changes.outputs.common-changed == 'true' || 
-      needs.file_changes.outputs.debezium-testing-changed == 'true' }}
+      ${{ 
+        needs.file_changes.outputs.common-changed == 'true' || 
+        needs.file_changes.outputs.debezium-testing-changed == 'true' 
+      }}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v4
