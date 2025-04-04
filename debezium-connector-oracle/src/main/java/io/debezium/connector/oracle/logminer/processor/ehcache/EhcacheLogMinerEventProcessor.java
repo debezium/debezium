@@ -40,6 +40,7 @@ import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
 import io.debezium.connector.oracle.logminer.processor.LogMinerCache;
+import io.debezium.connector.oracle.logminer.processor.LogMinerTransactionCache;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.TableId;
@@ -55,8 +56,7 @@ public class EhcacheLogMinerEventProcessor extends AbstractLogMinerEventProcesso
     private static final Logger LOGGER = LoggerFactory.getLogger(EhcacheLogMinerEventProcessor.class);
 
     private final CacheManager cacheManager;
-    private final LogMinerCache<String, EhcacheTransaction> transactionsCache;
-    private final LogMinerCache<String, LogMinerEvent> eventCache;
+    private final EhcacheLogMinerTransactionCache transactionCache;
     private final LogMinerCache<String, String> processedTransactionsCache;
     private final LogMinerCache<String, String> schemaChangesCache;
 
@@ -73,10 +73,14 @@ public class EhcacheLogMinerEventProcessor extends AbstractLogMinerEventProcesso
         LOGGER.info("Using Ehcache buffer");
 
         this.cacheManager = createCacheManager(connectorConfig);
-        this.transactionsCache = new EhcacheLogMinerCache(cacheManager.getCache(TRANSACTIONS_CACHE_NAME, String.class, EhcacheTransaction.class));
-        this.processedTransactionsCache = new EhcacheLogMinerCache(cacheManager.getCache(PROCESSED_TRANSACTIONS_CACHE_NAME, String.class, String.class));
-        this.schemaChangesCache = new EhcacheLogMinerCache(cacheManager.getCache(SCHEMA_CHANGES_CACHE_NAME, String.class, String.class));
-        this.eventCache = new EhcacheLogMinerCache(cacheManager.getCache(EVENTS_CACHE_NAME, String.class, LogMinerEvent.class));
+
+        this.transactionCache = new EhcacheLogMinerTransactionCache(
+                cacheManager.getCache(TRANSACTIONS_CACHE_NAME, String.class, EhcacheTransaction.class),
+                cacheManager.getCache(EVENTS_CACHE_NAME, String.class, LogMinerEvent.class));
+        this.processedTransactionsCache = new EhcacheLogMinerCache(
+                cacheManager.getCache(PROCESSED_TRANSACTIONS_CACHE_NAME, String.class, String.class));
+        this.schemaChangesCache = new EhcacheLogMinerCache(
+                cacheManager.getCache(SCHEMA_CHANGES_CACHE_NAME, String.class, String.class));
     }
 
     @Override
@@ -85,13 +89,8 @@ public class EhcacheLogMinerEventProcessor extends AbstractLogMinerEventProcesso
     }
 
     @Override
-    public LogMinerCache<String, EhcacheTransaction> getTransactionCache() {
-        return transactionsCache;
-    }
-
-    @Override
-    public LogMinerCache<String, LogMinerEvent> getEventCache() {
-        return eventCache;
+    public LogMinerTransactionCache<EhcacheTransaction> getTransactionCache() {
+        return transactionCache;
     }
 
     @Override

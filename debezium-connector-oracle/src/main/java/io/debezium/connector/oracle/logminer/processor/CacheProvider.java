@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer.processor;
 
-import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
-
 /**
  * @author Chris Cranford
  */
@@ -38,28 +36,11 @@ public interface CacheProvider<T extends Transaction> extends AutoCloseable {
     void displayCacheStatistics();
 
     /**
-     * Get the transaction cache
-     *
-     * <ul>
-     *     <li>Key - The unique transaction id</li>
-     *     <li>Value - The transaction instance</li>
-     * </ul>
+     * Get the transaction and transaction event cache.
      *
      * @return the transaction cache, never {@code null}
      */
-    LogMinerCache<String, T> getTransactionCache();
-
-    /**
-     * Get the LogMiner events cache
-     *
-     * <ul>
-     *     <li>Key - The event id, in the format of {@code transactionId-eventSequence}</li>
-     *     <li>Value - The raw LogMinerEvent object instance</li>
-     * </ul>
-     *
-     * @return the evnts cache, never {@code null}
-     */
-    LogMinerCache<String, LogMinerEvent> getEventCache();
+    LogMinerTransactionCache<T> getTransactionCache();
 
     /**
      * Get the Schema Changes cache
