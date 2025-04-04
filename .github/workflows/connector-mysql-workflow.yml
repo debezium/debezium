@@ -39,6 +39,6 @@ jobs:
       - name: Build MySQL ${{ matrix.version-mysql-server }} - ${{ matrix.profile }}
         uses: ./.github/actions/build-debezium-mysql
         with:
-          maven-cache-key: ${{ inputs.maven-cache-key }}
+          maven-cache-key: ${{ inputs.maven-cache-key }}-${{ hashFiles('**/pom.xml') }}
           version-mysql-server: ${{ matrix.version-mysql-server }}
           profile: ${{ matrix.profile }}
