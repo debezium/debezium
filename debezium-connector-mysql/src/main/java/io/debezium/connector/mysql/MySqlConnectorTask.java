@@ -136,10 +136,15 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
         LOGGER.info("Reconnecting after finishing schema recovery");
 
         try {
+            if (!connection.isConnected()) {
+                LOGGER.warn("Connection was dropped during schema recovery. Reconnecting...");
+                connection = connectionFactory.mainConnection();
+            }
+
             connection.setAutoCommit(false);
         }
         catch (SQLException e) {
-            throw new DebeziumException(e);
+            throw new DebeziumException("Failed to reconnect after schema recovery", e);
         }
 
         // If the binlog position is not available it is necessary to re-execute snapshot
