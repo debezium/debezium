@@ -3614,6 +3614,135 @@ public class PostgresConnectorIT extends AbstractConnectorTest {
         assertThat(afterUpdateS2recs).isNull();
     }
 
+    // This test assumes that the tserver gFlag cdcsdk_publication_list_refresh_interval_secs is set
+    // to 5 or a lower value.
+    @Test
+    public void shouldWorkWhenPartitionTableIsDroppedFromPartition() throws Exception {
+        String setupStmt = "DROP SCHEMA IF EXISTS s1 CASCADE;" +
+                "CREATE SCHEMA s1;" +
+                "CREATE TABLE s1.part (pk SERIAL, aa integer, PRIMARY KEY(pk, aa)) PARTITION BY RANGE (aa);" +
+                "CREATE TABLE s1.part1 PARTITION OF s1.part FOR VALUES FROM (0) TO (500);" +
+                "CREATE TABLE s1.part2 PARTITION OF s1.part FOR VALUES FROM (500) TO (1000);" +
+                "CREATE TABLE s1.part_default PARTITION OF s1.part DEFAULT;" +
+                "INSERT INTO s1.part (pk, aa) VALUES (0, 0);";
+        TestHelper.execute(setupStmt);
+
+        TestHelper.dropPublication("cdc");
+        TestHelper.execute("CREATE PUBLICATION cdc FOR TABLE s1.part1,s1.part2;");
+
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.part1,s1.part2")
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.DISABLED.getValue());
+
+        start(YugabyteDBConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        // Snapshot record s1.part.
+        consumeRecordsByTopic(1);
+
+        String insertStmt = "INSERT INTO s1.part (pk, aa) VALUES (1, 1);" +
+                "INSERT INTO s1.part (pk, aa) VALUES (501, 501);";
+        TestHelper.execute(insertStmt);
+
+        TestHelper.execute("ALTER PUBLICATION cdc DROP TABLE s1.part1;");
+
+        // Wait for the publication list to get refreshed.
+        TestHelper.waitFor(Duration.ofSeconds(10));
+
+        TestHelper.execute("DROP TABLE s1.part1;");
+
+        TestHelper.execute("INSERT INTO s1.part(pk, aa) VALUES (100, 100);");
+        TestHelper.execute("INSERT INTO s1.part(pk, aa) VALUES (600, 600);");
+
+        // Wait a while so that all records are available.
+        TestHelper.waitFor(Duration.ofSeconds(15));
+
+        SourceRecords actualRecords = consumeAvailableRecordsByTopic();
+        assertThat(actualRecords.topics()).hasSize(2);
+        assertThat(actualRecords.allRecordsInOrder()).hasSize(3);
+
+        // There should be no records for s1.part
+        // and there will be records for the partition tables s1.part1 and s1.part2.
+        List<SourceRecord> recs = actualRecords.recordsForTopic(topicName("s1.part"));
+        List<SourceRecord> part1recs = actualRecords.recordsForTopic(topicName("s1.part1"));
+        List<SourceRecord> part2recs = actualRecords.recordsForTopic(topicName("s1.part2"));
+        assertThat(recs).isNull();
+
+        assertThat(part1recs).hasSize(1);
+        assertThat(part2recs).hasSize(2);
+
+        YBVerifyRecord.isValidInsert(part1recs.get(0), PK_FIELD, 1);
+        YBVerifyRecord.isValidInsert(part2recs.get(0), PK_FIELD, 501);
+        YBVerifyRecord.isValidInsert(part2recs.get(1), PK_FIELD, 600);
+    }
+
+    // This test assumes that the tserver gFlag cdcsdk_publication_list_refresh_interval_secs is set
+    // to 5 or a lower value.
+    @Test
+    public void shouldWorkWhenPartitionTableIsAddedToPublication() throws Exception {
+        String setupStmt = "DROP SCHEMA IF EXISTS s1 CASCADE;" +
+                "CREATE SCHEMA s1;" +
+                "CREATE TABLE s1.part (pk SERIAL, aa integer, PRIMARY KEY(pk, aa)) PARTITION BY RANGE (aa);" +
+                "CREATE TABLE s1.part1 PARTITION OF s1.part FOR VALUES FROM (0) TO (500);" +
+                "CREATE TABLE s1.part2 PARTITION OF s1.part FOR VALUES FROM (500) TO (1000);" +
+                "CREATE TABLE s1.part3 PARTITION OF s1.part FOR VALUES FROM (1001) TO (1500);" +
+                "CREATE TABLE s1.part_default PARTITION OF s1.part DEFAULT;" +
+                "INSERT INTO s1.part (pk, aa) VALUES (0, 0);";
+        TestHelper.execute(setupStmt);
+
+        TestHelper.dropPublication("cdc");
+        TestHelper.execute("CREATE PUBLICATION cdc FOR TABLE s1.part1,s1.part2;");
+
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.part1,s1.part2,s1.part3")
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.DISABLED.getValue());
+
+        start(YugabyteDBConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        // Snapshot record s1.part.
+        consumeRecordsByTopic(1);
+
+        String insertStmt = "INSERT INTO s1.part (pk, aa) VALUES (1, 1);" +
+                "INSERT INTO s1.part (pk, aa) VALUES (501, 501);";
+        TestHelper.execute(insertStmt);
+
+        TestHelper.execute("ALTER PUBLICATION cdc ADD TABLE s1.part3;");
+
+        // Wait a while so that all records are available.
+        TestHelper.waitFor(Duration.ofSeconds(10));
+
+        TestHelper.execute("INSERT INTO s1.part(pk, aa) VALUES (100, 100);");
+        TestHelper.execute("INSERT INTO s1.part(pk, aa) VALUES (600, 600);");
+        TestHelper.execute("INSERT INTO s1.part(pk, aa) VALUES (1200, 1200);");
+
+        // Wait so that all the records are now available for consumption.
+        TestHelper.waitFor(Duration.ofSeconds(15));
+        SourceRecords actualRecords = consumeAvailableRecordsByTopic();
+        assertThat(actualRecords.topics()).hasSize(3);
+        assertThat(actualRecords.allRecordsInOrder()).hasSize(5);
+
+        // There should be no records for s1.part
+        // and there will be records for s1.part1, s1.part2 and s1.part3.
+        List<SourceRecord> recs = actualRecords.recordsForTopic(topicName("s1.part"));
+        List<SourceRecord> part1recs = actualRecords.recordsForTopic(topicName("s1.part1"));
+        List<SourceRecord> part2recs = actualRecords.recordsForTopic(topicName("s1.part2"));
+        List<SourceRecord> part3recs = actualRecords.recordsForTopic(topicName("s1.part3"));
+        assertThat(recs).isNull();
+
+        assertThat(part1recs).hasSize(2);
+        assertThat(part2recs).hasSize(2);
+        assertThat(part3recs).hasSize(1);
+
+        YBVerifyRecord.isValidInsert(part1recs.get(0), PK_FIELD, 1);
+        YBVerifyRecord.isValidInsert(part1recs.get(1), PK_FIELD, 100);
+        YBVerifyRecord.isValidInsert(part2recs.get(0), PK_FIELD, 501);
+        YBVerifyRecord.isValidInsert(part2recs.get(1), PK_FIELD, 600);
+        YBVerifyRecord.isValidInsert(part3recs.get(0), PK_FIELD, 1200);
+    }
+
     @Test
     @FixFor("DBZ-5949")
     @SkipWhenDecoderPluginNameIsNot(value = SkipWhenDecoderPluginNameIsNot.DecoderPluginName.PGOUTPUT, reason = "Publication configuration only valid for PGOUTPUT decoder")
