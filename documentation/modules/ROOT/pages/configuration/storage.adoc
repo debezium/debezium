@@ -247,19 +247,19 @@ The users either use the default pre-configured DML and DDL statements or can ov
 |The name of the table to which the offsets will be stored.
 
 |[[jdbc-offset-table-ddl]]<<jdbc-offset-table-ddl, `offset.storage.jdbc.table.ddl`>>
-|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/offset/JdbcOffsetBackingStoreConfig.java[source code]
+|<<jdbc-offset-table-ddl-default, `see table section`>>
 |DDL statement to create the offset table.
 
 |[[jdbc-offset-table-select]]<<jdbc-offset-table-select, `offset.storage.jdbc.table.select`>>
-|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/offset/JdbcOffsetBackingStoreConfig.java[source code]
+|<<jdbc-offset-table-ddl-default, `see table section`>>
 |DML statement to read offsets stored from the table.
 
 |[[jdbc-offset-table-insert]]<<jdbc-offset-table-insert, `offset.storage.jdbc.table.insert`>>
-|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/offset/JdbcOffsetBackingStoreConfig.java[source code]
+|<<jdbc-offset-table-select-default, `see table section`>>
 |DML statement to write offsets to the table.
 
 |[[jdbc-offset-table-delete]]<<jdbc-offset-table-delete, `offset.storage.jdbc.table.delete`>>
-|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/offset/JdbcOffsetBackingStoreConfig.java[source code]
+|<<jdbc-offset-table-insert-default, `see table section`>>
 |DML statement to remove offsets from the table.
 
 |===
@@ -300,22 +300,54 @@ The users either use the default pre-configured DML and DDL statements or can ov
 |The name of the table to which the offsets will be stored.
 
 |[[deprecated-jdbc-offset-table-ddl]]<<deprecated-jdbc-offset-table-ddl, `offset.storage.jdbc.offset.table.ddl`>>
-|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/offset/JdbcOffsetBackingStoreConfig.java[source code]
+|<<jdbc-offset-table-ddl-default, `see table section`>>
 |DDL statement to create the offset table.
 
 |[[deprecated-jdbc-offset-table-select]]<<deprecated-jdbc-offset-table-select, `offset.storage.jdbc.offset.table.select`>>
-|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/offset/JdbcOffsetBackingStoreConfig.java[source code]
+|<<jdbc-offset-table-ddl-default, `see table section`>>
 |DML statement to read offsets stored from the table.
 
 |[[deprecated-jdbc-offset-table-insert]]<<deprecated-jdbc-offset-table-insert, `offset.storage.jdbc.offset.table.insert`>>
-|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/offset/JdbcOffsetBackingStoreConfig.java[source code]
+|<<jdbc-offset-table-select-default, `see table section`>>
 |DML statement to write offsets to the table.
 
 |[[deprecated-jdbc-offset-table-delete]]<<deprecated-jdbc-offset-table-delete, `offset.storage.jdbc.offset.table.delete`>>
-|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/offset/JdbcOffsetBackingStoreConfig.java[source code]
+|<<jdbc-offset-table-insert-default, `see table section`>>
 |DML statement to remove offsets from the table.
 
 |===
+
+=== Offset Table defaults
+
+[[jdbc-offset-table-ddl-default]]<<jdbc-offset-table-ddl-default, 1. Table Structure>>
+[SQL]
+----
+CREATE TABLE %s (
+id VARCHAR(36)      NOT NULL,
+offset_key          VARCHAR(1255),
+offset_val          VARCHAR(1255),
+record_insert_ts    TIMESTAMP NOT NULL,
+record_insert_seq   INTEGER NOT NULL)
+----
+
+[[jdbc-offset-table-select-default]]<<jdbc-offset-table-select-default, 2. Select query>>
+[SQL]
+----
+SELECT id, offset_key, offset_val FROM %s ORDER BY record_insert_ts, record_insert_seq
+----
+
+[[jdbc-offset-table-insert-default]]<<jdbc-offset-table-insert-default, 3. Insert query>>
+[SQL]
+----
+INSERT INTO %s(id, offset_key, offset_val, record_insert_ts, record_insert_seq)
+    VALUES ( ?, ?, ?, ?, ? )
+----
+
+[[jdbc-offset-table-delete-default]]<<jdbc-offset-table-delete-default, 4. Delete query>>
+[SQL]
+----
+DELETE FROM %s
+----
 
 
 === Internal schema history store
@@ -355,19 +387,19 @@ The users either use the default pre-configured DML and DDL statements or can ov
 |The name of the table to which the history will be stored.
 
 |[[jdbc-history-schema-history-table-ddl]]<<jdbc-history-schema-history-table-ddl, `schema.history.internal.jdbc.table.ddl`>>
-|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/history/JdbcSchemaHistoryConfig.java[source code]
+|<<jdbc-history-schema-history-table-ddl-default, `see table section`>>
 |The DDL statement used to create the storage table.
 
 |[[jdbc-history-schema-history-table-select]]<<jdbc-history-schema-history-table-select, `schema.history.internal.jdbc.table.select`>>
-|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/history/JdbcSchemaHistoryConfig.java[source code]
+|<<jdbc-history-schema-history-table-select-default, `see table section`>>
 |The `SELECT` statement to read the internal schema history form the table.
 
 |[[jdbc-history-schema-history-table-exists-select]]<<jdbc-history-schema-history-table-exists-select, `schema.history.internal.jdbc.table.exists.select`>>
-|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/history/JdbcSchemaHistoryConfig.java[source code]
+|<<jdbc-history-schema-history-table-exists-select-default, `see table section`>>
 |The `SELECT` statement to check the existence of the storage table.
 
 |[[jdbc-history-schema-history-table-insert]]<<jdbc-history-schema-history-table-insert, `schema.history.internal.jdbc.table.insert`>>
-|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/history/JdbcSchemaHistoryConfig.java[source code]
+|<<jdbc-history-schema-history-table-insert-default, `see table section`>>
 |The `INSERT` statement to record the schema history to the table.
 
 |===
@@ -404,31 +436,60 @@ The users either use the default pre-configured DML and DDL statements or can ov
 |5
 |(Optional) Maximum number of retry attempts before giving up.
 
-|[[jdbc-history-schema-history-table-name]]<<jdbc-history-schema-history-table-name, `schema.history.internal.jdbc.table.name`>>
-|`debezium_database_history`
-|The name of the table to which the history will be stored.
-
 |[[deprecated-jdbc-history-schema-history-table-name]]<<deprecated-jdbc-history-schema-history-table-name, `schema.history.internal.jdbc.schema.history.table.name`>>
 |`debezium_database_history`
 |The name of the table to which the history will be stored.
 
 |[[deprecated-jdbc-history-schema-history-table-ddl]]<<deprecated-jdbc-history-schema-history-table-ddl, `schema.history.internal.jdbc.schema.history.table.ddl`>>
-|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/history/JdbcSchemaHistoryConfig.java[source code]
+|<<jdbc-history-schema-history-table-ddl-default, `see table section`>>
 |The DDL statement used to create the storage table.
 
 |[[deprecated-jdbc-history-schema-history-table-select]]<<deprecated-jdbc-history-schema-history-table-select, `schema.history.internal.jdbc.schema.history.table.select`>>
-|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/history/JdbcSchemaHistoryConfig.java[source code]
+|<<jdbc-history-schema-history-table-select-default, `see table section`>>
 |The `SELECT` statement to read the internal schema history form the table.
 
 |[[deprecated-jdbc-history-schema-history-table-exists-select]]<<deprecated-jdbc-history-schema-history-table-exists-select, `schema.history.internal.jdbc.schema.history.table.exists.select`>>
-|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/history/JdbcSchemaHistoryConfig.java[source code]
+|<<jdbc-history-schema-history-table-exists-select-default, `see table section`>>
 |The `SELECT` statement to check the existence of the storage table.
 
 |[[deprecated-jdbc-history-schema-history-table-insert]]<<deprecated-jdbc-history-schema-history-table-insert, `schema.history.internal.jdbc.schema.history.table.insert`>>
-|link:https://raw.githubusercontent.com/debezium/debezium/main/debezium-storage/debezium-storage-jdbc/src/main/java/io/debezium/storage/jdbc/history/JdbcSchemaHistoryConfig.java[source code]
+|<<jdbc-history-schema-history-table-insert-default, `see table section`>>
 |The `INSERT` statement to record the schema history to the table.
 
 |===
+
+=== History Table defaults
+
+[[jdbc-history-schema-history-table-ddl-default]]<<jdbc-history-schema-history-table-ddl-default,1. Table Structure>>
+[SQL]
+----
+CREATE TABLE %s (
+    id VARCHAR(36) NOT NULL,
+    history_data VARCHAR(65000),
+    history_data_seq INTEGER,
+    record_insert_ts TIMESTAMP NOT NULL,
+    record_insert_seq INTEGER NOT NULL
+)
+----
+
+[[jdbc-history-schema-history-table-select-default]]<<jdbc-history-schema-history-table-select-default,2. Select Query>>
+[SQL]
+----
+SELECT id, history_data, history_data_seq FROM %s
+    ORDER BY record_insert_ts, record_insert_seq, id, history_data_seq
+----
+
+[[jdbc-history-schema-history-table-exists-select-default]]<<jdbc-history-schema-history-table-exists-select-default,4. Data exist Query>>
+[SQL]
+----
+SELECT * FROM %s LIMIT 1
+----
+
+[[jdbc-history-schema-history-table-insert-default]]<<jdbc-history-schema-history-table-insert-default,4. Insert Query>>
+[SQL]
+----
+INSERT INTO %s(id, history_data, history_data_seq, record_insert_ts, record_insert_seq) VALUES ( ?, ?, ?, ?, ? )
+----
 
 == Redis
 
