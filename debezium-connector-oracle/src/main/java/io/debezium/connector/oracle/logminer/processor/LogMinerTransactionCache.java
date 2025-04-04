@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer.processor;
 
-import java.util.Iterator;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -111,12 +110,14 @@ public interface LogMinerTransactionCache<T extends Transaction> extends AutoClo
     void eventKeys(Consumer<Stream<String>> consumer);
 
     /**
-     * Get an iterator over all events for a given transaction.
-     * All events are provided in insertion order.
+     * Apply a predicate over all cached events associated with the specified transaction.
+     * The events will be supplied in insertion order.
      *
      * @param transaction the transaction, should not be {@code null}
+     * @param predicate the consumer, should not be {@code null}
+     * @throws InterruptedException thrown if the thread is interrupted
      */
-    Iterator<LogMinerEvent> eventsIterator(T transaction);
+    void forEachEvent(T transaction, InterruptiblePredicate<LogMinerEvent> predicate) throws InterruptedException;
 
     /**
      * Add a transaction event to the cache.
@@ -212,5 +213,10 @@ public interface LogMinerTransactionCache<T extends Transaction> extends AutoClo
 
     @Override
     default void close() throws Exception {
+    }
+
+    @FunctionalInterface
+    interface InterruptiblePredicate<T> {
+        boolean test(T t) throws InterruptedException;
     }
 }

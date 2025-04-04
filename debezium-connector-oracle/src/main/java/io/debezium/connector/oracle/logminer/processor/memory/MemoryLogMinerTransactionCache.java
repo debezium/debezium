@@ -82,10 +82,15 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     }
 
     @Override
-    public Iterator<LogMinerEvent> eventsIterator(MemoryTransaction transaction) {
-        return eventsByTransactionId.get(transaction.getTransactionId()).stream()
-                .map(LogMinerEventEntry::event)
-                .iterator();
+    public void forEachEvent(MemoryTransaction transaction, InterruptiblePredicate<LogMinerEvent> predicate) throws InterruptedException {
+        try (var stream = eventsByTransactionId.get(transaction.getTransactionId()).stream()) {
+            final Iterator<LogMinerEventEntry> iterator = stream.iterator();
+            while (iterator.hasNext()) {
+                if (!predicate.test(iterator.next().event)) {
+                    break;
+                }
+            }
+        }
     }
 
     @Override
