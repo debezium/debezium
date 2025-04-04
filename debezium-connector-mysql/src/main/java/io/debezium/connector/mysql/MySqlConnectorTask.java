@@ -136,7 +136,10 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
         LOGGER.info("Reconnecting after finishing schema recovery");
 
         try {
-            if (!connection.isConnected()) {
+            try {
+                connection.execute("SELECT 1");
+            }
+            catch (SQLException e) {
                 LOGGER.warn("Connection was dropped during schema recovery. Reconnecting...");
                 connection = connectionFactory.mainConnection();
             }
