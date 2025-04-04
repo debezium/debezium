@@ -21,7 +21,7 @@ The offset store is provided automatically for the deployments inside the Kafka 
 * Kafka offset store for Kafka Connect distributed
 * File offset store for Kafka Connect standalone
 
-If a connector is run either in xref:development/engine.adoc[Debezium Engine] or xref:operations/embedded.adoc[Debezium Server] then the offset store must be explicitly configured.
+If a connector is run either in xref:development/engine.adoc[Debezium Engine] or xref:operations/debezium-server.adoc[Debezium Server] then the offset store must be explicitly configured.
 The internal schema history is configured in all cases via connector configuration options.
 
 
