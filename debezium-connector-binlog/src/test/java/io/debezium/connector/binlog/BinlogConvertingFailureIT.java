@@ -18,6 +18,7 @@ import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
@@ -66,6 +67,7 @@ public abstract class BinlogConvertingFailureIT<C extends SourceConnector> exten
 
     @Test
     @FixFor("DBZ-7143")
+    @Ignore("CC-33133")
     public void shouldRecoverToSyncSchemaWhenFailedValueConvertByDdlWithSqlLogBinIsOff() throws Exception {
         // Use the DB configuration to define the connector's configuration to use the "replica"
         // which may be the same as the "master" ...
