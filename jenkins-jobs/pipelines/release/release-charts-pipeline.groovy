@@ -38,7 +38,7 @@ HELM_CHART_OUTPUT_DIR='charts-output'
 DEBEZIUM_CHART_URL='charts.debezium.io'
 
 
-node('release-node') {
+node('Slave') {
     catchError {
         stage('Validate parameters') {
             common.validateVersionFormat(RELEASE_VERSION)
