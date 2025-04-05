@@ -11,11 +11,11 @@ import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
-import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
 import io.debezium.connector.oracle.logminer.processor.LogMinerCache;
 import io.debezium.connector.oracle.logminer.processor.LogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.processor.LogMinerTransactionCache;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.TableId;
@@ -28,8 +28,7 @@ import io.debezium.relational.TableId;
  */
 public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor<MemoryTransaction> {
 
-    private final LogMinerCache<String, MemoryTransaction> transactionCache = new MemoryBasedLogMinerCache<>();
-    private final LogMinerCache<String, LogMinerEvent> eventCache = new MemoryBasedLogMinerCache<>();
+    private final LogMinerTransactionCache<MemoryTransaction> transactionCache = new MemoryLogMinerTransactionCache();
     private final LogMinerCache<String, String> schemaCache = new MemoryBasedLogMinerCache<>();
     private final LogMinerCache<String, String> processedTransactionsCache = new MemoryBasedLogMinerCache<>();
 
@@ -50,14 +49,8 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
     }
 
     @Override
-    public LogMinerCache<String, MemoryTransaction> getTransactionCache() {
+    public LogMinerTransactionCache<MemoryTransaction> getTransactionCache() {
         return transactionCache;
-    }
-
-    @Override
-    public LogMinerCache<String, LogMinerEvent> getEventCache() {
-
-        return eventCache;
     }
 
     @Override

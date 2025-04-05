@@ -469,8 +469,8 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
             processor.processRow(partition, getInsertLogMinerEventRow(Scn.valueOf(5L), TRANSACTION_ID_2));
             processor.abandonTransactions(Duration.ofHours(1L));
             assertThat(processor.getTransactionCache().isEmpty()).isFalse();
-            assertThat(processor.getTransactionCache().get(TRANSACTION_ID_1)).isNull();
-            assertThat(processor.getTransactionCache().get(TRANSACTION_ID_2)).isNotNull();
+            assertThat(processor.getTransactionCache().getTransaction(TRANSACTION_ID_1)).isNull();
+            assertThat(processor.getTransactionCache().getTransaction(TRANSACTION_ID_2)).isNotNull();
         }
     }
 
@@ -491,8 +491,8 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
             processor.processRow(partition, getInsertLogMinerEventRow(Scn.valueOf(3L), TRANSACTION_ID_2));
             processor.abandonTransactions(Duration.ofHours(1L));
             assertThat(processor.getTransactionCache().isEmpty()).isFalse();
-            assertThat(processor.getTransactionCache().get(TRANSACTION_ID_1)).isNull();
-            assertThat(processor.getTransactionCache().get(TRANSACTION_ID_2)).isNotNull();
+            assertThat(processor.getTransactionCache().getTransaction(TRANSACTION_ID_1)).isNull();
+            assertThat(processor.getTransactionCache().getTransaction(TRANSACTION_ID_2)).isNotNull();
         }
     }
 
@@ -525,9 +525,9 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
             processor.processRow(partition, getInsertLogMinerEventRow(Scn.valueOf(7L), TRANSACTION_ID_3));
             processor.abandonTransactions(Duration.ofHours(1L));
             assertThat(processor.getTransactionCache().isEmpty()).isFalse();
-            assertThat(processor.getTransactionCache().get(TRANSACTION_ID_1)).isNull();
-            assertThat(processor.getTransactionCache().get(TRANSACTION_ID_2)).isNull();
-            assertThat(processor.getTransactionCache().get(TRANSACTION_ID_3)).isNotNull();
+            assertThat(processor.getTransactionCache().getTransaction(TRANSACTION_ID_1)).isNull();
+            assertThat(processor.getTransactionCache().getTransaction(TRANSACTION_ID_2)).isNull();
+            assertThat(processor.getTransactionCache().getTransaction(TRANSACTION_ID_3)).isNotNull();
         }
     }
 
@@ -557,9 +557,9 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
             processor.processRow(partition, getInsertLogMinerEventRow(Scn.valueOf(4L), TRANSACTION_ID_3));
             processor.abandonTransactions(Duration.ofHours(1L));
             assertThat(processor.getTransactionCache().isEmpty()).isFalse();
-            assertThat(processor.getTransactionCache().get(TRANSACTION_ID_1)).isNull();
-            assertThat(processor.getTransactionCache().get(TRANSACTION_ID_2)).isNull();
-            assertThat(processor.getTransactionCache().get(TRANSACTION_ID_3)).isNotNull();
+            assertThat(processor.getTransactionCache().getTransaction(TRANSACTION_ID_1)).isNull();
+            assertThat(processor.getTransactionCache().getTransaction(TRANSACTION_ID_2)).isNull();
+            assertThat(processor.getTransactionCache().getTransaction(TRANSACTION_ID_3)).isNotNull();
         }
 
     }
