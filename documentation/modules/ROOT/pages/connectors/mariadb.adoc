@@ -538,6 +538,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming
 [[mariadb-schema-history-metrics]]
 === Schema history metrics
 
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-schema-history]
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
 
 // Type: concept

@@ -4721,6 +4721,7 @@ This should always be `0`; however when allowing unparsable DDL to be skipped, t
 
 [[oracle-monitoring-schema-history]]
 
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-schema-history]
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
 
 ifdef::community[]
