@@ -812,7 +812,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         else {
             getTransactionCache().removeAbandonedTransaction(transaction.getTransactionId());
         }
-        removeEventsWithTransaction(transaction);
+        getTransactionCache().removeTransactionEvents(transaction);
     }
 
     /**
@@ -878,7 +878,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
     protected void finalizeTransactionRollback(String transactionId, Scn rollbackScn) {
         final T transaction = getTransactionCache().getTransaction(transactionId);
         if (transaction != null) {
-            removeEventsWithTransaction(transaction);
+            getTransactionCache().removeTransactionEvents(transaction);
             getTransactionCache().removeTransaction(transaction);
         }
         getTransactionCache().removeAbandonedTransaction(transactionId);
@@ -1373,7 +1373,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         final T transaction = getTransactionCache().getTransaction(transactionId);
         if (transaction != null) {
             LOGGER.debug("Skipping GoldenGate replication marker for transaction {} with SCN {}", transactionId, row.getScn());
-            removeEventsWithTransaction(transaction);
+            getTransactionCache().removeTransactionEvents(transaction);
             getTransactionCache().removeTransaction(transaction);
         }
         // It should not exist in this cache, but in case.
@@ -1965,10 +1965,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                 .max(Comparator.comparing(Transaction::getStartScn))
                 .map(Transaction::getStartScn)
                 .orElse(Scn.NULL));
-    }
-
-    private void removeEventsWithTransaction(T transaction) {
-        getTransactionCache().removeTransactionEvents(transaction);
     }
 
     /**
