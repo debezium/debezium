@@ -3602,4 +3602,6 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming
 [[sqlserver-schema-history-metrics]]
 === Schema history metrics
 
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=sqlserver-schema-history]
+
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
