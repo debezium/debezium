@@ -36,12 +36,12 @@ ifdef::product[]
 For information about the Oracle Database versions that are compatible with this connector, see the link:{LinkDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
 endif::product[]
 
-{prodname} ingests change events from Oracle by using the native LogMiner database package,
 ifdef::community[]
-the https://docs.oracle.com/en/database/oracle/oracle-database/19/xstrm/introduction-to-xstream.html[XStream API], or https://www.bersler.com/openlogreplicator/[OpenLogReplicator].
+{prodname} can ingest change events from Oracle by using the native LogMiner database package, the https://docs.oracle.com/en/database/oracle/oracle-database/19/xstrm/introduction-to-xstream.html[XStream API],
+or https://www.bersler.com/openlogreplicator/[OpenLogReplicator].
 endif::community[]
 ifdef::product[]
-or the https://docs.oracle.com/en/database/oracle/oracle-database/19/xstrm/introduction-to-xstream.html[XStream API].
+{prodname} can ingest change events from Oracle by using either the native LogMiner database package or the https://docs.oracle.com/en/database/oracle/oracle-database/19/xstrm/introduction-to-xstream.html[XStream API].
 
 [IMPORTANT]
 ====
@@ -1268,8 +1268,20 @@ In the case of the Oracle connector, the structure includes the following fields
 * The connector name.
 * Whether the event is part of an ongoing snapshot or not.
 * The transaction id (not included for snapshots).
-* The `commit_scn` for the change.
-* A timestamp that indicates when the record in the source database changed (for snapshots, the timestamp indicates when the snapshot occurred).
+* The following values related to the SCN (system change number) that the database assigns when a change is committed:
+[horizontal]
+`scn`:: The unique identifier that the database uses to track the transaction.
+`start_scn`:: The SCN when the transaction started.
+`start_ts_ms`:: The time when the transaction started.
+`commit_ts_ms`:: The time when the transaction was committed.
+* Timestamps that represent when the connector processed the event, based on the system clock of the JVM running the Kafka Connect task.
+For snapshots, the timestamp indicates when the snapshot occurred. +
+The connector reports the timestamp value with differing precision in the following fields:
+[horizontal]
+`ts_ms`:: Provides the timestamp in milliseconds.
+`ts_us`:: Provides the timestamp in microseconds.
+`ts_ns`:: Provides the timestamp in nanoseconds.
+
 * Username who made the change
 * The ROWID associated with the row
 +
