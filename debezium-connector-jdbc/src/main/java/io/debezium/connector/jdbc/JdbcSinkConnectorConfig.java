@@ -24,12 +24,14 @@ import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.jdbc.naming.ColumnNamingStrategy;
+import io.debezium.connector.jdbc.naming.CustomCollectionNamingStrategy;
 import io.debezium.connector.jdbc.naming.DefaultColumnNamingStrategy;
 import io.debezium.connector.jdbc.naming.TemporaryBackwardCompatibleCollectionNamingStrategyProxy;
 import io.debezium.sink.SinkConnectorConfig;
 import io.debezium.sink.filter.FieldFilterFactory;
 import io.debezium.sink.filter.FieldFilterFactory.FieldNameFilter;
 import io.debezium.sink.naming.CollectionNamingStrategy;
+import io.debezium.sink.naming.DefaultCollectionNamingStrategy;
 import io.debezium.util.Strings;
 
 /**
@@ -57,6 +59,13 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     public static final String SCHEMA_EVOLUTION = "schema.evolution";
     public static final String QUOTE_IDENTIFIERS = "quote.identifiers";
     public static final String COLUMN_NAMING_STRATEGY = "column.naming.strategy";
+    public static final String COLUMN_NAMING_STYLE = "column.naming.style";
+    public static final String COLUMN_NAMING_PREFIX = "column.naming.prefix";
+    public static final String COLLECTION_NAMING_PREFIX = "collection.naming.prefix";
+    public static final String COLLECTION_NAMING_SUFFIX = "collection.naming.suffix";
+    public static final String COLLECTION_NAMING_STYLE = "collection.naming.style";
+
+    public static final String COLUMN_NAMING_SUFFIX = "column.naming.suffix";
     public static final String POSTGRES_POSTGIS_SCHEMA = "dialect.postgres.postgis.schema";
     public static final String SQLSERVER_IDENTITY_INSERT = "dialect.sqlserver.identity.insert";
     public static final String USE_REDUCTION_BUFFER = "use.reduction.buffer";
@@ -188,6 +197,66 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withDefault(DefaultColumnNamingStrategy.class.getName())
             .withDescription("Name of the strategy class that implements the ColumnNamingStrategy interface.");
 
+    public static final Field COLUMN_NAMING_STYLE_FIELD = Field.create(COLUMN_NAMING_STYLE)
+            .withDisplayName("Column Naming Style")
+            .withType(Type.STRING)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withValidation(JdbcSinkConnectorConfig::validateColumnNamingStyle)
+            .withDefault("default")
+            .withDescription("The style of column naming: snake_case, camelCase, kebab-case, UPPERCASE, lowercase.");
+
+    public static final Field COLUMN_NAMING_PREFIX_FIELD = Field.create(COLUMN_NAMING_PREFIX)
+            .withDisplayName("Column Naming Prefix")
+            .withType(Type.STRING)
+            .withDefault("")
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Optional prefix to add to column names.");
+
+    public static final Field COLUMN_NAMING_SUFFIX_FIELD = Field.create(COLUMN_NAMING_SUFFIX)
+            .withDisplayName("Column Naming Suffix")
+            .withType(Type.STRING)
+            .withDefault("")
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Optional suffix to add to column names.");
+
+    public static final Field COLLECTION_NAMING_STRATEGY_FIELD = Field.create(COLLECTION_NAMING_STRATEGY)
+            .withDisplayName("Name of the strategy class that implements the CollectionNamingStrategy interface")
+            .withType(ConfigDef.Type.CLASS)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 2))
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(DefaultCollectionNamingStrategy.class.getName())
+            .withDescription("Name of the strategy class that implements the CollectionNamingStrategy interface. " +
+                    "This field allows users to define a custom implementation for resolving collection names. " +
+                    "If not specified, the default strategy is used.")
+            .withDeprecatedAliases(DEPRECATED_TABLE_NAMING_STRATEGY)
+            .withValidation(JdbcSinkConnectorConfig::validateCollectionNamingStrategy);
+
+    public static final Field COLLECTION_NAMING_STYLE_FIELD = Field.create(COLLECTION_NAMING_STYLE)
+            .withDisplayName("Column Naming Style")
+            .withType(Type.STRING)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault("default")
+            .withDescription("The style of table naming: snake_case, camel_case, upper_case, lower_case.");
+
+    public static final Field COLLECTION_NAMING_PREFIX_FIELD = Field.create(COLLECTION_NAMING_PREFIX)
+            .withDisplayName("Table Naming Prefix")
+            .withType(Type.STRING)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Optional prefix to add to table names.");
+
+    public static final Field COLLECTION_NAMING_SUFFIX_FIELD = Field.create(COLLECTION_NAMING_SUFFIX)
+            .withDisplayName("Table Naming Suffix")
+            .withType(Type.STRING)
+            .withWidth(ConfigDef.Width.MEDIUM)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("Optional suffix to add to table names.");
+
     public static final Field POSTGRES_POSTGIS_SCHEMA_FIELD = Field.create(POSTGRES_POSTGIS_SCHEMA)
             .withDisplayName("Name of the schema where postgis extension is installed")
             .withType(Type.STRING)
@@ -247,6 +316,24 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     "In environments where the sink database uses asynchronous replication, enabling this option may risk data loss or inconsistencies " +
                     "during failover if the replica has not fully caught up with the primary.");
 
+    public static final Field COLLECTION_TABLE_FORMAT_FIELD = Field.create("collection.table.format")
+            .withDisplayName("Format string using table name")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 3))
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDefault("${table}")
+            .withDescription("Alternative format that uses table name instead of topic name. Use ${schema} for schema name and ${table} for table name.");
+
+    public static final Field COLLECTION_NAMING_STYLE_ENABLED_FIELD = Field.create("collection.naming.style.enabled")
+            .withDisplayName("Enable enhanced collection naming")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 2))
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(false)
+            .withDescription("When enabled, uses enhanced collection naming with support for styles, prefixes and suffixes.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     CONNECTION_URL_FIELD,
@@ -265,7 +352,14 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     SCHEMA_EVOLUTION_FIELD,
                     QUOTE_IDENTIFIERS_FIELD,
                     COLLECTION_NAMING_STRATEGY_FIELD,
+                    COLLECTION_NAMING_PREFIX_FIELD,
+                    COLLECTION_NAMING_STYLE_FIELD,
+                    COLLECTION_NAMING_SUFFIX_FIELD,
                     COLUMN_NAMING_STRATEGY_FIELD,
+                    COLUMN_NAMING_STYLE_FIELD,
+                    COLUMN_NAMING_PREFIX_FIELD,
+                    COLUMN_NAMING_SUFFIX_FIELD,
+                    COLLECTION_TABLE_FORMAT_FIELD,
                     USE_TIME_ZONE_FIELD,
                     POSTGRES_POSTGIS_SCHEMA_FIELD,
                     SQLSERVER_IDENTITY_INSERT_FIELD,
@@ -391,6 +485,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
 
     public JdbcSinkConnectorConfig(Map<String, String> props) {
         config = Configuration.from(props);
+        this.columnNamingStrategy = config.getInstance(COLUMN_NAMING_STRATEGY_FIELD, ColumnNamingStrategy.class);
         this.insertMode = InsertMode.parse(config.getString(INSERT_MODE));
         this.deleteEnabled = config.getBoolean(DELETE_ENABLED_FIELD);
         this.truncateEnabled = config.getBoolean(TRUNCATE_ENABLED_FIELD);
@@ -399,9 +494,8 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         this.primaryKeyFields = Strings.setOf(config.getString(PRIMARY_KEY_FIELDS_FIELD), String::new);
         this.schemaEvolutionMode = SchemaEvolutionMode.parse(config.getString(SCHEMA_EVOLUTION));
         this.quoteIdentifiers = config.getBoolean(QUOTE_IDENTIFIERS_FIELD);
-        this.collectionNamingStrategy = new TemporaryBackwardCompatibleCollectionNamingStrategyProxy(
-                config.getInstance(COLLECTION_NAMING_STRATEGY_FIELD, CollectionNamingStrategy.class), this);
-        this.columnNamingStrategy = config.getInstance(COLUMN_NAMING_STRATEGY_FIELD, ColumnNamingStrategy.class);
+        this.collectionNamingStrategy = configureCollectionNamingStrategy(config, props);
+
         this.databaseTimezone = config.getString(USE_TIME_ZONE_FIELD);
         this.postgresPostgisSchema = config.getString(POSTGRES_POSTGIS_SCHEMA_FIELD);
         this.sqlServerIdentityInsert = config.getBoolean(SQLSERVER_IDENTITY_INSERT_FIELD);
@@ -434,10 +528,24 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         if (!Strings.isNullOrEmpty(columnExcludeList) && !Strings.isNullOrEmpty(columnIncludeList)) {
             throw new ConnectException("Cannot define both column.exclude.list and column.include.list. Please specify only one.");
         }
+
     }
 
     public boolean validateAndRecord(Iterable<Field> fields, Consumer<String> problems) {
         return config.validateAndRecord(fields, problems);
+    }
+
+    private static int validateColumnNamingStyle(Configuration config, Field field, ValidationOutput problems) {
+        String namingStyle = config.getString(field);
+        Set<String> validStyles = Set.of("snake_case", "camel_case", "kebab_case", "upper_case", "lower_case", "default");
+
+        if (!validStyles.contains(namingStyle)) {
+            problems.accept(field, namingStyle, "Invalid column naming style: " + namingStyle +
+                    ". Valid options are: " + validStyles);
+            return 1; // Validation fail
+        }
+
+        return 0; // Validation success
     }
 
     protected static ConfigDef configDef() {
@@ -583,4 +691,76 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         }
         return 0;
     }
+
+    private static int validateCollectionNamingStrategy(Configuration config, Field field, ValidationOutput problems) {
+        String value = config.getString(field);
+
+        if (DEPRECATED_TABLE_NAMING_STRATEGY.equals(value)) {
+            problems.accept(field, value, "Warning: Using deprecated config option \"table.naming.strategy\".");
+            return 0; // Validation ok
+        }
+
+        try {
+            Class.forName(value);
+        }
+        catch (ClassNotFoundException e) {
+            problems.accept(field, value, "Invalid class specified for collection naming strategy.");
+            return 1; // Validation fail
+        }
+
+        return 0; // No problem
+    }
+
+    /**
+     * Configures and returns an appropriate collection naming strategy
+     * based on user configuration.
+     *
+     * @param config the connector configuration
+     * @param props the original connector properties
+     * @return the configured naming strategy wrapped in a compatibility proxy
+     */
+    private CollectionNamingStrategy configureCollectionNamingStrategy(Configuration config, Map<String, String> props) {
+        // Check if enhanced naming mode is enabled
+        if (config.getBoolean(COLLECTION_NAMING_STYLE_ENABLED_FIELD)) {
+            LOGGER.info("Using enhanced collection naming strategy with style support");
+
+            // Create and configure the custom strategy
+            CustomCollectionNamingStrategy customStrategy = new CustomCollectionNamingStrategy();
+            customStrategy.configure(props);
+
+            // Wrap in compatibility proxy
+            return new TemporaryBackwardCompatibleCollectionNamingStrategyProxy(customStrategy, this);
+        }
+        else {
+            // Check if we're using the deprecated table naming strategy name
+            String strategyClassName = config.getString(COLLECTION_NAMING_STRATEGY_FIELD);
+            if ("table.naming.strategy".equals(strategyClassName)) {
+                LOGGER.warn("The 'table.naming.strategy' configuration is deprecated. Using default strategy instead.");
+                DefaultCollectionNamingStrategy defaultStrategy = new DefaultCollectionNamingStrategy();
+                defaultStrategy.configure(props);
+                return new TemporaryBackwardCompatibleCollectionNamingStrategyProxy(defaultStrategy, this);
+            }
+
+            try {
+                // Use original behavior with standard instance resolution
+                CollectionNamingStrategy strategy = config.getInstance(COLLECTION_NAMING_STRATEGY_FIELD, CollectionNamingStrategy.class);
+
+                // Important: configure the strategy with the original properties
+                strategy.configure(props);
+
+                return new TemporaryBackwardCompatibleCollectionNamingStrategyProxy(strategy, this);
+            }
+            catch (Exception e) {
+                LOGGER.warn("Failed to instantiate collection naming strategy '{}', falling back to default: {}",
+                        strategyClassName, e.getMessage());
+                LOGGER.debug("Strategy instantiation exception", e);
+
+                // Fallback to default strategy if instantiation fails
+                DefaultCollectionNamingStrategy defaultStrategy = new DefaultCollectionNamingStrategy();
+                defaultStrategy.configure(props);
+                return new TemporaryBackwardCompatibleCollectionNamingStrategyProxy(defaultStrategy, this);
+            }
+        }
+    }
+
 }
