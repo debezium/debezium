@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -125,11 +126,10 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     @Override
     public void removeTransactionEvents(EhcacheTransaction transaction) {
-        eventIdsByTransactionId.get(transaction.getTransactionId())
-                .descendingSet()
+        eventCache.removeAll(eventIdsByTransactionId.get(transaction.getTransactionId())
                 .stream()
                 .map(transaction::getEventId)
-                .forEach(eventCache::remove);
+                .collect(Collectors.toSet()));
 
         eventIdsByTransactionId.remove(transaction.getTransactionId());
     }
@@ -137,19 +137,16 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     @Override
     public boolean removeTransactionEventWithRowId(EhcacheTransaction transaction, String rowId) {
         final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
-        return eventIds.descendingSet().stream()
-                .map(i -> Map.entry(i, transaction.getEventId(i)))
-                .filter(entry -> {
-                    final LogMinerEvent event = eventCache.get(entry.getValue());
-                    return event != null && event.getRowId().equals(rowId);
-                })
-                .findFirst()
-                .map(entry -> {
-                    eventCache.remove(entry.getValue());
-                    eventIds.remove(entry.getKey());
-                    return true;
-                })
-                .orElse(false);
+        for (Integer eventId : eventIds.descendingSet()) {
+            final String eventKey = transaction.getEventId(eventId);
+            final LogMinerEvent event = eventCache.get(eventKey);
+            if (event != null && event.getRowId().equals(rowId)) {
+                eventCache.remove(eventKey);
+                eventIds.remove(eventId);
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
