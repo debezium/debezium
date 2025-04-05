@@ -15,8 +15,6 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import org.infinispan.commons.api.BasicCache;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerTransactionCache;
@@ -27,8 +25,6 @@ import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerTransacti
  * @author Chris Cranford
  */
 public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransactionCache<InfinispanTransaction> {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(InfinispanLogMinerTransactionCache.class);
 
     private final BasicCache<String, InfinispanTransaction> transactionCache;
     private final BasicCache<String, LogMinerEvent> eventCache;
