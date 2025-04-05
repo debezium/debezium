@@ -15,7 +15,6 @@ import java.util.TreeSet;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.infinispan.commons.api.BasicCache;
@@ -157,19 +156,16 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
         waitForAllWrites();
 
         final TreeSet<Integer> eventIds = eventIdsByTransactionId.get(transaction.getTransactionId());
-        return eventIds.descendingSet().stream()
-                .map(i -> Map.entry(i, transaction.getEventId(i)))
-                .filter(entry -> {
-                    final LogMinerEvent event = eventCache.get(entry.getValue());
-                    return event != null && event.getRowId().equals(rowId);
-                })
-                .findFirst()
-                .map(entry -> {
-                    eventCache.remove(entry.getValue());
-                    eventIds.remove(entry.getKey());
-                    return true;
-                })
-                .orElse(false);
+        for (Integer eventId : eventIds.descendingSet()) {
+            final String eventKey = transaction.getEventId(eventId);
+            final LogMinerEvent event = eventCache.get(eventKey);
+            if (event != null && event.getRowId().equals(rowId)) {
+                eventCache.remove(eventKey);
+                eventIds.remove(eventId);
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -221,17 +217,17 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
 
     private void primeEventCountsByTransactionId() {
         // Primes the heap-based cache if the Infinispan disk caches contained data on start-up
-        transactions(stream -> stream.forEach(transaction -> {
-            try (Stream<String> keyStream = eventCache.keySet().stream()) {
-                eventIdsByTransactionId.put(
-                        transaction.getTransactionId(),
-                        keyStream.map(k -> k.split("-", 2))
-                                .filter(parts -> parts.length == 2)
-                                .filter(parts -> parts[0].equals(transaction.getTransactionId()))
-                                .map(parts -> Integer.parseInt(parts[1]))
-                                .collect(Collectors.toCollection(TreeSet::new)));
-            }
-        }));
+        try (Stream<String> keyStream = eventCache.keySet().stream()) {
+            keyStream.map(k -> k.split("-", 2))
+                    .filter(parts -> parts.length == 2)
+                    .forEach(parts -> {
+                        final String transactionId = parts[0];
+                        final int eventId = Integer.parseInt(parts[1]);
+                        if (transactionCache.containsKey(transactionId)) {
+                            eventIdsByTransactionId.computeIfAbsent(transactionId, k -> new TreeSet<>()).add(eventId);
+                        }
+                    });
+        }
     }
 
     private void waitForAllWrites() {
