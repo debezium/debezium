@@ -13,6 +13,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -63,6 +64,7 @@ import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntryImpl;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlParser;
 import io.debezium.connector.oracle.logminer.parser.SelectLobParser;
 import io.debezium.connector.oracle.logminer.parser.XmlBeginParser;
+import io.debezium.connector.oracle.logminer.processor.LogMinerTransactionCache.ScnDetails;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
@@ -374,12 +376,12 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
      */
     protected Scn calculateNewStartScn(Scn endScn, Scn maxCommittedScn) throws InterruptedException {
         // Cleanup caches based on current state of the transaction cache
-        final Optional<T> oldestTransaction = getOldestTransactionInCache();
         final Scn minCacheScn;
         final Instant minCacheScnChangeTime;
-        if (oldestTransaction.isPresent()) {
-            minCacheScn = oldestTransaction.get().getStartScn();
-            minCacheScnChangeTime = oldestTransaction.get().getChangeTime();
+        final Optional<ScnDetails> eldestScnDetails = getTransactionCache().getEldestTransactionScnDetailsInCache();
+        if (eldestScnDetails.isPresent()) {
+            minCacheScn = eldestScnDetails.get().scn();
+            minCacheScnChangeTime = eldestScnDetails.get().changeTime();
         }
         else {
             minCacheScn = Scn.NULL;
@@ -750,17 +752,15 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
      * @return the smallest SCN
      */
     private Scn calculateSmallestScn() {
-        final Optional<T> oldestTransaction = getOldestTransactionInCache();
-        final Scn smallestScn;
-        if (oldestTransaction.isPresent()) {
-            smallestScn = oldestTransaction.get().getStartScn();
-            metrics.setOldestScnDetails(smallestScn, oldestTransaction.get().getChangeTime());
-        }
-        else {
-            smallestScn = Scn.NULL;
-            metrics.setOldestScnDetails(Scn.valueOf(-1), null);
-        }
-        return smallestScn;
+        return getTransactionCache().getEldestTransactionScnDetailsInCache()
+                .map(scnDetails -> {
+                    metrics.setOldestScnDetails(scnDetails.scn(), scnDetails.changeTime());
+                    return scnDetails.scn();
+                })
+                .orElseGet(() -> {
+                    metrics.setOldestScnDetails(Scn.valueOf(-1), null);
+                    return Scn.NULL;
+                });
     }
 
     /**
@@ -1780,23 +1780,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
     }
 
     /**
-     * Gets the minimum system change number stored in the transaction cache.
-     * @return the minimum system change number, never {@code null} but could be {@link Scn#NULL}.
-     */
-    protected Scn getTransactionCacheMinimumScn() {
-        return getTransactionCache().streamTransactionsAndReturn(stream -> stream.map(Transaction::getStartScn).min(Scn::compareTo).orElse(Scn.NULL));
-    }
-
-    /**
-     * Get the oldest transaction in the cache.
-     *
-     * @return the oldest transaction in the cache or maybe {@code null} if cache is empty
-     */
-    protected Optional<T> getOldestTransactionInCache() {
-        return getTransactionCache().streamTransactionsAndReturn(stream -> stream.min(this::oldestTransactionComparison));
-    }
-
-    /**
      * Returns whether the transaction id has no sequence number component.
      *
      * Oracle transaction identifiers are a composite of:
@@ -1850,7 +1833,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
             Optional<Scn> lastScnToAbandonTransactions = getLastScnToAbandon(jdbcConnection, retention);
             if (lastScnToAbandonTransactions.isPresent()) {
                 Scn thresholdScn = lastScnToAbandonTransactions.get();
-                Scn smallestScn = getTransactionCacheMinimumScn();
+                Scn smallestScn = getTransactionCache().getEldestTransactionScnDetailsInCache().map(ScnDetails::scn).orElse(Scn.NULL);
                 if (!smallestScn.isNull() && thresholdScn.compareTo(smallestScn) >= 0) {
 
                     Map<String, T> abandoned = getTransactionCache().streamTransactionsAndReturn(stream -> stream
@@ -1889,14 +1872,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                     }
 
                     // Update the oldest scn metric are transaction abandonment
-                    final Optional<T> oldestTransaction = getOldestTransactionInCache();
-                    if (oldestTransaction.isPresent()) {
-                        final T transaction = oldestTransaction.get();
-                        metrics.setOldestScnDetails(transaction.getStartScn(), transaction.getChangeTime());
-                    }
-                    else {
-                        metrics.setOldestScnDetails(Scn.NULL, null);
-                    }
+                    getTransactionCache().getEldestTransactionScnDetailsInCache().ifPresentOrElse(
+                            scnDetails -> metrics.setOldestScnDetails(scnDetails.scn(), scnDetails.changeTime()),
+                            () -> metrics.setOldestScnDetails(Scn.NULL, null));
 
                     offsetContext.setScn(thresholdScn);
                 }
@@ -1984,25 +1962,13 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                     t.getTransactionId(), t.getStartScn(), changeTime, diffMinutes);
             return diffMinutes > 0 && diffMinutes > retention.toMinutes();
         })
-                .max(this::compareStartScn)
+                .max(Comparator.comparing(Transaction::getStartScn))
                 .map(Transaction::getStartScn)
                 .orElse(Scn.NULL));
     }
 
     private void removeEventsWithTransaction(T transaction) {
         getTransactionCache().removeTransactionEvents(transaction);
-    }
-
-    protected int compareStartScn(T first, T second) {
-        return first.getStartScn().compareTo(second.getStartScn());
-    }
-
-    protected int oldestTransactionComparison(T first, T second) {
-        int comparison = compareStartScn(first, second);
-        if (comparison == 0) {
-            comparison = first.getChangeTime().compareTo(second.getChangeTime());
-        }
-        return comparison;
     }
 
     /**
