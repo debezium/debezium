@@ -4284,7 +4284,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-5139")
+    @FixFor({ "DBZ-5139", "DBZ-8880" })
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Applies only to LogMiner")
     public void shouldDiscardTransactionThatExceedsEventThreshold() throws Exception {
         TestHelper.dropTable(connection, "dbz5139");
