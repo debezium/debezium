@@ -3320,8 +3320,8 @@ The {prodname} for Oracle connector relies on the Oracle JDBC driver's built-in 
 
 You can use either of the following methods to establish mTLS connections between {prodname} and Oracle:
 
-* xref:#using-mtls-secure-connections-java-key-trust-stores[Using Java key and trust stores to configure mTLS connections]
-* xref:#using-mtls-secure-connections-oracle-wallet[Using Oracle Wallet to configure mTLS connections]
+* xref:using-mtls-secure-connections-java-key-trust-stores[Using Java key and trust stores to configure mTLS connections]
+* xref:using-mtls-secure-connections-oracle-wallet[Using Oracle Wallet to configure mTLS connections]
 
 // Type: procedure
 // ModuleID: oracle-connector-using-java-key-trust-stores-to-configure-mtls
