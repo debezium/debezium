@@ -5,10 +5,13 @@
  */
 package io.debezium.connector.oracle.logminer.processor;
 
+import java.time.Instant;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 
 /**
@@ -75,6 +78,13 @@ public interface LogMinerTransactionCache<T extends Transaction> extends AutoClo
      * @return the number of transactions currently cached
      */
     int getTransactionCount();
+
+    /**
+     * Returns the eldest transaction scn details in the cache.
+     *
+     * @return the eldest transaction scn details, an empty optional if cache is empty
+     */
+    Optional<ScnDetails> getEldestTransactionScnDetailsInCache();
 
     /**
      * Consume all transactions as a {@link Stream} that exist in the cache and return a
@@ -213,6 +223,15 @@ public interface LogMinerTransactionCache<T extends Transaction> extends AutoClo
 
     @Override
     default void close() throws Exception {
+    }
+
+    /**
+     * Provides details about a specific scn found in the cache.
+     *
+     * @param scn the Oracle system change number, should not be {@code null}
+     * @param changeTime the system change time, should not be {@code null}
+     */
+    record ScnDetails(Scn scn, Instant changeTime) {
     }
 
     @FunctionalInterface

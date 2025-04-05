@@ -8,8 +8,10 @@ package io.debezium.connector.oracle.logminer.processor.memory;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -26,7 +28,7 @@ import io.debezium.connector.oracle.logminer.processor.LogMinerTransactionCache;
  */
 public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionCache<MemoryTransaction> {
 
-    private final Map<String, MemoryTransaction> transactionsByTransactionId = new HashMap<>();
+    private final Map<String, MemoryTransaction> transactionsByTransactionId = new LinkedHashMap<>();
     private final Map<String, List<LogMinerEventEntry>> eventsByTransactionId = new HashMap<>();
     private final Map<String, HashMap<Integer, LogMinerEvent>> eventsByEventIdByTransactionId = new HashMap<>();
 
@@ -60,6 +62,14 @@ public class MemoryLogMinerTransactionCache extends AbstractLogMinerTransactionC
     @Override
     public int getTransactionCount() {
         return transactionsByTransactionId.size();
+    }
+
+    @Override
+    public Optional<ScnDetails> getEldestTransactionScnDetailsInCache() {
+        return transactionsByTransactionId.values()
+                .stream()
+                .findFirst()
+                .map(transaction -> new ScnDetails(transaction.getStartScn(), transaction.getChangeTime()));
     }
 
     @Override
