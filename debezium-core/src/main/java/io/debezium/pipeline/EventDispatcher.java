@@ -260,7 +260,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     public boolean dispatchDataChangeEvent(P partition, T dataCollectionId, ChangeRecordEmitter<P> changeRecordEmitter) throws InterruptedException {
         try {
             boolean handled = false;
-            if (!filter.isIncluded(dataCollectionId)) {
+            if (changeRecordEmitter.shouldIgnoreRecords() || !filter.isIncluded(dataCollectionId)) {
                 LOGGER.trace("Filtered data change event for {}", dataCollectionId);
                 eventListener.onFilteredEvent(partition, "source = " + dataCollectionId, changeRecordEmitter.getOperation());
                 dispatchFilteredEvent(changeRecordEmitter.getPartition(), changeRecordEmitter.getOffset());

@@ -424,7 +424,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
         // non-captured table
         if (!resolvedTable.isPresent()) {
-            processor.process(new NoopMessage(transactionId, commitTimestamp));
+            processor.process(new NoopMessage(transactionId, commitTimestamp, Operation.INSERT));
         }
         else {
             Table table = resolvedTable.get();
@@ -455,7 +455,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
         // non-captured table
         if (!resolvedTable.isPresent()) {
-            processor.process(new NoopMessage(transactionId, commitTimestamp));
+            processor.process(new NoopMessage(transactionId, commitTimestamp, Operation.UPDATE));
         }
         else {
             Table table = resolvedTable.get();
@@ -504,7 +504,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
         // non-captured table
         if (!resolvedTable.isPresent()) {
-            processor.process(new NoopMessage(transactionId, commitTimestamp));
+            processor.process(new NoopMessage(transactionId, commitTimestamp, Operation.DELETE));
         }
         else {
             Table table = resolvedTable.get();
