@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
@@ -33,9 +34,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.debezium.DebeziumException;
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.mongodb.CollectionId;
+import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.signal.actions.snapshotting.AdditionalCondition;
+import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
 import io.debezium.pipeline.source.snapshot.incremental.DataCollection;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
+import io.debezium.pipeline.source.snapshot.incremental.SignalDataCollection;
 import io.debezium.relational.Table;
 import io.debezium.util.HexConverter;
 
@@ -103,6 +107,7 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     private AtomicBoolean paused = new AtomicBoolean(false);
     private final LinkedBlockingQueue<String> dataCollectionsToStop = new LinkedBlockingQueue<>();
     private ObjectMapper mapper = new ObjectMapper();
+    private final ConcurrentLinkedQueue<SignalDataCollection> dataCollectionsToAdd = new ConcurrentLinkedQueue<>();
 
     private TypeReference<List<LinkedHashMap<String, String>>> mapperTypeRef = new TypeReference<>() {
     };
@@ -188,6 +193,16 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
         return drainedList;
     }
 
+    @Override
+    public void requestAddDataCollectionNamesToSnapshot(SignalPayload signalPayload, SnapshotConfiguration snapshotConfiguration) {
+        dataCollectionsToAdd.add(new SignalDataCollection(signalPayload, snapshotConfiguration));
+    }
+
+    @Override
+    public Queue<SignalDataCollection> getDataCollectionsToAdd() {
+        return dataCollectionsToAdd;
+    }
+
     private String dataCollectionsToSnapshotAsString() {
         // TODO Handle non-standard table ids containing dots, commas etc.
         try {
@@ -266,13 +281,11 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
 
     @Override
     public void requestSnapshotStop(List<String> dataCollectionIds) {
-        if (snapshotRunning()) {
-            if (dataCollectionIds == null || dataCollectionIds.isEmpty()) {
-                dataCollectionsToStop.add(".*");
-            }
-            else {
-                dataCollectionsToStop.addAll(dataCollectionIds);
-            }
+        if (dataCollectionIds == null || dataCollectionIds.isEmpty()) {
+            dataCollectionsToStop.add(".*");
+        }
+        else {
+            dataCollectionsToStop.addAll(dataCollectionIds);
         }
     }
 
