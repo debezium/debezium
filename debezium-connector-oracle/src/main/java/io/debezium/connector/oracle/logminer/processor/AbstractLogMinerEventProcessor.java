@@ -1952,6 +1952,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         LOGGER.warn("Transaction {} exceeds maximum allowed number of events, transaction will be abandoned.", transaction.getTransactionId());
         metrics.incrementWarningCount();
         getAndRemoveTransactionFromCache(transaction.getTransactionId());
+        removeEventsWithTransaction(transaction);
         abandonedTransactionsCache.add(transaction.getTransactionId());
         metrics.incrementOversizedTransactionCount();
     }
