@@ -4224,7 +4224,7 @@ The {prodname} PostgreSQL connector provides two types of metrics that are in ad
 
 {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
 
-/ Type: concept
+// Type: concept
 // ModuleID: monitoring-debezium-postgresql-connectors-customized-mbean-names
 // Title: Customized names for PostgreSQL connector snapshot and streaming MBean objects
 === Customized MBean names
