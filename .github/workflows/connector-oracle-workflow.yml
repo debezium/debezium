@@ -17,7 +17,7 @@ jobs:
       max-parallel: ${{ inputs.max-parallel }}
       fail-fast: false
       matrix:
-        profile: [ 'oracle-tests', 'infinispan-buffer,oracle-tests', 'oracle-ehcache,oracle-tests' ]
+        profile: [ 'oracle-tests', 'oracle-infinispan-buffer,oracle-tests', 'oracle-ehcache,oracle-tests' ]
     name: Oracle - ${{ matrix.profile }}
     runs-on: ubuntu-latest
 
