@@ -65,6 +65,7 @@ public class MemoryLogMinerEventProcessor extends AbstractLogMinerEventProcessor
 
     @Override
     public void close() throws Exception {
+        transactionCache.close();
     }
 
 }

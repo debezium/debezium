@@ -39,6 +39,7 @@ import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceM
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.processor.CacheProvider;
 import io.debezium.connector.oracle.logminer.processor.LogMinerCache;
 import io.debezium.connector.oracle.logminer.processor.LogMinerTransactionCache;
 import io.debezium.pipeline.EventDispatcher;
@@ -105,7 +106,22 @@ public class EhcacheLogMinerEventProcessor extends AbstractLogMinerEventProcesso
 
     @Override
     public void close() throws Exception {
+        transactionCache.close();
+
         if (cacheManager != null) {
+            if (getConfig().isLogMiningBufferDropOnStop()) {
+                LOGGER.info("Clearing Ehcache caches");
+                transactionCache.clear();
+                schemaChangesCache.clear();
+                processedTransactionsCache.clear();
+
+                cacheManager.removeCache(CacheProvider.TRANSACTIONS_CACHE_NAME);
+                cacheManager.removeCache(CacheProvider.PROCESSED_TRANSACTIONS_CACHE_NAME);
+                cacheManager.removeCache(CacheProvider.SCHEMA_CHANGES_CACHE_NAME);
+                cacheManager.removeCache(CacheProvider.EVENTS_CACHE_NAME);
+            }
+
+            LOGGER.info("Shutting down Ehcache embedded caches");
             cacheManager.close();
         }
     }
