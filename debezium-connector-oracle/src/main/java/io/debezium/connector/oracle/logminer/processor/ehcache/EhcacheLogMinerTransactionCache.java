@@ -37,6 +37,8 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     public EhcacheLogMinerTransactionCache(Cache<String, EhcacheTransaction> transactionCache, Cache<String, LogMinerEvent> eventCache) {
         this.transactionCache = transactionCache;
         this.eventCache = eventCache;
+
+        primeHeapCacheFromOffHeapCaches();
     }
 
     @Override
@@ -185,5 +187,20 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
         // Necessary to synchronize state
         transactionCache.put(transaction.getTransactionId(), transaction);
+    }
+
+    private void primeHeapCacheFromOffHeapCaches() {
+        // Primes the heap-based cache if the Ehcache persistence caches contained data on start-up
+        eventKeys(keyStream -> {
+            keyStream.map(k -> k.split("-", 2))
+                    .filter(parts -> parts.length == 2)
+                    .forEach(parts -> {
+                        final String transactionId = parts[0];
+                        final int eventId = Integer.parseInt(parts[1]);
+                        if (transactionCache.containsKey(transactionId)) {
+                            eventIdsByTransactionId.computeIfAbsent(transactionId, k -> new TreeSet<>()).add(eventId);
+                        }
+                    });
+        });
     }
 }
