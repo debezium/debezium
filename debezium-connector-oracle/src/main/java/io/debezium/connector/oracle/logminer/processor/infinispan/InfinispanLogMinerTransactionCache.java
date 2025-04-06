@@ -36,7 +36,7 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
         this.transactionCache = transactionCache;
         this.eventCache = eventCache;
 
-        primeEventCountsByTransactionId();
+        primeHeapCacheFromOffHeapCaches();
     }
 
     @Override
@@ -185,13 +185,9 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
         transactionCache.put(transaction.getTransactionId(), transaction);
     }
 
-    @Override
-    public void close() throws Exception {
-    }
-
-    private void primeEventCountsByTransactionId() {
+    private void primeHeapCacheFromOffHeapCaches() {
         // Primes the heap-based cache if the Infinispan disk caches contained data on start-up
-        try (Stream<String> keyStream = eventCache.keySet().stream()) {
+        eventKeys(keyStream -> {
             keyStream.map(k -> k.split("-", 2))
                     .filter(parts -> parts.length == 2)
                     .forEach(parts -> {
@@ -201,6 +197,6 @@ public class InfinispanLogMinerTransactionCache extends AbstractLogMinerTransact
                             eventIdsByTransactionId.computeIfAbsent(transactionId, k -> new TreeSet<>()).add(eventId);
                         }
                     });
-        }
+        });
     }
 }
