@@ -662,7 +662,7 @@
         </profile>
         <!-- This profile should be used for testing connector with Infinispan only -->
         <profile>
-            <id>infinispan-buffer</id>
+            <id>oracle-infinispan-buffer</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
@@ -672,7 +672,7 @@
             <!-- todo: when using this profile, enforce oracle-xstream being mutually exclusive -->
         </profile>
         <profile>
-            <id>infinispan-buffer-remote</id>
+            <id>oracle-infinispan-buffer-remote</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
