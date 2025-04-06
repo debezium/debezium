@@ -8,7 +8,7 @@ inputs:
   profile:
     description: "The profiles to use to run tests with"
     required: false
-    default: "infinispan-buffer,oracle-tests"
+    default: "oracle-infinispan-buffer,oracle-tests"
   shell:
     description: "The shell to use"
     required: false
