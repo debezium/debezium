@@ -40,7 +40,10 @@ public interface ChangeRecordEmitter<P extends Partition> {
      */
     Operation getOperation();
 
-    default boolean shouldIgnoreRecords() {
+    /**
+     * Returns true if the record should be ignored.
+     */
+    default boolean ignoreRecord() {
         return false;
     }
 
