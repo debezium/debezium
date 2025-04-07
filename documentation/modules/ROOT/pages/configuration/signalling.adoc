@@ -827,10 +827,20 @@ Include the following compile dependencies in your project's `pom.xml` file:
 <dependency>
     <groupId>io.debezium</groupId>
     <artifactId>debezium-core</artifactId>
-    <version>${version.debezium}</version> // <1>
+    <version>${version.debezium}</version>
 </dependency>
 ----
-<1> `${version.debezium}` represents the version of the {prodname} connector.
+
+In the preceding example, the placeholder `${version.debezium}` represents the version of the {prodname} connector.
+Specify a value for the `version.debezium` property in the `<properties>` section of the `pom.xml file`.
+For example,
+
+[source,xml,subs="attributes+"]
+----
+<properties>
+    <version.debezium>{debezium-version}</version.debezium>
+</properties>
+----
 
 Declare your provider implementation in the `META-INF/services/io.debezium.pipeline.signal.actions.SignalActionProvider` file.
 
