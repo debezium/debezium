@@ -3037,8 +3037,13 @@ For `read_uncommitted` there are no data consistency guarantees at all (some dat
 `skip` will cause the problematic event to be skipped.
 
 |[[sqlserver-property-poll-interval-ms]]<<sqlserver-property-poll-interval-ms, `+poll.interval.ms+`>>
-|`500`
-|Positive integer value that specifies the number of milliseconds the connector should wait during each iteration for new change events to appear. Defaults to 500 milliseconds, or 0.5 second.
+|`500` (0.5 seconds)
+|Positive integer value that specifies the number of milliseconds that the connector waits before it checks the database for new change events. +
+ +
+The value that you specify influences the behavior of xref:sqlserver-property-heartbeat-interval-ms[`heartbeat.interval.ms`].
+The connector can emit heartbeat messages only during the specified polling cycle. +
+
+To prevent this setting from delaying heartbeat emissions, set it to a value that is less than or equal to the value of `heartbeat.interval.ms`.
 
 |[[sqlserver-property-max-queue-size]]<<sqlserver-property-max-queue-size, `+max.queue.size+`>>
 |`8192`
@@ -3063,21 +3068,32 @@ For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000
 
 |[[sqlserver-property-heartbeat-interval-ms]]<<sqlserver-property-heartbeat-interval-ms, `+heartbeat.interval.ms+`>>
 |`0`
-|Controls how frequently heartbeat messages are sent. +
-This property contains an interval in milliseconds that defines how frequently the connector sends messages to a heartbeat topic.
-The property can be used to confirm whether the connector is still receiving change events from the database.
-You also should leverage heartbeat messages in cases where only records in non-captured tables are changed for a longer period of time.
-In such situation the connector would proceed to read the log from the database but never emit any change messages into Kafka,
-which in turn means that no offset updates are committed to Kafka.
-This may result in more change events to be re-sent after a connector restart.
-Set this parameter to `0` to not send heartbeat messages at all. +
-Disabled by default.
+|Specifies an interval in milliseconds that determines how frequently the connector sends messages to a Kafka heartbeat topic, regardless of whether changes occur in the database. +
+By default, the connector does not send heartbeat messages. +
+ +
+Setting this property can help to confirm whether the connector is still receiving change events from the database.
+This can be especially important in databases where captured tables remain unchanged for long periods.
+When a database experiences frequent long intervals during which no changes occur in captured tables, although the connector continues to read from the transaction log as usual, it only rarely commits offset values to Kafka.
+As a result, after a connector restart, because the offset value is stale, the connector must send a high number of change events. +
+ +
+By contrast, when you configure the connector to send regular heartbeat messages, it can update the offset in Kafka more frequently.
+Because the offset values in Kafka remain current, fewer change events must be re-sent after a connector restarts.
+
+[NOTE]
+====
+Heartbeats are only emitted during polling cycles.
+That is, in a {prodname} environment, the actual interval between sending heartbeat messages is jointly controlled by the settings of the `heartbeat.interval.ms` and xref:sqlserver-property-poll-interval-ms[`poll.interval.ms`] properties.
+The actual frequency for sending heartbeat messages is based on the lower of the two values.
+To prevent delays in sending heartbeat messages, reducing their effectiveness, set this property to a value that is greater than or equal to the value of `poll.interval.ms`.
+For example, if you set `poll.interval.ms` to `100`, set `heartbeat.interval.ms` to `5000`.
+====
 
 |[[sqlserver-property-heartbeat-action-query]]<<sqlserver-property-heartbeat-action-query, `+heartbeat.action.query+`>>
 |No default
 |Specifies a query that the connector executes on the source database when the connector sends a heartbeat message. +
  +
-This is useful for keeping offsets from becoming stale when capturing changes from a low-traffic database. Create a heartbeat table in the low-traffic database, and set this property to a statement that inserts records into that table, for example:  +
+This is useful for keeping offsets from becoming stale when capturing changes from a low-traffic database.
+Create a heartbeat table in the low-traffic database, and set this property to a statement that inserts records into that table, for example:  +
  +
 `INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat')` +
  +
