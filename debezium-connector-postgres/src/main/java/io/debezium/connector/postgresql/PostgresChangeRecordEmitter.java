@@ -100,7 +100,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
     }
 
     @Override
-    public boolean shouldIgnoreRecords() {
+    public boolean ignoreRecord() {
         return message.isSkippedMessage();
     }
 
