@@ -142,13 +142,19 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
         validateAndLoadSchemaHistory(connectorConfig, connection::validateLogPosition, previousOffsets, schema, snapshotter);
 
         LOGGER.info("Reconnecting after finishing schema recovery");
-        
+
         try {
             try {
                 connection.execute("SELECT 1");
             }
             catch (SQLException e) {
                 LOGGER.warn("Connection was dropped during schema recovery. Reconnecting...");
+                try {
+                    connection.close();
+                }
+                catch (Exception e1) {
+                    // Ignore any error
+                }
                 connection = connectionFactory.mainConnection();
             }
 
