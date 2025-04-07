@@ -185,12 +185,9 @@ public interface ReplicationMessage {
         return getOperation() == Operation.BEGIN || getOperation() == Operation.COMMIT;
     }
 
-    default boolean isFiltered() {
-        return false;
-    }
-
     /**
      * Returns true if the message is a skipped message.
+     * Note that the table ID may be absent for skipped messages.
      */
     default boolean isSkippedMessage() {
         return false;
