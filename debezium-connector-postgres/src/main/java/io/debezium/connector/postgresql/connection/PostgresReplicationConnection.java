@@ -10,6 +10,7 @@ import static java.lang.Math.toIntExact;
 
 import java.nio.ByteBuffer;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
@@ -158,64 +159,134 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 conn.setAutoCommit(false);
 
                 String selectPublication = String.format("SELECT puballtables FROM pg_publication WHERE pubname = '%s'", publicationName);
-                try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(selectPublication)) {
-                    final boolean publicationExists = rs.next();
-                    if (!publicationExists) {
-                        // Close eagerly as the transaction might stay running
-                        LOGGER.info("Creating new publication '{}' for plugin '{}'", publicationName, plugin);
-                        switch (publicationAutocreateMode) {
-                            case DISABLED:
-                                throw new ConnectException("Publication autocreation is disabled, please create one and restart the connector.");
-                            case ALL_TABLES:
-                                String createPublicationStmt = String.format("CREATE PUBLICATION %s FOR ALL TABLES;", publicationName);
-                                LOGGER.info("Creating Publication with statement '{}'", createPublicationStmt);
-                                // Publication doesn't exist, create it.
-                                stmt.execute(createPublicationStmt);
-                                break;
-                            case FILTERED:
-                                createOrUpdatePublicationModeFiltered(stmt, false);
-                                break;
-                            case NO_TABLES:
-                                final String createPublicationWithNoTablesStmt = String.format("CREATE PUBLICATION %s;", publicationName);
-                                LOGGER.info("Creating publication with statement '{}'", createPublicationWithNoTablesStmt);
-                                stmt.execute(createPublicationWithNoTablesStmt);
-                                break;
+                try (Statement stmt = conn.createStatement()) {
+                    boolean isOnlyRead = isReadOnlyDb();
+                    try (ResultSet rs = stmt.executeQuery(selectPublication)) {
+                        final boolean publicationExists = rs.next();
+                        if (!publicationExists) {
+                            // Close eagerly as the transaction might stay running
+                            LOGGER.info("Creating new publication '{}' for plugin '{}'", publicationName, plugin);
+                            switch (publicationAutocreateMode) {
+                                case DISABLED:
+                                    throw new ConnectException("Publication autocreation is disabled, please create one and restart the connector.");
+                                case ALL_TABLES:
+                                    String createPublicationStmt = String.format("CREATE PUBLICATION %s FOR ALL TABLES;", publicationName);
+                                    LOGGER.info("Creating Publication with statement '{}'", createPublicationStmt);
+                                    // Publication doesn't exist, create it.
+                                    if (!isOnlyRead) {
+                                        stmt.execute(createPublicationStmt);
+                                    }
+                                    else {
+                                        LOGGER.info("The Postgres server in stand by mode, skip create statement execution");
+                                    }
+                                    break;
+                                case FILTERED:
+                                    if (isOnlyRead) {
+                                        validatePublications(stmt);
+                                    }
+                                    else {
+                                        createOrUpdatePublicationModeFiltered(stmt, false);
+                                    }
+                                    break;
+                                case NO_TABLES:
+                                    final String createPublicationWithNoTablesStmt = String.format("CREATE PUBLICATION %s;", publicationName);
+                                    LOGGER.info("Creating publication with statement '{}'", createPublicationWithNoTablesStmt);
+                                    stmt.execute(createPublicationWithNoTablesStmt);
+                                    break;
+                            }
                         }
-                    }
-                    else {
-                        switch (publicationAutocreateMode) {
-                            case FILTERED:
-                                // Checking that publication can be altered
-                                Boolean allTables = rs.getBoolean(1);
-                                if (allTables) {
-                                    throw new DebeziumException(String.format(
-                                            "A logical publication for all tables named '%s' for plugin '%s' and database '%s' " +
-                                                    "is already active on the server and can not be altered. " +
-                                                    "If you need to exclude some tables or include only specific subset, " +
-                                                    "please recreate the publication with necessary configuration " +
-                                                    "or let plugin recreate it by dropping existing publication. " +
-                                                    "Otherwise please change the 'publication.autocreate.mode' property to 'all_tables'.",
-                                            publicationName, plugin, database()));
-                                }
-                                else {
-                                    createOrUpdatePublicationModeFiltered(stmt, true);
-                                }
-                                break;
-                            default:
-                                LOGGER.trace(
-                                        "A logical publication named '{}' for plugin '{}' and database '{}' is already active on the server " +
-                                                "and will be used by the plugin",
-                                        publicationName, plugin, database());
+                        else {
+                            switch (publicationAutocreateMode) {
+                                case FILTERED:
+                                    // Checking that publication can be altered
+                                    boolean allTables = rs.getBoolean(1);
+                                    if (allTables) {
+                                        throw new DebeziumException(String.format(
+                                                "A logical publication for all tables named '%s' for plugin '%s' and database '%s' " +
+                                                        "is already active on the server and can not be altered. " +
+                                                        "If you need to exclude some tables or include only specific subset, " +
+                                                        "please recreate the publication with necessary configuration " +
+                                                        "or let plugin recreate it by dropping existing publication. " +
+                                                        "Otherwise please change the 'publication.autocreate.mode' property to 'all_tables'.",
+                                                publicationName, plugin, database()));
+                                    }
+                                    else {
+                                        if (isOnlyRead) {
+                                            validatePublications(stmt);
+                                        }
+                                        else {
+                                            createOrUpdatePublicationModeFiltered(stmt, true);
+                                        }
+                                    }
+                                    break;
+                                default:
+                                    LOGGER.trace(
+                                            "A logical publication named '{}' for plugin '{}' and database '{}' is already active on the server " +
+                                                    "and will be used by the plugin",
+                                            publicationName, plugin, database());
 
+                            }
                         }
                     }
+                    conn.commit();
+                    conn.setAutoCommit(true);
                 }
-                conn.commit();
-                conn.setAutoCommit(true);
+                catch (SQLException e) {
+                    throw new JdbcConnectionException(e);
+                }
             }
             catch (SQLException e) {
                 throw new JdbcConnectionException(e);
             }
+        }
+    }
+
+    /**
+     * Determines whether the PostgreSQL database is in standby mode (read-only).
+     * <p>
+     * This method queries the `pg_is_in_recovery()` function to check if the database is in recovery mode.
+     * Recovery mode typically occurs when the server is operating as a standby (replica) in a replication
+     * setup or during crash recovery.
+     * </p>
+     * @return {@code true} if the database is in standby mode (read-only), {@code false} otherwise.
+     * @throws SQLException if an error occurs while querying the database.
+     */
+    private boolean isReadOnlyDb() throws SQLException {
+        AtomicBoolean isReadOnly = new AtomicBoolean();
+        query("select pg_is_in_recovery()", rs -> {
+            if (rs.next()) {
+                isReadOnly.set(rs.getBoolean(1));
+            }
+        });
+        return isReadOnly.get();
+    }
+
+    private void validatePublications(Statement stmt) throws SQLException {
+        String validatePublication = "SELECT schemaname, tablename FROM pg_catalog.pg_publication_tables WHERE pubname=? ";
+        Set<TableId> tablesToCapture = null;
+        try {
+            tablesToCapture = determineCapturedTables();
+            if (tablesToCapture.isEmpty()) {
+                throw new SQLException(String.format("No table filters found for filtered publication %s", publicationName));
+            }
+        }
+        catch (Exception e) {
+            throw new SQLException("Failed to determine captured tables", e);
+        }
+
+        final Set<String> tableNames = tablesToCapture.stream().map(entity -> entity.schema() + "." + entity.table()).collect(Collectors.toSet());
+        final Set<String> dbTableNamesHashSet = new HashSet<>();
+        try (PreparedStatement prepStmt = stmt.getConnection().prepareStatement(validatePublication)) {
+            prepStmt.setString(1, publicationName);
+            ResultSet rs = prepStmt.executeQuery();
+            while (rs.next()) {
+                final var tableName = String.format("%s.%s", rs.getString(1), rs.getString(2));
+                dbTableNamesHashSet.add(tableName);
+            }
+        }
+
+        if (dbTableNamesHashSet.equals(tableNames)) {
+            throw new SQLException("Database replication is not up to date");
         }
     }
 
@@ -385,18 +456,13 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             return false;
         }
 
-        AtomicBoolean isPrimary = new AtomicBoolean();
-        query("select pg_is_in_recovery()", rs -> {
-            if (rs.next()) {
-                isPrimary.set(!rs.getBoolean(1));
-            }
-        });
+        boolean isPrimary = !isReadOnlyDb();
 
-        if (!isPrimary.get()) {
+        if (!isPrimary) {
             LOGGER.debug("Can't create a failover on a replica server. Continuing to create a non-failover slot");
         }
 
-        return isPrimary.get();
+        return isPrimary;
     }
 
     /**
