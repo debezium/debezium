@@ -23,7 +23,7 @@ import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
  *
  * @author Chris Cranford
  */
-public interface LogMinerTransactionCache<T extends Transaction> extends AutoCloseable {
+public interface LogMinerTransactionCache<T extends Transaction> {
     /**
      * Get the transaction by transaction identifier.
      *
@@ -220,10 +220,6 @@ public interface LogMinerTransactionCache<T extends Transaction> extends AutoClo
      * @param transaction the transaction to synchronize, should not be {@code null}
      */
     void syncTransaction(T transaction);
-
-    @Override
-    default void close() throws Exception {
-    }
 
     /**
      * Provides details about a specific scn found in the cache.

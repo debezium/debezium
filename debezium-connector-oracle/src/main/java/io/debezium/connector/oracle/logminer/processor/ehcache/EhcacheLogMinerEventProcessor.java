@@ -106,8 +106,6 @@ public class EhcacheLogMinerEventProcessor extends AbstractLogMinerEventProcesso
 
     @Override
     public void close() throws Exception {
-        transactionCache.close();
-
         if (cacheManager != null) {
             if (getConfig().isLogMiningBufferDropOnStop()) {
                 LOGGER.info("Clearing Ehcache caches");
