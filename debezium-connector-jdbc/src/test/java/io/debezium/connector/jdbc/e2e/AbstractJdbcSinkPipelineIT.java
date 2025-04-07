@@ -1606,13 +1606,17 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     @TestTemplate
     @WithTemporalPrecisionMode(include = TemporalPrecisionMode.ISOSTRING)
     public void testDateDataTypeIsoStringPrecisionMode(Source source, Sink sink) throws Exception {
+        List<String> expectedValues = List.of("2023-03-01Z", "2021-05-10Z");
+        if (source.getType().is(SourceType.ORACLE)) {
+            expectedValues = List.of("2023-03-01T00:00:00Z", "2021-05-10T00:00:00Z");
+        }
         assertDataType(source,
                 sink,
                 "date",
                 List.of(dateValue(source, 3, 1, 2023), dateValue(source, 5, 10, 2021)),
-                List.of("2023-03-01Z", "2021-05-10Z"),
+                expectedValues,
                 (record) -> {
-                    assertColumn(sink, record, "id", getTextType());
+                    assertColumn(sink, record, "id", getStringType(source, true, false));
                     assertColumn(sink, record, "data", getTextType());
                 },
                 ResultSet::getString);
@@ -1664,8 +1668,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     public void testTimeDataTypeIsoStringPrecisionMode(Source source, Sink sink) throws Exception {
         List<String> expected = List.of("01:02:03.123456Z", "14:15:16.123456Z");
         if (source.getType().is(SourceType.MYSQL)
-                || sink.getType().is(SinkType.DB2)
-                || (sink.getType().is(SinkType.MYSQL) && !source.getType().is(SourceType.SQLSERVER))) {
+                || (sink.getType().is(SinkType.MYSQL) && !source.getType().is(SourceType.SQLSERVER, SourceType.POSTGRES))) {
             expected = List.of("01:02:03Z", "14:15:16Z");
         }
         assertDataType(source,
@@ -1674,7 +1677,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 List.of("'01:02:03.123456'", "'14:15:16.123456'"),
                 expected,
                 (record) -> {
-                    assertColumn(sink, record, "id", getTextType());
+                    assertColumn(sink, record, "id", getStringType(source, true, false));
                     assertColumn(sink, record, "data", getTextType());
                 },
                 ResultSet::getString);
@@ -1730,14 +1733,15 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         final String ts0 = "'01:02:03.123456'";
         final String ts1 = "'14:15:16.456789'";
 
-        assertDataTypes2(source,
+        // Since this will always map to a character-based field and some databases have max width limits
+        // on all key columns like Oracle, just testing with non-key fields to avoid errors related to
+        // primary key max lengths.
+        assertDataTypesNonKeyOnly(source,
                 sink,
                 List.of("time(3)", "time(6)"),
                 List.of(ts0, ts1),
-                List.of("01:02:03.123Z", "14:15:16.456789Z", "01:02:03.123Z", "14:15:16.456789Z"),
+                List.of("01:02:03.123Z", "14:15:16.456789Z"),
                 (record) -> {
-                    assertColumn(sink, record, "id0", getTextType());
-                    assertColumn(sink, record, "id1", getTextType());
                     assertColumn(sink, record, "data0", getTextType());
                     assertColumn(sink, record, "data1", getTextType());
                 },
@@ -1824,7 +1828,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 toTimestampStrings(source, timeValues),
                 List.of("2023-05-10T16:17:18.123456Z", "2022-12-31T14:15:16.456789Z"),
                 (record) -> {
-                    assertColumn(sink, record, "id", getTextType());
+                    assertColumn(sink, record, "id", getStringType(source, true, false));
                     assertColumn(sink, record, "data", getTextType());
                 },
                 ResultSet::getString);
@@ -1885,19 +1889,16 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         final ZonedDateTime timeValue = ZonedDateTime.of(2022, 12, 31, 14, 15, 16, 456789000, ZoneOffset.UTC);
         final String value = toTimestampStrings(source, List.of(timeValue)).get(0);
 
-        assertDataTypes(source,
+        // Since this will always map to a character-based field and some databases have max width limits
+        // on all key columns like Oracle, just testing with non-key fields to avoid errors related to
+        // primary key max lengths.
+        assertDataTypesNonKeyOnly(source,
                 sink,
                 List.of("timestamp(1)", "timestamp(2)", "timestamp(3)", "timestamp(4)", "timestamp(5)", "timestamp(6)"),
                 List.of(value, value, value, value, value, value),
                 List.of("2022-12-31T14:15:16.5Z", "2022-12-31T14:15:16.46Z", "2022-12-31T14:15:16.457Z",
                         "2022-12-31T14:15:16.4568Z", "2022-12-31T14:15:16.45679Z", "2022-12-31T14:15:16.456789Z"),
                 (record) -> {
-                    assertColumn(sink, record, "id0", getTextType());
-                    assertColumn(sink, record, "id1", getTextType());
-                    assertColumn(sink, record, "id2", getTextType());
-                    assertColumn(sink, record, "id3", getTextType());
-                    assertColumn(sink, record, "id4", getTextType());
-                    assertColumn(sink, record, "id5", getTextType());
                     assertColumn(sink, record, "data0", getTextType());
                     assertColumn(sink, record, "data1", getTextType());
                     assertColumn(sink, record, "data2", getTextType());
@@ -2118,14 +2119,13 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
         final List<String> values = List.of(value, value, value, value, value, value);
 
-        final boolean connect = TemporalPrecisionMode.CONNECT.equals(source.getOptions().getTemporalPrecisionMode());
         final List<ZonedDateTime> expectedValues = List.of(
                 toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, 500000000),
                 toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, 460000000),
                 toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, 457000000),
-                toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, connect ? 456000000 : 456800000),
-                toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, connect ? 456000000 : 456790000),
-                toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, connect ? 456000000 : 456789000));
+                toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, isConnectPrecision(source) ? 456000000 : 456800000),
+                toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, isConnectPrecision(source) ? 456000000 : 456790000),
+                toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, isConnectPrecision(source) ? 456000000 : 456789000));
 
         assertDataTypesNonKeyOnly(source,
                 sink,
@@ -2174,10 +2174,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         // Only test non-keys because Oracle does not permit timestamp with timezone as primary key columns
         final String value = "'2023-03-01 14:15:16.456789Z'";
 
-        int nanosOfSeconds = 456789000;
-        if (source.getOptions().getTemporalPrecisionMode() == TemporalPrecisionMode.CONNECT) {
-            nanosOfSeconds = 456000000;
-        }
+        int nanosOfSeconds = isConnectPrecision(source) ? 456000000 : 456789000;
 
         assertDataTypeNonKeyOnly(source,
                 sink,
