@@ -100,30 +100,6 @@ Debezium can use Kafka to store its state, including source offsets, schema hist
 |No Default
 |Pass-through properties prefix for configuring how consumer client interact with schema history topics.
 
-|[[schema-history-internal-tbd-security-protocol]]<<schema-history-internal-tbd-security-protocol,`schema.history.internal.*.security.protocol`>>
-|PLAINTEXT
-|Protocol used to communicate with brokers.
-
-|[[schema-history-internal-tbd-ssl-keystore-location]]<<schema-history-internal-tbd-ssl-keystore-location,`schema.history.internal.*.ssl.keystore.location`>>
-|No default
-|The location of the key store file. This is optional for client and can be used for two-way authentication for client.
-
-|[[schema-history-internal-tbd-ssl-keystore-password]]<<schema-history-internal-tbd-ssl-keystore-password,`schema.history.internal.*.ssl.keystore.password`>>
-|No default
-|The store password for the key store file. This is optional for client and only needed if `ssl.keystore.location` is configured. Key store password is not supported for PEM format.
-
-|[[schema-history-internal-tbd-ssl-truststore-location]]<<schema-history-internal-tbd-ssl-truststore-location,`schema.history.internal.*.ssl.truststore.location`>>
-|No default
-|The location of the trust store file.
-
-|[[schema-history-internal-tbd-ssl-truststore-password]]<<schema-history-internal-tbd-ssl-truststore-password,`schema.history.internal.*.ssl.truststore.password`>>
-|No default
-|The password for the trust store file. If a password is not set, trust store file configured will still be used, but integrity checking is disabled. Trust store password is not supported for PEM format.
-
-|[[schema-history-internal-tbd-ssl-key-password]]<<schema-history-internal-tbd-ssl-key-password,`schema.history.internal.*.ssl.key.password`>>
-|No default
-|The password of the private key in the key store file or the PEM key specified in `ssl.keystore.key`.
-
 |===
 
 
