@@ -66,6 +66,11 @@ public class StreamingMeter implements StreamingMetricsMXBean {
         return lastTransactionId.get();
     }
 
+    @Override
+    public void resetLagBehindSource() {
+        lagBehindSource.set(null);
+    }
+
     public void onEvent(DataCollectionId source, OffsetContext offset, Object key, Struct value) {
         final Instant eventTimestamp = metadataProvider.getEventTimestamp(source, offset, key, value);
         if (eventTimestamp != null) {
