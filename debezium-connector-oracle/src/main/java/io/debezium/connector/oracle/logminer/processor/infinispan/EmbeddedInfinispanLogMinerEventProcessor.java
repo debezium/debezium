@@ -88,9 +88,6 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
 
     @Override
     public void close() throws Exception {
-        // Makes sure asynchronous operations have completed before shutting down
-        transactionCache.close();
-
         if (dropBufferOnStop) {
             LOGGER.info("Clearing infinispan caches");
             transactionCache.clear();
