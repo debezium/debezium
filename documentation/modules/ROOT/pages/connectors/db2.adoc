@@ -2882,8 +2882,13 @@ endif::community[]
 `skip` - The connector skips the problematic event and continues processing with the next event.
 
 |[[db2-property-poll-interval-ms]]<<db2-property-poll-interval-ms, `+poll.interval.ms+`>>
-|`500`
-|Positive integer value that specifies the number of milliseconds the connector should wait for new change events to appear before it starts processing a batch of events. Defaults to 500 milliseconds, or 0.5 second.
+|`500` (0.5 seconds)
+|Positive integer value that specifies the number of milliseconds that the connector waits before it checks the database for new change events. +
+ +
+The value that you specify influences the behavior of xref:db2-property-heartbeat-interval-ms[`heartbeat.interval.ms`].
+The connector can emit heartbeat messages only during the specified polling cycle. +
+
+To prevent this setting from delaying heartbeat emissions, set it to a value that is less than or equal to the value of `heartbeat.interval.ms`.
 
 |[[db2-property-max-batch-size]]<<db2-property-max-batch-size, `+max.batch.size+`>>
 |`2048`
@@ -2908,11 +2913,25 @@ For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000
 
 |[[db2-property-heartbeat-interval-ms]]<<db2-property-heartbeat-interval-ms, `+heartbeat.interval.ms+`>>
 |`0`
-|Controls how frequently the connector sends heartbeat messages to a Kafka topic. The default behavior is that the connector does not send heartbeat messages. +
+|Specifies an interval in milliseconds that determines how frequently the connector sends messages to a Kafka heartbeat topic, regardless of whether changes occur in the database. +
+By default, the connector does not send heartbeat messages. +
  +
-Heartbeat messages are useful for monitoring whether the connector is receiving change events from the database. Heartbeat messages might help decrease the number of change events that need to be re-sent when a connector restarts. To send heartbeat messages, set this property to a positive integer, which indicates the number of milliseconds between heartbeat messages. +
+Setting this property can help to confirm whether the connector is still receiving change events from the database.
+This can be especially important in databases where captured tables remain unchanged for long periods.
+When a database experiences frequent long intervals during which changes no changes occur in captured tables, although the connector continues to read the transaction log as usual, it only rarely commits offset values to Kafka.
+As a result, after a connector restart, because the offset value is stale, the connector must send a high number of change events. +
  +
-Heartbeat messages are useful when there are many updates in a database that is being tracked but only a tiny number of updates are in tables that are in capture mode. In this situation, the connector reads from the database transaction log as usual but rarely emits change records to Kafka. This means that the connector has few opportunities to send the latest offset to Kafka. Sending heartbeat messages enables the connector to send the latest offset to Kafka.
+By contrast, when you configure the connector to send regular heartbeat messages, it can update the offset in Kafka more frequently.
+Because the offset values in Kafka remain current, fewer change events must be re-sent after a connector restarts.
+
+[NOTE]
+====
+Heartbeats are only emitted during polling cycles.
+That is, in a {prodname} environment, the actual interval between sending heartbeat messages is jointly controlled by the settings of the `heartbeat.interval.ms` and xref:db2-property-poll-interval-ms[`poll.interval.ms`] properties.
+The actual frequency for sending heartbeat messages is based on the lower of the two values.
+To prevent delays in sending heartbeat messages, reducing their effectiveness, set this property to a value that is greater than or equal to the value of `poll.interval.ms`.
+For example, if you set `poll.interval.ms` to `100`, set `heartbeat.interval.ms` to `5000`.
+====
 
 |[[db2-property-snapshot-delay-ms]]<<db2-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
 |No default
