@@ -337,3 +337,49 @@ jobs:
             TEST_PROFILE: oracle
 
   ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "oracle-19-ispn"
+    targets:
+      centos-stream-8-x86_64:
+        distros: [ "debezium-tf-1930" ]
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - oracle
+      - oracle-logminer
+      - oracle-infinispan
+    tf_extra_params:
+      test:
+        tmt:
+          name: oracle
+      environments:
+        - variables:
+            ORACLE_VERSION: 19.3.0
+            ORACLE_PROFILE_ARGS: "-Poracle-infinispan-buffer -pl debezium-connector-oracle"
+            TEST_PROFILE: oracle
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "oracle-19-ehcache"
+    targets:
+      centos-stream-8-x86_64:
+        distros: [ "debezium-tf-1930" ]
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - oracle
+      - oracle-logminer
+      - oracle-ehcache
+    tf_extra_params:
+      test:
+        tmt:
+          name: oracle
+      environments:
+        - variables:
+            ORACLE_VERSION: 19.3.0
+            ORACLE_PROFILE_ARGS: "-Poracle-ehcache -pl debezium-connector-oracle"
+            TEST_PROFILE: oracle
