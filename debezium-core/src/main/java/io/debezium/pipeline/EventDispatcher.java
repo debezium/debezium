@@ -227,8 +227,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                                          OffsetContext offset,
                                          ConnectHeaders headers)
                         throws InterruptedException {
-                    Loggings.logTraceAndTraceRecord(LOGGER, "Key: " + key + ", Value: " + value, "Received change record for {} operation with context {}", operation,
-                            offset);
+                    Loggings.logTraceAndTraceRecord(LOGGER, new Object[]{ "Key:", key, ", Value:", value }, "Received change record for {} operation with context {}",
+                            " ", operation, offset);
 
                     eventListener.onEvent(partition, dataCollectionSchema.id(), offset, key, value, operation);
                     receiver.changeRecord(partition, dataCollectionSchema, operation, key, value, offset, headers);
@@ -289,8 +289,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                                              ConnectHeaders headers)
                             throws InterruptedException {
 
-                        Loggings.logTraceAndTraceRecord(LOGGER, "Key: " + key + ", Value: " + value, "Received change record for {} operation with context {}", operation,
-                                offset);
+                        Loggings.logTraceAndTraceRecord(LOGGER, new Object[]{ "Key:", key, ", Value:", value }, "Received change record for {} operation with context {}",
+                                " ", operation, offset);
 
                         if (isASignalEventToProcess(dataCollectionId, operation) && sourceSignalChannel != null) {
                             sourceSignalChannel.process(value);
@@ -510,8 +510,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
             Objects.requireNonNull(value, "value must not be null");
 
-            Loggings.logTraceAndTraceRecord(LOGGER, "Key: " + key + ", Value: " + value, "Received change record for {} operation with context {}", operation,
-                    offsetContext);
+            Loggings.logTraceAndTraceRecord(LOGGER, new Object[]{ "Key:", key, ", Value:", value }, "Received change record for {} operation with context {}", " ",
+                    operation, offsetContext);
 
             // Truncate events must have null key schema as they are sent to table topics without keys
             Schema keySchema = (key == null && operation == Operation.TRUNCATE) ? null
