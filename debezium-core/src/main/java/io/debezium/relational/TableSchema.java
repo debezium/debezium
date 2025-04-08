@@ -5,7 +5,6 @@
  */
 package io.debezium.relational;
 
-import java.util.Arrays;
 import java.util.Objects;
 
 import org.apache.kafka.connect.data.Schema;
@@ -126,7 +125,7 @@ public class TableSchema implements DataCollectionSchema {
      */
     public Struct keyFromColumnData(Object[] columnData) {
         if (LOGGER.isTraceEnabled()) {
-            Loggings.logTraceAndTraceRecord(LOGGER, Arrays.toString(columnData), "columnData from current stack");
+            Loggings.logTraceAndTraceRecord(LOGGER, columnData, "columnData from current stack", ", ");
         }
         return columnData == null ? null : keyGenerator.generateValue(columnData);
     }
