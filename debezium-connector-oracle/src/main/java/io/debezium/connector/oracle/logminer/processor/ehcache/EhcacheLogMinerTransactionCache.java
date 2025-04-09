@@ -20,6 +20,7 @@ import org.ehcache.Cache;
 
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerTransactionCache;
+import io.debezium.connector.oracle.logminer.processor.CacheProvider;
 
 /**
  * A concrete implementation of {@link AbstractLogMinerTransactionCache} for Ehcache.
@@ -30,13 +31,17 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     private final Cache<String, EhcacheTransaction> transactionCache;
     private final Cache<String, LogMinerEvent> eventCache;
+    private final EhcacheEvictionListener evictionListener;
 
     // Heap-backed caches for quick access to specific metadata to speed up processing
     private final Map<String, TreeSet<Integer>> eventIdsByTransactionId = new HashMap<>();
 
-    public EhcacheLogMinerTransactionCache(Cache<String, EhcacheTransaction> transactionCache, Cache<String, LogMinerEvent> eventCache) {
+    public EhcacheLogMinerTransactionCache(Cache<String, EhcacheTransaction> transactionCache,
+                                           Cache<String, LogMinerEvent> eventCache,
+                                           EhcacheEvictionListener evictionListener) {
         this.transactionCache = transactionCache;
         this.eventCache = eventCache;
+        this.evictionListener = evictionListener;
 
         primeHeapCacheFromOffHeapCaches();
     }
@@ -49,6 +54,7 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     @Override
     public void addTransaction(EhcacheTransaction transaction) {
         transactionCache.put(transaction.getTransactionId(), transaction);
+        checkAndThrowIfEviction(CacheProvider.TRANSACTIONS_CACHE_NAME);
         eventIdsByTransactionId.put(transaction.getTransactionId(), new TreeSet<>());
     }
 
@@ -99,7 +105,7 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
             final Iterator<Integer> iterator = stream.iterator();
             while (iterator.hasNext()) {
                 final LogMinerEvent event = getTransactionEvent(transaction, iterator.next());
-                if (!predicate.test(event)) {
+                if (event != null && !predicate.test(event)) {
                     break;
                 }
             }
@@ -123,6 +129,7 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
     @Override
     public void addTransactionEvent(EhcacheTransaction transaction, int eventKey, LogMinerEvent event) {
         eventCache.put(transaction.getEventId(eventKey), event);
+        checkAndThrowIfEviction(CacheProvider.EVENTS_CACHE_NAME);
         eventIdsByTransactionId.get(transaction.getTransactionId()).add(eventKey);
     }
 
@@ -187,6 +194,7 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
         // Necessary to synchronize state
         transactionCache.put(transaction.getTransactionId(), transaction);
+        checkAndThrowIfEviction(CacheProvider.TRANSACTIONS_CACHE_NAME);
     }
 
     private void primeHeapCacheFromOffHeapCaches() {
@@ -202,5 +210,11 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
                         }
                     });
         });
+    }
+
+    private void checkAndThrowIfEviction(String cacheName) {
+        if (evictionListener.hasEvictionBeenSeen()) {
+            throw new CacheCapacityExceededException(cacheName);
+        }
     }
 }

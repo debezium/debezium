@@ -15,13 +15,18 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
+import org.ehcache.Cache;
 import org.ehcache.CacheManager;
 import org.ehcache.config.builders.CacheManagerBuilder;
+import org.ehcache.event.EventFiring;
+import org.ehcache.event.EventOrdering;
+import org.ehcache.event.EventType;
 import org.ehcache.xml.XmlConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +61,7 @@ public class EhcacheLogMinerEventProcessor extends AbstractLogMinerEventProcesso
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EhcacheLogMinerEventProcessor.class);
 
+    private final EhcacheEvictionListener evictionListener;
     private final CacheManager cacheManager;
     private final EhcacheLogMinerTransactionCache transactionCache;
     private final LogMinerCache<String, String> processedTransactionsCache;
@@ -73,15 +79,21 @@ public class EhcacheLogMinerEventProcessor extends AbstractLogMinerEventProcesso
         super(context, connectorConfig, schema, partition, offsetContext, dispatcher, metrics, jdbcConnection);
         LOGGER.info("Using Ehcache buffer");
 
+        this.evictionListener = new EhcacheEvictionListener();
         this.cacheManager = createCacheManager(connectorConfig);
 
         this.transactionCache = new EhcacheLogMinerTransactionCache(
-                cacheManager.getCache(TRANSACTIONS_CACHE_NAME, String.class, EhcacheTransaction.class),
-                cacheManager.getCache(EVENTS_CACHE_NAME, String.class, LogMinerEvent.class));
+                getCache(TRANSACTIONS_CACHE_NAME, String.class, EhcacheTransaction.class, evictionListener),
+                getCache(EVENTS_CACHE_NAME, String.class, LogMinerEvent.class, evictionListener),
+                evictionListener);
         this.processedTransactionsCache = new EhcacheLogMinerCache(
-                cacheManager.getCache(PROCESSED_TRANSACTIONS_CACHE_NAME, String.class, String.class));
+                getCache(PROCESSED_TRANSACTIONS_CACHE_NAME, String.class, String.class, evictionListener),
+                PROCESSED_TRANSACTIONS_CACHE_NAME,
+                evictionListener);
         this.schemaChangesCache = new EhcacheLogMinerCache(
-                cacheManager.getCache(SCHEMA_CHANGES_CACHE_NAME, String.class, String.class));
+                getCache(SCHEMA_CHANGES_CACHE_NAME, String.class, String.class, evictionListener),
+                SCHEMA_CHANGES_CACHE_NAME,
+                evictionListener);
     }
 
     @Override
@@ -149,6 +161,12 @@ public class EhcacheLogMinerEventProcessor extends AbstractLogMinerEventProcesso
         catch (Exception e) {
             throw new DebeziumException("Failed to create Ehcache cache manager", e);
         }
+    }
+
+    private <K, V> Cache<K, V> getCache(String cacheName, Class<K> keyType, Class<V> valueType, EhcacheEvictionListener listener) {
+        final Cache<K, V> cache = cacheManager.getCache(cacheName, keyType, valueType);
+        cache.getRuntimeConfiguration().registerCacheEventListener(listener, EventOrdering.ORDERED, EventFiring.SYNCHRONOUS, Set.of(EventType.EVICTED));
+        return cache;
     }
 
     private String getConfigurationWithSubstitutions(Configuration configuration) {
