@@ -26,9 +26,13 @@ import io.debezium.connector.oracle.logminer.processor.LogMinerCache;
 public class EhcacheLogMinerCache<K, V> implements LogMinerCache<K, V> {
 
     private final Cache<K, V> cache;
+    private final String cacheName;
+    private final EhcacheEvictionListener evictionListener;
 
-    public EhcacheLogMinerCache(Cache<K, V> cache) {
+    public EhcacheLogMinerCache(Cache<K, V> cache, String cacheName, EhcacheEvictionListener evictionListener) {
         this.cache = cache;
+        this.cacheName = cacheName;
+        this.evictionListener = evictionListener;
     }
 
     @Override
@@ -60,6 +64,9 @@ public class EhcacheLogMinerCache<K, V> implements LogMinerCache<K, V> {
     @Override
     public void put(K key, V value) {
         cache.put(key, value);
+        if (evictionListener.hasEvictionBeenSeen()) {
+            throw new CacheCapacityExceededException(cacheName);
+        }
     }
 
     @Override

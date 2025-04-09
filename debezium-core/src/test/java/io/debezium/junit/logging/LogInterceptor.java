@@ -9,6 +9,7 @@ import static org.slf4j.Logger.ROOT_LOGGER_NAME;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
@@ -134,6 +135,28 @@ public class LogInterceptor extends AppenderBase<ILoggingEvent> {
                     return true;
                 }
                 stackTrace = stackTrace.getCause();
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Checks all logged events that had a {@link Throwable} provided that the stack trace
+     * contains the given class.
+     *
+     * @param causeClassName the class to check for
+     * @return {@code true} if there was a match; {@code false} otherwise
+     */
+    public boolean containsThrowableWithCause(Class<?> causeClassName) {
+        for (ILoggingEvent event : events) {
+            IThrowableProxy throwableProxy = event.getThrowableProxy();
+            if (throwableProxy != null) {
+                do {
+                    if (Objects.equals(throwableProxy.getClassName(), causeClassName.getName())) {
+                        return true;
+                    }
+                    throwableProxy = throwableProxy.getCause();
+                } while (throwableProxy != null);
             }
         }
         return false;
