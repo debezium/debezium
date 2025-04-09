@@ -160,7 +160,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
                 String selectPublication = String.format("SELECT puballtables FROM pg_publication WHERE pubname = '%s'", publicationName);
                 try (Statement stmt = conn.createStatement()) {
-                    boolean isOnlyRead = isReadOnlyDb(stmt);
+                    boolean isOnlyRead = isReadOnlyDb();
                     try (ResultSet rs = stmt.executeQuery(selectPublication)) {
                         final boolean publicationExists = rs.next();
                         if (!publicationExists) {
@@ -241,13 +241,14 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
     }
 
-    private boolean isReadOnlyDb(Statement stmt) throws SQLException {
-        ResultSet rs = stmt.executeQuery("SELECT pg_is_in_recovery()");
-        boolean isStandBy = false;
-        if (rs.next()) {
-            isStandBy = rs.getBoolean(1);
-        }
-        return isStandBy;
+    private boolean isReadOnlyDb() throws SQLException {
+        AtomicBoolean isReadOnly = new AtomicBoolean();
+        query("select pg_is_in_recovery()", rs -> {
+            if (rs.next()) {
+                isReadOnly.set(!rs.getBoolean(1));
+            }
+        });
+        return isReadOnly.get();
     }
 
     private void validatePublications(Statement stmt) throws SQLException {
@@ -445,18 +446,13 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             return false;
         }
 
-        AtomicBoolean isPrimary = new AtomicBoolean();
-        query("select pg_is_in_recovery()", rs -> {
-            if (rs.next()) {
-                isPrimary.set(!rs.getBoolean(1));
-            }
-        });
+        boolean isPrimary = isReadOnlyDb();
 
-        if (!isPrimary.get()) {
+        if (!isPrimary) {
             LOGGER.debug("Can't create a failover on a replica server. Continuing to create a non-failover slot");
         }
 
-        return isPrimary.get();
+        return isPrimary;
     }
 
     /**
