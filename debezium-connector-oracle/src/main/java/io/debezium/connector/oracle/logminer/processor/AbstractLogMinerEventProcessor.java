@@ -387,10 +387,13 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
      * @throws SQLException if a database exception occurred creating the statement
      */
     protected PreparedStatement createQueryStatement() throws SQLException {
-        return jdbcConnection.connection().prepareStatement(getQueryString(),
-                ResultSet.TYPE_FORWARD_ONLY,
-                ResultSet.CONCUR_READ_ONLY,
-                ResultSet.HOLD_CURSORS_OVER_COMMIT);
+        final PreparedStatement statement = jdbcConnection.connection()
+                .prepareStatement(getQueryString(),
+                        ResultSet.TYPE_FORWARD_ONLY,
+                        ResultSet.CONCUR_READ_ONLY,
+                        ResultSet.HOLD_CURSORS_OVER_COMMIT);
+        statement.setQueryTimeout((int) jdbcConnection.config().getQueryTimeout().toSeconds());
+        return statement;
     }
 
     /**
@@ -701,6 +704,12 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                 offsetContext.setRedoThread(row.getThread());
                 offsetContext.setRsId(event.getRsId());
                 offsetContext.setRowId(event.getRowId());
+                offsetContext.setCommitTime(row.getChangeTime().minusSeconds(databaseOffset.getTotalSeconds()));
+
+                if (eventsProcessed == 1) {
+                    offsetContext.setStartScn(event.getScn());
+                    offsetContext.setStartTime(event.getChangeTime().minusSeconds(databaseOffset.getTotalSeconds()));
+                }
 
                 if (event instanceof RedoSqlDmlEvent) {
                     offsetContext.setRedoSql(((RedoSqlDmlEvent) event).getRedoSql());
@@ -759,6 +768,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         offsetContext.setEventScn(commitScn);
         offsetContext.setRsId(row.getRsId());
         offsetContext.setRowId("");
+        offsetContext.setStartScn(Scn.NULL);
+        offsetContext.setCommitTime(null);
+        offsetContext.setStartTime(null);
 
         if (dispatchTransactionCommittedEvent) {
             dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, transaction.getChangeTime());
@@ -1940,6 +1952,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         LOGGER.warn("Transaction {} exceeds maximum allowed number of events, transaction will be abandoned.", transaction.getTransactionId());
         metrics.incrementWarningCount();
         getAndRemoveTransactionFromCache(transaction.getTransactionId());
+        removeEventsWithTransaction(transaction);
         abandonedTransactionsCache.add(transaction.getTransactionId());
         metrics.incrementOversizedTransactionCount();
     }

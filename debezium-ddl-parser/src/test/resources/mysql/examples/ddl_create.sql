@@ -514,6 +514,37 @@ CREATE TABLE `tab1` (
   l LONG,
   mi MIDDLEINT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE trace_info (
+id bigint(20) NOT NULL AUTO_INCREMENT,
+trace_code varchar(20) NOT NULL DEFAULT '' COMMENT '溯源码',
+whole_order_no varchar(20) NOT NULL DEFAULT '' COMMENT '购物订单号',
+order_no varchar(20) NOT NULL DEFAULT '' COMMENT '购物子订单号',
+express_no varchar(30) NOT NULL DEFAULT '' COMMENT '快递单号',
+shipped_time datetime DEFAULT NULL COMMENT '发货时间',
+received_time datetime DEFAULT NULL COMMENT '收货时间',
+sku_code varchar(50) DEFAULT NULL COMMENT '商品sku',
+sku_name varchar(255) DEFAULT '' COMMENT '商品名称',
+is_refund tinyint(4) DEFAULT 0 COMMENT '是否退货，0，否，1是',
+is_exchange tinyint(4) DEFAULT 0 COMMENT '是否换货，0，否，1是',
+sap_code varchar(50) NOT NULL DEFAULT CURDATE() COMMENT '商品物料号',
+create_time datetime DEFAULT CURTIME() COMMENT '创建时间',
+update_time datetime DEFAULT NULL COMMENT '更新时间',
+PRIMARY KEY (id),
+UNIQUE KEY idx_unique_key (trace_code,order_no,sku_code),
+KEY idx_order_no (order_no)
+) ENGINE=InnoDB AUTO_INCREMENT=123 DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC;
+
+CREATE TABLE sku_history (
+id bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键id',
+sku_code varchar(64) NOT NULL DEFAULT '' COMMENT '促销品code',
+before_1 longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT json_object() COMMENT '变更前详情',
+after_1 longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT json_object() COMMENT '变更后详情',
+operator_employee_id varchar(64) NOT NULL DEFAULT '' COMMENT '操作人 employee ID',
+create_time timestamp NOT NULL DEFAULT current_timestamp() COMMENT '创建时间',
+update_time timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT '更新时间',
+PRIMARY KEY (id),
+KEY idx_sku_code (sku_code)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='促销品修改历史';
 #end
 -- Comments
 -- SELECT V_PAYABLE_AMT, DIS_ADJUST_TOTAL_PAYABLE;

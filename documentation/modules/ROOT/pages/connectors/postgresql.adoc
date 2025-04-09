@@ -179,7 +179,7 @@ After the snapshot completes, the connector continues streaming changes from ste
 This mode is useful in the following situations: +
 
 * It is known that some WAL segments have been deleted and are no longer available. +
-* After a cluster failure, a new primary has been promoted.
+* After a cluster failure, if a new primary is promoted.
   The `always` snapshot mode ensures that the connector does not miss any changes that were made after the new primary had been promoted but before the connector was restarted on the new primary.
 
 |`initial` (default)
@@ -2147,7 +2147,7 @@ The default `false` setting causes the custom converter to always return `null` 
 // ModuleID: setting-up-postgresql-to-run-a-debezium-connector
 // Title: Setting up PostgreSQL to run a {prodname} connector
 [[setting-up-postgresql]]
-== Setting up Postgres
+== Setting up PostgreSQL
 
 ifdef::community[]
 Before using the PostgreSQL connector to monitor the changes committed on a PostgreSQL server, decide which logical decoding plug-in you intend to use.
@@ -2516,25 +2516,55 @@ host    replication     <youruser>  ::1/128                 trust   // <3>
 For more information about network masks, see link:https://www.postgresql.org/docs/current/static/datatype-net-types.html[the PostgreSQL documentation].
 ====
 
-ifdef::community[]
+
+// Type: concept
 [[supported-postgresql-topologies]]
 === Supported PostgreSQL topologies
 
 The PostgreSQL connector can be used with a standalone PostgreSQL server or with a cluster of PostgreSQL servers.
 
-PostgreSQL (for all versions <= 16) supports logical replication slots on only `primary` servers. This means that a replica in a PostgreSQL cluster cannot be configured for logical replication, and consequently that the {prodname} PostgreSQL connector can connect and communicate with only the primary server. Should this server fail, the connector stops. When the cluster is repaired, if the original primary server is once again promoted to `primary`, you can restart the connector. However, if a different PostgreSQL server _with the plug-in and proper configuration_ is promoted to `primary`, you must change the connector configuration to point to the new `primary` server and then you can restart the connector.
+// Type: concept
+[id="postgresql-supported-topologies-pg15"]
+==== PostgreSQL 15 or earlier clusters
 
-When using PostgreSQL 16 or newer, you can set up logical replication slots also on replica servers,
-and {prodname} does not need to connect to your primary server for ingesting change events.
-In comparison to connecting to the primary,
-connecting to a replica will yield slightly increased latencies, though.
+When you deploy {prodname} in environments that run PostgreSQL 15 or earlier, you can configure logical replication slots only on the primary server in the cluster.
+You cannot configure logical replication on replica servers in the cluster.
 
-When using PostgreSQL 17 or newer, you can set up logical replication slots on primary serves which are enabled for failover.
-The state of such a failover slot can automatically be propagated to one or more replica servers,
-allowing {prodname} to continue to ingest changes from a replica promoted to primary after a failure,
-without missing any events.
+Consequently, the {prodname} PostgreSQL connector can connect and communicate only with the primary server.
+If the primary server fails, the connector stops.
+To recover from a failure, you must repair the cluster and then either promote the original primary server to `primary`, or promote a different PostgreSQL server to `primary`.
+For more information, see xref:postgresql-cluster-failures-capturing-from-new-pg15-primary[Capturing data from a new primary after a failure].
 
-endif::community[]
+// Type: concept
+[id="postgresql-supported-topologies-pg16"]
+==== PostgreSQL 16 or later clusters
+
+When you deploy {prodname} with a PostgreSQL 16 or later cluster, you can set up logical replication slots on replica servers.
+This feature enables {prodname} to capture change events from servers other than the primary server.
+However, be aware that {prodname} connections to replica servers generally experience higher latency than connections to a primary server.
+
+Also, bear in mind that replication slots on PostgreSQL replica servers are not automatically synchronized with corresponding slots on the primary server.
+To facilitate recovery after a failure in a PostgreSQL 16 cluster, you should periodically perform a manual synchronization to advance the position of the replication slot on the standby server to match the position on the primary server.
+
+// Type: concept
+[id="postgresql-supported-topologies-pg17"]
+==== {prodname} with PostgreSQL 17 or later clusters
+
+When you deploy {prodname} with PostgreSQL 17 or later, you can set up logical replication slots on primary servers and enable those slots for failover.
+PostgreSQL can automatically propagate the state of a failover slot to one or more replica servers.
+In environments where automatic replication is enabled, if a failure occurs, an available replica is automatically promoted to primary.
+{prodname} can continue to ingest changes from the new primary server, without requiring any configuration changes, thus helping to ensure that the connector does not miss any events.
+
+ifdef::product[]
+[IMPORTANT]
+====
+The use of {prodname} with PostgreSQL 17 and the ability to configure failover replication slots are Technology Preview features.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 // Type: concept
 // ModuleID: configuring-postgresql-to-manage-debezium-wal-disk-space-consumption
@@ -3118,9 +3148,16 @@ Set to `true` in only testing or development environments. Dropping the slot all
 
 |[[postgresql-property-slot-failover]]<<postgresql-property-slot-failover, `+slot.failover+`>>
 |`false`
-|Whether or not to create a failover slot. When not specified, or when not connecting to a Postgres 17+ primary, no failover slot will be created.
+|Specifies whether the connector creates a failover slot.
+If you omit this setting, or if the primary server runs PostgreSQL 16 or earlier, the connector does not create a failover slot.
 
-When using failover slots, make sure to add the physical replication slot(s) used for updating read replicas in the cluster to the `synchronized_standby_slots` configuration setting of the Postgres primary.
+NOTE: PostgreSQL uses the https://www.postgresql.org/docs/current/runtime-config-replication.html#GUC-SYNCHRONIZED-STANDBY-SLOTS[`synchronized_standby_slots`] parameter to configure replication slot synchronization between primary and standby servers.
+Set this parameter on the primary server to specify the physical replication slots that it synchronizes with on standby servers.
+
+ifdef::product[]
+IMPORTANT: The use of {prodname} with PostgreSQL 17 and the ability to configure failover replication slots are Technology Preview features. +
+For more information, see xref:postgresql-supported-topologies-pg17[PostgreSQL supported topologies].
+endif::product[]
 
 |[[postgresql-property-publication-name]]<<postgresql-property-publication-name, `+publication.name+`>>
 |`dbz_publication`
@@ -4102,19 +4139,16 @@ For example, if the topic prefix is `fulfillment`, the default topic name is `fu
 |Specifies the number of threads that the connector uses when performing an initial snapshot.
 To enable parallel initial snapshots, set the property to a value greater than 1.
 In a parallel initial snapshot, the connector processes multiple tables concurrently.
-ifdef::community[]
-This feature is incubating.
-endif::community[]
-ifdef::product[]
-[IMPORTANT]
+ +
+[NOTE]
 ====
-Parallel initial snapshots is a Technology Preview feature only.
-Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
-Red Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+When you enable parallel initial snapshots, the threads that perform each table snapshot can require varying times to complete their work.
+If a snapshot for one table requires significantly more time to complete than the snapshots for other tables, threads that have completed their work sit idle.
+In some environments, a network device such as a load balancer or firewall, terminates connections that remain idle for an extended interval.
+After the snapshot completes, the connector is unable to close the connection, resulting in an exception, and an incomplete snapshot, even in cases where the connector successfully transmitted all snapshot data. +
+ +
+If you experience this problem, revert the value of `snapshot.max.threads` to `1`, and retry the snapshot.
 ====
-endif::product[]
 
 |[[postgresql-property-custom-metric-tags]]<<postgresql-property-custom-metric-tags, `custom.metric.tags`>>
 |`No default`
@@ -4190,7 +4224,7 @@ The {prodname} PostgreSQL connector provides two types of metrics that are in ad
 
 {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
 
-/ Type: concept
+// Type: concept
 // ModuleID: monitoring-debezium-postgresql-connectors-customized-mbean-names
 // Title: Customized names for PostgreSQL connector snapshot and streaming MBean objects
 === Customized MBean names
@@ -4285,38 +4319,95 @@ For information about failure cases in which a slot has been removed, see the ne
 [id="postgresql-cluster-failures"]
 === Cluster failures
 
-Prior to version 16, PostgreSQL allows logical replication slots _only on primary servers_. This means that you can point a {prodname} PostgreSQL connector to only the active primary server of a database cluster.
-Also, replication slots themselves are not propagated to replicas.
-If the primary server goes down, a new primary must be promoted.
+.PostgreSQL 15 or earlier
+In a PostgreSQL 15 or earlier cluster, you can create a logical replication slot only on the primary server.
+As a result, in a PostgreSQL 15 environment, a {prodname} PostgreSQL connector can capture events only from the active primary server in the cluster.
+In a PostgreSQL 15 cluster, replication slots on the primary node are not propagated to replica servers.
+If the primary server goes down, you must promote a standby node to primary.
 
-When using version 16 or newer, you can create logical replication slots also on replicas, but you need to take care of keeping them in sync with the corresponding slot on the primary server yourself.
+.PostgreSQL 16 or later
+When you use {prodname} with PostgreSQL 16 or later, you can create logical replication slots on replicas, but you must manually synchronize the replication slot on the replica with the corresponding slot on the primary server.
+Synchronization of replica slots is not automatic.
 
-When using version 17 or newer, replication slots on a primary can be enabled for automatic failover.
-In this case Postgres itself can take care of synchronizing a slot from primary to replica automatically,
-allowing {prodname} to continue reading from that slot after promoting a replica to new primary,
-without missing any change events.
+.PostgreSQL 17 or later
+When you use {prodname} with PostgreSQL 17 or later, you can configure replication slots on a primary server for automatic failover, so that {prodname} does not miss any change events.
+When a replication slot is configured for failover, PostgreSQL automatically synchronizes the replication slot from the primary to the replica, enabling {prodname} to continue reading from the slot after the replica is promoted and becomes the new primary.
+
+ifdef::product[]
+[IMPORTANT]
+====
+The use of {prodname} with PostgreSQL 17 and the ability to configure failover replication slots are Technology Preview features.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
 
 [NOTE]
 ====
-Some managed PostgresSQL services (AWS RDS and GCP CloudSQL for example) implement replication to a standby via disk replication. This means that the replication slot does get replicated and will remain available after a failover.
+Some managed PostgreSQL services (for example, AWS RDS and GCP CloudSQL) use disk replication to implement replication to a standby.
+As a result, these services automatically replicate the replication slot so that it is available after a failover.
 ====
 
 ifdef::community[]
-The new primary must have the xref:installing-postgresql-output-plugin[logical decoding plug-in] installed and a replication slot that is configured for use by the plug-in and the database for which you want to capture changes. Only then can you point the connector to the new server and restart the connector.
+The new primary must have the xref:installing-postgresql-output-plugin[logical decoding plug-in] installed and a replication slot that is configured for use by the plug-in and the database for which you want to capture changes.
+Only then can you point the connector to the new server and restart the connector.
 endif::community[]
 
 ifdef::product[]
-The new primary must have a replication slot that is configured for use by the `pgoutput` plug-in and the database in which you want to capture changes. Only then can you point the connector to the new server and restart the connector.
+The new primary must have a replication slot that is configured to use the `pgoutput` plug-in, and must include the database for which you want to capture changes.
+Only then can you point the connector to the new server and restart the connector.
 endif::product[]
 
-When not using failover replication slots, as supported by Postgres 17 and newer,
-there are important caveats when failovers occur and you should pause {prodname} until you can verify that you have an intact replication slot that has not lost data. After a failover:
+// Type: procedure
+[id="postgresql-cluster-failures-recovering-from-failures-pg17-cluster"]
+==== Recovering from failures in a PostgreSQL 17 cluster
 
-* There must be a process that re-creates the {prodname} replication slot before allowing the application to write to the *new* primary. This is crucial. Without this process, your application can miss change events.
+Environments that run PostgreSQL 17 or later support the use of failover replication slots.
+If a failure occurs in a PostgreSQL 17 or later cluster, and a standby is configured with a failover replication slot, complete the following steps to enable {prodname} to resume capture:
 
-* You might need to verify that {prodname} was able to read all changes in the slot **before the old primary failed**.
+. Pause {prodname} until you can verify that you have an intact replication slot that has not lost data.
 
-One reliable method of recovering and verifying whether any changes were lost is to recover a backup of the failed primary to the point immediately before it failed. While this can be administratively difficult, it allows you to inspect the replication slot for any unconsumed changes.
+. Re-create the {prodname} replication slot before you allow applications to write to the *new* primary.
+  If you permit applications to write to the new primary before you re-create the replication slot, your application can miss change events.
+
+. Restart the connector.
+
+. Verify that {prodname} can read the LSN from the replication slot for any change that occurred before the original primary failed.
+ +
+For example, recover a backup of the failed primary from the point immediately before failure, and identify the last position that is recorded in the slot.
+Although retrieving backup data can be administratively difficult, inspecting the backup provides a mechanism for reliably determining whether {prodname} has consumed all changes.
+
+// Type: procedure
+[id="postgresql-cluster-failures-capturing-from-new-pg15-primary"]
+==== Capturing data from a new primary server after a failure in a PostgreSQL 15 or earlier cluster
+
+Following the failure of the primary server in a PostgreSQL 15 or earlier cluster, you might decide to configure {prodname} to capture data from one of the former replica servers rather than from the original primary server.
+To enable {prodname} to capture data from a former replica server, complete the following procedure.
+
+.Procedure
+. Repair the condition that caused the cluster to fail.
+. While the connector is stopped, update the values of properties in the connector configuration to reflect the details of the new server.
+For example, verify that the configuration includes the correct values for the following properties:
+
+* xref:postgresql-property-database-hostname[`database.hostname`]
+* xref:postgresql-property-database-port[`database.port`]
+* xref:postgresql-property-database-dbname[`database.dbname`]
+* xref:postgresql-property-database-user[`database.user`]
+* xref:postgresql-property-database-password[`database.password`]
+* xref:postgresql-property-slot-name[`slot.name`]
+
+. Configure the new primary server to work with {prodname} by completing the following tasks:
+
+* xref:configuring-a-replication-slot-for-the-debezium-pgoutput-plug-in[Configure a replication slot] on the server.
+* Ensure that {prodname} can xref:setting-up-postgresql-permissions-required-by-debezium-connectors[perform replications] and xref:postgresql-replication-user-privileges[create publications] on the server.
++
+For more information about how to configure the PostgreSQL server to work with {prodname}, see xref:setting-up-postgresql[Setting up PostgreSQL].
+
+. Promote the standby PostgreSQL node to `primary`.
+. Restart the connector.
+. xref:postgresql-connector-snapshot-mode-options[Set the snapshot mode] to `always`, and perform a snapshot on the new primary server to capture the initial state of the data on the server and ensure that no data is lost.
 
 [id="postgresql-kafka-connect-process-stops-gracefully"]
 === Kafka Connect process stops gracefully

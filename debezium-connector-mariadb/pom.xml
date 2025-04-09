@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>3.1.0-SNAPSHOT</version>
+        <version>3.2.0-SNAPSHOT</version>
         <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -133,6 +133,16 @@
             <artifactId>rest-assured</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.opentelemetry.javaagent</groupId>
+            <artifactId>opentelemetry-testing-common</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry.javaagent</groupId>
+            <artifactId>opentelemetry-agent-for-testing</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- Used for unit testing with Kafka -->
         <dependency>
             <groupId>org.apache.kafka</groupId>
@@ -195,6 +205,7 @@
                                     <MARIADB_DATABASE>mysql</MARIADB_DATABASE> <!-- database created upon init -->
                                     <MARIADB_USER>${mariadb.user}</MARIADB_USER>
                                     <MARIADB_PASSWORD>${mariadb.password}</MARIADB_PASSWORD>
+                                    <TZ>UTC</TZ>
                                 </env>
                                 <ports>
                                     <port>${mariadb.port}:3306</port>
@@ -249,6 +260,7 @@
                                     <MARIADB_DATABASE>mysql</MARIADB_DATABASE> <!-- database created upon init -->
                                     <MARIADB_USER>${mariadb.user}</MARIADB_USER>
                                     <MARIADB_PASSWORD>${mariadb.password}</MARIADB_PASSWORD>
+                                    <TZ>UTC</TZ>
                                 </env>
                                 <ports>
                                     <port>${mariadb.ssl.port}:3306</port>
@@ -312,6 +324,7 @@
                                     <MARIADB_DATABASE>mysql</MARIADB_DATABASE> <!-- database created upon init -->
                                     <MARIADB_USER>${mariadb.user}</MARIADB_USER>
                                     <MARIADB_PASSWORD>${mariadb.password}</MARIADB_PASSWORD>
+                                    <TZ>UTC</TZ>
                                 </env>
                                 <ports>
                                     <port>${mariadb.gtid.port}:3306</port>
@@ -367,6 +380,7 @@
                                     <MARIADB_ROOT_PASSWORD>debezium-rocks</MARIADB_ROOT_PASSWORD>
                                     <MARIADB_USER>${mariadb.replica.user}</MARIADB_USER>
                                     <MARIADB_PASSWORD>${mariadb.replica.password}</MARIADB_PASSWORD>
+                                    <TZ>UTC</TZ>
                                 </env>
                                 <links>
                                     <link>database-gtids</link>
@@ -478,6 +492,7 @@
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                         <database.ssl.mode>disable</database.ssl.mode>
                     </systemPropertyVariables>
+                    <argLine>-javaagent:"${settings.localRepository}/@{opentelemetry.agent.for.testing.artifact.relative.path}"</argLine>
                     <runOrder>${runOrder}</runOrder>
                 </configuration>
                 <executions>

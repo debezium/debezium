@@ -162,7 +162,6 @@ public class KafkaSignalChannel implements SignalChannelReader {
                 .withDefault(ConsumerConfig.CLIENT_ID_CONFIG, UUID.randomUUID().toString())
                 .withDefault(ConsumerConfig.GROUP_ID_CONFIG, signalConfig.getString(GROUP_ID))
                 .withDefault(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1) // get even the smallest message
-                .withDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false)
                 .withDefault(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 10000) // readjusted since 0.10.1.0
                 .withDefault(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
                 .withDefault(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)

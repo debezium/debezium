@@ -2333,11 +2333,12 @@ defaultValue
     | currentTimestamp (ON UPDATE currentTimestamp)?
     | '(' expression ')'
     | '(' fullId ')'
+    | scalarFunctionName '(' functionArgs? ')'
     ;
 
 currentTimestamp
     : (
-        (CURRENT_TIMESTAMP | LOCALTIME | LOCALTIMESTAMP) ('(' decimalLiteral? ')')?
+        (CURRENT_TIMESTAMP | LOCALTIME | LOCALTIMESTAMP  | CURDATE | CURTIME) ('(' decimalLiteral? ')')?
         | NOW '(' decimalLiteral? ')'
     )
     ;
@@ -2747,6 +2748,7 @@ keywordsCanBeId
     | AVG_ROW_LENGTH
     | ATTRIBUTE
     | BACKUP_ADMIN
+    | BEFORE
     | BEGIN
     | BINLOG
     | BINLOG_ADMIN

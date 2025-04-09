@@ -358,10 +358,12 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
             Mockito.when(rs.next()).thenReturn(false);
 
             final PreparedStatement ps = Mockito.mock(PreparedStatement.class);
-            Mockito.when(processor.createQueryStatement()).thenReturn(ps);
             Mockito.when(ps.executeQuery()).thenReturn(rs);
 
-            Scn nextStartScn = processor.process(Scn.valueOf(100), Scn.valueOf(200));
+            T mockProcessor = Mockito.spy(processor);
+            Mockito.doReturn(ps).when(mockProcessor).createQueryStatement();
+
+            Scn nextStartScn = mockProcessor.process(Scn.valueOf(100), Scn.valueOf(200));
             assertThat(nextStartScn).isEqualTo(Scn.valueOf(100));
         }
     }
@@ -384,10 +386,11 @@ public abstract class AbstractProcessorUnitTest<T extends AbstractLogMinerEventP
             Mockito.when(rs.getString(8)).thenReturn("DEBEZIUM");
 
             final PreparedStatement ps = Mockito.mock(PreparedStatement.class);
-            Mockito.when(processor.createQueryStatement()).thenReturn(ps);
             Mockito.when(ps.executeQuery()).thenReturn(rs);
 
             T processorMock = Mockito.spy(processor);
+            Mockito.doReturn(ps).when(processorMock).createQueryStatement();
+
             Mockito.doReturn("CREATE TABLE DEBEZIUM.ABC (ID primary key(9,0), data varchar2(50))")
                     .when(processorMock)
                     .getTableMetadataDdl(Mockito.any(OracleConnection.class), Mockito.any(TableId.class));

@@ -44,6 +44,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.time.IsoTimestamp;
 import io.debezium.time.MicroDuration;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.NanoTimestamp;
@@ -255,6 +256,20 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
             new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L),
             new SchemaAndValueField("VAL_MAX_DATE", org.apache.kafka.connect.data.Timestamp.builder().optional().build(),
                     java.util.Date.from(LocalDate.of(4247, 4, 5).atStartOfDay().atOffset(ZoneOffset.UTC).toInstant())));
+
+    private static final List<SchemaAndValueField> EXPECTED_TIME_AS_ISOSTRING = Arrays.asList(
+            new SchemaAndValueField("VAL_DATE", IsoTimestamp.builder().optional().build(), "2018-03-27T00:00:00Z"),
+            new SchemaAndValueField("VAL_TS", IsoTimestamp.builder().optional().build(), "2018-03-27T12:34:56.007891Z"),
+            new SchemaAndValueField("VAL_TS_PRECISION2", IsoTimestamp.builder().optional().build(), "2018-03-27T12:34:56.13Z"),
+            new SchemaAndValueField("VAL_TS_PRECISION4", IsoTimestamp.builder().optional().build(), "2018-03-27T12:34:56.1255Z"),
+            new SchemaAndValueField("VAL_TS_PRECISION9", IsoTimestamp.builder().optional().build(), "2018-03-27T12:34:56.125456789Z"),
+            new SchemaAndValueField("VAL_TSTZ", ZonedTimestamp.builder().optional().build(), "2018-03-27T01:34:56.007891-11:00"),
+            new SchemaAndValueField("VAL_TSLTZ", ZonedTimestamp.builder().optional().build(),
+                    LocalDateTime.of(2018, 3, 27, 1, 34, 56, 7891 * 1_000).atZone(ZoneOffset.systemDefault())
+                            .withZoneSameInstant(ZoneOffset.UTC).format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'"))),
+            new SchemaAndValueField("VAL_INT_YTM", MicroDuration.builder().optional().build(), -110451600_000_000L),
+            new SchemaAndValueField("VAL_INT_DTS", MicroDuration.builder().optional().build(), -93784_560_000L),
+            new SchemaAndValueField("VAL_MAX_DATE", IsoTimestamp.builder().optional().build(), "4247-04-05T00:00:00Z"));
 
     private static final String CLOB_JSON = Testing.Files.readResourceAsString("data/test_lob_data.json");
     private static final String NCLOB_JSON = Testing.Files.readResourceAsString("data/test_lob_data2.json");
@@ -624,6 +639,41 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
 
         Struct after = (Struct) ((Struct) record.value()).get("after");
         assertRecord(after, EXPECTED_TIME_AS_CONNECT);
+    }
+
+    @Test
+    @FixFor("DBZ-8889")
+    public void timeTypesAsIsoString() throws Exception {
+        stopConnector();
+        init(TemporalPrecisionMode.ISOSTRING);
+
+        int expectedRecordCount = 0;
+
+        if (insertRecordsDuringTest()) {
+            insertTimeTypes();
+        }
+
+        Testing.debug("Inserted");
+        expectedRecordCount++;
+
+        final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TYPE_TIME");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+        SourceRecord record = testTableRecords.get(0);
+
+        VerifyRecord.isValid(record);
+
+        // insert
+        if (insertRecordsDuringTest()) {
+            VerifyRecord.isValidInsert(record, "ID", 1);
+        }
+        else {
+            VerifyRecord.isValidRead(record, "ID", 1);
+        }
+
+        Struct after = (Struct) ((Struct) record.value()).get("after");
+        assertRecord(after, EXPECTED_TIME_AS_ISOSTRING);
     }
 
     @Test

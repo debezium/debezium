@@ -31,6 +31,8 @@ public interface RecordAndMetadata {
 
     SchemaAndValue timestamp();
 
+    String traceParent();
+
     String dataSchemaName();
 
     Schema dataSchema(String... dataFields);

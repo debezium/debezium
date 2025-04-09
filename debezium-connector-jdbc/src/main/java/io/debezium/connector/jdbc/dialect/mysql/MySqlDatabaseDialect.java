@@ -12,6 +12,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.TemporalAccessor;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -31,7 +32,6 @@ import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.time.ZonedTimestamp;
-import io.debezium.util.Collect;
 import io.debezium.util.Strings;
 
 /**
@@ -199,7 +199,11 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
 
     @Override
     public Set<Class<? extends Exception>> getCommunicationExceptions() {
-        return Collect.unmodifiableSet(LockAcquisitionException.class, PessimisticLockException.class);
+        Set<Class<? extends Exception>> exceptions = super.getCommunicationExceptions();
+        exceptions.addAll(
+                Set.of(LockAcquisitionException.class,
+                        PessimisticLockException.class));
+        return Collections.unmodifiableSet(exceptions);
     }
 
     @Override

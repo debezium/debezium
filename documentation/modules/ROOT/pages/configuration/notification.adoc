@@ -46,7 +46,11 @@ Notification messages contain the following information:
 |Property |Description
 
 |id
-|A unique identifier that is assigned to the notification. For incremental snapshot notifications, the `id` is the same sent with the `execute-snapshot` signal.
+a|A unique identifier that is assigned to the notification. For incremental snapshot notifications, the `id` is the same sent with the `execute-snapshot` signal.
+[NOTE]
+====
+Due to code limitations, the `id` does not map 1:1 with the original signal when multiple incremental snapshots are in progress. In such cases, the `id` of the last sent signal will be used for all notifications.
+====
 
 |aggregate_type
 |The data type of the aggregate root to which a notification is related.

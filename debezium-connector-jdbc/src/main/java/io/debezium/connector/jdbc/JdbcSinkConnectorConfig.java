@@ -62,6 +62,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     public static final String USE_REDUCTION_BUFFER = "use.reduction.buffer";
     public static final String FLUSH_MAX_RETRIES = "flush.max.retries";
     public static final String FLUSH_RETRY_DELAY_MS = "flush.retry.delay.ms";
+    public static final String CONNECTION_RESTART_ON_ERRORS = "connection.restart.on.errors";
 
     // todo add support for the ValueConverter contract
 
@@ -98,7 +99,6 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 3))
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
-            .required()
             .withDescription("Password of the database user to be used when connecting to the connection.");
 
     public static final Field CONNECTION_POOL_MIN_SIZE_FIELD = Field.create(CONNECTION_POOL_MIN_SIZE)
@@ -235,6 +235,18 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withDescription(
                     "A reduction buffer consolidates the execution of SQL statements by primary key to reduce the SQL load on the target database. When set to false (the default), each incoming event is applied as a logical SQL change. When set to true, incoming events that refer to the same row will be reduced to a single logical change based on the most recent row state.");
 
+    public static final Field CONNECTION_RESTART_ON_ERRORS_FIELD = Field.create(CONNECTION_RESTART_ON_ERRORS)
+            .withDisplayName("Restart connection on errors")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 7))
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(false)
+            .withDescription("Specifies whether the connector should attempt to restart the connection automatically upon connection-related errors. " +
+                    "Defaults to false. " +
+                    "In environments where the sink database uses asynchronous replication, enabling this option may risk data loss or inconsistencies " +
+                    "during failover if the replica has not fully caught up with the primary.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     CONNECTION_URL_FIELD,
@@ -261,7 +273,8 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     FIELD_INCLUDE_LIST_FIELD,
                     FIELD_EXCLUDE_LIST_FIELD,
                     FLUSH_MAX_RETRIES_FIELD,
-                    FLUSH_RETRY_DELAY_MS_FIELD)
+                    FLUSH_RETRY_DELAY_MS_FIELD,
+                    CONNECTION_RESTART_ON_ERRORS_FIELD)
             .create();
 
     /**
@@ -374,6 +387,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     private final FieldNameFilter fieldsFilter;
     private final int batchSize;
     private final boolean useReductionBuffer;
+    private final boolean connectionRestartOnErrors;
 
     public JdbcSinkConnectorConfig(Map<String, String> props) {
         config = Configuration.from(props);
@@ -395,6 +409,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         this.useReductionBuffer = config.getBoolean(USE_REDUCTION_BUFFER_FIELD);
         this.flushMaxRetries = config.getInteger(FLUSH_MAX_RETRIES_FIELD);
         this.flushRetryDelayMs = config.getLong(FLUSH_RETRY_DELAY_MS_FIELD);
+        this.connectionRestartOnErrors = config.getBoolean(CONNECTION_RESTART_ON_ERRORS_FIELD);
 
         String fieldIncludeList = config.getString(FIELD_INCLUDE_LIST_FIELD);
         String fieldExcludeList = config.getString(FIELD_EXCLUDE_LIST_FIELD);
@@ -502,6 +517,10 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         return flushRetryDelayMs;
     }
 
+    public boolean isConnectionRestartOnErrors() {
+        return connectionRestartOnErrors;
+    }
+
     /** makes {@link org.hibernate.cfg.Configuration} from connector config
      *
      * @return {@link org.hibernate.cfg.Configuration}
@@ -511,7 +530,10 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         hibernateConfig.setProperty(AvailableSettings.CONNECTION_PROVIDER, config.getString(CONNECTION_PROVIDER_FIELD));
         hibernateConfig.setProperty(AvailableSettings.JAKARTA_JDBC_URL, config.getString(CONNECTION_URL_FIELD));
         hibernateConfig.setProperty(AvailableSettings.JAKARTA_JDBC_USER, config.getString(CONNECTION_USER_FIELD));
-        hibernateConfig.setProperty(AvailableSettings.JAKARTA_JDBC_PASSWORD, config.getString(CONNECTION_PASSWORD_FIELD));
+        String password = config.getString(CONNECTION_PASSWORD_FIELD);
+        if (password != null && !password.isEmpty()) {
+            hibernateConfig.setProperty(AvailableSettings.JAKARTA_JDBC_PASSWORD, password);
+        }
         hibernateConfig.setProperty(AvailableSettings.C3P0_MIN_SIZE, config.getString(CONNECTION_POOL_MIN_SIZE_FIELD));
         hibernateConfig.setProperty(AvailableSettings.C3P0_MAX_SIZE, config.getString(CONNECTION_POOL_MAX_SIZE_FIELD));
         hibernateConfig.setProperty(AvailableSettings.C3P0_ACQUIRE_INCREMENT, config.getString(CONNECTION_POOL_ACQUIRE_INCREMENT_FIELD));

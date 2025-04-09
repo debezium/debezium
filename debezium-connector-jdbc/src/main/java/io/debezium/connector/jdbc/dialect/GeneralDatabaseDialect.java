@@ -18,7 +18,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -40,6 +39,7 @@ import org.hibernate.engine.jdbc.Size;
 import org.hibernate.engine.jdbc.env.spi.IdentifierHelper;
 import org.hibernate.engine.jdbc.env.spi.NameQualifierSupport;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.exception.JDBCConnectionException;
 import org.hibernate.type.descriptor.sql.spi.DdlTypeRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -592,7 +592,11 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
 
     @Override
     public Set<Class<? extends Exception>> getCommunicationExceptions() {
-        return Collections.emptySet();
+        Set<Class<? extends Exception>> exceptions = new HashSet<>();
+        if (connectorConfig.isConnectionRestartOnErrors()) {
+            exceptions.add(JDBCConnectionException.class);
+        }
+        return exceptions;
     }
 
     protected String getTypeName(int jdbcType, int length) {

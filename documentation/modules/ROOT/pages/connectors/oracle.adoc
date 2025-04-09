@@ -36,12 +36,28 @@ ifdef::product[]
 For information about the Oracle Database versions that are compatible with this connector, see the link:{LinkDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
 endif::product[]
 
-{prodname} ingests change events from Oracle by using the native LogMiner database package
 ifdef::community[]
-, the https://docs.oracle.com/database/121/XSTRM/xstrm_intro.htm#XSTRM72647[XStream API], or https://www.bersler.com/openlogreplicator/[OpenLogReplicator].
+{prodname} can ingest change events from Oracle by using the native LogMiner database package, the https://docs.oracle.com/en/database/oracle/oracle-database/19/xstrm/introduction-to-xstream.html[XStream API],
+or https://www.bersler.com/openlogreplicator/[OpenLogReplicator].
 endif::community[]
 ifdef::product[]
-.
+{prodname} can ingest change events from Oracle by using either the native LogMiner database package or the https://docs.oracle.com/en/database/oracle/oracle-database/19/xstrm/introduction-to-xstream.html[XStream API].
+
+[IMPORTANT]
+====
+Use of the {prodname} Oracle connector with XStream is a Developer Preview feature.
+Developer Preview features are not supported by Red{nbsp}Hat in any way and are not functionally complete or production-ready.
+Do not use Developer Preview software for production or business-critical workloads.
+Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
+Customers can use this software to test functionality and provide feedback during the development process.
+This software might not have any documentation, is subject to change or removal at any time, and has received limited testing.
+Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
+
+For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
+====
+endif::product[]
+
+ifdef::product[]
 
 Information and procedures for using a {prodname} Oracle connector are organized as follows:
 
@@ -607,7 +623,10 @@ The message contains a logical representation of the table schema.
       "ssn": 1,
       "redo_thread": 1,
       "user_name": "user",
-      "row_id": "AAASgjAAMAAAACnAAA"
+      "row_id": "AAASgjAAMAAAACnAAA",
+      "commit_ts_ms": 1588252619012,
+      "start_scn": "1513734",
+      "start_ts_ms": 1588252618953
     },
     "ts_ms": 1588252618953, // <1>
     "ts_us": 1588252618953987, // <1>
@@ -886,8 +905,7 @@ However, before you choose a log mining strategy, it's important to consider the
 
 ==== Writing the data dictionary to redo logs
 
-The default mining strategy is called `redo_log_catalog`.
-In this strategy, the database flushes a copy of the data dictionary to the redo logs immediately after each redo log switch.
+The `redo_log_catalog` mining strategy instructs the database to flush a copy of the data dictionary to the redo logs immediately after each redo log switch.
 This is the most reliable strategy for tracking schema changes that are interwoven with data changes, because Oracle LogMiner has a way to interpolate between the starting and ending data dictionary states across a series of change vectors.
 
 However, the `redo_log_catalog` mode is also the most expensive, because it requires several key steps to function.
@@ -902,7 +920,7 @@ If you configure the connector to use the `redo_log_catalog` mode, do not use mu
 
 ==== Using the online catalog directly
 
-The next strategy mode, `online_catalog`, works differently from the `redo_log_catalog` mode.
+The default strategy mode, `online_catalog`, works differently from the `redo_log_catalog` mode.
 When the strategy is set to `online_catalog`, the database never flushes the data dictionary to the redo logs.
 Instead, Oracle LogMiner always uses the most current data dictionary state to perform comparisons.
 By always using the current dictionary, and eliminating flushing to the redo logs, this strategy requires less overhead, and operates more efficiently.
@@ -920,10 +938,9 @@ If the {prodname} connector is configured to use the `online_catalog` mode, and 
 
 Following this procedure helps to ensure that Oracle LogMiner can safely reconstruct the SQL for all data changes.
 
-ifdef::community[]
 ==== Hybrid approach
 
-This is a new, experimental strategy that can be enabled by setting the strategy to `hybrid`.
+You can enable this strategy by setting the value of the xref:oracle-property-log-mining-strategy[`log.mining.strategy`] configuration property to `hybrid`.
 The goal of this strategy is to provide the reliability of the `redo_log_catalog` strategy with the performance and low overhead of the `online_catalog` strategy, without incurring the disadvantages of either strategy.
 
 The `hybrid` strategy works by primarily operating in the `online_catalog` mode, meaning that the {prodname} Oracle connector first delegates event reconstruction to Oracle LogMiner.
@@ -936,7 +953,6 @@ The connector reports a failure only if both Oracle LogMiner and the connector a
 You cannot use the `hybrid` mining strategy if the xref:oracle-property-lob-enabled[`lob.enabled`] property is set to `true`.
 If you require streaming `CLOB`, `BLOB`, or `XML` data, only the `online_catalog` or `redo_log_catalog` strategies can be used.
 ====
-endif::community[]
 
 [[oracle-logminer-query-modes]]
 === Query Modes
@@ -1254,26 +1270,34 @@ In the case of the Oracle connector, the structure includes the following fields
 * The {prodname} version.
 * The connector name.
 * Whether the event is part of an ongoing snapshot or not.
-* The transaction id (not includes for snapshots).
-* The SCN of the change.
-* A timestamp that indicates when the record in the source database changed (for snapshots, the timestamp indicates when the snapshot occurred).
+* The transaction id (not included for snapshots).
+* The following values related to the SCN (system change number) that the database assigns when a change is committed:
+[horizontal]
+`scn`:: The unique identifier that the database uses to track the transaction.
+`start_scn`:: The SCN when the transaction started.
+`start_ts_ms`:: The time when the transaction started.
+`commit_ts_ms`:: The time when the transaction was committed.
+* Timestamps that represent when the connector processed the event, based on the system clock of the JVM running the Kafka Connect task.
+For snapshots, the timestamp indicates when the snapshot occurred. +
+The connector reports the timestamp value with differing precision in the following fields:
+[horizontal]
+`ts_ms`:: Provides the timestamp in milliseconds.
+`ts_us`:: Provides the timestamp in microseconds.
+`ts_ns`:: Provides the timestamp in nanoseconds.
+
 * Username who made the change
 * The ROWID associated with the row
 +
 [TIP]
 ====
 The `commit_scn` field is optional and describes the SCN of the transaction commit that the change event participates within.
-ifdef::community[]
 This field is only present when using the LogMiner connection adapter.
-endif::community[]
 ====
-ifdef::community[]
 +
 [TIP]
 ====
 The `user_name` field is only populated when using the LogMiner connection adapter.
 ====
-endif::community[]
 
 `ts_ms`:: An optional field that, if present, contains the time (based on the system clock in the JVM that runs the Kafka Connect task) at which the connector processed the event.
 
@@ -1430,6 +1454,21 @@ The following example shows the value of a _create_ event value from the `custom
                         "type": "string",
                         "optional": true,
                         "field": "row_id"
+                    },
+                    {
+                        "type": "int64",
+                        "optional": true,
+                        "field": "commit_ts_ms"
+                    },
+                    {
+                        "type": "string",
+                        "optional": true,
+                        "field": "start_scn"
+                    },
+                    {
+                        "type": "int64",
+                        "optional": true,
+                        "field": "start_ts_ms"
                     }
                 ],
                 "optional": false,
@@ -1482,7 +1521,10 @@ The following example shows the value of a _create_ event value from the `custom
             "redo_thread": 1,
             "user_name": "user",
             "snapshot": false,
-            "row_id": "AAASgjAAMAAAACnAAA"
+            "row_id": "AAASgjAAMAAAACnAAA",
+            "commit_ts_ms": 1520085154000,
+            "start_scn": "2122185",
+            "start_ts_ms": 1520085154000
         },
         "op": "c",
         "ts_ms": 1532592105975,
@@ -1551,7 +1593,10 @@ The following example shows an _update_ change event that the connector captures
             "redo_thread": 1,
             "user_name": "user",
             "snapshot": false,
-            "row_id": "AAASgjAAMAAAACnAAA"
+            "row_id": "AAASgjAAMAAAACnAAA",
+            "commit_ts_ms": 152008581100,
+            "start_scn": "2125544",
+            "start_ts_ms": 152008581100
         },
         "op": "u",
         "ts_ms": 1532592713485,
@@ -1618,7 +1663,10 @@ The `schema` portion of the _delete_ event is identical to the `schema` portion 
             "redo_thread": 1,
             "user_name": "user",
             "snapshot": false,
-            "row_id": "AAASgjAAMAAAACnAAA"
+            "row_id": "AAASgjAAMAAAACnAAA",
+            "commit_ts_ms": 1520085153000,
+            "start_scn": "2122184",
+            "start_ts_ms": 1520085153000
         },
         "op": "d",
         "ts_ms": 1532592105960,
@@ -1681,7 +1729,10 @@ The message key is `null` in this case, the message value looks like this:
             "rs_id": "001234.00012345.0124",
             "ssn": 1,
             "redo_thread": 1,
-            "user_name": "user"
+            "user_name": "user",
+            "commit_ts_ms": 1638974538971,
+            "start_scn": "13234396",
+            "start_ts_ms": 1638974527000
         },
         "op": "t", // <2>
         "ts_ms": 1638974558961, // <3>
@@ -1813,22 +1864,6 @@ The following table describes how the connector maps basic character types.
 
 [id="oracle-binary-character-lob-types"]
 === Binary and Character LOB types
-ifdef::community[]
-[NOTE]
-====
-Support for `BLOB`, `CLOB`, and `NCLOB` is currently in incubating state, that is, the exact semantics, configuration options and so forth might change in future revisions, based on feedback we receive.
-Please let us know if you encounter any problems while using these data types.
-====
-endif::community[]
-ifdef::product[]
-[IMPORTANT]
-====
-Use of the `BLOB`, `CLOB`, and `NCLOB` with the {prodname} Oracle connector is a Technology Preview feature only.
-Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
-Red Hat does not recommend using them in production. These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview[https://access.redhat.com/support/offerings/techpreview].
-====
-endif::product[]
 The following table describes how the connector maps binary and character large object (LOB) data types.
 
 .Mappings for Oracle binary and character LOB types
@@ -2187,12 +2222,7 @@ The following table describes how the connector maps ROWID (row address) data ty
 |`ROWID`
 |`STRING`
 |
-ifdef::community[]
 _This data type is not supported when using Oracle XStream._
-endif::community[]
-ifdef::product[]
-n/a
-endif::product[]
 
 |`UROWID`
 |n/a
@@ -2364,6 +2394,7 @@ For details about setting up Oracle for use with the {prodname} connector, see t
 * xref:resizing-oracle-redo-logs-to-accommodate-the-data-dictionary[]
 * xref:creating-an-oracle-user-for-the-debezium-oracle-connector[]
 * xref:running-the-connector-with-an-oracle-standby-database[]
+* xref:using-oracle-xstream-databases-with-debezium[]
 
 endif::product[]
 
@@ -2796,9 +2827,21 @@ And because these operation types very closely resemble `CLOB` operations, the r
 
 [WARNING]
 ====
-When storing strings when `EXTENDED` is enabled that contain apostrophe. (`'`) characters and the byte length does not exceed the legacy maximum lengths.
-In this use case, Oracle LogMiner does not properly escape the single apostrophe characters in the reconstructed SQL, which leads to invalid SQL that cannot be handled by the {prodname} Oracle connector.
-Please see https://issues.redhat.com/browse/DBZ-8034[DBZ-8034] for more details.
+When Oracle is configured to use EXTENDED string sizes, LogMiner sometimes fails to escape single quote characters (`'`) when it reconstructs the SQL for an extended string field.
+This problem can occur if the byte length of the extended string field does not exceed the legacy maximum length.
+As a result, values in these fields can be truncated, resulting in invalid SQL statements, which the Oracle connector is unable to parse. +
+
+To help resolve some instances of the problem, you can configure the connector to relax single-quote detection by setting the following property to `true`:
+
+`internal.log.mining.sql.relaxed.quote.detection` +
+
+ifdef::product[]
+For more information, see the link:{LinkDebeziumReleaseNotes}#debezium-release-notes-tech-preview-oracle-extended-max-string-size-support[{NameDebeziumReleaseNotes}].
+endif::product[]
+ifdef::community[]
+Note that the use of this internal setting is not currently a supported feature. +
+For more information, see https://issues.redhat.com/browse/DBZ-8034[DBZ-8034].
+endif::community[]
 ====
 
 // Type: assembly
@@ -3275,6 +3318,52 @@ endif::community[]
 When connecting to Oracle using mutual TLS authentication (mTLS), this involves both the connector and the database service proving their identities.
 The {prodname} for Oracle connector relies on the Oracle JDBC driver's built-in functionality to support mTLS authentication.
 
+You can use either of the following methods to establish mTLS connections between {prodname} and Oracle:
+
+* xref:using-mtls-secure-connections-java-key-trust-stores[Using Java key and trust stores to configure mTLS connections]
+* xref:using-mtls-secure-connections-oracle-wallet[Using Oracle Wallet to configure mTLS connections]
+
+// Type: procedure
+// ModuleID: oracle-connector-using-java-key-trust-stores-to-configure-mtls
+// Title: Using Java key and trust stores to configure the Oracle connector to use mTLS
+[[using-mtls-secure-connections-java-key-trust-stores]]
+==== Java key/trust stores
+
+.Prerequisites
+* Verify connector can access the configured key and trust store files.
+* Verify that the database TNS (Transparent Network Substrate) listener supports TCPS secure connections.
+
+.Procedure
+* Configure the {prodname} Oracle connector, as illustrated in the following example.
++
+.Example: {prodname} Oracle connector TLS configuration
+[source,json,indent=0]
+----
+{
+  "database.url": "jdbc:oracle:thin@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=<host>)(PORT=<port>))(CONNECT_DATA(SERVICE_NAME=<service>)))",
+  "driver.javax.net.ssl.keyStore": "<path-to-jks-keystore>",
+  "driver.javax.net.ssl.keyStorePassword": "<keystore-password>",
+  "driver.javax.net.ssl.keyStoreType": "JKS",
+  "driver.javax.net.ssl.trustStore": "<path-to-jks-truststore>",
+  "driver.javax.net.ssl.trustStorePassword": "<truststore-password>",
+  "driver.javax.net.ssl.trustStoreType": "JKS"
+}
+----
++
+
+[NOTE]
+====
+For {prodname} to use TLS encryption to communicate with Oracle, requires a TCPS connection with the server.
+To establish a TCPS connection, you must configure the connector to use the `database.url` property, and not the `database.host` property.
+Unlike the `database.host` property, the `database.url` property permits you to define an Oracle TNS (Transparent Network Substrate) connection string that explicitly requires use of the `TCPS` protocol.
+====
+
+// Type: procedure
+// ModuleID: oracle-connector-using-oracle-wallet-to-configure-mtls
+// Title: Using Oracle wallet to configure the connector to use mTLS
+[[using-mtls-secure-connections-oracle-wallet]]
+==== Oracle Wallet
+
 .Prerequisites
 * Verify Oracle Wallet is configured on the Oracle database server with your database administrators
 * Locate the `oraclepki.jar` inside the Oracle JDBC driver archive
@@ -3427,8 +3516,9 @@ You can set the following values:
 `logminer` (default):: The connector uses the native Oracle LogMiner API.
 ifdef::community[]
 `olr`:: The connector uses OpenLogReplicator.
-`xstream`:: The connector uses the Oracle XStreams API.
 endif::community[]
+`xstream`:: The connector uses the Oracle XStream API.
+
 |[[oracle-property-snapshot-mode]]<<oracle-property-snapshot-mode, `+snapshot.mode+`>>
 |_initial_
 |Specifies the mode that the connector uses to take snapshots of a captured table.
@@ -3469,7 +3559,7 @@ ifdef::community[]
 endif::community[]
 
 ifdef::community[]
-`custom`:: The connector performs a snapshot according to the implementation specified by the xref:postgresql-property-snapshot-mode-custom-name[`snapshot.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+`custom`:: The connector performs a snapshot according to the implementation specified by the xref:oracle-property-snapshot-mode-custom-name[`snapshot.mode.custom.name`] property, which defines a custom implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
 endif::community[]
 
 For more information, see the xref:oracle-connector-snapshot-mode-options[table of `snapshot.mode` options].
@@ -3563,12 +3653,7 @@ In a multitenant container database (CDB) environment, the regular expression mu
 
 To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name. +
-ifdef::product[]
-Only POSIX regular expressions are valid.
-endif::product[]
-ifdef::community[]
 In environments that use the LogMiner implementation, you must use POSIX regular expressions only.
-endif::community[]
 
 A snapshot can only include tables that are named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
 
@@ -3610,12 +3695,7 @@ In the resulting snapshot, the connector includes only the records for which `de
 |[[oracle-property-schema-include-list]]<<oracle-property-schema-include-list, `+schema.include.list+`>>
 |No default
 |An optional, comma-separated list of regular expressions that match names of schemas for which you *want* to capture changes.
-ifdef::product[]
-Only POSIX regular expressions are valid.
-endif::product[]
-ifdef::community[]
 In environments that use the LogMiner implementation, you must use POSIX regular expressions only.
-endif::community[]
 Any schema name not included in `schema.include.list` is excluded from having its changes captured.
 By default, all non-system schemas have their changes captured. +
 
@@ -3630,12 +3710,7 @@ If you include this property in the configuration, do not also set the `schema.e
 |[[oracle-property-schema-exclude-list]]<<oracle-property-schema-exclude-list, `+schema.exclude.list+`>>
 |No default
 |An optional, comma-separated list of regular expressions that match names of schemas for which you *do not* want to capture changes.
-ifdef::product[]
-Only POSIX regular expressions are valid.
-endif::product[]
-ifdef::community[]
 In environments that use the LogMiner implementation, you must use POSIX regular expressions only. +
-endif::community[]
 Any schema whose name is not included in `schema.exclude.list` has its changes captured, with the exception of system schemas. +
 
 To match the name of a schema, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
@@ -3645,12 +3720,7 @@ If you include this property in the configuration, do not set the`schema.include
 |[[oracle-property-table-include-list]]<<oracle-property-table-include-list, `+table.include.list+`>>
 |No default
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be captured.
-ifdef::product[]
-Only POSIX regular expressions are valid.
-endif::product[]
-ifdef::community[]
 If you use the LogMiner implementation, use only POSIX regular expressions with this property.
-endif::community[]
 When this property is set, the connector captures changes only from the specified tables.
 Each table identifier uses the following format: +
  +
@@ -3665,12 +3735,7 @@ If you include this property in the configuration, do not also set the `table.ex
 |[[oracle-property-table-exclude-list]]<<oracle-property-table-exclude-list, `+table.exclude.list+`>>
 |No default
 |An optional comma-separated list of regular expressions that match fully-qualified table identifiers for tables to be excluded from monitoring.
-ifdef::product[]
-Only POSIX regular expressions are valid.
-endif::product[]
-ifdef::community[]
 If you use the LogMiner implementation, use only POSIX regular expressions with this property.
-endif::community[]
 The connector captures change events from any table that is not specified in the exclude list.
 Specify the identifier for each table using the following format: +
  +
@@ -3683,12 +3748,7 @@ If you include this property in the configuration, do not also set the `table.in
 |[[oracle-property-column-include-list]]<<oracle-property-column-include-list, `+column.include.list+`>>
 |No default
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that want to include in the change event message values.
-ifdef::product[]
-Only POSIX regular expressions are valid.
-endif::product[]
-ifdef::community[]
 In environments that use the LogMiner implementation, you must use POSIX regular expressions only.
-endif::community[]
 Fully-qualified names for columns use the following format: +
  +
 `_<Schema_name>.<table_name>.<column_name>_` +
@@ -3702,12 +3762,7 @@ If you include this property in the configuration, do not also set the `column.e
 |[[oracle-property-column-exclude-list]]<<oracle-property-column-exclude-list, `+column.exclude.list+`>>
 |No default
 |An optional, comma-separated list of regular expressions that match the fully-qualified names of columns that you want to exclude from change event message values.
-ifdef::product[]
-Only POSIX regular expressions are valid.
-endif::product[]
-ifdef::community[]
 In environments that use the LogMiner implementation, you must use POSIX regular expressions only.
-endif::community[]
 Fully-qualified column names use the following format: +
  +
 `_<schema_name>.<table_name>.<column_name>_` +
@@ -4016,7 +4071,7 @@ ifdef::community[]
 `infinispan_embedded` - This option uses an embedded Infinispan cache to buffer transaction data and persist it to disk. +
  +
 `infinispan_remote` - This option uses a remote Infinispan cluster to buffer transaction data and persist it to disk.
-
+endif::community[]
 
 |[[oracle-property-log-mining-buffer-transaction-events-threshold]]<<oracle-property-log-mining-buffer-transaction-events-threshold, `+log.mining.buffer.transaction.events.threshold+`>>
 |`0`
@@ -4024,6 +4079,7 @@ ifdef::community[]
 Transactions with event counts that exceed this threshold not be emitted and will be abandoned.
 The default behavior is there is no transaction event threshold.
 
+ifdef::community[]
 |[[oracle-property-log-mining-buffer-infinispan-cache-global]]<<oracle-property-log-mining-buffer-infinispan-cache-global, `+log.mining.buffer.infinispan.cache.global+`>>
 |No default
 |The XML configuration for the Infinispan global configuration.
@@ -4174,8 +4230,11 @@ However, if connectors encounter table lock contention errors, use this property
 |[[oracle-property-log-mining-include-redo-sql]]<<oracle-property-log-mining-include-redo-sql, `+log.mining.include.redo.sql+`>>
 |`false`
 |Specifies whether the redo log constructed SQL statement is included in `source.redo_sql` field.
+ifdef::product[]
+This configuration is ignored when using the XStream adapter.
+endif::product[]
 ifdef::community[]
-This configuration is ignored when using XStream or OpenLogReplicator adapters.
+This configuration is ignored when using the XStream or OpenLogReplicator adapters.
 endif::community[]
 
 |[[oracle-property-lob-enabled]]<<oracle-property-lob-enabled, `+lob.enabled+`>>
@@ -4185,10 +4244,6 @@ endif::community[]
 By default, change events have large object columns, but the columns contain no values.
 There is a certain amount of overhead in processing and managing large object column types and payloads.
 To capture large object values and serialized them in change events, set this option to `true`.
-
-ifdef::product[]
-NOTE: Use of large object data types is a Technology Preview feature.
-endif::product[]
 
 |[[oracle-property-unavailable-value-placeholder]]<<oracle-property-unavailable-value-placeholder, `+unavailable.value.placeholder+`>>
 |`__debezium_unavailable_value`
@@ -4317,19 +4372,16 @@ For example, if the topic prefix is `fulfillment`, the default topic name is `fu
 |Specifies the number of threads that the connector uses when performing an initial snapshot.
 To enable parallel initial snapshots, set the property to a value greater than 1.
 In a parallel initial snapshot, the connector processes multiple tables concurrently.
-ifdef::community[]
-This feature is incubating.
-endif::community[]
-ifdef::product[]
-[IMPORTANT]
+ +
+[NOTE]
 ====
-Parallel initial snapshots is a Technology Preview feature only.
-Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
-Red Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+When you enable parallel initial snapshots, the threads that perform each table snapshot can require varying times to complete their work.
+If a snapshot for one table requires significantly more time to complete than the snapshots for other tables, threads that have completed their work sit idle.
+In some environments, a network device such as a load balancer or firewall, terminates connections that remain idle for an extended interval.
+After the snapshot completes, the connector is unable to close the connection, resulting in an exception, and an incomplete snapshot, even in cases where the connector successfully transmitted all snapshot data. +
+ +
+If you experience this problem, revert the value of `snapshot.max.threads` to `1`, and retry the snapshot.
 ====
-endif::product[]
 
 |[[oracle-property-snapshot-database-errors-max-retries]]<<oracle-property-snapshot-database-errors-max-retries, `snapshot.database.errors.max.retries`>>
 |`0`
@@ -4606,11 +4658,11 @@ For more information, see xref:oracle-property-log-mining-transaction-retention-
 |[[oracle-streaming-metrics-number-of-committed-transactions]]<<oracle-streaming-metrics-number-of-committed-transactions, `+NumberOfCommittedTransactions+`>>
 |`long`
 |The number of committed transactions in the transaction buffer.
-ifdef::community[]
+
 |[[oracle-streaming-metrics-number-of-oversized-transactions]]<<oracle-streaming-metrics-number-of-oversized-transactions, `+NumberOfOversizedTransactions+`>>
 |`long`
 |The number of transactions that were discarded because their size exceeded <<oracle-property-log-mining-buffer-transaction-events-threshold, `log.mining.buffer.transaction.events.threshold`>>.
-endif::community[]
+
 |[[oracle-streaming-metrics-number-of-rolledback-transactions]]<<oracle-streaming-metrics-number-of-rolledback-transactions, `+NumberOfRolledBackTransactions+`>>
 |`long`
 |The number of rolled back transactions in the transaction buffer.
@@ -4705,6 +4757,7 @@ This should always be `0`; however when allowing unparsable DDL to be skipped, t
 
 [[oracle-monitoring-schema-history]]
 
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-schema-history]
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
 
 ifdef::community[]
@@ -5182,19 +5235,40 @@ Consequently, in environments that use the OpenLogReplicator adapter, the {prodn
 === OpenLogReplicator XML support
 
 To capture XML columns using {prodname} Oracle connector with OpenLogReplicator, OpenLogReplicator should be 1.5.0 or later.
+endif::community[]
 
+// Type: assembly
+// ModuleID: using-oracle-xstream-databases-with-debezium
+// Title: Using Oracle XStream databases with {prodname} (Developer Preview)
 [[oracle-xstreams-support]]
-== XStreams support
+== XStream support
 
 The {prodname} Oracle connector by default ingests changes using native Oracle LogMiner.
 The connector can be toggled to use Oracle XStream instead.
 To configure the connector to use Oracle XStream, you must apply specific database and connector configurations that differ from those that you use with LogMiner.
 
+ifdef::product[]
+[IMPORTANT]
+====
+Use of the {prodname} Oracle connector with XStream is a Developer Preview feature.
+Developer Preview features are not supported by Red{nbsp}Hat in any way and are not functionally complete or production-ready.
+Do not use Developer Preview software for production or business-critical workloads.
+Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
+Customers can use this software to test functionality and provide feedback during the development process.
+This software might not have any documentation, is subject to change or removal at any time, and has received limited testing.
+Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
+
+For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
+====
+endif::product[]
 .Prerequisites
 
 * To use the XStream API, you must have a license for the GoldenGate product.
 Installing GoldenGate is not required.
 
+// Type: procedure
+// ModuleID: preparing-oracle-xstream-databases-for-use-with-debezium
+// Title: Preparing Oracle XStream databases for use with {prodname}
 === Preparing the Database
 
 .Configuration needed for Oracle XStream
@@ -5224,14 +5298,20 @@ The following illustrates how to configure this on a specific table, which is th
 ALTER TABLE inventory.customers ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
 ----
 
+// Type: procedure
+// ModuleID: creating-xstream-users-for-the-debezium-oracle-connector
+// Title: Creating XStream users for the {prodname} Oracle connector
+[id="creating-xstream-users-for-the-connector"]
 === Creating XStream users for the connector
 
 The {prodname} Oracle connector requires that users accounts be set up with specific permissions so that the connector can capture change events.
-The following briefly describes these user configurations using a multi-tenant database model.
+The following examples provide information about how to create user configurations in a multi-tenant database model.
 
-
+// Type: procedure
+// ModuleID: creating-an-xstream-administrator-user-for-the-debezium-oracle-connector
+// Title: Creating an XStream administrator for the {prodname} Oracle connector
 [[oracle-create-users-xstream]]
-.Creating an XStream Administrator user
+==== Creating an XStream Administrator user
 [source,indent=0]
 ----
 sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
@@ -5265,7 +5345,10 @@ sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
   exit;
 ----
 
-.Creating the connector's XStream user
+// Type: procedure
+// ModuleID: creating-an-xstream-user-for-the-debezium-oracle-connector
+// Title: Creating an XStream user for the {prodname} Oracle connector
+==== Creating the connector's XStream user
 [source,indent=0]
 ----
 sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
@@ -5293,10 +5376,15 @@ sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
   exit;
 ----
 
+// Type: procedure
+// ModuleID: creating-an-xstream-outbound-server
+// Title: Creating an XStream outbound server
 === Create an XStream Outbound Server
 
-Create an https://docs.oracle.com/cd/E11882_01/server.112/e16545/xstrm_cncpt.htm#XSTRM1088[XStream Outbound server]
+Create an https://docs.oracle.com/en/database/oracle/oracle-database/19/xstrm/xstream-out-concepts.html[XStream Outbound server].
+ifdef::community[]
 (given the right privileges, this might be done automatically by the connector going forward, see {jira-url}/browse/DBZ-721[DBZ-721]):
+endif::community[]
 
 .Create an XStream Outbound Server
 [source,indent=0]
@@ -5319,8 +5407,7 @@ exit;
 
 [NOTE]
 ====
-When setting up an XStream Outbound Server to capture changes from a pluggable database,
-the `source_container_name` parameter should be provided specifying the pluggable database name.
+When you set up an XStream Outbound Server to capture changes from a pluggable database, specify the pluggable database name as value for the `source_container_name` parameter.
 ====
 
 .Configure the XStream user account to connect to the XStream Outbound Server
@@ -5342,11 +5429,14 @@ A single XStream Outbound server cannot be shared by multiple {prodname} Oracle 
 Each connector requires a unique XStream Outbound connector to be configured.
 ====
 
+// Type: procedure
+// ModuleID: configuring-debezium-to-use-the-xstream-adapter
+// Title: Configuring {prodname} to use the XStream adapter
 [[selecting-the-xstream-adapter]]
 === Configuring the XStream adapter
 
 By default, {prodname} uses Oracle LogMiner to ingest change events from Oracle.
-You can adjust the connector configuration to enable the connector to use the Oracle XStreams adapter.
+You can adjust the connector configuration to enable the connector to use the Oracle XStream adapter.
 
 The following configuration example adds the properties `database.connection.adapter` and `database.out.server.name` to enable the connector to use the XStream API implementation.
 
@@ -5371,7 +5461,7 @@ The following configuration example adds the properties `database.connection.ada
     }
 }
 ----
-
+// Type: procedure
 [id="obtaining-oracle-jdbc-driver-and-xstreams-api-files"]
 === Obtaining the Oracle JDBC driver and XStream API files
 
@@ -5416,10 +5506,11 @@ instantclient_21_1/
 LD_LIBRARY_PATH=/path/to/instant_client/
 ----
 
+// Type: reference
 [[oracle-xstreams-connector-properties]]
 === XStream connector properties
 
-The following configuration properties are _required_ when using XStreams unless a default value is available.
+The following configuration properties are _required_ when using XStream unless a default value is available.
 
 [cols="30%a,25%a,45%a"]
 |===
@@ -5433,6 +5524,8 @@ The following configuration properties are _required_ when using XStreams unless
 
 |===
 
+// Title: Oracle Xstream and the `DBMS_LOB` package
+// Type: concept
 [[oracle-xstreams-dbms-lob-package]]
 === XStream and DBMS_LOB
 
@@ -5440,10 +5533,10 @@ Oracle provides a database package called `DBMS_LOB` that consists of a collecti
 Most of these programs manipulate the LOB column in totality, however, one program, `WRITEAPPEND`, is capable of manipulating a subset of the LOB data buffer.
 
 When using XStream, `WRITEAPPEND` emits a logical change record (LCR) event for each invocation of the program.
-These LCR events are not combined into a single change event like they are when using the Oracle LogMiner adapter, and so consumers of the topic should be prepared to receive events with partial column values.
+These LCR events are not combined into a single change event as they are when using the Oracle LogMiner adapter.
+As a result, consumers of the topic might receive events with partial column values.
+ifdef::community[]
 This diverged behavior is captured in https://issues.redhat.com/browse/DBZ-4741[DBZ-4741] and will be addressed in a future release.
-
-
 endif::community[]
 
 // Type: concept
@@ -5617,13 +5710,20 @@ As a workaround, the include/exclude configuration options can be adjusted to pr
 
 
 *How to solve SAX feature external-general-entities not supported*::
-Debezium 2.4 introduced support for Oracle's `XMLTYPE` column type and to support this feature, the Oracle `xdb` and `xmlparserv2` dependencies are required. +
+ifdef::community[]
+Debezium 2.4 introduced support for Oracle's `XMLTYPE` column type.
+endif::community[]
+ifdef::product[]
+Use of the `XMLTYPE` with the {prodname} Oracle connector is available as a Technology Preview feature.
+endif::product[]
+To use this feature, the Oracle `xdb` and `xmlparserv2` dependencies are required. +
  +
 Oracle's `xmlparserv2` dependency implements a SAX-based parser and if the runtime finds an uses this implementation rather than the other on the classpath, this error will occur.
 In order to influence specifically which SAX implementation is used generally, the JVM will need to be started with a specific argument. +
  +
 When the following JVM argument is provided, the Oracle connector will start successfully without this error.
-[source,bash]
++
+[%nowrap,bash]
 ----
 -Djavax.xml.parsers.SAXParserFactory=com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl
 ----

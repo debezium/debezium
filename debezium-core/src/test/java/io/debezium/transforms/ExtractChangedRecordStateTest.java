@@ -100,7 +100,9 @@ public class ExtractChangedRecordStateTest extends AbstractExtractStateTest {
 
             final SourceRecord createdRecord = createCreateRecord();
             final SourceRecord transformRecord = transform.apply(createdRecord);
-            assertThat(transformRecord.headers()).isEmpty();
+            assertThat(transformRecord.headers().size()).isEqualTo(2);
+            assertThat((List<?>) getSourceRecordHeader(transformRecord, "Changed").value()).isEmpty();
+            assertThat((List<?>) getSourceRecordHeader(transformRecord, "Unchanged").value()).isEmpty();
         }
     }
 

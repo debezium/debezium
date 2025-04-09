@@ -49,14 +49,13 @@ public class CloudEventsConverterIT extends AbstractCloudEventsConverterTest<Pos
     private static final String SETUP_OUTBOX_SCHEMA = "DROP SCHEMA IF EXISTS outboxsmtit CASCADE;" +
             "CREATE SCHEMA outboxsmtit;";
 
-    private static final String SETUP_OUTBOX_TABLE = "CREATE TABLE outboxsmtit.outbox " +
-            "(" +
-            "  id            uuid         not null" +
-            "    constraint outbox_pk primary key," +
-            "  aggregatetype varchar(255) not null," +
-            "  aggregateid   varchar(255) not null," +
-            "  event_type    varchar(255) not null," +
-            "  payload       jsonb" +
+    private static final String SETUP_OUTBOX_TABLE = "CREATE TABLE outboxsmtit.outbox (" +
+            "  id                   uuid         not null   constraint outbox_pk primary key," +
+            "  aggregatetype        varchar(255) not null," +
+            "  aggregateid          varchar(255) not null," +
+            "  event_type           varchar(255) not null," +
+            "  tracingspancontext   varchar(255)," +
+            "  payload              jsonb" +
             ");";
 
     private static final String INSERT_STMT = "INSERT INTO s1.a (aa) VALUES (1);";
@@ -134,6 +133,7 @@ public class CloudEventsConverterIT extends AbstractCloudEventsConverterTest<Pos
                                           String eventType,
                                           String aggregateType,
                                           String aggregateId,
+                                          String tracingSpanContext,
                                           String payloadJson,
                                           String additional) {
         StringBuilder insert = new StringBuilder();
@@ -143,6 +143,12 @@ public class CloudEventsConverterIT extends AbstractCloudEventsConverterTest<Pos
         insert.append(", '").append(aggregateId).append("'");
         insert.append(", '").append(eventType).append("'");
 
+        if (tracingSpanContext == null) {
+            insert.append(", null");
+        }
+        else {
+            insert.append(", '").append(tracingSpanContext).append("'");
+        }
         if (payloadJson == null) {
             insert.append(", null::jsonb");
         }

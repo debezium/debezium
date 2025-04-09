@@ -94,7 +94,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
-                .with("database.connectionTimeZone", DATABASE.timezone())
+                .with("database.connectionTimeZone", DATABASE.getTimezone())
                 .build();
         // Start the connector ...
         start(getConnectorClass(), config);
@@ -210,7 +210,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
 
                 // '2014-09-08 17:51:04.777'
                 String c4 = after.getString("c4"); // timestamp
-                assertTimestamp(c4);
+                assertTimestamp(DATABASE.getTimezone(), c4);
             }
             else if (record.topic().endsWith("dbz_114_zerovaluetest")) {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
@@ -449,7 +449,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER)
                 .with(BinlogConnectorConfig.TIME_PRECISION_MODE, TemporalPrecisionMode.CONNECT)
-                .with("database.connectionTimeZone", DATABASE.timezone())
+                .with("database.connectionTimeZone", DATABASE.getTimezone())
                 .build();
         // Start the connector ...
         start(getConnectorClass(), config);
@@ -554,7 +554,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
 
                 // '2014-09-08 17:51:04.777'
                 String c4 = after.getString("c4"); // MySQL timestamp, so always ZonedTimestamp
-                assertTimestamp(c4);
+                assertTimestamp(DATABASE.getTimezone(), c4);
             }
             else if (record.topic().endsWith("dbz_114_zerovaluetest")) {
                 Struct after = value.getStruct(Envelope.FieldName.AFTER);
@@ -789,7 +789,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
 
                 OffsetDateTime expected = ZonedDateTime.of(
                         LocalDateTime.of(2014, 9, 8, 17, 51, 4, (int) TimeUnit.MILLISECONDS.toNanos(nanos)),
-                        UniqueDatabase.TIMEZONE)
+                        DATABASE.getTimezone())
                         .withZoneSameInstant(ZoneOffset.UTC)
                         .toOffsetDateTime();
 
@@ -1068,7 +1068,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
 
                     // '2014-09-08 17:51:04.777'
                     String c4 = after.getString("c4"); // timestamp
-                    assertTimestamp(c4);
+                    assertTimestamp(DATABASE.getTimezone(), c4);
                 }
             });
         }
@@ -1198,12 +1198,13 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
         });
     }
 
-    private void assertTimestamp(String c4) {
+    private void assertTimestamp(ZoneId timezoneId, String c4) {
         // '2014-09-08 17:51:04.777'
         // MySQL container is in UTC and the test time is during summer time period
         String expectedValue = isMariaDb() ? "2014-09-08T17:51:04.770" : "2014-09-08T17:51:04.780";
+
         ZonedDateTime expectedTimestamp = ZonedDateTime.ofInstant(
-                LocalDateTime.parse(expectedValue).atZone(ZoneId.of("US/Samoa")).toInstant(),
+                LocalDateTime.parse(expectedValue).atZone(timezoneId).toInstant(),
                 ZoneId.systemDefault());
         ZoneId defaultZoneId = ZoneId.systemDefault();
         ZonedDateTime c4DateTime = ZonedDateTime.parse(c4, ZonedTimestamp.FORMATTER).withZoneSameInstant(defaultZoneId);

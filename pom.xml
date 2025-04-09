@@ -10,7 +10,7 @@
 
     <groupId>io.debezium</groupId>
     <artifactId>debezium-build-parent</artifactId>
-    <version>3.1.0-SNAPSHOT</version>
+    <version>3.2.0-SNAPSHOT</version>
     <name>Debezium Build Aggregator</name>
     <description>Debezium is an open source change data capture platform</description>
     <packaging>pom</packaging>
@@ -71,7 +71,7 @@
         <maven.compiler.release>${debezium.java.connector.target}</maven.compiler.release>
         <maven.compiler.testRelease>${debezium.java.connector.target}</maven.compiler.testRelease>
 
-        <!-- Enforce JDK 11 for building (handled via JBoss parent POM)-->
+        <!-- Minimum JDK version required for building the project -->
         <jdk.min.version>${debezium.java.source}</jdk.min.version>
 
         <!-- Maven Plugins -->
@@ -90,7 +90,7 @@
         <version.staging.plugin>1.6.12</version.staging.plugin>
         <version.protoc.maven.plugin>3.8.0</version.protoc.maven.plugin>
         <version.javadoc.plugin>3.4.0</version.javadoc.plugin>
-        <version.code.formatter>2.20.0</version.code.formatter>
+        <version.code.formatter>2.26.0</version.code.formatter>
         <version.surefire.plugin>3.1.2</version.surefire.plugin>
         <version.checkstyle.plugin>3.1.1</version.checkstyle.plugin>
         <version.release.plugin>2.5.3</version.release.plugin>
@@ -156,7 +156,7 @@
         <version.mysql.percona.server>8.0</version.mysql.percona.server>
         <version.mongo.server>6.0</version.mongo.server>
         <version.cassandra3>3.11.12</version.cassandra3>
-        <version.cassandra4>4.0.2</version.cassandra4>
+        <version.cassandra4>4.1.7</version.cassandra4>
         <version.cassandra5>5.0.2</version.cassandra5>
 
         <!-- Required in protoc plug-in config, too; can't be in BOM therefore -->
@@ -174,7 +174,13 @@
         <version.jaxb.implementation>2.3.1</version.jaxb.implementation>
 
         <!-- RocketMQ version for RocketMQ storage and Server sink -->
-        <version.rocketmq>5.1.4</version.rocketmq>
+        <version.rocketmq>5.2.0</version.rocketmq>
+
+        <!-- OpenTelemetry version to use for the attached test agent-->
+        <version.opentelemetry.testing>2.10.0</version.opentelemetry.testing>
+
+        <!-- Testing -->
+        <opentelemetry.agent.for.testing.artifact.relative.path>/io/opentelemetry/javaagent/opentelemetry-agent-for-testing/${version.opentelemetry.testing}-alpha/opentelemetry-agent-for-testing-${version.opentelemetry.testing}-alpha.jar</opentelemetry.agent.for.testing.artifact.relative.path>
     </properties>
 
     <modules>
@@ -209,6 +215,7 @@
         <module>debezium-storage</module>
         <module>debezium-interceptor</module>
         <module>debezium-sink</module>
+        <module>debezium-ai</module>
     </modules>
 
     <distributionManagement>

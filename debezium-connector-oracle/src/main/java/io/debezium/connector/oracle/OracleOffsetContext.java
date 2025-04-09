@@ -237,6 +237,10 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         return sourceInfo.getCommitScn();
     }
 
+    public Instant getCommitTime() {
+        return sourceInfo.getCommitTime();
+    }
+
     public Scn getEventScn() {
         return sourceInfo.getEventScn();
     }
@@ -291,6 +295,18 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     public void setSsn(long ssn) {
         sourceInfo.setSsn(ssn);
+    }
+
+    public void setStartScn(Scn startScn) {
+        sourceInfo.setStartScn(startScn);
+    }
+
+    public void setStartTime(Instant startTime) {
+        sourceInfo.setStartTime(startTime);
+    }
+
+    public void setCommitTime(Instant commitTime) {
+        sourceInfo.setCommitTime(commitTime);
     }
 
     public String getRedoSql() {

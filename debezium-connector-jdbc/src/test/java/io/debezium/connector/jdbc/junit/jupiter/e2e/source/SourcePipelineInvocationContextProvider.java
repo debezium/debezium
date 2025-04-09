@@ -222,16 +222,23 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
 
     private List<TemporalPrecisionMode> getTemporalPrecisionModes(Method method, SourceType sourceType) {
         if (isAnyAnnotationPresent(method, WithTemporalPrecisionMode.class)) {
+            final WithTemporalPrecisionMode annotation = method.getAnnotation(WithTemporalPrecisionMode.class);
+            final TemporalPrecisionMode[] includeList = annotation.include();
+            final TemporalPrecisionMode[] excludeList = annotation.exclude();
+            if (includeList.length > 0 && excludeList.length > 0) {
+                throw new IllegalStateException("Test '" + method.getName() +
+                        "' should only specify precision mode include or exclude but not both.");
+            }
             final List<TemporalPrecisionMode> result = new ArrayList<>();
             for (TemporalPrecisionMode temporalPrecisionMode : TemporalPrecisionMode.values()) {
-                if (TemporalPrecisionMode.ADAPTIVE == temporalPrecisionMode && SourceType.MYSQL == sourceType) {
-                    // MySQL explicitly prohibits the use of adaptive so we only allow the other two in the matrix.
+                if (includeList.length > 0 && Arrays.stream(includeList).noneMatch(p -> p == temporalPrecisionMode)) {
                     continue;
                 }
-                if (TemporalPrecisionMode.ISOSTRING == temporalPrecisionMode) {
-                    // Tests currently are not designed to support ISOSTRING as it changes the target
-                    // column type expectations for the tests, using text-based column types rather
-                    // than expected temporal types like DATE, TIME, etc.
+                else if (excludeList.length > 0 && Arrays.stream(excludeList).anyMatch(p -> p == temporalPrecisionMode)) {
+                    continue;
+                }
+                if (TemporalPrecisionMode.ADAPTIVE == temporalPrecisionMode && SourceType.MYSQL == sourceType) {
+                    // MySQL explicitly prohibits the use of adaptive so we only allow the other two in the matrix.
                     continue;
                 }
                 result.add(temporalPrecisionMode);

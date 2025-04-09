@@ -56,6 +56,7 @@ import io.debezium.time.Timestamp;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.HexConverter;
+import io.debezium.util.Loggings;
 import io.debezium.util.NumberConversions;
 
 /**
@@ -1408,12 +1409,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
             final Object schemaDefault = fieldDefn.schema().defaultValue();
             return schemaDefault != null ? schemaDefault : fallback;
         }
-        logger.trace("Value from data object: *** {} ***", data);
+        Loggings.logTraceAndTraceRecord(logger, data, "Value from data object");
 
         final ResultReceiver r = ResultReceiver.create();
         callback.convert(r);
         logger.trace("Callback is: {}", callback);
-        logger.trace("Value from ResultReceiver: {}", r);
+        Loggings.logTraceAndTraceRecord(logger, r, "Value from ResultReceiver");
         return r.hasReceived() ? r.get() : handleUnknownData(column, fieldDefn, data);
     }
 

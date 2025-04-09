@@ -2078,7 +2078,7 @@ The SQL Server connector can capture changes from an Always On read-only replica
 .Prerequisites
 * Change data capture is configured and enabled on the primary node.
 SQL Server does not support CDC directly on replicas.
-* The configuration option `database.applicationIntent` is set to `ReadOnly`.
+* The configuration option `driver.applicationIntent` is set to `ReadOnly`.
 This is required by SQL Server.
 When {prodname} detects this configuration option, it responds by taking the following actions:
 
@@ -3046,8 +3046,13 @@ For `read_uncommitted` there are no data consistency guarantees at all (some dat
 `skip` will cause the problematic event to be skipped.
 
 |[[sqlserver-property-poll-interval-ms]]<<sqlserver-property-poll-interval-ms, `+poll.interval.ms+`>>
-|`500`
-|Positive integer value that specifies the number of milliseconds the connector should wait during each iteration for new change events to appear. Defaults to 500 milliseconds, or 0.5 second.
+|`500` (0.5 seconds)
+|Positive integer value that specifies the number of milliseconds that the connector waits before it checks the database for new change events. +
+ +
+The value that you specify influences the behavior of xref:sqlserver-property-heartbeat-interval-ms[`heartbeat.interval.ms`].
+The connector can emit heartbeat messages only during the specified polling cycle. +
+
+To prevent this setting from delaying heartbeat emissions, set it to a value that is less than or equal to the value of `heartbeat.interval.ms`.
 
 |[[sqlserver-property-max-queue-size]]<<sqlserver-property-max-queue-size, `+max.queue.size+`>>
 |`8192`
@@ -3072,21 +3077,32 @@ For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000
 
 |[[sqlserver-property-heartbeat-interval-ms]]<<sqlserver-property-heartbeat-interval-ms, `+heartbeat.interval.ms+`>>
 |`0`
-|Controls how frequently heartbeat messages are sent. +
-This property contains an interval in milliseconds that defines how frequently the connector sends messages to a heartbeat topic.
-The property can be used to confirm whether the connector is still receiving change events from the database.
-You also should leverage heartbeat messages in cases where only records in non-captured tables are changed for a longer period of time.
-In such situation the connector would proceed to read the log from the database but never emit any change messages into Kafka,
-which in turn means that no offset updates are committed to Kafka.
-This may result in more change events to be re-sent after a connector restart.
-Set this parameter to `0` to not send heartbeat messages at all. +
-Disabled by default.
+|Specifies an interval in milliseconds that determines how frequently the connector sends messages to a Kafka heartbeat topic, regardless of whether changes occur in the database. +
+By default, the connector does not send heartbeat messages. +
+ +
+Setting this property can help to confirm whether the connector is still receiving change events from the database.
+This can be especially important in databases where captured tables remain unchanged for long periods.
+When a database experiences frequent long intervals during which no changes occur in captured tables, although the connector continues to read from the transaction log as usual, it only rarely commits offset values to Kafka.
+As a result, after a connector restart, because the offset value is stale, the connector must send a high number of change events. +
+ +
+By contrast, when you configure the connector to send regular heartbeat messages, it can update the offset in Kafka more frequently.
+Because the offset values in Kafka remain current, fewer change events must be re-sent after a connector restarts.
+
+[NOTE]
+====
+Heartbeats are only emitted during polling cycles.
+That is, in a {prodname} environment, the actual interval between sending heartbeat messages is jointly controlled by the settings of the `heartbeat.interval.ms` and xref:sqlserver-property-poll-interval-ms[`poll.interval.ms`] properties.
+The actual frequency for sending heartbeat messages is based on the lower of the two values.
+To prevent delays in sending heartbeat messages, reducing their effectiveness, set this property to a value that is greater than or equal to the value of `poll.interval.ms`.
+For example, if you set `poll.interval.ms` to `100`, set `heartbeat.interval.ms` to `5000`.
+====
 
 |[[sqlserver-property-heartbeat-action-query]]<<sqlserver-property-heartbeat-action-query, `+heartbeat.action.query+`>>
 |No default
 |Specifies a query that the connector executes on the source database when the connector sends a heartbeat message. +
  +
-This is useful for keeping offsets from becoming stale when capturing changes from a low-traffic database. Create a heartbeat table in the low-traffic database, and set this property to a statement that inserts records into that table, for example:  +
+This is useful for keeping offsets from becoming stale when capturing changes from a low-traffic database.
+Create a heartbeat table in the low-traffic database, and set this property to a statement that inserts records into that table, for example:  +
  +
 `INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat')` +
  +
@@ -3278,19 +3294,16 @@ For more information, see xref:sqlserver-transaction-metadata[Transaction Metada
 |Specifies the number of threads that the connector uses when performing an initial snapshot.
 To enable parallel initial snapshots, set the property to a value greater than 1.
 In a parallel initial snapshot, the connector processes multiple tables concurrently.
-ifdef::community[]
-This feature is incubating.
-endif::community[]
-ifdef::product[]
-[IMPORTANT]
+ +
+[NOTE]
 ====
-Parallel initial snapshots is a Technology Preview feature only.
-Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
-Red Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+When you enable parallel initial snapshots, the threads that perform each table snapshot can require varying times to complete their work.
+If a snapshot for one table requires significantly more time to complete than the snapshots for other tables, threads that have completed their work sit idle.
+In some environments, a network device such as a load balancer or firewall, terminates connections that remain idle for an extended interval.
+After the snapshot completes, the connector is unable to close the connection, resulting in an exception, and an incomplete snapshot, even in cases where the connector successfully transmitted all snapshot data. +
+ +
+If you experience this problem, revert the value of `snapshot.max.threads` to `1`, and retry the snapshot.
 ====
-endif::product[]
 
 |[[sqlserver-property-custom-metric-tags]]<<sqlserver-property-custom-metric-tags, `custom.metric.tags`>>
 |`No default`
@@ -3322,7 +3335,7 @@ After the next failure, the connector stops, and user intervention is required t
 |Controls how the connector queries CDC data. The following modes are supported:
 
 * `function`: The data is queried by calling `cdc.[fn_cdc_get_all_changes_#]` function. This is the default mode.
-* `direct`: Makes the connector to query change tables directly. Switching to `direct` mode and creating an index on `(\\__$start_lsn ASC, __$seqval ASC, __$operation ASC)` columns for each change table significantly speeds up querying CDC data.
+* `direct`: Makes the connector to query change tables directly.
 
 |[[sqlserver-property-database-query-timeout-ms]]<<sqlserver-property-database-query-timeout-ms, `database.query.timeout.ms`>>
 |`600000` (10 minutes)
@@ -3604,5 +3617,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming
 // Title: {prodname} SQL Server connector schema history metrics
 [[sqlserver-schema-history-metrics]]
 === Schema history metrics
+
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=sqlserver-schema-history]
 
 include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]

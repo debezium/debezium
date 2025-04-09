@@ -79,13 +79,13 @@ To enable the connector to use the `ReselectColumnsPostProcessor`, add the follo
 
 [source,json,subs="+attributes,+quotes"]
 ----
-  "post.processors": "reselector", // <1>
-  "reselector.type": "io.debezium.processors.reselect.ReselectColumnsPostProcessor", // <2>
-  "reselector.reselect.columns.include.list": "_<schema>_.__<table>__:__<column>__,__<schema>__.__<table>__:__<column>__", // <3>
-  "reselector.reselect.unavailable.values": "true", // <4>
-  "reselector.reselect.null.values": "true" // <5>
-  "reselector.reselect.use.event.key": "false" // <6>
-  "reselector.reselect.error.handling.mode": "WARN" // <7>
+  "post.processors" : "reselector", // <1>
+  "reselector.type" : "io.debezium.processors.reselect.ReselectColumnsPostProcessor", // <2>
+  "reselector.reselect.columns.include.list" : "_<schema>_.__<table>__:__<column>__,__<schema>__.__<table>__:__<column>__", // <3>
+  "reselector.reselect.unavailable.values" : "true", // <4>
+  "reselector.reselect.null.values" : "true", // <5>
+  "reselector.reselect.use.event.key" : "false", // <6>
+  "reselector.reselect.error.handling.mode" : "WARN" // <7>
 ----
 [cols="1,7",options="header"]
 |===

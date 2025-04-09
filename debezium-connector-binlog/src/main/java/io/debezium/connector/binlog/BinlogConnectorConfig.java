@@ -255,6 +255,13 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
          * @return whether the isolation level should be reset on flushes
          */
         boolean isIsolationLevelResetOnFlush(); // flushXXX
+
+        /**
+         * @return whether table locks should be prevented
+         */
+        default boolean preventsTableLocks() {
+            return false;
+        }
     }
 
     /**

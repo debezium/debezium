@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-build-parent</artifactId>
-        <version>3.1.0-SNAPSHOT</version>
+        <version>3.2.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -21,7 +21,7 @@
         <version.jetty>9.4.12.v20180830</version.jetty>
 
         <!-- Vitess dependencies -->
-        <version.vitess.grpc>20.0.0</version.vitess.grpc>
+        <version.vitess.grpc>21.0.2</version.vitess.grpc>
         <version.joda>2.10.1</version.joda>
         <version.google.protos>1.17.0</version.google.protos>
 
@@ -30,7 +30,6 @@
 
         <!-- Tracing -->
         <version.opentelemetry>1.23.0</version.opentelemetry>
-        <version.opentelemetry.testing>2.10.0</version.opentelemetry.testing>
 
         <!-- HTTP client -->
         <version.okhttp>4.8.1</version.okhttp>
@@ -39,7 +38,7 @@
         <version.groovy>4.0.17</version.groovy>
         <version.graalvm.js>23.0.2</version.graalvm.js>
         <!-- Wasm -->
-        <version.chicory>1.0.0</version.chicory>
+        <version.chicory>1.2.1</version.chicory>
 
         <!-- Storages -->
 
@@ -53,21 +52,24 @@
         <version.azure.blob>12.29.0</version.azure.blob>
 
         <!-- Azure Identity -->
-        <version.azure.identity>1.14.1</version.azure.identity>
+        <version.azure.identity>1.15.4</version.azure.identity>
 
         <!-- K8s Config Map Storage -->
         <version.kubernetes.client>6.13.4</version.kubernetes.client>
+
+        <!-- Debezium AI -->
+        <version.langchain4j>1.0.0-beta2</version.langchain4j>
 
         <!-- Testing -->
         <version.junit>4.13.1</version.junit>
         <version.junit5>5.9.1</version.junit5>
         <version.junit.platform.launcher>1.9.3</version.junit.platform.launcher>
         <version.fest>1.4</version.fest>
-        <version.assertj>3.11.1</version.assertj>
+        <version.assertj>3.27.3</version.assertj>
         <version.jmh>1.21</version.jmh>
         <version.mockito>3.0.0</version.mockito>
         <version.awaitility>4.0.1</version.awaitility>
-        <version.testcontainers>1.19.1</version.testcontainers>
+        <version.testcontainers>1.20.6</version.testcontainers>
         <version.jsonpath>2.9.0</version.jsonpath>
         <version.jsonassert>1.5.0</version.jsonassert>
         <version.org.reflections>0.9.12</version.org.reflections>
@@ -557,6 +559,23 @@
                 <version>${version.kubernetes.client}</version>
             </dependency>
 
+            <!-- Debezium AI dependencies-->
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-core</artifactId>
+                <version>${version.langchain4j}</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
+                <version>${version.langchain4j}</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-ollama</artifactId>
+                <version>${version.langchain4j}</version>
+            </dependency>
+
             <!-- Testing utilities -->
             <dependency>
                 <groupId>org.testcontainers</groupId>
@@ -848,6 +867,11 @@
                 <artifactId>debezium-quarkus-outbox-deployment</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-ai-embeddings</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- Debezium test artifacts -->
             <dependency>
@@ -871,6 +895,12 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-connector-binlog</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-ai-embeddings</artifactId>
                 <version>${project.version}</version>
                 <type>test-jar</type>
             </dependency>

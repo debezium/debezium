@@ -72,4 +72,34 @@ public class Loggings {
         logger.error(message, t);
         LOGGER.trace("Source of error is record '{}'", record);
     }
+
+    /**
+     * Log an info message and explicitly append the source of the info entry as a separate log
+     * entry that uses trace logging to prevent unintended leaking of sensitive data.
+     *
+     * @param logger the logger instance
+     * @param record the record the log entry is based upon
+     * @param message the info message to be logged
+     * @param arguments the arguments passed to the info message
+     */
+    public static void logInfoAndTraceRecord(Logger logger, Object record, String message,
+                                             Object... arguments) {
+        logger.info(message, arguments);
+        LOGGER.trace("Source of info is record '{}'", record);
+    }
+
+    /**
+     * Log trace message and explicitly append the source of the trace entry as a separate log
+     * entry that uses trace logging to centralise all record loggings.
+     *
+     * @param logger the logger instance
+     * @param record the record the log entry is based upon
+     * @param message the trace message to be logged
+     * @param arguments the arguments passed to the trace message
+     */
+    public static void logTraceAndTraceRecord(Logger logger, Object record, String message,
+                                              Object... arguments) {
+        logger.trace(message, arguments);
+        LOGGER.trace("Source of trace is record '{}'", record);
+    }
 }

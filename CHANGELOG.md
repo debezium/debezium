@@ -2,6 +2,159 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.1.0.Final
+April 2nd 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12448671)
+
+### New features since 3.1.0.CR1
+
+* Add incremental snapshot configuration to the Debezium UI [DBZ-5326](https://issues.redhat.com/browse/DBZ-5326)
+* [DOC] Documentation for using the JDBC Sink Connector in an OpenShift environment [DBZ-8549](https://issues.redhat.com/browse/DBZ-8549)
+* Milvus sink in Debezium Server [DBZ-8634](https://issues.redhat.com/browse/DBZ-8634)
+* InstructLab sink [DBZ-8637](https://issues.redhat.com/browse/DBZ-8637)
+* Implement SMT for adding embeddings to the records [DBZ-8702](https://issues.redhat.com/browse/DBZ-8702)
+* Improve debezium-vitess-connector enqueue speed [DBZ-8757](https://issues.redhat.com/browse/DBZ-8757)
+* Doc should mention the the correlation ID does not map 1:1 with the original signal when multiple signals are sent. [DBZ-8817](https://issues.redhat.com/browse/DBZ-8817)
+* Create a dedicated section in the doc for Debezium Server and related components [DBZ-8846](https://issues.redhat.com/browse/DBZ-8846)
+* ExtractChangedRecordState should always add configured headers, even if field list is empty [DBZ-8855](https://issues.redhat.com/browse/DBZ-8855)
+* Use the clustered index in sqlserver connector queries  [DBZ-8858](https://issues.redhat.com/browse/DBZ-8858)
+* All queries issued by Debezium should be marked with workload tag [DBZ-8861](https://issues.redhat.com/browse/DBZ-8861)
+
+
+### Breaking changes since 3.1.0.CR1
+
+* Align JDBC storage configuration naming [DBZ-8573](https://issues.redhat.com/browse/DBZ-8573)
+
+
+### Fixes since 3.1.0.CR1
+
+* Negative binlog position values for MariaDB [DBZ-8755](https://issues.redhat.com/browse/DBZ-8755)
+* Support CURDATE and CURTIME functions for MySQL DDL [DBZ-8834](https://issues.redhat.com/browse/DBZ-8834)
+* ibmi connector leaks jobs when interrupted [DBZ-8839](https://issues.redhat.com/browse/DBZ-8839)
+* In-progress transaction over boundary detected but skipped during streaming [DBZ-8844](https://issues.redhat.com/browse/DBZ-8844)
+* Unparseable statements : Default column values can be scalar functions [DBZ-8849](https://issues.redhat.com/browse/DBZ-8849)
+* AsyncEmbeddedEngine treats millisecond commit timeout as microseconds mistakenly [DBZ-8856](https://issues.redhat.com/browse/DBZ-8856)
+* Transitive filtering of debezium-connector-dse excludes snakeyaml from /lib/ [DBZ-8863](https://issues.redhat.com/browse/DBZ-8863)
+
+
+### Other changes since 3.1.0.CR1
+
+* Implement the storybook for UI component [DBZ-6868](https://issues.redhat.com/browse/DBZ-6868)
+* Document Debezium Platform  [DBZ-8827](https://issues.redhat.com/browse/DBZ-8827)
+* Conditionalize note about Extended max string size in oracle.adoc that refers to Jira issue [DBZ-8838](https://issues.redhat.com/browse/DBZ-8838)
+* cassandra4-connector: Update to cassandra 4.1 [DBZ-8842](https://issues.redhat.com/browse/DBZ-8842)
+* Add missing oracle and mariadb source in UI [DBZ-8851](https://issues.redhat.com/browse/DBZ-8851)
+* Change JDBC sink test default logging level to INFO [DBZ-8853](https://issues.redhat.com/browse/DBZ-8853)
+
+
+
+## 3.1.0.CR1
+March 24th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12447571)
+
+### New features since 3.1.0.Beta1
+
+* Centralise sensitive data logging using the Loggings Class [DBZ-8525](https://issues.redhat.com/browse/DBZ-8525)
+* Reduce frequency table exists and column metadata queries [DBZ-8570](https://issues.redhat.com/browse/DBZ-8570)
+* Unify helm charts [DBZ-8705](https://issues.redhat.com/browse/DBZ-8705)
+* Implement ErrorHandler to throw RetriableException during SinkTask put operations [DBZ-8727](https://issues.redhat.com/browse/DBZ-8727)
+* Add support for event key routing in RabbitMQ sink [DBZ-8752](https://issues.redhat.com/browse/DBZ-8752)
+* Develop a Quarkus Application Example with Debezium Optimized for GraalVM [DBZ-8754](https://issues.redhat.com/browse/DBZ-8754)
+* Support keyspace heartbeats feature [DBZ-8775](https://issues.redhat.com/browse/DBZ-8775)
+* Improve Error Handling for Duplicate server_id / server_uuid in MySQL Connector [DBZ-8786](https://issues.redhat.com/browse/DBZ-8786)
+* Handle BYTES as VARBINARY in SQLServer sink [DBZ-8790](https://issues.redhat.com/browse/DBZ-8790)
+* Support string with temporal precision mode [DBZ-8826](https://issues.redhat.com/browse/DBZ-8826)
+
+
+### Breaking changes since 3.1.0.Beta1
+
+* Oracle connector remains waiting indefinitely for Logminer response upon starting new session [DBZ-8830](https://issues.redhat.com/browse/DBZ-8830)
+
+
+### Fixes since 3.1.0.Beta1
+
+* The first cdc message always lost when using debezium engine to capture oracle data [DBZ-8141](https://issues.redhat.com/browse/DBZ-8141)
+* Signal Channel Kafka restart snapshot multiple snapshot after connector restart [DBZ-8780](https://issues.redhat.com/browse/DBZ-8780)
+* Sources and home in debezium platform helm chart points to old repo [DBZ-8784](https://issues.redhat.com/browse/DBZ-8784)
+* DebeziumServerPostgresIT randomly fails [DBZ-8821](https://issues.redhat.com/browse/DBZ-8821)
+* Unexpected null value for Field Configuration deprecated aliases [DBZ-8832](https://issues.redhat.com/browse/DBZ-8832)
+
+
+### Other changes since 3.1.0.Beta1
+
+* Update format-maven-plugin to 2.26.0 [DBZ-8695](https://issues.redhat.com/browse/DBZ-8695)
+* Centralize helm chart repo [DBZ-8707](https://issues.redhat.com/browse/DBZ-8707)
+* OTEL libs are not loaded to Docker image [DBZ-8767](https://issues.redhat.com/browse/DBZ-8767)
+* Change the documentation of minimum Java version requirement from 11 to 21 [DBZ-8771](https://issues.redhat.com/browse/DBZ-8771)
+* Add delete.tombstone.handling.mode to ConfigDef returned by config method and change its display name [DBZ-8776](https://issues.redhat.com/browse/DBZ-8776)
+* Update Debezium platform images in values.yaml [DBZ-8781](https://issues.redhat.com/browse/DBZ-8781)
+* Allow Debezium server to use Kafka Connect format for the records [DBZ-8782](https://issues.redhat.com/browse/DBZ-8782)
+* Write README for debezium-chart repo [DBZ-8785](https://issues.redhat.com/browse/DBZ-8785)
+* Remove Helm from Debezium operator manifest README [DBZ-8791](https://issues.redhat.com/browse/DBZ-8791)
+* Write blog post about the recent changes on charts.debezium.io [DBZ-8792](https://issues.redhat.com/browse/DBZ-8792)
+* Test keyspace heartbeats during snapshot [DBZ-8824](https://issues.redhat.com/browse/DBZ-8824)
+* Make methods for adding fields into the record reuseable [DBZ-8825](https://issues.redhat.com/browse/DBZ-8825)
+* Enable build of debezium platform images  [DBZ-8829](https://issues.redhat.com/browse/DBZ-8829)
+
+
+
+## 3.1.0.Beta1
+March 11th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12446461)
+
+### New features since 3.1.0.Alpha2
+
+* A CloudEvent can contain `traceparent` field which value is obtained from header [DBZ-8669](https://issues.redhat.com/browse/DBZ-8669)
+* Disable the delete option for the resources(source, destination, transform) that are in use in pipeline. [DBZ-8683](https://issues.redhat.com/browse/DBZ-8683)
+* Differentiate between epoch & zero dates when columns it not nullable [DBZ-8689](https://issues.redhat.com/browse/DBZ-8689)
+* Set string data type for medium/tiny/long text cols with binary collation [DBZ-8694](https://issues.redhat.com/browse/DBZ-8694)
+* Dependencies in connect-base can be excluded in build time [DBZ-8709](https://issues.redhat.com/browse/DBZ-8709)
+* Add concurrency and compression to pub/sub change consumer [DBZ-8715](https://issues.redhat.com/browse/DBZ-8715)
+* Prevent table-level read locks when minimal locking is enabled [DBZ-8717](https://issues.redhat.com/browse/DBZ-8717)
+* Refactor JdbcChangeEventSink execute method for buffer resolution [DBZ-8726](https://issues.redhat.com/browse/DBZ-8726)
+* Add support for Google Cloud Pub/Sub locational endpoints [DBZ-8735](https://issues.redhat.com/browse/DBZ-8735)
+* Wasm SMT effective access to schema fields [DBZ-8737](https://issues.redhat.com/browse/DBZ-8737)
+* Oracle Connector: Additional timestamp fields from LogMiner (V$LOGMNR_CONTENTS) [DBZ-8740](https://issues.redhat.com/browse/DBZ-8740)
+* Trim extra spaces in property keys when transforming to config [DBZ-8748](https://issues.redhat.com/browse/DBZ-8748)
+* Add support for event key routing in RabbitMQ sink [DBZ-8752](https://issues.redhat.com/browse/DBZ-8752)
+
+
+### Breaking changes since 3.1.0.Alpha2
+
+None
+
+
+### Fixes since 3.1.0.Alpha2
+
+* SQL Server Connector cannot be upgraded to 2.0 [DBZ-5845](https://issues.redhat.com/browse/DBZ-5845)
+* JDBC sink connector doesn't delete rows from a postgres db table [DBZ-8287](https://issues.redhat.com/browse/DBZ-8287)
+* MariaDB adapter fails on an ALTER USER statement [DBZ-8436](https://issues.redhat.com/browse/DBZ-8436)
+* Expressions cause SQL parser exception in Percona SEQUENCE_TABLE function [DBZ-8559](https://issues.redhat.com/browse/DBZ-8559)
+* Slow Debezium startup for large number of tables [DBZ-8595](https://issues.redhat.com/browse/DBZ-8595)
+* Debezium doesn't shut down correctly when encountering message delivery timeout from pub/sub [DBZ-8672](https://issues.redhat.com/browse/DBZ-8672)
+* Broken pipe on streaming connection after blocking snapshot (Postgres) [DBZ-8680](https://issues.redhat.com/browse/DBZ-8680)
+* ts_ms in source may default to 0 instead of Instant.now()  [DBZ-8708](https://issues.redhat.com/browse/DBZ-8708)
+* PDB database name default considering as UPPERCASE [DBZ-8710](https://issues.redhat.com/browse/DBZ-8710)
+* Alter table modify column fails when using DEFAULT ON NULL clause [DBZ-8720](https://issues.redhat.com/browse/DBZ-8720)
+* ExtractChangedRecordState SMT Now Working With Default Values [DBZ-8721](https://issues.redhat.com/browse/DBZ-8721)
+* Restart of Oracle RAC node leads to redo thread being inconsistent indefinitely [DBZ-8724](https://issues.redhat.com/browse/DBZ-8724)
+* Specifying archive.log.hours with non-zero value generates bad SQL [DBZ-8725](https://issues.redhat.com/browse/DBZ-8725)
+* debezium/connect docker image is not available on arm64 [DBZ-8728](https://issues.redhat.com/browse/DBZ-8728)
+* Debezium Server: Nats consumer crashes with binary serialization [DBZ-8734](https://issues.redhat.com/browse/DBZ-8734)
+* Possibly  broken schema.history.internal.skip.unparseable.ddl for MariaDB [DBZ-8745](https://issues.redhat.com/browse/DBZ-8745)
+* Oracle snapshot's source.ts does not account for database zone differences [DBZ-8749](https://issues.redhat.com/browse/DBZ-8749)
+
+
+### Other changes since 3.1.0.Alpha2
+
+* Support debezium platform in the release pipeline [DBZ-8682](https://issues.redhat.com/browse/DBZ-8682)
+* Create pipeline for package helm charts and publish on quay.io [DBZ-8706](https://issues.redhat.com/browse/DBZ-8706)
+* Add more unit tests for deciding if the row was handled or not [DBZ-8716](https://issues.redhat.com/browse/DBZ-8716)
+* Test debezium scale down reads offsets [DBZ-8719](https://issues.redhat.com/browse/DBZ-8719)
+* Create an orchestrator pipeline to run the release [DBZ-8731](https://issues.redhat.com/browse/DBZ-8731)
+* MySqlConnectorConvertingFailureIT.shouldRecoverToSyncSchemaWhenFailedValueConvertByDdlWithSqlLogBinIsOff fails randomly [DBZ-8736](https://issues.redhat.com/browse/DBZ-8736)
+* Update the way tests calculates the default zoned times for MariaDB driver 3.5 [DBZ-8742](https://issues.redhat.com/browse/DBZ-8742)
+* Bump assertj-core to 3.27.3 [DBZ-8751](https://issues.redhat.com/browse/DBZ-8751)
+
+
+
 ## 3.1.0.Alpha2
 February 20th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12443609)
 

@@ -6,6 +6,7 @@
 package io.debezium.connector.mysql;
 
 import java.net.URL;
+import java.time.ZoneId;
 import java.util.Map;
 import java.util.Random;
 
@@ -61,5 +62,10 @@ public class MySqlUniqueDatabase extends UniqueDatabase {
         }
 
         return builder;
+    }
+
+    @Override
+    public ZoneId getTimezone() {
+        return ZoneId.of("US/Samoa");
     }
 }

@@ -6,6 +6,7 @@
 package io.debezium.connector.mariadb.util;
 
 import java.net.URL;
+import java.time.ZoneId;
 import java.util.Map;
 import java.util.Random;
 
@@ -54,6 +55,11 @@ public class MariaDbUniqueDatabase extends UniqueDatabase {
         }
 
         return builder;
+    }
+
+    @Override
+    public ZoneId getTimezone() {
+        return ZoneId.of("UTC");
     }
 
 }

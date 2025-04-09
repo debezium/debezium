@@ -147,13 +147,10 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 walPosition = new WalPositionLocator();
                 replicationStream.compareAndSet(null, replicationConnection.startStreaming(walPosition));
             }
-            // for large dbs, the refresh of schema can take too much time
-            // such that the connection times out. We must enable keep
-            // alive to ensure that it doesn't time out
+
+            // Start keep alive thread to prevent connection timeout during time-consuming operations the DB side.
             ReplicationStream stream = this.replicationStream.get();
             stream.startKeepAlive(Threads.newSingleThreadExecutor(PostgresConnector.class, connectorConfig.getLogicalName(), KEEP_ALIVE_THREAD_NAME));
-
-            initSchema();
 
             // If we need to do a pre-snapshot streaming catch up, we should allow the snapshot transaction to persist
             // but normally we want to start streaming without any open transactions.
@@ -327,7 +324,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         // DML event
         else {
             TableId tableId = null;
-            if (message.getOperation() != Operation.NOOP) {
+            if (!message.isSkippedMessage()) {
                 tableId = PostgresSchema.parse(message.getTable());
                 Objects.requireNonNull(tableId);
             }
@@ -337,7 +334,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     tableId,
                     message.getOperation());
 
-            boolean dispatched = message.getOperation() != Operation.NOOP && dispatcher.dispatchDataChangeEvent(
+            boolean dispatched = dispatcher.dispatchDataChangeEvent(
                     partition,
                     tableId,
                     new PostgresChangeRecordEmitter(

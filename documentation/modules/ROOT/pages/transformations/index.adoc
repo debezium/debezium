@@ -57,6 +57,9 @@ This transformation is designed for use only with the {prodname} connector for V
 |xref:transformations/vitess-remove-field.adoc[Vitess Remove Field]
 |The Vitess-specific transformation to remove fields to reduce the size of the messages written (e.g., redundant VGTID fields).
 
+|xref:transformations/vitess-replace-field-value.adoc[Vitess Replace Field Value]
+|The Vitess-specific transformation to replace the value of a field to reduce the size of the messages written (e.g., redundant VGTID fields).
+
 |xref:transformations/vitess-filter-transaction-topic-records.adoc[Vitess Filter Transaction Topic Records]
 |A transformation that filters out all messages that the connector emits to the transaction topic (when transaction metadata is enabled).
 This transformation is designed for use only with the {prodname} connector for Vitess.

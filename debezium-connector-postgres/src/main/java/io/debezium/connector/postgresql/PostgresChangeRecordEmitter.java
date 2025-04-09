@@ -69,7 +69,6 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
         this.connection = connection;
 
         this.tableId = tableId;
-        Objects.requireNonNull(this.tableId);
     }
 
     @Override
@@ -98,6 +97,11 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
     protected void emitTruncateRecord(Receiver receiver, TableSchema tableSchema) throws InterruptedException {
         Struct envelope = tableSchema.getEnvelopeSchema().truncate(getOffset().getSourceInfo(), getClock().currentTimeAsInstant());
         receiver.changeRecord(getPartition(), tableSchema, Operation.TRUNCATE, null, envelope, getOffset(), null);
+    }
+
+    @Override
+    public boolean ignoreRecord() {
+        return message.isSkippedMessage();
     }
 
     @Override

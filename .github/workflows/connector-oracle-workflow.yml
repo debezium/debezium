@@ -1,0 +1,38 @@
+name: Oracle Builds
+on:
+  workflow_call:
+    inputs:
+      maven-cache-key:
+        description: "The cache key to use to restore/save build caches."
+        required: true
+        type: string
+      max-parallel:
+        description: "The maximum number of workers to consume, by default uses all available."
+        required: false
+        type: number
+
+jobs:
+  build-oracle:
+    strategy:
+      max-parallel: ${{ inputs.max-parallel }}
+      fail-fast: false
+      matrix:
+        profile: [ 'oracle-tests', 'oracle-infinispan-buffer,oracle-tests', 'oracle-ehcache,oracle-tests' ]
+    name: Oracle - ${{ matrix.profile }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Oracle - ${{ matrix.profile }}
+        uses: ./.github/actions/build-debezium-oracle
+        with:
+          maven-cache-key: ${{ inputs.maven-cache-key }}-${{ hashFiles('**/pom.xml') }}
+          profile: ${{ matrix.profile }}
+
+      - uses: ./.github/actions/setup-java
+
+      - uses: ./.github/actions/maven-cache
+        with:
+          key: ${{ inputs.cache-key }}-${{ hashFiles('**/pom.xml') }}

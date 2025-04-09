@@ -28,6 +28,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
+import io.debezium.util.Loggings;
 
 @NotThreadSafe
 public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition, T extends DataCollectionId>
@@ -57,7 +58,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
             LOGGER.warn("Context is null, skipping message processing");
             return;
         }
-        LOGGER.trace("Checking window for table '{}', key '{}', window contains '{}'", dataCollectionId, key, window);
+        Loggings.logTraceAndTraceRecord(LOGGER, key, "Checking window for table '{}', window contains '{}'", dataCollectionId, window);
         if (!window.isEmpty() && context.deduplicationNeeded()) {
             deduplicateWindow(dataCollectionId, key);
         }

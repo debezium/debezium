@@ -290,7 +290,13 @@ paumr,P. Aum
 yevhenii-lopatenko,Yevhenii Lopatenko
 kavyaramaiah1991,Kavya Ramaiah
 gpanice,Giovanni Panice
+kmos,Giovanni Panice
 AndreiLeib,Andrei Leibovski
 iamseki,Christian Seki
 AlvarVG,Alvar Viana
 sergey.siroshtan@signanthealth.com,Sergey Seroshtan
+minleejae,Minjae Lee
+mj-db,Minjae Lee
+miyajimakatsumi,Katsumi Miyajima
+Zakariae BEN ALLAL,Zakariae Ben Allal
+Bhagyashree,Bhagyashree Goyal

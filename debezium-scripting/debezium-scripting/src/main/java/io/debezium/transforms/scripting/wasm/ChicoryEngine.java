@@ -16,7 +16,7 @@ import org.apache.kafka.connect.data.Struct;
 import com.dylibso.chicory.experimental.aot.AotMachine;
 import com.dylibso.chicory.experimental.hostmodule.annotations.HostModule;
 import com.dylibso.chicory.experimental.hostmodule.annotations.WasmExport;
-import com.dylibso.chicory.runtime.ByteBufferMemory;
+import com.dylibso.chicory.runtime.ByteArrayMemory;
 import com.dylibso.chicory.runtime.ImportMemory;
 import com.dylibso.chicory.runtime.ImportValues;
 import com.dylibso.chicory.runtime.Instance;
@@ -38,7 +38,7 @@ public class ChicoryEngine {
     private ChicoryEngine(boolean aot, WasmModule module, int memoryMax) {
         var imports = ImportValues.builder()
                 .addMemory(new ImportMemory("env", "memory",
-                        new ByteBufferMemory(new MemoryLimits(2, memoryMax))))
+                        new ByteArrayMemory(new MemoryLimits(2, memoryMax))))
                 .addFunction(ChicoryEngine_ModuleFactory.toHostFunctions(this))
                 .build();
 
@@ -205,6 +205,34 @@ public class ChicoryEngine {
         }
         else {
             throw new DebeziumException("Attempting to materialize a String but " + proxyObject.getClass().getSimpleName() + " found");
+        }
+    }
+
+    @WasmExport
+    public int getSchemaName(int proxyObjectRef) {
+        var proxyObject = objects.get(proxyObjectRef);
+        if (proxyObject instanceof Schema) {
+            var name = ((Schema) proxyObject).name();
+            var resultPtr = malloc(name.length() + 1);
+            instance.memory().writeCString(resultPtr, name);
+            return resultPtr;
+        }
+        else {
+            throw new DebeziumException("Attempting to materialize a Schema Name but " + proxyObject.getClass().getSimpleName() + " found");
+        }
+    }
+
+    @WasmExport
+    public int getSchemaType(int proxyObjectRef) {
+        var proxyObject = objects.get(proxyObjectRef);
+        if (proxyObject instanceof Schema) {
+            var name = ((Schema) proxyObject).type().getName();
+            var resultPtr = malloc(name.length() + 1);
+            instance.memory().writeCString(resultPtr, name);
+            return resultPtr;
+        }
+        else {
+            throw new DebeziumException("Attempting to materialize a Schema Type but " + proxyObject.getClass().getSimpleName() + " found");
         }
     }
 

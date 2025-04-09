@@ -356,7 +356,7 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
         // TIMESTAMP should be converted to UTC, using the DB's (or connection's) time zone
         ZonedDateTime expectedTimestamp = ZonedDateTime.of(
                 LocalDateTime.parse(dateTime),
-                UniqueDatabase.TIMEZONE)
+                REGRESSION_DATABASE.getTimezone())
                 .withZoneSameInstant(ZoneOffset.UTC);
 
         String expectedTimestampString = expectedTimestamp.format(ZonedTimestamp.FORMATTER);

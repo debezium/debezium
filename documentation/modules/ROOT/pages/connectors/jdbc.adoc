@@ -1159,7 +1159,7 @@ The {prodname} JDBC sink connector has several configuration properties that you
 Many properties have default values.
 Information about the properties is organized as follows:
 
-* xref:jdbc-connector-properties-generic[JCBC connector Kafka consumer properties]
+* xref:jdbc-connector-properties-kafka-consumer[JCBC connector Kafka consumer properties]
 * xref:jdbc-connector-properties-connection[JDBC connector connection properties]
 * xref:jdbc-connector-properties-runtime[JDBC connector runtime properties]
 * xref:jdbc-connector-properties-extendable[JDBC connector extendable properties]
@@ -1249,6 +1249,20 @@ Do not use this property in combination with the xref:jdbc-property-connection-t
 |[[jdbc-property-connection-pool-timeout]]<<jdbc-property-connection-pool-timeout, `+connection.pool.timeout+`>>
 |`1800`
 |Specifies the number of seconds that an unused connection is kept before it is discarded.
+
+|[[jdbc-property-connection-restart-on-errors]]<<jdbc-property-connection-restart-on-errors, `+connection.restart.on.errors+`>>
+|`false`
+|Specifies whether the connector retries after a transient JDBC connection error.
+
+When enabled (`true`), the connector treats connection issues (such as socket closures or timeouts) as retriable, allowing it to retry processing instead of failing the task. This reduces downtime and improves resilience against temporary disruptions.
+
+[NOTE]
+====
+Setting this option to `true` can reduce downtime.
+However, in master-replica environments with asynchronous replication, it may lead to data loss if retries occur before all changes are fully replicated.
+
+Use with caution where strong data consistency is required.
+====
 
 |===
 

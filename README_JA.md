@@ -55,7 +55,7 @@ Debezium が非常に価値あるものとなる状況は多くあります。�
 Debezium のコードベースでを編集・ビルドする為には以下に示すソフトウェアが必要です。
 
 * [Git](https://git-scm.com) 2.2.1 or later
-* JDK 11 or later, e.g. [OpenJDK](http://openjdk.java.net/projects/jdk/)
+* JDK 21 or later, e.g. [OpenJDK](http://openjdk.java.net/projects/jdk/)
 * [Apache Maven](https://maven.apache.org/index.html) 3.9.8
 * [Docker Engine](https://docs.docker.com/engine/install/) or [Docker Desktop](https://docs.docker.com/desktop/) 1.9 or later
 

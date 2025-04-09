@@ -320,7 +320,7 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
     }
 
     @Override
-    protected HistoryRecordComparator getHistoryRecordComparator() {
+    public HistoryRecordComparator getHistoryRecordComparator() {
         return new MariaDbHistoryRecordComparator(gtidSourceFilter, getGtidSetFactory());
     }
 

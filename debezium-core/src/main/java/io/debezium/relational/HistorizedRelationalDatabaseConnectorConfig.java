@@ -175,6 +175,6 @@ public abstract class HistorizedRelationalDatabaseConnectorConfig extends Relati
      * newer than the offset we resume from are recovered (which could happen when restarting a connector after history
      * records have been persisted but no new offset has been committed yet).
      */
-    protected abstract HistoryRecordComparator getHistoryRecordComparator();
+    public abstract HistoryRecordComparator getHistoryRecordComparator();
 
 }

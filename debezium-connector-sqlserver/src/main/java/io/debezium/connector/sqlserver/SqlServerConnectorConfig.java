@@ -665,7 +665,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     }
 
     @Override
-    protected HistoryRecordComparator getHistoryRecordComparator() {
+    public HistoryRecordComparator getHistoryRecordComparator() {
         return new HistoryRecordComparator() {
             @Override
             protected boolean isPositionAtOrBefore(Document recorded, Document desired) {

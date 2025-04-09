@@ -276,6 +276,7 @@ The following SMTs are designed to reduce the amount of data in events that the 
 
 * xref:transformations/vitess-use-local-vgtid.adoc[Use Local VGTID]
 * xref:transformations/vitess-remove-field.adoc[Remove Field]
+* xref:transformations/vitess-replace-field-value.adoc[Replace Field Value]
 * xref:transformations/vitess-filter-transaction-topic-records.adoc[Filter Transaction Topic Records]
 
 The following example shows an excerpt from the configuration of a Vitess connector that uses the preceding transformations:
@@ -1187,6 +1188,28 @@ Represents the number of milliseconds elapsed since the UNIX epoch, and does not
 
 |===
 
+time.precision.mode=isostring::
+The Vitess connector uses string representations for all temporal types.
++
+.Mappings when `time.precision.mode=connect`
+[cols="25%a,20%a,55%a",options="header",subs="+attributes"]
+|===
+|Vitess data type |Literal type |Semantic type
+
+|`DATE`
+|`STRING`
+|n/a
+
+|`TIME[(M)]`
+|`STRING`
+|n/a
+
+|`DATETIME[(M)]`
+|`STRING`
+|n/a
+
+|===
+
 // Type: assembly
 // ModuleID: setting-up-vitess-to-run-a-debezium-connector
 // Title: Setting up Vitess to run a {prodname} connector
@@ -1494,6 +1517,15 @@ The following configuration properties are _required_ unless a default value is 
  +
 If set to `true`, you should also consider setting `vitess.gtid` in the configuration.
 
+|[[vitess-property-stream-keyspace-heartbeats]]<<vitess-property-stream-keyspace-heartbeats, `+vitess.stream_keyspace_heartbeats+`>>
+|`false`
+|Controls Vitess flag `StreamKeyspaceHeartbeats`. +
++
+`true` - the stream will receive events from `_vt.heartbeat` tables (must also be enabled for the tablets).  +
++
+`false` - the stream will not receive events from the `_vt.heartbeat` tables. +
+If set to `true`, you may also want to add `<keyspace>.heartbeat` to the table include list in order to output the events.
+
 |[[vitess-property-database-user]]<<vitess-property-database-user, `+vitess.database.user+`>>
 |_n/a_
 |An optional username of the Vitess database server (VTGate). If not configured, unauthenticated VTGate gRPC is used.
@@ -1626,13 +1658,17 @@ When the connector starts, it skips the snapshot process and immediately begins 
 |[[vitess-property-time-precision-mode]]<<vitess-property-time-precision-mode, `+time.precision.mode+`>>
 |`adaptive_time_microseconds`
 |You can set the following options to determine how {prodname} represents the precision of time, date, and timestamp values: +
-+
+
+
 `adaptive_time_microseconds`::
-(Default) Captures date, datetime, and timestamp values exactly as they exist in the database.
+(Default)
 Values are represented with a precision in milliseconds, microseconds, or nanoseconds, depending on the database column type, with the exception of `TIME` type fields, which are always captured as microseconds.
 
 `connect`::
 Time and timestamp values are always represented in the default Kafka Connect formats for Time, Date, and Timestamp, which use millisecond precision regardless of the database columns' precision.
+
+`isostring`::
+Temporal types are represented as strings. For certain temporal values that cannot be represented numerically (e.g., 0000-00-00) this sends the original string representation of the value.
 
 |[[vitess-property-bigint-unsigned-handling-mode]]<<vitess-property-bigint-unsigned-handling-mode,`+bigint.unsigned.handling.mode.mode+`>>
 |string

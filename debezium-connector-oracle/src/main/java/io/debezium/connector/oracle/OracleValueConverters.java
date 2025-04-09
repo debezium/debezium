@@ -652,6 +652,17 @@ public class OracleValueConverters extends JdbcValueConverters {
     }
 
     @Override
+    protected Object convertTimestampToUtcIsoString(Column column, Field fieldDefn, Object data) {
+        if (data instanceof String strData) {
+            data = resolveTimestampStringAsInstant(strData);
+        }
+        else if (data instanceof Long longData) {
+            data = Instant.ofEpochSecond(0, longData);
+        }
+        return super.convertTimestampToUtcIsoString(column, fieldDefn, fromOracleTimeClasses(column, data));
+    }
+
+    @Override
     protected Object convertTimestampWithZone(Column column, Field fieldDefn, Object data) {
         if (data instanceof String) {
             String s = (String) data;

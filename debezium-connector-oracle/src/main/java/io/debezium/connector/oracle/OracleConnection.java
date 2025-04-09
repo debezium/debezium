@@ -16,6 +16,7 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -565,6 +566,16 @@ public class OracleConnection extends JdbcConnection {
             }
             throw e;
         }
+    }
+
+    /**
+     * Get the database system time in the database system's time zone.
+     *
+     * @return the database system time
+     * @throws SQLException if a database exception occurred
+     */
+    public OffsetDateTime getDatabaseSystemTime() throws SQLException {
+        return singleOptionalValue("SELECT SYSTIMESTAMP FROM DUAL", rs -> rs.getObject(1, OffsetDateTime.class));
     }
 
     public boolean isArchiveLogDestinationValid(String archiveDestinationName) throws SQLException {

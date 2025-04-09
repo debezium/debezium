@@ -387,6 +387,7 @@ public class LogMinerDmlParser implements DmlParser {
             char c = sql.charAt(index);
             char lookAhead = (index + 1 < sql.length()) ? sql.charAt(index + 1) : 0;
             char lookAhead2 = (index + 2 < sql.length()) ? sql.charAt(index + 2) : 0;
+            char lookAhead3 = (index + 3 < sql.length()) ? sql.charAt(index + 3) : 0;
 
             if (inSingleQuote) {
                 if (c != '\'') {
@@ -439,7 +440,7 @@ public class LogMinerDmlParser implements DmlParser {
                     continue;
                 }
                 if (connectorConfig.getLogMiningUseSqlRelaxedQuoteDetection() && inSingleQuote && nested == 0) {
-                    if (lookAhead == ',' && lookAhead2 == ' ') {
+                    if (lookAhead == ',' && lookAhead2 == ' ' && (lookAhead3 == '\"' || lookAhead3 == 'w')) {
                         // reached end of value
                     }
                     else if (lookAhead == ' ' && lookAhead2 == 'w' && sql.substring(index + 1).startsWith(" where ")) {
