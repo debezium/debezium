@@ -3457,6 +3457,9 @@ virtual_column_definition
         (GENERATED ALWAYS)?
         AS '(' expression ')'
         VIRTUAL? evaluation_edition_clause? unusable_editions_clause? inline_constraint*
+        // Oracle tools and DBMS_METADATA can return this in some use cases
+        // This is used internally by Oracle to mark the virtual column for statistics only
+        (BY USER FOR STATISTICS)?
     ;
 
 annotations_clause
