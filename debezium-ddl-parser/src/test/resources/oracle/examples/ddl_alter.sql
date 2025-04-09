@@ -84,6 +84,8 @@ ALTER TABLE "AB01"."SMOSTAMM" ADD CONSTRAINT "CC_SMOSTAMM_KRAB" CHECK ((KRAB >= 
 
 ALTER TABLE "ME_CARRIER_HISTORY" ADD CONSTRAINT "CHECK_COMM_TYPE" CHECK (communication_type in('EDI','NON-EDI','API')) NOVALIDATE PARALLEL;
 
+alter table "SCHEMA"."TAB" add (SYS_STUWW2ZJ0EFAMXG#N$#W73I2XL as (decode(COLA,"A",1,decode(MYPKG.MYFUNC(COLB),1,1,0))) virtual BY USER for statistics);
+
 -- alter table (Oracle 23+)
 alter table fruit annotations (Visibility 'Everyone');
 alter table fruit annotations (drop Visibility);
