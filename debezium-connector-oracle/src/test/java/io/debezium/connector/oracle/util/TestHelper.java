@@ -179,13 +179,13 @@ public class TestHelper {
                 }
             }
             else if (bufferType.isEhcache()) {
-                final long cacheSize = 1024 * 1024 * 10; // 10Mb each
+                final int cacheSize = 1024000000; // 1GB for default
                 builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE, bufferTypeName);
                 builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG, getEhcacheGlobalCacheConfig());
-                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG, getEhcacheBasicCacheConfig());
-                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG, getEhcacheBasicCacheConfig());
-                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, getEhcacheBasicCacheConfig());
-                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG, getEhcacheBasicCacheConfig());
+                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
+                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
+                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
+                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
             }
             builder.withDefault(OracleConnectorConfig.LOG_MINING_BUFFER_DROP_ON_STOP, true);
         }
@@ -206,14 +206,14 @@ public class TestHelper {
                 .with(OracleConnectorConfig.SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES, 3);
     }
 
-    private static String getEhcacheGlobalCacheConfig() {
+    public static String getEhcacheGlobalCacheConfig() {
         return "<persistence directory=\"./target/data\"/>";
     }
 
-    private static String getEhcacheBasicCacheConfig() {
+    public static String getEhcacheBasicCacheConfig(int sizeBytes) {
         return "<resources>" +
                 "<heap unit=\"entries\">512</heap>" +
-                "<disk unit=\"MB\">1024</disk>" +
+                "<disk unit=\"B\">" + sizeBytes + "</disk>" +
                 "</resources>";
     }
 
