@@ -242,12 +242,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
 
             if (LOGGER.isInfoEnabled()) {
-                StringBuilder configLogBuilder = new StringBuilder("Starting " + getClass().getSimpleName() + " with configuration:");
-                withMaskedSensitiveOptions(config).forEach((propName, propValue) -> {
-                    configLogBuilder.append("\n   ").append(propName).append(" = ").append(propValue);
-                });
-                configLogBuilder.append("\n");
-                LOGGER.info(configLogBuilder.toString());
+                LOGGER.info("Starting {}: ", getClass().getSimpleName());
             }
             try {
                 this.coordinator = start(config);

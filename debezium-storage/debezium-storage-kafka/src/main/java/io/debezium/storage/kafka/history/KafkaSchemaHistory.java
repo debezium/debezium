@@ -241,10 +241,6 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
                 .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                 .withDefault(ProducerConfig.MAX_BLOCK_MS_CONFIG, 10_000) // wait at most this if we can't reach Kafka
                 .build();
-        if (LOGGER.isInfoEnabled()) {
-            LOGGER.info("KafkaSchemaHistory Consumer config: {}", consumerConfig.withMaskedPasswords());
-            LOGGER.info("KafkaSchemaHistory Producer config: {}", producerConfig.withMaskedPasswords());
-        }
 
         try {
             final String connectorClassname = config.getString(INTERNAL_CONNECTOR_CLASS);
