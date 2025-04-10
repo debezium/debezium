@@ -18,6 +18,7 @@ import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -203,6 +204,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     @SingleThreadAccess("polling thread")
     private int previousOutputBatchSize;
 
+    private final AtomicBoolean shouldPerformCommit = new AtomicBoolean(false);
+
     private final ServiceLoader<SignalChannelReader> availableSignalChannels = ServiceLoader.load(SignalChannelReader.class);
 
     private final List<NotificationChannel> notificationChannels;
@@ -307,6 +310,11 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             // in we fail to start, return empty list and try to start next poll() method call
             if (!startIfNeededAndPossible()) {
                 return Collections.emptyList();
+            }
+
+            // it's safe to flush offsets here as we are in the running state
+            if (shouldPerformCommit.getAndSet(false)) {
+                performCommit();
             }
 
             final List<SourceRecord> records = doPoll();
@@ -472,6 +480,10 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     @Override
     public void commit() throws InterruptedException {
+        shouldPerformCommit.set(true);
+    }
+
+    public void performCommit() {
         boolean locked = stateLock.tryLock();
 
         if (locked) {
