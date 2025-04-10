@@ -76,7 +76,7 @@ public class FieldToEmbedding<R extends ConnectRecord<R>> implements Transformat
     private SmtManager<R> smtManager;
     private String sourceField;
     private String embeddingsField;
-    private List<String> sourceFiledPath;
+    private List<String> sourceFieldPath;
     private EmbeddingModel model;
 
     private static final String NESTING_SPLIT_REG_EXP = "\\.";
@@ -94,7 +94,7 @@ public class FieldToEmbedding<R extends ConnectRecord<R>> implements Transformat
         MODEL_FACTORY.configure(config);
         validateConfiguration();
 
-        sourceFiledPath = Arrays.asList(sourceField.split(NESTING_SPLIT_REG_EXP));
+        sourceFieldPath = Arrays.asList(sourceField.split(NESTING_SPLIT_REG_EXP));
         model = MODEL_FACTORY.getModel();
     }
 
@@ -140,15 +140,19 @@ public class FieldToEmbedding<R extends ConnectRecord<R>> implements Transformat
     protected String getSourceString(R record) {
         if (record.value() != null && smtManager.isValidEnvelope(record) && record.valueSchema().type() == Schema.Type.STRUCT) {
             Struct struct = requireStruct(record.value(), "Obtaining source field for embeddings");
-            for (int i = 0; i < sourceFiledPath.size() - 1; i++) {
+            for (int i = 0; i < sourceFieldPath.size() - 1; i++) {
                 if (struct.schema().type() == Schema.Type.STRUCT) {
-                    struct = struct.getStruct(sourceFiledPath.get(i));
+                    struct = struct.getStruct(sourceFieldPath.get(i));
+                    if (struct == null) {
+                        LOGGER.debug("Skipping record {}, the structure is not present", record);
+                        return null;
+                    }
                 }
                 else {
                     throw new IllegalArgumentException(format("Invalid field name %s, %s is not struct.", sourceField, struct.schema().name()));
                 }
             }
-            return struct.getString(sourceFiledPath.getLast());
+            return struct.getString(sourceFieldPath.getLast());
         }
         else {
             LOGGER.debug("Skipping record {}, it has either null value or invalid structure", record);
