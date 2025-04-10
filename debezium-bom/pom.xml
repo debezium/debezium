@@ -13,7 +13,7 @@
 
     <properties>
         <!-- check new release version at https://github.com/confluentinc/schema-registry/releases -->
-        <version.confluent.platform>7.0.1</version.confluent.platform>
+        <version.confluent.platform>7.0.10</version.confluent.platform>
 
         <!-- Connectors -->
         <version.dropwizard>4.0.1</version.dropwizard>
