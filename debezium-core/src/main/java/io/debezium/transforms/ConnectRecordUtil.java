@@ -138,7 +138,6 @@ public class ConnectRecordUtil {
         SchemaBuilder newSchemabuilder = SchemaUtil.copySchemaBasics(oldSchema, SchemaBuilder.struct());
         for (org.apache.kafka.connect.data.Field field : oldSchema.fields()) {
             if (isContainedIn(field.name(), nestedFields)) {
-
                 newSchemabuilder.field(field.name(), buildNewSchema(field.name(), field.schema(), newEntries, nestedFields, ++level));
             }
             else {
@@ -171,7 +170,8 @@ public class ConnectRecordUtil {
     }
 
     private static boolean isContainedIn(String fieldName, List<String> nestedFields) {
-        return nestedFields.stream().anyMatch(s -> s.contains(fieldName));
+        final String fieldNameWithSeparator = fieldName + NESTING_SEPARATOR;
+        return nestedFields.stream().anyMatch(s -> s.contains(fieldNameWithSeparator));
     }
 
     private static boolean isChildrenOf(String fieldName, int level, String[] nestedNames) {
