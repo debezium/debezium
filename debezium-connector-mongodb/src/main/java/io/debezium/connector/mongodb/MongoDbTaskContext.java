@@ -80,4 +80,8 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
     public MongoDbConnection getConnection(EventDispatcher<MongoDbPartition, CollectionId> dispatcher, MongoDbPartition partition) {
         return MongoDbConnections.create(config, dispatcher, partition);
     }
+
+    public int getMongoTaskId() {
+        return Integer.parseInt(getTaskId());
+    }
 }
