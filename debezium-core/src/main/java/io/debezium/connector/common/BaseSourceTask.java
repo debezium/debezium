@@ -55,6 +55,7 @@ import io.debezium.snapshot.SnapshotterServiceProvider;
 import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
+import io.debezium.util.Loggings;
 import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 
@@ -470,7 +471,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     @Override
     public void commitRecord(SourceRecord record) throws InterruptedException {
-        LOGGER.trace("Committing record {}", record);
+        Loggings.logTraceAndTraceRecord(LOGGER, record, "Committing record");
 
         Map<String, ?> currentOffset = record.sourceOffset();
         if (currentOffset != null) {

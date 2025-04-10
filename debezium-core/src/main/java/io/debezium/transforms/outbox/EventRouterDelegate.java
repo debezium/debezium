@@ -47,6 +47,7 @@ import io.debezium.transforms.outbox.EventRouterConfigDefinition.InvalidOperatio
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.JsonPayloadNullFieldBehavior;
 import io.debezium.transforms.tracing.ActivateTracingSpan;
 import io.debezium.util.BoundedConcurrentHashMap;
+import io.debezium.util.Loggings;
 
 /**
  * A delegate class having common logic between Outbox Event Routers for SQL DBs and MongoDB
@@ -93,7 +94,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
     public R apply(R r, RecordConverter<R> recordConverter) {
         // Ignoring tombstones
         if (r.value() == null) {
-            LOGGER.debug("Tombstone message ignored. Message key: \"{}\"", r.key());
+            Loggings.logDebugAndTraceRecord(LOGGER, r.key(), "Tombstone message ignored.");
             return null;
         }
 
@@ -108,7 +109,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
         // Skipping deletes
         if (op.equals(Envelope.Operation.DELETE.code())) {
-            LOGGER.debug("Delete message {} ignored", r.key());
+            Loggings.logDebugAndTraceRecord(LOGGER, r.key(), "Delete message ignored");
             return null;
         }
 
@@ -160,7 +161,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         // Check to expand JSON string into real JSON.
         if (expandJsonPayload) {
             if (!(payload instanceof String)) {
-                LOGGER.warn("Expand JSON payload is turned on but payload is not a string in {}", r.key());
+                Loggings.logWarningAndTraceRecord(LOGGER, r.key(), "Expand JSON payload is turned on but payload is not a string");
             }
             else {
                 final String payloadString = (String) payload;
@@ -238,7 +239,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
                 timestamp,
                 headers);
 
-        LOGGER.debug("Message emitted with event id: \"{}\", event key: \"{}\"", eventId, recordKey);
+        Loggings.logDebugAndTraceRecord(LOGGER, recordKey, "Message emitted with event id: \"{}\"", eventId);
 
         return regexRouter.apply(newRecord);
     }
@@ -301,10 +302,10 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
     private void handleUnexpectedOperation(R r) {
         switch (invalidOperationBehavior) {
             case SKIP_AND_WARN:
-                LOGGER.warn("Unexpected update message received {} and ignored", r.key());
+                Loggings.logWarningAndTraceRecord(LOGGER, r.key(), "Unexpected update message received and ignored");
                 break;
             case SKIP_AND_ERROR:
-                LOGGER.error("Unexpected update message received {} and ignored", r.key());
+                Loggings.logErrorAndTraceRecord(LOGGER, r.key(), "Unexpected update message received and ignored");
                 break;
             case FATAL:
                 throw new IllegalStateException(String.format("Unexpected update message received %s, fail.", r.key()));
