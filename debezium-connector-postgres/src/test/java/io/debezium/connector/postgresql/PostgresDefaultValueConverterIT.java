@@ -13,6 +13,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
+import io.debezium.config.CommonConnectorConfig;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -73,6 +74,7 @@ public class PostgresDefaultValueConverterIT extends AbstractAsyncEngineConnecto
     @FixFor({ "DBZ-4736", "DBZ-5384" })
     public void shouldSetTheNullValueInStreaming() throws Exception {
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(CommonConnectorConfig.FAIL_ON_NO_TABLES, false)
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.getValue())
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1");
         start(PostgresConnector.class, configBuilder.build());

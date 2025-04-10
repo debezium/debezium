@@ -88,6 +88,7 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
         // Testing.Print.enable();
 
         startConnector(config -> config
+                .with(CommonConnectorConfig.FAIL_ON_NO_TABLES, false)
                 .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification")
                 .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink"));
 
@@ -126,7 +127,9 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
     public void notificationNotSentIfNoChannelIsConfigured() {
         // Testing.Print.enable();
 
-        startConnector(config -> config.with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification"));
+        startConnector(config -> config
+                .with(CommonConnectorConfig.FAIL_ON_NO_TABLES, false)
+                .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification"));
         assertConnectorIsRunning();
 
         waitForAvailableRecords(100, TimeUnit.MILLISECONDS);
@@ -141,6 +144,7 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
 
         LogInterceptor logInterceptor = new LogInterceptor("io.debezium.connector");
         startConnector(config -> config
+                .with(CommonConnectorConfig.FAIL_ON_NO_TABLES, false)
                 .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink"));
 
         Assertions.assertThat(logInterceptor.containsErrorMessage(
@@ -156,6 +160,7 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
         // Testing.Print.enable();
 
         startConnector(config -> config
+                .with(CommonConnectorConfig.FAIL_ON_NO_TABLES, false)
                 .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "jmx"));
 
         assertConnectorIsRunning();
@@ -198,6 +203,7 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
         ObjectMapper mapper = new ObjectMapper();
 
         startConnector(config -> config
+                .with(CommonConnectorConfig.FAIL_ON_NO_TABLES, false)
                 .with(CommonConnectorConfig.SNAPSHOT_DELAY_MS, 2000)
                 .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "jmx"));
 
@@ -235,6 +241,7 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
         // Testing.Print.enable();
 
         startConnector(config -> config
+                .with(CommonConnectorConfig.FAIL_ON_NO_TABLES, false)
                 .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification")
                 .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink"));
 

@@ -166,7 +166,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     @Override
     public void execute(ChangeEventSourceContext context, P partition, O offsetContext) throws InterruptedException {
         if (!(snapshotterService.getSnapshotter() instanceof NeverSnapshotter)) {
-            taskContext.getSchema().assureNonEmptySchema();
+            taskContext.getSchema().assureNonEmptySchema(connectorConfig.failOnNoTables());
         }
         final Set<Envelope.Operation> skippedOperations = connectorConfig.getSkippedOperations();
 

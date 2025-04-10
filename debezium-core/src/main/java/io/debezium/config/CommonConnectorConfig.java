@@ -83,6 +83,7 @@ public abstract class CommonConnectorConfig {
     protected final boolean snapshotModeConfigurationBasedSnapshotOnDataError;
     protected final boolean isLogPositionCheckEnabled;
     protected final boolean isAdvancedMetricsEnabled;
+    protected final boolean failOnNoTables;
 
     /**
      * The set of predefined versions e.g. for source struct maker version
@@ -1086,6 +1087,15 @@ public abstract class CommonConnectorConfig {
             .optional()
             .withDescription("When enabled the connector will emit advanced streaming metrics");
 
+    public static final Field FAIL_ON_NO_TABLES = Field.createInternal("fail.on.no.tables")
+            .withDisplayName("Fail if no tables are found")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 999))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Fail if no tables are found that match the configured filters.")
+            .withDefault(true);
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -1111,7 +1121,8 @@ public abstract class CommonConnectorConfig {
                     MAX_RETRIES_ON_ERROR,
                     INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY,
                     LOG_POSITION_CHECK_ENABLED,
-                    ADVANCED_METRICS_ENABLE)
+                    ADVANCED_METRICS_ENABLE,
+                    FAIL_ON_NO_TABLES)
             .events(
                     CUSTOM_CONVERTERS,
                     CUSTOM_POST_PROCESSORS,
@@ -1226,6 +1237,7 @@ public abstract class CommonConnectorConfig {
         this.snapshotModeConfigurationBasedSnapshotOnDataError = config.getBoolean(SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_DATA_ERROR);
         this.isLogPositionCheckEnabled = config.getBoolean(LOG_POSITION_CHECK_ENABLED);
         this.isAdvancedMetricsEnabled = config.getBoolean(ADVANCED_METRICS_ENABLE);
+        this.failOnNoTables = config.getBoolean(FAIL_ON_NO_TABLES);
 
         this.signalingDataCollectionId = !Strings.isNullOrBlank(this.signalingDataCollection)
                 ? TableId.parse(this.signalingDataCollection)
@@ -1359,6 +1371,10 @@ public abstract class CommonConnectorConfig {
 
     public boolean skipMessagesWithoutChange() {
         return skipMessagesWithoutChange;
+    }
+
+    public boolean failOnNoTables() {
+        return failOnNoTables;
     }
 
     public EventProcessingFailureHandlingMode getEventProcessingFailureHandlingMode() {

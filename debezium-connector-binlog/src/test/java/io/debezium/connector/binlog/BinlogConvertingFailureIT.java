@@ -14,6 +14,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
+import io.debezium.config.CommonConnectorConfig;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
@@ -315,6 +316,7 @@ public abstract class BinlogConvertingFailureIT<C extends SourceConnector> exten
     @FixFor("DBZ-7143")
     public void shouldFailConversionDefaultTimeTypeWithConnectModeWhenWarnMode() throws Exception {
         config = DATABASE.defaultConfig()
+                .with(CommonConnectorConfig.FAIL_ON_NO_TABLES, false)
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("default_time_table"))

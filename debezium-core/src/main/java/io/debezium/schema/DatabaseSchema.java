@@ -29,7 +29,7 @@ public interface DatabaseSchema<I extends DataCollectionId> extends AutoCloseabl
      */
     boolean tableInformationComplete();
 
-    default void assureNonEmptySchema() {
+    default void assureNonEmptySchema(boolean failOnNoTables) {
     }
 
     /**
