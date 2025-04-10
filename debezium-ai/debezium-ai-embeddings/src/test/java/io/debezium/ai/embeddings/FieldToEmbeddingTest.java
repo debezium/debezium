@@ -75,6 +75,19 @@ public class FieldToEmbeddingTest {
     }
 
     @Test
+    public void testNestedFieldIsWithSameName() {
+        FieldToEmbedding<SourceRecord> embeddingSmt = new FieldToEmbedding();
+        embeddingSmt.configure(Map.of(
+                "embeddings.field.source", "after.product",
+                "embeddings.field.embedding", "after.product_embedding"));
+        SourceRecord transformedRecord = embeddingSmt.apply(SOURCE_RECORD);
+
+        Struct payloadStruct = (Struct) transformedRecord.value();
+        assertThat(payloadStruct.getStruct("after").getString("product")).contains("a product");
+        assertThat(payloadStruct.getStruct("after").getArray("product_embedding")).contains(0.0f, 1.0f, 2.0f, 3.0f);
+    }
+
+    @Test
     public void testNoEmbeddingsConfProvided() {
         FieldToEmbedding<SourceRecord> embeddingSmt = new FieldToEmbedding();
         embeddingSmt.configure(Map.of("embeddings.field.source", "after.product"));
