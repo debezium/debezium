@@ -8,6 +8,8 @@ package io.debezium.ai.embeddings;
 import static io.debezium.ai.embeddings.FieldToEmbedding.EMBEDDINGS_PREFIX;
 import static java.lang.String.format;
 
+import java.time.Duration;
+
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -24,6 +26,8 @@ import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
  * @author vjuranek
  */
 public class OllamaModelFactory<R extends ConnectRecord<R>> implements EmbeddingsModelFactory {
+
+    private static final int DEFAULT_OPERATION_TIMEOUT = 15_000;
 
     public static final String OLLAMA_PREFIX = EMBEDDINGS_PREFIX + "ollama.";
 
@@ -43,10 +47,19 @@ public class OllamaModelFactory<R extends ConnectRecord<R>> implements Embedding
             .withDescription("Name of the model which should be served by Ollama server.")
             .required();
 
-    public static final Field.Set ALL_FIELDS = Field.setOf(OLLAMA_BASE_URL, MODEL_NAME);
+    private static final Field OPERATION_TIMEOUT = Field.create(OLLAMA_PREFIX + "operation.timeout.ms")
+            .withDisplayName("Operation timeout.")
+            .withType(ConfigDef.Type.INT)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDefault(DEFAULT_OPERATION_TIMEOUT)
+            .withDescription("Milliseconds to wait for Ollama calculations to finish (defaults to %s).".formatted(DEFAULT_OPERATION_TIMEOUT));
+
+    public static final Field.Set ALL_FIELDS = Field.setOf(OLLAMA_BASE_URL, MODEL_NAME, OPERATION_TIMEOUT);
 
     private String baseUrl;
     private String modelName;
+    private int operationTimeout;
 
     @Override
     public Field.Set getConfigFields() {
@@ -57,6 +70,7 @@ public class OllamaModelFactory<R extends ConnectRecord<R>> implements Embedding
     public void configure(Configuration config) {
         baseUrl = config.getString(OLLAMA_BASE_URL);
         modelName = config.getString(MODEL_NAME);
+        operationTimeout = config.getInteger(OPERATION_TIMEOUT);
     }
 
     @Override
@@ -74,6 +88,7 @@ public class OllamaModelFactory<R extends ConnectRecord<R>> implements Embedding
         return OllamaEmbeddingModel.builder()
                 .baseUrl(baseUrl)
                 .modelName(modelName)
+                .timeout(Duration.ofMillis(operationTimeout))
                 .build();
     }
 }
