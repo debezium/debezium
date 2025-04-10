@@ -327,7 +327,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 catch (AuthenticationException e) {
                     throw new DebeziumException(String.format(
                             "Failed to authenticate to the database at %s:%d with user '%s'",
-                            connectorConfig.getHostName(), connectorConfig.getPort(), connectorConfig.getUserName()), e);
+                            connectorConfig.getHostName(), connectorConfig.getPort(), connectorConfig.getUserName()), sanitizeAuthenticationException(e));
                 }
                 catch (Throwable e) {
                     throw new DebeziumException(String.format(
@@ -348,6 +348,15 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 LOGGER.info("Exception while stopping binary log client", e);
             }
         }
+    }
+
+    static AuthenticationException sanitizeAuthenticationException(AuthenticationException e) {
+        String sanitizedError = e.getMessage()
+            .replaceAll("[^\\P{Cc}\t\r\n]", "");
+        AuthenticationException sanitized = new AuthenticationException(sanitizedError,
+            e.getErrorCode(), e.getSqlState());
+        sanitized.setStackTrace(e.getStackTrace());
+        return sanitized;
     }
 
     @Override
