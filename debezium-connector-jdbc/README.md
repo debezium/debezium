@@ -81,47 +81,6 @@ An example configuration:
      collection.naming.strategy=io.debezium.sink.naming.DefaultCollectionNamingStrategy
      column.naming.strategy=io.debezium.connector.jdbc.naming.DefaultColumnNamingStrategy
 
-### Enhanced Naming Strategies
-
-The JDBC sink connector includes enhanced naming strategies that provide more flexible naming transformations for collections (tables) and columns:
-
-#### Enhanced Collection Naming
-
-The enhanced collection naming strategy allows you to:
-* Apply various naming styles (snake_case, camelCase, kebab-case, UPPERCASE, lowercase)
-* Add prefixes and suffixes to table names
-* Extract table names intelligently from topics with formats like `server.schema.table`
-
-To enable enhanced collection naming:
-
-```properties
-# Enable enhanced collection naming
-collection.naming.style.enabled=true
-
-# Configure naming style - choose one of: default, snake_case, camel_case, kebab-case, upper_case, lower_case
-collection.naming.style=snake_case
-
-# Optional prefix and suffix
-collection.naming.prefix=app_
-collection.naming.suffix=_table
-```
-
-For example, with the configuration above, a topic named ServerInventory.ProductItems would be transformed to a table named app_product_items_table.
-
-Enhanced Column Naming
-Similarly, column names can be transformed with styles, prefixes, and suffixes:
-```
-# Enable enhanced column naming
-column.naming.style.enabled=true
-
-# Configure naming style - choose one of: default, snake_case, camel_case, kebab-case, upper_case, lower_case
-column.naming.style=camel_case
-
-# Optional prefix and suffix
-column.naming.prefix=db_
-column.naming.suffix=_col
-```
-
 ### Relational model
 
 The JDBC sink connector maintains an in-memory relational model, similar to Debezium source connectors.

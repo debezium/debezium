@@ -59,13 +59,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     public static final String SCHEMA_EVOLUTION = "schema.evolution";
     public static final String QUOTE_IDENTIFIERS = "quote.identifiers";
     public static final String COLUMN_NAMING_STRATEGY = "column.naming.strategy";
-    public static final String COLUMN_NAMING_STYLE = "column.naming.style";
-    public static final String COLUMN_NAMING_PREFIX = "column.naming.prefix";
-    public static final String COLLECTION_NAMING_PREFIX = "collection.naming.prefix";
-    public static final String COLLECTION_NAMING_SUFFIX = "collection.naming.suffix";
-    public static final String COLLECTION_NAMING_STYLE = "collection.naming.style";
 
-    public static final String COLUMN_NAMING_SUFFIX = "column.naming.suffix";
     public static final String POSTGRES_POSTGIS_SCHEMA = "dialect.postgres.postgis.schema";
     public static final String SQLSERVER_IDENTITY_INSERT = "dialect.sqlserver.identity.insert";
     public static final String USE_REDUCTION_BUFFER = "use.reduction.buffer";
@@ -197,31 +191,6 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withDefault(DefaultColumnNamingStrategy.class.getName())
             .withDescription("Name of the strategy class that implements the ColumnNamingStrategy interface.");
 
-    public static final Field COLUMN_NAMING_STYLE_FIELD = Field.create(COLUMN_NAMING_STYLE)
-            .withDisplayName("Column Naming Style")
-            .withType(Type.STRING)
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withValidation(JdbcSinkConnectorConfig::validateColumnNamingStyle)
-            .withDefault("default")
-            .withDescription("The style of column naming: snake_case, camelCase, kebab-case, UPPERCASE, lowercase.");
-
-    public static final Field COLUMN_NAMING_PREFIX_FIELD = Field.create(COLUMN_NAMING_PREFIX)
-            .withDisplayName("Column Naming Prefix")
-            .withType(Type.STRING)
-            .withDefault("")
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDescription("Optional prefix to add to column names.");
-
-    public static final Field COLUMN_NAMING_SUFFIX_FIELD = Field.create(COLUMN_NAMING_SUFFIX)
-            .withDisplayName("Column Naming Suffix")
-            .withType(Type.STRING)
-            .withDefault("")
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDescription("Optional suffix to add to column names.");
-
     public static final Field COLLECTION_NAMING_STRATEGY_FIELD = Field.create(COLLECTION_NAMING_STRATEGY)
             .withDisplayName("Name of the strategy class that implements the CollectionNamingStrategy interface")
             .withType(ConfigDef.Type.CLASS)
@@ -234,28 +203,6 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     "If not specified, the default strategy is used.")
             .withDeprecatedAliases(DEPRECATED_TABLE_NAMING_STRATEGY)
             .withValidation(JdbcSinkConnectorConfig::validateCollectionNamingStrategy);
-
-    public static final Field COLLECTION_NAMING_STYLE_FIELD = Field.create(COLLECTION_NAMING_STYLE)
-            .withDisplayName("Column Naming Style")
-            .withType(Type.STRING)
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDefault("default")
-            .withDescription("The style of table naming: snake_case, camel_case, upper_case, lower_case.");
-
-    public static final Field COLLECTION_NAMING_PREFIX_FIELD = Field.create(COLLECTION_NAMING_PREFIX)
-            .withDisplayName("Table Naming Prefix")
-            .withType(Type.STRING)
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDescription("Optional prefix to add to table names.");
-
-    public static final Field COLLECTION_NAMING_SUFFIX_FIELD = Field.create(COLLECTION_NAMING_SUFFIX)
-            .withDisplayName("Table Naming Suffix")
-            .withType(Type.STRING)
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDescription("Optional suffix to add to table names.");
 
     public static final Field POSTGRES_POSTGIS_SCHEMA_FIELD = Field.create(POSTGRES_POSTGIS_SCHEMA)
             .withDisplayName("Name of the schema where postgis extension is installed")
@@ -352,13 +299,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     SCHEMA_EVOLUTION_FIELD,
                     QUOTE_IDENTIFIERS_FIELD,
                     COLLECTION_NAMING_STRATEGY_FIELD,
-                    COLLECTION_NAMING_PREFIX_FIELD,
-                    COLLECTION_NAMING_STYLE_FIELD,
-                    COLLECTION_NAMING_SUFFIX_FIELD,
                     COLUMN_NAMING_STRATEGY_FIELD,
-                    COLUMN_NAMING_STYLE_FIELD,
-                    COLUMN_NAMING_PREFIX_FIELD,
-                    COLUMN_NAMING_SUFFIX_FIELD,
                     COLLECTION_TABLE_FORMAT_FIELD,
                     USE_TIME_ZONE_FIELD,
                     POSTGRES_POSTGIS_SCHEMA_FIELD,

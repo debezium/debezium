@@ -24,7 +24,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Field;
 import io.debezium.connector.jdbc.naming.CustomCollectionNamingStrategy;
-import io.debezium.connector.jdbc.naming.CustomColumnNamingStrategy;
 import io.debezium.connector.jdbc.naming.TemporaryBackwardCompatibleCollectionNamingStrategyProxy;
 import io.debezium.doc.FixFor;
 import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
@@ -200,28 +199,9 @@ public class JdbcSinkConnectorConfigTest {
     }
 
     @Test
-    public void testCustomColumnNamingStrategyIntegration() {
-        CustomColumnNamingStrategy strategy = new CustomColumnNamingStrategy();
-
-        Map<String, String> props = new HashMap<>();
-        props.put("column.naming.style", "snake_case");
-        props.put("column.naming.prefix", "pre_");
-        props.put("column.naming.suffix", "_suf");
-        strategy.configure(props);
-
-        LOGGER.debug("Testing column naming with properties: {}", props);
-
-        String resolvedName = strategy.resolveColumnName("testColumn");
-        assertThat(resolvedName).isEqualTo("pre_test_column_suf");
-    }
-
-    @Test
     public void testCustomCollectionNamingStrategyIntegration() {
         final Map<String, String> properties = new HashMap<>();
         properties.put(JdbcSinkConnectorConfig.COLLECTION_NAMING_STRATEGY, CustomCollectionNamingStrategy.class.getName());
-        properties.put("collection.naming.style", "snake_case");
-        properties.put("collection.naming.prefix", "tbl_");
-        properties.put("collection.naming.suffix", "_table");
 
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
         CollectionNamingStrategy strategy = config.getCollectionNamingStrategy();
