@@ -1544,6 +1544,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             return null;
         }
 
+        private static LogMiningBufferType parseOrDefault(String value, String defaultValue) {
+            LogMiningBufferType bufferType = parse(value);
+
+            if (bufferType == null && defaultValue != null) {
+                return parse(defaultValue);
+            }
+
+            return bufferType;
+
+        }
+
     }
 
     public enum LogMiningQueryFilterMode implements EnumeratedValue {
@@ -2086,6 +2097,11 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     private static int validateLogMiningBufferType(Configuration config, Field field, ValidationOutput problems) {
         final LogMiningBufferType bufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
+
+        if (bufferType == null) {
+            return 1;
+        }
+
         if (LogMiningBufferType.INFINISPAN_REMOTE.equals(bufferType)) {
             // Must supply the Hotrod server list property as a minimum when using Infinispan cluster mode
             final String serverList = config.getString(RemoteInfinispanLogMinerEventProcessor.HOTROD_SERVER_LIST);
@@ -2100,12 +2116,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     public static int validateLogMiningInfinispanCacheConfiguration(Configuration config, Field field, ValidationOutput problems) {
-        final LogMiningBufferType bufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
-        int errors = 0;
+        final LogMiningBufferType bufferType = LogMiningBufferType.parseOrDefault(config.getString(LOG_MINING_BUFFER_TYPE), (String) LOG_MINING_BUFFER_TYPE.defaultValue());
+
         if (bufferType.isInfinispan()) {
-            errors = Field.isRequired(config, field, problems);
+            return Field.isRequired(config, field, problems);
         }
-        return errors;
+
+        return 0;
     }
 
     public static int validateLogMiningReadOnly(Configuration config, Field field, ValidationOutput problems) {
@@ -2193,7 +2210,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public static int validateEhCacheGlobalConfigField(Configuration config, Field field, ValidationOutput problems) {
         if (ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
-            if (LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE)).isEhcache()) {
+            if (LogMiningBufferType.parseOrDefault(config.getString(LOG_MINING_BUFFER_TYPE), (String) LOG_MINING_BUFFER_TYPE.defaultValue()).isEhcache()) {
                 // The string cannot include any `<cache ` or `<default-serializers` tags.
                 final String globalConfig = config.getString(LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG, "").toLowerCase();
                 if (!Strings.isNullOrEmpty(globalConfig)) {
@@ -2210,7 +2227,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public static int validateEhcacheConfigFieldRequired(Configuration config, Field field, ValidationOutput problems) {
         if (ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
-            if (LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE)).isEhcache()) {
+            if (LogMiningBufferType.parseOrDefault(config.getString(LOG_MINING_BUFFER_TYPE), (String) LOG_MINING_BUFFER_TYPE.defaultValue())
+                    .isEhcache()) {
                 return Field.isRequired(config, field, problems);
             }
         }
