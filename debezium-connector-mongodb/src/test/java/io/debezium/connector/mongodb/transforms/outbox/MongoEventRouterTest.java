@@ -655,7 +655,7 @@ public class MongoEventRouterTest {
     @Test(expected = ConfigException.class)
     public void shouldFailOnInvalidConfigurationForTopicRegex() {
         final Map<String, String> config = new HashMap<>();
-        config.put(MongoEventRouterConfigDefinition.ROUTE_TOPIC_REGEX.name(), " [[a-z]");
+        config.put(MongoEventRouterConfigDefinition.ROUTE_TOPIC_REGEX.name(), " [[a-z");
         router.configure(config);
     }
 

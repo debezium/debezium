@@ -711,7 +711,7 @@ public class EventRouterTest {
     public void shouldFailOnInvalidConfigurationForTopicRegex() {
         final EventRouter<SourceRecord> router = new EventRouter<>();
         final Map<String, String> config = new HashMap<>();
-        config.put(EventRouterConfigDefinition.ROUTE_TOPIC_REGEX.name(), " [[a-z]");
+        config.put(EventRouterConfigDefinition.ROUTE_TOPIC_REGEX.name(), " [[a-z]**");
         router.configure(config);
     }
 

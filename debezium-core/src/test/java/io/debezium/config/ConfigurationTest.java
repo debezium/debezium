@@ -18,10 +18,11 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
-import java.util.regex.Pattern;
 
 import org.junit.Before;
 import org.junit.Test;
+
+import com.google.re2j.Pattern;
 
 import io.debezium.doc.FixFor;
 import io.debezium.function.Predicates;

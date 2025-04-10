@@ -823,7 +823,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             }
 
             for (String substring : CustomKeyMapper.PATTERN_SPLIT.split(msgKeyColumns)) {
-                if (!CustomKeyMapper.MSG_KEY_COLUMNS_PATTERN.asPredicate().test(substring)) {
+                if (!CustomKeyMapper.MSG_KEY_COLUMNS_PATTERN.matcher(substring).find()) {
                     problems.accept(MSG_KEY_COLUMNS, substring,
                             substring + " has an invalid format (expecting '" + CustomKeyMapper.MSG_KEY_COLUMNS_PATTERN.pattern() + "')");
                     problemCount++;

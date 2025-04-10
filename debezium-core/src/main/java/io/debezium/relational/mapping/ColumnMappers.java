@@ -10,10 +10,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.apache.kafka.connect.errors.ConnectException;
+
+import com.google.re2j.Matcher;
+import com.google.re2j.Pattern;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.config.Configuration;
@@ -58,7 +59,7 @@ public class ColumnMappers {
         config.forEachMatchingFieldName("column\\.propagate\\.source\\.type", builder::propagateSourceTypeToSchemaParameter);
         config.forEachMatchingFieldName("datatype\\.propagate\\.source\\.type", builder::propagateSourceTypeToSchemaParameterByDatatype);
 
-        final Pattern hashAlgorithmAndSaltExtractPattern = Pattern.compile("((?<hashAlgorithm>[^.]+)\\.with\\.salt\\.(?<salt>.+))");
+        final Pattern hashAlgorithmAndSaltExtractPattern = Pattern.compile("((?P<hashAlgorithm>[^.]+)\\.with\\.salt\\.(?P<salt>.+))");
         config.forEachMatchingFieldNameWithString("column\\.mask\\.hash\\." + hashAlgorithmAndSaltExtractPattern.pattern(),
                 (fullyQualifiedColumnNames, hashAlgorithmAndSalt) -> {
                     Matcher matcher = hashAlgorithmAndSaltExtractPattern.matcher(hashAlgorithmAndSalt);

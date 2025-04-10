@@ -29,13 +29,14 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.re2j.Pattern;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.SnapshotRecord;
@@ -309,7 +310,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
     private Stream<TableId> toTableIds(Set<TableId> tableIds, Pattern pattern) {
         return tableIds
                 .stream()
-                .filter(tid -> pattern.asMatchPredicate().test(connectorConfig.getTableIdMapper().toString(tid)))
+                .filter(tid -> pattern.matcher(connectorConfig.getTableIdMapper().toString(tid)).matches())
                 .sorted();
     }
 
