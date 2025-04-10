@@ -8,6 +8,7 @@ package io.debezium.connector.common;
 import java.util.ArrayList;
 import java.util.Map;
 
+import io.debezium.schema.AbstractTopicNamingStrategy;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigValue;
 import org.slf4j.Logger;
@@ -37,7 +38,12 @@ public abstract class RelationalBaseSourceConnector extends BaseSourceConnector 
         }
 
         // Only if there are no config errors ...
-        if (results.values().stream().allMatch(configValue -> configValue.errorMessages().isEmpty())) {
+        if (results.values().stream()
+            .filter(
+                configValue -> !(configValue.name().equals(RelationalDatabaseConnectorConfig.TOPIC_PREFIX.name())
+                    || configValue.name().equals(AbstractTopicNamingStrategy.TOPIC_HEARTBEAT_PREFIX.name()))
+            )
+            .allMatch(configValue -> configValue.errorMessages().isEmpty())) {
             // ... validate the connection too
             validateConnection(results, config);
         }
