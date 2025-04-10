@@ -5,8 +5,7 @@
  */
 package io.debezium.connector.oracle;
 
-import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS;
-import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_TYPE;
+import static io.debezium.connector.oracle.OracleConnectorConfig.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -15,6 +14,9 @@ import static org.junit.Assert.assertTrue;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
@@ -345,31 +347,55 @@ public class OracleConnectorConfigTest {
 
     @Test
     @FixFor("DBZ-8886")
-    public void invalidValueForLogMiningBuffer() {
-        final Configuration configuration = Configuration.create()
+    public void shouldReturnDefaultValueForInvalidLogMiningBufferWhenValidateLogMiningInfinispanCache() {
+        Configuration configuration = Configuration.create()
                 .with(LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS.name(), "aValue")
-                .with(LOG_MINING_BUFFER_TYPE.name(), "UNSUPPORTED_VALUE")
+                .with(LOG_MINING_BUFFER_TYPE.name(), "null")
                 .build();
 
-        int error = OracleConnectorConfig.validateLogMiningInfinispanCacheConfiguration(configuration,
-                LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS,
-                (field, value, problemMessage) -> assertThat(problemMessage).isEqualTo("A correct value is required"));
+        Field.ValidationOutput unreachableState = (field, value, problemMessage) -> {
+            throw new RuntimeException("unreachable state");
+        };
 
-        assertThat(error).isEqualTo(1);
+        List<Integer> actual = Stream.of(
+                () -> validateEhCacheGlobalConfigField(configuration, LOG_MINING_ARCHIVE_LOG_ONLY_MODE, unreachableState),
+                        () -> validateLogMiningInfinispanCacheConfiguration(configuration, LOG_MINING_ARCHIVE_LOG_ONLY_MODE, unreachableState),
+                        (Supplier<Integer>) () -> validateEhcacheConfigFieldRequired(configuration, LOG_MINING_ARCHIVE_LOG_ONLY_MODE, unreachableState)
+                )
+                .map(Supplier::get)
+                .toList();
+
+        assertThat(actual).containsOnly(0);
     }
 
     @Test
     @FixFor("DBZ-8886")
-    public void validValueForLogMiningBuffer() {
+    public void shouldReturnInvalidValueForLogMiningBufferWhenValidateLogMiningBufferType() {
+        Configuration configuration = Configuration.create()
+                .with(LOG_MINING_BUFFER_TYPE.name(), "null")
+                .build();
+
+        boolean actual = LOG_MINING_BUFFER_TYPE.validate(
+                configuration,
+                (field, value, problemMessage) -> assertThat(problemMessage).isEqualTo("Value must be one of ehcache, memory, infinispan_embedded, infinispan_remote")
+        );
+
+        assertThat(actual).isFalse();
+    }
+
+    @Test
+    @FixFor("DBZ-8886")
+    public void shouldReturnValidValueForLogMiningBufferWhenValidateLogMiningBufferType() {
         final Configuration configuration = Configuration.create()
                 .with(LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS.name(), "A_CORRECT_VALUE")
                 .with(LOG_MINING_BUFFER_TYPE.name(), "infinispan_embedded")
                 .build();
 
-        int error = OracleConnectorConfig.validateLogMiningInfinispanCacheConfiguration(configuration,
-                LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS,
-                (field, value, problemMessage) -> { throw new RuntimeException("unreachable state"); });
+        boolean actual = LOG_MINING_BUFFER_TYPE.validate(
+                configuration,
+                (field, value, problemMessage) -> { throw new RuntimeException("unreachable state"); }
+        );
 
-        assertThat(error).isEqualTo(0);
+        assertThat(actual).isTrue();
     }
 }
