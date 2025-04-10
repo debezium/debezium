@@ -2171,7 +2171,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     public static int validateLogMiningInfinispanCacheConfiguration(Configuration config, Field field, ValidationOutput problems) {
-        final LogMiningBufferType bufferType = LogMiningBufferType.parseOrDefault(config.getString(LOG_MINING_BUFFER_TYPE), (String) LOG_MINING_BUFFER_TYPE.defaultValue());
+        final LogMiningBufferType bufferType = LogMiningBufferType.parseOrDefault(config.getString(LOG_MINING_BUFFER_TYPE),
+                (String) LOG_MINING_BUFFER_TYPE.defaultValue());
 
         if (bufferType.isInfinispan()) {
             return Field.isRequired(config, field, problems);

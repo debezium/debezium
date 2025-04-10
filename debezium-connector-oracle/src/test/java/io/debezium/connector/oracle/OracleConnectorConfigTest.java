@@ -14,11 +14,9 @@ import static org.junit.Assert.assertTrue;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-import org.assertj.core.api.Assertions;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -359,9 +357,8 @@ public class OracleConnectorConfigTest {
 
         List<Integer> actual = Stream.of(
                 () -> validateEhCacheGlobalConfigField(configuration, LOG_MINING_ARCHIVE_LOG_ONLY_MODE, unreachableState),
-                        () -> validateLogMiningInfinispanCacheConfiguration(configuration, LOG_MINING_ARCHIVE_LOG_ONLY_MODE, unreachableState),
-                        (Supplier<Integer>) () -> validateEhcacheConfigFieldRequired(configuration, LOG_MINING_ARCHIVE_LOG_ONLY_MODE, unreachableState)
-                )
+                () -> validateLogMiningInfinispanCacheConfiguration(configuration, LOG_MINING_ARCHIVE_LOG_ONLY_MODE, unreachableState),
+                (Supplier<Integer>) () -> validateEhcacheConfigFieldRequired(configuration, LOG_MINING_ARCHIVE_LOG_ONLY_MODE, unreachableState))
                 .map(Supplier::get)
                 .toList();
 
@@ -377,8 +374,7 @@ public class OracleConnectorConfigTest {
 
         boolean actual = LOG_MINING_BUFFER_TYPE.validate(
                 configuration,
-                (field, value, problemMessage) -> assertThat(problemMessage).isEqualTo("Value must be one of ehcache, memory, infinispan_embedded, infinispan_remote")
-        );
+                (field, value, problemMessage) -> assertThat(problemMessage).isEqualTo("Value must be one of ehcache, memory, infinispan_embedded, infinispan_remote"));
 
         assertThat(actual).isFalse();
     }
@@ -393,8 +389,9 @@ public class OracleConnectorConfigTest {
 
         boolean actual = LOG_MINING_BUFFER_TYPE.validate(
                 configuration,
-                (field, value, problemMessage) -> { throw new RuntimeException("unreachable state"); }
-        );
+                (field, value, problemMessage) -> {
+                    throw new RuntimeException("unreachable state");
+                });
 
         assertThat(actual).isTrue();
     }
