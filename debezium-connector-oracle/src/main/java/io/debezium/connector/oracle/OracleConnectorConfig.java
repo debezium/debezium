@@ -1581,7 +1581,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             }
 
             return bufferType;
-
         }
 
     }
