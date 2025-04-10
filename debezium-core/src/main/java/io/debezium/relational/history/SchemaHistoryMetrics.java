@@ -57,8 +57,14 @@ public class SchemaHistoryMetrics extends Metrics implements SchemaHistoryListen
     }
 
     @Override
-    public String getStatus() {
-        return status.toString();
+    public long getStatus() {
+        if (status == SchemaHistoryStatus.STOPPED) {
+            return 0;
+        } else if (status == SchemaHistoryStatus.RECOVERING) {
+            return 1;
+        } else {
+            return 2;
+        }
     }
 
     @Override

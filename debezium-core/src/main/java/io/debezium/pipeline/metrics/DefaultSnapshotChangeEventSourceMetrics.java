@@ -51,22 +51,22 @@ public class DefaultSnapshotChangeEventSourceMetrics<P extends Partition> extend
     }
 
     @Override
-    public boolean getSnapshotRunning() {
+    public long getSnapshotRunning() {
         return snapshotMeter.getSnapshotRunning();
     }
 
     @Override
-    public boolean getSnapshotPaused() {
+    public long getSnapshotPaused() {
         return snapshotMeter.getSnapshotPaused();
     }
 
     @Override
-    public boolean getSnapshotCompleted() {
+    public long getSnapshotCompleted() {
         return snapshotMeter.getSnapshotCompleted();
     }
 
     @Override
-    public boolean getSnapshotAborted() {
+    public long getSnapshotAborted() {
         return snapshotMeter.getSnapshotAborted();
     }
 

@@ -85,8 +85,8 @@ public abstract class BinlogMetricsIT<C extends SourceConnector> extends Abstrac
     }
 
     @Override
-    protected boolean snapshotCompleted() {
-        return true;
+    protected long snapshotCompleted() {
+        return 1L;
     }
 
     @Before

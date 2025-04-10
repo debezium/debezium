@@ -50,7 +50,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
 
     protected abstract long expectedEvents();
 
-    protected abstract boolean snapshotCompleted();
+    protected abstract long snapshotCompleted();
 
     protected String task() {
         return null;
@@ -208,10 +208,10 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "CapturedTables")).isEqualTo(new String[]{ tableName() });
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "TotalNumberOfEventsSeen")).isEqualTo(2L);
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "RemainingTableCount")).isEqualTo(0);
-        assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotRunning")).isEqualTo(false);
-        assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotAborted")).isEqualTo(false);
-        assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotCompleted")).isEqualTo(true);
-        assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotPaused")).isEqualTo(false);
+        assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotRunning")).isEqualTo(0L);
+        assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotAborted")).isEqualTo(0L);
+        assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotCompleted")).isEqualTo(1L);
+        assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotPaused")).isEqualTo(0L);
         assertThat(mBeanServer.getAttribute(getSnapshotMetricsObjectName(), "SnapshotPausedDurationInSeconds")).isEqualTo(0L);
     }
 
@@ -227,10 +227,10 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
         assertThat(mBeanServer.getAttribute(objectName, "CapturedTables")).isEqualTo(new String[]{ tableName() });
         assertThat(mBeanServer.getAttribute(objectName, "TotalNumberOfEventsSeen")).isEqualTo(2L);
         assertThat(mBeanServer.getAttribute(objectName, "RemainingTableCount")).isEqualTo(0);
-        assertThat(mBeanServer.getAttribute(objectName, "SnapshotRunning")).isEqualTo(false);
-        assertThat(mBeanServer.getAttribute(objectName, "SnapshotAborted")).isEqualTo(false);
-        assertThat(mBeanServer.getAttribute(objectName, "SnapshotCompleted")).isEqualTo(true);
-        assertThat(mBeanServer.getAttribute(objectName, "SnapshotPaused")).isEqualTo(false);
+        assertThat(mBeanServer.getAttribute(objectName, "SnapshotRunning")).isEqualTo(0L);
+        assertThat(mBeanServer.getAttribute(objectName, "SnapshotAborted")).isEqualTo(0L);
+        assertThat(mBeanServer.getAttribute(objectName, "SnapshotCompleted")).isEqualTo(1L);
+        assertThat(mBeanServer.getAttribute(objectName, "SnapshotPaused")).isEqualTo(0L);
         assertThat(mBeanServer.getAttribute(objectName, "SnapshotPausedDurationInSeconds")).isEqualTo(0L);
     }
 

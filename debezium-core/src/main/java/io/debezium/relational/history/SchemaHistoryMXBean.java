@@ -20,7 +20,7 @@ public interface SchemaHistoryMXBean {
      *
      * @return schema history component state
      */
-    String getStatus();
+    long getStatus();
 
     /**
      * @return time in epoch seconds when recovery has started

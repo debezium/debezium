@@ -82,8 +82,8 @@ public class PostgresMetricsIT extends AbstractMetricsTest<PostgresConnector> {
     }
 
     @Override
-    protected boolean snapshotCompleted() {
-        return false;
+    protected long snapshotCompleted() {
+        return 0L;
     }
 
     @Before

@@ -70,8 +70,8 @@ public class SqlServerMetricsIT extends AbstractMetricsTest<SqlServerConnector> 
     }
 
     @Override
-    protected boolean snapshotCompleted() {
-        return true;
+    protected long snapshotCompleted() {
+        return 1L;
     }
 
     @Override
