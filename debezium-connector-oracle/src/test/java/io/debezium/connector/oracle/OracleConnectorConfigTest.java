@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.oracle;
 
+import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS;
+import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_TYPE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -14,6 +16,7 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 
+import org.assertj.core.api.Assertions;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -338,5 +341,20 @@ public class OracleConnectorConfigTest {
                 .with(OracleConnectorConfig.OLR_PORT, "9000")
                 .build();
         assertThat(config.validateAndRecord(fields, LOGGER::error)).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-8886")
+    public void name() {
+        final Configuration configuration = Configuration.create()
+                .with(LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS.name(), "aValue")
+                .with(LOG_MINING_BUFFER_TYPE.name(), "UNSUPPORTED_VALUE")
+                .build();
+
+        int error = OracleConnectorConfig.validateLogMiningInfinispanCacheConfiguration(configuration,
+                LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS,
+                (field, value, problemMessage) -> assertThat(problemMessage).isEqualTo("A correct value is required"));
+
+        assertThat(error).isEqualTo(1);
     }
 }
