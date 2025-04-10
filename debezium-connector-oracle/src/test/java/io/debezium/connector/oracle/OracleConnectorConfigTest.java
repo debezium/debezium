@@ -357,4 +357,19 @@ public class OracleConnectorConfigTest {
 
         assertThat(error).isEqualTo(1);
     }
+
+    @Test
+    @FixFor("DBZ-8886")
+    public void validValueForLogMiningBuffer() {
+        final Configuration configuration = Configuration.create()
+                .with(LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS.name(), "A_CORRECT_VALUE")
+                .with(LOG_MINING_BUFFER_TYPE.name(), "infinispan_embedded")
+                .build();
+
+        int error = OracleConnectorConfig.validateLogMiningInfinispanCacheConfiguration(configuration,
+                LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS,
+                (field, value, problemMessage) -> { throw new RuntimeException("unreachable state"); });
+
+        assertThat(error).isEqualTo(0);
+    }
 }
