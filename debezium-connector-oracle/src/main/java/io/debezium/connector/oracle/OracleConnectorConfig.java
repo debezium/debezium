@@ -1985,7 +1985,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      * @return true continuous mining should be used
      */
     @Deprecated
-    public boolean isLogMiningContinuousMining() {
+    public boolean isLogMiningContinuousMining(OracleDatabaseVersion version) {
+        if (logMiningContinuousMining) {
+            if (version.getMajor() > 12) {
+                // Guards against users who may set this mistakenly, logs a WARN and explicitly sets the state
+                // within the streaming source explicitly to false
+                LOGGER.warn("Continuous mining is no longer available in Oracle {} and won't be used.", version);
+                return false;
+            }
+        }
         return logMiningContinuousMining;
     }
 
