@@ -1573,6 +1573,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             return null;
         }
 
+        public static LogMiningBufferType parseWithDefaultFallback(String value) {
+            return parseOrDefault(value, (String) LOG_MINING_BUFFER_TYPE.defaultValue());
+        }
+
         private static LogMiningBufferType parseOrDefault(String value, String defaultValue) {
             LogMiningBufferType bufferType = parse(value);
 
@@ -2150,13 +2154,18 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     private static int validateLogMiningBufferType(Configuration config, Field field, ValidationOutput problems) {
-        final LogMiningBufferType bufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
+        final String bufferTypeName = config.getString(LOG_MINING_BUFFER_TYPE);
+        final LogMiningBufferType bufferType = LogMiningBufferType.parse(bufferTypeName);
 
         if (bufferType == null) {
+            if (!Strings.isNullOrBlank(bufferTypeName)) {
+                LOGGER.error("The option '{}' was specified with an invalid configuration value '{}'",
+                        LOG_MINING_BUFFER_TYPE.name(),
+                        bufferTypeName);
+            }
             return 1;
         }
-
-        if (LogMiningBufferType.INFINISPAN_REMOTE.equals(bufferType)) {
+        else if (LogMiningBufferType.INFINISPAN_REMOTE.equals(bufferType)) {
             // Must supply the Hotrod server list property as a minimum when using Infinispan cluster mode
             final String serverList = config.getString(RemoteInfinispanLogMinerEventProcessor.HOTROD_SERVER_LIST);
             if (Strings.isNullOrEmpty(serverList)) {
@@ -2170,13 +2179,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     public static int validateLogMiningInfinispanCacheConfiguration(Configuration config, Field field, ValidationOutput problems) {
-        final LogMiningBufferType bufferType = LogMiningBufferType.parseOrDefault(config.getString(LOG_MINING_BUFFER_TYPE),
-                (String) LOG_MINING_BUFFER_TYPE.defaultValue());
-
-        if (bufferType.isInfinispan()) {
+        if (LogMiningBufferType.parseWithDefaultFallback(config.getString(LOG_MINING_BUFFER_TYPE)).isInfinispan()) {
             return Field.isRequired(config, field, problems);
         }
-
         return 0;
     }
 
@@ -2265,7 +2270,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public static int validateEhCacheGlobalConfigField(Configuration config, Field field, ValidationOutput problems) {
         if (ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
-            if (LogMiningBufferType.parseOrDefault(config.getString(LOG_MINING_BUFFER_TYPE), (String) LOG_MINING_BUFFER_TYPE.defaultValue()).isEhcache()) {
+            if (LogMiningBufferType.parseWithDefaultFallback(config.getString(LOG_MINING_BUFFER_TYPE)).isEhcache()) {
                 // The string cannot include any `<cache ` or `<default-serializers` tags.
                 final String globalConfig = config.getString(LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG, "").toLowerCase();
                 if (!Strings.isNullOrEmpty(globalConfig)) {
@@ -2282,8 +2287,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public static int validateEhcacheConfigFieldRequired(Configuration config, Field field, ValidationOutput problems) {
         if (ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
-            if (LogMiningBufferType.parseOrDefault(config.getString(LOG_MINING_BUFFER_TYPE), (String) LOG_MINING_BUFFER_TYPE.defaultValue())
-                    .isEhcache()) {
+            if (LogMiningBufferType.parseWithDefaultFallback(config.getString(LOG_MINING_BUFFER_TYPE)).isEhcache()) {
                 return Field.isRequired(config, field, problems);
             }
         }
