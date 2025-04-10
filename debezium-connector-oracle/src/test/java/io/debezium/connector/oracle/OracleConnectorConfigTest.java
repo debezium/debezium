@@ -345,7 +345,7 @@ public class OracleConnectorConfigTest {
 
     @Test
     @FixFor("DBZ-8886")
-    public void name() {
+    public void invalidValueForLogMiningBuffer() {
         final Configuration configuration = Configuration.create()
                 .with(LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS.name(), "aValue")
                 .with(LOG_MINING_BUFFER_TYPE.name(), "UNSUPPORTED_VALUE")
