@@ -1441,34 +1441,8 @@ To prevent the connector from rebalancing, set the total retry time (flush.retry
 |[[jdbc-property-column-naming-strategy]]<<jdbc-property-column-naming-strategy, `+column.naming.strategy+`>>
 |`io.debezium.connector.jdbc.naming.DefaultColumnNamingStrategy`
 |Specifies the fully-qualified class name of a `ColumnNamingStrategy` implementation that the connector uses to resolve column names from incoming event field names. +
-+
-The default behavior is to use the field name as the column name without any transformation. +
-+
-You can use the enhanced column naming capabilities by setting <<jdbc-property-column-naming-style-enabled, `+column.naming.style.enabled+`>> to `true`.
-
-|[[jdbc-property-column-naming-style-enabled]]<<jdbc-property-column-naming-style-enabled, `+column.naming.style.enabled+`>>
-|`false`
-|When set to `true`, enables enhanced column naming with support for naming styles, prefixes, and suffixes. When enabled, this activates the custom naming strategy which provides more flexible column name transformations.
-
-|[[jdbc-property-column-naming-style]]<<jdbc-property-column-naming-style, `+column.naming.style+`>>
-|`default`
-|The naming style to use for column names. Only used when <<jdbc-property-column-naming-style-enabled, `+column.naming.style.enabled+`>> is `true`. +
-Valid options are: +
-
-* `default` - No transformation is applied
-* `snake_case` - Converts `camelCase` or `PascalCase` to `snake_case`
-* `camel_case` - Converts `snake_case` to `camelCase`
-* `kebab-case` - Uses hyphens instead of underscores
-* `upper_case` - Transforms to UPPERCASE
-* `lower_case` - Transforms to lowercase
-
-|[[jdbc-property-column-naming-prefix]]<<jdbc-property-column-naming-prefix, `+column.naming.prefix+`>>
-|_empty string_
-|Optional prefix to add to column names. Only used when <<jdbc-property-column-naming-style-enabled, `+column.naming.style.enabled+`>> is `true`.
-
-|[[jdbc-property-column-naming-suffix]]<<jdbc-property-column-naming-suffix, `+column.naming.suffix+`>>
-|_empty string_
-|Optional suffix to add to column names. Only used when <<jdbc-property-column-naming-style-enabled, `+column.naming.style.enabled+`>> is `true`.
+ +
+The default behavior is to use the field name as the column name without any transformation.
 
 |===
 
