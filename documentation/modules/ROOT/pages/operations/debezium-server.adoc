@@ -1138,6 +1138,10 @@ If the configured value is `0` then this threshold is disabled.
 will apply to this value (if this value is positive).
 By default it is `0` (disabled).
 
+|[[redis-skip-heartbeat-messages]]<<redis-skip-heartbeat-messages, `debezium.sink.redis.skip.heartbeat.messages`>>
+|`true`
+|Determines whether heartbeat messages from Debezium connectors should be skipped (not stored in Redis). When set to `true` (default), heartbeat messages are marked as processed but not stored in Redis streams. When set to `false`, heartbeat messages are stored in Redis streams alongside regular CDC events.
+
 |===
 
 [id="p-redis-message-format"]
