@@ -111,7 +111,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
         this.archiveDestinationName = connectorConfig.getArchiveLogDestinationName();
         this.currentBatchSize = connectorConfig.getLogMiningBatchSizeDefault();
         this.currentSleepTime = connectorConfig.getLogMiningSleepTimeDefault().toMillis();
-        this.continuousMining = connectorConfig.isLogMiningContinuousMining();
+        this.continuousMining = connectorConfig.isLogMiningContinuousMining(jdbcConnection.getOracleVersion());
 
         this.snapshotterService = snapshotterService;
 
@@ -400,9 +400,11 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
             buildDataDictionary(connection);
         }
 
+        // Collect logs
+        currentLogFiles = logCollector.getLogs(startScn);
+
         if (!continuousMining) {
-            // Collect logs and add them to the session
-            currentLogFiles = logCollector.getLogs(startScn);
+            // Add logs to the session
             for (LogFile logFile : currentLogFiles) {
                 LOGGER.trace("Adding log file {} to the mining session.", logFile.getFileName());
                 String addLogFileStatement = SqlUtils.addLogFileStatement("DBMS_LOGMNR.ADDFILE", logFile.getFileName());
