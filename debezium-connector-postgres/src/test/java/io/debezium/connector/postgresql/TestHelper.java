@@ -28,6 +28,8 @@ import java.util.stream.Collectors;
 
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
+import org.postgresql.core.ServerVersion;
+import org.postgresql.core.Version;
 import org.postgresql.jdbc.PgConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -284,6 +286,22 @@ public final class TestHelper {
         try (PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), getPostgresValueConverterBuilder(config), CONNECTION_TEST)) {
             return connection.getDatabaseCharset();
         }
+    }
+
+    public static Version getServerVersion() {
+        final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
+        try (PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), getPostgresValueConverterBuilder(config), CONNECTION_TEST)) {
+            return ServerVersion.from(
+                connection.queryAndMap(
+                    "SHOW server_version",
+                    connection.singleResultMapper(
+                        rs -> rs.getString("server_version"),
+                        "Could not fetch db version")));
+        }
+        catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return ServerVersion.INVALID;
     }
 
     public static PostgresSchema getSchema(PostgresConnectorConfig config) {

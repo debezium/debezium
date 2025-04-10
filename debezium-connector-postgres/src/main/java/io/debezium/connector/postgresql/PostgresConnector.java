@@ -17,12 +17,15 @@ import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
 import org.apache.kafka.connect.source.ExactlyOnceSupport;
+import org.postgresql.core.ServerVersion;
+import org.postgresql.core.Version;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
+import io.debezium.connector.postgresql.PostgresConnectorConfig.LogicalDecoder;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ServerInfo;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -98,6 +101,15 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
                 testConnection(connection);
                 checkReadOnlyMode(connection, postgresConfig);
                 checkLoginReplicationRoles(connection);
+                if (LogicalDecoder.PGOUTPUT.equals(postgresConfig.plugin())) {
+                    int pgversion = checkPostgresVersionForPgoutputSupport(connection, postgresConfig);
+                    if (ServerVersion.v10.getVersionNum() > pgversion) {
+                        final String errorMessage = "PGOUTPUT plugin is only supported on postgres server version 10+";
+                        LOGGER.error(errorMessage);
+                        hostnameValue.addErrorMessage(errorMessage);
+                        pluginNameValue.addErrorMessage(errorMessage);
+                    }
+                }
             }
             catch (SQLException e) {
                 LOGGER.error("Failed testing connection for {} with user '{}'", connection.connectionString(),
@@ -159,6 +171,17 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
         connection.execute("SELECT version()");
         LOGGER.info("Successfully tested connection for {} with user '{}'", connection.connectionString(),
                 connection.username());
+    }
+
+    private static int checkPostgresVersionForPgoutputSupport(PostgresConnection connection, PostgresConnectorConfig postgresConfig) throws SQLException {
+        // check for DB version and LogicalDecoder compatibility
+        final Version dbVersion = ServerVersion.from(
+            connection.queryAndMap(
+                "SHOW server_version",
+                connection.singleResultMapper(
+                    rs -> rs.getString("server_version"),
+                    "Could not fetch db version")));
+        return dbVersion.getVersionNum();
     }
 
     @Override
