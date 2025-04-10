@@ -1542,13 +1542,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             return null;
         }
 
-        private static LogMiningBufferType parse(String value, String defaultValue) {
-            LogMiningBufferType type = parse(value);
-            if (type == null && defaultValue != null) {
-                type = parse(defaultValue);
-            }
-            return type;
-        }
     }
 
     public enum LogMiningQueryFilterMode implements EnumeratedValue {
