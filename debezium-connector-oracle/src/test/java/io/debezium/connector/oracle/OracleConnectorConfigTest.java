@@ -5,7 +5,12 @@
  */
 package io.debezium.connector.oracle;
 
-import static io.debezium.connector.oracle.OracleConnectorConfig.*;
+import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_ARCHIVE_LOG_ONLY_MODE;
+import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS;
+import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_TYPE;
+import static io.debezium.connector.oracle.OracleConnectorConfig.validateEhCacheGlobalConfigField;
+import static io.debezium.connector.oracle.OracleConnectorConfig.validateEhcacheConfigFieldRequired;
+import static io.debezium.connector.oracle.OracleConnectorConfig.validateLogMiningInfinispanCacheConfiguration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
