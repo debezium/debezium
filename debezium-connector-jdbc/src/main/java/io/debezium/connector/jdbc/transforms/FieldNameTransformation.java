@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.jdbc.transforms;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -22,6 +23,9 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.jdbc.Module;
 import io.debezium.connector.jdbc.util.NamingStyle;
 import io.debezium.connector.jdbc.util.NamingStyleUtils;
+import io.debezium.data.Envelope.FieldName;
+import io.debezium.transforms.SmtManager;
+import io.debezium.util.Strings;
 
 /**
  * A Kafka Connect SMT (Single Message Transformation) that transforms field (column) names
@@ -74,6 +78,7 @@ public class FieldNameTransformation<R extends ConnectRecord<R>> implements Tran
     private String prefix;
     private String suffix;
     private NamingStyle namingStyle;
+    private SmtManager<R> smtManager;
 
     /**
      * Configures this transformation with the given settings.
@@ -86,6 +91,8 @@ public class FieldNameTransformation<R extends ConnectRecord<R>> implements Tran
         this.prefix = config.getString(PREFIX);
         this.suffix = config.getString(SUFFIX);
         this.namingStyle = NamingStyle.from(config.getString(NAMING_STYLE));
+
+        this.smtManager = new SmtManager<>(config);
 
         LOGGER.info("Configured with prefix='{}', suffix='{}', naming style='{}'",
                 prefix, suffix, namingStyle.getValue());
@@ -117,20 +124,18 @@ public class FieldNameTransformation<R extends ConnectRecord<R>> implements Tran
         }
 
         try {
-            // Build a new schema with transformed field names
-            Schema transformedSchema = buildTransformedSchema(originalSchema);
 
-            // Create a new struct with transformed field names
-            Struct transformedValue = createTransformedStruct(originalValue, originalSchema, transformedSchema);
+            var newKey = transformKey(record);
+            var newValue = transformValue(record);
 
             // Create a new record with the transformed schema and value
             return record.newRecord(
                     record.topic(),
                     record.kafkaPartition(),
-                    record.keySchema(),
-                    record.key(),
-                    transformedSchema,
-                    transformedValue,
+                    newKey.schema(),
+                    newKey.value(),
+                    newValue.schema(),
+                    newValue.value(),
                     record.timestamp());
         }
         catch (Exception e) {
@@ -140,51 +145,82 @@ public class FieldNameTransformation<R extends ConnectRecord<R>> implements Tran
     }
 
     /**
-     * Builds a schema with transformed field names.
+     * Transforms the event key field names, if applicable.
      *
-     * @param originalSchema the original schema
-     * @return a new schema with transformed field names
+     * @param record the record to transform key fields based upon
+     * @return the transformed schema and value for the event key
      */
-    private Schema buildTransformedSchema(Schema originalSchema) {
-        SchemaBuilder schemaBuilder = SchemaBuilder.struct();
-
-        // Copy schema-level properties
-        copySchemaProperties(originalSchema, schemaBuilder);
-
-        // Add fields with transformed names
-        for (Field field : originalSchema.fields()) {
-            String originalName = field.name();
-            String transformedName = transformFieldName(originalName);
-
-            SchemaBuilder fieldSchemaBuilder = copySchema(field.schema());
-            schemaBuilder.field(transformedName, fieldSchemaBuilder.build());
+    private TransformedSchemaValue transformKey(R record) {
+        final Schema originalKeySchema = record.keySchema();
+        if (originalKeySchema != null && originalKeySchema.type() == Schema.Type.STRUCT) {
+            return transform(originalKeySchema, (Struct) record.key());
         }
-
-        return schemaBuilder.build();
+        return new TransformedSchemaValue(originalKeySchema, record.key());
     }
 
     /**
-     * Creates a struct with transformed field names.
+     * Transforms the event value field names, if applicable.
      *
-     * @param originalValue the original struct value
-     * @param originalSchema the original schema
-     * @param transformedSchema the transformed schema
-     * @return a new struct with transformed field names
+     * @param record the record to transform value fields based upon
+     * @return the transformed schema and value for the event value
      */
-    private Struct createTransformedStruct(Struct originalValue, Schema originalSchema, Schema transformedSchema) {
-        Struct transformedValue = new Struct(transformedSchema);
+    private TransformedSchemaValue transformValue(R record) {
+        final Schema originalSchema = record.valueSchema();
+        if (originalSchema != null && originalSchema.type() == Schema.Type.STRUCT) {
+            final Struct originalValue = (Struct) record.value();
+            if (isDebeziumPayloadSchema(originalSchema)) {
+                final SchemaBuilder schema = SchemaBuilder.struct();
+                copySchemaProperties(originalSchema, schema);
 
-        for (Field field : originalSchema.fields()) {
-            String originalName = field.name();
-            String transformedName = transformFieldName(originalName);
+                final Map<String, Object> newValues = new HashMap<>();
+                for (Field field : originalSchema.fields()) {
+                    if (field.name().equals(FieldName.BEFORE) || field.name().equals(FieldName.AFTER)) {
+                        var transformed = transform(field.schema(), (Struct) originalValue.get(field));
+                        schema.field(field.name(), transformed.schema());
+                        newValues.put(field.name(), transformed.value());
+                    }
+                    else {
+                        schema.field(field.name(), field.schema());
+                        newValues.put(field.name(), originalValue.get(field));
+                    }
+                }
 
-            Object fieldValue = originalValue.get(originalName);
-            if (fieldValue != null || field.schema().isOptional()) {
-                transformedValue.put(transformedName, fieldValue);
+                Struct struct = new Struct(schema.build());
+                newValues.forEach(struct::put);
+
+                return new TransformedSchemaValue(struct.schema(), struct);
             }
+            return transform(originalSchema, originalValue);
+        }
+        return new TransformedSchemaValue(originalSchema, record.value());
+    }
+
+    /**
+     * Transform fields in the given {@link Struct}.
+     *
+     * @param originalSchema the schema of the value to be transformed
+     * @param originalValue the value to be transformed
+     * @return the transformed schema and value
+     */
+    private TransformedSchemaValue transform(Schema originalSchema, Struct originalValue) {
+        final SchemaBuilder schema = SchemaBuilder.struct();
+        copySchemaProperties(originalSchema, schema);
+
+        originalSchema.fields().forEach(field -> schema.field(transformFieldName(field.name()), copySchema(field.schema())));
+
+        Struct value = new Struct(schema.build());
+        if (originalValue != null) {
+            originalSchema.fields().forEach(field -> value.put(transformFieldName(field.name()), originalValue.get(field)));
         }
 
-        return transformedValue;
+        return new TransformedSchemaValue(value.schema(), value);
+    }
+
+    private boolean isDebeziumPayloadSchema(Schema schema) {
+        return !Strings.isNullOrEmpty(schema.name()) && schema.name().endsWith(".Envelope");
+    }
+
+    record TransformedSchemaValue(Schema schema, Object value) {
     }
 
     /**
