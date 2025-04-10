@@ -134,8 +134,8 @@ Each signal type requires a specific set of data.
 
 |===
 
-NOTE: The field names in a data collection are arbitrary.
-The preceding table provides suggested names.
+NOTE: The field names in a data collection are arbitrary, except for the first field, `id`, which is mandatory. This field name must be used to ensure the connector can correctly process the signal.
+The preceding table provides suggested names for the remaining fields, but you can use different names if you prefer.
 If you use a different naming convention, ensure that the values in each field are consistent with the expected content.
 
 // Type: procedure
