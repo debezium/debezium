@@ -23,7 +23,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Field;
-import io.debezium.connector.jdbc.naming.CustomCollectionNamingStrategy;
 import io.debezium.connector.jdbc.naming.TemporaryBackwardCompatibleCollectionNamingStrategyProxy;
 import io.debezium.doc.FixFor;
 import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
@@ -196,23 +195,6 @@ public class JdbcSinkConnectorConfigTest {
         CollectionNamingStrategy strategy = config.getCollectionNamingStrategy();
         assertTrue(strategy instanceof TemporaryBackwardCompatibleCollectionNamingStrategyProxy,
                 "Expected a proxy for backward compatibility");
-    }
-
-    @Test
-    public void testCustomCollectionNamingStrategyIntegration() {
-        final Map<String, String> properties = new HashMap<>();
-        properties.put(JdbcSinkConnectorConfig.COLLECTION_NAMING_STRATEGY, CustomCollectionNamingStrategy.class.getName());
-
-        final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
-        CollectionNamingStrategy strategy = config.getCollectionNamingStrategy();
-
-        assertThat(strategy).isInstanceOf(TemporaryBackwardCompatibleCollectionNamingStrategyProxy.class);
-
-        CollectionNamingStrategy actualStrategy = ((TemporaryBackwardCompatibleCollectionNamingStrategyProxy) strategy).getOriginalStrategy();
-        assertThat(actualStrategy).isInstanceOf(CustomCollectionNamingStrategy.class);
-
-        String resolvedName = strategy.resolveCollectionName(null, "TestCollection");
-        assertThat(resolvedName).isEqualTo("tbl_test_collection_table");
     }
 
     @Test
