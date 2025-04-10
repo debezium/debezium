@@ -1560,14 +1560,16 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         }
 
         public static LogMiningBufferType parse(String value) {
-            if (value != null) {
-                value = value.trim();
-                for (LogMiningBufferType option : LogMiningBufferType.values()) {
-                    if (option.getValue().equalsIgnoreCase(value)) {
-                        return option;
-                    }
+            if (value == null) {
+                return null;
+            }
+
+            for (LogMiningBufferType option : LogMiningBufferType.values()) {
+                if (option.getValue().equalsIgnoreCase(value.trim())) {
+                    return option;
                 }
             }
+
             return null;
         }
 
