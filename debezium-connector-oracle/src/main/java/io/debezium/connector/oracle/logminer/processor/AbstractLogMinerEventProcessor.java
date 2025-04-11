@@ -481,20 +481,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
             // DDL events get filtered inside the DDL handler
             // We do the non-DDL ones here to cover multiple switch handlers in one place.
             if (!EventType.DDL.equals(row.getEventType()) && !tableFilter.isIncluded(row.getTableId())) {
-                if (isUsingHybridStrategy()) {
-                    if (!isTableLookupByObjectIdRequired(row)) {
-                        LOGGER.trace("Skipping change associated with table '{}' which does not match filters.", row.getTableId());
-                        return;
-                    }
-                    // Special use case where the table has been dropped and purged, and we are processing an
-                    // old event for the table that comes prior to the drop.
-                    LOGGER.debug("Found DML for dropped table in history with object-id based table name {}.", row.getTableId().table());
-                    final TableId tableId = schema.getTableIdByObjectId(row.getObjectId(), null);
-                    if (tableId != null) {
-                        row.setTableId(tableId);
-                    }
-                }
-                if (!tableFilter.isIncluded(row.getTableId())) {
+                if (isNonIncludedTableSkipped(row)) {
                     LOGGER.trace("Skipping change associated with table '{}' which does not match filters.", row.getTableId());
                     return;
                 }
@@ -1974,6 +1961,32 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                 .max(Comparator.comparing(Transaction::getStartScn))
                 .map(Transaction::getStartScn)
                 .orElse(Scn.NULL));
+    }
+
+    /**
+     * Checks whether the non-included table is skipped.
+     *
+     * When the mining strategy is set to hybrid, this method will also update the {@link LogMinerEventRow}
+     * if a cached object identifier resolves to a table in the relational model, and will recheck the
+     * filter inclusion. When using any other mining strategy, this is not performed.
+     *
+     * @param row the current row being processed, should not be {@code null}
+     * @return {@code true} if the row is to be skipped, {@code false} otherwise
+     */
+    private boolean isNonIncludedTableSkipped(LogMinerEventRow row) {
+        if (isUsingHybridStrategy()) {
+            if (isTableLookupByObjectIdRequired(row)) {
+                // Special use case where the table has been dropped and purged, and we are processing an
+                // old event for the table that comes prior to the drop.
+                LOGGER.debug("Found DML for dropped table in history with object-id based table name {}.", row.getTableId().table());
+                final TableId tableId = schema.getTableIdByObjectId(row.getObjectId(), null);
+                if (tableId != null) {
+                    row.setTableId(tableId);
+                }
+                return !tableFilter.isIncluded(row.getTableId());
+            }
+        }
+        return true;
     }
 
     /**
