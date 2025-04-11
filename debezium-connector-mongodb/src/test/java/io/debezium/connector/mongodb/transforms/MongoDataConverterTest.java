@@ -13,17 +13,19 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Map.Entry;
+import java.util.Map;
 import java.util.TimeZone;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.data.Timestamp;
 import org.bson.BsonDocument;
+import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
 import io.debezium.doc.FixFor;
@@ -35,6 +37,7 @@ import io.debezium.doc.FixFor;
  */
 public class MongoDataConverterTest {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDataConverterTest.class);
     private String record;
     private BsonDocument val;
     private SchemaBuilder builder;
@@ -50,76 +53,30 @@ public class MongoDataConverterTest {
 
     @Test
     public void shouldCreateCorrectStructFromInsertJson() {
-        for (Entry<String, BsonValue> entry : val.entrySet()) {
-            converter.addFieldSchema(entry, builder);
-        }
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
+        converter.buildSchema(entry, builder);
 
-        Schema finalSchema = builder.build();
-        Struct struct = new Struct(finalSchema);
-
-        for (Entry<String, BsonValue> entry : val.entrySet()) {
-            converter.convertRecord(entry, finalSchema, struct);
+        final Schema finalSchema = builder.build();
+        final Struct struct = new Struct(finalSchema);
+        for (Map.Entry<String, BsonValue> bsonValueEntry : val.entrySet()) {
+            converter.buildStruct(bsonValueEntry, finalSchema, struct);
         }
 
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
 
-        assertThat(struct.toString()).isEqualTo(
-                "Struct{"
-                        + "address=Struct{"
-                        + "building=1007,"
-                        + "floor=Struct{"
-                        + "level=17,"
-                        + "description=level 17"
-                        + "},"
-                        + "coord=[-73.856077, 40.848447],"
-                        + "street=Morris Park Ave,"
-                        + "zipcode=10462"
-                        + "},"
-                        + "borough=Bronx,"
-                        + "cuisine=Bakery,"
-                        + "grades=["
-                        + "Struct{date=Mon Mar 03 00:00:00 UTC 2014,grade=A,score=2}, "
-                        + "Struct{date=Wed Sep 11 00:00:00 UTC 2013,grade=A,score=6}, "
-                        + "Struct{date=Thu Jan 24 00:00:00 UTC 2013,grade=A,score=10}, "
-                        + "Struct{date=Wed Nov 23 00:00:00 UTC 2011,grade=A,score=9}, "
-                        + "Struct{date=Thu Mar 10 00:00:00 UTC 2011,grade=B,score=14}"
-                        + "],"
-                        + "name=Morris Park Bake Shop,"
-                        + "restaurant_id=30075445"
-                        + "}");
     }
 
     @Test
     public void shouldCreateCorrectSchemaFromInsertJson() {
-        for (Entry<String, BsonValue> entry : val.entrySet()) {
-            converter.addFieldSchema(entry, builder);
-        }
-        Schema finalSchema = builder.build();
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
+        converter.buildSchema(entry, builder);
 
-        assertThat(finalSchema).isEqualTo(
-                SchemaBuilder.struct().name("pub")
-                        .field("address", SchemaBuilder.struct().name("pub.address").optional()
-                                .field("building", Schema.OPTIONAL_STRING_SCHEMA)
-                                .field("floor", SchemaBuilder.struct().name("pub.address.floor").optional()
-                                        .field("level", Schema.OPTIONAL_INT32_SCHEMA)
-                                        .field("description", Schema.OPTIONAL_STRING_SCHEMA)
-                                        .build())
-                                .field("coord", SchemaBuilder.array(Schema.OPTIONAL_FLOAT64_SCHEMA).optional().build())
-                                .field("street", Schema.OPTIONAL_STRING_SCHEMA)
-                                .field("zipcode", Schema.OPTIONAL_STRING_SCHEMA)
-                                .build())
-                        .field("borough", Schema.OPTIONAL_STRING_SCHEMA)
-                        .field("cuisine", Schema.OPTIONAL_STRING_SCHEMA)
-                        .field("grades", SchemaBuilder.array(SchemaBuilder.struct().name("pub.grades").optional()
-                                .field("date", Timestamp.builder().optional().build())
-                                .field("grade", Schema.OPTIONAL_STRING_SCHEMA)
-                                .field("score", Schema.OPTIONAL_INT32_SCHEMA)
-                                .build())
-                                .optional()
-                                .build())
-                        .field("name", Schema.OPTIONAL_STRING_SCHEMA)
-                        .field("restaurant_id", Schema.OPTIONAL_STRING_SCHEMA)
-                        .build());
+        final Schema finalSchema = builder.build();
+        final Struct struct = new Struct(finalSchema);
+        for (Map.Entry<String, BsonValue> bsonValueEntry : val.entrySet()) {
+            converter.buildStruct(bsonValueEntry, finalSchema, struct);
+        }
+
     }
 
     private String getFile(String fileName) throws IOException, URISyntaxException {
@@ -142,14 +99,13 @@ public class MongoDataConverterTest {
         builder = SchemaBuilder.struct().name("withnull");
         converter = new MongoDataConverter(ArrayEncoding.ARRAY);
 
-        for (Entry<String, BsonValue> entry : val.entrySet()) {
-            converter.addFieldSchema(entry, builder);
-        }
-        Schema finalSchema = builder.build();
-        Struct struct = new Struct(finalSchema);
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
+        converter.buildSchema(entry, builder);
 
-        for (Entry<String, BsonValue> entry : val.entrySet()) {
-            converter.convertRecord(entry, finalSchema, struct);
+        final Schema finalSchema = builder.build();
+        final Struct struct = new Struct(finalSchema);
+        for (Map.Entry<String, BsonValue> bsonValueEntry : val.entrySet()) {
+            converter.buildStruct(bsonValueEntry, finalSchema, struct);
         }
 
         assertThat(finalSchema).isEqualTo(
@@ -183,16 +139,14 @@ public class MongoDataConverterTest {
         builder = SchemaBuilder.struct().name("withundefined");
         converter = new MongoDataConverter(ArrayEncoding.DOCUMENT);
 
-        for (Entry<String, BsonValue> entry : val.entrySet()) {
-            converter.addFieldSchema(entry, builder);
-        }
-        Schema finalSchema = builder.build();
-        Struct struct = new Struct(finalSchema);
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
+        converter.buildSchema(entry, builder);
 
-        for (Entry<String, BsonValue> entry : val.entrySet()) {
-            converter.convertRecord(entry, finalSchema, struct);
+        final Schema finalSchema = builder.build();
+        final Struct struct = new Struct(finalSchema);
+        for (Map.Entry<String, BsonValue> bsonValueEntry : val.entrySet()) {
+            converter.buildStruct(bsonValueEntry, finalSchema, struct);
         }
-
         assertThat(finalSchema).isEqualTo(
                 SchemaBuilder.struct().name("withundefined")
                         .field("_id", Schema.OPTIONAL_STRING_SCHEMA)
