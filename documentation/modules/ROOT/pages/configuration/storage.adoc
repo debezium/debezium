@@ -1,0 +1,705 @@
+[id="storing-debezium-state"]
+= Storing state of a {prodname} connector
+ifdef::community[]
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+== Overview
+endif::community[]
+
+Debezium connectors require a persistent storage to keep their state between restarts.
+All connectors require a store for the offsets.
+In addition to it some of the connectors (MySQL, SQL Server, Db2, Oracle) require an additional storage to record the history of schema evolution, so-called internal schema history.
+
+The offset store is provided automatically for the deployments inside the Kafka Connect runtime:
+
+* Kafka offset store for Kafka Connect distributed
+* File offset store for Kafka Connect standalone
+
+If a connector is run either in xref:development/engine.adoc[Debezium Engine] or xref:operations/debezium-server.adoc[Debezium Server] then the offset store must be explicitly configured.
+The internal schema history is configured in all cases via connector configuration options.
+
+
+== Kafka
+
+Debezium can use Kafka to store its state, including source offsets, schema history. Offsets are stored in a Kafka topic (e.g., `connect-offsets`) via the `KafkaOffsetBackingStore`, ensuring connectors resume from the correct position after restarts. Schema history is saved in a separate compacted topic (e.g., `schema-changes.inventory`).
+
+=== Offset Store
+
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[offset-storage-kafka]]<<offset-storage-kafka,`offset.storage`>>
+|No default
+|Must be set to `org.apache.kafka.connect.storage.KafkaOffsetBackingStore`.
+
+|[[offset-storage-topic]]<<offset-storage-topic,`offset.storage.topic`>>
+|No default
+|Defines the Kafka topic where offsets will be stored. It's essential that this topic is configured with log compaction enabled to retain the latest offset information.
+
+|[[offset-storage-partitions]]<<offset-storage-partitions,`offset.storage.partitions`>>
+|25
+|Indicates the number of partitions for the offset storage topic. This should align with your Kafka cluster's partitioning strategy.
+
+|[[offset-storage-replication-factor]]<<offset-storage-replication-factor,`offset.storage.replication.factor`>>
+|3
+|Sets the replication factor for the offset storage topic, ensuring fault tolerance by replicating data across multiple brokers.
+
+|===
+
+=== Internal schema history store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[schema-history-internal-kafka]]<<schema-history-internal-kafka,`schema.history.internal`>>
+|No default
+|Must be set to `io.debezium.storage.kafka.history.KafkaSchemaHistory`.
+
+|[[schema-history-internal-kafka-topic]]<<schema-history-internal-kafka-topic,`schema.history.internal.kafka.topic`>>
+|No default
+|The name of the topic for the database schema history
+
+|[[schema-history-internal-kafka-bootstrap-servers]]<<schema-history-internal-kafka-bootstrap-servers,`schema.history.internal.kafka.bootstrap.servers`>>
+|No default
+|A list of host/port pairs that the connector will use for establishing the initial connection to the Kafka cluster for retrieving database schema history previously stored by the connector. This should point to the same Kafka cluster used by the Kafka Connect process.
+
+|[[schema-history-internal-kafka-recovery-poll-interval-ms]]<<schema-history-internal-kafka-recovery-poll-interval-ms,`schema.history.internal.kafka.recovery.poll.interval.ms`>>
+|100
+|The number of milliseconds to wait while polling for persisted data during recovery.
+
+|[[schema-history-internal-kafka-recovery-attempts]]<<schema-history-internal-kafka-recovery-attempts,`schema.history.internal.kafka.recovery.attempts`>>
+|100
+|The number of attempts in a row that no data are returned from Kafka before recover completes. The maximum amount of time to wait after receiving no data is (recovery.attempts) x (recovery.poll.interval.ms).
+
+|[[schema-history-internal-kafka-query-timeout-ms]]<<schema-history-internal-kafka-query-timeout-ms,`schema.history.internal.kafka.query.timeout.ms`>>
+|3
+|The number of milliseconds to wait while fetching cluster information using Kafka admin client.
+
+|[[schema-history-internal-kafka-create-timeout-ms]]<<schema-history-internal-kafka-create-timeout-ms,`schema.history.internal.kafka.create.timeout.ms`>>
+|30
+|The number of milliseconds to wait while create kafka history topic using Kafka admin client.
+
+|[[schema-history-internal-producer]]<<schema-history-internal-producer,`schema.history.internal.producer.*`>>
+|No Default
+|Pass-through properties prefix for configuring how producer client interact with schema history topics.
+
+|[[schema-history-internal-consumer]]<<schema-history-internal-consumer,`schema.history.internal.consumer.*`>>
+|No Default
+|Pass-through properties prefix for configuring how consumer client interact with schema history topics.
+
+|===
+
+
+== File
+
+It's possible to persist the position (offsets) of the connector in a local file on disk. This allows Debezium to resume from where it left off after a restart. It's simple, fast, and ideal for single-node applications or testing scenarios.
+
+=== Offset Store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[offset-storage-file]]<<offset-storage-file,`offset.storage`>>
+|No default
+|Must be set to `org.apache.kafka.connect.storage.FileOffsetBackingStore`
+
+|[[offset-storage-file-filename]]<<offset-storage-file-filename,`offset.storage.file.filename`>>
+|No default
+|Path to the file where Debezium stores source offsets.
+
+|[[offset-flush-interval-ms]]<<offset-flush-interval-ms,`offset.flush.interval.ms`>>
+|6000ms
+|Interval in milliseconds to flush the current offset state to the file.
+
+|===
+
+=== Internal schema history store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[schema-history-internal-file]]<<schema-history-internal-file,`schema.history.internal`>>
+|No default
+|Must be set to `io.debezium.storage.file.history.FileSchemaHistory`
+|[[schema-history-internal-file-file]]<<schema-history-internal-file-file,`schema.history.internal.file`>>
+|No default
+|The path to the file that will be used to record the database schema history`
+
+|===
+
+== Memory
+
+`MemoryOffsetBackingStore` is a volatile, in-memory store used by Debezium Embedded to track source offsets. It keeps the offset state only during the application's runtime and loses it on shutdown or crash. It's ideal for testing or short-lived tasks but not suitable for production where offset persistence is needed.
+
+=== Offset Store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[offset-storage-memory]]<<offset-storage-memory,`offset.storage`>>
+|No default
+|Must be set to `org.apache.kafka.connect.storage.MemoryOffsetBackingStore`
+
+|===
+
+=== Internal schema history store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[schema-history-internal-memory]]<<schema-history-internal-memory,`schema.history.internal`>>
+|No default
+|Must be set to `io.debezium.relational.history.MemorySchemaHistory`
+
+|===
+
+
+== JDBC
+The store uses arbitrary relational database to store the data for which an appropriate link:https://en.wikipedia.org/wiki/JDBC_driver[JDBC driver] is provided.
+Either the source database can be used as the storage or any other database.
+
+The users either use the default pre-configured DML and DDL statements or can override them with their own either for database dialect compatibility or to tailor them to their use case.
+
+
+=== Offset Store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[jdbc-offset-type]]<<jdbc-offset-type, `offset.storage`>>
+|No default
+|Must be set to `io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore`.
+
+|[[jdbc-offset-url]]<<jdbc-offset-url, `offset.storage.jdbc.connection.url`>>
+|No default
+|JDBC driver connection string to connect to the database.
+
+|[[jdbc-offset-user]]<<jdbc-offset-user, `offset.storage.jdbc.connection.user`>>
+|No default
+|(Optional) Username of the database which will be used to access the database storage.
+
+|[[jdbc-offset-password]]<<jdbc-offset-password, `offset.storage.jdbc.connection.password`>>
+|No default
+|(Optional) Password of the database which will be used to access the database storage.
+
+|[[wait-retry-delay-ms]]<<wait-retry-delay-ms, `offset.storage.jdbc.connection.wait.retry.delay.ms`>>
+|3 seconds
+|(Optional) Delay of retry on wait for connection failure.
+
+|[[retry-max-attempts]]<<retry-max-attempts, `offset.storage.jdbc.connection.retry.max.attempts`>>
+|5
+|(Optional) Maximum number of retry attempts before giving up.
+
+|[[jdbc-offset-table-name]]<<jdbc-offset-table-name, `offset.storage.jdbc.table.name`>>
+|`debezium_offset_storage`
+|The name of the table to which the offsets will be stored.
+
+|[[jdbc-offset-table-ddl]]<<jdbc-offset-table-ddl, `offset.storage.jdbc.table.ddl`>>
+|<<jdbc-offset-table-ddl-default, `see table section`>>
+|DDL statement to create the offset table.
+
+|[[jdbc-offset-table-select]]<<jdbc-offset-table-select, `offset.storage.jdbc.table.select`>>
+|<<jdbc-offset-table-ddl-default, `see table section`>>
+|DML statement to read offsets stored from the table.
+
+|[[jdbc-offset-table-insert]]<<jdbc-offset-table-insert, `offset.storage.jdbc.table.insert`>>
+|<<jdbc-offset-table-select-default, `see table section`>>
+|DML statement to write offsets to the table.
+
+|[[jdbc-offset-table-delete]]<<jdbc-offset-table-delete, `offset.storage.jdbc.table.delete`>>
+|<<jdbc-offset-table-insert-default, `see table section`>>
+|DML statement to remove offsets from the table.
+
+|===
+
+==== Deprecated configuration prior to 3.2
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[deprecated-jdbc-offset-type]]<<deprecated-jdbc-offset-type, `offset.storage`>>
+|No default
+|Must be set to `io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore`.
+
+|[[deprecated-jdbc-offset-url]]<<deprecated-jdbc-offset-url, `offset.storage.jdbc.url`>>
+|No default
+|JDBC driver connection string to connect to the database.
+
+|[[deprecated-jdbc-offset-user]]<<deprecated-jdbc-offset-user, `offset.storage.jdbc.user`>>
+|No default
+|(Optional) Username of the database which will be used to access the database storage.
+
+|[[deprecated-jdbc-offset-password]]<<deprecated-jdbc-offset-password, `offset.storage.jdbc.password`>>
+|No default
+|(Optional) Password of the database which will be used to access the database storage.
+
+|[[deprecated-wait-retry-delay-ms]]<<deprecated-wait-retry-delay-ms, `offset.storage.jdbc.wait.retry.delay.ms`>>
+|3 seconds
+|(Optional) Delay of retry on wait for connection failure.
+
+|[[deprecated-retry-max-attempts]]<<deprecated-retry-max-attempts, `offset.storage.jdbc.retry.max.attempts`>>
+|5
+|(Optional) Maximum number of retry attempts before giving up.
+
+|[[deprecated-jdbc-offset-table-name]]<<deprecated-jdbc-offset-table-name, `offset.storage.jdbc.offset.table.name`>>
+|`debezium_offset_storage`
+|The name of the table to which the offsets will be stored.
+
+|[[deprecated-jdbc-offset-table-ddl]]<<deprecated-jdbc-offset-table-ddl, `offset.storage.jdbc.offset.table.ddl`>>
+|<<jdbc-offset-table-ddl-default, `see table section`>>
+|DDL statement to create the offset table.
+
+|[[deprecated-jdbc-offset-table-select]]<<deprecated-jdbc-offset-table-select, `offset.storage.jdbc.offset.table.select`>>
+|<<jdbc-offset-table-ddl-default, `see table section`>>
+|DML statement to read offsets stored from the table.
+
+|[[deprecated-jdbc-offset-table-insert]]<<deprecated-jdbc-offset-table-insert, `offset.storage.jdbc.offset.table.insert`>>
+|<<jdbc-offset-table-select-default, `see table section`>>
+|DML statement to write offsets to the table.
+
+|[[deprecated-jdbc-offset-table-delete]]<<deprecated-jdbc-offset-table-delete, `offset.storage.jdbc.offset.table.delete`>>
+|<<jdbc-offset-table-insert-default, `see table section`>>
+|DML statement to remove offsets from the table.
+
+|===
+
+=== Offset Table defaults
+
+[[jdbc-offset-table-ddl-default]]<<jdbc-offset-table-ddl-default, 1. Table Structure>>
+[SQL]
+----
+CREATE TABLE %s (
+id VARCHAR(36)      NOT NULL,
+offset_key          VARCHAR(1255),
+offset_val          VARCHAR(1255),
+record_insert_ts    TIMESTAMP NOT NULL,
+record_insert_seq   INTEGER NOT NULL)
+----
+
+[[jdbc-offset-table-select-default]]<<jdbc-offset-table-select-default, 2. Select query>>
+[SQL]
+----
+SELECT id, offset_key, offset_val FROM %s ORDER BY record_insert_ts, record_insert_seq
+----
+
+[[jdbc-offset-table-insert-default]]<<jdbc-offset-table-insert-default, 3. Insert query>>
+[SQL]
+----
+INSERT INTO %s(id, offset_key, offset_val, record_insert_ts, record_insert_seq)
+    VALUES ( ?, ?, ?, ?, ? )
+----
+
+[[jdbc-offset-table-delete-default]]<<jdbc-offset-table-delete-default, 4. Delete query>>
+[SQL]
+----
+DELETE FROM %s
+----
+
+
+=== Internal schema history store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[jdbc-history-type]]<<jdbc-history-type, `schema.history.internal`>>
+|No default
+|Must be set to `io.debezium.storage.jdbc.history.JdbcSchemaHistory`.
+
+|[[jdbc-history-schema-history-url]]<<jdbc-history-schema-history-url, `schema.history.internal.jdbc.connection.url`>>
+|No default
+|JDBC driver connection string to connect to the database.
+
+|[[jdbc-history-schema-history-user]]<<jdbc-history-schema-history-user, `schema.history.internal.jdbc.connection.user`>>
+|No default
+|(Optional) Username of the database which will be used to access the database storage.
+
+|[[jdbc-history-schema-history-password]]<<jdbc-history-schema-history-password, `schema.history.internal.jdbc.connection.password`>>
+|No default
+|(Optional) Password of the database which will be used to access the database storage.
+
+|[[jdbc-history-wait-retry-delay-ms]]<<jdbc-history-wait-retry-delay-ms, `schema.history.internal.jdbc.connection.retry.delay.ms`>>
+|3 seconds
+|(Optional) Delay of retry on wait for connection failure.
+
+|[[jdbc-history-retry-max-attempts]]<<jdbc-history-retry-max-attempts, `schema.history.internal.jdbc.connection.retry.max.attempts`>>
+|5
+|(Optional) Maximum number of retry attempts before giving up.
+
+|[[jdbc-history-schema-history-table-name]]<<jdbc-history-schema-history-table-name, `schema.history.internal.jdbc.table.name`>>
+|`debezium_database_history`
+|The name of the table to which the history will be stored.
+
+|[[jdbc-history-schema-history-table-ddl]]<<jdbc-history-schema-history-table-ddl, `schema.history.internal.jdbc.table.ddl`>>
+|<<jdbc-history-schema-history-table-ddl-default, `see table section`>>
+|The DDL statement used to create the storage table.
+
+|[[jdbc-history-schema-history-table-select]]<<jdbc-history-schema-history-table-select, `schema.history.internal.jdbc.table.select`>>
+|<<jdbc-history-schema-history-table-select-default, `see table section`>>
+|The `SELECT` statement to read the internal schema history form the table.
+
+|[[jdbc-history-schema-history-table-exists-select]]<<jdbc-history-schema-history-table-exists-select, `schema.history.internal.jdbc.table.exists.select`>>
+|<<jdbc-history-schema-history-table-exists-select-default, `see table section`>>
+|The `SELECT` statement to check the existence of the storage table.
+
+|[[jdbc-history-schema-history-table-insert]]<<jdbc-history-schema-history-table-insert, `schema.history.internal.jdbc.table.insert`>>
+|<<jdbc-history-schema-history-table-insert-default, `see table section`>>
+|The `INSERT` statement to record the schema history to the table.
+
+|===
+
+==== Deprecated configuration prior to 3.2
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[deprecated-jdbc-history-type]]<<deprecated-jdbc-history-type, `schema.history.internal`>>
+|No default
+|Must be set to `io.debezium.storage.jdbc.history.JdbcSchemaHistory`.
+
+|[[deprecated-jdbc-history-schema-history-url]]<<deprecated-jdbc-history-schema-history-url, `schema.history.internal.jdbc.url`>>
+|No default
+|JDBC driver connection string to connect to the database.
+
+|[[deprecated-jdbc-history-schema-history-user]]<<deprecated-jdbc-history-schema-history-user, `schema.history.internal.jdbc.user`>>
+|No default
+|(Optional) Username of the database which will be used to access the database storage.
+
+|[[deprecated-jdbc-history-schema-history-password]]<<deprecated-jdbc-history-schema-history-password, `schema.history.internal.jdbc.password`>>
+|No default
+|(Optional) Password of the database which will be used to access the database storage.
+
+|[[deprecated-jdbc-history-wait-retry-delay-ms]]<<deprecated-jdbc-history-wait-retry-delay-ms, `schema.history.internal.jdbc.retry.delay.ms`>>
+|3 seconds
+|(Optional) Delay of retry on wait for connection failure.
+
+|[[deprecated-jdbc-history-retry-max-attempts]]<<deprecated-jdbc-history-retry-max-attempts, `schema.history.internal.jdbc.retry.max.attempts`>>
+|5
+|(Optional) Maximum number of retry attempts before giving up.
+
+|[[deprecated-jdbc-history-schema-history-table-name]]<<deprecated-jdbc-history-schema-history-table-name, `schema.history.internal.jdbc.schema.history.table.name`>>
+|`debezium_database_history`
+|The name of the table to which the history will be stored.
+
+|[[deprecated-jdbc-history-schema-history-table-ddl]]<<deprecated-jdbc-history-schema-history-table-ddl, `schema.history.internal.jdbc.schema.history.table.ddl`>>
+|<<jdbc-history-schema-history-table-ddl-default, `see table section`>>
+|The DDL statement used to create the storage table.
+
+|[[deprecated-jdbc-history-schema-history-table-select]]<<deprecated-jdbc-history-schema-history-table-select, `schema.history.internal.jdbc.schema.history.table.select`>>
+|<<jdbc-history-schema-history-table-select-default, `see table section`>>
+|The `SELECT` statement to read the internal schema history form the table.
+
+|[[deprecated-jdbc-history-schema-history-table-exists-select]]<<deprecated-jdbc-history-schema-history-table-exists-select, `schema.history.internal.jdbc.schema.history.table.exists.select`>>
+|<<jdbc-history-schema-history-table-exists-select-default, `see table section`>>
+|The `SELECT` statement to check the existence of the storage table.
+
+|[[deprecated-jdbc-history-schema-history-table-insert]]<<deprecated-jdbc-history-schema-history-table-insert, `schema.history.internal.jdbc.schema.history.table.insert`>>
+|<<jdbc-history-schema-history-table-insert-default, `see table section`>>
+|The `INSERT` statement to record the schema history to the table.
+
+|===
+
+=== History Table defaults
+
+[[jdbc-history-schema-history-table-ddl-default]]<<jdbc-history-schema-history-table-ddl-default,1. Table Structure>>
+[SQL]
+----
+CREATE TABLE %s (
+    id VARCHAR(36) NOT NULL,
+    history_data VARCHAR(65000),
+    history_data_seq INTEGER,
+    record_insert_ts TIMESTAMP NOT NULL,
+    record_insert_seq INTEGER NOT NULL
+)
+----
+
+[[jdbc-history-schema-history-table-select-default]]<<jdbc-history-schema-history-table-select-default,2. Select Query>>
+[SQL]
+----
+SELECT id, history_data, history_data_seq FROM %s
+    ORDER BY record_insert_ts, record_insert_seq, id, history_data_seq
+----
+
+[[jdbc-history-schema-history-table-exists-select-default]]<<jdbc-history-schema-history-table-exists-select-default,4. Data exist Query>>
+[SQL]
+----
+SELECT * FROM %s LIMIT 1
+----
+
+[[jdbc-history-schema-history-table-insert-default]]<<jdbc-history-schema-history-table-insert-default,4. Insert Query>>
+[SQL]
+----
+INSERT INTO %s(id, history_data, history_data_seq, record_insert_ts, record_insert_seq) VALUES ( ?, ?, ?, ?, ? )
+----
+
+== Redis
+
+The store uses Redis cache to store the data using https://redis.io/docs/latest/develop/clients/jedis/[Jedis client].
+
+=== Offset Store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[offset-storage-redis]]<<offset-storage-redis, `offset.storage`>>
+|No default
+|Must be set to `io.debezium.storage.redis.offset.RedisOffsetBackingStore`
+|[[offset-storage-redis-key]]<<offset-storage-redis-key, `offset.storage.redis.key`>>
+|metadata:debezium:offsets
+|The Redis key that will be used to store the offsets.
+|[[offset-storage-redis-address]]<<offset-storage-redis-address, `offset.storage.redis.address`>>
+|No default
+|The url that will be used to access Redis.
+|[[offset-storage-redis-user]]<<offset-storage-redis-user, `offset.storage.redis.user`>>
+|No default
+|The user that will be used to access Redis.
+|[[offset-storage-redis-password]]<<offset-storage-redis-password, `offset.storage.redis.password`>>
+|No default
+|The password that will be used to access Redis.
+|[[offset-storage-redis-db-index]]<<offset-storage-redis-db-index, `offset.storage.redis.db.index`>>
+|0
+|The database index (0..15) that will be used to access Redis.
+|[[offset-storage-redis-ssl-enabled]]<<offset-storage-redis-ssl-enabled,`offset.storage.redis.ssl.enabled`>>
+|false
+|Use SSL for Redis connection.
+|[[offset-storage-redis-connection-timeout-ms]]<<offset-storage-redis-connection-timeout-ms, `offset.storage.redis.connection.timeout.ms`>>
+|2000
+|Connection timeout (in ms).
+|[[offset-storage-redis-socket-timeout-ms]]<<offset-storage-redis-socket-timeout-ms, `offset.storage.redis.socket.timeout.ms`>>
+|2000
+|Socket timeout (in ms).
+|[[offset-storage-redis-retry-initial-delay-ms]]<<offset-storage-redis-retry-initial-delay-ms, `offset.storage.redis.retry.initial.delay.ms`>>
+|300
+|Initial retry delay (in ms).
+|[[offset-storage-redis-retry-max-delay-ms]]<<offset-storage-redis-retry-max-delay-ms, `offset.storage.redis.retry.max.delay.ms`>>
+|10000
+|Maximum retry delay (in ms).
+|[[offset-storage-redis-retry-max-attempts]]<<offset-storage-redis-retry-max-attempts, `offset.storage.redis.retry.max.attempts`>>
+|10
+|Maximum number of retry attempts before giving up.
+|[[offset-storage-redis-wait-enabled]]<<offset-storage-redis-wait-enabled,`offset.storage.redis.wait.enabled`>>
+|false
+|Enables wait for replica. In case Redis is configured with a replica shard, this allows to verify that the data has been written to the replica.
+|[[offset-storage-redis-wait-timeout-ms]]<<offset-storage-redis-wait-timeout-ms,`offset.storage.redis.wait.timeout.ms`>>
+|1000
+|Timeout when wait for replica.
+|[[offset-storage-redis-wait-retry-enabled]]<<offset-storage-redis-wait-retry-enabled, `offset.storage.redis.wait.retry.enabled`>>
+|false
+|Enables retry on wait for replica failure.
+|[[offset-storage-redis-wait-retry-delay-ms]]<<offset-storage-redis-wait-retry-delay-ms, `offset.storage.redis.wait.retry.delay.ms`>>
+|1000
+|Delay of retry on wait for replica failure.
+
+|===
+
+=== Internal schema history store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[schema-history-internal-redis]]<<schema-history-internal-redis, `schema.history.internal`>>
+|No default
+|Must be set to `io.debezium.storage.redis.history.RedisSchemaHistory`
+|[[schema-history-internal-redis-key]]<<schema-history-internal-redis-key, `schema.history.internal.redis.key`>>
+|metadata:debezium:schema_history
+|The Redis key that will be used to store the database schema history.
+|[[schema-history-internal-redis-address]]<<schema-history-internal-redis-address, `schema.history.internal.redis.address`>>
+|No default
+|The url that will be used to access Redis.
+|[[schema-history-internal-redis-user]]<<schema-history-internal-redis-user, `schema.history.internal.redis.user`>>
+|No default
+|The user that will be used to access Redis.
+|[[schema-history-internal-redis-password]]<<schema-history-internal-redis-password, `schema.history.internal.redis.password`>>
+|No default
+|The password that will be used to access Redis.
+|[[schema-history-internal-redis-db-index]]<<schema-history-internal-redis-db-index, `schema.history.internal.redis.db.index`>>
+|0
+|The database index (0..15) that will be used to access Redis.
+|[[schema-history-internal-redis-ssl-enabled]]<<schema-history-internal-redis-ssl-enabled,`schema.history.internal.storage.redis.ssl.enabled`>>
+|false
+|Use SSL for Redis connection.
+|[[schema-history-internal-redis-connection-timeout-ms]]<<schema-history-internal-redis-connection-timeout-ms, `schema.history.internal.storage.redis.connection.timeout.ms`>>
+|2000
+|Connection timeout (in ms).
+|[[schema-history-internal-redis-socket-timeout-ms]]<<schema-history-internal-redis-socket-timeout-ms, `schema.history.internal.storage.redis.socket.timeout.ms`>>
+|2000
+|Socket timeout (in ms).
+|[[schema-history-internal-redis-retry-initial-delay-ms]]<<schema-history-internal-redis-retry-initial-delay-ms, `schema.history.internal.storage.redis.retry.initial.delay.ms`>>
+|300
+|Initial retry delay (in ms).
+|[[schema-history-internal-redis-retry-max-delay-ms]]<<schema-history-internal-redis-retry-max-delay-ms, `schema.history.internal.storage.redis.retry.max.delay.ms`>>
+|10000
+|Maximum retry delay (in ms).
+|[[schema-history-internal-redis-retry-max-attempts]]<<schema-history-internal-redis-retry-max-attempts, `schema.history.internal.storage.redis.retry.max.attempts`>>
+|10
+|Maximum number of retry attempts before giving up.
+|[[schema-history-internal-redis-wait-enabled]]<<schema-history-internal-redis-wait-enabled,`schema.history.internal.storage.redis.wait.enabled`>>
+|false
+|Enables wait for replica. In case Redis is configured with a replica shard, this allows to verify that the data has been written to the replica.
+|[[schema-history-internal-redis-wait-timeout-ms]]<<schema-history-internal-redis-wait-timeout-ms,`schema.history.internal.storage.redis.wait.timeout.ms`>>
+|1000
+|Timeout when wait for replica.
+|[[schema-history-internal-redis-wait-retry-enabled]]<<schema-history-internal-redis-wait-retry-enabled, `schema.history.internal.storage.redis.wait.retry.enabled`>>
+|false
+|Enables retry on wait for replica failure.
+|[[schema-history-internal-redis-wait-retry-delay-ms]]<<schema-history-internal-redis-wait-retry-delay-ms, `schema.history.internal.storage.redis.wait.retry.delay.ms`>>
+|1000
+|Delay of retry on wait for replica failure.
+
+|===
+
+== Amazon S3
+The store uses link:https://aws.amazon.com/s3/[Amazon S3] object storage service.
+It is typically used when Debezium is deployed in link:https://aws.amazon.com/msk/[Amazon Managed Streaming] service.
+
+=== Internal schema history store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[s3-history-type]]<<s3-history-type, `schema.history.internal`>>
+|No default
+|Must be set to `io.debezium.storage.s3.history.S3SchemaHistory`.
+
+|[[s3-history-access.key.id]]<<s3-history-access.key.id, `schema.history.internal.s3.access.key.id`>>
+|No default
+|(Optional) An identifier of the key used for the static authentication.
+
+|[[s3-history-secret-access-key]]<<s3-history-secret-access-key, `schema.history.internal.s3.secret.access.key`>>
+|No default
+|(Optional) The secret used for the static authentication.
+
+|[[s3-history-region-name]]<<s3-history-region-name, `schema.history.internal.s3.region.name`>>
+|No default
+|(Optional) A region name in which the S3 service is provided.
+
+|[[s3-history-bucket-name]]<<s3-history-bucket-name, `schema.history.internal.s3.bucket.name`>>
+|No default
+|A name of the bucket used to store the schema history.
+
+|[[s3-history-object-name]]<<s3-history-object-name, `schema.history.internal.s3.object.name`>>
+|No default
+|A name of the key under which the schema history is stored.
+
+|[[s3-history-endpoint]]<<s3-history-endpoint, `schema.history.internal.s3.endpoint`>>
+|No default
+|(Optional) A custom URL used to access S3 service.
+
+|===
+
+== Azure Blob Storage
+
+The store uses link:https://azure.microsoft.com/en-us/products/storage/blobs[Azure Blob] storage service.
+It is typically used when Debezium is deployed in link:https://learn.microsoft.com/en-us/azure/hdinsight/kafka/apache-kafka-introduction[Apache Kafka in Azure HDInsight] service.
+
+=== Internal schema history store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[schema-history-internal-azure]]<<schema-history-internal-azure, `schema.history.internal`>>
+|No default
+|Must be set to `io.debezium.storage.azure.blob.history.AzureBlobSchemaHistory`.
+|[[schema-history-internal-azure-storage-account-connectionstring]]<<schema-history-internal-azure-storage-account-connectionstring,`schema.history.internal.azure.storage.account.connectionstring`>>
+|No default
+|The Storage connection string to Azure blob storage
+|[[schema-history-internal-azure-storage-account-name]]<<schema-history-internal-azure-storage-account-name,`schema.history.internal.azure.storage.account.name`>>
+|No default
+|The account name
+|[[schema-history-internal-azure-storage-account-container-name]]<<schema-history-internal-azure-storage-account-container-name,`schema.history.internal.azure.storage.account.container.name`>>
+|No default
+|The container name
+|[[schema-history-internal-azure-storage-blob-name]]<<schema-history-internal-azure-storage-blob-name,`schema.history.internal.azure.storage.blob.name`>>
+|No default
+|The blob name
+
+|===
+
+== RocketMQ
+
+Debezium supports storing schema history in Apache RocketMQ by utilizing the `RocketMqSchemaHistory` class. This integration allows Debezium to persist and retrieve database schema changes using RocketMQ as the storage medium.
+
+=== Internal schema history store
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[schema-history-internal-rochetmq]]<<schema-history-internal-rochetmq, `schema.history.internal`>>
+|No default
+|Must be set to `io.debezium.storage.rocketmq.history.RocketMqSchemaHistory`.
+|[[schema-history-internal-rocketmq-topic]]<<schema-history-internal-rocketmq-topic,`schema.history.internal.rocketmq.topic`>>
+|No Default
+|The name of the topic for the database schema history.
+|[[schema-history-internal-rocketmq-name-srv-addr]]<<schema-history-internal-rocketmq-name-srv-addr,`schema.history.internal.rocketmq.name.srv.addr`>>
+|No Default
+|RocketMQ service discovery service nameserver address configuration.
+|[[schema-history-internal-rocketmq-acl-enabled]]<<schema-history-internal-rocketmq-acl-enabled,`schema.history.internal.rocketmq.acl.enabled`>>
+|false
+|RocketMQ access control enable configuration.
+|[[schema-history-internal-rocketmq-access-key]]<<schema-history-internal-rocketmq-access-key,`schema.history.internal.rocketmq.access.key`>>
+|No Default
+|RocketMQ access key. If  `schema.history.internal.rocketmq.acl.enabled` is true, the value cannot be empty.
+|[[schema-history-internal-rocketmq-secret-key]]<<schema-history-internal-rocketmq-secret-key,`schema.history.internal.rocketmq.secret.key`>>
+|No Default
+|RocketMQ secret key. If  `schema.history.internal.rocketmq.acl.enabled`  is true, the value cannot be empty.
+|[[schema-history-internal-rocketmq-recovery-attempts]]<<schema-history-internal-rocketmq-recovery-attempts,`schema.history.internal.rocketmq.recovery.attempts`>>
+|No Default
+|The number of attempts in a row that no data are returned from RocketMQ before recover.
+|[[schema-history-internal-rocketmq-recovery-poll-interval-ms]]<<schema-history-internal-rocketmq-recovery-poll-interval-ms,`schema.history.internal.rocketmq.recovery.poll.interval.ms`>>
+|No Default
+|The number of milliseconds to wait while polling for persisted data during recovery.
+|[[schema-history-internal-rocketmq-store-record-timeout.ms]]<<schema-history-internal-rocketmq-store-record-timeout.ms,`schema.history.internal.rocketmq.store.record.timeout.ms`>>
+|No Default
+|Timeout for sending messages to RocketMQ.
+
+|===
