@@ -108,7 +108,7 @@ public class ConnectRecordUtil {
                 if (isContainedIn(field.name(), nestedFields)) {
                     Struct nestedField = requireStruct(originalValue.get(field), "Nested field");
                     updatedValue.put(field.name(),
-                            buildUpdatedValue(field.name(), nestedField, newEntries, updatedSchema.field(field.name()).schema(), nestedFields, ++level));
+                            buildUpdatedValue(field.name(), nestedField, newEntries, updatedSchema.field(field.name()).schema(), nestedFields, level + 1));
                 }
                 else {
                     updatedValue.put(field.name(), originalValue.get(field));
@@ -138,7 +138,7 @@ public class ConnectRecordUtil {
         SchemaBuilder newSchemabuilder = SchemaUtil.copySchemaBasics(oldSchema, SchemaBuilder.struct());
         for (org.apache.kafka.connect.data.Field field : oldSchema.fields()) {
             if (isContainedIn(field.name(), nestedFields)) {
-                newSchemabuilder.field(field.name(), buildNewSchema(field.name(), field.schema(), newEntries, nestedFields, ++level));
+                newSchemabuilder.field(field.name(), buildNewSchema(field.name(), field.schema(), newEntries, nestedFields, level + 1));
             }
             else {
                 newSchemabuilder.field(field.name(), field.schema());
@@ -175,6 +175,9 @@ public class ConnectRecordUtil {
     }
 
     private static boolean isChildrenOf(String fieldName, int level, String[] nestedNames) {
+        if (nestedNames.length != (level + 1)) {
+            return false;
+        }
         int parentLevel = level == 0 ? 0 : level - 1;
         return nestedNames[parentLevel].equals(fieldName);
     }
