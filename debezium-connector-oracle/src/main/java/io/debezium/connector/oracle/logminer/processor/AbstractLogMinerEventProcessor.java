@@ -1969,7 +1969,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
             if (isTableLookupByObjectIdRequired(row)) {
                 // Special use case where the table has been dropped and purged, and we are processing an
                 // old event for the table that comes prior to the drop.
-                LOGGER.debug("Found DML for dropped table in history with object-id based table name {}.", row.getTableId().table());
+                LOGGER.trace("Found DML for dropped table in history with object-id based table name {}.", row.getTableId().table());
                 final TableId tableId = schema.getTableIdByObjectId(row.getObjectId(), null);
                 if (tableId != null) {
                     row.setTableId(tableId);
