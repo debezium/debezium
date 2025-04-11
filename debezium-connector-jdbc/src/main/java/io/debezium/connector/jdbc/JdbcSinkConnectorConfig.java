@@ -30,6 +30,7 @@ import io.debezium.sink.SinkConnectorConfig;
 import io.debezium.sink.filter.FieldFilterFactory;
 import io.debezium.sink.filter.FieldFilterFactory.FieldNameFilter;
 import io.debezium.sink.naming.CollectionNamingStrategy;
+import io.debezium.sink.naming.DefaultCollectionNamingStrategy;
 import io.debezium.util.Strings;
 
 /**
@@ -57,6 +58,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
     public static final String SCHEMA_EVOLUTION = "schema.evolution";
     public static final String QUOTE_IDENTIFIERS = "quote.identifiers";
     public static final String COLUMN_NAMING_STRATEGY = "column.naming.strategy";
+
     public static final String POSTGRES_POSTGIS_SCHEMA = "dialect.postgres.postgis.schema";
     public static final String SQLSERVER_IDENTITY_INSERT = "dialect.sqlserver.identity.insert";
     public static final String USE_REDUCTION_BUFFER = "use.reduction.buffer";
@@ -188,6 +190,19 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withDefault(DefaultColumnNamingStrategy.class.getName())
             .withDescription("Name of the strategy class that implements the ColumnNamingStrategy interface.");
 
+    public static final Field COLLECTION_NAMING_STRATEGY_FIELD = Field.create(COLLECTION_NAMING_STRATEGY)
+            .withDisplayName("Name of the strategy class that implements the CollectionNamingStrategy interface")
+            .withType(ConfigDef.Type.CLASS)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 2))
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(DefaultCollectionNamingStrategy.class.getName())
+            .withDescription("Name of the strategy class that implements the CollectionNamingStrategy interface. " +
+                    "This field allows users to define a custom implementation for resolving collection names. " +
+                    "If not specified, the default strategy is used.")
+            .withDeprecatedAliases(DEPRECATED_TABLE_NAMING_STRATEGY)
+            .withValidation(JdbcSinkConnectorConfig::validateCollectionNamingStrategy);
+
     public static final Field POSTGRES_POSTGIS_SCHEMA_FIELD = Field.create(POSTGRES_POSTGIS_SCHEMA)
             .withDisplayName("Name of the schema where postgis extension is installed")
             .withType(Type.STRING)
@@ -247,6 +262,15 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     "In environments where the sink database uses asynchronous replication, enabling this option may risk data loss or inconsistencies " +
                     "during failover if the replica has not fully caught up with the primary.");
 
+    public static final Field COLLECTION_TABLE_FORMAT_FIELD = Field.create("collection.table.format")
+            .withDisplayName("Format string using table name")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 3))
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.MEDIUM)
+            .withDefault("${table}")
+            .withDescription("Alternative format that uses table name instead of topic name. Use ${schema} for schema name and ${table} for table name.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     CONNECTION_URL_FIELD,
@@ -266,6 +290,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
                     QUOTE_IDENTIFIERS_FIELD,
                     COLLECTION_NAMING_STRATEGY_FIELD,
                     COLUMN_NAMING_STRATEGY_FIELD,
+                    COLLECTION_TABLE_FORMAT_FIELD,
                     USE_TIME_ZONE_FIELD,
                     POSTGRES_POSTGIS_SCHEMA_FIELD,
                     SQLSERVER_IDENTITY_INSERT_FIELD,
@@ -391,6 +416,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
 
     public JdbcSinkConnectorConfig(Map<String, String> props) {
         config = Configuration.from(props);
+        this.columnNamingStrategy = config.getInstance(COLUMN_NAMING_STRATEGY_FIELD, ColumnNamingStrategy.class);
         this.insertMode = InsertMode.parse(config.getString(INSERT_MODE));
         this.deleteEnabled = config.getBoolean(DELETE_ENABLED_FIELD);
         this.truncateEnabled = config.getBoolean(TRUNCATE_ENABLED_FIELD);
@@ -401,7 +427,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         this.quoteIdentifiers = config.getBoolean(QUOTE_IDENTIFIERS_FIELD);
         this.collectionNamingStrategy = new TemporaryBackwardCompatibleCollectionNamingStrategyProxy(
                 config.getInstance(COLLECTION_NAMING_STRATEGY_FIELD, CollectionNamingStrategy.class), this);
-        this.columnNamingStrategy = config.getInstance(COLUMN_NAMING_STRATEGY_FIELD, ColumnNamingStrategy.class);
+
         this.databaseTimezone = config.getString(USE_TIME_ZONE_FIELD);
         this.postgresPostgisSchema = config.getString(POSTGRES_POSTGIS_SCHEMA_FIELD);
         this.sqlServerIdentityInsert = config.getBoolean(SQLSERVER_IDENTITY_INSERT_FIELD);
@@ -434,10 +460,24 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         if (!Strings.isNullOrEmpty(columnExcludeList) && !Strings.isNullOrEmpty(columnIncludeList)) {
             throw new ConnectException("Cannot define both column.exclude.list and column.include.list. Please specify only one.");
         }
+
     }
 
     public boolean validateAndRecord(Iterable<Field> fields, Consumer<String> problems) {
         return config.validateAndRecord(fields, problems);
+    }
+
+    private static int validateColumnNamingStyle(Configuration config, Field field, ValidationOutput problems) {
+        String namingStyle = config.getString(field);
+        Set<String> validStyles = Set.of("snake_case", "camel_case", "kebab_case", "upper_case", "lower_case", "default");
+
+        if (!validStyles.contains(namingStyle)) {
+            problems.accept(field, namingStyle, "Invalid column naming style: " + namingStyle +
+                    ". Valid options are: " + validStyles);
+            return 1; // Validation fail
+        }
+
+        return 0; // Validation success
     }
 
     protected static ConfigDef configDef() {
@@ -582,5 +622,24 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             }
         }
         return 0;
+    }
+
+    private static int validateCollectionNamingStrategy(Configuration config, Field field, ValidationOutput problems) {
+        String value = config.getString(field);
+
+        if (DEPRECATED_TABLE_NAMING_STRATEGY.equals(value)) {
+            problems.accept(field, value, "Warning: Using deprecated config option \"table.naming.strategy\".");
+            return 0; // Validation ok
+        }
+
+        try {
+            Class.forName(value);
+        }
+        catch (ClassNotFoundException e) {
+            problems.accept(field, value, "Invalid class specified for collection naming strategy.");
+            return 1; // Validation fail
+        }
+
+        return 0; // No problem
     }
 }
