@@ -21,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -455,13 +456,10 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         }
     }
 
-    @Override
     @SuppressWarnings("unchecked")
-    public void addDataCollectionNamesToSnapshot(SignalPayload<P> signalPayload, SnapshotConfiguration snapshotConfiguration)
+    protected void addDataCollectionNamesToSnapshot(P partition, OffsetContext offsetContext, SignalPayload<P> signalPayload, SnapshotConfiguration snapshotConfiguration)
             throws InterruptedException {
 
-        final OffsetContext offsetContext = signalPayload.offsetContext;
-        final P partition = signalPayload.partition;
         final String correlationId = signalPayload.id;
 
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
@@ -497,6 +495,49 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     public void requestStopSnapshot(P partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionIds) {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
         context.requestSnapshotStop(dataCollectionIds);
+    }
+
+    @Override
+    public void requestAddDataCollectionNamesToSnapshot(SignalPayload<P> signalPayload, SnapshotConfiguration snapshotConfiguration) {
+        final OffsetContext offsetContext = signalPayload.offsetContext;
+        LOGGER.info("Request data collections {}", signalPayload);
+        context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
+        context.requestAddDataCollectionNamesToSnapshot(signalPayload, snapshotConfiguration);
+    }
+
+    @Override
+    public void processHeartbeat(P partition, OffsetContext offsetContext) throws InterruptedException {
+        checkAndAddDataCollections(partition, offsetContext);
+    }
+
+    @Override
+    public void processFilteredEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
+        checkAndAddDataCollections(partition, offsetContext);
+    }
+
+    @Override
+    public void processTransactionStartedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
+        checkAndAddDataCollections(partition, offsetContext);
+    }
+
+    @Override
+    public void processTransactionCommittedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
+        checkAndAddDataCollections(partition, offsetContext);
+    }
+
+    protected void checkAndAddDataCollections(P partition, OffsetContext offsetContext) throws InterruptedException {
+        if (context == null) {
+            LOGGER.warn("Context is null, skipping check and add data collections");
+            return;
+        }
+        LOGGER.debug("Check and add data collections");
+        Queue<SignalDataCollection> queue = context.getDataCollectionsToAdd();
+        SignalDataCollection dataCollectionToAdd;
+        while ((dataCollectionToAdd = queue.poll()) != null) {
+            SignalPayload signalPayload = dataCollectionToAdd.getSignalPayload();
+            SnapshotConfiguration snapshotConfiguration = dataCollectionToAdd.getSnapshotConfiguration();
+            addDataCollectionNamesToSnapshot(partition, offsetContext, signalPayload, snapshotConfiguration);
+        }
     }
 
     @SuppressWarnings("unchecked")
