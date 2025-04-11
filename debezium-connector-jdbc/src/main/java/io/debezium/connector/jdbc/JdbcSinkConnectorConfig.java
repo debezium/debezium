@@ -24,7 +24,6 @@ import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.jdbc.naming.ColumnNamingStrategy;
-import io.debezium.connector.jdbc.naming.CustomCollectionNamingStrategy;
 import io.debezium.connector.jdbc.naming.DefaultColumnNamingStrategy;
 import io.debezium.connector.jdbc.naming.TemporaryBackwardCompatibleCollectionNamingStrategyProxy;
 import io.debezium.sink.SinkConnectorConfig;
@@ -272,15 +271,6 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
             .withDefault("${table}")
             .withDescription("Alternative format that uses table name instead of topic name. Use ${schema} for schema name and ${table} for table name.");
 
-    public static final Field COLLECTION_NAMING_STYLE_ENABLED_FIELD = Field.create("collection.naming.style.enabled")
-            .withDisplayName("Enable enhanced collection naming")
-            .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 2))
-            .withWidth(ConfigDef.Width.SHORT)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDefault(false)
-            .withDescription("When enabled, uses enhanced collection naming with support for styles, prefixes and suffixes.");
-
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     CONNECTION_URL_FIELD,
@@ -435,7 +425,8 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         this.primaryKeyFields = Strings.setOf(config.getString(PRIMARY_KEY_FIELDS_FIELD), String::new);
         this.schemaEvolutionMode = SchemaEvolutionMode.parse(config.getString(SCHEMA_EVOLUTION));
         this.quoteIdentifiers = config.getBoolean(QUOTE_IDENTIFIERS_FIELD);
-        this.collectionNamingStrategy = configureCollectionNamingStrategy(config, props);
+        this.collectionNamingStrategy = new TemporaryBackwardCompatibleCollectionNamingStrategyProxy(
+                config.getInstance(COLLECTION_NAMING_STRATEGY_FIELD, CollectionNamingStrategy.class), this);
 
         this.databaseTimezone = config.getString(USE_TIME_ZONE_FIELD);
         this.postgresPostgisSchema = config.getString(POSTGRES_POSTGIS_SCHEMA_FIELD);
@@ -651,57 +642,4 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
 
         return 0; // No problem
     }
-
-    /**
-     * Configures and returns an appropriate collection naming strategy
-     * based on user configuration.
-     *
-     * @param config the connector configuration
-     * @param props the original connector properties
-     * @return the configured naming strategy wrapped in a compatibility proxy
-     */
-    private CollectionNamingStrategy configureCollectionNamingStrategy(Configuration config, Map<String, String> props) {
-        // Check if enhanced naming mode is enabled
-        if (config.getBoolean(COLLECTION_NAMING_STYLE_ENABLED_FIELD)) {
-            LOGGER.info("Using enhanced collection naming strategy with style support");
-
-            // Create and configure the custom strategy
-            CustomCollectionNamingStrategy customStrategy = new CustomCollectionNamingStrategy();
-            customStrategy.configure(props);
-
-            // Wrap in compatibility proxy
-            return new TemporaryBackwardCompatibleCollectionNamingStrategyProxy(customStrategy, this);
-        }
-        else {
-            // Check if we're using the deprecated table naming strategy name
-            String strategyClassName = config.getString(COLLECTION_NAMING_STRATEGY_FIELD);
-            if ("table.naming.strategy".equals(strategyClassName)) {
-                LOGGER.warn("The 'table.naming.strategy' configuration is deprecated. Using default strategy instead.");
-                DefaultCollectionNamingStrategy defaultStrategy = new DefaultCollectionNamingStrategy();
-                defaultStrategy.configure(props);
-                return new TemporaryBackwardCompatibleCollectionNamingStrategyProxy(defaultStrategy, this);
-            }
-
-            try {
-                // Use original behavior with standard instance resolution
-                CollectionNamingStrategy strategy = config.getInstance(COLLECTION_NAMING_STRATEGY_FIELD, CollectionNamingStrategy.class);
-
-                // Important: configure the strategy with the original properties
-                strategy.configure(props);
-
-                return new TemporaryBackwardCompatibleCollectionNamingStrategyProxy(strategy, this);
-            }
-            catch (Exception e) {
-                LOGGER.warn("Failed to instantiate collection naming strategy '{}', falling back to default: {}",
-                        strategyClassName, e.getMessage());
-                LOGGER.debug("Strategy instantiation exception", e);
-
-                // Fallback to default strategy if instantiation fails
-                DefaultCollectionNamingStrategy defaultStrategy = new DefaultCollectionNamingStrategy();
-                defaultStrategy.configure(props);
-                return new TemporaryBackwardCompatibleCollectionNamingStrategyProxy(defaultStrategy, this);
-            }
-        }
-    }
-
 }
