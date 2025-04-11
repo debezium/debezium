@@ -7,7 +7,6 @@
 package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
-import java.util.Collections;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +41,7 @@ public class PostgresTaskContext extends CdcSourceTaskContext {
     private Long lastXmin;
 
     protected PostgresTaskContext(PostgresConnectorConfig config, PostgresSchema schema, TopicNamingStrategy<TableId> topicNamingStrategy) {
-        super(config, config.getCustomMetricTags(), Collections::emptySet);
+        super(config, config.getCustomMetricTags(), schema::tableIds);
 
         this.config = config;
         if (config.xminFetchInterval().toMillis() > 0) {
