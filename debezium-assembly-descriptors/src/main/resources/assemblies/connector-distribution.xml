@@ -21,6 +21,11 @@
               <exclude>com.fasterxml.jackson.core:jackson-databind:*</exclude>
               <exclude>com.fasterxml.jackson.core:jackson-annotations:*</exclude>
               <exclude>com.fasterxml.jackson.datatype:jackson-datatype-jsr310:*</exclude>
+              <exclude>io.debezium:debezium-api:*</exclude>
+              <exclude>io.debezium:debezium-core:*</exclude>
+              <exclude>io.debezium:debezium-ddl-parser:*</exclude>
+              <exclude>io.debezium:debezium-storage-file:*</exclude>
+              <exclude>io.debezium:debezium-storage-kafka:*</exclude>
 
               <!-- Exclude guava dependencies -->
               <exclude>com.google.guava:listenablefuture:*</exclude>
