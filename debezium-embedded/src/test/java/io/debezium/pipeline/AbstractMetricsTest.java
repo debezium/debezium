@@ -267,6 +267,7 @@ public abstract class AbstractMetricsTest<T extends SourceConnector> extends Abs
         Testing.print("****ASSERTIONS****");
         assertThat(mBeanServer.getAttribute(getStreamingMetricsObjectName(), "Connected")).isEqualTo(true);
         assertThat(mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(), "TotalNumberOfCreateEventsSeen")).isEqualTo(expectedEvents);
+        assertThat(mBeanServer.getAttribute(getMultiplePartitionStreamingMetricsObjectName(), "CapturedTables")).isEqualTo(new String[]{ tableName() });
 
         if (checkAdvancedMetrics) {
             assertAdvancedMetrics(2L);
