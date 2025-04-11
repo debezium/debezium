@@ -21,6 +21,7 @@ import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.async.AsyncEmbeddedEngine;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.processors.reselect.ReselectColumnsPostProcessor;
@@ -258,6 +259,27 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
         assertThat(after.get(fieldName("id"))).isEqualTo(1);
         assertThat(after.get(fieldName("data"))).isEqualTo("two");
         assertThat(after.get(fieldName("data2"))).isEqualTo(1);
+    }
+
+    @Test
+    @FixFor("DBZ-8901")
+    public void shouldThrowAnExceptionWhenConfigurationAreNotProvided() throws Exception {
+
+        final LogInterceptor logInterceptor = new LogInterceptor(AsyncEmbeddedEngine.class);
+        logInterceptor.setLoggerLevel(AsyncEmbeddedEngine.class, Level.ERROR);
+
+        enableTableForCdc();
+
+        Configuration config = getConfigurationBuilder()
+                .without("reselector.type")
+                .build();
+
+        start(getConnectorClass(), config);
+
+        assertThat(logInterceptor.containsStacktraceElement("Post processor 'reselector' is missing 'reselector.type' and/or 'reselector.<option>' configurations"))
+                .isTrue();
+
+        assertConnectorNotRunning();
     }
 
     protected SourceRecords consumeRecordsByTopicReselectWhenNotNullSnapshot() throws InterruptedException {
