@@ -1907,18 +1907,6 @@ To specify the number of bytes that the queue can consume, set this property to 
 If xref:mongodb-property-max-queue-size[`max.queue.size`] is also set, writing to the queue is blocked when the size of the queue reaches the limit specified by either property.
 For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
 
-|[[mongodb-property-poll-interval-ms]]<<mongodb-property-poll-interval-ms, `+poll.interval.ms+`>>
-|`1000`
-|Positive integer value that specifies the number of milliseconds the connector should wait during each iteration for new change events to appear. Defaults to 500 milliseconds, or 0.5 second.
-
-|[[mongodb-property-connect-backoff-initial-delay-ms]]<<mongodb-property-connect-backoff-initial-delay-ms, `+connect.backoff.initial.delay.ms+`>>
-|`1000`
-|Positive integer value that specifies the initial delay when trying to reconnect to a primary after the first failed connection attempt or when no primary is available. Defaults to 1 second (1000 ms).
-
-|[[mongodb-property-connect-backoff-max-delay-ms]]<<mongodb-property-connect-backoff-max-delay-ms, `+connect.backoff.max.delay.ms+`>>
-|`1000`
-|Positive integer value that specifies the maximum delay when trying to reconnect to a primary after repeated failed connection attempts or when no primary is available. Defaults to 120 seconds (120,000 ms).
-
 |[[mongodb-property-connect-max-attempts]]<<mongodb-property-connect-max-attempts, `+connect.max.attempts+`>>
 |`16`
 |Positive integer value that specifies the maximum number of failed connection attempts to a replica set primary before an exception occurs and task is aborted. Defaults to 16, which with the defaults for `connect.backoff.initial.delay.ms` and `connect.backoff.max.delay.ms` results in just over 20 minutes of attempts before failing.
