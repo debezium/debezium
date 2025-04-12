@@ -333,6 +333,13 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                 skipCurrentTransaction = true;
                 return;
             }
+            else if (!getConfig().getLogMiningUsernameIncludes().isEmpty()) {
+                if (!getConfig().getLogMiningUsernameIncludes().contains(event.getUserName())) {
+                    LOGGER.debug("Skipped transaction with username {}", event.getUserName());
+                    skipCurrentTransaction = true;
+                    return;
+                }
+            }
         }
 
         // Check whether transaction should be skipped by CLIENTID field

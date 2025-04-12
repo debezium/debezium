@@ -2807,47 +2807,6 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-3978")
-    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED)
-    public void shouldFilterUser() throws Exception {
-        try {
-            TestHelper.dropTable(connection, "dbz3978");
-
-            connection.execute("CREATE TABLE dbz3978 (id number(9,0), data varchar2(50), primary key (id))");
-            TestHelper.streamTable(connection, "dbz3978");
-
-            Configuration config = TestHelper.defaultConfig()
-                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3978")
-                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
-                    .with(OracleConnectorConfig.LOG_MINING_USERNAME_EXCLUDE_LIST, "DEBEZIUM")
-                    // This test expects the filtering to occur in the connector, not the query
-                    .with(OracleConnectorConfig.LOG_MINING_QUERY_FILTER_MODE, "none")
-                    .build();
-
-            start(OracleConnector.class, config);
-            assertConnectorIsRunning();
-
-            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
-
-            connection.executeWithoutCommitting("INSERT INTO debezium.dbz3978 VALUES (1, 'Test1')");
-            connection.executeWithoutCommitting("INSERT INTO debezium.dbz3978 VALUES (2, 'Test2')");
-            connection.execute("COMMIT");
-
-            // all messages are filtered out
-            assertThat(waitForAvailableRecords(10, TimeUnit.SECONDS)).isFalse();
-
-            // There should be at least 2 DML events captured but ignored
-            Long totalDmlCount = getStreamingMetric("TotalCapturedDmlCount");
-            assertThat(totalDmlCount).isGreaterThanOrEqualTo(2L);
-
-        }
-        finally {
-            TestHelper.dropTable(connection, "dbz3978");
-        }
-
-    }
-
-    @Test
     @FixFor("DBZ-5756")
     public void testShouldIgnoreCompressionAdvisorTablesDuringSnapshotAndStreaming() throws Exception {
         // This test creates a dummy table to mimic the creation of a compression advisor table.

@@ -805,6 +805,12 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                     LOGGER.debug("Skipped transaction with excluded username {}", transaction.getUserName());
                     return true;
                 }
+                else if (!getConfig().getLogMiningUsernameIncludes().isEmpty()) {
+                    if (!getConfig().getLogMiningUsernameIncludes().contains(transaction.getUserName())) {
+                        LOGGER.debug("Skipped transaction with username {}", transaction.getUserName());
+                        return true;
+                    }
+                }
             }
 
             // Check whether transaction should be skipped by LogMiner CLIENT_ID field
