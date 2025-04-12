@@ -191,9 +191,7 @@ public class LogMinerQueryBuilderTest {
 
         final String codes = config.isLobEnabled()
                 ? "1,2,3,6,7,9,10,11,27,29,34,36,68,70,71,91,92,93,255"
-                : (config.getLogMiningBufferType() == OracleConnectorConfig.LogMiningBufferType.MEMORY)
-                        ? "1,2,3,7,27,34,36,255"
-                        : "1,2,3,6,7,27,34,36,255";
+                : "1,2,3,6,7,27,34,36,255";
 
         query += "(";
         query += "OPERATION_CODE IN (" + codes + ")";
