@@ -574,6 +574,111 @@ If you find a mapping could be improved, please let us know.
 endif::community[]
 ====
 
+[[jdbc-transformations]]
+== Transformations
+
+The {prodname} JDBC connector provides several transformations that can be added to the connector configuration to modify the consumed events in-flight before they're processed by the connector.
+
+=== Naming transformations
+
+The {prodname} provides two naming transformations that are specifically designed to change either the topic or field names within the event to the configured naming style.
+The naming transformations can be configured with one of the following naming styles:
+
+`camel_case`::
+Removes all `.` and `_` characters, and makes the immediate next character uppercase.
+For example, the value `inventory.customers` would be changed to `inventoryCustomers`.
+`snake_case`::
+Removes all `.` and replaces them with an `_` character. Additionally, any numeric sequences will be prefixed with an `_` while any capitalized character will be converted to lower case and prepended with an `_` character, too.
+For example, the value `public.inventory` would become `public_inventory`, while `TopicWith123Numbers` would become `topic_with_123_numbers`.
+`upper_case`::
+Converts to upper case.
+For example, the value `public.inventory` would become `PUBLIC.INVENTORY`.
+`lower_case`::
+Converts to lower case.
+For example, the value `PUBLIC.INVENTORY` would become `public.inventory`.
+
+In addition, these transformations optionally provide a way to apply a prefix or a suffix to the transformed name, too.
+
+
+==== CollectionNameTransformation
+
+The `CollectionNameTransformation` aims to provide a way to change the case of the topic names before the event is consumed.
+
+This transformation has the following configuration properties:
+
+[cols="30%a,25%a,45%a"]
+|===
+|Property |Default |Description
+
+|[[jdbc-property-collection-naming-style]]<<jdbc-property-collection-naming-style, `+collection.naming.style+`>>
+|`none`
+|Specifies the naming style to apply to the event's topic.
+
+|[[jdbc-property-collection-naming-prefix]]<<jdbc-property-collection-naming-prefix, `+collection.naming.prefix+`>>
+|_empty_
+|Specifies the prefix that is applied to the topic name after transformation.
+
+|[[jdbc-property-collection-naming-suffix]]<<jdbc-property-collection-naming-suffix, `+collection.naming.suffix+`>>
+|_empty_
+|Specifies the suffix that is applied to the topic name after transformation.
+
+|===
+
+The following configuration example illustrates using the `CollectionNameTransformation` SMT to set the topic name to uppercase and prefixes the topic name with `ADT_`.
+For example, given a topic called `public.inventory`, the topic name would become `ADT_PUBLIC.INVENTORY`.
+
+.Example CollectionNameTransformation configuration
+[source,json]
+----
+{
+  "transforms": "topic-uppercase",
+  "transforms.topic-uppercase.type": "io.debezium.connector.jdbc.transforms.CollectionNameTransformation",
+  "transforms.topic-uppercase.collection.naming.style": "upper_case",
+  "transforms.topic-uppercase.collection.naming.prefix": "ADT_"
+}
+----
+
+==== FieldNameTransformation
+
+The `FieldNameTransformation` aims to provide a way to change the case of the field names before the event is consumed.
+If the event is a {prodname} source connector event, only the fields within the `before` and `after` sections are changed.
+When the event is not a {prodname} source connector event, all top-level field names will be changed.
+
+This transformation has the following configuration properties:
+
+[cols="30%a,25%a,45%a"]
+|===
+|Property |Default |Description
+
+|[[jdbc-property-column-naming-style]]<<jdbc-property-column-naming-style, `+column.naming.style+`>>
+|`none`
+|Specifies the naming style to apply to the field name.
+
+|[[jdbc-property-column-naming-prefix]]<<jdbc-property-column-naming-prefix, `+column.naming.prefix+`>>
+|_empty_
+|Specifies the prefix that is applied to the field name after transformation.
+
+|[[jdbc-property-column-naming-suffix]]<<jdbc-property-column-naming-suffix, `+column.naming.suffix+`>>
+|_empty_
+|Specifies the suffix that is applied to the field name after transformation.
+
+|===
+
+The following configuration example illustrates using the `FieldNameTransformation` SMT to set the field names name to lowercase and prefixes them with `adt_`.
+For example, should the event contain the field `ID`, the field will become `adt_id`.
+
+.Example FieldNameTransformation configuration
+[source,json]
+----
+{
+  "transforms": "topic-lowercase",
+  "transforms.topic-lowercase.type": "io.debezium.connector.jdbc.transforms.FieldNameTransformation",
+  "transforms.topic-lowercase.collection.naming.style": "lower_case",
+  "transforms.topic-lowercase.collection.naming.prefix": "adt_"
+}
+----
+
+
 // Type: assembly
 // ModuleID: debezium-jdbc-connector-deployment
 // Title: Deployment of {prodname} JDBC connectors
@@ -1443,6 +1548,15 @@ To prevent the connector from rebalancing, set the total retry time (flush.retry
 |Specifies the fully-qualified class name of a `ColumnNamingStrategy` implementation that the connector uses to resolve column names from incoming event field names. +
  +
 The default behavior is to use the field name as the column name without any transformation.
+
+|[[jdbc-property-collection-naming-strategy]]<<jdbc-property-collection-naming-strategy, `+collection.naming.strategy+`>>
+|`io.debezium.connector.jdbc.nnaming.DefaultCollectionNamingStrategy`
+|Specifies the fully-qualified class name of a `CollectionNamingStrategy` implementation that the connector uses to resolve table names from incoming event topic names. +
+ +
+The default behavior is to: +
+
+* Sanitize the topic name by replacing dots (`.`) with underscores (`_`).
+* Replace the `+${topic}+` placeholder in the xref:jdbc-property-collection-name-format[`collection.name.format`] configuration property with the event's topic.
 
 |===
 
