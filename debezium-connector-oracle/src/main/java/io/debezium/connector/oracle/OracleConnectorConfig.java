@@ -2171,7 +2171,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             final String excludeList = config.getString(LOG_MINING_USERNAME_EXCLUDE_LIST);
 
             if (includeList != null && excludeList != null) {
-                problems.accept(TABLE_EXCLUDE_LIST, excludeList,
+                problems.accept(LOG_MINING_USERNAME_EXCLUDE_LIST, excludeList,
                         String.format("\"%s\" is already specified", LOG_MINING_USERNAME_INCLUDE_LIST.name()));
                 return 1;
             }
