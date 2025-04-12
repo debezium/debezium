@@ -28,13 +28,13 @@
     </logger>
 
     <logger
-        name="io.debezium.connector.oracle.logminer.LogMinerAdapter"
+        name="io.debezium.connector.oracle.logminer.buffered.LogMinerAdapter"
         level="trace" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
 
     <logger
-        name="io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor.AbandonedDetails"
+        name="io.debezium.connector.oracle.logminer.buffered.processor.AbstractLogMinerEventProcessor.AbandonedDetails"
         level="debug"
         additivity="false">
         <appender-ref ref="CONSOLE" />

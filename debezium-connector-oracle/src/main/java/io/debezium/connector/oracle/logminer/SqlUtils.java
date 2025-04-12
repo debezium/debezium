@@ -41,33 +41,33 @@ public class SqlUtils {
     private static final String ARCHIVE_DEST_STATUS_VIEW = "V$ARCHIVE_DEST_STATUS";
     private static final String ALL_LOG_GROUPS = "ALL_LOG_GROUPS";
 
-    static String redoLogStatusQuery() {
+    public static String redoLogStatusQuery() {
         return String.format("SELECT F.MEMBER, R.STATUS FROM %s F, %s R WHERE F.GROUP# = R.GROUP# ORDER BY 2", LOGFILE_VIEW, LOG_VIEW);
     }
 
-    static String switchHistoryQuery(String archiveDestinationName) {
+    public static String switchHistoryQuery(String archiveDestinationName) {
         return String.format("SELECT 'TOTAL', COUNT(1) FROM %s WHERE FIRST_TIME > TRUNC(SYSDATE)" +
                 " AND DEST_ID IN (" + localArchiveLogDestinationsOnlyQuery(archiveDestinationName) + ")",
                 ARCHIVED_LOG_VIEW);
     }
 
-    static String currentRedoNameQuery() {
+    public static String currentRedoNameQuery() {
         return String.format("SELECT F.MEMBER FROM %s LOG, %s F  WHERE LOG.GROUP#=F.GROUP# AND LOG.STATUS='CURRENT'", LOG_VIEW, LOGFILE_VIEW);
     }
 
-    static String currentRedoLogSequenceQuery() {
+    public static String currentRedoLogSequenceQuery() {
         return String.format("SELECT SEQUENCE# FROM %s WHERE STATUS = 'CURRENT' ORDER BY SEQUENCE#", LOG_VIEW);
     }
 
-    static String databaseSupplementalLoggingAllCheckQuery() {
+    public static String databaseSupplementalLoggingAllCheckQuery() {
         return String.format("SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_ALL FROM %s", DATABASE_VIEW);
     }
 
-    static String databaseSupplementalLoggingMinCheckQuery() {
+    public static String databaseSupplementalLoggingMinCheckQuery() {
         return String.format("SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_MIN FROM %s", DATABASE_VIEW);
     }
 
-    static String tableSupplementalLoggingCheckQuery() {
+    public static String tableSupplementalLoggingCheckQuery() {
         return String.format("SELECT 'KEY', LOG_GROUP_TYPE FROM %s WHERE OWNER=? AND TABLE_NAME=?", ALL_LOG_GROUPS);
     }
 
@@ -210,7 +210,7 @@ public class SqlUtils {
      * @param continuousMining whether to use continuous mining
      * @return statement todo: handle corruption. STATUS (Double) — value of 0 indicates it is executable
      */
-    static String startLogMinerStatement(Scn startScn, Scn endScn, OracleConnectorConfig.LogMiningStrategy strategy, boolean continuousMining) {
+    public static String startLogMinerStatement(Scn startScn, Scn endScn, OracleConnectorConfig.LogMiningStrategy strategy, boolean continuousMining) {
         String miningStrategy;
         if (strategy.equals(OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO)) {
             miningStrategy = "DBMS_LOGMNR.DICT_FROM_REDO_LOGS + DBMS_LOGMNR.DDL_DICT_TRACKING ";
@@ -229,11 +229,11 @@ public class SqlUtils {
                 "END;";
     }
 
-    static String addLogFileStatement(String option, String fileName) {
+    public static String addLogFileStatement(String option, String fileName) {
         return "BEGIN sys.dbms_logmnr.add_logfile(LOGFILENAME => '" + fileName + "', OPTIONS => " + option + ");END;";
     }
 
-    static String deleteLogFileStatement(String fileName) {
+    public static String deleteLogFileStatement(String fileName) {
         return "BEGIN SYS.DBMS_LOGMNR.REMOVE_LOGFILE(LOGFILENAME => '" + fileName + "');END;";
     }
 
