@@ -33,7 +33,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningBufferType;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.Scn;
-import io.debezium.connector.oracle.logminer.processor.CacheProvider;
+import io.debezium.connector.oracle.logminer.buffered.processor.CacheProvider;
 import io.debezium.connector.oracle.rest.DebeziumOracleConnectorResourceIT;
 import io.debezium.embedded.async.AsyncEmbeddedEngine;
 import io.debezium.jdbc.JdbcConfiguration;

@@ -27,7 +27,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.SnapshotType;
 import io.debezium.connector.oracle.antlr.listener.AlterTableParserListener;
 import io.debezium.connector.oracle.antlr.listener.CreateTableParserListener;
-import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.buffered.processor.AbstractLogMinerEventProcessor;
 import io.debezium.connector.oracle.olr.OpenLogReplicatorStreamingChangeEventSource;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope.FieldName;
