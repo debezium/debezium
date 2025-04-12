@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer.buffered;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -105,18 +104,7 @@ public class BufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder {
 
         // Handle all operations except DDL changes
         final InClause operationInClause = InClause.builder().withField("OPERATION_CODE");
-        if (connectorConfig.isLobEnabled()) {
-            operationInClause.withValues(OPERATION_CODES_LOB);
-        }
-        else {
-            final List<Integer> operationCodes = new ArrayList<>(OPERATION_CODES_NO_LOB);
-            // The transaction start event needs to be handled when a persistent buffer (Infinispan) is used
-            // because it is needed to reset the event id counter when re-mining transaction events.
-            if (connectorConfig.getLogMiningBufferType() == OracleConnectorConfig.LogMiningBufferType.MEMORY) {
-                operationCodes.removeIf(operationCode -> operationCode == 6);
-            }
-            operationInClause.withValues(operationCodes);
-        }
+        operationInClause.withValues(connectorConfig.isLobEnabled() ? OPERATION_CODES_LOB : OPERATION_CODES_NO_LOB);
         predicate.append("(").append(operationInClause.build());
 
         // Handle DDL operations
