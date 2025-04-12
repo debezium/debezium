@@ -34,12 +34,12 @@ import io.debezium.config.Instantiator;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
+import io.debezium.connector.oracle.logminer.buffered.processor.LogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.buffered.processor.ehcache.EhcacheLogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.buffered.processor.infinispan.EmbeddedInfinispanLogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.buffered.processor.infinispan.RemoteInfinispanLogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.buffered.processor.memory.MemoryLogMinerEventProcessor;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
-import io.debezium.connector.oracle.logminer.processor.LogMinerEventProcessor;
-import io.debezium.connector.oracle.logminer.processor.ehcache.EhcacheLogMinerEventProcessor;
-import io.debezium.connector.oracle.logminer.processor.infinispan.EmbeddedInfinispanLogMinerEventProcessor;
-import io.debezium.connector.oracle.logminer.processor.infinispan.RemoteInfinispanLogMinerEventProcessor;
-import io.debezium.connector.oracle.logminer.processor.memory.MemoryLogMinerEventProcessor;
 import io.debezium.connector.oracle.util.OracleUtils;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.pipeline.EventDispatcher;
@@ -1324,7 +1324,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             @Override
             public StreamingAdapter getInstance(OracleConnectorConfig connectorConfig) {
                 return Instantiator.getInstanceWithProvidedConstructorType(
-                        "io.debezium.connector.oracle.logminer.LogMinerAdapter",
+                        "io.debezium.connector.oracle.logminer.buffered.LogMinerAdapter",
                         OracleConnectorConfig.class,
                         connectorConfig);
             }
