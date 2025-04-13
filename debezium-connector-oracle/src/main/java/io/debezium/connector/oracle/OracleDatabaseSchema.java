@@ -52,6 +52,8 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     private final LRUCacheMap<Long, TableId> objectIdToTableId;
     private final boolean extendedStringsSupported;
 
+    private LastObjectTableIdLookup lastObjectTableIdLookup;
+
     public OracleDatabaseSchema(OracleConnectorConfig connectorConfig, OracleValueConverters valueConverters,
                                 DefaultValueConverter defaultValueConverter, SchemaNameAdjuster schemaNameAdjuster,
                                 TopicNamingStrategy<TableId> topicNamingStrategy, TableNameCaseSensitivity tableNameCaseSensitivity,
@@ -147,6 +149,14 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
      */
     public TableId getTableIdByObjectId(Long objectId, Long dataObjectId) {
         Objects.requireNonNull(objectId, "The database table object id is null and is not allowed");
+
+        // Fast path: check if the last lookup matches
+        if (lastObjectTableIdLookup != null &&
+                objectId.equals(lastObjectTableIdLookup.objectId()) &&
+                Objects.equals(lastObjectTableIdLookup.dataObjectId(), dataObjectId)) {
+            return (lastObjectTableIdLookup.tableId() == NO_SUCH_TABLE) ? null : lastObjectTableIdLookup.tableId();
+        }
+
         // Internally we cache this using a bounded cache for performance reasons, particularly when a
         // transaction may refer to the same table for consecutive DML events. This avoids the need to
         // iterate the list of tables on each DML event observed.
@@ -155,6 +165,9 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
             cachedTableId = tableObjectIdToTableId(objectId, dataObjectId);
             objectIdToTableId.put(objectId, cachedTableId);
         }
+
+        // Cache the lookup to avoid a map hit should the next inquiry be for the same objectId/dataObjectId.
+        lastObjectTableIdLookup = new LastObjectTableIdLookup(objectId, dataObjectId, cachedTableId);
 
         // There is not any table for this object ID, so we have to convert back the placeholder
         // and return null.
@@ -287,5 +300,17 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         // placeholder here.
         LOGGER.debug("Table lookup for object id {} did not find a match.", tableObjectId);
         return NO_SUCH_TABLE;
+    }
+
+    /**
+     * A simple record that represents the last lookup in the {@code objectIdToTableId} map.
+     * This is to provide a more efficient way to resolve the identifier lookup when there
+     * are repeated operations for the same table in the transaction logs.
+     *
+     * @param objectId object's identifier, should not be {@code null}
+     * @param dataObjectId object's data identifier, should not be {@code null}
+     * @param tableId the lookup table identifier
+     */
+    record LastObjectTableIdLookup(Long objectId, Long dataObjectId, TableId tableId) {
     }
 }
