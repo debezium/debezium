@@ -319,7 +319,9 @@ public class LogMinerQueryBuilder {
             // Makes sure we get rows that have no TABLE_NAME or that have had an issue resolving the
             // table's object identifier due to a recent schema change causing a dictionary mismatch.
             predicate.append("(TABLE_NAME IS NULL OR ");
-            predicate.append("TABLE_NAME LIKE '").append(UNKNOWN_TABLE_NAME_PREFIX).append("%' OR ");
+            if (connectorConfig.getLogMiningStrategy() == OracleConnectorConfig.LogMiningStrategy.HYBRID) {
+                predicate.append("TABLE_NAME LIKE '").append(UNKNOWN_TABLE_NAME_PREFIX).append("%' OR ");
+            }
 
             getSignalDataCollectionId(connectorConfig).ifPresent(signalTableId -> {
                 if (!tableIncludeListContains(includeTableList, signalTableId)) {
@@ -350,7 +352,9 @@ public class LogMinerQueryBuilder {
             // Makes sure we get rows that have no TABLE_NAME or that have had an issue resolving the
             // table's object identifier due to a recent schema change causing a dictionary mismatch.
             predicate.append("(TABLE_NAME IS NULL OR ");
-            predicate.append("TABLE_NAME LIKE '").append(UNKNOWN_TABLE_NAME_PREFIX).append("%' OR ");
+            if (connectorConfig.getLogMiningStrategy() == OracleConnectorConfig.LogMiningStrategy.HYBRID) {
+                predicate.append("TABLE_NAME LIKE '").append(UNKNOWN_TABLE_NAME_PREFIX).append("%' OR ");
+            }
 
             getSignalDataCollectionId(connectorConfig).ifPresent(signalTableId -> {
                 if (!matches(includeTableList, signalTableId.identifier())) {

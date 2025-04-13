@@ -326,7 +326,10 @@ public class LogMinerQueryBuilderTest {
                 inClause = getIn(fieldName, getTableIncludeOrExclude(excludeList, false), true, true);
             }
             final String signalDataClause = getSignalDataCollectionTableClause(config);
-            return " AND (TABLE_NAME IS NULL OR TABLE_NAME LIKE 'OBJ#%' OR " + signalDataClause + inClause + ")";
+            if (config.getLogMiningStrategy() == OracleConnectorConfig.LogMiningStrategy.HYBRID) {
+                return " AND (TABLE_NAME IS NULL OR TABLE_NAME LIKE 'OBJ#%' OR " + signalDataClause + inClause + ")";
+            }
+            return " AND (TABLE_NAME IS NULL OR " + signalDataClause + inClause + ")";
         }
         else {
             // Regular Expressions
@@ -338,7 +341,10 @@ public class LogMinerQueryBuilderTest {
                 regExpLikeClause = getRegexpLike(fieldName, getTableIncludeOrExclude(excludeList, true), true);
             }
             final String signalDataClause = getSignalDataCollectionTableClause(config);
-            return " AND (TABLE_NAME IS NULL OR TABLE_NAME LIKE 'OBJ#%' OR " + signalDataClause + regExpLikeClause + ")";
+            if (config.getLogMiningStrategy() == OracleConnectorConfig.LogMiningStrategy.HYBRID) {
+                return " AND (TABLE_NAME IS NULL OR TABLE_NAME LIKE 'OBJ#%' OR " + signalDataClause + regExpLikeClause + ")";
+            }
+            return " AND (TABLE_NAME IS NULL OR " + signalDataClause + regExpLikeClause + ")";
         }
     }
 
