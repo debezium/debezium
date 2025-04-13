@@ -63,6 +63,7 @@ asciidoc:
     link-vitess-connector: 'connectors/vitess.adoc'
     link-informix-connector: 'connectors/informix.adoc'
     link-spanner-connector: 'connectors/spanner.adoc'
+    link-mariadb-plugin-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-mariadb&v=LATEST&c=plugin&e=tar.gz'
     link-mysql-plugin-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-mysql&v=LATEST&c=plugin&e=tar.gz'
     link-postgres-plugin-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-postgres&v=LATEST&c=plugin&e=tar.gz'
     link-mongodb-plugin-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-mongodb&v=LATEST&c=plugin&e=tar.gz'
