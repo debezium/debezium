@@ -27,6 +27,7 @@ Restart your Kafka Connect process to pick up the new JARs.
 The connector plug-ins are available from Maven:
 
 ifeval::['{page-version}' == 'master']
+* {link-mariadb-plugin-snapshot}[MariaDB Connector plugin archive]
 * {link-mysql-plugin-snapshot}[MySQL Connector plugin archive]
 * {link-postgres-plugin-snapshot}[Postgres Connector plugin archive]
 * {link-mongodb-plugin-snapshot}[MongoDB Connector plugin archive]
@@ -44,6 +45,7 @@ ifeval::['{page-version}' == 'master']
 NOTE: All above links are to nightly snapshots of the {prodname} main branch.  If you are looking for non-snapshot versions, please select the appropriate version in the top right.
 endif::[]
 ifeval::['{page-version}' != 'master']
+* https://repo1.maven.org/maven2/io/debezium/debezium-connector-mariadb/{debezium-version}/debezium-connector-mariadb-{debezium-version}-plugin.tar.gz[MariaDB Connector plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/{debezium-version}/debezium-connector-mysql-{debezium-version}-plugin.tar.gz[MySQL Connector plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/{debezium-version}/debezium-connector-postgres-{debezium-version}-plugin.tar.gz[Postgres Connector plugin archive]
 * https://repo1.maven.org/maven2/io/debezium/debezium-connector-mongodb/{debezium-version}/debezium-connector-mongodb-{debezium-version}-plugin.tar.gz[MongoDB Connector plugin archive]
@@ -85,6 +87,7 @@ endif::[]
 == Using a {prodname} Connector
 
 To use a connector to produce change events for a particular source server/cluster, simply create a configuration file for the
+xref:connectors/mariadb.adoc[MariaDB Connector],
 xref:connectors/mysql.adoc[MySQL Connector],
 xref:connectors/postgresql.adoc#postgresql-deployment[Postgres Connector],
 xref:connectors/mongodb.adoc#mongodb-deploying-a-connector[MongoDB Connector],
