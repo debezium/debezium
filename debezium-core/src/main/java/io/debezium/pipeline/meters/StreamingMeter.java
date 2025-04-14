@@ -86,6 +86,11 @@ public class StreamingMeter implements StreamingMetricsMXBean {
         }
     }
 
+    @Override
+    public void resetLagBehindSource() {
+        lagBehindSource.set(null);
+    }
+
     public void reset() {
         lagBehindSource.set(null);
         numberOfCommittedTransactions.set(0);
