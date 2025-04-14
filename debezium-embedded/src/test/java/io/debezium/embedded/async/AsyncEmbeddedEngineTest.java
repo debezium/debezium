@@ -41,7 +41,6 @@ import io.debezium.connector.simple.SimpleSourceConnector;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.Connect;
-import io.debezium.embedded.ConvertingEngineBuilder;
 import io.debezium.embedded.DebeziumEngineTestUtils;
 import io.debezium.embedded.EmbeddedEngineChangeEvent;
 import io.debezium.embedded.EmbeddedEngineConfig;
@@ -791,8 +790,8 @@ public class AsyncEmbeddedEngineTest {
 
         DebeziumEngine.Builder<ChangeEvent<SourceRecord, SourceRecord>> builder = DebeziumEngine.create(Connect.class);
 
-        // Until EmbeddedEngine is removed, the default is EmbeddedEngine.
-        assertThat(builder).isInstanceOf(ConvertingEngineBuilder.class);
+        // Make sure we use async. engine.
+        assertThat(builder).isInstanceOf(AsyncEmbeddedEngine.AsyncEngineBuilder.class);
 
         // Verify that engine created by default builder factory works.
         appendLinesToSource(NUMBER_OF_LINES);

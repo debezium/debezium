@@ -368,7 +368,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
     }
 
     private static BuilderFactory determineBuilderFactory() {
-        return determineBuilderFactory("io.debezium.embedded.ConvertingEngineBuilderFactory");
+        return determineBuilderFactory("io.debezium.embedded.async.ConvertingAsyncEngineBuilderFactory");
     }
 
     private static BuilderFactory determineBuilderFactory(String builderFactory) {
