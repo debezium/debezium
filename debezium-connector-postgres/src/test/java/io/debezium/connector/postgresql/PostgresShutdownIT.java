@@ -25,16 +25,16 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.embedded.EmbeddedEngineConfig;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.embedded.async.AsyncEmbeddedEngine;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.testing.testcontainers.util.ContainerImageVersions;
 
 /**
- * Integration test for {@link PostgresConnector} using an {@link EmbeddedEngine} and Testcontainers infrastructure for when Postgres is shutdown during streaming
+ * Integration test for {@link PostgresConnector} using an {@link AsyncEmbeddedEngine} and Testcontainers infrastructure for when Postgres is shutdown during streaming
  */
 public class PostgresShutdownIT extends AbstractAsyncEngineConnectorTest {
 
