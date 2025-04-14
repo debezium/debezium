@@ -218,7 +218,14 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             LOGGER.debug("Starting tasks polling.");
             setEngineState(State.STARTING_TASKS, State.POLLING_TASKS);
             runTasksPolling(tasks);
-            // Tasks run infinite polling loop until close() is called or exception is thrown.
+
+            // Check the state first - if the polling was stopped by calling close() method (not by throwing StopEngineException),
+            // engine is already in STOPPING state.
+            if (State.canBeStopped(getEngineState())) {
+                LOGGER.debug("Stopping " + AsyncEmbeddedEngine.class.getName());
+                setEngineState(State.POLLING_TASKS, State.STOPPING);
+                close(State.POLLING_TASKS);
+            }
         }
         catch (Throwable t) {
             exitError = t;
@@ -990,7 +997,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                     catch (StopEngineException ex) {
                         // Ensure that we mark the record as finished in this case.
                         committer.markProcessed(record);
-                        throw ex;
+                        break;
                     }
                 }
                 committer.markBatchFinished();
@@ -1018,7 +1025,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                     catch (StopEngineException ex) {
                         // Ensure that we mark the record as finished in this case.
                         committer.markProcessed(record);
-                        throw ex;
+                        break;
                     }
                 }
                 committer.markBatchFinished();
@@ -1168,6 +1175,10 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
      * If there are any records, they are passed to the provided processor.
      * The {@link Callable} is {@link RetryingCallable} - if the {@link org.apache.kafka.connect.errors.RetriableException}
      * is thrown, the {@link Callable} is executed again according to configured {@link DelayStrategy} and number of retries.
+     *
+     * The polling runs in an infinite polling loop until close() is called or exception is thrown.
+     * The only exception is catching {@link StopEngineException}, which also leads to finishing the polling loop,
+     * but in this case the shutdown is graceful.
      */
     private static class PollRecords extends RetryingCallable<Void> {
         final EngineSourceTask task;
@@ -1188,7 +1199,13 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 final List<SourceRecord> changeRecords = task.connectTask().poll(); // blocks until there are values ...
                 LOGGER.trace("Thread {} polled {} records.", Thread.currentThread().getName(), changeRecords == null ? "no" : changeRecords.size());
                 if (changeRecords != null && !changeRecords.isEmpty()) {
-                    processor.processRecords(changeRecords);
+                    try {
+                        processor.processRecords(changeRecords);
+                    }
+                    catch (StopEngineException e) {
+                        LOGGER.debug("Interrupting polling loop due to receiving StopEngineException.");
+                        break;
+                    }
                 }
                 else {
                     LOGGER.trace("No records.");

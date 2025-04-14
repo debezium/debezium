@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.StopEngineException;
 
 /**
  * {@link RecordProcessor} which transforms and converts the records in parallel. Converted records are passed to the user-provided {@link Consumer}.
@@ -51,7 +52,13 @@ public class ParallelSmtAndConvertConsumerProcessor<R> extends AbstractRecordPro
         for (int i = 0; recordsIterator.hasNext(); i++) {
             R record = recordFutures[i].get();
             if (record != null) {
-                consumer.accept(record);
+                try {
+                    consumer.accept(record);
+                }
+                catch (StopEngineException e) {
+                    committer.markProcessed(recordsIterator.next());
+                    throw e;
+                }
             }
             committer.markProcessed(recordsIterator.next());
         }
