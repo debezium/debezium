@@ -19,8 +19,8 @@ public class MemoryTransaction extends AbstractTransaction {
 
     private int numberOfEvents;
 
-    public MemoryTransaction(String transactionId, Scn startScn, Instant changeTime, String userName, Integer redoThreadId) {
-        super(transactionId, startScn, changeTime, userName, redoThreadId);
+    public MemoryTransaction(String transactionId, Scn startScn, Instant changeTime, String userName, Integer redoThreadId, String clientId) {
+        super(transactionId, startScn, changeTime, userName, redoThreadId, clientId);
         start();
     }
 

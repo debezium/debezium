@@ -58,7 +58,7 @@ public class LogMinerQueryBuilderTest {
 
     private static final String LOG_MINER_QUERY_BASE = "SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, " +
             "XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, USERNAME, ROW_ID, ROLLBACK, RS_ID, STATUS, INFO, SSN, " +
-            "THREAD#, DATA_OBJ#, DATA_OBJV#, DATA_OBJD# FROM V$LOGMNR_CONTENTS " +
+            "THREAD#, DATA_OBJ#, DATA_OBJV#, DATA_OBJD#, CLIENT_ID FROM V$LOGMNR_CONTENTS " +
             "WHERE SCN > ? AND SCN <= ?";
 
     private static final String PDB_PREDICATE = "SRC_CON_NAME = '${pdbName}'";
@@ -158,6 +158,22 @@ public class LogMinerQueryBuilderTest {
         assertQuery(getBuilderForMode(LogMiningQueryFilterMode.IN).with(TABLE_EXCLUDE_LIST, tables.toString()));
     }
 
+    @Test
+    @FixFor("DBZ-8904")
+    public void testClientIdIncludeExclude() {
+        Configuration config = TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_CLIENTID_EXCLUDE_LIST, "abc,xyz").build();
+        OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+
+        String result = LogMinerQueryBuilder.build(connectorConfig);
+        assertThat(result).isEqualTo(getQueryFromTemplate(connectorConfig));
+
+        config = TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_CLIENTID_INCLUDE_LIST, "abc,xyz").build();
+        connectorConfig = new OracleConnectorConfig(config);
+
+        result = LogMinerQueryBuilder.build(connectorConfig);
+        assertThat(result).isEqualTo(getQueryFromTemplate(connectorConfig));
+    }
+
     private void testLogMinerQueryFilterMode(LogMiningQueryFilterMode mode) {
         // Default configuration
         assertQuery(getBuilderForMode(mode));
@@ -219,6 +235,7 @@ public class LogMinerQueryBuilderTest {
 
         query += getOperationCodePredicate(config);
         query += getUserNamePredicate(config);
+        query += getClientIdPredicate(config);
         query += getSchemaNamesPredicate(config);
         query += getTableNamesPredicate(config);
 
@@ -259,6 +276,22 @@ public class LogMinerQueryBuilderTest {
         }
         else if (!excludes.isEmpty() && !queryFilterMode.equals(LogMiningQueryFilterMode.NONE)) {
             return " AND UPPER(USERNAME) NOT IN (" + excludes.stream().map(this::quote).collect(Collectors.joining(",")) + ")";
+        }
+        else {
+            return "";
+        }
+    }
+
+    private String getClientIdPredicate(OracleConnectorConfig config) {
+        final LogMiningQueryFilterMode queryFilterMode = config.getLogMiningQueryFilterMode();
+        final Set<String> includes = config.getLogMiningClientIdIncludes();
+        final Set<String> excludes = config.getLogMiningClientIdExcludes();
+
+        if (!includes.isEmpty() && !queryFilterMode.equals(LogMiningQueryFilterMode.NONE)) {
+            return " AND UPPER(CLIENT_ID) IN (" + includes.stream().map(this::quote).collect(Collectors.joining(",")) + ")";
+        }
+        else if (!excludes.isEmpty() && !queryFilterMode.equals(LogMiningQueryFilterMode.NONE)) {
+            return " AND UPPER(CLIENT_ID) NOT IN (" + excludes.stream().map(this::quote).collect(Collectors.joining(",")) + ")";
         }
         else {
             return "";
