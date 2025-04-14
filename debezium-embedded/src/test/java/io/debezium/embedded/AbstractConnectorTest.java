@@ -84,7 +84,7 @@ import io.debezium.util.LoggingContext;
 import io.debezium.util.Testing;
 
 /**
- * An abstract base class for unit testing {@link SourceConnector} implementations using the Debezium {@link EmbeddedEngine}
+ * An abstract base class for unit testing {@link SourceConnector} implementations using the {@link DebeziumEngine}
  * with local file storage.
  * <p>
  * To use this abstract class, simply create a test class that extends it, and add one or more test methods that

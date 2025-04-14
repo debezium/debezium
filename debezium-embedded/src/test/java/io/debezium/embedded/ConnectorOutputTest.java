@@ -272,7 +272,7 @@ public abstract class ConnectorOutputTest {
 
         /**
          * Get the configuration of the test environment. Often no custom environment configuration properties are required,
-         * but they can be used to supply configuration properties to the {@link EmbeddedEngine} and the
+         * but they can be used to supply configuration properties to the {@link DebeziumEngine} and the
          * {@link JsonConverter}, {@link JsonSerializer} and {@link JsonDeserializer} instances used to read and write
          * the expected records, as well as the following:
          * <ul>
