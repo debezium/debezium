@@ -44,6 +44,13 @@ public interface Transaction {
     String getUserName();
 
     /**
+     * Get the client id associated with the transaction
+     *
+     * @return the client id, may be {@code null}
+     */
+    String getClientId();
+
+    /**
      * Get the number of events participating in the transaction.
      *
      * @return the number of transaction events

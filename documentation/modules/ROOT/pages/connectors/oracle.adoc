@@ -4210,6 +4210,16 @@ It can be useful to set this property if you want the capturing process to inclu
 |List of database users to exclude from the LogMiner query.
 It can be useful to set this property if you want the capturing process to always exclude the changes that specific users make.
 
+|[[oracle-property-log-mining-clientid-include-list]]<<oracle-property-log-mining-clientid-include-list, `+log.mining.clientid.include.list+`>>
+|No default
+|List of JDBC connection client ids to include from the LogMiner query.
+It can be useful to set this property if you want the capturing process to include changes from the specific JDBC connection clients.
+
+|[[oracle-property-log-mining-clientid-exclude-list]]<<oracle-property-log-mining-clientid-exclude-list, `+log.mining.clientid.exclude.list+`>>
+|No default
+|List of JDBC connection client ids to exclude from the LogMiner query.
+It can be useful to set this property if you want the capturing process to always exclude the changes specific JDBC connection clients.
+
 |[[oracle-property-log-mining-scn-gap-detection-gap-size-min]]<<oracle-property-log-mining-scn-gap-detection-gap-size-min, `+log.mining.scn.gap.detection.gap.size.min+`>>
 |`1000000`
 |Specifies a value that the connector compares to the difference between the current and previous SCN values to determine whether an SCN gap exists.

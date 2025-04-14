@@ -55,6 +55,7 @@ public class LogMinerEventRow {
     private static final int OBJECT_ID = 18;
     private static final int OBJECT_VERSION = 19;
     private static final int OBJECT_DATA_ID = 20;
+    private static final int CLIENT_ID = 21;
 
     private Scn scn;
     private TableId tableId;
@@ -76,6 +77,7 @@ public class LogMinerEventRow {
     private long objectId;
     private long objectVersion;
     private long dataObjectId;
+    private String clientId;
 
     public Scn getScn() {
         return scn;
@@ -161,6 +163,10 @@ public class LogMinerEventRow {
         return dataObjectId;
     }
 
+    public String getClientId() {
+        return clientId;
+    }
+
     /**
      * Returns a {@link LogMinerEventRow} instance based on the current row of the JDBC {@link ResultSet}.
      *
@@ -209,6 +215,7 @@ public class LogMinerEventRow {
         this.objectId = resultSet.getLong(OBJECT_ID);
         this.objectVersion = resultSet.getLong(OBJECT_VERSION);
         this.dataObjectId = resultSet.getLong(OBJECT_DATA_ID);
+        this.clientId = resultSet.getString(CLIENT_ID);
         if (this.tableName != null) {
             this.tableId = new TableId(catalogName, tablespaceName, tableName);
         }
@@ -307,6 +314,7 @@ public class LogMinerEventRow {
                 ", rollbackFlag=" + rollbackFlag +
                 ", rsId=" + rsId +
                 ", ssn=" + ssn +
+                ", clientId=" + clientId +
                 // Specifically log SQL only if TRACE is enabled; otherwise omit for others
                 ", redoSql='" + (LOGGER.isTraceEnabled() ? redoSql : "<omitted>") + '\'' +
                 '}';

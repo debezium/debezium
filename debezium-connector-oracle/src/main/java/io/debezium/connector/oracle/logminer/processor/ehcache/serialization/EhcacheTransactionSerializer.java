@@ -41,7 +41,8 @@ public class EhcacheTransactionSerializer extends AbstractEhcacheSerializer<Ehca
         final String userName = stream.readString();
         final int redoThread = stream.readInt();
         final int numberOfEvents = stream.readInt();
-        return new EhcacheTransaction(transactionId, startScn, changeTime, userName, redoThread, numberOfEvents);
+        final String clientId = stream.readString();
+        return new EhcacheTransaction(transactionId, startScn, changeTime, userName, redoThread, numberOfEvents, clientId);
     }
 
     private Scn readScn(String value) {
