@@ -1247,7 +1247,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
 
         @Override
         public void markProcessed(SourceRecord record) throws InterruptedException {
-            task.commitRecord(record);
+            task.commitRecord(record, null);
             recordsSinceLastCommit += 1;
             offsetWriter.offset(record.sourcePartition(), record.sourceOffset());
         }
