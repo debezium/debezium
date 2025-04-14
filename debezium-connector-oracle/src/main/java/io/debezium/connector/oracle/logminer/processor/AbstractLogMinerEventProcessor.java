@@ -623,7 +623,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                 transactionId, numEvents, row.getScn(), row.getThread(), smallestScn, row);
 
         if (skipCommit) {
-            cleanupAfterTransactionRemovedFromCache(transaction, false);
+            if (transaction != null) {
+                cleanupAfterTransactionRemovedFromCache(transaction, false);
+            }
             return;
         }
 
