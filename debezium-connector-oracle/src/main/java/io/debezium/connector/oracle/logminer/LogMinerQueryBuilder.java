@@ -80,7 +80,8 @@ public class LogMinerQueryBuilder {
     public static String build(OracleConnectorConfig connectorConfig) {
         final StringBuilder query = new StringBuilder(1024);
         query.append("SELECT SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, ");
-        query.append("USERNAME, ROW_ID, ROLLBACK, RS_ID, STATUS, INFO, SSN, THREAD#, DATA_OBJ#, DATA_OBJV#, DATA_OBJD# ");
+        query.append("USERNAME, ROW_ID, ROLLBACK, RS_ID, STATUS, INFO, SSN, THREAD#, DATA_OBJ#, DATA_OBJV#, DATA_OBJD#, ");
+        query.append("CLIENT_ID ");
         query.append("FROM ").append(LOGMNR_CONTENTS_VIEW).append(" ");
 
         // These bind parameters will be bound when the query is executed by the caller.
@@ -107,6 +108,12 @@ public class LogMinerQueryBuilder {
         final String userNamePredicate = getUserNamePredicate(connectorConfig);
         if (!userNamePredicate.isEmpty()) {
             query.append(" AND ").append(userNamePredicate);
+        }
+
+        // Include/Exclude clients
+        final String clientIdPredicate = getClientIdPredicate(connectorConfig);
+        if (!clientIdPredicate.isEmpty()) {
+            query.append(" AND ").append(clientIdPredicate);
         }
 
         // Generate the schema-based predicates
@@ -210,6 +217,27 @@ public class LogMinerQueryBuilder {
                     .withDefaultIncludeValues(Collections.singletonList(UNKNOWN_USERNAME))
                     .withIncludeValues(connectorConfig.getLogMiningUsernameIncludes())
                     .withExcludeValues(connectorConfig.getLogMiningUsernameExcludes())
+                    .caseInsensitive()
+                    .build();
+        }
+        return EMPTY;
+    }
+
+    /**
+     * Generate a client id based predicate for include/excluded client identifiers.
+     *
+     * @param connectorConfig connector configuration, should not be {@code null}
+     * @return the client id predicate, will be an empty string if no predicate is generated, never {@code null}
+     */
+    private static String getClientIdPredicate(OracleConnectorConfig connectorConfig) {
+        if (!LogMiningQueryFilterMode.NONE.equals(connectorConfig.getLogMiningQueryFilterMode())) {
+            // Only filter client ids when using IN and REGEX modes
+            // Client id filters always use an IN-clause predicate
+            return IncludeExcludeInClause.builder()
+                    .withField("CLIENT_ID")
+                    .withFilterMode(LogMiningQueryFilterMode.IN)
+                    .withIncludeValues(connectorConfig.getLogMiningClientIdIncludes())
+                    .withExcludeValues(connectorConfig.getLogMiningClientIdExcludes())
                     .caseInsensitive()
                     .build();
         }

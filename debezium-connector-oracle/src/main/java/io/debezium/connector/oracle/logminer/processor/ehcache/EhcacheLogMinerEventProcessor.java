@@ -98,7 +98,7 @@ public class EhcacheLogMinerEventProcessor extends AbstractLogMinerEventProcesso
 
     @Override
     protected EhcacheTransaction createTransaction(LogMinerEventRow row) {
-        return new EhcacheTransaction(row.getTransactionId(), row.getScn(), row.getChangeTime(), row.getUserName(), row.getThread());
+        return new EhcacheTransaction(row.getTransactionId(), row.getScn(), row.getChangeTime(), row.getUserName(), row.getThread(), row.getClientId());
     }
 
     @Override

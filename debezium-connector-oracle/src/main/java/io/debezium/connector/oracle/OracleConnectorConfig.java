@@ -679,6 +679,21 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("When Oracle is configured to use EXTENDED string sizes, there are some use cases where LogMiner will " +
                     "not escape single quotes within a column value, which will lead to value truncation.");
 
+    public static final Field LOG_MINING_CLIENTID_INCLUDE_LIST = Field.create("log.mining.clientid.include.list")
+            .withDisplayName("List of client ids to include from LogMiner query")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Comma separated list of client ids to include from LogMiner query.");
+
+    public static final Field LOG_MINING_CLIENTID_EXCLUDE_LIST = Field.create("log.mining.clientid.exclude.list")
+            .withDisplayName("List of client ids to exclude from LogMiner query")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateClientIdExcludeList)
+            .withDescription("Comma separated list of client ids to exclude from LogMiner query.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -757,7 +772,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG,
                     LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG,
                     OBJECT_ID_CACHE_SIZE,
-                    LOG_MINING_SQL_RELAXED_QUOTE_DETECTION)
+                    LOG_MINING_SQL_RELAXED_QUOTE_DETECTION,
+                    LOG_MINING_CLIENTID_INCLUDE_LIST,
+                    LOG_MINING_CLIENTID_EXCLUDE_LIST)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .create();
 
@@ -830,6 +847,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final boolean logMiningContinuousMining;
     private final Configuration logMiningEhCacheConfiguration;
     private final boolean logMiningUseSqlRelaxedQuoteDetection;
+    private final Set<String> logMiningClientIdIncludes;
+    private final Set<String> logMiningClientIdExcludes;
 
     private final String openLogReplicatorSource;
     private final String openLogReplicatorHostname;
@@ -902,6 +921,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningIncludeRedoSql = config.getBoolean(LOG_MINING_INCLUDE_REDO_SQL);
         this.logMiningContinuousMining = config.getBoolean(LOG_MINING_CONTINUOUS_MINE);
         this.logMiningUseSqlRelaxedQuoteDetection = config.getBoolean(LOG_MINING_SQL_RELAXED_QUOTE_DETECTION);
+        this.logMiningClientIdIncludes = Strings.setOfTrimmed(config.getString(LOG_MINING_CLIENTID_INCLUDE_LIST), String::new);
+        this.logMiningClientIdExcludes = Strings.setOfTrimmed(config.getString(LOG_MINING_CLIENTID_EXCLUDE_LIST), String::new);
 
         this.logMiningEhCacheConfiguration = config.subset("log.mining.buffer.ehcache", false);
 
@@ -2032,6 +2053,24 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return logMiningUseSqlRelaxedQuoteDetection;
     }
 
+    /**
+     * Get the include list for client identifiers.
+     *
+     * @return set of client identifier includes
+     */
+    public Set<String> getLogMiningClientIdIncludes() {
+        return logMiningClientIdIncludes;
+    }
+
+    /**
+     * Get the exclude list for client identifiers.
+     *
+     * @return set of client identifier exclusions
+     */
+    public Set<String> getLogMiningClientIdExcludes() {
+        return logMiningClientIdExcludes;
+    }
+
     @Override
     public String getConnectorName() {
         return Module.name();
@@ -2245,5 +2284,18 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             return result;
         }
         return Field.isPositiveInteger(config, field, problems);
+    }
+
+    public static int validateClientIdExcludeList(Configuration config, Field field, ValidationOutput problems) {
+        if (ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
+            final String includeList = config.getString(LOG_MINING_CLIENTID_INCLUDE_LIST);
+            final String excludeList = config.getString(LOG_MINING_CLIENTID_EXCLUDE_LIST);
+            if (includeList != null && excludeList != null) {
+                problems.accept(LOG_MINING_CLIENTID_EXCLUDE_LIST, excludeList,
+                        String.format("\"%s\": is already specified", LOG_MINING_CLIENTID_INCLUDE_LIST.name()));
+                return 1;
+            }
+        }
+        return 0;
     }
 }

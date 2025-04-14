@@ -638,8 +638,8 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         Instant start = Instant.now();
         boolean dispatchTransactionCommittedEvent = false;
         if (numEvents > 0) {
-            final boolean skipExcludedUserName = isTransactionUserExcluded(transaction);
-            dispatchTransactionCommittedEvent = !skipExcludedUserName;
+            final boolean skipEvents = isTransactionSkipped(transaction);
+            dispatchTransactionCommittedEvent = !skipEvents;
             final ZoneOffset databaseOffset = metrics.getDatabaseOffset();
             TransactionCommitConsumer.Handler<LogMinerEvent> delegate = (event, eventsProcessed) -> {
                 // Update SCN in offset context only if processed SCN less than SCN of other transactions
@@ -668,7 +668,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                 }
 
                 final DmlEvent dmlEvent = (DmlEvent) event;
-                if (!skipExcludedUserName) {
+                if (!skipEvents) {
                     LogMinerChangeRecordEmitter logMinerChangeRecordEmitter;
                     if (dmlEvent instanceof TruncateEvent) {
                         // a truncate event is seen by logminer as a DDL event type.
@@ -826,20 +826,30 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
     }
 
     /**
-     * Check whether the supplied username associated with the specified transaction is excluded.
+     * Check whether the supplied transaction should be skipped based on exclusion rules.
      *
-     * @param transaction the transaction, never {@code null}
-     * @return true if the transaction should be skipped; false if transaction should be emitted
+     * @param transaction the transaction, should not be {@code null}
+     * @return {@code true} if the transaction should be skipped; {@code false} otherwise
      */
-    protected boolean isTransactionUserExcluded(T transaction) {
+    protected boolean isTransactionSkipped(T transaction) {
         if (transaction != null) {
-            if (transaction.getUserName() == null && getTransactionEventCount(transaction) > 0) {
-                LOGGER.debug("Detected transaction with null username {}", transaction);
-                return false;
+            if (!Strings.isNullOrBlank(transaction.getUserName())) {
+                if (connectorConfig.getLogMiningUsernameExcludes().contains(transaction.getUserName())) {
+                    LOGGER.debug("Skipped transaction with excluded username {}", transaction.getUserName());
+                    return true;
+                }
             }
-            else if (connectorConfig.getLogMiningUsernameExcludes().contains(transaction.getUserName())) {
-                LOGGER.debug("Skipped transaction with excluded username {}", transaction);
-                return true;
+            if (!Strings.isNullOrBlank(transaction.getClientId())) {
+                if (connectorConfig.getLogMiningClientIdExcludes().contains(transaction.getClientId())) {
+                    LOGGER.debug("Skipped transaction with excluded client id {}", transaction.getClientId());
+                    return true;
+                }
+                else if (!connectorConfig.getLogMiningClientIdIncludes().isEmpty()) {
+                    if (!connectorConfig.getLogMiningClientIdIncludes().contains(transaction.getClientId())) {
+                        LOGGER.debug("Skipped transaction with client id {}", transaction.getClientId());
+                        return true;
+                    }
+                }
             }
         }
         return false;
