@@ -60,7 +60,7 @@ import io.debezium.document.ArrayWriter;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
 import io.debezium.document.Value;
-import io.debezium.embedded.EmbeddedEngine.CompletionResult;
+import io.debezium.embedded.DebeziumEngineTestUtils.CompletionResult;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.RecordChangeEvent;
 import io.debezium.engine.StopEngineException;
