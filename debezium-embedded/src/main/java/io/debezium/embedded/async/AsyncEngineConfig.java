@@ -7,7 +7,6 @@ package io.debezium.embedded.async;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Field;
-import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.embedded.EmbeddedEngineConfig;
 
 /**
@@ -55,8 +54,8 @@ public interface AsyncEngineConfig extends EmbeddedEngineConfig {
      * An optional field that specifies if the default {@link io.debezium.engine.DebeziumEngine.ChangeConsumer} should be created for consuming records or not.
      * If only {@link java.util.function.Consumer} is provided to the engine and this option is set to {@code true} (the default is {@code false}), engine will create default
      * {@link io.debezium.engine.DebeziumEngine.ChangeConsumer} and use it for record processing. Default {@link io.debezium.engine.DebeziumEngine.ChangeConsumer}
-     * implementation is taken from legacy {@link EmbeddedEngine}, so this option allows to use almost the same implementation for record processing as {@link EmbeddedEngine}.
-     * The only difference to {@link EmbeddedEngine} is that SMTs will be still run in parallel, even when this option is turned on.
+     * implementation is taken from legacy EmbeddedEngine, so this option allows to use almost the same implementation for record processing as EmbeddedEngine.
+     * The only difference to EmbeddedEngine is that SMTs will be still run in parallel, even when this option is turned on.
      * This option doesn't have any effect when {@link io.debezium.engine.DebeziumEngine.ChangeConsumer} is already provided to the engine in the configuration.
      */
     Field RECORD_PROCESSING_WITH_SERIAL_CONSUMER = Field.create("record.processing.with.serial.consumer")
