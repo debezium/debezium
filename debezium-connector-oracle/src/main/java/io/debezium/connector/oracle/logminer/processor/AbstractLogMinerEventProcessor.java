@@ -833,12 +833,15 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
      */
     protected boolean isTransactionSkipped(T transaction) {
         if (transaction != null) {
+            // Check whether transaction should be skipped by LogMiner USERNAME field
             if (!Strings.isNullOrBlank(transaction.getUserName())) {
                 if (connectorConfig.getLogMiningUsernameExcludes().contains(transaction.getUserName())) {
                     LOGGER.debug("Skipped transaction with excluded username {}", transaction.getUserName());
                     return true;
                 }
             }
+
+            // Check whether transaction should be skipped by LogMiner CLIENT_ID field
             if (!Strings.isNullOrBlank(transaction.getClientId())) {
                 if (connectorConfig.getLogMiningClientIdExcludes().contains(transaction.getClientId())) {
                     LOGGER.debug("Skipped transaction with excluded client id {}", transaction.getClientId());
