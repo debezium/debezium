@@ -31,6 +31,7 @@ public class EhcacheTransactionSerializer extends AbstractEhcacheSerializer<Ehca
         stream.writeString(object.getUserName());
         stream.writeInt(object.getRedoThreadId());
         stream.writeInt(object.getNumberOfEvents());
+        stream.writeString(object.getClientId());
     }
 
     @Override
