@@ -12,22 +12,25 @@ toc::[]
 == Overview
 endif::community[]
 
-Debezium connectors require a persistent storage to keep their state between restarts.
-All connectors require a store for the offsets.
-In addition to it some of the connectors (MySQL, SQL Server, Db2, Oracle) require an additional storage to record the history of schema evolution, so-called internal schema history.
+{prodname} connectors require a persistent storage to preserve their state between restarts.
+All connectors require a mechanism to provide persistent storage for the offsets.
+In addition, connectors such as Db2, MySQL, Oracle,  and SQL Server, require additional storage, the so-called internal schema history, to record their schema evolution history.
 
-The offset store is provided automatically for the deployments inside the Kafka Connect runtime:
+Offset storage is provided automatically for deployments within the Kafka Connect runtime through one of the following mechanisms:
 
 * Kafka offset store for Kafka Connect distributed
 * File offset store for Kafka Connect standalone
 
-If a connector is run either in xref:development/engine.adoc[Debezium Engine] or xref:operations/debezium-server.adoc[Debezium Server] then the offset store must be explicitly configured.
-The internal schema history is configured in all cases via connector configuration options.
+If you run a connector in xref:development/engine.adoc[{prodname} Engine] or xref:operations/debezium-server.adoc[{prodname} Server], you must explicitly configure the offset store.
+In all deployments, you use connector properties to configure internal schema history storage.
 
 
 == Kafka
 
-Debezium can use Kafka to store its state, including source offsets, schema history. Offsets are stored in a Kafka topic (e.g., `connect-offsets`) via the `KafkaOffsetBackingStore`, ensuring connectors resume from the correct position after restarts. Schema history is saved in a separate compacted topic (e.g., `schema-changes.inventory`).
+{prodname} can use Kafka to store its state, including source offsets and schema history. 
+Connectors implement `KafkaOffsetBackingStore` to store offsets in a Kafka topic (for example, `connect-offsets`).
+These offsets ensure that after a connector restarts, it is able to resume reading from the correct position. 
+Connectors store their schema history in a separate compacted topic, such as `schema-changes.inventory`.
 
 === Offset Store
 
@@ -44,15 +47,18 @@ Debezium can use Kafka to store its state, including source offsets, schema hist
 
 |[[offset-storage-topic]]<<offset-storage-topic,`offset.storage.topic`>>
 |No default
-|Defines the Kafka topic where offsets will be stored. It's essential that this topic is configured with log compaction enabled to retain the latest offset information.
+|Specifies the Kafka topic where the connector stores its offsets. 
+To ensure that the topic retains the latest offset information, you must enable log compaction for this topic.
 
 |[[offset-storage-partitions]]<<offset-storage-partitions,`offset.storage.partitions`>>
 |25
-|Indicates the number of partitions for the offset storage topic. This should align with your Kafka cluster's partitioning strategy.
+|Specifies the number of partitions for the offset storage topic. 
+Ensure that the value of this setting aligns with the partitioning strategy of the Kafka cluster.
 
 |[[offset-storage-replication-factor]]<<offset-storage-replication-factor,`offset.storage.replication.factor`>>
 |3
-|Sets the replication factor for the offset storage topic, ensuring fault tolerance by replicating data across multiple brokers.
+|Sets the replication factor for the offset storage topic.
+Replicating data across multiple brokers improves fault tolerance.
 
 |===
 
@@ -70,42 +76,47 @@ Debezium can use Kafka to store its state, including source offsets, schema hist
 
 |[[schema-history-internal-kafka-topic]]<<schema-history-internal-kafka-topic,`schema.history.internal.kafka.topic`>>
 |No default
-|The name of the topic for the database schema history
+|The name of the topic that stores the database schema history.
 
 |[[schema-history-internal-kafka-bootstrap-servers]]<<schema-history-internal-kafka-bootstrap-servers,`schema.history.internal.kafka.bootstrap.servers`>>
 |No default
-|A list of host/port pairs that the connector will use for establishing the initial connection to the Kafka cluster for retrieving database schema history previously stored by the connector. This should point to the same Kafka cluster used by the Kafka Connect process.
+|A list of host and port pairs that the connector uses to establish the initial connection to the Kafka cluster to retrieve its database schema history. 
+This value must match the connection settings that the Kafka Connect process uses to connect to the Kafka cluster.
 
 |[[schema-history-internal-kafka-recovery-poll-interval-ms]]<<schema-history-internal-kafka-recovery-poll-interval-ms,`schema.history.internal.kafka.recovery.poll.interval.ms`>>
 |100
-|The number of milliseconds to wait while polling for persisted data during recovery.
+|Specifies the time, in milliseconds, that the connector waits between polling requests for persisted data during recovery.
 
 |[[schema-history-internal-kafka-recovery-attempts]]<<schema-history-internal-kafka-recovery-attempts,`schema.history.internal.kafka.recovery.attempts`>>
 |100
-|The number of attempts in a row that no data are returned from Kafka before recover completes. The maximum amount of time to wait after receiving no data is (recovery.attempts) x (recovery.poll.interval.ms).
+|Specifies the number of consecutive unsuccessful attempts to retrieve schema history data from Kafka that the connector allows.
+Recovery attempts stop after the number of attempts exceeds this value. 
+The maximum time that the connector waits after it is unable to retrieve data is `recovery.attempts` x `recovery.poll.interval.ms`.
 
 |[[schema-history-internal-kafka-query-timeout-ms]]<<schema-history-internal-kafka-query-timeout-ms,`schema.history.internal.kafka.query.timeout.ms`>>
 |3
-|The number of milliseconds to wait while fetching cluster information using Kafka admin client.
+|Specifies the time, in milliseconds, that the connector waits for a response after the Kafka AdminClient submits a request to fetch cluster information.
 
 |[[schema-history-internal-kafka-create-timeout-ms]]<<schema-history-internal-kafka-create-timeout-ms,`schema.history.internal.kafka.create.timeout.ms`>>
 |30
-|The number of milliseconds to wait while create kafka history topic using Kafka admin client.
+|Specifies the time, in milliseconds, that the connector waits for a response after the Kafka AdminClient submits a request to create a Kafka history topic.
 
 |[[schema-history-internal-producer]]<<schema-history-internal-producer,`schema.history.internal.producer.*`>>
 |No Default
-|Pass-through properties prefix for configuring how producer client interact with schema history topics.
+|Pass-through properties prefix for configuring how producer clients interact with schema history topics.
 
 |[[schema-history-internal-consumer]]<<schema-history-internal-consumer,`schema.history.internal.consumer.*`>>
 |No Default
-|Pass-through properties prefix for configuring how consumer client interact with schema history topics.
+|Pass-through properties prefix for configuring how consumer clients interact with schema history topics.
 
 |===
 
 
 == File
 
-It's possible to persist the position (offsets) of the connector in a local file on disk. This allows Debezium to resume from where it left off after a restart. It's simple, fast, and ideal for single-node applications or testing scenarios.
+It's possible to persist the position (offsets) of the connector in a local file on disk. 
+These offsets ensure that after a connector restarts, {prodname} can resume reading from the last read position. 
+File storage provides a simple, fast mechanism for storing offsets that is ideal for single-node applications or testing scenarios.
 
 === Offset Store
 
@@ -121,11 +132,11 @@ It's possible to persist the position (offsets) of the connector in a local file
 
 |[[offset-storage-file-filename]]<<offset-storage-file-filename,`offset.storage.file.filename`>>
 |No default
-|Path to the file where Debezium stores source offsets.
+|The path to the file where {prodname} stores source connector offsets.
 
 |[[offset-flush-interval-ms]]<<offset-flush-interval-ms,`offset.flush.interval.ms`>>
 |6000ms
-|Interval in milliseconds to flush the current offset state to the file.
+|Specifies the time, in milliseconds, between attempts to flush the current offset state to the configured offsets file.
 
 |===
 
@@ -142,13 +153,16 @@ It's possible to persist the position (offsets) of the connector in a local file
 |Must be set to `io.debezium.storage.file.history.FileSchemaHistory`
 |[[schema-history-internal-file-file]]<<schema-history-internal-file-file,`schema.history.internal.file`>>
 |No default
-|The path to the file that will be used to record the database schema history`
+|The path to the file where {prodname} records the database schema history.
 
 |===
 
 == Memory
 
-`MemoryOffsetBackingStore` is a volatile, in-memory store used by Debezium Embedded to track source offsets. It keeps the offset state only during the application's runtime and loses it on shutdown or crash. It's ideal for testing or short-lived tasks but not suitable for production where offset persistence is needed.
+`MemoryOffsetBackingStore` is a volatile, in-memory store that {prodname} Embedded uses to track source offsets. 
+Storing offsets in memory preserves the offset state only during the application's runtime.
+Offset records are lost if the connector shuts down or crashes. 
+Memory storage is ideal for testing, or for short-lived tasks, but it is not suitable for production environments that require persistent offsets.
 
 === Offset Store
 
@@ -180,10 +194,12 @@ It's possible to persist the position (offsets) of the connector in a local file
 
 
 == JDBC
-The store uses arbitrary relational database to store the data for which an appropriate link:https://en.wikipedia.org/wiki/JDBC_driver[JDBC driver] is provided.
-Either the source database can be used as the storage or any other database.
+The store uses an arbitrary relational database to store the offset data.
+You must provide the link:https://en.wikipedia.org/wiki/JDBC_driver[JDBC driver] for the database.
+{prodname} can store data in the same source database from which it captures events, or you can configure it to use a different database.
 
-The users either use the default pre-configured DML and DDL statements or can override them with their own either for database dialect compatibility or to tailor them to their use case.
+{prodname} provides pre-configured DML and DDL statements.
+You can use the default statements, or you can override the defaults with your own statements to provide compatibility with database dialects or to customize them for specific use cases.
 
 
 === Offset Store
@@ -204,39 +220,39 @@ The users either use the default pre-configured DML and DDL statements or can ov
 
 |[[jdbc-offset-user]]<<jdbc-offset-user, `offset.storage.jdbc.connection.user`>>
 |No default
-|(Optional) Username of the database which will be used to access the database storage.
+|(Optional) The username through which {prodname} connects to the database that stores offset data.
 
 |[[jdbc-offset-password]]<<jdbc-offset-password, `offset.storage.jdbc.connection.password`>>
 |No default
-|(Optional) Password of the database which will be used to access the database storage.
+|(Optional) Password for the user specified by xref:jdbc-offset-user[offset.storage.jdbc.connection.user].
 
 |[[wait-retry-delay-ms]]<<wait-retry-delay-ms, `offset.storage.jdbc.connection.wait.retry.delay.ms`>>
 |3 seconds
-|(Optional) Delay of retry on wait for connection failure.
+|(Optional) Specifies the time, in milliseconds, that the connector waits to retry the connection after failed attempts to connect to the offset storage database.
 
 |[[retry-max-attempts]]<<retry-max-attempts, `offset.storage.jdbc.connection.retry.max.attempts`>>
 |5
-|(Optional) Maximum number of retry attempts before giving up.
+|(Optional) Specifies the maximum number of times that {prodname} retries the connection to the offset storage database after a connection failure.
 
 |[[jdbc-offset-table-name]]<<jdbc-offset-table-name, `offset.storage.jdbc.table.name`>>
 |`debezium_offset_storage`
-|The name of the table to which the offsets will be stored.
+|The name of the table where {prodname} stores offsets.
 
 |[[jdbc-offset-table-ddl]]<<jdbc-offset-table-ddl, `offset.storage.jdbc.table.ddl`>>
-|<<jdbc-offset-table-ddl-default, `see table section`>>
+|xref:jdbc-offset-table-ddl-default[`jdbc.offset.table.ddl.default` (1. Table Structure)]
 |DDL statement to create the offset table.
 
 |[[jdbc-offset-table-select]]<<jdbc-offset-table-select, `offset.storage.jdbc.table.select`>>
-|<<jdbc-offset-table-ddl-default, `see table section`>>
-|DML statement to read offsets stored from the table.
+|xref:jdbc-offset-table-ddl-default[`jdbc.offset.table.select.default` (2. Select query)] 
+|DML statement that {prodname} uses to read offsets values from the table.
 
 |[[jdbc-offset-table-insert]]<<jdbc-offset-table-insert, `offset.storage.jdbc.table.insert`>>
-|<<jdbc-offset-table-select-default, `see table section`>>
-|DML statement to write offsets to the table.
+|xref:jdbc-offset-table-insert-default[`jdbc.offset.table.insert.default` (3. Insert query]
+|DML statement that {prodname} uses to write offsets to the table.
 
 |[[jdbc-offset-table-delete]]<<jdbc-offset-table-delete, `offset.storage.jdbc.table.delete`>>
-|<<jdbc-offset-table-insert-default, `see table section`>>
-|DML statement to remove offsets from the table.
+|xref:jdbc-offset-table-delete-default[`jdbc.offset.table.delete.default` (4. Delete query)]
+|DML statement that {prodname} uses to remove offsets from the table.
 
 |===
 
@@ -257,45 +273,45 @@ The users either use the default pre-configured DML and DDL statements or can ov
 
 |[[deprecated-jdbc-offset-user]]<<deprecated-jdbc-offset-user, `offset.storage.jdbc.user`>>
 |No default
-|(Optional) Username of the database which will be used to access the database storage.
+|(Optional) The username through which {prodname} connects to the database that stores offset data.
 
 |[[deprecated-jdbc-offset-password]]<<deprecated-jdbc-offset-password, `offset.storage.jdbc.password`>>
 |No default
-|(Optional) Password of the database which will be used to access the database storage.
+|(Optional) Password for the user specified by xref:deprecated-jdbc-offset-user[`offset.storage.jdbc.user`].
 
 |[[deprecated-wait-retry-delay-ms]]<<deprecated-wait-retry-delay-ms, `offset.storage.jdbc.wait.retry.delay.ms`>>
 |3 seconds
-|(Optional) Delay of retry on wait for connection failure.
+|(Optional) Specifies the time, in milliseconds, that the connector waits to retry the connection after failed attempts to connect to the offset storage database.
 
 |[[deprecated-retry-max-attempts]]<<deprecated-retry-max-attempts, `offset.storage.jdbc.retry.max.attempts`>>
 |5
-|(Optional) Maximum number of retry attempts before giving up.
+|(Optional) Specifies the maximum number of times that {prodname} retries the connection to the offset storage database after a connection failure.
 
 |[[deprecated-jdbc-offset-table-name]]<<deprecated-jdbc-offset-table-name, `offset.storage.jdbc.offset.table.name`>>
 |`debezium_offset_storage`
-|The name of the table to which the offsets will be stored.
+|The name of the table where {prodname} stores offsets.
 
 |[[deprecated-jdbc-offset-table-ddl]]<<deprecated-jdbc-offset-table-ddl, `offset.storage.jdbc.offset.table.ddl`>>
-|<<jdbc-offset-table-ddl-default, `see table section`>>
+|xref:jdbc-offset-table-ddl-default[`jdbc.offset.table.ddl.default' (1. Table Structure)]
 |DDL statement to create the offset table.
 
 |[[deprecated-jdbc-offset-table-select]]<<deprecated-jdbc-offset-table-select, `offset.storage.jdbc.offset.table.select`>>
-|<<jdbc-offset-table-ddl-default, `see table section`>>
+|xref:jdbc-offset-table-select-default[`jdbc.offset.table.select.default` (2. Select query)]
 |DML statement to read offsets stored from the table.
 
 |[[deprecated-jdbc-offset-table-insert]]<<deprecated-jdbc-offset-table-insert, `offset.storage.jdbc.offset.table.insert`>>
-|<<jdbc-offset-table-select-default, `see table section`>>
+|xref:jdbc-offset-table-insert-default[`jdbc.offset.table.insert.default` (3. Insert query)]
 |DML statement to write offsets to the table.
 
 |[[deprecated-jdbc-offset-table-delete]]<<deprecated-jdbc-offset-table-delete, `offset.storage.jdbc.offset.table.delete`>>
-|<<jdbc-offset-table-insert-default, `see table section`>>
+|xref:jdbc-offset-table-delete-default[`jdbc.offset.table.delete.default` (4. Delete query)]
 |DML statement to remove offsets from the table.
 
 |===
 
 === Offset Table defaults
 
-[[jdbc-offset-table-ddl-default]]<<jdbc-offset-table-ddl-default, 1. Table Structure>>
+[[jdbc-offset-table-ddl-default]]<<jdbc-offset-table-ddl-default, `jdbc.offset.table.ddl.default` (1. Table Structure)>>
 [SQL]
 ----
 CREATE TABLE %s (
@@ -306,20 +322,20 @@ record_insert_ts    TIMESTAMP NOT NULL,
 record_insert_seq   INTEGER NOT NULL)
 ----
 
-[[jdbc-offset-table-select-default]]<<jdbc-offset-table-select-default, 2. Select query>>
+[[jdbc-offset-table-select-default]]<<jdbc-offset-table-select-default, `jdbc.offset.table.select.default` (2. Select query)>>
 [SQL]
 ----
 SELECT id, offset_key, offset_val FROM %s ORDER BY record_insert_ts, record_insert_seq
 ----
 
-[[jdbc-offset-table-insert-default]]<<jdbc-offset-table-insert-default, 3. Insert query>>
+[[jdbc-offset-table-insert-default]]<<jdbc-offset-table-insert-default, `jdbc.offset.table.insert.default` (3. Insert query)>>
 [SQL]
 ----
 INSERT INTO %s(id, offset_key, offset_val, record_insert_ts, record_insert_seq)
     VALUES ( ?, ?, ?, ?, ? )
 ----
 
-[[jdbc-offset-table-delete-default]]<<jdbc-offset-table-delete-default, 4. Delete query>>
+[[jdbc-offset-table-delete-default]]<<jdbc-offset-table-delete-default, `jdbc.offset.table.delete.default` (4. Delete query)>>
 [SQL]
 ----
 DELETE FROM %s
@@ -344,23 +360,23 @@ DELETE FROM %s
 
 |[[jdbc-history-schema-history-user]]<<jdbc-history-schema-history-user, `schema.history.internal.jdbc.connection.user`>>
 |No default
-|(Optional) Username of the database which will be used to access the database storage.
+|(Optional)  The username through which {prodname} connects to the database that stores schema history data.
 
 |[[jdbc-history-schema-history-password]]<<jdbc-history-schema-history-password, `schema.history.internal.jdbc.connection.password`>>
 |No default
-|(Optional) Password of the database which will be used to access the database storage.
+|(Optional)  Password for the user specified by xref:jdbc-history-schema-history-user[`schema.history.internal.jdbc.connection.user`].
 
 |[[jdbc-history-wait-retry-delay-ms]]<<jdbc-history-wait-retry-delay-ms, `schema.history.internal.jdbc.connection.retry.delay.ms`>>
 |3 seconds
-|(Optional) Delay of retry on wait for connection failure.
+|(Optional) Specifies the time, in milliseconds, that the connector waits to retry the connection after an attempt to connect to the internal schema history database fails.
 
 |[[jdbc-history-retry-max-attempts]]<<jdbc-history-retry-max-attempts, `schema.history.internal.jdbc.connection.retry.max.attempts`>>
 |5
-|(Optional) Maximum number of retry attempts before giving up.
+|(Optional) Specifies the maximum number of times that {prodname} retries the connection to the internal schema history database after a connection failure.
 
 |[[jdbc-history-schema-history-table-name]]<<jdbc-history-schema-history-table-name, `schema.history.internal.jdbc.table.name`>>
 |`debezium_database_history`
-|The name of the table to which the history will be stored.
+|The name of the table where {prodname} store the internal schema history.
 
 |[[jdbc-history-schema-history-table-ddl]]<<jdbc-history-schema-history-table-ddl, `schema.history.internal.jdbc.table.ddl`>>
 |<<jdbc-history-schema-history-table-ddl-default, `see table section`>>
@@ -398,7 +414,7 @@ DELETE FROM %s
 
 |[[deprecated-jdbc-history-schema-history-user]]<<deprecated-jdbc-history-schema-history-user, `schema.history.internal.jdbc.user`>>
 |No default
-|(Optional) Username of the database which will be used to access the database storage.
+|(Optional)  The username through which {prodname} connects to the database that stores internal schema history data.
 
 |[[deprecated-jdbc-history-schema-history-password]]<<deprecated-jdbc-history-schema-history-password, `schema.history.internal.jdbc.password`>>
 |No default
