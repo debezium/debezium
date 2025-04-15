@@ -239,19 +239,19 @@ You can use the default statements, or you can override the defaults with your o
 |The name of the table where {prodname} stores offsets.
 
 |[[jdbc-offset-table-ddl]]<<jdbc-offset-table-ddl, `offset.storage.jdbc.table.ddl`>>
-|xref:jdbc-offset-table-ddl-default[`jdbc.offset.table.ddl.default` (1. Table Structure)]
+|xref:jdbc-offset-table-ddl-default[(Table Structure)]
 |DDL statement to create the offset table.
 
 |[[jdbc-offset-table-select]]<<jdbc-offset-table-select, `offset.storage.jdbc.table.select`>>
-|xref:jdbc-offset-table-ddl-default[`jdbc.offset.table.select.default` (2. Select query)] 
+|xref:jdbc-offset-table-ddl-default[(Select query)]
 |DML statement that {prodname} uses to read offsets values from the table.
 
 |[[jdbc-offset-table-insert]]<<jdbc-offset-table-insert, `offset.storage.jdbc.table.insert`>>
-|xref:jdbc-offset-table-insert-default[`jdbc.offset.table.insert.default` (3. Insert query]
+|xref:jdbc-offset-table-insert-default[(Insert query]
 |DML statement that {prodname} uses to write offsets to the table.
 
 |[[jdbc-offset-table-delete]]<<jdbc-offset-table-delete, `offset.storage.jdbc.table.delete`>>
-|xref:jdbc-offset-table-delete-default[`jdbc.offset.table.delete.default` (4. Delete query)]
+|xref:jdbc-offset-table-delete-default[(Delete query)]
 |DML statement that {prodname} uses to remove offsets from the table.
 
 |===
@@ -292,26 +292,26 @@ You can use the default statements, or you can override the defaults with your o
 |The name of the table where {prodname} stores offsets.
 
 |[[deprecated-jdbc-offset-table-ddl]]<<deprecated-jdbc-offset-table-ddl, `offset.storage.jdbc.offset.table.ddl`>>
-|xref:jdbc-offset-table-ddl-default[`jdbc.offset.table.ddl.default' (1. Table Structure)]
+|xref:jdbc-offset-table-ddl-default[`offset.table.ddl.default` (Table Structure)]
 |DDL statement to create the offset table.
 
 |[[deprecated-jdbc-offset-table-select]]<<deprecated-jdbc-offset-table-select, `offset.storage.jdbc.offset.table.select`>>
-|xref:jdbc-offset-table-select-default[`jdbc.offset.table.select.default` (2. Select query)]
+|xref:jdbc-offset-table-select-default[`offset.table.select.default` (Select query)]
 |DML statement to read offsets stored from the table.
 
-|[[deprecated-jdbc-offset-table-insert]]<<deprecated-jdbc-offset-table-insert, `offset.storage.jdbc.offset.table.insert`>>
-|xref:jdbc-offset-table-insert-default[`jdbc.offset.table.insert.default` (3. Insert query)]
+|[[deprecated-jdbc-offset-table-insert]]<<deprecated-jdbc-offset-table-insert, `offset.storage.offset.table.insert`>>
+|xref:jdbc-offset-table-insert-default[`offset.table.insert.default` (Insert query)]
 |DML statement to write offsets to the table.
 
 |[[deprecated-jdbc-offset-table-delete]]<<deprecated-jdbc-offset-table-delete, `offset.storage.jdbc.offset.table.delete`>>
-|xref:jdbc-offset-table-delete-default[`jdbc.offset.table.delete.default` (4. Delete query)]
+|xref:jdbc-offset-table-delete-default[`offset.table.delete.default` (Delete query)]
 |DML statement to remove offsets from the table.
 
 |===
 
 === Offset Table defaults
 
-[[jdbc-offset-table-ddl-default]]<<jdbc-offset-table-ddl-default, `jdbc.offset.table.ddl.default` (1. Table Structure)>>
+[[jdbc-offset-table-ddl-default]]<<jdbc-offset-table-ddl-default,(Table Structure)>>
 [SQL]
 ----
 CREATE TABLE %s (
@@ -322,20 +322,20 @@ record_insert_ts    TIMESTAMP NOT NULL,
 record_insert_seq   INTEGER NOT NULL)
 ----
 
-[[jdbc-offset-table-select-default]]<<jdbc-offset-table-select-default, `jdbc.offset.table.select.default` (2. Select query)>>
+[[jdbc-offset-table-select-default]]<<jdbc-offset-table-select-default,(Select query)>>
 [SQL]
 ----
 SELECT id, offset_key, offset_val FROM %s ORDER BY record_insert_ts, record_insert_seq
 ----
 
-[[jdbc-offset-table-insert-default]]<<jdbc-offset-table-insert-default, `jdbc.offset.table.insert.default` (3. Insert query)>>
+[[jdbc-offset-table-insert-default]]<<jdbc-offset-table-insert-default,(Insert query)>>
 [SQL]
 ----
 INSERT INTO %s(id, offset_key, offset_val, record_insert_ts, record_insert_seq)
     VALUES ( ?, ?, ?, ?, ? )
 ----
 
-[[jdbc-offset-table-delete-default]]<<jdbc-offset-table-delete-default, `jdbc.offset.table.delete.default` (4. Delete query)>>
+[[jdbc-offset-table-delete-default]]<<jdbc-offset-table-delete-default,(Delete query)>>
 [SQL]
 ----
 DELETE FROM %s
@@ -379,19 +379,19 @@ DELETE FROM %s
 |The name of the table where {prodname} store the internal schema history.
 
 |[[jdbc-history-schema-history-table-ddl]]<<jdbc-history-schema-history-table-ddl, `schema.history.internal.jdbc.table.ddl`>>
-|<<jdbc-history-schema-history-table-ddl-default, `see table section`>>
+|xref:jdbc-history-schema-history-table-ddl-default[(Table Structure)]
 |The DDL statement used to create the storage table.
 
 |[[jdbc-history-schema-history-table-select]]<<jdbc-history-schema-history-table-select, `schema.history.internal.jdbc.table.select`>>
-|<<jdbc-history-schema-history-table-select-default, `see table section`>>
+|xref:jdbc-history-schema-history-table-select-default[(Select query)]
 |The `SELECT` statement to read the internal schema history form the table.
 
 |[[jdbc-history-schema-history-table-exists-select]]<<jdbc-history-schema-history-table-exists-select, `schema.history.internal.jdbc.table.exists.select`>>
-|<<jdbc-history-schema-history-table-exists-select-default, `see table section`>>
+|xref:jdbc-history-schema-history-table-exists-select-default[(Insert query)]
 |The `SELECT` statement to check the existence of the storage table.
 
 |[[jdbc-history-schema-history-table-insert]]<<jdbc-history-schema-history-table-insert, `schema.history.internal.jdbc.table.insert`>>
-|<<jdbc-history-schema-history-table-insert-default, `see table section`>>
+|xref:jdbc-history-schema-history-table-insert-default[(Delete query)]
 |The `INSERT` statement to record the schema history to the table.
 
 |===
@@ -433,26 +433,26 @@ DELETE FROM %s
 |The name of the table to which the history will be stored.
 
 |[[deprecated-jdbc-history-schema-history-table-ddl]]<<deprecated-jdbc-history-schema-history-table-ddl, `schema.history.internal.jdbc.schema.history.table.ddl`>>
-|<<jdbc-history-schema-history-table-ddl-default, `see table section`>>
+|xref:jdbc-history-schema-history-table-ddl-default[(Table Structure)]
 |The DDL statement used to create the storage table.
 
 |[[deprecated-jdbc-history-schema-history-table-select]]<<deprecated-jdbc-history-schema-history-table-select, `schema.history.internal.jdbc.schema.history.table.select`>>
-|<<jdbc-history-schema-history-table-select-default, `see table section`>>
+|xref:jdbc-history-schema-history-table-select-default[(Select query)]
 |The `SELECT` statement to read the internal schema history form the table.
 
 |[[deprecated-jdbc-history-schema-history-table-exists-select]]<<deprecated-jdbc-history-schema-history-table-exists-select, `schema.history.internal.jdbc.schema.history.table.exists.select`>>
-|<<jdbc-history-schema-history-table-exists-select-default, `see table section`>>
+|xref:jdbc-history-schema-history-table-exists-select-default[(Insert query)]
 |The `SELECT` statement to check the existence of the storage table.
 
 |[[deprecated-jdbc-history-schema-history-table-insert]]<<deprecated-jdbc-history-schema-history-table-insert, `schema.history.internal.jdbc.schema.history.table.insert`>>
-|<<jdbc-history-schema-history-table-insert-default, `see table section`>>
+|xref:jdbc-history-schema-history-table-insert-default[(Delete query)]
 |The `INSERT` statement to record the schema history to the table.
 
 |===
 
 === History Table defaults
 
-[[jdbc-history-schema-history-table-ddl-default]]<<jdbc-history-schema-history-table-ddl-default,1. Table Structure>>
+[[jdbc-history-schema-history-table-ddl-default]]<<jdbc-history-schema-history-table-ddl-default,(Table Structure)>>
 [SQL]
 ----
 CREATE TABLE %s (
@@ -464,20 +464,20 @@ CREATE TABLE %s (
 )
 ----
 
-[[jdbc-history-schema-history-table-select-default]]<<jdbc-history-schema-history-table-select-default,2. Select Query>>
+[[jdbc-history-schema-history-table-select-default]]<<jdbc-history-schema-history-table-select-default,(Select Query)>>
 [SQL]
 ----
 SELECT id, history_data, history_data_seq FROM %s
     ORDER BY record_insert_ts, record_insert_seq, id, history_data_seq
 ----
 
-[[jdbc-history-schema-history-table-exists-select-default]]<<jdbc-history-schema-history-table-exists-select-default,4. Data exist Query>>
+[[jdbc-history-schema-history-table-exists-select-default]]<<jdbc-history-schema-history-table-exists-select-default,Data exist Query>>
 [SQL]
 ----
 SELECT * FROM %s LIMIT 1
 ----
 
-[[jdbc-history-schema-history-table-insert-default]]<<jdbc-history-schema-history-table-insert-default,4. Insert Query>>
+[[jdbc-history-schema-history-table-insert-default]]<<jdbc-history-schema-history-table-insert-default,(Insert Query)>>
 [SQL]
 ----
 INSERT INTO %s(id, history_data, history_data_seq, record_insert_ts, record_insert_seq) VALUES ( ?, ?, ?, ?, ? )
