@@ -4213,7 +4213,7 @@ It can be useful to set this property if you want the capturing process to alway
 |[[oracle-property-log-mining-clientid-include-list]]<<oracle-property-log-mining-clientid-include-list, `+log.mining.clientid.include.list+`>>
 |No default
 |List of JDBC connection client ids to include from the LogMiner query.
-It can be useful to set this property if you want the capturing process to include changes from the specific JDBC connection clients.
+It can be useful to set this property if you want the capturing process to include only changes from the specific JDBC connection clients.
 
 |[[oracle-property-log-mining-clientid-exclude-list]]<<oracle-property-log-mining-clientid-exclude-list, `+log.mining.clientid.exclude.list+`>>
 |No default
