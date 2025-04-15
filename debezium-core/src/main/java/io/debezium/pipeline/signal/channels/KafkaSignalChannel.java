@@ -177,8 +177,7 @@ public class KafkaSignalChannel implements SignalChannelReader {
     public List<SignalRecord> read() {
 
         LOGGER.debug("Reading signal form kafka");
-        // DBZ-1361 not using poll(Duration) to keep compatibility with AK 1.x
-        ConsumerRecords<String, String> recoveredRecords = signalsConsumer.poll(pollTimeoutMs.toMillis());
+        ConsumerRecords<String, String> recoveredRecords = signalsConsumer.poll(pollTimeoutMs);
 
         return StreamSupport.stream(recoveredRecords.spliterator(), false)
                 .map(this::processSignal)
