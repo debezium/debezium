@@ -457,11 +457,11 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
                 }
 
                 final DescribeTopicsResult result = admin.describeTopics(Collections.singleton(topicName));
-                if (result.values().size() != 1) {
-                    LOGGER.info("Expected one topic '{}' to match the query but got {}", topicName, result.values().size());
+                if (result.topicNameValues().size() != 1) {
+                    LOGGER.info("Expected one topic '{}' to match the query but got {}", topicName, result.topicNameValues().size());
                     return;
                 }
-                final TopicDescription topicDesc = result.values().values().iterator().next().get();
+                final TopicDescription topicDesc = result.topicNameValues().values().iterator().next().get();
                 if (topicDesc == null) {
                     LOGGER.info("Could not get description for topic '{}'", topicName);
                     return;
