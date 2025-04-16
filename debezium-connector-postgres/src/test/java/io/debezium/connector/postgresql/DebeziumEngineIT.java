@@ -141,7 +141,7 @@ public class DebeziumEngineIT {
         CountDownLatch allLatch = new CountDownLatch(1);
 
         final ExecutorService executor = Executors.newFixedThreadPool(1);
-        try (DebeziumEngine<ChangeEvent<byte[], byte[]>> engine = DebeziumEngine.create(Avro.class).using(props)
+        DebeziumEngine<ChangeEvent<byte[], byte[]>> engine = DebeziumEngine.create(Avro.class).using(props)
                 .notifying((records, committer) -> {
                     Assert.fail("Should not be invoked due to serialization error");
                 })
@@ -154,15 +154,14 @@ public class DebeziumEngineIT {
                         allLatch.countDown();
                     }
                 })
-                .build()) {
+                .build();
 
-            executor.execute(() -> {
-                LoggingContext.forConnector(getClass().getSimpleName(), "debezium-engine", "engine");
-                engine.run();
-            });
-            allLatch.await(5000, TimeUnit.MILLISECONDS);
-            assertThat(allLatch.getCount()).isEqualTo(0);
-        }
+        executor.execute(() -> {
+            LoggingContext.forConnector(getClass().getSimpleName(), "debezium-engine", "engine");
+            engine.run();
+        });
+        allLatch.await(5000, TimeUnit.MILLISECONDS);
+        assertThat(allLatch.getCount()).isEqualTo(0);
     }
 
     @Test
@@ -297,7 +296,7 @@ public class DebeziumEngineIT {
         props.setProperty("offset.storage",
                 TestOffsetStore.class.getName());
 
-        engine = DebeziumEngine.create(Json.class).using(props).using(new DebeziumEngine.ConnectorCallback() {
+        DebeziumEngine.Builder builder = DebeziumEngine.create(Json.class).using(props).using(new DebeziumEngine.ConnectorCallback() {
             @Override
             public void connectorStarted() {
             }
@@ -318,7 +317,8 @@ public class DebeziumEngineIT {
             catch (Exception e) {
                 Testing.printError(e);
             }
-        }).build();
+        });
+        engine = builder.build();
 
         ExecutorService executor = Executors.newSingleThreadExecutor();
         executor.execute(engine);
@@ -334,6 +334,7 @@ public class DebeziumEngineIT {
         for (int i = 0; i < 100; i++) {
             TestHelper.execute("INSERT INTO tests VALUES(default)");
         }
+        engine = builder.build();
         executor.execute(engine);
         while (offsetStoreSetCalls.get() < 1) {
             TestHelper.execute("INSERT INTO tests VALUES(default)");
