@@ -32,11 +32,14 @@ import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
+import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
+
+import ch.qos.logback.classic.Level;
 
 /**
  * Integration tests for various LogMiner username include/exclude list scenarios.
@@ -218,6 +221,40 @@ public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
                 assertThat(getAfter(record).get("DATA")).isEqualTo(String.format("Test%d", i));
                 assertThat(getSource(record).get("user_name")).isEqualTo("DEBEZIUM");
             }
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz8884");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-8884")
+    public void shouldOnlyCaptureEventsForIncludedUsernames() throws Exception {
+        TestHelper.dropTable(connection, "dbz8884");
+        try {
+            connection.execute("CREATE TABLE dbz8884 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz8884");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8884")
+                    .with(OracleConnectorConfig.LOG_MINING_USERNAME_INCLUDE_LIST, "abc")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerEventProcessor.class);
+            logInterceptor.setLoggerLevel(AbstractLogMinerEventProcessor.class, Level.DEBUG);
+
+            connection.execute("INSERT INTO dbz8884 (id,data) values (1,'abc')");
+
+            Awaitility.await()
+                    .atMost(Duration.ofSeconds(TestHelper.defaultMessageConsumerPollTimeout()))
+                    .until(() -> logInterceptor.containsMessage("Skipped transaction with username DEBEZIUM"));
 
             assertNoRecordsToConsume();
         }
