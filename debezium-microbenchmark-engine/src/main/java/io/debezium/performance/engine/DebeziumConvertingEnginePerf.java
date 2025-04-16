@@ -20,8 +20,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
 import io.debezium.config.Configuration;
-import io.debezium.embedded.ConvertingEngineBuilderFactory;
-import io.debezium.embedded.EmbeddedEngine;
+import io.debezium.embedded.EmbeddedEngineConfig;
 import io.debezium.embedded.async.AsyncEngineConfig;
 import io.debezium.embedded.async.ConvertingAsyncEngineBuilderFactory;
 import io.debezium.engine.DebeziumEngine;
@@ -45,10 +44,10 @@ public class DebeziumConvertingEnginePerf {
 
         public DebeziumEngine createEngine() {
             Configuration config = Configuration.create()
-                    .with(EmbeddedEngine.ENGINE_NAME, "async-engine")
-                    .with(EmbeddedEngine.CONNECTOR_CLASS, PreComputedRecordsSourceConnector.class)
+                    .with(EmbeddedEngineConfig.ENGINE_NAME, "async-engine")
+                    .with(EmbeddedEngineConfig.CONNECTOR_CLASS, PreComputedRecordsSourceConnector.class)
                     .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, getPath(OFFSET_FILE_NAME).toAbsolutePath())
-                    .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 3_600_000)
+                    .with(EmbeddedEngineConfig.OFFSET_FLUSH_INTERVAL_MS, 3_600_000)
                     .with(AsyncEngineConfig.RECORD_PROCESSING_SHUTDOWN_TIMEOUT_MS, 100)
                     .with(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS, 100)
                     .with(AsyncEngineConfig.RECORD_PROCESSING_THREADS, threadCount)
@@ -64,26 +63,6 @@ public class DebeziumConvertingEnginePerf {
         }
     }
 
-    @State(Scope.Thread)
-    public static class EmbeddedEnginePerfTest extends AbstractDebeziumEnginePerf {
-
-        public DebeziumEngine createEngine() {
-            Configuration config = Configuration.create()
-                    .with(EmbeddedEngine.ENGINE_NAME, "embedded-engine")
-                    .with(EmbeddedEngine.CONNECTOR_CLASS, PreComputedRecordsSourceConnector.class)
-                    .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, getPath(OFFSET_FILE_NAME).toAbsolutePath())
-                    .with(EmbeddedEngine.OFFSET_FLUSH_INTERVAL_MS, 3_600_000)
-                    .build();
-
-            return new ConvertingEngineBuilderFactory()
-                    .builder(KV_EVENT_FORMAT)
-                    .using(config.asProperties())
-                    .notifying(getRecordConsumer())
-                    .using(this.getClass().getClassLoader())
-                    .build();
-        }
-    }
-
     @Benchmark
     @BenchmarkMode(Mode.SingleShotTime)
     @OutputTimeUnit(TimeUnit.SECONDS)
@@ -91,16 +70,6 @@ public class DebeziumConvertingEnginePerf {
     @Warmup(iterations = 1)
     @Measurement(iterations = 1, time = 1)
     public void processRecordsAsyncEngine(AsyncEnginePerfTest test) throws InterruptedException {
-        test.finishLatch.await();
-    }
-
-    @Benchmark
-    @BenchmarkMode(Mode.SingleShotTime)
-    @OutputTimeUnit(TimeUnit.SECONDS)
-    @Fork(value = 1)
-    @Warmup(iterations = 1)
-    @Measurement(iterations = 1, time = 1)
-    public void processRecordsEmbeddedEngine(EmbeddedEnginePerfTest test) throws InterruptedException {
         test.finishLatch.await();
     }
 }
