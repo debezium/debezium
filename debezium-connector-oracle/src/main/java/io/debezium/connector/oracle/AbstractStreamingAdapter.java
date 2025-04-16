@@ -114,9 +114,9 @@ public abstract class AbstractStreamingAdapter<T extends AbstractOracleStreaming
             }
         }
         catch (SQLException e) {
-            if (e.getErrorCode() == 8180) {
-                // DBZ-1446 In this use case we actually do not want to propagate the exception but
-                // rather return an empty optional value allowing the current SCN to take prior.
+            if (e.getErrorCode() >= 8180 && e.getErrorCode() <= 8189) {
+                // These error codes are all related to failures with flashback area where
+                // flashback may not be enabled, the SCN or its timestamp has aged out, etc
                 LOGGER.info("No latest table SCN could be resolved, defaulting to current SCN");
                 return Optional.empty();
             }
