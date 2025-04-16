@@ -21,19 +21,17 @@ package io.debezium.embedded;
  * <h2>Usage</h2>
  * <p>
  * Applications do not directly work with Debezium connectors, but instead configure and build an
- * {@link io.debezium.embedded.EmbeddedEngine} instance that wraps and completely manages a single standard Debezium connector.
+ * {@link io.debezium.engine.DebeziumEngine} instance that wraps and completely manages a single standard Debezium connector.
  * The application also provides the engine with a function that it will use to deliver data change events to the application.
  * <p>
- * Once the application has configured its {@link io.debezium.embedded.EmbeddedEngine} instance and is ready to start receiving
- * data change events, the application submits the EmbeddedEngine to an {@link java.util.concurrent.Executor} or
- * {@link java.util.concurrent.ExecutorService} managed by the application. The EmbeddedEngine's
- * {@link io.debezium.embedded.EmbeddedConnector#run()} method will start the standard Debezium connector and continuously
+ * Once the application has configured its {@link io.debezium.engine.DebeziumEngine} instance and is ready to start receiving
+ * data change events, the application submits the DebeziumEngine to an {@link java.util.concurrent.Executor} or
+ * {@link java.util.concurrent.ExecutorService} managed by the application. The DebeziumEngine's
+ * {@link io.debezium.engine.DebeziumEngine#run()} method will start the standard Debezium connector and continuously
  * deliver any data changes events to the application.
  * <p>
- * When the application is ready to shut down the engine, it should call {@link io.debezium.embedded.EmbeddedEngine#stop()} on the
+ * When the application is ready to shut down the engine, it should call {@link io.debezium.engine.DebeziumEngine#close()} on the
  * engine, which will then stop the connector and have it gracefully complete all current work and shut down.
- * The application can wait for the engine to complete by using the
- * {@link io.debezium.embedded.EmbeddedEngine#await(long, java.util.concurrent.TimeUnit)} method.
  * <h2>Storing connector state</h2>
  * <p>
  * All connector state is managed by components defined in the engine's configuration.
