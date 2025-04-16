@@ -45,6 +45,7 @@ import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.simple.SimpleSourceConnector;
 import io.debezium.doc.FixFor;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.embedded.async.DebeziumAsyncEngineTestUtils;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.engine.DebeziumEngine;
@@ -62,7 +63,7 @@ import io.debezium.util.Throwables;
 /**
  * @author Randall Hauch
  */
-public class EmbeddedEngineTest extends AbstractConnectorTest {
+public class EmbeddedEngineTest extends AbstractAsyncEngineConnectorTest {
 
     private static final int NUMBER_OF_LINES = 10;
 
@@ -117,14 +118,6 @@ public class EmbeddedEngineTest extends AbstractConnectorTest {
         public void configure(Map<String, ?> map) {
 
         }
-    }
-
-    protected DebeziumEngine.Builder<SourceRecord> createEngineBuilder() {
-        return new EmbeddedEngine.EngineBuilder();
-    }
-
-    protected TestingDebeziumEngine<SourceRecord> createEngine(DebeziumEngine.Builder<SourceRecord> builder) {
-        return new TestingEmbeddedEngine((EmbeddedEngine) builder.build());
     }
 
     @Before
