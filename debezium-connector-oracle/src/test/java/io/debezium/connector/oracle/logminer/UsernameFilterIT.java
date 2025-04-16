@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.management.ManagementFactory;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -18,6 +19,7 @@ import javax.management.MBeanServer;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.awaitility.Awaitility;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -34,6 +36,7 @@ import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.junit.logging.LogInterceptor;
 
 /**
  * Integration tests for various LogMiner username include/exclude list scenarios.
@@ -217,6 +220,34 @@ public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
             }
 
             assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz8884");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-8884")
+    public void shouldThrowConfigurationExceptionWhenUsernameIncludeExcludeBothSpecified() throws Exception {
+        TestHelper.dropTable(connection, "dbz8884");
+        try {
+            connection.execute("CREATE TABLE dbz8884 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz8884");
+
+            LogInterceptor logInterceptor = new LogInterceptor(UsernameFilterIT.class);
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8884")
+                    .with(OracleConnectorConfig.LOG_MINING_USERNAME_INCLUDE_LIST, "DEBEZIUM")
+                    .with(OracleConnectorConfig.LOG_MINING_USERNAME_EXCLUDE_LIST, "DEBEZIUM")
+                    .build();
+
+            start(OracleConnector.class, config);
+
+            Awaitility.await()
+                    .atMost(Duration.ofSeconds(TestHelper.defaultMessageConsumerPollTimeout()))
+                    .until(() -> logInterceptor.containsErrorMessage("Connector configuration is not valid. The " +
+                            "'log.mining.username.exclude.list' value is invalid: \"log.mining.username.include.list\" is already specified"));
         }
         finally {
             TestHelper.dropTable(connection, "dbz8884");
