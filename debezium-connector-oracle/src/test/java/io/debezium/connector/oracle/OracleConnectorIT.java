@@ -4788,8 +4788,12 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
 
             stopConnector();
 
-            assertThat(interceptor.containsMessage("Cannot undo change on table"))
+            assertThat(interceptor.containsMessage("Cannot apply undo change"))
                     .as("Unable to correctly undo operation within transaction")
+                    .isFalse();
+
+            assertThat(interceptor.containsMessage("Failed to apply undo change"))
+                    .as("Unable to apply undo operation")
                     .isFalse();
         }
         finally {
