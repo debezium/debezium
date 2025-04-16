@@ -65,8 +65,7 @@ public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-3978")
-    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED,
-            reason = "Buffered filters at commit time while unbuffered filters at transaction start")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED, reason = "Buffered filters at commit time while unbuffered filters at transaction start")
     public void shouldExcludeEventsByUsernameFilter() throws Exception {
         try {
             TestHelper.dropTable(connection, "dbz3978");
@@ -220,6 +219,39 @@ public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
                 assertThat(getAfter(record).get("DATA")).isEqualTo(String.format("Test%d", i));
                 assertThat(getSource(record).get("user_name")).isEqualTo("DEBEZIUM");
             }
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz8884");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-8884")
+    public void shouldOnlyCaptureEventsForIncludedUsernames() throws Exception {
+        TestHelper.dropTable(connection, "dbz8884");
+        try {
+            connection.execute("CREATE TABLE dbz8884 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz8884");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8884")
+                    .with(OracleConnectorConfig.LOG_MINING_USERNAME_INCLUDE_LIST, "abc")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            final LogInterceptor logInterceptor = TestHelper.getEventProcessorLogInterceptor();
+
+            connection.execute("INSERT INTO dbz8884 (id,data) values (1,'abc')");
+
+            Awaitility.await()
+                    .atMost(Duration.ofSeconds(TestHelper.defaultMessageConsumerPollTimeout()))
+                    .until(() -> logInterceptor.containsMessage("Skipped transaction with username DEBEZIUM"));
 
             assertNoRecordsToConsume();
         }
