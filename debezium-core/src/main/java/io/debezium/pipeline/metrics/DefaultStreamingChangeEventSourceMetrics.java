@@ -99,6 +99,11 @@ public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> exten
     }
 
     @Override
+    public void resetLagBehindSource() {
+        streamingMeter.resetLagBehindSource();
+    }
+
+    @Override
     public void reset() {
         super.reset();
         streamingMeter.reset();
