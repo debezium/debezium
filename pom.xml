@@ -107,16 +107,18 @@
 
         <!-- Kafka and it's dependencies MUST reflect what the Kafka version uses -->
         <version.kafka>3.9.0</version.kafka>
-        <version.zookeeper>3.8.4</version.zookeeper>
         <!-- NOTE: These two versions are maintained separately due to decoupling jackson and databind for downstream -->
         <version.jackson>2.16.2</version.jackson>
         <version.jackson.databind>2.16.2</version.jackson.databind>
         <version.org.slf4j>1.7.36</version.org.slf4j>
         <version.netty>4.1.118.Final</version.netty>
-        <version.zstd-jni>1.5.6-4</version.zstd-jni>
+        <version.zstd-jni>1.5.6-6</version.zstd-jni>
 
         <!-- Scala version used to build Kafka -->
         <version.kafka.scala>2.13</version.kafka.scala>
+
+        <!-- Kafka no longer needs ZooKeeper but it is kept for testing with older Kafka dependencies -->
+        <version.zookeeper>3.8.4</version.zookeeper>
 
         <!-- ANTLR -->
         <!-- Align with Antlr runtime version pulled in via Quarkus -->
