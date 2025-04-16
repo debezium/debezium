@@ -207,8 +207,8 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                 return;
             }
             Loggings.logWarningAndTraceRecord(LOGGER, row,
-                    "Cannot undo change on table '{}' since event with row-id {} was not found.",
-                    row.getTableId(), row.getRowId());
+                    "Cannot apply undo change in transaction '{}' with SCN '{}' on table '{}' since event with row-id {} was not found.",
+                    row.getTransactionId(), row.getScn(), row.getTableId(), row.getRowId());
         }
         else if (isTransactionIdWithNoSequence(row.getTransactionId())) {
             // This means that Oracle LogMiner found an event that should be undone but its corresponding
@@ -225,19 +225,19 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
             }
 
             Loggings.logWarningAndTraceRecord(LOGGER, row,
-                    "Cannot undo change on table '{}' since event with row-id {} was not found.",
-                    row.getTableId(), row.getRowId());
+                    "Cannot apply undo change in transaction '{}' with SCN '{}' on table '{}' since event with row-id {} was not found.",
+                    row.getTransactionId(), row.getScn(), row.getTableId(), row.getRowId());
         }
         else if (!getConfig().isLobEnabled()) {
             Loggings.logWarningAndTraceRecord(LOGGER, row,
-                    "Cannot undo change on table '{}' since transaction '{}' was not found.",
-                    row.getTableId(), row.getTransactionId());
+                    "Cannot apply undo change with SCN '{}' on table '{}' since transaction '{}' was not found.",
+                    row.getScn(), row.getTableId(), row.getTransactionId());
         }
         else {
             // While the code should never get here, log a warning if it does.
             Loggings.logWarningAndTraceRecord(LOGGER, row,
-                    "Failed to undo change on table '{}' in transaction '{}' with row-id '{}'",
-                    row.getTableId(), row.getTransactionId(), row.getRowId());
+                    "Failed to apply undo change with SCN '{}' on table '{}' in transaction '{}' with row-id '{}'",
+                    row.getScn(), row.getTableId(), row.getTransactionId(), row.getRowId());
         }
     }
 
