@@ -121,20 +121,18 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     @Override
     public void pauseSnapshot(P partition, OffsetContext offsetContext) {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
-        if (context.snapshotRunning() && !context.isSnapshotPaused()) {
-            context.pauseSnapshot();
-            progressListener.snapshotPaused(partition);
-            notificationService.incrementalSnapshotNotificationService().notifyPaused(context, partition, offsetContext);
-        }
+        context.pauseSnapshot();
+        progressListener.snapshotPaused(partition);
+        notificationService.incrementalSnapshotNotificationService().notifyPaused(context, partition, offsetContext);
     }
 
     @Override
     public void resumeSnapshot(P partition, OffsetContext offsetContext) throws InterruptedException {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
-        if (context.snapshotRunning() && context.isSnapshotPaused()) {
-            context.resumeSnapshot();
-            progressListener.snapshotResumed(partition);
-            notificationService.incrementalSnapshotNotificationService().notifyResumed(context, partition, offsetContext);
+        context.resumeSnapshot();
+        progressListener.snapshotResumed(partition);
+        notificationService.incrementalSnapshotNotificationService().notifyResumed(context, partition, offsetContext);
+        if (context.snapshotRunning()) {
             readChunk(partition, offsetContext);
         }
     }

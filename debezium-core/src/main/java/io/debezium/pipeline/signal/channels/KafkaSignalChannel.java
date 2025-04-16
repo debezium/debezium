@@ -174,16 +174,21 @@ public class KafkaSignalChannel implements SignalChannelReader {
 
     @Override
     public List<SignalRecord> read() {
+        try {
+            LOGGER.info("Reading signal form kafka");
+            // DBZ-1361 not using poll(Duration) to keep compatibility with AK 1.x
+            ConsumerRecords<String, String> recoveredRecords = signalsConsumer.poll(pollTimeoutMs.toMillis());
 
-        LOGGER.debug("Reading signal form kafka");
-        // DBZ-1361 not using poll(Duration) to keep compatibility with AK 1.x
-        ConsumerRecords<String, String> recoveredRecords = signalsConsumer.poll(pollTimeoutMs.toMillis());
-
-        return StreamSupport.stream(recoveredRecords.spliterator(), false)
-                .map(this::processSignal)
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .collect(Collectors.toList());
+            return StreamSupport.stream(recoveredRecords.spliterator(), false)
+                    .map(this::processSignal)
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .collect(Collectors.toList());
+        }
+        catch (Exception e) {
+            LOGGER.error("Kafka signal consumer failed", e);
+            throw e;
+        }
     }
 
     @Override
