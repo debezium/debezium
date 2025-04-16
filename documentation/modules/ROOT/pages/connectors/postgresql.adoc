@@ -86,7 +86,7 @@ The connector is tolerant of failures. As the connector reads changes and produc
 The connector relies on and reflects the PostgreSQL logical decoding feature, which has the following limitations:
 
 * Logical decoding does not support DDL changes. This means that the connector is unable to report DDL change events back to consumers.
-* Because logical decoding replication slots publish changes during commit -- and not post commit -- undesirable side-effects can occur. There are two main scenarios when clients can observe inconsistent states. First, publishing uncommitted changes when the master dies before replication completes. Second, publishing changes that cannot be read (i.e., read-after-write consistency) temporarily because they are being replicated. For example, an EmbeddedEngine consumer receives a notification of a row that was created but it cannot be read by a transaction.
+* Because logical decoding replication slots publish changes during commit -- and not post commit -- undesirable side-effects can occur. There are two main scenarios when clients can observe inconsistent states. First, publishing uncommitted changes when the master dies before replication completes. Second, publishing changes that cannot be read (i.e., read-after-write consistency) temporarily because they are being replicated. For example, a DebeziumEngine consumer receives a notification of a row that was created but it cannot be read by a transaction.
 
 Additionally, the `pgoutput` logical decoding output plug-in does not capture values for generated columns, resulting in missing data for these columns in the connector's output.
 
@@ -218,7 +218,7 @@ ifdef::community[]
 |The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
 Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
 The name is specified on the classpath of your Kafka Connect cluster.
-If you use the `EmbeddedEngine`, the name is included in the connector JAR file.
+If you use the `DebeziumEngine`, the name is included in the connector JAR file.
 For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
 endif::community[]
 

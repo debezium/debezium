@@ -23,7 +23,9 @@ This `debezium-api` module defines a small API that allows an application to eas
 Beginning with the 2.6.0 release, {prodname} provides two implementations of the `DebeziumEngine` interface.
 The older `EmbeddedEngine` implementation runs a single connector that uses only one task.
 The connector emits all records sequentially.
-This the default implementation.
+
+`EmbeddedEngine` is the default implementation in {prodname} release 3.1.0.Final and older.
+Starting {prodname} release 3.2.0.Alpha1, the default implementation is `AsyncEmbeddedEngine` and `EmbeddedEngine` implementation is not available anymore.
  
 Beginning with the 2.6.0 release, a new `AsyncEmbeddedEngine` implementation is available.
 This implementation also runs only a single connector, but it can process records in multiple threads, and run multiple tasks, if the connector supports it (currently only the connectors for SQL Server and MongoDB support running multiple tasks within a single connector).
@@ -293,31 +295,8 @@ Although the `DebeziumEngine` will indeed terminate when its thread is interrupt
 As mentioned earlier, there are two implementations of the `DebeziumEngine` interface.
 The two implementations use the same API, and the preceding code sample is valid for both versions.
 The only exception is the creation of the `DebeziumEngine` instance.
-As was also mentioned in the introduction, by default, the `EmbeddedEngine` implementation is used.
-Therefore, the method `DebeziumEngine.create(Json.class)` results internally in the use of the `EmbeddedEngine` instance.
-
-If you want to use the new `AsyncEmbeddedEngine` instance instead, use the following method: 
-`DebeziumEngine#create(KeyValueHeaderChangeEventFormat<K, V, H> format, String builderFactory)`
-
-For example, to create an embedded engine that uses the `AsyncEmbeddedEngine`, and uses JSON as its key, value, and header format, you would use the following code:
-
-[source,java,indent=0]
-----
-try (DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine
-        .create(KeyValueHeaderChangeEventFormat.of(Json.class, Json.class, Json.class),
-                "io.debezium.embedded.async.ConvertingAsyncEngineBuilderFactory")
-        .using(props)
-        .notifying(record -> {
-            System.out.println(record);
-        }).build()
-    ) {
-    // Also run the engine asynchronously ...
-    ExecutorService executor = Executors.newSingleThreadExecutor();
-    executor.execute(engine);
-
-    // Do something else or wait for a signal or an event
-}
-----
+As was also mentioned in the introduction, by default, the `AsyncEmbeddedEngine` implementation is used.
+Therefore, the method `DebeziumEngine.create(Json.class)` results internally in the use of the `AsyncEmbeddedEngine` instance.
 
 [[engine-output-message-formats]]
 == Output Message Formats
