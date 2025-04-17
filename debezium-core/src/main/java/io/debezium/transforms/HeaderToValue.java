@@ -6,6 +6,7 @@
 package io.debezium.transforms;
 
 import static io.debezium.transforms.HeaderToValue.Operation.MOVE;
+import static io.debezium.util.Loggings.maybeRedactSensitiveData;
 import static java.lang.String.format;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
@@ -34,7 +35,6 @@ import io.debezium.Module;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.util.BoundedConcurrentHashMap;
-import io.debezium.util.Loggings;
 
 public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
 
@@ -148,19 +148,19 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
     public R apply(R record) {
 
         if (record.value() == null) {
-            Loggings.logTraceAndTraceRecord(LOGGER, record.key(), "Tombstone record arrived and will be skipped");
+            LOGGER.trace("Tombstone {} arrived and will be skipped", maybeRedactSensitiveData(record.key()));
             return record;
         }
 
         final Struct value = requireStruct(record.value(), "Header field insertion");
 
-        Loggings.logTraceAndTraceRecord(LOGGER, value, "Processing record");
+        LOGGER.trace("Processing record {}", maybeRedactSensitiveData(value));
         Map<String, Header> headerToProcess = StreamSupport.stream(record.headers().spliterator(), false)
                 .filter(header -> headers.contains(header.key()))
                 .collect(Collectors.toMap(Header::key, Function.identity()));
 
         if (LOGGER.isTraceEnabled()) {
-            Loggings.logTraceAndTraceRecord(LOGGER, headersToString(headerToProcess), "Header to be processed");
+            LOGGER.trace("Header to be processed: {}", headersToString(headerToProcess));
         }
 
         if (headerToProcess.isEmpty()) {
@@ -173,7 +173,7 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
 
         Struct updatedValue = makeUpdatedValue(value, headerToProcess, updatedSchema);
 
-        Loggings.logTraceAndTraceRecord(LOGGER, updatedValue, "Updated value");
+        LOGGER.trace("Updated value: {}", maybeRedactSensitiveData(updatedValue));
 
         Headers updatedHeaders = record.headers();
         if (MOVE.equals(operation)) {
@@ -271,7 +271,7 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
 
             Header currentHeader = headerToProcess.get(headers.get(i));
             Optional<String> currentFieldName = getFieldName(fields.get(i), fieldName, level);
-            Loggings.logTraceAndTraceRecord(LOGGER, List.of(headers.get(i), currentFieldName), "CurrentHeader and currentFieldName");
+            LOGGER.trace("CurrentHeader {} - currentFieldName {}", headers.get(i), currentFieldName);
             if (currentFieldName.isPresent() && currentHeader != null) {
                 newSchemabuilder = newSchemabuilder.field(currentFieldName.get(), currentHeader.schema());
             }
