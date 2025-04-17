@@ -10,6 +10,7 @@ import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationS
 import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.SQL_EXCEPTION;
 import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.SUCCEEDED;
 import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationService.TableScanCompletionStatus.UNKNOWN_SCHEMA;
+import static io.debezium.util.Loggings.maybeRedactSensitiveData;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -58,7 +59,6 @@ import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.ColumnUtils;
-import io.debezium.util.Loggings;
 import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
@@ -111,7 +111,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
     @SuppressWarnings("unchecked")
     public void closeWindow(P partition, String id, OffsetContext offsetContext) throws InterruptedException {
         context = (IncrementalSnapshotContext<T>) offsetContext.getIncrementalSnapshotContext();
-        Loggings.logTraceAndTraceRecord(LOGGER, context.toString(), "Closing Window");
+        LOGGER.trace("Closing Window {}", maybeRedactSensitiveData(context.toString()));
         if (!context.closeWindow(id)) {
             return;
         }
@@ -201,7 +201,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         }
         if (key instanceof Struct) {
             if (window.remove((Struct) key) != null) {
-                Loggings.logInfoAndTraceRecord(LOGGER, key, "Removed key from window");
+                LOGGER.info("Removed '{}' from window", maybeRedactSensitiveData(key));
             }
         }
     }
@@ -304,8 +304,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
                         continue;
                     }
                     if (LOGGER.isInfoEnabled()) {
-                        Loggings.logInfoAndTraceRecord(LOGGER, context.maximumKey().orElse(new Object[0]),
-                                "Incremental snapshot for table '{}' will end at maximum key", currentTableId);
+                        LOGGER.info("Incremental snapshot for table '{}' will end at position {}", currentTableId,
+                                maybeRedactSensitiveData(context.maximumKey().orElse(new Object[0])));
                     }
                 }
 
@@ -507,7 +507,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         if (dataCollectionsToStop.isEmpty()) {
             return;
         }
-        Loggings.logTraceAndTraceRecord(LOGGER, context, "Stopping incremental snapshot");
+        LOGGER.trace("Stopping incremental snapshot with context {}", maybeRedactSensitiveData(context));
         if (!context.snapshotRunning()) {
             LOGGER.warn("No active incremental snapshot, stop ignored");
             context.unsetCorrelationId();
@@ -583,8 +583,8 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         LOGGER.debug("Exporting data chunk from table '{}' (total {} tables)", currentTable.id(), context.dataCollectionsToBeSnapshottedCount());
 
         final String selectStatement = chunkQueryBuilder.buildChunkQuery(context, currentTable, context.currentDataCollectionId().getAdditionalCondition());
-        Loggings.logDebugAndTraceRecord(LOGGER, context.maximumKey().get(), "\t For table '{}' using select statement: '{}', key: '{}'",
-                currentTable.id(), selectStatement, context.chunkEndPosititon());
+        LOGGER.debug("\t For table '{}' using select statement: '{}', key: '{}', maximum key: '{}'", currentTable.id(),
+                selectStatement, context.chunkEndPosititon(), maybeRedactSensitiveData(context.maximumKey().get()));
 
         final TableSchema tableSchema = databaseSchema.schemaFor(currentTable.id());
 
