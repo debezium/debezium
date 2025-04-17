@@ -111,7 +111,7 @@ public class JdbcKafkaSinkRecord extends KafkaDebeziumSinkRecord implements Jdbc
                 // We want to source the field names strictly from the 'after' block.
                 final Field after = valueSchema.field(Envelope.FieldName.AFTER);
                 if (after == null) {
-                    throw new ConnectException("Received an unexpected message type that does not have an 'after' Debezium block");
+                    throw new ConnectException("Received an unexpected message type that does not have an 'after' Debezium block in topic " + topicName());
                 }
                 applyNonKeyFields(topicName(), after.schema());
             }
@@ -139,7 +139,7 @@ public class JdbcKafkaSinkRecord extends KafkaDebeziumSinkRecord implements Jdbc
     private void applyRecordKeyAsPrimaryKey() {
         final Schema keySchema = keySchema();
         if (keySchema == null) {
-            throw new ConnectException("Configured primary key mode 'record_key' cannot have null schema");
+            throw new ConnectException("Configured primary key mode 'record_key' cannot have null schema for topic " + topicName());
         }
         else if (keySchema.type().isPrimitive()) {
             applyPrimitiveRecordKeyAsPrimaryKey(keySchema);
@@ -148,13 +148,14 @@ public class JdbcKafkaSinkRecord extends KafkaDebeziumSinkRecord implements Jdbc
             applyRecordKeyAsPrimaryKey(topicName(), keySchema);
         }
         else {
-            throw new ConnectException("An unsupported record key schema type detected: " + keySchema.type());
+            throw new ConnectException("An unsupported record key schema type detected: " + keySchema.type() +
+                    " for topic " + topicName() + ". The record key schema must be either a primitive or struct type.");
         }
     }
 
     private void applyRecordHeaderAsPrimaryKey() {
         if (originalKafkaRecord.headers() == null || originalKafkaRecord.headers().isEmpty()) {
-            throw new ConnectException("Configured primary key mode 'record_header' cannot have null or empty schema");
+            throw new ConnectException("Configured primary key mode 'record_header' cannot have null or empty schema for topic " + topicName());
         }
 
         final SchemaBuilder headerSchemaBuilder = SchemaBuilder.struct();
@@ -168,7 +169,7 @@ public class JdbcKafkaSinkRecord extends KafkaDebeziumSinkRecord implements Jdbc
 
         final Schema valueSchema = valueSchema();
         if (valueSchema == null) {
-            throw new ConnectException("Configured primary key mode 'record_value' cannot have null schema");
+            throw new ConnectException("Configured primary key mode 'record_value' cannot have null schema for topic " + topicName());
         }
 
         Stream<Field> recordFields;
