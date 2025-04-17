@@ -6,6 +6,7 @@
 package io.debezium.transforms.outbox;
 
 import static io.debezium.transforms.outbox.EventRouterConfigDefinition.parseAdditionalFieldsConfig;
+import static io.debezium.util.Loggings.maybeRedactSensitiveData;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
 import java.util.HashMap;
@@ -47,7 +48,6 @@ import io.debezium.transforms.outbox.EventRouterConfigDefinition.InvalidOperatio
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.JsonPayloadNullFieldBehavior;
 import io.debezium.transforms.tracing.ActivateTracingSpan;
 import io.debezium.util.BoundedConcurrentHashMap;
-import io.debezium.util.Loggings;
 
 /**
  * A delegate class having common logic between Outbox Event Routers for SQL DBs and MongoDB
@@ -94,7 +94,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
     public R apply(R r, RecordConverter<R> recordConverter) {
         // Ignoring tombstones
         if (r.value() == null) {
-            Loggings.logDebugAndTraceRecord(LOGGER, r.key(), "Tombstone message ignored.");
+            LOGGER.debug("Tombstone message ignored. Message key: \"{}\"", maybeRedactSensitiveData(r.key()));
             return null;
         }
 
@@ -109,7 +109,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
 
         // Skipping deletes
         if (op.equals(Envelope.Operation.DELETE.code())) {
-            Loggings.logDebugAndTraceRecord(LOGGER, r.key(), "Delete message ignored");
+            LOGGER.debug("Delete message {} ignored", maybeRedactSensitiveData(r.key()));
             return null;
         }
 
@@ -161,7 +161,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         // Check to expand JSON string into real JSON.
         if (expandJsonPayload) {
             if (!(payload instanceof String)) {
-                Loggings.logWarningAndTraceRecord(LOGGER, r.key(), "Expand JSON payload is turned on but payload is not a string");
+                LOGGER.warn("Expand JSON payload is turned on but payload is not a string in {}", maybeRedactSensitiveData(r.key()));
             }
             else {
                 final String payloadString = (String) payload;
@@ -239,7 +239,7 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
                 timestamp,
                 headers);
 
-        Loggings.logDebugAndTraceRecord(LOGGER, recordKey, "Message emitted with event id: \"{}\"", eventId);
+        LOGGER.debug("Message emitted with event id: \"{}\", event key: \"{}\"", eventId, maybeRedactSensitiveData(recordKey));
 
         return regexRouter.apply(newRecord);
     }
@@ -302,10 +302,10 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
     private void handleUnexpectedOperation(R r) {
         switch (invalidOperationBehavior) {
             case SKIP_AND_WARN:
-                Loggings.logWarningAndTraceRecord(LOGGER, r.key(), "Unexpected update message received and ignored");
+                LOGGER.warn("Unexpected update message received {} and ignored", maybeRedactSensitiveData(r.key()));
                 break;
             case SKIP_AND_ERROR:
-                Loggings.logErrorAndTraceRecord(LOGGER, r.key(), "Unexpected update message received and ignored");
+                LOGGER.error("Unexpected update message received {} and ignored", maybeRedactSensitiveData(r.key()));
                 break;
             case FATAL:
                 throw new IllegalStateException(String.format("Unexpected update message received %s, fail.", r.key()));
