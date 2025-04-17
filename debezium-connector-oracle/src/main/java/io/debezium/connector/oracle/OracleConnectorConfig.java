@@ -2194,13 +2194,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     public static int validateUsernameExcludeList(Configuration config, Field field, ValidationOutput problems) {
-        final String includeList = config.getString(LOG_MINING_USERNAME_INCLUDE_LIST);
-        final String excludeList = config.getString(LOG_MINING_USERNAME_EXCLUDE_LIST);
+        if (ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
+            final String includeList = config.getString(LOG_MINING_USERNAME_INCLUDE_LIST);
+            final String excludeList = config.getString(LOG_MINING_USERNAME_EXCLUDE_LIST);
 
-        if (includeList != null && excludeList != null) {
-            problems.accept(TABLE_EXCLUDE_LIST, excludeList,
-                    String.format("\"%s\" is already specified", LOG_MINING_USERNAME_INCLUDE_LIST.name()));
-            return 1;
+            if (includeList != null && excludeList != null) {
+                problems.accept(LOG_MINING_USERNAME_EXCLUDE_LIST, excludeList,
+                        String.format("\"%s\" is already specified", LOG_MINING_USERNAME_INCLUDE_LIST.name()));
+                return 1;
+            }
         }
         return 0;
     }

@@ -64,8 +64,7 @@ public class LogMinerQueryBuilderTest {
     private static final String PDB_PREDICATE = "SRC_CON_NAME = '${pdbName}'";
 
     private static final String OPERATION_CODES_LOB_ENABLED = "1,2,3,6,7,9,10,11,27,29,34,36,68,70,71,91,92,93,255";
-    private static final String OPERATION_CODES_LOB_DISABLED = "1,2,3,7,27,34,36,255";
-    private static final String OPERATION_CODES_LOB_DISABLED_AND_PERSISTENT_BUFFER = "1,2,3,6,7,27,34,36,255";
+    private static final String OPERATION_CODES_LOB_DISABLED = "1,2,3,6,7,27,34,36,255";
 
     private static final String OPERATION_CODES_PREDICATE = "(OPERATION_CODE IN (${operationCodes})${operationDdl})";
 
@@ -254,10 +253,7 @@ public class LogMinerQueryBuilderTest {
     }
 
     private String getOperationCodePredicate(OracleConnectorConfig config) {
-        final String codes = config.isLobEnabled() ? OPERATION_CODES_LOB_ENABLED
-                : (config.getLogMiningBufferType() == OracleConnectorConfig.LogMiningBufferType.MEMORY)
-                        ? OPERATION_CODES_LOB_DISABLED
-                        : OPERATION_CODES_LOB_DISABLED_AND_PERSISTENT_BUFFER;
+        final String codes = config.isLobEnabled() ? OPERATION_CODES_LOB_ENABLED : OPERATION_CODES_LOB_DISABLED;
         final String predicate = OPERATION_CODES_PREDICATE.replace("${operationCodes}", codes);
         return predicate.replace("${operationDdl}", config.storeOnlyCapturedTables() ? getOperationDdlPredicate() : "");
     }
