@@ -499,6 +499,7 @@ INSERT INTO %s(id, history_data, history_data_seq, record_insert_ts, record_inse
 |No default
 |Must be set to `io.debezium.storage.redis.offset.RedisOffsetBackingStore`
 
+
 |[[offset-storage-redis-key]]<<offset-storage-redis-key, `offset.storage.redis.key`>>
 |metadata:debezium:offsets
 |The Redis key that {prodname} uses to store offsets.
