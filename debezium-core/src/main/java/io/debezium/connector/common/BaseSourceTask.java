@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.common;
 
+import static io.debezium.util.Loggings.maybeRedactSensitiveData;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -54,7 +56,6 @@ import io.debezium.snapshot.SnapshotterServiceProvider;
 import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
-import io.debezium.util.Loggings;
 import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 
@@ -468,7 +469,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     @Override
     public void commitRecord(SourceRecord record) throws InterruptedException {
-        Loggings.logTraceAndTraceRecord(LOGGER, record, "Committing record");
+        LOGGER.trace("Committing record {}", maybeRedactSensitiveData(record));
 
         Map<String, ?> currentOffset = record.sourceOffset();
         if (currentOffset != null) {
