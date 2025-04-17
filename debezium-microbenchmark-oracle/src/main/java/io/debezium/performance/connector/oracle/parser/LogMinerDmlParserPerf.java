@@ -131,7 +131,7 @@ public class LogMinerDmlParserPerf {
     @Warmup(iterations = 10, time = 1, timeUnit = TimeUnit.SECONDS)
     @Measurement(iterations = 3, time = 2, timeUnit = TimeUnit.SECONDS)
     public void testUpdates(ParserState state) {
-        state.dmlParser.parse(state.deleteDml, state.table);
+        state.dmlParser.parse(state.updateDml, state.table);
     }
 
     @Benchmark
