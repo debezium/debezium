@@ -6,6 +6,7 @@
 package io.debezium.transforms;
 
 import static io.debezium.transforms.HeaderToValue.Operation.MOVE;
+import static io.debezium.util.Loggings.maybeRedactSensitiveData;
 import static java.lang.String.format;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
@@ -31,7 +32,6 @@ import io.debezium.Module;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.util.BoundedConcurrentHashMap;
-import io.debezium.util.Loggings;
 
 public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
 
@@ -143,13 +143,13 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
     public R apply(R record) {
 
         if (record.value() == null) {
-            Loggings.logTraceAndTraceRecord(LOGGER, record.key(), "Tombstone record arrived and will be skipped");
+            LOGGER.trace("Tombstone {} arrived and will be skipped", maybeRedactSensitiveData(record.key()));
             return record;
         }
 
         final Struct value = requireStruct(record.value(), "Header field insertion");
 
-        Loggings.logTraceAndTraceRecord(LOGGER, value, "Processing record");
+        LOGGER.trace("Processing record {}", maybeRedactSensitiveData(value));
 
         final List<ConnectRecordUtil.NewEntry> newEntries = new LinkedList<>();
         final Iterator<Header> iter = record.headers().iterator();
@@ -168,7 +168,7 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
         Schema updatedSchema = schemaUpdateCache.computeIfAbsent(value.schema(), valueSchema -> ConnectRecordUtil.makeNewSchema(valueSchema, newEntries));
         LOGGER.trace("Updated schema fields: {}", updatedSchema.fields());
         Struct updatedValue = ConnectRecordUtil.makeUpdatedValue(value, newEntries, updatedSchema);
-        Loggings.logTraceAndTraceRecord(LOGGER, updatedValue, "Updated value");
+        LOGGER.trace("Updated value: {}", maybeRedactSensitiveData(updatedValue));
 
         Headers updatedHeaders = record.headers();
         if (MOVE.equals(operation)) {

@@ -8,6 +8,7 @@ package io.debezium.transforms.partitions;
 import static io.debezium.data.Envelope.FieldName.AFTER;
 import static io.debezium.data.Envelope.FieldName.BEFORE;
 import static io.debezium.data.Envelope.FieldName.OPERATION;
+import static io.debezium.util.Loggings.maybeRedactSensitiveData;
 
 import java.util.Arrays;
 import java.util.List;
@@ -33,7 +34,6 @@ import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
 import io.debezium.transforms.SmtManager;
-import io.debezium.util.Loggings;
 import io.debezium.util.MurmurHash3;
 
 /**
@@ -172,7 +172,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
                     .collect(Collectors.toList());
 
             if (fieldsValue.isEmpty()) {
-                Loggings.logTraceAndTraceRecord(LOGGER, envelope, "None of the configured fields found on record. Skipping it.");
+                LOGGER.trace("None of the configured fields found on record {}. Skipping it.", maybeRedactSensitiveData(envelope));
                 return originalRecord;
             }
 
@@ -200,7 +200,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
             return Optional.ofNullable(lastStruct.get(subFields[subFields.length - 1]));
         }
         catch (DataException e) {
-            Loggings.logTraceAndTraceRecord(LOGGER, envelope, "Field {} not found on payload. It will not be considered", fieldName);
+            LOGGER.trace("Field {} not found on payload {}. It will not be considered", fieldName, maybeRedactSensitiveData(envelope));
             return Optional.empty();
         }
 
@@ -228,7 +228,7 @@ public class PartitionRouting<R extends ConnectRecord<R>> implements Transformat
     }
 
     private R buildNewRecord(R originalRecord, Struct envelope, int partition) {
-        Loggings.logTraceAndTraceRecord(LOGGER, envelope, "Message will be sent to partition {}", partition);
+        LOGGER.trace("Message {} will be sent to partition {}", maybeRedactSensitiveData(envelope), partition);
 
         return originalRecord.newRecord(originalRecord.topic(), partition,
                 originalRecord.keySchema(),

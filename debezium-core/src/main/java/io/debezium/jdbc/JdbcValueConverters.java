@@ -5,6 +5,7 @@
  */
 package io.debezium.jdbc;
 
+import static io.debezium.util.Loggings.maybeRedactSensitiveData;
 import static io.debezium.util.NumberConversions.BYTE_BUFFER_ZERO;
 import static io.debezium.util.NumberConversions.BYTE_ZERO;
 import static io.debezium.util.NumberConversions.SHORT_FALSE;
@@ -56,7 +57,6 @@ import io.debezium.time.Timestamp;
 import io.debezium.time.ZonedTime;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.HexConverter;
-import io.debezium.util.Loggings;
 import io.debezium.util.NumberConversions;
 
 /**
@@ -1409,12 +1409,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
             final Object schemaDefault = fieldDefn.schema().defaultValue();
             return schemaDefault != null ? schemaDefault : fallback;
         }
-        Loggings.logTraceAndTraceRecord(logger, data, "Value from data object");
+        logger.trace("Value from data object: *** {} ***", maybeRedactSensitiveData(data));
 
         final ResultReceiver r = ResultReceiver.create();
         callback.convert(r);
         logger.trace("Callback is: {}", callback);
-        Loggings.logTraceAndTraceRecord(logger, r, "Value from ResultReceiver");
+        logger.trace("Value from ResultReceiver: {}", maybeRedactSensitiveData(r));
         return r.hasReceived() ? r.get() : handleUnknownData(column, fieldDefn, data);
     }
 

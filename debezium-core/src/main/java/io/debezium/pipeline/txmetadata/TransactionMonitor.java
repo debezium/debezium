@@ -5,6 +5,8 @@
  */
 package io.debezium.pipeline.txmetadata;
 
+import static io.debezium.util.Loggings.maybeRedactSensitiveData;
+
 import java.time.Instant;
 import java.util.Objects;
 
@@ -24,7 +26,6 @@ import io.debezium.pipeline.spi.Partition;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.schema.DataCollectionId;
-import io.debezium.util.Loggings;
 
 /**
  * The class has externalized its state in {@link TransactionContext} context class so it can be stored in and recovered from offsets.
@@ -81,7 +82,8 @@ public class TransactionMonitor {
         final TransactionInfo transactionInfo = eventMetadataProvider.getTransactionInfo(source, offset, key, value);
         if (txId == null) {
             if (LOGGER.isTraceEnabled()) {
-                Loggings.logTraceAndTraceRecord(LOGGER, key, "Event '{}' has no transaction id", eventMetadataProvider.toSummaryString(source, offset, null, value));
+                LOGGER.trace("Event '{}' has no transaction id",
+                        eventMetadataProvider.toSummaryString(source, offset, maybeRedactSensitiveData(key), value));
             }
             // Introduced for MongoDB, transactions are optional so non-transactional event should
             // commit transaction
