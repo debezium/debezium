@@ -281,7 +281,7 @@ In its place, use the xref:extract-new-record-state-delete-tombstone-handling-mo
 ====
 
 |[[extract-new-record-state-delete-tombstone-handling-mode]]xref:extract-new-record-state-delete-tombstone-handling-mode[`delete.tombstone.handling.mode`]
-|No default
+|`tombstone`
 |{prodname} generates a change event record for each `DELETE` operation. This setting determines how the event flattening SMT handles `DELETE` events from the stream.
 
 [NOTE]
