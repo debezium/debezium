@@ -376,23 +376,23 @@ DELETE FROM %s
 
 |[[jdbc-history-schema-history-table-name]]<<jdbc-history-schema-history-table-name, `schema.history.internal.jdbc.table.name`>>
 |`debezium_database_history`
-|The name of the table where {prodname} store the internal schema history.
+|The name of the table where {prodname} stores the internal schema history.
 
 |[[jdbc-history-schema-history-table-ddl]]<<jdbc-history-schema-history-table-ddl, `schema.history.internal.jdbc.table.ddl`>>
 |xref:jdbc-history-schema-history-table-ddl-default[(Table Structure)]
-|The DDL statement used to create the storage table.
+|The DDL statement used to create a table to store the internal schema history.
 
 |[[jdbc-history-schema-history-table-select]]<<jdbc-history-schema-history-table-select, `schema.history.internal.jdbc.table.select`>>
 |xref:jdbc-history-schema-history-table-select-default[(Select query)]
-|The `SELECT` statement to read the internal schema history form the table.
+|The `SELECT` statement to read schema changes from the internal schema history table.
 
 |[[jdbc-history-schema-history-table-exists-select]]<<jdbc-history-schema-history-table-exists-select, `schema.history.internal.jdbc.table.exists.select`>>
 |xref:jdbc-history-schema-history-table-exists-select-default[(Insert query)]
-|The `SELECT` statement to check the existence of the storage table.
+|The `SELECT` statement that checks for the existence of an internal schema history storage table.
 
 |[[jdbc-history-schema-history-table-insert]]<<jdbc-history-schema-history-table-insert, `schema.history.internal.jdbc.table.insert`>>
 |xref:jdbc-history-schema-history-table-insert-default[(Delete query)]
-|The `INSERT` statement to record the schema history to the table.
+|The `INSERT` statement that records changes to the internal schema history table.
 
 |===
 
