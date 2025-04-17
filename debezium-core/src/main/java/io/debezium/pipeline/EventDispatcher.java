@@ -6,6 +6,7 @@
 package io.debezium.pipeline;
 
 import static io.debezium.config.CommonConnectorConfig.WatermarkStrategy.INSERT_DELETE;
+import static io.debezium.util.Loggings.maybeRedactSensitiveData;
 
 import java.time.Instant;
 import java.util.Collection;
@@ -57,7 +58,6 @@ import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.topic.TopicNamingStrategy;
-import io.debezium.util.Loggings;
 
 /**
  * Central dispatcher for data change and schema change events. The former will be routed to the change event queue, the
@@ -227,8 +227,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                                          OffsetContext offset,
                                          ConnectHeaders headers)
                         throws InterruptedException {
-                    Loggings.logTraceAndTraceRecord(LOGGER, new Object[]{ "Key:", key, ", Value:", value }, "Received change record for {} operation with context {}",
-                            " ", operation, offset);
+                    LOGGER.trace("Received change record {} for {} operation on key {} with context {}", maybeRedactSensitiveData(value), operation,
+                            maybeRedactSensitiveData(key), offset);
 
                     eventListener.onEvent(partition, dataCollectionSchema.id(), offset, key, value, operation);
                     receiver.changeRecord(partition, dataCollectionSchema, operation, key, value, offset, headers);
@@ -289,8 +289,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                                              ConnectHeaders headers)
                             throws InterruptedException {
 
-                        Loggings.logTraceAndTraceRecord(LOGGER, new Object[]{ "Key:", key, ", Value:", value }, "Received change record for {} operation with context {}",
-                                " ", operation, offset);
+                        LOGGER.trace("Received change record {} for {} operation on key {} with "
+                                + "context {}", maybeRedactSensitiveData(value), operation, maybeRedactSensitiveData(key), offset);
 
                         if (isASignalEventToProcess(dataCollectionId, operation) && sourceSignalChannel != null) {
                             sourceSignalChannel.process(value);
@@ -510,8 +510,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
             Objects.requireNonNull(value, "value must not be null");
 
-            Loggings.logTraceAndTraceRecord(LOGGER, new Object[]{ "Key:", key, ", Value:", value }, "Received change record for {} operation with context {}", " ",
-                    operation, offsetContext);
+            LOGGER.trace("Received change record {} for {} operation on key {} with context {}", maybeRedactSensitiveData(value), operation,
+                    maybeRedactSensitiveData(key), offsetContext);
 
             // Truncate events must have null key schema as they are sent to table topics without keys
             Schema keySchema = (key == null && operation == Operation.TRUNCATE) ? null
@@ -566,7 +566,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 throws InterruptedException {
             Objects.requireNonNull(value, "value must not be null");
 
-            Loggings.logTraceAndTraceRecord(LOGGER, key, "Received change record for {} operation", operation);
+            LOGGER.trace("Received change record for {} operation on key {}", operation, maybeRedactSensitiveData(key));
 
             doPostProcessing(key, value);
 
@@ -648,7 +648,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 throws InterruptedException {
             Objects.requireNonNull(value, "value must not be null");
 
-            Loggings.logTraceAndTraceRecord(LOGGER, key, "Received change record for {} operation", operation);
+            LOGGER.trace("Received change record for {} operation on key {}", operation, maybeRedactSensitiveData(key));
 
             Schema keySchema = dataCollectionSchema.keySchema();
             String topicName = topicNamingStrategy.dataChangeTopic((T) dataCollectionSchema.id());
