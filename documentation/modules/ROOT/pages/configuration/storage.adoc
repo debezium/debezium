@@ -12,7 +12,7 @@ toc::[]
 == Overview
 endif::community[]
 
-{prodname} connectors require a persistent storage to preserve their state between restarts.
+{prodname} connectors require persistent storage to preserve their state between restarts.
 All connectors require a mechanism to provide persistent storage for the offsets.
 In addition, connectors such as Db2, MySQL, Oracle,  and SQL Server, require additional storage, the so-called internal schema history, to record their schema evolution history.
 
@@ -95,11 +95,11 @@ The maximum time that the connector waits after it is unable to retrieve data is
 
 |[[schema-history-internal-kafka-query-timeout-ms]]<<schema-history-internal-kafka-query-timeout-ms,`schema.history.internal.kafka.query.timeout.ms`>>
 |3
-|Specifies the time, in milliseconds, that the connector waits for a response after the Kafka AdminClient submits a request to fetch cluster information.
+|Specifies the time, in milliseconds, that the connector waits for a response after the Kafka AdminClient submits a request to fetch cluster information before the request times out.
 
 |[[schema-history-internal-kafka-create-timeout-ms]]<<schema-history-internal-kafka-create-timeout-ms,`schema.history.internal.kafka.create.timeout.ms`>>
 |30
-|Specifies the time, in milliseconds, that the connector waits for a response after the Kafka AdminClient submits a request to create a Kafka history topic.
+|Specifies the time, in milliseconds, that the connector waits for a response after the Kafka AdminClient submits a request to create a Kafka history topic before the request times out.
 
 |[[schema-history-internal-producer]]<<schema-history-internal-producer,`schema.history.internal.producer.*`>>
 |No Default
