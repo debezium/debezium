@@ -20,15 +20,14 @@ cd "${SCRIPT_LOCATION}" || exit 1
   oc get secret -n "${DBZ_OCP_PROJECT_DEBEZIUM}-testsuite" "${DBZ_SECRET_NAME}" -o yaml | sed "s/namespace: .*//" | sed "s/uid: .*//" > "${SECRET_LOCATION}"
 
   pushd "${DEBEZIUM_LOCATION}" || exit 1
-
-  ./mvnw install -Dquick
+  ./mvnw install -Dquick -ntp -T8
 
 
   if [[ -n "${DEBUG_PORT}" ]]; then
     DEBUG_OPTION=-Dmaven.failsafe.debug=\"-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:${DEBUG_PORT}\"
-    MVN_OPTIONS='install -pl debezium-testing/debezium-testing-system -PsystemITs,oracleITs '${DEBUG_OPTION}' -Docp.pull.secret.paths='${SECRET_LOCATION}' '$TESTSUITE_ARGUMENTS''
+    MVN_OPTIONS='install -ntp -pl debezium-testing/debezium-testing-system -PsystemITs,oracleITs '${DEBUG_OPTION}' -Docp.pull.secret.paths='${SECRET_LOCATION}' '$TESTSUITE_ARGUMENTS''
   else
-    MVN_OPTIONS='install -pl debezium-testing/debezium-testing-system -PsystemITs,oracleITs -Docp.pull.secret.paths='${SECRET_LOCATION}' '$TESTSUITE_ARGUMENTS''
+    MVN_OPTIONS='install -ntp -pl debezium-testing/debezium-testing-system -PsystemITs,oracleITs -Docp.pull.secret.paths='${SECRET_LOCATION}' '$TESTSUITE_ARGUMENTS''
   fi
 
 

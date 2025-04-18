@@ -13,12 +13,14 @@ import java.util.Map;
 import java.util.Objects;
 
 import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.transforms.Transformation;
 
+import io.debezium.Module;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.util.Strings;
@@ -30,7 +32,7 @@ import io.debezium.util.Strings;
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Harvey Yue
  */
-public class ExtractChangedRecordState<R extends ConnectRecord<R>> implements Transformation<R> {
+public class ExtractChangedRecordState<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
 
     public static final Field HEADER_CHANGED_NAME = Field.create("header.changed.name")
             .withDisplayName("Header change name.")
@@ -76,25 +78,32 @@ public class ExtractChangedRecordState<R extends ConnectRecord<R>> implements Tr
         Struct value = requireStruct(record.value(), "Record value should be struct.");
         Object after = value.get("after");
         Object before = value.get("before");
+
+        List<String> changedNames = new ArrayList<>();
+        List<String> unchangedNames = new ArrayList<>();
         if (after != null && before != null) {
-            List<String> changedNames = new ArrayList<>();
-            List<String> unchangedNames = new ArrayList<>();
             Struct afterValue = requireStruct(after, "After value should be struct.");
             Struct beforeValue = requireStruct(before, "Before value should be struct.");
             afterValue.schema().fields().forEach(field -> {
-                if (!Objects.equals(afterValue.get(field), beforeValue.get(field))) {
+                Object afterFieldValue = afterValue.getWithoutDefault(field.name());
+                Object beforeFieldValue = beforeValue.getWithoutDefault(field.name());
+                if (!Objects.equals(afterFieldValue, beforeFieldValue)) {
                     changedNames.add(field.name());
                 }
                 else {
                     unchangedNames.add(field.name());
                 }
             });
-            if (!Strings.isNullOrBlank(headerChangedName)) {
-                record.headers().add(headerChangedName, changedNames, changedSchema);
-            }
-            if (!Strings.isNullOrBlank(headerUnchangedName)) {
-                record.headers().add(headerUnchangedName, unchangedNames, unchangedSchema);
-            }
+        }
+
+        // To be consistent with header management, the headers will always be added, even if the event
+        // is a snapshot or delete, so that when paired with other transforms, users would have a
+        // consistent experience, i.e. this + HeaderToValue + ExtractNewRecordState adding the value field
+        if (!Strings.isNullOrBlank(headerChangedName)) {
+            record.headers().add(headerChangedName, changedNames, changedSchema);
+        }
+        if (!Strings.isNullOrBlank(headerUnchangedName)) {
+            record.headers().add(headerUnchangedName, unchangedNames, unchangedSchema);
         }
 
         return record;
@@ -109,5 +118,10 @@ public class ExtractChangedRecordState<R extends ConnectRecord<R>> implements Tr
         final ConfigDef config = new ConfigDef();
         Field.group(config, null, HEADER_CHANGED_NAME, HEADER_UNCHANGED_NAME);
         return config;
+    }
+
+    @Override
+    public String version() {
+        return Module.version();
     }
 }

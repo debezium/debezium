@@ -14,7 +14,9 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
 
+import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.SnapshotType;
 import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
@@ -23,7 +25,6 @@ import io.debezium.spi.schema.DataCollectionId;
 
 public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
 
-    public static final String SNAPSHOT_COMPLETED_KEY = "snapshot_completed";
     public static final String SNAPSHOT_PENDING_TRANSACTIONS_KEY = "snapshot_pending_tx";
     public static final String SNAPSHOT_SCN_KEY = "snapshot_scn";
 
@@ -47,14 +48,9 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
      */
     private Map<String, Scn> snapshotPendingTransactions;
 
-    /**
-     * Whether a snapshot has been completed or not.
-     */
-    private boolean snapshotCompleted;
-
     public OracleOffsetContext(OracleConnectorConfig connectorConfig, Scn scn, Long scnIndex, CommitScn commitScn, String lcrPosition,
                                Scn snapshotScn, Map<String, Scn> snapshotPendingTransactions,
-                               boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext,
+                               SnapshotType snapshot, boolean snapshotCompleted, TransactionContext transactionContext,
                                IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
         this(connectorConfig, scn, scnIndex, lcrPosition, snapshotScn, snapshotPendingTransactions, snapshot, snapshotCompleted, transactionContext,
                 incrementalSnapshotContext);
@@ -63,9 +59,9 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     public OracleOffsetContext(OracleConnectorConfig connectorConfig, Scn scn, Long scnIndex, String lcrPosition,
                                Scn snapshotScn, Map<String, Scn> snapshotPendingTransactions,
-                               boolean snapshot, boolean snapshotCompleted, TransactionContext transactionContext,
+                               SnapshotType snapshot, boolean snapshotCompleted, TransactionContext transactionContext,
                                IncrementalSnapshotContext<TableId> incrementalSnapshotContext) {
-        super(new SourceInfo(connectorConfig));
+        super(new SourceInfo(connectorConfig), snapshotCompleted);
         sourceInfo.setScn(scn);
         sourceInfo.setScnIndex(scnIndex);
         // It is safe to set this value to the supplied SCN, specifically for snapshots.
@@ -84,12 +80,12 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         this.transactionContext = transactionContext;
         this.incrementalSnapshotContext = incrementalSnapshotContext;
 
-        this.snapshotCompleted = snapshotCompleted;
         if (this.snapshotCompleted) {
             postSnapshotCompletion();
         }
         else {
-            sourceInfo.setSnapshot(snapshot ? SnapshotRecord.TRUE : SnapshotRecord.FALSE);
+            setSnapshot(snapshot);
+            sourceInfo.setSnapshot(snapshot != null ? SnapshotRecord.TRUE : SnapshotRecord.FALSE);
         }
     }
 
@@ -99,7 +95,7 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         private Scn scn;
         private Long scnIndex;
         private String lcrPosition;
-        private boolean snapshot;
+        private SnapshotType snapshot;
         private boolean snapshotCompleted;
         private TransactionContext transactionContext;
         private IncrementalSnapshotContext<TableId> incrementalSnapshotContext;
@@ -126,7 +122,7 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
             return this;
         }
 
-        public Builder snapshot(boolean snapshot) {
+        public Builder snapshot(SnapshotType snapshot) {
             this.snapshot = snapshot;
             return this;
         }
@@ -169,12 +165,12 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     @Override
     public Map<String, ?> getOffset() {
-        if (sourceInfo.isSnapshot()) {
+        if (getSnapshot().isPresent()) {
             Map<String, Object> offset = new HashMap<>();
 
             final Scn scn = sourceInfo.getScn();
             offset.put(SourceInfo.SCN_KEY, scn != null ? scn.toString() : scn);
-            offset.put(SourceInfo.SNAPSHOT_KEY, true);
+            offset.put(AbstractSourceInfo.SNAPSHOT_KEY, getSnapshot().get().toString());
             offset.put(SNAPSHOT_COMPLETED_KEY, snapshotCompleted);
 
             if (snapshotPendingTransactions != null && !snapshotPendingTransactions.isEmpty()) {
@@ -241,6 +237,10 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         return sourceInfo.getCommitScn();
     }
 
+    public Instant getCommitTime() {
+        return sourceInfo.getCommitTime();
+    }
+
     public Scn getEventScn() {
         return sourceInfo.getEventScn();
     }
@@ -297,6 +297,18 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.setSsn(ssn);
     }
 
+    public void setStartScn(Scn startScn) {
+        sourceInfo.setStartScn(startScn);
+    }
+
+    public void setStartTime(Instant startTime) {
+        sourceInfo.setStartTime(startTime);
+    }
+
+    public void setCommitTime(Instant commitTime) {
+        sourceInfo.setCommitTime(commitTime);
+    }
+
     public String getRedoSql() {
         return sourceInfo.getRedoSql();
     }
@@ -305,28 +317,20 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.setRedoSql(redoSql);
     }
 
-    @Override
-    public boolean isSnapshotRunning() {
-        return sourceInfo.isSnapshot() && !snapshotCompleted;
+    public String getRowId() {
+        return sourceInfo.getRowId();
     }
 
-    @Override
-    public void preSnapshotStart() {
-        sourceInfo.setSnapshot(SnapshotRecord.TRUE);
-        snapshotCompleted = false;
-    }
-
-    @Override
-    public void preSnapshotCompletion() {
-        snapshotCompleted = true;
+    public void setRowId(String rowId) {
+        sourceInfo.setRowId(rowId);
     }
 
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder("OracleOffsetContext [scn=").append(getScn());
 
-        if (sourceInfo.isSnapshot()) {
-            sb.append(", snapshot=").append(sourceInfo.isSnapshot());
+        if (getSnapshot().isPresent()) {
+            sb.append(", snapshot=").append(getSnapshot().get());
             sb.append(", snapshot_completed=").append(snapshotCompleted);
         }
         else if (getScnIndex() != null) {
@@ -334,6 +338,7 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         }
 
         sb.append(", commit_scn=").append(sourceInfo.getCommitScn().toLoggableFormat());
+        sb.append(", lcr_position=").append(sourceInfo.getLcrPosition());
 
         sb.append("]");
 

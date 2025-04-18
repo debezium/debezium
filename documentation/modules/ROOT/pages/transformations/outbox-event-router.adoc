@@ -46,7 +46,7 @@ The following topics provide details:
 * xref:outbox-table-structure-expected-by-debezium-outbox-event-router-smt[]
 * xref:basic-debezium-outbox-event-router-smt-configuration[]
 * xref:options-for-applying-the-outbox-event-router-transformation-selectively[]
-* xref:using-avro-as-the-payload-format-in-debezium-outbox-messages[]
+* xref:outbox-event-router-using-avro-as-the-payload-format-in-debezium-outbox-messages[]
 * xref:emitting-additional-fields-in-debezium-outbox-messages[]
 * xref:expanding-escaped-json-string-as-json[]
 * xref:options-for-configuring-outbox-event-router-transformation[]
@@ -212,8 +212,8 @@ You can use one of the following methods to configure the connector to apply the
 // ModuleID: outbox-event-router-payload-serialization-format
 == Payload serialization format
 
-The outbox event router SMT supports arbitrary payload formats. 
-The SMT passes on `payload` column values that it reads from the outbox table without modification. 
+The outbox event router SMT supports arbitrary payload formats.
+The SMT passes on `payload` column values that it reads from the outbox table without modification.
 The way that the SMT converts these column values into Kafka message fields depends on how you configure the SMT.
 Common payload formats for serializing data are JSON and Avro.
 
@@ -224,7 +224,7 @@ Common payload formats for serializing data are JSON and Avro.
 [[using-json-payload-format]]
 === Using JSON as the payload format
 
-The default serialization format for the outbox event router SMT is JSON. 
+The default serialization format for the outbox event router SMT is JSON.
 To use this format, the data type of the source column must be JSON (for example, `jsonb` in PostgreSQL).
 
 // Type: concept
@@ -246,7 +246,7 @@ When a {prodname} outbox message represents the `payload` as a JSON String, the 
 }
 ----
 
-The outbox event router enables you to expand the message content to "real" JSON, deducing the companion schema from the JSON document. 
+The outbox event router enables you to expand the message content to "real" JSON, deducing the companion schema from the JSON document.
 The resulting Kafka message is formatted as in the following example:
 
 [source,javascript,indent=0]
@@ -276,7 +276,7 @@ value.converter=org.apache.kafka.connect.json.JsonConverter
 [[avro-as-payload-format]]
 === Using Apache Avro as the payload format
 
-Apache Avro is a common framework for serializing data. 
+Apache Avro is a common framework for serializing data.
 Using Avro can be beneficial for message format governance and for ensuring that outbox event schemas evolve in a backwards-compatible way.
 
 How a source application produces Avro formatted content for outbox message payloads is out of the scope of this documentation.
@@ -291,7 +291,7 @@ transforms.outbox.type=io.debezium.transforms.outbox.EventRouter
 value.converter=io.debezium.converters.BinaryDataConverter
 ----
 
-By default, the `payload` column value (the Avro data) is the only message value. 
+By default, the `payload` column value (the Avro data) is the only message value.
 When data is stored in Avro format, the column format must be set to a binary data type, such as `bytea` in PostgreSQL.
 The value converter for the SMT must also be set to `BinaryDataConverter`, so that it propagates the binary value of the `payload` column as-is into the Kafka message value.
 

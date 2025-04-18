@@ -74,6 +74,10 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     // This flag will ensure that LSN is flushed only if we are really in message processing mode.
     private volatile boolean lsnFlushingAllowed = false;
 
+    // Offset commit is executed in a different thread.
+    // In case of failure we are going to terminate the processing gracefully from the current thread.
+    private volatile boolean commitOffsetFailure = false;
+
     /**
      * The minimum of (number of event received since the last event sent to Kafka,
      * number of event received since last WAL growing warning issued).
@@ -119,14 +123,10 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     @Override
     public void execute(ChangeEventSourceContext context, PostgresPartition partition, PostgresOffsetContext offsetContext)
             throws InterruptedException {
-        if (!snapshotterService.getSnapshotter().shouldStream()) {
-            LOGGER.info("Streaming is not enabled in configuration");
-            return;
-        }
 
         lsnFlushingAllowed = false;
 
-        // replication slot could exist at the time of starting Debezium so we will stream from the position in the slot
+        // replication slot could exist at the time of starting Debezium, so we will stream from the position in the slot
         // instead of the last position in the database
         boolean hasStartLsnStoredInContext = offsetContext != null;
 
@@ -135,7 +135,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
             if (hasStartLsnStoredInContext) {
                 // start streaming from the last recorded position in the offset
-                final Lsn lsn = this.effectiveOffset.lastCompletelyProcessedLsn() != null ? this.effectiveOffset.lastCompletelyProcessedLsn()
+                final Lsn lsn = this.effectiveOffset.hasCompletelyProcessedPosition() ? this.effectiveOffset.lastCompletelyProcessedLsn()
                         : this.effectiveOffset.lsn();
                 final Operation lastProcessedMessageType = this.effectiveOffset.lastProcessedMessageType();
                 LOGGER.info("Retrieved latest position from stored offset '{}'", lsn);
@@ -147,13 +147,10 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 walPosition = new WalPositionLocator();
                 replicationStream.compareAndSet(null, replicationConnection.startStreaming(walPosition));
             }
-            // for large dbs, the refresh of schema can take too much time
-            // such that the connection times out. We must enable keep
-            // alive to ensure that it doesn't time out
+
+            // Start keep alive thread to prevent connection timeout during time-consuming operations the DB side.
             ReplicationStream stream = this.replicationStream.get();
             stream.startKeepAlive(Threads.newSingleThreadExecutor(PostgresConnector.class, connectorConfig.getLogicalName(), KEEP_ALIVE_THREAD_NAME));
-
-            initSchema();
 
             // If we need to do a pre-snapshot streaming catch up, we should allow the snapshot transaction to persist
             // but normally we want to start streaming without any open transactions.
@@ -163,7 +160,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
             this.lastCompletelyProcessedLsn = replicationStream.get().startLsn();
 
-            if (walPosition.searchingEnabled()) {
+            if (walPosition.searchingEnabled() && this.effectiveOffset.hasCompletelyProcessedPosition()) {
                 searchWalPosition(context, partition, this.effectiveOffset, stream, walPosition);
                 try {
                     if (!isInPreSnapshotCatchUpStreaming(this.effectiveOffset)) {
@@ -186,17 +183,23 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             errorHandler.setProducerThrowable(e);
         }
         finally {
-            if (replicationConnection != null) {
-                LOGGER.debug("stopping streaming...");
-                // stop the keep alive thread, this also shuts down the
-                // executor pool
-                ReplicationStream stream = replicationStream.get();
-                if (stream != null) {
-                    stream.stopKeepAlive();
-                }
-                // TODO author=Horia Chiorean date=08/11/2016 description=Ideally we'd close the stream, but it's not reliable atm (see javadoc)
-                // replicationStream.close();
-                // close the connection - this should also disconnect the current stream even if it's blocking
+            cleanUpStreamingOnStop(offsetContext);
+        }
+    }
+
+    private void cleanUpStreamingOnStop(PostgresOffsetContext offsetContext) {
+        if (replicationConnection != null) {
+            LOGGER.debug("stopping streaming...");
+            // stop the keep alive thread, this also shuts down the
+            // executor pool
+            ReplicationStream stream = replicationStream.get();
+            if (stream != null) {
+                stream.stopKeepAlive();
+            }
+            // TODO author=Horia Chiorean date=08/11/2016 description=Ideally we'd close the stream, but it's not reliable atm (see javadoc)
+            // replicationStream.close();
+            // close the connection - this should also disconnect the current stream even if it's blocking
+            if (offsetContext != null) {
                 try {
                     if (!isInPreSnapshotCatchUpStreaming(offsetContext)) {
                         connection.commit();
@@ -206,18 +209,23 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 catch (Exception e) {
                     LOGGER.debug("Exception while closing the connection", e);
                 }
-                replicationStream.set(null);
             }
+            replicationStream.set(null);
         }
+    }
+
+    private boolean haveNotReceivedStreamingStoppingLsn(PostgresOffsetContext offsetContext, Lsn lastCompletelyProcessedLsn) {
+        return offsetContext.getStreamingStoppingLsn() == null ||
+                (lastCompletelyProcessedLsn.compareTo(offsetContext.getStreamingStoppingLsn()) < 0);
     }
 
     private void processMessages(ChangeEventSourceContext context, PostgresPartition partition, PostgresOffsetContext offsetContext, final ReplicationStream stream)
             throws SQLException, InterruptedException {
         LOGGER.info("Processing messages");
         int noMessageIterations = 0;
-        while (context.isRunning() && (offsetContext.getStreamingStoppingLsn() == null ||
-                (lastCompletelyProcessedLsn.compareTo(offsetContext.getStreamingStoppingLsn()) < 0))) {
-
+        while (context.isRunning()
+                && haveNotReceivedStreamingStoppingLsn(offsetContext, lastCompletelyProcessedLsn)
+                && !commitOffsetFailure) {
             boolean receivedMessage = stream.readPending(message -> processReplicationMessages(partition, offsetContext, stream, message));
 
             probeConnectionIfNeeded();
@@ -227,7 +235,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 lsnFlushingAllowed = true;
             }
             else {
-                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
+                dispatcher.dispatchHeartbeatEventAlsoToIncrementalSnapshot(partition, offsetContext);
                 noMessageIterations++;
                 if (noMessageIterations >= THROTTLE_NO_MESSAGE_BEFORE_PAUSE) {
                     noMessageIterations = 0;
@@ -245,7 +253,14 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             if (context.isPaused()) {
                 LOGGER.info("Streaming will now pause");
                 context.streamingPaused();
-                context.waitSnapshotCompletion();
+                context.waitSnapshotCompletion(() -> {
+                    try {
+                        probeConnectionIfNeeded();
+                    }
+                    catch (SQLException e) {
+                        throw new DebeziumException(e);
+                    }
+                });
                 LOGGER.info("Streaming resumed");
             }
         }
@@ -255,27 +270,30 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             throws SQLException, InterruptedException {
 
         final Lsn lsn = stream.lastReceivedLsn();
-
+        LOGGER.trace("Processing replication message {}", message);
         if (message.isLastEventForLsn()) {
             lastCompletelyProcessedLsn = lsn;
         }
 
         // Tx BEGIN/END event
         if (message.isTransactionalMessage()) {
+
+            offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
+                    taskContext.getSlotXmin(connection),
+                    null,
+                    message.getOperation());
+
             if (!connectorConfig.shouldProvideTransactionMetadata()) {
                 LOGGER.trace("Received transactional message {}", message);
                 // Don't skip on BEGIN message as it would flush LSN for the whole transaction
                 // too early
                 if (message.getOperation() == Operation.COMMIT) {
                     commitMessage(partition, offsetContext, lsn);
+                    dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, message.getCommitTime());
                 }
                 return;
             }
 
-            offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
-                    taskContext.getSlotXmin(connection),
-                    null,
-                    message.getOperation());
             if (message.getOperation() == Operation.BEGIN) {
                 dispatcher.dispatchTransactionStartedEvent(partition, toString(message.getTransactionId()), offsetContext, message.getCommitTime());
             }
@@ -306,7 +324,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         // DML event
         else {
             TableId tableId = null;
-            if (message.getOperation() != Operation.NOOP) {
+            if (!message.isSkippedMessage()) {
                 tableId = PostgresSchema.parse(message.getTable());
                 Objects.requireNonNull(tableId);
             }
@@ -316,7 +334,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                     tableId,
                     message.getOperation());
 
-            boolean dispatched = message.getOperation() != Operation.NOOP && dispatcher.dispatchDataChangeEvent(
+            boolean dispatched = dispatcher.dispatchDataChangeEvent(
                     partition,
                     tableId,
                     new PostgresChangeRecordEmitter(
@@ -440,6 +458,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             }
         }
         catch (SQLException e) {
+            commitOffsetFailure = true;
+            cleanUpStreamingOnStop(null);
             throw new ConnectException(e);
         }
     }

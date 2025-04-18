@@ -880,4 +880,35 @@ public class LegacyExtractNewRecordStateTest extends AbstractExtractStateTest {
             assertThat(((Struct) unwrapped.value()).get(fieldPrefix + "TOTAL_ORDER")).isEqualTo(42L);
         }
     }
+
+    @Test
+    @FixFor("DBZ-7094")
+    public void testUnwrapCreateRecordRewriteWithOptionalDefaultValue() {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(HANDLE_DELETES, "rewrite");
+            props.put(REPLACE_NULL_WITH_DEFAULT, "false");
+            transform.configure(props);
+
+            final SourceRecord createRecord = createCreateRecordWithOptionalNull();
+            final SourceRecord unwrapped = transform.apply(createRecord);
+
+            assertThat(((Struct) unwrapped.value()).getString("name")).isNull();
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-7094")
+    public void testUnwrapCreateRecordRewriteWithOptionalDefaultValueAndNullReplaceWithDefault() {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(HANDLE_DELETES, "rewrite");
+            transform.configure(props);
+
+            final SourceRecord createRecord = createCreateRecordWithOptionalNull();
+            final SourceRecord unwrapped = transform.apply(createRecord);
+
+            assertThat(((Struct) unwrapped.value()).getString("name")).isEqualTo("default_str");
+        }
+    }
 }

@@ -426,4 +426,52 @@ public class StringsTest {
                 .map(Pattern::pattern)
                 .collect(Collectors.toList())).isEqualTo(Arrays.asList((Object[]) matches));
     }
+
+    @Test
+    public void convertDotAndUnderscoreStringToCamelCaseShouldReturnEmptyForNullInput() {
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase(null))
+                .isEqualTo("");
+    }
+
+    @Test
+    public void convertDotAndUnderscoreStringToCamelCaseShouldReturnEmptyForEmptyInput() {
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase(""))
+                .isEqualTo("");
+    }
+
+    @Test
+    public void convertDotAndUnderscoreStringToCamelCaseShouldHandleNoSeparators() {
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("hello"))
+                .isEqualTo("hello");
+    }
+
+    @Test
+    public void convertDotAndUnderscoreStringToCamelCaseShouldHandleUnderscores() {
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("hello_world"))
+                .isEqualTo("helloWorld");
+    }
+
+    @Test
+    public void convertDotAndUnderscoreStringToCamelCaseShouldHandleDots() {
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("hello.world"))
+                .isEqualTo("helloWorld");
+    }
+
+    @Test
+    public void convertDotAndUnderscoreStringToCamelCaseShouldHandleDotsAndUnderscores() {
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("hello.world_and_universe"))
+                .isEqualTo("helloWorldAndUniverse");
+    }
+
+    @Test
+    public void convertDotAndUnderscoreStringToCamelCaseShouldConvertUpperCaseInput() {
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("HELLO_WORLD"))
+                .isEqualTo("helloWorld");
+    }
+
+    @Test
+    public void convertDotAndUnderscoreStringToCamelCaseShouldHandleMultipleConsecutiveSeparators() {
+        assertThat(Strings.convertDotAndUnderscoreStringToCamelCase("hello__world..universe"))
+                .isEqualTo("helloWorldUniverse");
+    }
 }

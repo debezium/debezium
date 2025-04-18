@@ -26,6 +26,7 @@ public class ConnectorResolver {
                 "io.debezium.connector.sqlserver.SqlServerConnector");
         tmp.put("oracle.jdbc.OracleDriver", "io.debezium.connector.oracle.OracleConnector");
         tmp.put("com.ibm.db2.jcc.DB2Driver", "io.debezium.connector.db2.Db2Connector");
+        tmp.put("org.mariadb.jdbc.Driver", "io.debezium.connector.mariadb.MariaDbConnector");
 
         CONNECTORS_BY_DRIVER = Collections.unmodifiableMap(tmp);
     }

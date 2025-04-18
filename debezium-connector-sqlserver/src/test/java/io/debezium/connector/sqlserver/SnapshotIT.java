@@ -32,6 +32,7 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.SnapshotType;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotIsolationMode;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
@@ -41,7 +42,7 @@ import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.SourceRecordAssert;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.ErrorHandler;
@@ -54,7 +55,7 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec
  */
-public class SnapshotIT extends AbstractConnectorTest {
+public class SnapshotIT extends AbstractAsyncEngineConnectorTest {
 
     private static final int INITIAL_RECORDS_PER_TABLE = 500;
     private static final int STREAMING_RECORDS_PER_TABLE = 500;
@@ -141,10 +142,8 @@ public class SnapshotIT extends AbstractConnectorTest {
             final Struct value1 = (Struct) record1.value();
             assertRecord(key1, expectedKey1);
             assertRecord((Struct) value1.get("after"), expectedRow1);
-            assertThat(record1.sourceOffset())
-                    .extracting("snapshot").containsExactly(true);
-            assertThat(record1.sourceOffset())
-                    .extracting("snapshot_completed").containsExactly(i == INITIAL_RECORDS_PER_TABLE - 1);
+            assertThat(record1.sourceOffset()).extracting("snapshot").isEqualTo(SnapshotType.INITIAL.toString());
+            assertThat(record1.sourceOffset()).extracting("snapshot_completed").isEqualTo(i == INITIAL_RECORDS_PER_TABLE - 1);
             assertNull(value1.get("before"));
         }
     }
@@ -232,7 +231,7 @@ public class SnapshotIT extends AbstractConnectorTest {
     @Test
     public void takeSchemaOnlySnapshotAndStartStreaming() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build();
 
         start(SqlServerConnector.class, config);
@@ -280,10 +279,8 @@ public class SnapshotIT extends AbstractConnectorTest {
             final Struct value1 = (Struct) record1.value();
             assertRecord(key1, expectedKey1);
             assertRecord((Struct) value1.get("after"), expectedRow1);
-            assertThat(record1.sourceOffset())
-                    .extracting("snapshot").containsExactly(true);
-            assertThat(record1.sourceOffset())
-                    .extracting("snapshot_completed").containsExactly(i == INITIAL_RECORDS_PER_TABLE - 1);
+            assertThat(record1.sourceOffset()).extracting("snapshot").isEqualTo(SnapshotType.INITIAL.toString());
+            assertThat(record1.sourceOffset()).extracting("snapshot_completed").isEqualTo(i == INITIAL_RECORDS_PER_TABLE - 1);
             assertNull(value1.get("before"));
         }
     }
@@ -291,7 +288,7 @@ public class SnapshotIT extends AbstractConnectorTest {
     @Test
     public void takeSchemaOnlySnapshotAndSendHeartbeat() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(Heartbeat.HEARTBEAT_INTERVAL, 300_000)
                 .build();
 
@@ -564,17 +561,19 @@ public class SnapshotIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-5198")
+    @FixFor({ "DBZ-5198", "DBZ-7828" })
     public void shouldHandleBracketsInSnapshotSelect() throws InterruptedException, SQLException {
         connection.execute(
                 "CREATE TABLE [user detail] (id int PRIMARY KEY, name varchar(30))",
-                "INSERT INTO [user detail] VALUES(1, 'k')");
+                "INSERT INTO [user detail] VALUES(1, 'k')",
+                "INSERT INTO [user detail] VALUES(2, 'k')");
         TestHelper.enableTableCdc(connection, "user detail");
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.user detail")
                 .with(SqlServerConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, "[dbo].[user detail]")
+                .with(SqlServerConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE + ".[dbo].[user detail]", "SELECT * FROM [dbo].[user detail] WHERE id = 2")
                 .build();
 
         start(SqlServerConnector.class, config);
@@ -585,7 +584,7 @@ public class SnapshotIT extends AbstractConnectorTest {
         assertThat(recordsForTopic.get(0).key()).isNotNull();
         Struct value = (Struct) ((Struct) recordsForTopic.get(0).value()).get("after");
         System.out.println("DATA: " + value);
-        assertThat(value.get("id")).isEqualTo(1);
+        assertThat(value.get("id")).isEqualTo(2);
         assertThat(value.get("name")).isEqualTo("k");
 
         stopConnector();
@@ -595,7 +594,7 @@ public class SnapshotIT extends AbstractConnectorTest {
     @FixFor("DBZ-6811")
     public void shouldSendHeartbeatsWhenNoRecordsAreSent() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(Heartbeat.HEARTBEAT_INTERVAL, 100)
                 .build();
 

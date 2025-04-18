@@ -88,7 +88,7 @@ The `ExtractChangedRecordState` SMT adds headers to the change event message to 
 The event changes SMT extracts the `before` and `after` fields from a {prodname} `UPDATE` change event in a Kafka record.
 The transformation examines the `before` and `after` event state structures to identify the fields that are altered by an operation, and those that remain unchanged.
 Depending on the connector configuration, the transformation then produces a modified event message that adds message headers to list the changed fields, the unchanged fields, or both.
-If the event represents an `INSERT` or `DELETE`, this single message transformation has no effect.
+If the event represents an `INSERT`, `DELETE`, or `READ`, this single message transformation adds the configured headers as an empty list, as there are no changed or unchanged fields.
 
 You can configure the event changes SMT for a {prodname} connector, or for a sink connector that consumes messages emitted by a {prodname} connector.
 Configure the event changes SMT for a sink connector if you want Apache Kafka to retain the entire original {prodname} change events.

@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -17,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.bean.StandardBeanNames;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigurationDefaults;
 import io.debezium.pipeline.notification.NotificationService;
@@ -26,6 +28,7 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SnapshotResult;
+import io.debezium.relational.TableId;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
@@ -69,6 +72,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
         final SnapshotContext<P, O> ctx;
         try {
             ctx = prepare(partition, snapshottingTask.isOnDemand());
+            connectorConfig.getBeanRegistry().add(StandardBeanNames.SNAPSHOT_CONTEXT, ctx);
         }
         catch (Exception e) {
             LOGGER.error("Failed to initialize snapshot context.", e);
@@ -109,12 +113,23 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
                 completed(ctx);
                 snapshotProgressListener.snapshotCompleted(partition);
 
-                notificationService.initialSnapshotNotificationService().notifyCompleted(offsets.getTheOnlyPartition(), offsets.getTheOnlyOffset());
+                notificationService.initialSnapshotNotificationService().notifyCompleted(ctx.partition, ctx.offset);
             }
             else {
-                LOGGER.warn("Snapshot was not completed successfully, it will be re-executed upon connector restart");
+
+                String basicWarnMessage = "Snapshot was not completed successfully";
+                String finalWarnMessage = String.format("%s %s", basicWarnMessage, ", it will be re-executed upon connector restart");
+
+                if (snapshottingTask.isOnDemand()) {
+                    // In case of error blocking snapshot will not be automatically executed.
+                    previousOffset.postSnapshotCompletion();
+                    finalWarnMessage = basicWarnMessage;
+                }
+
+                LOGGER.warn(finalWarnMessage);
                 aborted(ctx);
                 snapshotProgressListener.snapshotAborted(offsets.getTheOnlyPartition());
+                notificationService.initialSnapshotNotificationService().notifyAborted(ctx.partition, ctx.offset);
             }
         }
     }
@@ -127,8 +142,13 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
         else {
             return allDataCollections.stream()
                     .filter(dataCollectionId -> snapshotAllowedDataCollections.stream()
-                            .anyMatch(s -> s.matcher(dataCollectionId.identifier()).matches()));
+                            .anyMatch(tableNameMatcher(dataCollectionId)));
         }
+    }
+
+    private static <T extends DataCollectionId> Predicate<Pattern> tableNameMatcher(T dataCollectionId) {
+        return s -> s.matcher(dataCollectionId.identifier()).matches() ||
+                s.matcher(((TableId) dataCollectionId).toDoubleQuotedString()).matches();
     }
 
     /**
@@ -171,11 +191,6 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
             throws Exception;
 
     /**
-     * Returns the snapshotting task based on the previous offset (if available) and the connector's snapshotting mode.
-     */
-    public abstract SnapshottingTask getSnapshottingTask(P partition, O previousOffset);
-
-    /**
      * Prepares the taking of a snapshot and returns an initial {@link SnapshotContext}.
      */
     protected abstract SnapshotContext<P, O> prepare(P partition, boolean onDemand) throws Exception;
@@ -204,7 +219,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
      *
      * @param snapshotContext snapshot context
      */
-    protected void aborted(SnapshotContext<P, O> snapshotContext) {
+    protected void aborted(SnapshotContext<P, O> snapshotContext) throws InterruptedException {
     }
 
     protected Set<Pattern> getDataCollectionPattern(List<String> dataCollections) {

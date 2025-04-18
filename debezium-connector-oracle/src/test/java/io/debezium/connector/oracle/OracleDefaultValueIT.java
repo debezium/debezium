@@ -8,6 +8,7 @@ package io.debezium.connector.oracle;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -26,7 +27,7 @@ import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.time.Interval;
 import io.debezium.time.MicroDuration;
@@ -38,7 +39,7 @@ import io.debezium.util.Testing;
  *
  * @author Chris Cranford
  */
-public class OracleDefaultValueIT extends AbstractConnectorTest {
+public class OracleDefaultValueIT extends AbstractAsyncEngineConnectorTest {
 
     private OracleConnection connection;
     private Consumer<Configuration.Builder> configUpdater;
@@ -421,6 +422,100 @@ public class OracleDefaultValueIT extends AbstractConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "dbz4388");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-8248")
+    public void shouldTreatEmptyClobFunctionAsEmptyStrings() throws Exception {
+        TestHelper.dropTable(connection, "dbz8248");
+        try {
+            connection.execute("CREATE TABLE dbz8248 (id numeric(9,0) primary key, data1 clob default empty_clob() not null, data2 nclob default empty_clob())");
+            TestHelper.streamTable(connection, "dbz8248");
+
+            connection.execute("INSERT INTO dbz8248 (id) values (1)");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8248")
+                    .with(OracleConnectorConfig.LOB_ENABLED, Boolean.TRUE)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz8248 (id) values (2)");
+
+            final SourceRecords records = consumeRecordsByTopic(2);
+
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ8248");
+            assertThat(tableRecords).hasSize(2);
+
+            SourceRecord record = tableRecords.get(0);
+            VerifyRecord.isValidRead(record, "ID", 1);
+
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA1")).isEqualTo("");
+            assertThat(after.get("DATA2")).isEqualTo("");
+
+            record = tableRecords.get(1);
+            VerifyRecord.isValidInsert(record, "ID", 2);
+
+            after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(2);
+            assertThat(after.get("DATA1")).isEqualTo("");
+            assertThat(after.get("DATA2")).isEqualTo("");
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz8248");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-8248")
+    public void shouldTreatEmptyClobFunctionAsEmptyByteArray() throws Exception {
+        TestHelper.dropTable(connection, "dbz8248");
+        try {
+            connection.execute("CREATE TABLE dbz8248 (id numeric(9,0) primary key, data1 blob default empty_blob() not null)");
+            TestHelper.streamTable(connection, "dbz8248");
+
+            connection.execute("INSERT INTO dbz8248 (id) values (1)");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8248")
+                    .with(OracleConnectorConfig.LOB_ENABLED, Boolean.TRUE)
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz8248 (id) values (2)");
+
+            final SourceRecords records = consumeRecordsByTopic(2);
+
+            List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ8248");
+            assertThat(tableRecords).hasSize(2);
+
+            SourceRecord record = tableRecords.get(0);
+            VerifyRecord.isValidRead(record, "ID", 1);
+
+            Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(1);
+            assertThat(after.get("DATA1")).isEqualTo(ByteBuffer.wrap(new byte[0]));
+
+            record = tableRecords.get(1);
+            VerifyRecord.isValidInsert(record, "ID", 2);
+
+            after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("ID")).isEqualTo(2);
+            assertThat(after.get("DATA1")).isEqualTo(ByteBuffer.wrap(new byte[0]));
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz8248");
         }
     }
 

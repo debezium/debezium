@@ -1,0 +1,3059 @@
+= {prodname} connector for {connector-name}
+
+tag::mariadb-mysql-intro[]
+{connector-name} has a binary log (binlog) that records all operations in the order in which they are committed to the database.
+This includes changes to table schemas as well as changes to the data in tables.
+{connector-name} uses the binlog for replication and recovery.
+
+The {prodname} {connector-name} connector reads the binlog, produces change events for row-level `INSERT`, `UPDATE`, and `DELETE` operations, and emits the change events to Kafka topics.
+Client applications read those Kafka topics.
+
+Because {connector-name} is typically set up to purge binlogs after a specified period of time, the {connector-name} connector performs an initial _consistent snapshot_ of each of your databases.
+The {connector-name} connector reads the binlog from the point at which the snapshot was made.
+
+ifdef::community[]
+For information about the {connector-name} Database versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
+endif::community[]
+ifdef::product[]
+For information about the {connector-name} Database versions that are compatible with this connector, see the link:{LinkDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
+endif::product[]
+
+ifdef::product[]
+Information and procedures for using a {prodname} {connector-name} connector are organized as follows:
+
+* xref:how-debezium-{context}-connectors-work[]
+* xref:descriptions-of-debezium-{context}-connector-data-change-events[]
+* xref:how-debezium-{context}-connectors-map-data-types[]
+* xref:debezium-{context}-connector-converters[]
+* xref:setting-up-{context}-to-run-a-debezium-connector[]
+* xref:deployment-of-debezium-{context}-connectors[]
+* xref:monitoring-debezium-{context}-connector-performance[]
+* xref:{context}-when-things-go-wrong[]
+
+endif::product[]
+end::mariadb-mysql-intro[]
+
+
+
+
+=== Supported topologies
+
+tag::supported-topos[]
+The {prodname} {connector-name} connector supports the following {connector-name} topologies:
+
+Standalone::
+When a single {connector-name} server is used, the server must have the binlog enabled so the {prodname} {connector-name} connector can monitor the server.
+ +
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[tags=sup-topo-standalone-backupdoc]
+ +
+In this case, the {connector-name} connector always connects to and follows this standalone {connector-name} server instance.
+
+Primary and replica::
+The {prodname} {connector-name} connector can follow one of the primary servers, or one of the replicas (_if that replica has its binlog enabled_), but the connector detects changes only in the cluster that is visible to that server.
+Generally, this is not a problem except for the multi-primary topologies.
++
+The connector records its position in the server’s binlog, which is different on each server in the cluster.
+Therefore, the connector must follow just one {connector-name} server instance.
+If that server fails, that server must be restarted or recovered before the connector can continue.
+
+High available clusters::
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[tags=sup-topo-ha]
+
+Multi-primary::
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[tags=sup-topo-multi-primary]
+ +
+A {prodname} {connector-name} connector can use these multi-primary {connector-name} replicas as sources, and can fail over to different multi-primary {connector-name} replicas as long as the new replica is caught up to the old replica.
+That is, the new replica has all transactions that were seen on the first replica.
+This works even if the connector is using only a subset of databases and/or tables, because the connector can be configured to include or exclude specific GTID sources when attempting to reconnect to a new multi-primary {connector-name} replica and find the correct position in the binlog.
+
+Hosted::
+The {prodname} {connector-name} connector can use hosted database options such as Amazon RDS and Amazon Aurora.
++
+Because these hosted options do not permit the use of global read locks, the connector uses table-level locks when it creates a consistent snapshot.
+
+end::supported-topos[]
+
+
+
+
+=== How the connector works
+
+tag::how-connector-works-intro[]
+
+An overview of the {connector-name} topologies that the connector supports is useful for planning your application.
+To optimally configure and run a {prodname} {connector-name} connector, it is helpful to understand how the connector tracks the structure of tables, exposes schema changes, performs snapshots, and determines Kafka topic names.
+
+ifdef::product[]
+
+Details are in the following topics:
+
+* xref:{context}-topologies-supported-by-debezium-connectors[]
+* xref:{context}-schema-history-topic[]
+* xref:{context}-schema-change-topic[]
+* xref:{context}-snapshots[]
+* xref:debezium-{context}-ad-hoc-snapshots[]
+* xref:debezium-{context}-incremental-snapshots[]
+* xref:{context}-topic-names[]
+
+endif::product[]
+end::how-connector-works-intro[]
+
+=== Schema history topic
+
+tag::schema-history[]
+When a database client queries a database, the client uses the database’s current schema.
+However, the database schema can be changed at any time, which means that the connector must be able to identify what the schema was at the time each insert, update, or delete operation was recorded.
+Also, a connector cannot necessarily apply the current schema to every event.
+If an event is relatively old, it's possible that it was recorded before the current schema was applied.
+
+To ensure correct processing of events that occur after a schema change, {connector-name} includes in the transaction log not only the row-level changes that affect the data, but also the DDL statements that are applied to the database.
+As the connector encounters these DDL statements in the binlog, it parses them and updates an in-memory representation of each table’s schema.
+The connector uses this schema representation to identify the structure of the tables at the time of each insert, update, or delete operation and to produce the appropriate change event.
+In a separate database schema history Kafka topic, the connector records all DDL statements along with the position in the binlog where each DDL statement appeared.
+
+When the connector restarts after either a crash or a graceful stop, it starts reading the binlog from a specific position, that is, from a specific point in time.
+The connector rebuilds the table structures that existed at this point in time by reading the database schema history Kafka topic and parsing all DDL statements up to the point in the binlog where the connector is starting.
+
+This database schema history topic is for internal connector use only.
+Optionally, the connector can also xref:{context}-schema-change-topic[emit schema change events to a different topic that is intended for consumer applications].
+
+When the {connector-name} connector captures changes in a table to which a schema change tool such as `gh-ost` or `pt-online-schema-change` is applied, there are helper tables created during the migration process.
+You must configure the connector to capture changes that occur in these helper tables.
+If consumers do not need the records the connector generates for helper tables, configure a {link-prefix}:{link-filtering}#message-filtering[single message transform (SMT)] to remove these records from the messages that the connector emits.
+
+.Additional resources
+
+* xref:{context}-topic-names[Default names for topics] that receive {prodname} event records.
+end::schema-history[]
+
+
+
+=== Schema change topic
+
+tag::schema-change[]
+You can configure a {prodname} {connector-name} connector to produce schema change events that describe schema changes that are applied to tables in the database.
+The connector writes schema change events to a Kafka topic named `_<topicPrefix>_`, where `_topicPrefix_` is the namespace specified in the xref:{context}-property-topic-prefix[`topic.prefix`] connector configuration property.
+Messages that the connector sends to the schema change topic contain a payload, and, optionally, also contain the schema of the change event message.
+
+The schema for the schema change event has the following elements:
+
+`name`:: The name of the schema change event message.
+`type`:: The type of the change event message.
+`version`:: The version of the schema. The version is an integer that is incremented each time the schema is changed.
+`fields`:: The fields that are included in the change event message.
+
+.Example: Schema of the {connector-name} connector schema change topic
+The following example shows a typical schema in JSON format.
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "schema": {
+    "type": "struct",
+    "fields": [
+      {
+        "type": "string",
+        "optional": false,
+        "field": "databaseName"
+      }
+    ],
+    "optional": false,
+    "name": "io.debezium.connector.{context}.SchemaChangeKey",
+    "version": 1
+  },
+  "payload": {
+    "databaseName": "inventory"
+  }
+}
+----
+
+The payload of a schema change event message includes the following elements:
+
+`ddl`:: Provides the SQL `CREATE`, `ALTER`, or `DROP` statement that results in the schema change.
+`databaseName`:: The name of the database to which the DDL statements are applied.
+The value of `databaseName` serves as the message key.
+`pos`:: The position in the binlog where the statements appear.
+`tableChanges`::  A structured representation of the entire table schema after the schema change.
+The `tableChanges` field contains an array that includes entries for each column of the table.
+Because the structured representation presents data in JSON or Avro format, consumers can easily read messages without first processing them through a DDL parser.
+
+[IMPORTANT]
+====
+For a table that is in capture mode, the connector not only stores the history of schema changes in the schema change topic, but also in an internal database schema history topic.
+The internal database schema history topic is for connector use only, and it is not intended for direct use by consuming applications.
+Ensure that applications that require notifications about schema changes consume that information only from the schema change topic.
+====
+
+[IMPORTANT]
+====
+Never partition the database schema history topic.
+For the database schema history topic to function correctly, it must maintain a consistent, global order of the event records that the connector emits to it.
+
+To ensure that the topic is not split among partitions, set the partition count for the topic by using one of the following methods:
+
+* If you create the database schema history topic manually, specify a partition count of `1`.
+* If you use the Apache Kafka broker to create the database schema history topic automatically, the topic is created, set the value of the link:{link-kafka-docs}/#brokerconfigs_num.partitions[Kafka `num.partitions`] configuration option to `1`.
+====
+
+[WARNING]
+====
+The format of the messages that a connector emits to its schema change topic is in an incubating state and is subject to change without notice.
+====
+
+.Example: Message emitted to the {connector-name} connector schema change topic
+The following example shows a typical schema change message in JSON format.
+The message contains a logical representation of the table schema.
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "schema": { },
+  "payload": {
+      "source": {  // <1>
+        "version": "{debezium-version}",
+        "connector": "{context}",
+        "name": "{context}",
+        "ts_ms": 1651535750218, // <2>
+        "ts_us": 1651535750218000, // <2>
+        "ts_ns": 1651535750218000000, // <2>
+        "snapshot": "false",
+        "db": "inventory",
+        "sequence": null,
+        "table": "customers",
+        "server_id": 223344,
+        "gtid": null,
+        "file": "{context}-bin.000003",
+        "pos": 570,
+        "row": 0,
+        "thread": null,
+        "query": null
+      },
+      "databaseName": "inventory", <3>
+      "schemaName": null,
+      "ddl": "ALTER TABLE customers ADD middle_name varchar(255) AFTER first_name", <4>
+      "tableChanges": [  <5>
+        {
+          "type": "ALTER", <6>
+          "id": "\"inventory\".\"customers\"", <7>
+          "table": {    <8>
+            "defaultCharsetName": "utf8mb4",
+            "primaryKeyColumnNames": [  <9>
+              "id"
+            ],
+            "columns": [  <10>
+              {
+                "name": "id",
+                "jdbcType": 4,
+                "nativeType": null,
+                "typeName": "INT",
+                "typeExpression": "INT",
+                "charsetName": null,
+                "length": null,
+                "scale": null,
+                "position": 1,
+                "optional": false,
+                "autoIncremented": true,
+                "generated": true
+              },
+              {
+                "name": "first_name",
+                "jdbcType": 12,
+                "nativeType": null,
+                "typeName": "VARCHAR",
+                "typeExpression": "VARCHAR",
+                "charsetName": "utf8mb4",
+                "length": 255,
+                "scale": null,
+                "position": 2,
+                "optional": false,
+                "autoIncremented": false,
+                "generated": false
+              },
+              {
+                "name": "middle_name",
+                "jdbcType": 12,
+                "nativeType": null,
+                "typeName": "VARCHAR",
+                "typeExpression": "VARCHAR",
+                "charsetName": "utf8mb4",
+                "length": 255,
+                "scale": null,
+                "position": 3,
+                "optional": true,
+                "autoIncremented": false,
+                "generated": false
+              },
+              {
+                "name": "last_name",
+                "jdbcType": 12,
+                "nativeType": null,
+                "typeName": "VARCHAR",
+                "typeExpression": "VARCHAR",
+                "charsetName": "utf8mb4",
+                "length": 255,
+                "scale": null,
+                "position": 4,
+                "optional": false,
+                "autoIncremented": false,
+                "generated": false
+              },
+              {
+                "name": "email",
+                "jdbcType": 12,
+                "nativeType": null,
+                "typeName": "VARCHAR",
+                "typeExpression": "VARCHAR",
+                "charsetName": "utf8mb4",
+                "length": 255,
+                "scale": null,
+                "position": 5,
+                "optional": false,
+                "autoIncremented": false,
+                "generated": false
+            }
+          ],
+          "attributes": [ <11>
+            {
+              "customAttribute": "attributeValue"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
+
+----
+
+.Descriptions of fields in messages emitted to the schema change topic
+[cols="1,4,5",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`source`
+|The `source` field is structured exactly as standard data change events that the connector writes to table-specific topics.
+This field is useful to correlate events on different topics.
+
+|2
+|`ts_ms`, `ts_us`, `ts_ns`
+|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task. +
+ +
+In the source object, ts_ms indicates the time that the change was made in the database. By comparing the value for payload.source.ts_ms with the value for payload.ts_ms, you can determine the lag between the source database update and Debezium.
+
+|3
+|`databaseName` +
+`schemaName`
+|Identifies the database and the schema that contains the change.
+The value of the `databaseName` field is used as the message key for the record.
+
+|4
+|`ddl`
+|This field contains the DDL that is responsible for the schema change.
+The `ddl` field can contain multiple DDL statements.
+Each statement applies to the database in the `databaseName` field.
+Multiple DDL statements appear in the order in which they were applied to the database. +
+ +
+Clients can submit multiple DDL statements that apply to multiple databases.
+If {connector-name} applies them atomically, the connector takes the DDL statements in order, groups them by database, and creates a schema change event for each group.
+If {connector-name} applies them individually, the connector creates a separate schema change event for each statement.
+
+|5
+|`tableChanges`
+|An array of one or more items that contain the schema changes generated by a DDL command.
+
+|6
+|`type`
+a|Describes the kind of change. The value is one of the following:
+
+`CREATE`:: Table created.
+`ALTER`:: Table modified.
+`DROP`:: Table deleted.
+
+|7
+|`id`
+|Full identifier of the table that was created, altered, or dropped.
+In the case of a table rename, this identifier is a concatenation of `_<old>_,_<new>_` table names.
+
+|8
+|`table`
+|Represents table metadata after the applied change.
+
+|9
+|`primaryKeyColumnNames`
+|List of columns that compose the table's primary key.
+
+|10
+|`columns`
+|Metadata for each column in the changed table.
+
+|11
+|`attributes`
+|Custom attribute metadata for each table change.
+
+|===
+
+For more information, see xref:{context}-schema-history-topic[schema history topic].
+end::schema-change[]
+
+=== Snapshots
+
+tag::snapshots[]
+When a {prodname} {connector-name} connector is first started, it performs an initial _consistent snapshot_ of your database.
+This snapshot enables the connector to establish a baseline for the current state of the database.
+
+{prodname} can use different modes when it runs a snapshot.
+The snapshot mode is determined by the xref:{context}-property-snapshot-mode[`snapshot.mode`] configuration property.
+The default value of the property is `initial`.
+You can customize the way that the connector creates snapshots by changing the value of the `snapshot.mode` property.
+
+ifdef::product[]
+You can find more information about snapshots in the following sections:
+
+* xref:debezium-{context}-ad-hoc-snapshots[]
+* xref:debezium-{context}-incremental-snapshots[]
+endif::product[]
+
+The connector completes a series of tasks when it performs the snapshot.
+The exact steps vary with the snapshot mode and with the table locking policy that is in effect for the database.
+The {prodname} {connector-name} connector completes different steps when it performs an initial snapshot that uses a xref:{context}-initial-snapshot-workflow-with-global-read-lock[global read lock] or xref:{context}-initial-snapshot-workflow-with-table-level-locks[table-level locks].
+end::snapshots[]
+
+
+
+
+==== Initial snapshots that use a global read lock
+
+tag::initial-snap-global[]
+You can customize the way that the connector creates snapshots by changing the value of the `snapshot.mode` property.
+If you configure a different snapshot mode, the connector completes the snapshot by using a modified version of this workflow.
+For information about the snapshot process in environments that do not permit global read locks, see the xref:{context}-initial-snapshot-workflow-with-table-level-locks[snapshot workflow for table-level locks].
+
+.Default workflow that the {prodname} {connector-name} connector uses to perform an initial snapshot with a global read lock
+The following table shows the steps in the workflow that {prodname} follows to create a snapshot with a global read lock.
+
+[cols="1a,9a",options="header",subs="+attributes"]
+|===
+|Step |Action
+
+|1
+a|Establish a connection to the database.
+
+|2
+|Determine the tables to be captured.
+By default, the connector captures the data for all non-system tables.
+After the snapshot completes, the connector continues to stream data for the specified tables.
+If you want the connector to capture data only from specific tables you can direct the connector to capture the data for only a subset of tables or table elements by setting properties such as xref:{context}-property-table-include-list[`table.include.list`] or xref:{context}-property-table-exclude-list[`table.exclude.list`].
+
+|3
+|Obtain a global read lock on the tables to be captured to block _writes_ by other database clients. +
+ +
+The snapshot itself does not prevent other clients from applying DDL that might interfere with the connector's attempt to read the binlog position and table schemas.
+The connector retains the global read lock while it reads the binlog position, and releases the lock as described in a later step.
+
+|4
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=snapshots-default-workflow-repeatable-read-semantics]
+ +
+[NOTE]
+====
+The use of these isolation semantics can slow the progress of the snapshot.
+If the snapshot takes too long to complete, consider using a different isolation configuration, or skip the initial snapshot and run an xref:debezium-{context}-incremental-snapshots[incremental snapshot] instead.
+====
+
+|5
+|Read the current binlog position.
+
+|6
+a|Capture the structure of all tables in the database, or all tables that are designated for capture.
+The connector persists schema information in its internal database schema history topic, including all necessary `DROP...` and `CREATE...` DDL statements. +
+The schema history provides information about the structure that is in effect when a change event occurs.
+ +
+[NOTE]
+====
+By default, the connector captures the schema of every table in the database, including tables that are not configured for capture.
+If tables are not configured for capture, the initial snapshot captures only their structure; it does not capture any table data. +
+ +
+For more information about why snapshots persist schema information for tables that you did not include in the initial snapshot, see xref:understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables[Understanding why initial snapshots capture the schema for all tables].
+====
+
+|7
+|Release the global read lock obtained in Step 3.
+Other database clients can now write to the database.
+
+|8
+a|At the binlog position that the connector read in Step 5, the connector begins to scan the tables that are designated for capture.
+During the scan, the connector completes the following tasks:
+
+. Confirms that the table was created before the snapshot began.
+If the table was created after the snapshot began, the connector skips the table.
+After the snapshot is complete, and the connector transitions to streaming, it emits change events for any tables that were created after the snapshot began.
+. Produces a `read` event for each row that is captured from a table.
+All `read` events contain the same binlog position, which is the position that was obtained in step 5.
+. Emits each `read` event to the Kafka topic for the source table.
+. Releases data table locks, if applicable.
+
+|9
+|Commit the transaction.
+
+|10
+|Record the successful completion of the snapshot in the connector offsets.
+
+|===
+
+The resulting initial snapshot captures the current state of each row in the captured tables.
+From this baseline state, the connector captures subsequent changes as they occur.
+
+After the snapshot process begins, if the process is interrupted due to connector failure, rebalancing, or other reasons, the process restarts after the connector restarts.
+
+After the connector completes the initial snapshot, it continues streaming from the position that it read in Step 5 so that it does not miss any updates.
+
+If the connector stops again for any reason, after it restarts, it resumes streaming changes from where it previously left off.
+
+After the connector restarts, if the logs have been pruned, the connector's position in the logs might no longer available.
+The connector then fails, and returns an error that indicates that a new snapshot is required.
+To configure the connector to automatically initiate a snapshot in this situation, set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `when_needed`.
+For more tips on troubleshooting the {prodname} {connector-name} connector, see xref:{context}-when-things-go-wrong[behavior when things go wrong].
+end::initial-snap-global[]
+
+
+
+
+==== Initial snapshots that use table-level locks
+
+tag::initial-snap-table-lock[]
+In some database environments, administrators do not permit global read locks.
+If the {prodname} {connector-name} connector detects that global read locks are not permitted, the connector uses table-level locks when it performs snapshots.
+For the connector to perform a snapshot that uses table-level locks, the database account that the {prodname} connector uses to connect to {connector-name} must have `LOCK TABLES` privileges.
+
+.Default workflow that the {prodname} {connector-name} connector uses to perform an initial snapshot with table-level locks
+The following table shows the steps in the workflow that {prodname} follows to create a snapshot with table-level read locks.
+For information about the snapshot process in environments that do not permit global read locks, see the xref:{context}-initial-snapshot-workflow-with-global-read-lock[snapshot workflow for global read locks].
+
+[cols="1,9",options="header",subs="+attributes"]
+|===
+|Step |Action
+
+|1
+|Establish a connection to the database.
+
+|2
+|Determine the tables to be captured.
+By default, the connector captures all non-system tables.
+To have the connector capture a subset of tables or table elements, you can set a number of `include` and `exclude` properties to filter the data, for example, xref:{context}-property-table-include-list[`table.include.list`] or xref:{context}-property-table-exclude-list[`table.exclude.list`].
+
+|3
+|Obtain table-level locks.
+
+|4
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=snapshots-default-workflow-repeatable-read-semantics]
+
+|5
+a|Read the current binlog position.
+
+|6
+a|Read the schema of the databases and tables for which the connector is configured to capture changes.
+The connector persists schema information in its internal database schema history topic, including all necessary `DROP...` and `CREATE...` DDL statements. +
+The schema history provides information about the structure that is in effect when a change event occurs.
+ +
+[NOTE]
+====
+By default, the connector captures the schema of every table in the database, including tables that are not configured for capture.
+If tables are not configured for capture, the initial snapshot captures only their structure; it does not capture any table data.
+
+For more information about why snapshots persist schema information for tables that you did not include in the initial snapshot, see xref:understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables[Understanding why initial snapshots capture the schema for all tables].
+====
+
+|7
+a|At the binlog position that the connector read in Step 5, the connector begins to scan the tables that are designated for capture.
+During the scan, the connector completes the following tasks:
+
+. Confirms that the table was created before the snapshot began.
+If the table was created after the snapshot began, the connector skips the table.
+After the snapshot is complete, and the connector transitions to streaming, it emits change events for any tables that were created after the snapshot began.
+. Produces a `read` event for each row that is captured from a table.
+All `read` events contain the same binlog position, which is the position that was obtained in step 5.
+. Emits each `read` event to the Kafka topic for the source table.
+. Releases data table locks, if applicable.
+
+|8
+a|Commit the transaction.
+
+|9
+|Release the table-level locks.
+Other database clients can now write to any previously locked tables.
+
+|10
+a|Record the successful completion of the snapshot in the connector offsets.
+
+|===
+
+[id="{context}-connector-snapshot-mode-options"]
+.Settings for `snapshot.mode` connector configuration property
+[cols="30%a,70%a",options="header"]
+|===
+|Setting |Description
+
+|`always`
+|The connector performs a snapshot every time that it starts.
+The snapshot includes the structure and data of the captured tables.
+Specify this value to populate topics with a complete representation of the data from the captured tables every time that the connector starts.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
+|`initial`
+|The connector performs a database snapshot as described in the xref:{context}-initial-snapshot-workflow-with-global-read-lock[default workflow for creating an initial snapshot].
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
+|`initial_only`
+|The connector performs a database snapshot.
+After the snapshot completes, the connector stops, and does not stream event records for subsequent database changes.
+
+|`schema_only`
+|Deprecated, see `no_data`.
+
+|`no_data`
+|The connector captures the structure of all relevant tables, performing all the steps described in the xref:{context}-initial-snapshot-workflow-with-global-read-lock[default workflow for creating an initial snapshot], except that it does not create `READ` events to represent the data set at the point of the connector's start-up (Step 7.2).
+
+|`never`
+|When the connector starts, rather than performing a snapshot, it immediately begins to stream event records for subsequent database changes.
+This option is under consideration for future deprecation, in favor of the `no_data` option.
+
+|`schema_only_recovery`
+|Deprecated, see `recovery`.
+
+|`recovery`
+|Set this option to restore a database schema history topic that is lost or corrupted.
+After a restart, the connector runs a snapshot that rebuilds the topic from the source tables.
+You can also set the property to periodically prune a database schema history topic that experiences unexpected growth. +
+ +
+WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
+
+|`when_needed`
+|After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a log position that is not available on the server.
+
+ifdef::community[]
+|`configuration_based`
+|Set the snapshot mode to `configuration_based` to control snapshot behavior through the set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
+endif::community[]
+
+ifdef::community[]
+|`custom`
+|The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
+The name is specified on the classpath of your Kafka Connect cluster.
+If you use the `DebeziumEngine`, the name is included in the connector JAR file.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+|===
+For more information, see xref:{context}-property-snapshot-mode[`snapshot.mode`] in the table of connector configuration properties.
+end::initial-snap-table-lock[]
+
+
+
+
+==== Understanding why initial snapshots capture the schema history for all tables
+
+tag::why-snapshot-captures-history-all[]
+The initial snapshot that a connector runs captures two types of information:
+
+Table data::
+Information about `INSERT`, `UPDATE`, and `DELETE` operations in tables that are named in the connector's xref:{context}-property-table-include-list[`table.include.list`] property.
+Schema data::
+DDL statements that describe the structural changes that are applied to tables.
+Schema data is persisted to both the internal schema history topic, and to the connector's schema change topic, if one is configured.
+
+After you run an initial snapshot, you might notice that the snapshot captures schema information for tables that are not designated for capture.
+By default, initial snapshots are designed to capture schema information for every table that is present in the database, not only from tables that are designated for capture.
+Connectors require that the table's schema is present in the schema history topic before they can capture a table.
+By enabling the initial snapshot to capture schema data for tables that are not part of the original capture set, {prodname} prepares the connector to readily capture event data from these tables should that later become necessary.
+If the initial snapshot does not capture a table's schema, you must add the schema to the history topic before the connector can capture data from the table.
+
+In some cases, you might want to limit schema capture in the initial snapshot.
+This can be useful when you want to reduce the time required to complete a snapshot.
+Or when {prodname} connects to the database instance through a user account that has access to multiple logical databases, but you want the connector to capture changes only from tables in a specific logic database.
+
+.Additional information
+* xref:{context}-capturing-data-from-tables-not-captured-by-the-initial-snapshot-no-schema-change[Capturing data from tables not captured by the initial snapshot (no schema change)]
+* xref:{context}-capturing-data-from-new-tables-with-schema-changes[Capturing data from tables not captured by the initial snapshot (schema change)]
+* Setting the xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] property to specify the tables from which to capture schema information.
+* Setting the xref:{context}-property-database-history-store-only-captured-databases-ddl[`schema.history.internal.store.only.captured.databases.ddl`] property to specify the logical databases from which to capture schema changes.
+end::why-snapshot-captures-history-all[]
+
+
+
+
+==== Capturing data from tables not captured by the initial snapshot (no schema change)
+
+tag::cap-tbls-not-in-initial-no-schema-chg[]
+In some cases, you might want the connector to capture data from a table whose schema was not captured by the initial snapshot.
+Depending on the connector configuration, the initial snapshot might capture the table schema only for specific tables in the database.
+If the table schema is not present in the history topic, the connector fails to capture the table, and reports a missing schema error.
+
+You might still be able to capture data from the table, but you must perform additional steps to add the table schema.
+
+.Prerequisites
+
+* You want to capture data from a table with a schema that the connector did not capture during the initial snapshot.
+* In the transaction log, all entries for the table use the same schema.
+For information about capturing data from a new table that has undergone structural changes, see xref:{context}-capturing-data-from-new-tables-with-schema-changes[Capturing data from tables not captured by the initial snapshot (schema change)].
+
+.Procedure
+
+1. Stop the connector.
+2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
+3. Apply the following changes to the connector configuration:
+.. Set the xref:{context}-property-snapshot-mode[`snapshot.mode`] to `recovery`.
+.. Set the value of xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] to `false`.
+.. Add the tables that you want the connector to capture to `table.include.list`.
+This guarantees that in the future, the connector can reconstruct the schema history for all tables.
+4. Restart the connector.
+The snapshot recovery process rebuilds the schema history based on the current structure of the tables.
+5. (Optional) After the snapshot completes, initiate an xref:debezium-{context}-incremental-snapshots[incremental snapshot] to capture existing data for newly added tables along with changes to other tables that occurred while that connector was off-line.
+6. (Optional) Reset the `snapshot.mode` back to `no_data` to prevent the connector from initiating recovery after a future restart.
+end::cap-tbls-not-in-initial-no-schema-chg[]
+
+
+
+
+==== Capturing data from tables not captured by the initial snapshot (schema change)
+
+tag::cap-tbls-not-in-initial-schema-chg[]
+If a schema change is applied to a table, records that are committed before the schema change have different structures than those that were committed after the change.
+When {prodname} captures data from a table, it reads the schema history to ensure that it applies the correct schema to each event.
+If the schema is not present in the schema history topic, the connector is unable to capture the table, and an error results.
+
+If you want to capture data from a table that was not captured by the initial snapshot, and the schema of the table was modified, you must add the schema to the history topic, if it is not already available.
+You can add the schema by running a new schema snapshot, or by running an initial snapshot for the table.
+
+.Prerequisites
+* You want to capture data from a table with a schema that the connector did not capture during the initial snapshot.
+* A schema change was applied to the table so that the records to be captured do not have a uniform structure.
+
+.Procedure
+
+Initial snapshot captured the schema for all tables (`store.only.captured.tables.ddl` was set to `false`)::
+1. Edit the xref:{context}-property-table-include-list[`table.include.list`] property to specify the tables that you want to capture.
+2. Restart the connector.
+3. Initiate an xref:debezium-{context}-incremental-snapshots[incremental snapshot] if you want to capture existing data from the newly added tables.
+
+Initial snapshot did not capture the schema for all tables (`store.only.captured.tables.ddl` was set to `true`)::
+If the initial snapshot did not save the schema of the table that you want to capture, complete one of the following procedures:
+
+Procedure 1: Schema snapshot, followed by incremental snapshot:::
+In this procedure, the connector first performs a schema snapshot.
+You can then initiate an incremental snapshot to enable the connector to synchronize data.
+1. Stop the connector.
+2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
+3. Clear the offsets in the configured Kafka Connect link:{link-kafka-docs}/#connectconfigs_offset.storage.topic[`offset.storage.topic`].
+For more information about how to remove offsets, see the link:https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector[{prodname} community FAQ].
++
+[WARNING]
+====
+Removing offsets should be performed only by advanced users who have experience in manipulating internal Kafka Connect data.
+This operation is potentially destructive, and should be performed only as a last resort.
+====
+4. Set values for properties in the connector configuration as described in the following steps:
+.. Set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `no_data`.
+.. Edit the xref:{context}-property-table-include-list[`table.include.list`] to add the tables that you want to capture.
+5. Restart the connector.
+6. Wait for {prodname} to capture the schema of the new and existing tables.
+Data changes that occurred any tables after the connector stopped are not captured.
+7. To ensure that no data is lost, initiate an xref:debezium-{context}-incremental-snapshots[incremental snapshot].
+
+Procedure 2: Initial snapshot, followed by optional incremental snapshot:::
+In this procedure the connector performs a full initial snapshot of the database.
+As with any initial snapshot, in a database with many large tables, running an initial snapshot can be a time-consuming operation.
+After the snapshot completes, you can optionally trigger an incremental snapshot to capture any changes that occur while the connector is off-line.
+
+1. Stop the connector.
+2. Remove the internal database schema history topic that is specified by the xref:{context}-property-database-history-kafka-topic[`schema.history.internal.kafka.topic property`].
+3. Clear the offsets in the configured Kafka Connect link:{link-kafka-docs}/#connectconfigs_offset.storage.topic[`offset.storage.topic`].
+For more information about how to remove offsets, see the link:https://debezium.io/documentation/faq/#how_to_remove_committed_offsets_for_a_connector[{prodname} community FAQ].
++
+[WARNING]
+====
+Removing offsets should be performed only by advanced users who have experience in manipulating internal Kafka Connect data.
+This operation is potentially destructive, and should be performed only as a last resort.
+====
+4. Edit the xref:{context}-property-table-include-list[`table.include.list`] to add the tables that you want to capture.
+5. Set values for properties in the connector configuration as described in the following steps:
+.. Set the value of the xref:{context}-property-snapshot-mode[`snapshot.mode`] property to `initial`.
+.. (Optional) Set xref:{context}-property-database-history-store-only-captured-tables-ddl[`schema.history.internal.store.only.captured.tables.ddl`] to `false`.
+6. Restart the connector.
+The connector takes a full database snapshot.
+After the snapshot completes, the connector transitions to streaming.
+7. (Optional) To capture any data that changed while the connector was off-line, initiate an xref:debezium-{context}-incremental-snapshots[incremental snapshot].
+end::cap-tbls-not-in-initial-schema-chg[]
+
+
+
+
+
+
+==== Read-only incremental snapshots
+
+tag::readonly-incremental[]
+The {prodname} {connector-name} connector allows for running incremental snapshots with a read-only connection to the database.
+To run an incremental snapshot with read-only access, the connector uses the executed global transaction IDs (GTID) set as high and low watermarks.
+The state of a chunk's window is updated by comparing the GTIDs of binary log (binlog) events or the server's heartbeats against low and high watermarks.
+
+To switch to a read-only implementation, set the value of the xref:{context}-property-read-only[`read.only`] property to `true`.
+
+.Prerequisites
+
+* xref:enable-{context}-gtids[Enable {connector-name} GTIDs].
+* If the connector reads from a multi-threaded replica (that is, a replica for which the value of `replica_parallel_workers` is greater than `0`)
+you must set one of the following options:
+
+** `replica_preserve_commit_order=ON`
+** `slave_preserve_commit_order=ON`
+end::readonly-incremental[]
+
+
+
+
+
+==== Ad hoc read-only incremental snapshots
+
+tag::adhoc-ro-incremental[]
+When the {connector-name} connection is read-only, you can use any of the {link-prefix}:{link-signalling}#sending-signals-to-a-debezium-connector[available signaling channels] without the requirement to use the `source` channel.
+end::adhoc-ro-incremental[]
+
+
+
+
+
+
+=== Topic names
+
+tag::topic-names[]
+By default, the {connector-name} connector writes change events for all of the `INSERT`, `UPDATE`, and `DELETE` operations that occur in a table to a single Apache Kafka topic that is specific to that table.
+
+The connector uses the following convention to name change event topics:
+
+_topicPrefix.databaseName.tableName_
+
+Suppose that `fulfillment` is the topic prefix, `inventory` is the database name, and the database contains tables named `orders`, `customers`, and `products`.
+The {prodname} {connector-name} connector emits events to three Kafka topics, one for each table in the database:
+
+----
+fulfillment.inventory.orders
+fulfillment.inventory.customers
+fulfillment.inventory.products
+----
+
+The following list provides definitions for the components of the default name:
+
+_topicPrefix_:: The topic prefix as specified by the xref:{context}-property-topic-prefix[`topic.prefix`] connector configuration property.
+
+_schemaName_:: The name of the schema in which the operation occurred.
+
+_tableName_:: The name of the table in which the operation occurred.
+
+The connector applies similar naming conventions to label its internal database schema history topics, xref:{context}-schema-change-topic[schema change topics], and xref:{context}-transaction-metadata[transaction metadata topics].
+
+If the default topic name do not meet your requirements, you can configure custom topic names.
+To configure custom topic names, you specify regular expressions in the logical topic routing SMT.
+For more information about using the logical topic routing SMT to customize topic naming, see {link-prefix}:{link-topic-routing}#topic-routing[Topic routing].
+end::topic-names[]
+
+
+
+
+
+=== Transaction metadata
+
+tag::trans-meta[]
+{prodname} can generate events that represent transaction boundaries and that enrich data change event messages.
+
+[NOTE]
+.Limits on when {prodname} receives transaction metadata
+====
+{prodname} registers and receives metadata only for transactions that occur after you deploy the connector.
+Metadata for transactions that occur before you deploy the connector is not available.
+====
+
+{prodname} generates transaction boundary events for the `BEGIN` and `END` delimiters in every transaction.
+Transaction boundary events contain the following fields:
+
+`status`:: `BEGIN` or `END`.
+`id`:: String representation of the unique transaction identifier.
+`ts_ms`:: The time of a transaction boundary event (`BEGIN` or `END` event) at the data source.
+If the data source does not provide {prodname} with the event time, then the field instead represents the time at which {prodname} processes the event.
+`event_count` (for `END` events):: Total number of events emitted by the transaction.
+`data_collections` (for `END` events):: An array of pairs of `data_collection` and `event_count` elements that indicates the number of events that the connector emits for changes that originate from a data collection.
+
+.Example
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "status": "BEGIN",
+  "id": "0e4d5dcd-a33b-11ea-80f1-02010a22a99e:10",
+  "ts_ms": 1486500577125,
+  "event_count": null,
+  "data_collections": null
+}
+
+{
+  "status": "END",
+  "id": "0e4d5dcd-a33b-11ea-80f1-02010a22a99e:10",
+  "ts_ms": 1486500577691,
+  "event_count": 2,
+  "data_collections": [
+    {
+      "data_collection": "s1.a",
+      "event_count": 1
+    },
+    {
+      "data_collection": "s2.a",
+      "event_count": 1
+    }
+  ]
+}
+----
+
+Unless overridden via the xref:{context}-property-topic-transaction[`topic.transaction`] option,
+the connector emits transaction events to the xref:{context}-property-topic-prefix[`_<topic.prefix>_`]`.transaction` topic.
+
+.Change data event enrichment
+
+When transaction metadata is enabled the data message `Envelope` is enriched with a new `transaction` field.
+This field provides information about every event in the form of a composite of fields:
+
+`id`:: String representation of unique transaction identifier.
+`total_order`:: The absolute position of the event among all events generated by the transaction.
+`data_collection_order`:: The per-data collection position of the event among all events that were emitted by the transaction.
+
+Following is an example of a message:
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "before": null,
+  "after": {
+    "pk": "2",
+    "aa": "1"
+  },
+  "source": {
+...
+  },
+  "op": "c",
+  "ts_ms": "1580390884335",
+  "ts_us": "1580390884335472",
+  "ts_ns": "1580390884335472987",
+  "transaction": {
+    "id": "0e4d5dcd-a33b-11ea-80f1-02010a22a99e:10",
+    "total_order": "1",
+    "data_collection_order": "1"
+  }
+}
+----
+end::trans-meta[]
+
+
+
+
+
+== Data change events
+
+tag::data-chg-events[]
+The {prodname} {connector-name} connector generates a data change event for each row-level `INSERT`, `UPDATE`, and `DELETE` operation. Each event contains a key and a value. The structure of the key and the value depends on the table that was changed.
+
+{prodname} and Kafka Connect are designed around _continuous streams of event messages_. However, the structure of these events may change over time, which can be difficult for consumers to handle. To address this, each event contains the schema for its content or, if you are using a schema registry, a schema ID that a consumer can use to obtain the schema from the registry. This makes each event self-contained.
+
+The following skeleton JSON shows the basic four parts of a change event. However, how you configure the Kafka Connect converter that you choose to use in your application determines the representation of these four parts in change events. A `schema` field is in a change event only when you configure the converter to produce it. Likewise, the event key and event payload are in a change event only if you configure a converter to produce it. If you use the JSON converter and you configure it to produce all four basic change event parts, change events have this structure:
+
+[source,json,index=0]
+----
+{
+ "schema": { //<1>
+   ...
+  },
+ "payload": { //<2>
+   ...
+ },
+ "schema": { //<3>
+   ...
+ },
+ "payload": { //<4>
+   ...
+ },
+}
+----
+
+.Overview of change event basic content
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`schema`
+|The first `schema` field is part of the event key. It specifies a Kafka Connect schema that describes what is in the event key's `payload` portion. In other words, the first `schema` field describes the structure of the primary key, or the unique key if the table does not have a primary key, for the table that was changed. +
+ +
+It is possible to override the table's primary key by setting the xref:{context}-property-message-key-columns[`message.key.columns` connector configuration property]. In this case, the first schema field describes the structure of the key identified by that property.
+
+|2
+|`payload`
+|The first `payload` field is part of the event key. It has the structure described by the previous `schema` field, and it contains the key for the row that was changed.
+
+|3
+|`schema`
+|The second `schema` field is part of the event value. It specifies the Kafka Connect schema that describes what is in the event value's `payload` portion. In other words, the second `schema` describes the structure of the row that was changed. Typically, this schema contains nested schemas.
+
+|4
+|`payload`
+|The second `payload` field is part of the event value. It has the structure described by the previous `schema` field and it contains the actual data for the row that was changed.
+
+|===
+
+By default, the connector streams change event records to topics with names that are the same as the event's originating table. See xref:{context}-topic-names[topic names].
+
+[WARNING]
+====
+The {connector-name} connector ensures that all Kafka Connect schema names adhere to the link:http://avro.apache.org/docs/current/spec.html#names[Avro schema name format]. This means that the logical server name must start with a Latin letter or an underscore, that is, a-z, A-Z, or pass:[_]. Each remaining character in the logical server name and each character in the database and table names must be a Latin letter, a digit, or an underscore, that is, a-z, A-Z, 0-9, or pass:[_]. If there is an invalid character it is replaced with an underscore character.
+
+This can lead to unexpected conflicts if the logical server name, a database name, or a table name contains invalid characters, and the only characters that distinguish names from one another are invalid and thus replaced with underscores.
+====
+
+ifdef::product[]
+More details are in the following topics:
+
+* xref:about-keys-in-debezium-{context}-change-events[]
+* xref:about-values-in-debezium-{context}-change-events[]
+endif::product[]
+end::data-chg-events[]
+
+
+
+
+
+=== Change event keys
+
+tag::event-keys[]
+A change event's key contains the schema for the changed table's key and the changed row's actual key. Both the schema and its corresponding payload contain a field for each column in the changed table's `PRIMARY KEY` (or unique constraint) at the time the connector created the event.
+
+Consider the following `customers` table, which is followed by an example of a change event key for this table.
+
+[source,sql]
+----
+CREATE TABLE customers (
+  id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  first_name VARCHAR(255) NOT NULL,
+  last_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE KEY
+) AUTO_INCREMENT=1001;
+----
+
+Every change event that captures a change to the `customers` table has the same event key schema. For as long as the `customers` table has the previous definition, every change event that captures a change to the `customers` table has the following key structure. In JSON, it looks like this:
+
+[source,json,index=0,subs="+attributes"]
+----
+{
+ "schema": { <1>
+    "type": "struct",
+    "name": "{context}-server-1.inventory.customers.Key", <2>
+    "optional": false, <3>
+    "fields": [ <4>
+      {
+        "field": "id",
+        "type": "int32",
+        "optional": false
+      }
+    ]
+  },
+ "payload": { <5>
+    "id": 1001
+  }
+}
+----
+
+.Description of change event key
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`schema`
+|The schema portion of the key specifies a Kafka Connect schema that describes what is in the key's `payload` portion.
+
+|2
+|`{context}-server-1.inventory.customers.Key`
+a|Name of the schema that defines the structure of the key's payload. This schema describes the structure of the primary key for the table that was changed. Key schema names have the format _connector-name_._database-name_._table-name_.`Key`. In this example: +
+
+* `{context}-server-1` is the name of the connector that generated this event. +
+* `inventory` is the database that contains the table that was changed. +
+* `customers` is the table that was updated.
+
+|3
+|`optional`
+|Indicates whether the event key must contain a value in its `payload` field. In this example, a value in the key's payload is required. A value in the key's payload field is optional when a table does not have a primary key.
+
+|4
+|`fields`
+|Specifies each field that is expected in the `payload`, including each field's name, type, and whether it is required.
+
+|5
+|`payload`
+|Contains the key for the row for which this change event was generated. In this example, the key, contains a single `id` field whose value is `1001`.
+
+|===
+end::event-keys[]
+
+
+
+
+
+=== Change event values
+
+tag::event-values[]
+The value in a change event is a bit more complicated than the key. Like the key, the value has a `schema` section and a `payload` section. The `schema` section contains the schema that describes the `Envelope` structure of the `payload` section, including its nested fields. Change events for operations that create, update or delete data all have a value payload with an envelope structure.
+
+Consider the same sample table that was used to show an example of a change event key:
+
+[source,sql]
+----
+CREATE TABLE customers (
+  id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  first_name VARCHAR(255) NOT NULL,
+  last_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE KEY
+) AUTO_INCREMENT=1001;
+----
+
+The value portion of a change event for a change to this table is described for:
+
+* <<{context}-create-events,_create_ events>>
+* <<{context}-update-events,_update_ events>>
+* <<{context}-primary-key-updates,Primary key updates>>
+* <<{context}-delete-events,_delete_ events>>
+* <<{context}-tombstone-events,Tombstone events>>
+* <<{context}-truncate-events,_truncate_ events>>
+end::event-values[]
+
+
+
+
+
+=== _create_ events
+
+tag::create-events[]
+
+The following example shows the value portion of a change event that the connector generates for an operation that creates data in the `customers` table:
+
+[source,json,options="nowrap",subs="+attributes"]
+----
+{
+  "schema": { // <1>
+    "type": "struct",
+    "fields": [
+      {
+        "type": "struct",
+        "fields": [
+          {
+            "type": "int32",
+            "optional": false,
+            "field": "id"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "first_name"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "last_name"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "email"
+          }
+        ],
+        "optional": true,
+        "name": "{context}-server-1.inventory.customers.Value", // <2>
+        "field": "before"
+      },
+      {
+        "type": "struct",
+        "fields": [
+          {
+            "type": "int32",
+            "optional": false,
+            "field": "id"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "first_name"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "last_name"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "email"
+          }
+        ],
+        "optional": true,
+        "name": "{context}-server-1.inventory.customers.Value",
+        "field": "after"
+      },
+      {
+        "type": "struct",
+        "fields": [
+          {
+            "type": "string",
+            "optional": false,
+            "field": "version"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "connector"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "name"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_ms"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_us"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "ts_ns"
+          },
+          {
+            "type": "boolean",
+            "optional": true,
+            "default": false,
+            "field": "snapshot"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "db"
+          },
+          {
+            "type": "string",
+            "optional": true,
+            "field": "table"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "server_id"
+          },
+          {
+            "type": "string",
+            "optional": true,
+            "field": "gtid"
+          },
+          {
+            "type": "string",
+            "optional": false,
+            "field": "file"
+          },
+          {
+            "type": "int64",
+            "optional": false,
+            "field": "pos"
+          },
+          {
+            "type": "int32",
+            "optional": false,
+            "field": "row"
+          },
+          {
+            "type": "int64",
+            "optional": true,
+            "field": "thread"
+          },
+          {
+            "type": "string",
+            "optional": true,
+            "field": "query"
+          }
+        ],
+        "optional": false,
+        "name": "io.debezium.connector.{context}.Source", // <3>
+        "field": "source"
+      },
+      {
+        "type": "string",
+        "optional": false,
+        "field": "op"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_ms"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_us"
+      },
+      {
+        "type": "int64",
+        "optional": true,
+        "field": "ts_ns"
+      }
+    ],
+    "optional": false,
+    "name": "{context}-server-1.inventory.customers.Envelope" // <4>
+  },
+  "payload": { // <5>
+    "op": "c", // <6>
+    "ts_ms": 1465491411815, // <7>
+    "ts_us": 1465491411815437, // <7>
+    "ts_ns": 1465491411815437158, // <7>
+    "before": null, // <8>
+    "after": { // <9>
+      "id": 1004,
+      "first_name": "Anne",
+      "last_name": "Kretchmar",
+      "email": "annek@noanswer.org"
+    },
+    "source": { // <10>
+      "version": "{debezium-version}",
+      "connector": "{context}",
+      "name": "{context}-server-1",
+      "ts_ms": 0,
+      "ts_us": 0,
+      "ts_ns": 0,
+      "snapshot": false,
+      "db": "inventory",
+      "table": "customers",
+      "server_id": 0,
+      "gtid": null,
+      "file": "{context}-bin.000003",
+      "pos": 154,
+      "row": 0,
+      "thread": 7,
+      "query": "INSERT INTO customers (first_name, last_name, email) VALUES ('Anne', 'Kretchmar', 'annek@noanswer.org')"
+    }
+  }
+}
+----
+
+.Descriptions of _create_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`schema`
+|The value's schema, which describes the structure of the value's payload.
+A change event's value schema is the same in every change event that the connector generates for a particular table.
+
+|2
+|`name`
+a|In the `schema` section, each `name` field specifies the schema for a field in the value's payload. +
+ +
+`{context}-server-1.inventory.customers.Value` is the schema for the payload's `before` and `after` fields.
+This schema is specific to the `customers` table. +
+ +
+Names of schemas for `before` and `after` fields are of the form `_logicalName_._tableName_.Value`, which ensures that the schema name is unique in the database.
+This means that when using the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro converter], the resulting Avro schema for each table in each logical source has its own evolution and history.
+
+|3
+|`name`
+|`io.debezium.connector.{context}.Source` is the schema for the payload's `source` field.
+This schema is specific to the {connector-name} connector.
+The connector uses it for all events that it generates.
+
+|4
+|`name`
+|`{context}-server-1.inventory.customers.Envelope` is the schema for the overall structure of the payload, where `{context}-server-1` is the connector name, `inventory` is the database, and `customers` is the table.
+
+|5
+|`payload`
+|The value's actual data.
+This is the information that the change event is providing. +
+ +
+It may appear that the JSON representations of the events are much larger than the rows they describe.
+This is because the JSON representation must include the schema and the payload portions of the message.
+However, by using the {link-prefix}:{link-avro-serialization}#avro-serialization[Avro converter], you can significantly decrease the size of the messages that the connector streams to Kafka topics.
+
+|6
+|`op`
+a| Mandatory string that describes the type of operation that caused the connector to generate the event.
+In this example, `c` indicates that the operation created a row. Valid values are:
+
+* `c` = create
+* `u` = update
+* `d` = delete
+* `r` = read (applies to only snapshots)
+
+|7
+|`ts_ms`, `ts_us`, `ts_ns`
+a| Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.  +
+ +
+In the `source` object, `ts_ms` indicates the time that the change was made in the database.
+By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+
+|8
+|`before`
+| An optional field that specifies the state of the row before the event occurred.
+When the `op` field is `c` for create, as it is in this example, the `before` field is `null` since this change event is for new content.
+
+|9
+|`after`
+| An optional field that specifies the state of the row after the event occurred.
+In this example, the `after` field contains the values of the new row's `id`, `first_name`, `last_name`, and `email` columns.
+
+|10
+|`source`
+a| Mandatory field that describes the source metadata for the event.
+This field contains information that you can use to compare this event with other events, with regard to the origin of the events, the order in which the events occurred, and whether events were part of the same transaction. The source metadata includes:
+
+* {prodname} version
+* Connector name
+* binlog name where the event was recorded
+* binlog position
+* Row within the event
+* If the event was part of a snapshot
+* Name of the database and table that contain the new row
+* ID of the {connector-name} thread that created the event (non-snapshot only)
+* {connector-name} server ID (if available)
+* Timestamp for when the change was made in the database
+
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=create-event-values-table-source-entry]
+|===
+end::create-events[]
+
+
+
+
+
+=== _update_ events
+
+tag::update-events[]
+The value of a change event for an update in the sample `customers` table has the same schema as a _create_ event for that table. Likewise, the event value's payload has the same structure. However, the event value payload contains different values in an _update_ event. Here is an example of a change event value in an event that the connector generates for an update in the `customers` table:
+
+[source,json,options="nowrap",subs="+attributes"]
+----
+{
+  "schema": { ... },
+  "payload": {
+    "before": { // <1>
+      "id": 1004,
+      "first_name": "Anne",
+      "last_name": "Kretchmar",
+      "email": "annek@noanswer.org"
+    },
+    "after": { // <2>
+      "id": 1004,
+      "first_name": "Anne Marie",
+      "last_name": "Kretchmar",
+      "email": "annek@noanswer.org"
+    },
+    "source": { // <3>
+      "version": "{debezium-version}",
+      "name": "{context}-server-1",
+      "connector": "{context}",
+      "ts_ms": 1465581029100,
+      "ts_us": 1465581029100000,
+      "ts_ns": 1465581029100000000,
+      "snapshot": false,
+      "db": "inventory",
+      "table": "customers",
+      "server_id": 223344,
+      "gtid": null,
+      "file": "{context}-bin.000003",
+      "pos": 484,
+      "row": 0,
+      "thread": 7,
+      "query": "UPDATE customers SET first_name='Anne Marie' WHERE id=1004"
+    },
+    "op": "u", // <4>
+    "ts_ms": 1465581029523, // <5>
+    "ts_us": 1465581029523758, // <6>
+    "ts_ns": 1465581029523758914 // <7>
+  }
+}
+----
+
+.Descriptions of _update_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`before`
+|An optional field that specifies the state of the row before the event occurred. In an _update_ event value, the `before` field contains a field for each table column and the value that was in that column before the database commit. In this example, the `first_name` value is `Anne.`
+
+|2
+|`after`
+| An optional field that specifies the state of the row after the event occurred. You can compare the `before` and `after` structures to determine what the update to this row was. In the example, the `first_name` value is now `Anne Marie`.
+
+|3
+|`source`
+a|Mandatory field that describes the source metadata for the event. The `source` field structure has the same fields as in a _create_ event, but some values are different, for example, the sample _update_ event is from a different position in the binlog. The source metadata includes:
+
+* {prodname} version
+* Connector name
+* binlog name where the event was recorded
+* binlog position
+* Row within the event
+* If the event was part of a snapshot
+* Name of the database and table that contain the updated row
+* ID of the {connector-name} thread that created the event (non-snapshot only)
+* {connector-name} server ID (if available)
+* Timestamp for when the change was made in the database
+
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=create-event-values-table-source-entry]
+
+|4
+|`op`
+a|Mandatory string that describes the type of operation. In an _update_ event value, the `op` field value is `u`, signifying that this row changed because of an update.
+
+|5
+|`ts_ms`
+a| Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.  +
+ +
+In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+
+|6
+|`ts_us`
+a|Optional field that displays the time at which the connector processed the event, in microseconds.
+The time is based on the system clock in the JVM running the Kafka Connect task.
+
+|7
+|`ts_ns`
+a|Optional field that displays the time at which the connector processed the event, in nanoseconds.
+The time is based on the system clock in the JVM running the Kafka Connect task.
+
+|===
+
+[NOTE]
+====
+Updating the columns for a row's primary/unique key changes the value of the row's key. When a key changes, {prodname} outputs _three_ events: a `DELETE` event and a xref:{context}-tombstone-events[tombstone event] with the old key for the row, followed by an event with the new key for the row. Details are in the next section.
+====
+
+end::update-events[]
+
+
+
+
+=== Primary key updates
+
+tag::pkey-updates[]
+An `UPDATE` operation that changes a row's primary key field(s) is known
+as a primary key change. For a primary key change, in place of an `UPDATE` event record, the connector emits a `DELETE` event record for the old key and a `CREATE` event record for the new (updated) key. These events have the usual structure and content, and in addition, each one has a message header related to the primary key change:
+
+* The `DELETE` event record has `__debezium.newkey` as a message header. The value of this header is the new primary key for the updated row.
+
+* The `CREATE` event record has `__debezium.oldkey` as a message header. The value of this header is the previous (old) primary key that the updated row had.
+
+end::pkey-updates[]
+
+
+
+
+
+=== _delete_ events
+
+tag::del-events[]
+The value in a _delete_ change event has the same `schema` portion as _create_ and _update_ events for the same table. The `payload` portion in a _delete_ event for the sample `customers` table looks like this:
+
+[source,json,options="nowrap",subs="+attributes"]
+----
+{
+  "schema": { ... },
+  "payload": {
+    "before": { // <1>
+      "id": 1004,
+      "first_name": "Anne Marie",
+      "last_name": "Kretchmar",
+      "email": "annek@noanswer.org"
+    },
+    "after": null, // <2>
+    "source": { // <3>
+      "version": "{debezium-version}",
+      "connector": "{context}",
+      "name": "{context}-server-1",
+      "ts_ms": 1465581902300,
+      "ts_us": 1465581902300000,
+      "ts_ns": 1465581902300000000,
+      "snapshot": false,
+      "db": "inventory",
+      "table": "customers",
+      "server_id": 223344,
+      "gtid": null,
+      "file": "{context}-bin.000003",
+      "pos": 805,
+      "row": 0,
+      "thread": 7,
+      "query": "DELETE FROM customers WHERE id=1004"
+    },
+    "op": "d", // <4>
+    "ts_ms": 1465581902461, // <5>
+    "ts_us": 1465581902461842, // <6>
+    "ts_ns": 1465581902461842579 // <7>
+  }
+}
+----
+
+.Descriptions of _delete_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`before`
+|Optional field that specifies the state of the row before the event occurred. In a _delete_ event value, the `before` field contains the values that were in the row before it was deleted with the database commit.
+
+|2
+|`after`
+| Optional field that specifies the state of the row after the event occurred. In a _delete_ event value, the `after` field is `null`, signifying that the row no longer exists.
+
+|3
+|`source`
+a|Mandatory field that describes the source metadata for the event. In a _delete_ event value, the `source` field structure is the same as for _create_ and _update_ events for the same table. Many `source` field values are also the same. In a _delete_ event value, the `ts_ms` and `pos` field values, as well as other values, might have changed. But the `source` field in a _delete_ event value provides the same metadata:
+
+* {prodname} version
+* Connector name
+* binlog name where the event was recorded
+* binlog position
+* Row within the event
+* If the event was part of a snapshot
+* Name of the database and table that contain the updated row
+* ID of the {connector-name} thread that created the event (non-snapshot only)
+* {connector-name} server ID (if available)
+* Timestamp for when the change was made in the database
+
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=create-event-values-table-source-entry]
+
+|4
+|`op`
+a|Mandatory string that describes the type of operation. The `op` field value is `d`, signifying that this row was deleted.
+
+|5
+|`ts_ms`
+a|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.  +
+ +
+In the `source` object, `ts_ms` indicates the time that the change was made in the database. By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+
+|6
+|`ts_us`
+a|Optional field that displays the time at which the connector processed the event, in microseconds.
+The time is based on the system clock in the JVM running the Kafka Connect task.
+
+|7
+|`ts_ns`
+a|Optional field that displays the time at which the connector processed the event, in nanoseconds.
+The time is based on the system clock in the JVM running the Kafka Connect task.
+
+|===
+
+A _delete_ change event record provides a consumer with the information it needs to process the removal of this row. The old values are included because some consumers might require them in order to properly handle the removal.
+
+{connector-name} connector events are designed to work with link:{link-kafka-docs}/#compaction[Kafka log compaction]. Log compaction enables removal of some older messages as long as at least the most recent message for every key is kept. This lets Kafka reclaim storage space while ensuring that the topic contains a complete data set and can be used for reloading key-based state.
+end::del-events[]
+
+
+
+
+
+=== Tombstone events
+
+tag::tombstone-events[]
+When a row is deleted, the _delete_ event value still works with log compaction, because Kafka can remove all earlier messages that have that same key.
+However, for Kafka to remove all messages that have that same key, the message value must be `null`.
+To make this possible, after the {prodname} {connector-name} connector emits a _delete_ event, the connector emits a special tombstone event that has the same key but a `null` value.
+end::tombstone-events[]
+
+
+
+
+
+=== _truncate_ events
+
+tag::truncate-events[]
+A  _truncate_ change event signals that a table has been truncated.
+The message key of a _truncate_ event is `null`.
+The message value resembles the following example:
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+    "schema": { ... },
+    "payload": {
+        "source": { // <1>
+            "version": "{debezium-version}",
+            "name": "{context}-server-1",
+            "connector": "{context}",
+            "name": "{context}-server-1",
+            "ts_ms": 1465581029100,
+            "ts_us": 1465581029100000,
+            "ts_ns": 1465581029100000000,
+            "snapshot": false,
+            "db": "inventory",
+            "table": "customers",
+            "server_id": 223344,
+            "gtid": null,
+            "file": "{context}-bin.000003",
+            "pos": 484,
+            "row": 0,
+            "thread": 7,
+            "query": "UPDATE customers SET first_name='Anne Marie' WHERE id=1004"
+        },
+        "op": "t", // <2>
+        "ts_ms": 1465581029523, // <3>
+        "ts_us": 1465581029523468, // <4>
+        "ts_ns": 1465581029523468471 // <5>
+    }
+}
+----
+
+.Descriptions of _truncate_ event value fields
+[cols="1,2,7",options="header"]
+|===
+|Item |Field name |Description
+
+|1
+|`source`
+a|Mandatory field that describes the source metadata for the event. In a _truncate_ event value, the `source` field structure is the same as for _create_, _update_, and _delete_ events for the same table, provides this metadata:
+
+* {prodname} version
+* Connector type and name
+* Binlog name where the event was recorded
+* Binlog position
+* Row within the event
+* If the event was part of a snapshot
+* Name of the database and table
+* ID of the {connector-name} thread that truncated the event (non-snapshot only)
+* {connector-name} server ID (if available)
+* Timestamp for when the change was made in the database
+
+|2
+|`op`
+a|Mandatory string that describes the type of operation. The `op` field value is `t`, signifying that this table was truncated.
+
+|3
+|`ts_ms`
+a|Optional field that displays the time at which the connector processed the event.
+The time is based on the system clock in the JVM running the Kafka Connect task.  +
+ +
+In the `source` object, `ts_ms` indicates the time that the change was made in the database.
+By comparing the value for `payload.source.ts_ms` with the value for `payload.ts_ms`, you can determine the lag between the source database update and {prodname}.
+
+|4
+|`ts_us`
+a|Optional field that displays the time at which the connector processed the event, in microseconds.
+The time is based on the system clock in the JVM running the Kafka Connect task.
+
+|5
+|`ts_ns`
+a|Optional field that displays the time at which the connector processed the event, in nanoseconds.
+The time is based on the system clock in the JVM running the Kafka Connect task.
+
+|===
+
+If a single `TRUNCATE` statement applies to multiple tables, the connector emits one _truncate_ change event record for each truncated table.
+
+[NOTE]
+====
+A _truncate_ event represents a change that is made to an entire table and it has no message key.
+As a result, for topics with multiple partitions, there is no ordering guarantee for the change events (_create_, _update_, and so forth), or _truncate_ events that pertain to a table.
+For example, if a consumer reads events for a table from multiple partitions, it might receive an _update_ event for a table from one partition after it receives a _truncate_ event that deletes all of the data in the table from another partition.
+Ordering is guaranteed only for topics that use a single partition.
+====
+
+If you do not want the connector to capture _truncate_ events, use the xref:{context}-property-skipped-operations[`skipped.operations`] option to filter them out.
+
+end::truncate-events[]
+
+
+
+
+
+== Data type mappings
+
+tag::data-type-mappings[]
+
+The {prodname} {connector-name} connector represents changes to rows with events that are structured like the table in which the row exists. The event contains a field for each column value.
+The {connector-name} data type of that column dictates how {prodname} represents the value in the event.
+
+Columns that store strings are defined in {connector-name} with a character set and collation.
+The {connector-name} connector uses the column's character set when reading the binary representation of the column values in the binlog events.
+
+The connector can map {connector-name} data types to both _literal_ and _semantic_ types.
+
+* *Literal type*: how the value is represented using Kafka Connect schema types.
+* *Semantic type*: how the Kafka Connect schema captures the meaning of the field (schema name).
+
+If the default data type conversions do not meet your needs, you can {link-prefix}:{link-custom-converters}#custom-converters[create a custom converter] for the connector.
+
+ifdef::product[]
+Details are in the following sections:
+
+* xref:{context}-basic-types[]
+* xref:{context}-temporal-types[]
+* xref:{context}-decimal-types[]
+* xref:{context}-boolean-values[]
+* xref:{context}-spatial-types[]
+endif::product[]
+end::data-type-mappings[]
+tag::data-type-mappings-list-mysql-only[]
+ifdef::product[]
+* xref:mysql-vector-types[]
+endif::product[]
+end::data-type-mappings-list-mysql-only[]
+
+
+
+=== Basic types
+
+tag::basic-data-types[]
+The following table shows how the connector maps basic {connector-name} data types.
+
+.Descriptions of basic type mappings
+[cols="25%a,20%a,55%a",options="header",subs="+attributes"]
+|===
+|{connector-name} type |Literal type |Semantic type
+
+|`BOOLEAN, BOOL`
+|`BOOLEAN`
+a|_n/a_
+
+|`BIT(1)`
+|`BOOLEAN`
+a|_n/a_
+
+|`BIT(>1)`
+|`BYTES`
+a|`io.debezium.data.Bits` +
+ +
+The `length` schema parameter contains an integer that represents the number of bits. The `byte[]` contains the bits in _little-endian_ form and is sized to contain the specified number of bits. For example, where `n` is bits: +
+`numBytes = n/8 + (n%8== 0 ? 0 : 1)`
+
+|`TINYINT`
+|`INT16`
+a|_n/a_
+
+|`SMALLINT[(M)]`
+|`INT16`
+a|_n/a_
+
+|`MEDIUMINT[(M)]`
+|`INT32`
+a|_n/a_
+
+|`INT, INTEGER[(M)]`
+|`INT32`
+a|_n/a_
+
+|`BIGINT[(M)]`
+|`INT64`
+a|_n/a_
+
+|`REAL[(M,D)]`
+|`FLOAT32`
+a|_n/a_
+
+|`FLOAT[(P)]`
+|`FLOAT32` or `FLOAT64`
+a|The precision is used only to determine storage size.
+A precision `P` from 0 to 23 results in a 4-byte single-precision `FLOAT32` column.
+A precision `P` from 24 to 53 results in an 8-byte double-precision `FLOAT64` column.
+
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=basic-data-type-descriptions-float-m-d]
+
+|`DOUBLE[(M,D)]`
+|`FLOAT64`
+a|_n/a_
+
+|`CHAR(M)]`
+|`STRING`
+a|_n/a_
+
+|`VARCHAR(M)]`
+|`STRING`
+a|_n/a_
+
+|`BINARY(M)]`
+|`BYTES` or `STRING`
+a|_n/a_ +
+ +
+Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{context}-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
+
+|`VARBINARY(M)]`
+|`BYTES` or `STRING`
+a|_n/a_ +
+ +
+Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{context}-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
+
+|`TINYBLOB`
+|`BYTES` or `STRING`
+a|_n/a_ +
+ +
+Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{context}-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
+
+|`TINYTEXT`
+|`STRING`
+a|_n/a_
+
+|`BLOB`
+|`BYTES` or `STRING`
+a|_n/a_ +
+ +
+Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{context}-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting. +
+ +
+Only values with a size of up to 2GB are supported. It is recommended to externalize large column values, using the claim check pattern.
+
+|`TEXT`
+|`STRING`
+a|_n/a_ +
+ +
+Only values with a size of up to 2GB are supported. It is recommended to externalize large column values, using the claim check pattern.
+
+|`MEDIUMBLOB`
+|`BYTES` or `STRING`
+a|_n/a_ +
+ +
+Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{context}-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting.
+
+|`MEDIUMTEXT`
+|`STRING`
+a|_n/a_
+
+|`LONGBLOB`
+|`BYTES` or `STRING`
+a|_n/a_ +
+ +
+Either the raw bytes (the default), a base64-encoded String, or a base64-url-safe-encoded String, or a hex-encoded String, based on the xref:{context}-property-binary-handling-mode[`binary.handling.mode`] connector configuration property setting. +
+ +
+Only values with a size of up to 2GB are supported. It is recommended to externalize large column values, using the claim check pattern.
+
+|`LONGTEXT`
+|`STRING`
+a|_n/a_ +
+ +
+Only values with a size of up to 2GB are supported. It is recommended to externalize large column values, using the claim check pattern.
+
+|`JSON`
+|`STRING`
+a|`io.debezium.data.Json` +
+ +
+Contains the string representation of a `JSON` document, array, or scalar.
+
+|`ENUM`
+|`STRING`
+a|`io.debezium.data.Enum` +
+ +
+The `allowed` schema parameter contains the comma-separated list of allowed values.
+
+|`SET`
+|`STRING`
+a|`io.debezium.data.EnumSet` +
+ +
+The `allowed` schema parameter contains the comma-separated list of allowed values.
+
+|`YEAR[(2\|4)]`
+|`INT32`
+|`io.debezium.time.Year`
+
+|`TIMESTAMP[(M)]`
+|`STRING`
+a|`io.debezium.time.ZonedTimestamp` +
+ +
+In link:https://www.iso.org/iso-8601-date-and-time-format.html[ISO 8601] format with microsecond precision.
+{connector-name} allows `M` to be in the range of `0-6`.
+
+|===
+end::basic-data-types[]
+
+
+
+
+
+=== Temporal types
+
+tag::temporal-data-types[]
+Excluding the `TIMESTAMP` data type, {connector-name} temporal types depend on the value of the `time.precision.mode` connector configuration property. For `TIMESTAMP` columns whose default value is specified as `CURRENT_TIMESTAMP` or `NOW`, the value `1970-01-01 00:00:00` is used as the default value in the Kafka Connect schema.
+
+{connector-name} allows zero-values for `DATE`, `DATETIME`, and `TIMESTAMP` columns because zero-values are sometimes preferred over null values.
+The {connector-name} connector represents zero-values as null values when the column definition allows null values, or as the epoch day when the column does not allow null values.
+
+.Temporal values without time zones
+The `DATETIME` type represents a local date and time such as "2018-01-13 09:48:27". As you can see, there is no time zone information. Such columns are converted into epoch milliseconds or microseconds based on the column’s precision by using UTC.
+The `TIMESTAMP` type represents a timestamp without time zone information.
+It is converted by {connector-name} from the server (or session’s) current time zone into UTC when writing and from UTC into the server (or session's) current time zone when reading back the value. For example:
+
+* `DATETIME` with a value of `2018-06-20 06:37:03` becomes `1529476623000`.
+* `TIMESTAMP` with a value of `2018-06-20 06:37:03` becomes `2018-06-20T13:37:03Z`.
+
+Such columns are converted into an equivalent `io.debezium.time.ZonedTimestamp` in UTC based on the server (or session’s) current time zone.
+The time zone will be queried from the server by default.
+
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=temporal-data-type-timezone-conversions]
+
+The time zone setting for the JVM that runs Kafka Connect and {prodname} does not affect these conversions.
+
+More details about properties related to temporal values are in the documentation for xref:{context}-connector-properties[{connector-name} connector configuration properties].
+
+time.precision.mode=adaptive_time_microseconds(default)::
+The {connector-name} connector determines the literal type and semantic type based on the column's data type definition so that events represent exactly the values in the database. All time fields are in microseconds. Only positive `TIME` field values in the range of `00:00:00.000000` to `23:59:59.999999` can be captured correctly.
++
+.Mappings when `time.precision.mode=adaptive_time_microseconds`
+[cols="25%a,20%a,55%a",options="header",subs="+attributes"]
+|===
+|{connector-name} type |Literal type |Semantic type
+
+|`DATE`
+|`INT32`
+a|`io.debezium.time.Date` +
+Represents the number of days since the epoch.
+
+|`TIME[(M)]`
+|`INT64`
+a|`io.debezium.time.MicroTime` +
+Represents the time value in microseconds and does not include time zone information.
+{connector-name} allows `M` to be in the range of `0-6`.
+
+|`DATETIME, DATETIME(0), DATETIME(1), DATETIME(2), DATETIME(3)`
+|`INT64`
+a|`io.debezium.time.Timestamp` +
+Represents the number of milliseconds past the epoch and does not include time zone information.
+
+|`DATETIME(4), DATETIME(5), DATETIME(6)`
+|`INT64`
+a|`io.debezium.time.MicroTimestamp` +
+Represents the number of microseconds past the epoch and does not include time zone information.
+
+|===
+
+time.precision.mode=connect::
+The {connector-name} connector uses defined Kafka Connect logical types. This approach is less precise than the default approach and the events could be less precise if the database column has a _fractional second precision_ value of greater than `3`. Values in only the range of `00:00:00.000` to `23:59:59.999` can be handled. Set `time.precision.mode=connect` only if you can ensure that the `TIME` values in your tables never exceed the supported ranges. The `connect` setting is expected to be removed in a future version of {prodname}.
++
+.Mappings when `time.precision.mode=connect`
+[cols="25%a,20%a,55%a",options="header",subs="+attributes"]
+|===
+|{connector-name} type |Literal type |Semantic type
+
+|`DATE`
+|`INT32`
+a|`org.apache.kafka.connect.data.Date` +
+Represents the number of days since the epoch.
+
+|`TIME[(M)]`
+|`INT64`
+a|`org.apache.kafka.connect.data.Time` +
+Represents the time value in microseconds since midnight and does not include time zone information.
+
+|`DATETIME[(M)]`
+|`INT64`
+a|`org.apache.kafka.connect.data.Timestamp` +
+Represents the number of milliseconds since the epoch, and does not include time zone information.
+
+|===
+end::temporal-data-types[]
+
+
+
+
+
+=== Decimal types
+
+tag::decimal-data-types[]
+{prodname} connectors handle decimals according to the setting of the xref:{context}-property-decimal-handling-mode[`decimal.handling.mode`] connector configuration property.
+
+decimal.handling.mode=precise::
++
+.Mappings when `decimal.handling.mode=precise`
+[cols="30%a,15%a,55%a",options="header",subs="+attributes"]
+|===
+|{connector-name} type |Literal type |Semantic type
+
+|`NUMERIC[(M[,D])]`
+|`BYTES`
+a|`org.apache.kafka.connect.data.Decimal` +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
+
+|`DECIMAL[(M[,D])]`
+|`BYTES`
+a|`org.apache.kafka.connect.data.Decimal` +
+The `scale` schema parameter contains an integer that represents how many digits the decimal point shifted.
+
+|===
+
+decimal.handling.mode=double::
++
+.Mappings when `decimal.handling.mode=double`
+[cols="30%a,30%a,40%a",options="header",subs="+attributes"]
+|===
+|{connector-name} type |Literal type |Semantic type
+
+|`NUMERIC[(M[,D])]`
+|`FLOAT64`
+a|_n/a_
+
+|`DECIMAL[(M[,D])]`
+|`FLOAT64`
+a|_n/a_
+
+|===
+
+decimal.handling.mode=string::
++
+.Mappings when `decimal.handling.mode=string`
+[cols="30%a,30%a,40%a",options="header",subs="+attributes"]
+|===
+|{connector-name} type |Literal type |Semantic type
+
+|`NUMERIC[(M[,D])]`
+|`STRING`
+a|_n/a_
+
+|`DECIMAL[(M[,D])]`
+|`STRING`
+a|_n/a_
+
+|===
+end::decimal-data-types[]
+
+
+
+
+
+
+=== Boolean values
+
+tag::boolean-values[]
+{connector-name} handles the `BOOLEAN` value internally in a specific way.
+The `BOOLEAN` column is internally mapped to the `TINYINT(1)` data type.
+When the table is created during streaming then it uses proper `BOOLEAN` mapping as {prodname} receives the original DDL.
+During snapshots, {prodname} executes `SHOW CREATE TABLE` to obtain table definitions that return `TINYINT(1)` for both `BOOLEAN` and `TINYINT(1)` columns. {prodname} then has no way to obtain the original type mapping and so maps to `TINYINT(1)`.
+
+To enable you to convert source columns to Boolean data types, {prodname} provides a `TinyIntOneToBooleanConverter` {link-prefix}:{link-custom-converters}#custom-converters[custom converter] that you can use in one of the following ways:
+
+* Map all `TINYINT(1)` or `TINYINT(1) UNSIGNED` columns to `BOOLEAN` types.
+* Enumerate a subset of columns by using a comma-separated list of regular expressions. +
+To use this type of conversion, you must set the xref:{context}-property-converters[`converters`] configuration property with the `selector` parameter, as shown in the following example:
++
+[source]
+----
+converters=boolean
+boolean.type=io.debezium.connector.binlog.converters.TinyIntOneToBooleanConverter
+boolean.selector=db1.table1.*, db1.table2.column1
+----
+* NOTE: In some cases, the database may not show the length of `tinyint unsigned` when the snapshot executes `SHOW CREATE TABLE`, which means this converter doesn't work. The new option `length.checker` can solve this issue, the default value is `true`. Disable the `length.checker` and specify the columns that need to be converted to `selected` property instead of converting all columns based on type, as shown in the following example:
++
+[source]
+----
+converters=boolean
+boolean.type=io.debezium.connector.binlog.converters.TinyIntOneToBooleanConverter
+boolean.length.checker=false
+boolean.selector=db1.table1.*, db1.table2.column1
+----
+end::boolean-values[]
+
+
+
+
+
+
+=== Spatial types
+
+tag::spatial-data-types[]
+Currently, the {prodname} {connector-name} connector supports the following spatial data types.
+
+.Description of spatial type mappings
+[cols="35%a,15%a,50%a",options="header",subs="+attributes"]
+|===
+|{connector-name} type |Literal type |Semantic type
+
+|`GEOMETRY, +
+LINESTRING, +
+POLYGON, +
+MULTIPOINT, +
+MULTILINESTRING, +
+MULTIPOLYGON, +
+GEOMETRYCOLLECTION`
+|`STRUCT`
+a|`io.debezium.data.geometry.Geometry` +
+Contains a structure with two fields:
+
+* `srid (INT32`: spatial reference system ID that defines the type of geometry object stored in the structure
+* `wkb (BYTES)`: binary representation of the geometry object encoded in the Well-Known-Binary (wkb) format. See the link:https://www.opengeospatial.org/standards/sfa[Open Geospatial Consortium] for more details.
+
+|===
+end::spatial-data-types[]
+
+
+
+
+
+
+== Custom converters
+
+tag::custom-converters[]
+By default, the {prodname} {connector-name} connector provides several `CustomConverter` implementations for {connector-name} data types.
+These custom converters provide alternative mappings for specific data types based on the connector configuration.
+To add a `CustomConverter` to the connector, follow the instructions in the {link-prefix}:{link-custom-converters}#custom-converters[Custom Converters documentation].
+end::custom-converters[]
+
+
+
+
+
+=== `TINYINT(1)` to Boolean
+
+tag::tinyint-boolean-conv[]
+By default, during a connector snapshot, the {prodname} {connector-name} connector obtains column types from the JDBC driver, which assigns the `TINYINT(1)` type to `BOOLEAN` columns.
+{prodname} then uses these JDBC column types to define the schema for the snapshot events.
+After the connector transitions from the snapshot to the streaming phase, the change event schema that results from the default mapping can lead to inconsistent mappings for `BOOLEAN` columns.
+To help ensure that {connector-name} emits `BOOLEAN` columns uniformly, you can apply the custom  `TinyIntOneToBooleanConverter`, as shown in the following configuration example.
+
+.Example: `TinyIntOneToBooleanConverter` configuration
+[source]
+----
+converters=tinyint-one-to-boolean
+tinyint-one-to-boolean.type=io.debezium.connector.binlog.converters.TinyIntOneToBooleanConverter
+tinyint-one-to-boolean.selector=.*.MY_TABLE.DATA
+tinyint-one-to-boolean.length.checker=false
+----
+
+In the preceding example, the `selector` and `length.checker` properties are optional.
+By default, the converter checks that `TINYINT` data types conform to a length of `1`.
+If `length.checker` to `false`, the converter does not explicitly confirm that the `TINYINT` data type conforms to a length of `1`.
+The `selector` designates the tables or columns to convert, based on the supplied regular expression.
+If you omit the `selector` property, the converter maps all `TINYINT` columns to logical `BOOL` field types.
+If you do not configure a `selector` option, and you want to map `TINYINT` columns to `TINYINT(1)`, omit the `length.checker` property, or set its value to `true`.
+end::tinyint-boolean-conv[]
+
+
+
+
+
+=== JDBC sink data types
+
+tag::jdbc-sink-data-types[]
+If you integrate the {prodname} JDBC sink connector with a {prodname} {connector-name} source connector, the {connector-name} connector emits some column attributes differently during the snapshot and streaming phases.
+For the JDBC sink connector to consistently consume changes from both the snapshot and streaming phase, you must include the `JdbcSinkDataTypesConverter` converter as part of the {connector-name} source connector configuration, as shown in the following example:
+
+.Example: `JdbcSinkDataTypesConverter` configuration
+[source]
+----
+converters=jdbc-sink
+jdbc-sink.type=io.debezium.connector.binlog.converters.JdbcSinkDataTypesConverter
+jdbc-sink.selector.boolean=.*.MY_TABLE.BOOL_COL
+jdbc-sink.selector.real=.*.MY_TABLE.REAL_COL
+jdbc-sink.selector.string=.*.MY_TABLE.STRING_COL
+jdbc-sink.treat.real.as.double=true
+----
+
+In the preceding example, the `selector.*` and `treat.real.as.double` configuration properties are optional.
+
+The `selector.*` properties specify comma-separated lists of regular expressions that specify which tables and columns that the converter applies to.
+By default, the converter applies the following rules apply to all Boolean, real, and string-based column data types, across all tables:
+
+* `BOOLEAN` data types are always emitted as `INT16` logical types, with `1` representing `true` and `0` representing `false`
+* `REAL` data types are always emitted as `FLOAT64` logical types.
+* String-based columns always include the `__debezium.source.column.character_set` schema parameter that contains the column's character set.
+
+For each data type, you can configure a selector rule to override the default scope and apply the selector to specific tables and columns only.
+For example, to set the scope of the Boolean converter, add the following rule to the connector configuration, as in the preceding example: `converters.jdbc-sink.selector.boolean=.*.MY_TABLE.BOOL_COL`
+end::jdbc-sink-data-types[]
+
+
+
+
+
+
+== Setting up the database
+
+
+tag::setting-up-db[]
+Some {connector-name} setup tasks are required before you can install and run a {prodname} connector.
+
+ifdef::product[]
+Details are in the following sections:
+
+* xref:creating-a-{context}-user-for-a-debezium-connector[]
+* xref:enabling-the-{context}-binlog-for-debezium[]
+* xref:enabling-{context}-gtids-for-debezium[]
+* xref:configuring-{context}-session-timeouts-for-debezium[]
+* xref:enabling-query-log-events-for-debezium-{context}-connectors[]
+
+endif::product[]
+end::setting-up-db[]
+
+
+
+
+
+
+=== Creating a user
+
+tag::creating-a-db-user[]
+A {prodname} {connector-name} connector requires a {connector-name} user account.
+This {connector-name} user must have appropriate permissions on all databases for which the {prodname} {connector-name} connector captures changes.
+
+.Prerequisites
+
+* A {connector-name} server.
+* Basic knowledge of SQL commands.
+
+.Procedure
+
+. Create the {connector-name} user:
++
+[source,SQL,subs="+attributes"]
+----
+{context}> CREATE USER 'user'@'localhost' IDENTIFIED BY 'password';
+----
+
+. Grant the required permissions to the user:
++
+[source,SQL,subs="+attributes"]
+----
+{context}> GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'user' IDENTIFIED BY 'password';
+----
++
+For a description of the required permissions, see xref:permissions-explained-{context}-connector[].
++
+IMPORTANT: If using a hosted option such as Amazon RDS or Amazon Aurora that does not allow a global read lock, table-level locks are used to create the _consistent snapshot_. In this case, you need to also grant `LOCK TABLES` permissions to the user that you create. See xref:{context}-snapshots[snapshots] for more details.
+
+. Finalize the user's permissions:
++
+[source,SQL,subs="+attributes"]
+----
+{context}> FLUSH PRIVILEGES;
+----
+
++
+[id="permissions-explained-{context}-connector"]
+.Descriptions of user permissions
+[cols="3,7",options="header",subs="+attributes"]
+|===
+|Keyword |Description
+
+|`SELECT`
+|Enables the connector to select rows from tables in databases. This is used only when performing a snapshot.
+
+|`RELOAD`
+|Enables the connector the use of the `FLUSH` statement to clear or reload internal caches, flush tables, or acquire locks. This is used only when performing a snapshot.
+
+|`SHOW DATABASES`
+|Enables the connector to see database names by issuing the `SHOW DATABASE` statement. This is used only when performing a snapshot.
+
+|`REPLICATION SLAVE`
+|Enables the connector to connect to and read the {connector-name} server binlog.
+
+|`REPLICATION CLIENT`
+a|Enables the connector the use of the following statements:
+
+* `SHOW MASTER STATUS`
+* `SHOW SLAVE STATUS`
+* `SHOW BINARY LOGS`
+
+The connector always requires this.
+
+|`ON`
+|Identifies the database to which the permissions apply.
+
+|`TO 'user'`
+|Specifies the user to grant the permissions to.
+
+|`IDENTIFIED BY 'password'`
+|Specifies the user's {connector-name} password.
+
+|===
+
+end::creating-a-db-user[]
+
+
+
+
+
+=== Enabling the binlog
+
+tag::enabling-binlog[]
+You must enable binary logging for {connector-name} replication.
+The binary logs record transaction updates in a way that enables replicas to propagate those changes.
+
+.Prerequisites
+
+* A {connector-name} server.
+* Appropriate {connector-name} user privileges.
+
+.Procedure
+
+. Check whether the `log-bin` option is enabled:
++
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=setting-up-the-db-enabling-binlog]
+
+. If the binlog is `OFF`, add the properties in the following table to the configuration file for the {connector-name} server:
++
+[source,properties,subs="+attributes"]
+----
+server-id         = 223344 # Querying variable is called server_id, e.g. SELECT variable_value FROM information_schema.global_variables WHERE variable_name='server_id';
+log_bin                     = {context}-bin
+binlog_format               = ROW
+binlog_row_image            = FULL
+binlog_expire_logs_seconds  = 864000
+----
+
+. Confirm your changes by checking the binlog status once more:
++
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=setting-up-the-db-enabling-binlog]
+
+. If you run {connector-name} on Amazon RDS, you must enable automated backups for your database instance for binary logging to occur.
+If the database instance is not configured to perform automated backups, the binlog is disabled, even if you apply the settings described in the previous steps.
+
++
+[id="binlog-configuration-properties-{context}-connector"]
+.Descriptions of {connector-name} binlog configuration properties
+[cols="1,4",options="header",subs="+attributes"]
+|===
+|Property |Description
+
+|`server-id`
+|The value for the `server-id` must be unique for each server and replication client in the {connector-name} cluster.
+
+|`log_bin`
+|The value of `log_bin` is the base name of the sequence of binlog files.
+
+|`binlog_format`
+|The `binlog-format` must be set to `ROW` or `row`.
+
+|`binlog_row_image`
+|The `binlog_row_image` must be set to `FULL` or `full`.
+
+|`binlog_expire_logs_seconds`
+|The `binlog_expire_logs_seconds` corresponds to deprecated system variable `expire_logs_days`.
+This is the number of seconds for automatic binlog file removal.
+The default value is `2592000`, which equals 30 days.
+Set the value to match the needs of your environment.
+For more information, see xref:{context}-purges-binlog-files-used-by-debezium[{connector-name} purges binlog files].
+
+|===
+
+end::enabling-binlog[]
+
+
+
+=== Configuring session timeouts
+
+tag::cfg-session-timeouts[]
+When an initial consistent snapshot is made for large databases, your established connection could timeout while the tables are being read.
+You can prevent this behavior by configuring `interactive_timeout` and `wait_timeout` in your {connector-name} configuration file.
+
+.Prerequisites
+
+* A {connector-name} server.
+* Basic knowledge of SQL commands.
+* Access to the {connector-name} configuration file.
+
+.Procedure
+
+. Configure `interactive_timeout`:
++
+[source,SQL,subs="+attributes,+quotes"]
+----
+{context}> interactive_timeout=<duration-in-seconds>
+----
+
+. Configure `wait_timeout`:
++
+[source,SQL,subs="+attributes,+quotes"]
+----
+{context}> wait_timeout=<duration-in-seconds>
+----
+
++
+.Descriptions of {connector-name} session timeout options
+[cols="3,7",options="header",subs="+attributes"]
+|===
+|Option |Description
+
+|`interactive_timeout`
+a|The number of seconds the server waits for activity on an interactive connection before closing it.
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=session-timeout-options-descriptions]
+|===
+end::cfg-session-timeouts[]
+
+
+
+
+=== Validating binlog row value options
+
+tag::validate-binlog-row-options[]
+Verify the setting of the `binlog_row_value_options` variable in the database.
+To enable the connector to consume *UPDATE* events, this variable must be set to a value other than `PARTIAL_JSON`.
+
+.Prerequisites
+
+* A {connector-name} server.
+* Basic knowledge of SQL commands.
+* Access to the {connector-name} configuration file.
+
+.Procedure
+
+. Check current variable value
++
+[source,SQL,subs="+attributes,+quotes"]
+----
+{context}> show global variables where variable_name = 'binlog_row_value_options';
+----
+
++
+.Result
++
+[source,SQL]
+----
++--------------------------+-------+
+| Variable_name            | Value |
++--------------------------+-------+
+| binlog_row_value_options |       |
++--------------------------+-------+
+----
+
+. If the value of the variable is set to `PARTIAL_JSON`, run the following command to unset it:
++
+[source,SQL,subs="+attributes,+quotes"]
+----
+{context}> set @@global.binlog_row_value_options="" ;
+----
+end::validate-binlog-row-options[]
+
+
+
+
+
+=== Deployment
+
+// Retaining the conditional statements in the following section, because they only apply to the upstream content,
+// so there's no problem with them not yielding the expected results as there would be if used downstream.
+
+tag::deployment[]
+ifdef::community[]
+To deploy a {prodname} {connector-name} connector, you install the {prodname} {connector-name} connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
+
+.Prerequisites
+* link:https://zookeeper.apache.org/[Apache Zookeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* {connector-name} Server is installed and is xref:setting-up-{context}[set up to work with the {prodname} connector].
+
+.Procedure
+ifeval::['{page-version}' == 'master']
+ifdef::MARIADB[]
+. Download the {prodname} link:{link-mariadb-plugin-snapshot}[MariaDB connector plug-in].
+endif::MARIADB[]
+ifdef::MYSQL[]
+. Download the {prodname} link:{link-mysql-plugin-snapshot}[MySQL connector plug-in].
+endif::MYSQL[]
+endif::[]
+
+ifeval::['{page-version}' != 'master']
+ifdef::MARIADB[]
+. Download the {prodname} link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-mariadb/{debezium-version}/debezium-connector-mariadb-{debezium-version}-plugin.tar.gz[MariaDB connector plug-in].
+endif::MARIADB[]
+ifdef::MYSQL[]
+. Download the {prodname} link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-mysql/{debezium-version}/debezium-connector-mysql-{debezium-version}-plugin.tar.gz[MySQL connector plug-in].
+endif::MYSQL[]
+endif::[]
+. Extract the files into your Kafka Connect environment.
+. Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
+. xref:{context}-example-configuration[Configure the connector] and xref:{context}-adding-configuration[add the configuration to your Kafka Connect cluster.]
+. Restart your Kafka Connect process to pick up the new JAR files.
+
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s Container images] for Apache Zookeeper, Apache Kafka, {connector-name}, and Kafka Connect with the {connector-name} connector already installed and ready to run.
+
+[IMPORTANT]
+====
+The {prodname} container images that you obtain from `quay.io` do not undergo rigorous testing or security analysis, and are provided for testing and evaluation purposes only.
+These images are not intended for use in production environments.
+To mitigate risk in production deployments, deploy only containers that are actively maintained by trusted vendors, and thoroughly tested for potential vulnerabilities.
+====
+
+You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
+endif::community[]
+
+ifdef::product[]
+You can use either of the following methods to deploy a {prodname} {connector-name} connector:
+
+* xref:openshift-streams-{context}-connector-deployment[Use {StreamsName} to automatically create an image that includes the connector plug-in].
++
+This is the preferred method.
+* xref:deploying-debezium-{context}-connectors[Build a custom Kafka Connect container image from a Dockerfile]. +
+This Containerfile deployment method is deprecated.
+The instructions for this method are scheduled for removal in future versions of the documentation.
+
+.Additional resources
+
+* xref:{context}-connector-properties[{connector-name} connector configuration properties]
+endif::product[]
+end::deployment[]
+
+
+
+
+
+=== Deploying connectors by building a custom Kafka Connect container image from a Dockerfile
+
+tag::deploy-via-dockerfile[]
+To deploy a {prodname} {connector-name} connector, you must build a custom Kafka Connect container image that contains the {prodname} connector archive, and then push this container image to a container registry.
+You then need to create the following custom resources (CRs):
+
+* A `KafkaConnect` CR that defines your Kafka Connect instance.
+The `image` property in the CR specifies the name of the container image that you create to run your {prodname} connector.
+You apply this CR to the OpenShift instance where link:https://access.redhat.com/products/red-hat-amq#streams[Red Hat {StreamsName}] is deployed.
+{StreamsName} offers operators and images that bring Apache Kafka to OpenShift.
+
+* A `KafkaConnector` CR that defines your {prodname} {connector-name} connector.
+Apply this CR to the same OpenShift instance where you apply the `KafkaConnect` CR.
+
+.Prerequisites
+
+* {connector-name} is running and you completed the steps to xref:setting-up-{context}-to-run-a-debezium-connector[set up {connector-name} to work with a {prodname} connector].
+
+* {StreamsName} is deployed on OpenShift and is running Apache Kafka and Kafka Connect.
+For more information, see link:{LinkDeployManageStreamsOpenShift}[{NameDeployManageStreamsOpenShift}].
+
+* Podman or Docker is installed.
+
+* You have an account and permissions to create and manage containers in the container registry (such as `quay.io` or `docker.io`) to which you plan to add the container that will run your Debezium connector.
+
+.Procedure
+
+. Create the {prodname} {connector-name} container for Kafka Connect:
+
+.. Create a Dockerfile that uses `{DockerKafkaConnect}` as the base image.
+For example, from a terminal window, enter the following command:
++
+=====================================================================
+
+[source,shell,subs="+attributes,+quotes"]
+----
+cat <<EOF >debezium-container-for-{context}.yaml // <1>
+FROM {DockerKafkaConnect}
+USER root:root
+RUN mkdir -p /opt/kafka/plugins/debezium // <2>
+RUN cd /opt/kafka/plugins/debezium/ \
+&& curl -O {red-hat-maven-repository}debezium/debezium-connector-{connector-file}/{debezium-version}-redhat-{debezium-build-number}/debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
+&& unzip debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip \
+&& rm debezium-connector-{connector-file}-{debezium-version}-redhat-{debezium-build-number}-plugin.zip
+RUN cd /opt/kafka/plugins/debezium/
+USER 1001
+EOF
+----
+=====================================================================
++
+[cols="1,7",options="header"]
+|===
+|Item |Description
+
+|1
+|You can specify any file name that you want.
+
+|2
+|Specifies the path to your Kafka Connect plug-ins directory.
+If your Kafka Connect plug-ins directory is in a different location, replace this path with the actual path of your directory.
+
+|===
++
+The command creates a Dockerfile with the name `debezium-container-for-{context}.yaml` in the current directory.
+
+.. Build the container image from the `debezium-container-for-{context}.yaml` Docker file that you created in the previous step.
+From the directory that contains the file, open a terminal window and enter one of the following commands:
++
+[source,shell,options="nowrap",subs="+attributes,+quotes"]
+----
+podman build -t debezium-container-for-{context}:latest .
+----
++
+[source,shell,options="nowrap",subs="+attributes,+quotes"]
+----
+docker build -t debezium-container-for-{context}:latest .
+----
+The preceding commands build a container image with the name `debezium-container-for-{context}`.
+
+.. Push your custom image to a container registry, such as `quay.io` or an internal container registry.
+The container registry must be available to the OpenShift instance where you want to deploy the image.
+Enter one of the following commands:
++
+[source,shell,subs="+attributes,+quotes"]
+----
+podman push _<myregistry.io>_/debezium-container-for-{context}:latest
+----
++
+[source,shell,subs="+attributes,+quotes"]
+----
+docker push _<myregistry.io>_/debezium-container-for-{context}:latest
+----
+
+.. Create a new {prodname} {connector-name} `KafkaConnect` custom resource (CR).
+For example, create a `KafkaConnect` CR with the name `dbz-connect.yaml` that specifies `annotations` and `image` properties.
+The following example shows an excerpt from a `dbz-connect.yaml` file that describes a `KafkaConnect` custom resource. +
++
+=====================================================================
+[source,yaml,subs="+attributes"]
+----
+apiVersion: {KafkaConnectApiVersion}
+kind: KafkaConnect
+metadata:
+  name: my-connect-cluster
+  annotations:
+    strimzi.io/use-connector-resources: "true" // <1>
+spec:
+  #...
+  image: debezium-container-for-{context}  // <2>
+
+  ...
+----
+=====================================================================
++
+[cols="1,7",options="header"]
+|===
+|Item |Description
+
+|1
+|`metadata.annotations` indicates to the Cluster Operator that `KafkaConnector` resources are used to configure connectors in this Kafka Connect cluster.
+
+|2
+|`spec.image` specifies the name of the image that you created to run your Debezium connector.
+This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator.
+
+|===
+
+.. Apply the `KafkaConnect` CR to the OpenShift Kafka Connect environment by entering the following command:
++
+[source,shell,options="nowrap"]
+----
+oc create -f dbz-connect.yaml
+----
++
+The command adds a Kafka Connect instance that specifies the name of the image that you created to run your {prodname} connector.
+
+. Create a `KafkaConnector` custom resource that configures your {prodname} {connector-name} connector instance.
++
+You configure a {prodname} {connector-name} connector in a `.yaml` file that specifies the configuration properties for the connector.
+The connector configuration might instruct {prodname} to produce events for a subset of the schemas and tables, or it might set properties so that {prodname} ignores, masks, or truncates values in specified columns that are sensitive, too large, or not needed.
++
+The following example configures a {prodname} connector that connects to a {connector-name} host, `192.168.99.100`, on port `3306`,
+and captures changes to the `inventory` database.
+`dbserver1` is the server's logical name.
++
+.{connector-name} `inventory-connector.yaml`
+[source,yaml,options="nowrap",subs="+attributes"]
+----
+  apiVersion: {KafkaConnectApiVersion}
+  kind: KafkaConnector
+  metadata:
+    name: inventory-connector-{context}  // <1>
+    labels:
+      strimzi.io/cluster: my-connect-cluster
+  spec:
+    class: io.debezium.connector.{context}.MariaDbConnector
+    tasksMax: 1  // <2>
+    config:  // <3>
+      database.hostname: {context}  // <4>
+      database.port: 3306
+      database.user: debezium
+      database.password: dbz
+      database.server.id: 184054  // <5>
+      topic.prefix: inventory-connector-{context} // <6>
+      table.include.list: inventory  // <7>
+      schema.history.internal.kafka.bootstrap.servers: my-cluster-kafka-bootstrap:9092  // <8>
+      schema.history.internal.kafka.topic: schema-changes.inventory  // <9>
+----
++
+.Descriptions of connector configuration settings
+[cols="1,7",options="header",subs="+attributes"]
+|===
+|Item |Description
+
+|1
+|The name of the connector.
+
+|2
+|Only one task should operate at any one time.
+Because the {connector-name} connector reads the {connector-name} server’s `binlog`,
+using a single connector task ensures proper order and event handling.
+The Kafka Connect service uses connectors to start one or more tasks that do the work,
+and it automatically distributes the running tasks across the cluster of Kafka Connect services.
+If any of the services stop or crash,
+those tasks will be redistributed to running services.
+
+|3
+|The connector’s configuration.
+
+|4
+|The database host, which is the name of the container running the {connector-name} server (`{context}`).
+
+|5
+|Unique ID of the connector.
+
+|6
+|Topic prefix for the {connector-name} server or cluster.
+This name is used as the prefix for all Kafka topics that receive change event records.
+
+|7
+|The connector captures changes from the `inventory` table only.
+
+|8
+|The list of Kafka brokers that this connector will use to write and recover DDL statements to the database schema history topic.
+Upon restart, the connector recovers the schemas of the database that existed at the point in time in the binlog when the connector should begin reading.
+
+|9
+|The name of the database schema history topic. This topic is for internal use only and should not be used by consumers.
+|===
+
+. Create your connector instance with Kafka Connect.
+For example, if you saved your `KafkaConnector` resource in the `inventory-connector.yaml` file, you would run the following command:
++
+[source,shell,options="nowrap"]
+----
+oc apply -f inventory-connector.yaml
+----
++
+The preceding command registers `inventory-connector` and the connector starts to run against the `inventory` database as defined in the `KafkaConnector` CR.
+
+end::deploy-via-dockerfile[]
+
+tag::connector-config-example[]
+ifdef::community[]
+Following is an example of the configuration for a connector instance that captures data from a {connector-name} server on port 3306 at 192.168.99.100, which we logically name `fullfillment`.
+Typically, you configure the {prodname} {connector-name} connector in a JSON file by setting the configuration properties that are available for the connector.
+
+You can choose to produce events for a subset of the schemas and tables in a database.
+Optionally, you can ignore, mask, or truncate columns that contain sensitive data, that are larger than a specified size, or that you do not need.
+
+[source,json]
+----
+{
+    "name": "inventory-connector", // <1>
+    "config": {
+        "connector.class": "io.debezium.connector.{context}.{connector-name}Connector", // <2>
+        "database.hostname": "192.168.99.100", // <3>
+        "database.port": "3306", // <4>
+        "database.user": "debezium-user", // <5>
+        "database.password": "debezium-user-pw", // <6>
+        "database.server.id": "184054", <7>
+        "topic.prefix": "fullfillment", // <8>
+        "database.include.list": "inventory", // <9>
+        "schema.history.internal.kafka.bootstrap.servers": "kafka:9092", // <10>
+        "schema.history.internal.kafka.topic": "schemahistory.fullfillment", // <11>
+        "include.schema.changes": "true" // <12>
+    }
+}
+----
+<1> Connector's name when registered with the Kafka Connect service.
+<2> Connector's class name.
+<3> {connector-name} server address.
+<4> {connector-name} server port number.
+<5> {connector-name} user with the appropriate privileges.
+<6> {connector-name} user's password.
+<7> Unique ID of the connector.
+<8> Topic prefix for the {connector-name} server or cluster.
+<9> List of databases hosted by the specified server.
+<10> List of Kafka brokers that the connector uses to write and recover DDL statements to the database schema history topic.
+<11> Name of the database schema history topic. This topic is for internal use only and should not be used by consumers.
+<12> Flag that specifies if the connector should generate events for DDL changes and emit them to the `fulfillment` schema change topic for use by consumers.
+
+endif::community[]
+
+For the complete list of the configuration properties that you can set for the {prodname} {connector-name} connector,
+see xref:{context}-connector-properties[{connector-name} connector configuration properties].
+
+ifdef::community[]
+You can send this configuration with a `POST` command to a running Kafka Connect service.
+The service records the configuration and starts one connector task that performs the following actions:
+
+* Connects to the {connector-name} database.
+* Reads change-data tables for tables in capture mode.
+* Streams change event records to Kafka topics.
+endif::community[]
+end::connector-config-example[]
+
+
+
+
+
+
+=== Adding connector configuration
+
+tag::add-connector-cfg[]
+ifdef::community[]
+To start running a {connector-name} connector, configure a connector configuration, and add the configuration to your Kafka Connect cluster.
+
+.Prerequisites
+
+* xref:setting-up-{context}[{connector-name} is set up to work with a {prodname} connector].
+* The {prodname} {connector-name} connector is installed.
+
+.Procedure
+
+. Create a configuration for the {connector-name} connector.
+
+. Use the link:{link-kafka-docs}/#connect_rest[Kafka Connect REST API] to add that connector configuration to your Kafka Connect cluster.
+endif::community[]
+
+.Results
+After the connector starts, it xref:{context}-snapshots[performs a consistent snapshot] of the {connector-name} databases that the connector is configured for.
+The connector then starts generating data change events for row-level operations and streaming change event records to Kafka topics.
+
+end::add-connector-cfg[]
+
+
+
+
+
+=== Connector properties
+
+tag::connector-props-intro[]
+The {prodname} {connector-name} connector has numerous configuration properties that you can use to achieve the right connector behavior for your application.
+Many properties have default values.
+
+Information about {connector-name} connector configuration properties is organized as follows:
+
+* xref:{context}-required-connector-configuration-properties[Required connector configuration properties]
+* xref:{context}-advanced-connector-configuration-properties[Advanced connector configuration properties]
+* xref:debezium-{context}-connector-database-history-configuration-properties[Database schema history connector configuration properties] that control how {prodname} processes events that it reads from the database schema history topic.
+* xref:debezium-{context}-connector-pass-through-properties[Pass-through {connector-name} connector configuration properties]
+** xref:debezium-{context}-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients[Pass-through database schema history properties for configuring producer and consumer clients]
+** xref:debezium-{context}-connector-pass-through-kafka-signals-configuration-properties[Pass-through Kafka signals configuration properties]
+** xref:debezium-{context}-connector-pass-through-signals-kafka-consumer-client-configuration-properties[Pass-through Kafka signals consumer client configuration properties]
+** xref:debezium-{context}-connector-pass-through-kafka-sink-notification-configuration-properties[Pass-through sink notification configuration properties]
+** xref:debezium-{context}-connector-pass-through-database-driver-configuration-properties[Pass-through database driver configuration properties]
+end::connector-props-intro[]
+
+
+
+
+== Monitoring
+
+tag::monitoring-intro[]
+The {prodname} {connector-name} connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect provide.
+
+* xref:{context}-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
+* xref:{context}-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is reading the binlog.
+* xref:{context}-schema-history-metrics[Schema history metrics] provide information about the status of the connector's schema history.
+
+{link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
+
+end::monitoring-intro[]
+
+
+
+
+=== Streaming metrics
+
+tag::streaming-metrics-intro[]
+Transaction-related attributes are available only if binlog event buffering is enabled.
+ifdef::community[]
+See xref:{context}-property-binlog-buffer-size[`binlog.buffer.size`] in the advanced connector configuration properties for more details.
+endif::community[]
+end::streaming-metrics-intro[]
+
+
+
+
+
+== Behavior when things go wrong
+
+tag::wrong-things[]
+
+{prodname} is a distributed system that captures all changes in multiple upstream databases; it never misses or loses an event.
+When the system is operating normally or being managed carefully then {prodname} provides _exactly once_ delivery of every change event record.
+
+If a fault does occur, the system does not lose any events.
+However, while {prodname} is recovering from a fault, it might repeat some change events.
+In these abnormal situations, {prodname}, like Kafka, provides _at least once_ delivery of change events.
+
+ifdef::community[]
+The rest of this section describes how {prodname} handles various kinds of faults and problems.
+endif::community[]
+
+ifdef::product[]
+Details are in the following sections:
+
+* xref:debezium-{context}-connector-configuration-and-startup-errors[Configuration and startup errors]
+* xref:{context}-becomes-unavailable-while-debezium-is-running[{connector-name} becomes unavailable]
+* xref:debezium-{context}-kafka-connect-process-stops-gracefully[Kafka Connect stops gracefully]
+* xref:debezium-{context}-kafka-connect-process-crashes[Kafka Connect process crashes]
+* xref:debezium-{context}-kafka-process-becomes-unavailable[Kafka becomes unavailable]
+* xref:{context}-purges-binlog-files-used-by-debezium[{connector-name} purges binlog files]
+
+endif::product[]
+
+[id="debezium-{context}-connector-configuration-and-startup-errors"]
+Configuration and startup errors::
+
+In the following situations, the connector fails when trying to start, reports an error or exception in the log, and stops running:
+
+* The connector's configuration is invalid.
+* The connector cannot successfully connect to the {connector-name} server by using the specified connection parameters.
+* The connector is attempting to restart at a position in the binlog for which {connector-name} no longer has the history available.
+
+In these cases, the error message has details about the problem and possibly a suggested workaround.
+After you correct the configuration or address the {connector-name} problem, restart the connector.
+
+[id="{context}-becomes-unavailable-while-debezium-is-running"]
+{connector-name} becomes unavailable::
+
+If your {connector-name} server becomes unavailable, the {prodname} {connector-name} connector fails with an error and the connector stops.
+When the server is available again, restart the connector.
+
+However, if you are connecting to a highly available {connector-name} cluster, you can restart the connector immediately.
+It will connect to a different {connector-name} server in the cluster, find the location in the server's binlog that represents the last transaction, and begin reading the new server's binlog from that specific location.
+
+[id="debezium-{context}-kafka-connect-process-stops-gracefully"]
+Kafka Connect stops gracefully::
+
+When Kafka Connect stops gracefully, there is a short delay while the {prodname} {connector-name} connector tasks are stopped and restarted on new Kafka Connect processes.
+
+[id="debezium-{context}-kafka-connect-process-crashes"]
+Kafka Connect process crashes::
+
+If Kafka Connect crashes, the process stops and any {prodname} {connector-name} connector tasks terminate without their most recently-processed offsets being recorded.
+In distributed mode, Kafka Connect restarts the connector tasks on other processes.
+However, the {connector-name} connector resumes from the last offset recorded by the earlier processes.
+As a result, the replacement tasks might regenerate some events that were processed before the crash, creating duplicate events.
+
+Each change event message includes source-specific information that you can use to identify duplicate events, for example:
+
+* Event origin
+* {connector-name} server's event time
+* The binlog file name and position
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=kc-process-crash-gtid-in-change-event-msg]
+
+[id="debezium-{context}-kafka-process-becomes-unavailable"]
+Kafka becomes unavailable::
+
+The Kafka Connect framework records {prodname} change events in Kafka by using the Kafka producer API.
+If the Kafka brokers become unavailable, the {prodname} {connector-name} connector pauses until the connection is reestablished, and the connector then resumes where it left off.
+
+[id="{context}-purges-binlog-files-used-by-debezium"]
+{connector-name} purges binlog files::
+
+If the {prodname} {connector-name} connector stops for too long, the {connector-name} server purges older binlog files and the connector's last position may be lost.
+When the connector is restarted, the {connector-name} server no longer has the starting point and the connector performs another initial snapshot.
+If the snapshot is disabled, the connector fails with an error.
+
+See xref:{context}-snapshots[snapshots] for details about how {connector-name} connectors perform initial snapshots.
+end::wrong-things[]

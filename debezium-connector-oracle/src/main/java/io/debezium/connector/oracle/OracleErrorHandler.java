@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.sql.SQLRecoverableException;
 import java.util.Set;
 
@@ -39,7 +40,8 @@ public class OracleErrorHandler extends ErrorHandler {
             "ORA-04030", // out of process memory
             "ORA-00310", // archived log contains sequence *; sequence * required
             "ORA-01343", // LogMiner encountered corruption in the logstream
-            "ORA-01371"); // Complete LogMiner dictionary not found
+            "ORA-01371", // Complete LogMiner dictionary not found
+            "ORA-01001"); // Invalid cursor
 
     /**
      * Contents of this set should be any type of error message text;
@@ -52,6 +54,17 @@ public class OracleErrorHandler extends ErrorHandler {
             "failed to exclusively lock system dictionary" // nested ORA-01327
     );
 
+    /**
+     * Contents of this set will be applied if and only if the error is ORA-00600.
+     * These are special cases where an internal error was thrown and we need to
+     * evaluate the argument contents.
+     */
+    @Immutable
+    private static final Set<String> RETRIABLE_ORA600_ERROR_MESSAGES = Collect.unmodifiableSet(
+            "krvrdGetUID", // Changes made to object identifier (schema change)
+            "krvrdccs10",
+            "krvrdccs30");
+
     public OracleErrorHandler(OracleConnectorConfig connectorConfig, ChangeEventQueue<?> queue, ErrorHandler replacedErrorHandler) {
         super(OracleConnector.class, connectorConfig, queue, replacedErrorHandler);
     }
@@ -62,6 +75,21 @@ public class OracleErrorHandler extends ErrorHandler {
             // Always retry any recoverable error
             if (throwable instanceof SQLRecoverableException) {
                 return true;
+            }
+
+            // Specifically checks the SQLException ORA-00600 use cases separately.
+            // We do this because we want to specifically check these parameter arguments, but
+            // only when the SQL error code is 600 for (ORA-00600).
+            if (throwable instanceof SQLException) {
+                final SQLException sqlException = (SQLException) throwable;
+                final String message = sqlException.getMessage();
+                if (sqlException.getErrorCode() == 600 || (message != null && message.startsWith("ORA-00600"))) {
+                    for (String match : RETRIABLE_ORA600_ERROR_MESSAGES) {
+                        if (message.contains(match)) {
+                            return true;
+                        }
+                    }
+                }
             }
 
             // If message is provided, run checks against it

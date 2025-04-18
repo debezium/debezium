@@ -84,7 +84,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     private static String lazilyRetrieveAndCacheLatestStable() {
         if (debeziumLatestStable == null) {
-            debeziumLatestStable = ContainerImageVersions.getStableVersion("quay.io/debezium/connect");
+            debeziumLatestStable = ContainerImageVersions.getStableVersion(DEBEZIUM_CONTAINER);
         }
         return debeziumLatestStable;
     }
@@ -142,7 +142,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
     }
 
     public String getTarget() {
-        return "http://" + getContainerIpAddress() + ":" + getMappedPort(KAFKA_CONNECT_PORT);
+        return "http://" + getHost() + ":" + getMappedPort(KAFKA_CONNECT_PORT);
     }
 
     /**
@@ -232,7 +232,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
             }
         }
         catch (IOException e) {
-            throw new RuntimeException("Error connecting to Debezium container", e);
+            throw new RuntimeException("Error connecting to Debezium container on URL: " + fullUrl, e);
         }
     }
 

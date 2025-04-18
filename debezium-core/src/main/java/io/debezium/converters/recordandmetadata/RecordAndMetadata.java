@@ -6,6 +6,8 @@
 
 package io.debezium.converters.recordandmetadata;
 
+import java.util.Set;
+
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.Struct;
@@ -16,8 +18,6 @@ import org.apache.kafka.connect.data.Struct;
  * @author Roman Kudryashov
  */
 public interface RecordAndMetadata {
-
-    Struct record();
 
     String id();
 
@@ -31,7 +31,15 @@ public interface RecordAndMetadata {
 
     SchemaAndValue timestamp();
 
+    String traceParent();
+
     String dataSchemaName();
 
     Schema dataSchema(String... dataFields);
+
+    Struct data(String... dataFields);
+
+    String connectorType();
+
+    Object sourceField(String name, Set<String> connectorSpecificSourceFields);
 }

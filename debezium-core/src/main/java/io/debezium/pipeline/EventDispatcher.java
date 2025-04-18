@@ -5,6 +5,8 @@
  */
 package io.debezium.pipeline;
 
+import static io.debezium.config.CommonConnectorConfig.WatermarkStrategy.INSERT_DELETE;
+
 import java.time.Instant;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -39,6 +41,8 @@ import io.debezium.pipeline.spi.ChangeRecordEmitter.Receiver;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
+import io.debezium.pipeline.txmetadata.DefaultTransactionInfo;
+import io.debezium.pipeline.txmetadata.TransactionInfo;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.processors.PostProcessorRegistry;
 import io.debezium.processors.spi.PostProcessor;
@@ -53,6 +57,7 @@ import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.topic.TopicNamingStrategy;
+import io.debezium.util.Loggings;
 
 /**
  * Central dispatcher for data change and schema change events. The former will be routed to the change event queue, the
@@ -67,6 +72,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EventDispatcher.class);
 
+    protected final TransactionMonitor transactionMonitor;
     private final TopicNamingStrategy<T> topicNamingStrategy;
     private final DatabaseSchema<T> schema;
     private final HistorizedDatabaseSchema<T> historizedSchema;
@@ -77,7 +83,6 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     private DataChangeEventListener<P> eventListener = DataChangeEventListener.NO_OP();
     private final boolean emitTombstonesOnDelete;
     private final InconsistentSchemaHandler<P, T> inconsistentSchemaHandler;
-    private final TransactionMonitor transactionMonitor;
     private final CommonConnectorConfig connectorConfig;
     private final EnumSet<Operation> skippedOperations;
     private final boolean neverSkip;
@@ -202,36 +207,41 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     public void dispatchSnapshotEvent(P partition, T dataCollectionId, ChangeRecordEmitter<P> changeRecordEmitter,
                                       SnapshotReceiver<P> receiver)
             throws InterruptedException {
-        // TODO Handle Heartbeat
 
-        DataCollectionSchema dataCollectionSchema = schema.schemaFor(dataCollectionId);
+        try {
+            // TODO Handle Heartbeat
+            DataCollectionSchema dataCollectionSchema = schema.schemaFor(dataCollectionId);
 
-        // TODO handle as per inconsistent schema info option
-        if (dataCollectionSchema == null) {
-            errorOnMissingSchema(partition, dataCollectionId, changeRecordEmitter);
-        }
-
-        changeRecordEmitter.emitChangeRecords(dataCollectionSchema, new Receiver<P>() {
-
-            @Override
-            public void changeRecord(P partition,
-                                     DataCollectionSchema schema,
-                                     Operation operation,
-                                     Object key, Struct value,
-                                     OffsetContext offset,
-                                     ConnectHeaders headers)
-                    throws InterruptedException {
-
-                LOGGER.trace("Received change record {} for {} operation on key {} with context {}", value, operation, key, offset);
-
-                eventListener.onEvent(partition, dataCollectionSchema.id(), offset, key, value, operation);
-                receiver.changeRecord(partition, dataCollectionSchema, operation, key, value, offset, headers);
+            // TODO handle as per inconsistent schema info option
+            if (dataCollectionSchema == null) {
+                errorOnMissingSchema(partition, dataCollectionId, changeRecordEmitter);
             }
-        });
+
+            changeRecordEmitter.emitChangeRecords(dataCollectionSchema, new Receiver<P>() {
+
+                @Override
+                public void changeRecord(P partition,
+                                         DataCollectionSchema schema,
+                                         Operation operation,
+                                         Object key, Struct value,
+                                         OffsetContext offset,
+                                         ConnectHeaders headers)
+                        throws InterruptedException {
+                    Loggings.logTraceAndTraceRecord(LOGGER, "Key: " + key + ", Value: " + value, "Received change record for {} operation with context {}", operation,
+                            offset);
+
+                    eventListener.onEvent(partition, dataCollectionSchema.id(), offset, key, value, operation);
+                    receiver.changeRecord(partition, dataCollectionSchema, operation, key, value, offset, headers);
+                }
+            });
+        }
+        catch (Exception e) {
+            handleEventProcessingFailure(e, changeRecordEmitter.getOffset());
+        }
     }
 
     public SnapshotReceiver<P> getSnapshotChangeEventReceiver() {
-        return new BufferingSnapshotChangeRecordReceiver();
+        return new BufferingSnapshotChangeRecordReceiver(connectorConfig.getSnapshotMaxThreads() > 1);
     }
 
     public SnapshotReceiver<P> getIncrementalSnapshotChangeEventReceiver(DataChangeEventListener<P> dataListener) {
@@ -250,7 +260,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     public boolean dispatchDataChangeEvent(P partition, T dataCollectionId, ChangeRecordEmitter<P> changeRecordEmitter) throws InterruptedException {
         try {
             boolean handled = false;
-            if (!filter.isIncluded(dataCollectionId)) {
+            if (changeRecordEmitter.ignoreRecord() || !filter.isIncluded(dataCollectionId)) {
                 LOGGER.trace("Filtered data change event for {}", dataCollectionId);
                 eventListener.onFilteredEvent(partition, "source = " + dataCollectionId, changeRecordEmitter.getOperation());
                 dispatchFilteredEvent(changeRecordEmitter.getPartition(), changeRecordEmitter.getOffset());
@@ -279,7 +289,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                                              ConnectHeaders headers)
                             throws InterruptedException {
 
-                        LOGGER.trace("Received change record {} for {} operation on key {} with context {}", value, operation, key, offset);
+                        Loggings.logTraceAndTraceRecord(LOGGER, "Key: " + key + ", Value: " + value, "Received change record for {} operation with context {}", operation,
+                                offset);
 
                         if (isASignalEventToProcess(dataCollectionId, operation) && sourceSignalChannel != null) {
                             sourceSignalChannel.process(value);
@@ -302,7 +313,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                     }
 
                     private boolean isASignalEventToProcess(T dataCollectionId, Operation operation) {
-                        return operation == Operation.CREATE &&
+                        return (operation == Operation.CREATE ||
+                                (operation == Operation.DELETE && connectorConfig.getIncrementalSnapshotWatermarkingStrategy() == INSERT_DELETE)) &&
                                 connectorConfig.isSignalDataCollection(dataCollectionId);
                     }
                 });
@@ -317,21 +329,28 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
             return handled;
         }
         catch (Exception e) {
-            switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
-                case FAIL:
-                    throw new ConnectException("Error while processing event at offset " + changeRecordEmitter.getOffset().getOffset(), e);
-                case WARN:
-                    LOGGER.warn(
-                            "Error while processing event at offset {}",
-                            changeRecordEmitter.getOffset().getOffset(), e);
-                    break;
-                case SKIP:
-                    LOGGER.debug(
-                            "Error while processing event at offset {}",
-                            changeRecordEmitter.getOffset().getOffset(), e);
-                    break;
-            }
+            handleEventProcessingFailure(e, changeRecordEmitter.getOffset());
             return false;
+        }
+    }
+
+    private void handleEventProcessingFailure(Exception e, OffsetContext offsetContext) {
+        switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
+            case FAIL:
+                throw new ConnectException("Error while processing event at offset " + offsetContext.getOffset(), e);
+            case WARN:
+                LOGGER.warn(
+                        "Error while processing event at offset {}", offsetContext.getOffset(), e);
+                break;
+            case SKIP:
+                LOGGER.debug(
+                        "Error while processing event at offset {}", offsetContext.getOffset(), e);
+                break;
+            default:
+                LOGGER.debug(
+                        "Error while processing event with EventProcessingFailureHandlingMode not supported: {}",
+                        connectorConfig.getEventConvertingFailureHandlingMode(), e);
+                break;
         }
     }
 
@@ -349,7 +368,11 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     }
 
     public void dispatchTransactionStartedEvent(P partition, String transactionId, OffsetContext offset, Instant timestamp) throws InterruptedException {
-        transactionMonitor.transactionStartedEvent(partition, transactionId, offset, timestamp);
+        dispatchTransactionStartedEvent(partition, new DefaultTransactionInfo(transactionId), offset, timestamp);
+    }
+
+    public void dispatchTransactionStartedEvent(P partition, TransactionInfo transactionInfo, OffsetContext offset, Instant timestamp) throws InterruptedException {
+        transactionMonitor.transactionStartedEvent(partition, transactionInfo, offset, timestamp);
         if (incrementalSnapshotChangeEventSource != null) {
             incrementalSnapshotChangeEventSource.processTransactionStartedEvent(partition, offset);
         }
@@ -420,6 +443,20 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 this::enqueueHeartbeat);
     }
 
+    // Use this method when you want to dispatch the heartbeat also to incremental snapshot.
+    // Currently, this is used by PostgreSQL for read-only incremental snapshot but doesn't suites well for
+    // MySQL since the dispatchHeartbeatEvent is called at every received message and not when there is no message from the DB log.
+    public void dispatchHeartbeatEventAlsoToIncrementalSnapshot(P partition, OffsetContext offset) throws InterruptedException {
+        heartbeat.heartbeat(
+                partition.getSourcePartition(),
+                offset.getOffset(),
+                this::enqueueHeartbeat);
+
+        if (incrementalSnapshotChangeEventSource != null) {
+            incrementalSnapshotChangeEventSource.processHeartbeat(partition, offset);
+        }
+    }
+
     public boolean heartbeatsEnabled() {
         return heartbeat.isEnabled();
     }
@@ -473,7 +510,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
             Objects.requireNonNull(value, "value must not be null");
 
-            LOGGER.trace("Received change record {} for {} operation on key {} with context {}", value, operation, key, offsetContext);
+            Loggings.logTraceAndTraceRecord(LOGGER, "Key: " + key + ", Value: " + value, "Received change record for {} operation with context {}", operation,
+                    offsetContext);
 
             // Truncate events must have null key schema as they are sent to table topics without keys
             Schema keySchema = (key == null && operation == Operation.TRUNCATE) ? null
@@ -512,6 +550,11 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     private final class BufferingSnapshotChangeRecordReceiver implements SnapshotReceiver<P> {
 
         private AtomicReference<BufferedDataChangeEvent> bufferedEventRef = new AtomicReference<>(BufferedDataChangeEvent.NULL);
+        private final boolean threaded;
+
+        BufferingSnapshotChangeRecordReceiver(boolean threaded) {
+            this.threaded = threaded;
+        }
 
         @Override
         public void changeRecord(P partition,
@@ -523,7 +566,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 throws InterruptedException {
             Objects.requireNonNull(value, "value must not be null");
 
-            LOGGER.trace("Received change record for {} operation on key {}", operation, key);
+            Loggings.logTraceAndTraceRecord(LOGGER, key, "Received change record for {} operation", operation);
 
             doPostProcessing(key, value);
 
@@ -543,7 +586,17 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
             nextBufferedEvent.offsetContext = offsetContext;
             nextBufferedEvent.dataChangeEvent = new DataChangeEvent(record);
 
-            queue.enqueue(bufferedEventRef.getAndSet(nextBufferedEvent).dataChangeEvent);
+            if (threaded) {
+                // This entire step needs to happen atomically when using buffering with multiple threads.
+                // This guarantees that the getAndSet and the enqueue do not cause a dispatch of out-of-order
+                // events within a single thread.
+                synchronized (queue) {
+                    queue.enqueue(bufferedEventRef.getAndSet(nextBufferedEvent).dataChangeEvent);
+                }
+            }
+            else {
+                queue.enqueue(bufferedEventRef.getAndSet(nextBufferedEvent).dataChangeEvent);
+            }
         }
 
         @Override
@@ -595,7 +648,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 throws InterruptedException {
             Objects.requireNonNull(value, "value must not be null");
 
-            LOGGER.trace("Received change record for {} operation on key {}", operation, key);
+            Loggings.logTraceAndTraceRecord(LOGGER, key, "Received change record for {} operation", operation);
 
             Schema keySchema = dataCollectionSchema.keySchema();
             String topicName = topicNamingStrategy.dataChangeTopic((T) dataCollectionSchema.id());
@@ -639,7 +692,9 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
         @Override
         public void schemaChangeEvent(SchemaChangeEvent event) throws InterruptedException {
-            historizedSchema.applySchemaChange(event);
+            if (historizedSchema != null) {
+                historizedSchema.applySchemaChange(event);
+            }
 
             if (connectorConfig.isSchemaChangesHistoryEnabled()) {
                 final String topicName = topicNamingStrategy.schemaChangeTopic();

@@ -26,6 +26,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.mongodb.connection.ConnectionStrings;
+import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
 import io.debezium.connector.mongodb.metrics.MongoDbChangeEventSourceMetricsFactory;
 import io.debezium.document.DocumentReader;
@@ -39,6 +40,7 @@ import io.debezium.pipeline.spi.Offsets;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.snapshot.SnapshotterService;
+import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext.PreviousContext;
 
@@ -86,7 +88,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         final Schema structSchema = connectorConfig.getSourceInfoStructMaker().schema();
         this.schema = new MongoDbSchema(taskContext.getFilters(), taskContext.getTopicNamingStrategy(), structSchema, schemaNameAdjuster);
 
-        final Offsets<MongoDbPartition, MongoDbOffsetContext> previousOffset = getPreviousOffsets(connectorConfig);
+        final Offsets<MongoDbPartition, MongoDbOffsetContext> previousOffsets = getPreviousOffsets(connectorConfig);
         final Clock clock = Clock.system();
 
         PreviousContext previousLogContext = taskContext.configureLoggingContext(taskName);
@@ -109,14 +111,17 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     MongoDbConnector.class, connectorConfig, Map.of(),
                     getAvailableSignalChannels(),
                     DocumentReader.defaultReader(),
-                    previousOffset);
+                    previousOffsets);
 
             // Manually Register Beans
             connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
             connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
+            connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
 
             // Service providers
             registerServiceProviders(connectorConfig.getServiceRegistry());
+
+            final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
 
             final EventDispatcher<MongoDbPartition, CollectionId> dispatcher = new EventDispatcher<>(
                     connectorConfig,
@@ -129,15 +134,16 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     schemaNameAdjuster,
                     signalProcessor);
 
+            validate(connectorConfig, taskContext.getConnection(dispatcher, previousOffsets.getTheOnlyPartition()), previousOffsets,
+                    snapshotterService.getSnapshotter());
+
             NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                     connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
 
             MongoDbChangeEventSourceMetricsFactory metricsFactory = new MongoDbChangeEventSourceMetricsFactory();
 
-            SnapshotterService snapshotterService = null; // TODO with DBZ-7304
-
             ChangeEventSourceCoordinator<MongoDbPartition, MongoDbOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
-                    previousOffset,
+                    previousOffsets,
                     errorHandler,
                     MongoDbConnector.class,
                     connectorConfig,
@@ -255,5 +261,55 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
     @Override
     protected Configuration withMaskedSensitiveOptions(Configuration config) {
         return super.withMaskedSensitiveOptions(config).withMasked(MongoDbConnectorConfig.CONNECTION_STRING.name());
+    }
+
+    private void validate(MongoDbConnectorConfig connectorConfig, MongoDbConnection mongoDbConnection, Offsets<MongoDbPartition, MongoDbOffsetContext> previousOffsets,
+                          Snapshotter snapshotter) {
+
+        for (Map.Entry<MongoDbPartition, MongoDbOffsetContext> previousOffset : previousOffsets) {
+
+            MongoDbOffsetContext offset = previousOffset.getValue();
+
+            if (offset == null) {
+                LOGGER.info("Connector started for the first time.");
+                LOGGER.info("No previous offset has been found");
+                return;
+            }
+
+            if (offset.isInitialSnapshotRunning()) {
+                // The last offset was an incomplete snapshot and now the snapshot was disabled
+                if (!snapshotter.shouldSnapshotData(true, true)) {
+                    // No snapshots are allowed
+                    throw new DebeziumException("The connector previously stopped while taking a snapshot, but now the connector is configured "
+                            + "to never allow snapshots. Reconfigure the connector to use snapshots initially or when needed.");
+                }
+                LOGGER.info("The previous snapshot was incomplete, so restarting the snapshot");
+
+                return;
+            }
+
+            if (connectorConfig.isLogPositionCheckEnabled()) {
+                boolean logPositionAvailable = mongoDbConnection.validateLogPosition(offset, taskContext);
+
+                if (!logPositionAvailable) {
+                    LOGGER.warn("Last recorded offset is no longer available on the server.");
+
+                    if (snapshotter.shouldSnapshotOnDataError()) {
+
+                        LOGGER.info("The last recorded offset is no longer available but we are in {} snapshot mode. " +
+                                "Attempting to snapshot data to fill the gap.",
+                                snapshotter.name());
+
+                        previousOffsets.resetOffset(previousOffsets.getTheOnlyPartition());
+
+                        return;
+                    }
+
+                    LOGGER.warn("The connector is trying to read change stream starting at " + offset + ", but this is no longer "
+                            + "available on the server. Reconfigure the connector to use a snapshot when needed if you want to recover. " +
+                            "If not the connector will streaming from the last available position in the log");
+                }
+            }
+        }
     }
 }

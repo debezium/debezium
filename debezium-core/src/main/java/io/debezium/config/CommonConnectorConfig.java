@@ -46,6 +46,8 @@ import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.heartbeat.HeartbeatImpl;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
+import io.debezium.pipeline.txmetadata.DefaultTransactionMetadataFactory;
+import io.debezium.pipeline.txmetadata.spi.TransactionMetadataFactory;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -67,7 +69,20 @@ public abstract class CommonConnectorConfig {
     public static final String TASK_ID = "task.id";
     public static final Pattern TOPIC_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_.\\-]+$");
     public static final String MULTI_PARTITION_MODE = "multi.partition.mode";
+    public static final String SNAPSHOT_MODE_PROPERTY_NAME = "snapshot.mode";
+    public static final String SNAPSHOT_LOCKING_MODE_PROPERTY_NAME = "snapshot.locking.mode";
+
     private static final Logger LOGGER = LoggerFactory.getLogger(CommonConnectorConfig.class);
+    protected SnapshotQueryMode snapshotQueryMode;
+    protected String snapshotQueryModeCustomName;
+    protected String snapshotLockingModeCustomName;
+    protected final boolean snapshotModeConfigurationBasedSnapshotData;
+    protected final boolean snapshotModeConfigurationBasedSnapshotSchema;
+    protected final boolean snapshotModeConfigurationBasedStream;
+    protected final boolean snapshotModeConfigurationBasedSnapshotOnSchemaError;
+    protected final boolean snapshotModeConfigurationBasedSnapshotOnDataError;
+    protected final boolean isLogPositionCheckEnabled;
+    protected final boolean isAdvancedMetricsEnabled;
 
     /**
      * The set of predefined versions e.g. for source struct maker version
@@ -120,6 +135,7 @@ public abstract class CommonConnectorConfig {
             }
             return mode;
         }
+
     }
 
     /**
@@ -179,6 +195,7 @@ public abstract class CommonConnectorConfig {
 
             return null;
         }
+
     }
 
     /**
@@ -256,6 +273,7 @@ public abstract class CommonConnectorConfig {
             }
             return mode;
         }
+
     }
 
     /**
@@ -318,6 +336,7 @@ public abstract class CommonConnectorConfig {
             }
             return null;
         }
+
     }
 
     /**
@@ -380,6 +399,7 @@ public abstract class CommonConnectorConfig {
             }
             return null;
         }
+
     }
 
     /**
@@ -433,6 +453,7 @@ public abstract class CommonConnectorConfig {
             }
             return mode;
         }
+
     }
 
     public enum EventConvertingFailureHandlingMode implements EnumeratedValue {
@@ -483,6 +504,62 @@ public abstract class CommonConnectorConfig {
 
             return null;
         }
+
+    }
+
+    public enum SnapshotQueryMode implements EnumeratedValue {
+        /**
+         * This mode will do a select based on {@code column.include.list} and {@code column.exclude.list} configurations.
+         */
+        SELECT_ALL("select_all"),
+
+        CUSTOM("custom");
+
+        private final String value;
+
+        SnapshotQueryMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be {@code null}
+         * @return the matching option, or null if no match is found
+         */
+        public static SnapshotQueryMode parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (SnapshotQueryMode option : SnapshotQueryMode.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be {@code null}
+         * @param defaultValue the default value; may be {@code null}
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static SnapshotQueryMode parse(String value, String defaultValue) {
+            SnapshotQueryMode mode = parse(value);
+            if (mode == null && defaultValue != null) {
+                mode = parse(defaultValue);
+            }
+            return mode;
+        }
+
     }
 
     private static final String CONFLUENT_AVRO_CONVERTER = "io.confluent.connect.avro.AvroConverter";
@@ -641,6 +718,15 @@ public abstract class CommonConnectorConfig {
             .withImportance(Importance.LOW)
             .withDescription("Enables transaction metadata extraction together with event counting")
             .withDefault(Boolean.FALSE);
+
+    public static final Field TRANSACTION_METADATA_FACTORY = Field.create("transaction.metadata.factory")
+            .withDisplayName("Factory class to create transaction context & transaction struct maker classes")
+            .withType(Type.CLASS)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDefault(DefaultTransactionMetadataFactory.class.getName())
+            .withDescription(
+                    "Class to make transaction context & transaction struct/schemas");
 
     public static final Field EVENT_PROCESSING_FAILURE_HANDLING_MODE = Field.create("event.processing.failure.handling.mode")
             .withDisplayName("Event deserialization failure handling")
@@ -873,6 +959,133 @@ public abstract class CommonConnectorConfig {
                     + "'warn' (the default) the value of column of event that conversion failed will be null and be logged with warn level; "
                     + "'skip' the value of column of event that conversion failed will be null and be logged with debug level.");
 
+    public static final Field STREAMING_DELAY_MS = Field.create("streaming.delay.ms")
+            .withDisplayName("Streaming Delay (milliseconds)")
+            .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 27))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .withDescription("A delay period after the snapshot is completed and the streaming begins, given in milliseconds. Defaults to 0 ms.")
+            .withDefault(0L)
+            .withValidation(Field::isNonNegativeLong);
+
+    public static final Field SNAPSHOT_LOCKING_MODE_CUSTOM_NAME = Field.create("snapshot.locking.mode.custom.name")
+            .withDisplayName("Snapshot Locking Mode Custom Name")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 14))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withValidation((config, field, output) -> {
+                if ("custom".equalsIgnoreCase(config.getString("snapshot.locking.mode")) && config.getString(field, "").isEmpty()) {
+                    output.accept(field, "", "snapshot.locking.mode.custom.name cannot be empty when snapshot.locking.mode 'custom' is defined");
+                    return 1;
+                }
+                return 0;
+            })
+            .withDescription(
+                    "When 'snapshot.locking.mode' is set as custom, this setting must be set to specify a the name of the custom implementation provided in the 'name()' method. "
+                            + "The implementations must implement the 'SnapshotterLocking' interface and is called to determine how to lock tables during schema snapshot.");
+
+    public static final Field SNAPSHOT_QUERY_MODE = Field.create("snapshot.query.mode")
+            .withDisplayName("Snapshot query mode")
+            .withEnum(SnapshotQueryMode.class, SnapshotQueryMode.SELECT_ALL)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 15))
+            .withDescription("Controls query used during the snapshot");
+
+    public static final Field SNAPSHOT_QUERY_MODE_CUSTOM_NAME = Field.create("snapshot.query.mode.custom.name")
+            .withDisplayName("Snapshot Query Mode Custom Name")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 16))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withValidation((config, field, output) -> {
+                if ("custom".equalsIgnoreCase(config.getString(SNAPSHOT_QUERY_MODE)) && config.getString(field, "").isEmpty()) {
+                    output.accept(field, "", "snapshot.query.mode.custom.name cannot be empty when snapshot.query.mode 'custom' is defined");
+                    return 1;
+                }
+                return 0;
+            })
+            .withDescription(
+                    "When 'snapshot.query.mode' is set as custom, this setting must be set to specify a the name of the custom implementation provided in the 'name()' method. "
+                            + "The implementations must implement the 'SnapshotterQuery' interface and is called to determine how to build queries during snapshot.");
+
+    public static final Field SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_DATA = Field.create("snapshot.mode.configuration.based.snapshot.data")
+            .withDisplayName("Snapshot mode property based snapshot data")
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 17))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .optional()
+            .withDescription(
+                    "When 'snapshot.mode' is set as configuration_based, this setting permits to specify whenever the data should be snapshotted or not.");
+
+    public static final Field SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_SCHEMA = Field.create("snapshot.mode.configuration.based.snapshot.schema")
+            .withDisplayName("Snapshot mode property based snapshot schema")
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 18))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .optional()
+            .withDescription(
+                    "When 'snapshot.mode' is set as configuration_based, this setting permits to specify whenever the schema should be snapshotted or not.");
+
+    public static final Field SNAPSHOT_MODE_CONFIGURATION_BASED_START_STREAM = Field.create("snapshot.mode.configuration.based.start.stream")
+            .withDisplayName("Snapshot mode property based start stream")
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 19))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .optional()
+            .withDescription(
+                    "When 'snapshot.mode' is set as configuration_based, this setting permits to specify whenever the stream should start or not after snapshot.");
+
+    public static final Field SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_SCHEMA_ERROR = Field.create("snapshot.mode.configuration.based.snapshot.on.schema.error")
+            .withDisplayName("Snapshot mode property based snapshot on schema error")
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 20))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .optional()
+            .withDescription(
+                    "When 'snapshot.mode' is set as configuration_based, this setting permits to specify whenever the schema should be snapshotted or not in case of error.");
+
+    public static final Field SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_DATA_ERROR = Field.create("snapshot.mode.configuration.based.snapshot.on.data.error")
+            .withDisplayName("Snapshot mode property based snapshot on data error")
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_SNAPSHOT, 21))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .optional()
+            .withDescription(
+                    "When 'snapshot.mode' is set as configuration_based, this setting permits to specify whenever the data should be snapshotted or not in case of error.");
+
+    public static final Field LOG_POSITION_CHECK_ENABLED = Field.createInternal("log.position.check.enable")
+            .withDisplayName("Enable/Disable log position check")
+            .withType(Type.BOOLEAN)
+            .withDefault(true)
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 30))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .optional()
+            .withDescription("When enabled the connector checks if the position stored in the offset is still available in the log");
+
+    public static final Field ADVANCED_METRICS_ENABLE = Field.createInternal("advanced.metrics.enable")
+            .withDisplayName("Enable/Disable advance metrics")
+            .withType(Type.BOOLEAN)
+            .withDefault(false)
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 31))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .optional()
+            .withDescription("When enabled the connector will emit advanced streaming metrics");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -883,14 +1096,22 @@ public abstract class CommonConnectorConfig {
                     PROVIDE_TRANSACTION_METADATA,
                     SKIPPED_OPERATIONS,
                     SNAPSHOT_DELAY_MS,
+                    STREAMING_DELAY_MS,
                     SNAPSHOT_MODE_TABLES,
                     SNAPSHOT_FETCH_SIZE,
                     SNAPSHOT_MAX_THREADS,
                     SNAPSHOT_MODE_CUSTOM_NAME,
+                    SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_DATA,
+                    SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_SCHEMA,
+                    SNAPSHOT_MODE_CONFIGURATION_BASED_START_STREAM,
+                    SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_SCHEMA_ERROR,
+                    SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_DATA_ERROR,
                     RETRIABLE_RESTART_WAIT,
                     QUERY_FETCH_SIZE,
                     MAX_RETRIES_ON_ERROR,
-                    INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY)
+                    INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY,
+                    LOG_POSITION_CHECK_ENABLED,
+                    ADVANCED_METRICS_ENABLE)
             .events(
                     CUSTOM_CONVERTERS,
                     CUSTOM_POST_PROCESSORS,
@@ -903,6 +1124,7 @@ public abstract class CommonConnectorConfig {
                     TOPIC_NAMING_STRATEGY,
                     NOTIFICATION_ENABLED_CHANNELS,
                     SinkNotificationChannel.NOTIFICATION_TOPIC,
+                    TRANSACTION_METADATA_FACTORY,
                     CUSTOM_METRIC_TAGS)
             .create();
 
@@ -916,6 +1138,7 @@ public abstract class CommonConnectorConfig {
     private final String heartbeatTopicsPrefix;
     private final Duration heartbeatInterval;
     private final Duration snapshotDelay;
+    private final Duration streamingDelay;
     private final Duration retriableRestartWait;
     private final int snapshotFetchSize;
     private final int incrementalSnapshotChunkSize;
@@ -925,6 +1148,7 @@ public abstract class CommonConnectorConfig {
     private final String snapshotModeCustomName;
     private final Integer queryFetchSize;
     private final SourceInfoStructMaker<? extends AbstractSourceInfo> sourceInfoStructMaker;
+    private final TransactionMetadataFactory transactionMetadataFactory;
     private final boolean shouldProvideTransactionMetadata;
     private final EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode;
     private final CustomConverterRegistry customConverterRegistry;
@@ -933,6 +1157,7 @@ public abstract class CommonConnectorConfig {
     private final FieldNameAdjustmentMode fieldNameAdjustmentMode;
     private final EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode;
     private final String signalingDataCollection;
+    private final TableId signalingDataCollectionId;
 
     private final Duration signalPollInterval;
 
@@ -963,6 +1188,7 @@ public abstract class CommonConnectorConfig {
         this.heartbeatTopicsPrefix = config.getString(Heartbeat.HEARTBEAT_TOPICS_PREFIX);
         this.heartbeatInterval = config.getDuration(Heartbeat.HEARTBEAT_INTERVAL, ChronoUnit.MILLIS);
         this.snapshotDelay = Duration.ofMillis(config.getLong(SNAPSHOT_DELAY_MS));
+        this.streamingDelay = Duration.ofMillis(config.getLong(STREAMING_DELAY_MS));
         this.retriableRestartWait = Duration.ofMillis(config.getLong(RETRIABLE_RESTART_WAIT));
         this.snapshotFetchSize = config.getInteger(SNAPSHOT_FETCH_SIZE, defaultSnapshotFetchSize);
         this.snapshotMaxThreads = config.getInteger(SNAPSHOT_MAX_THREADS);
@@ -974,6 +1200,7 @@ public abstract class CommonConnectorConfig {
         this.fieldNameAdjustmentMode = FieldNameAdjustmentMode.parse(config.getString(FIELD_NAME_ADJUSTMENT_MODE));
         this.eventConvertingFailureHandlingMode = EventConvertingFailureHandlingMode.parse(config.getString(EVENT_CONVERTING_FAILURE_HANDLING_MODE));
         this.sourceInfoStructMaker = getSourceInfoStructMaker(Version.V2);
+        this.transactionMetadataFactory = getTransactionMetadataFactory();
         this.shouldProvideTransactionMetadata = config.getBoolean(PROVIDE_TRANSACTION_METADATA);
         this.eventProcessingFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(EVENT_PROCESSING_FAILURE_HANDLING_MODE));
         this.customConverterRegistry = new CustomConverterRegistry(getCustomConverters());
@@ -989,6 +1216,20 @@ public abstract class CommonConnectorConfig {
         this.maxRetriesOnError = config.getInteger(MAX_RETRIES_ON_ERROR);
         this.customMetricTags = createCustomMetricTags(config);
         this.incrementalSnapshotWatermarkingStrategy = WatermarkStrategy.parse(config.getString(INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY));
+        this.snapshotLockingModeCustomName = config.getString(SNAPSHOT_LOCKING_MODE_CUSTOM_NAME, "");
+        this.snapshotQueryMode = SnapshotQueryMode.parse(config.getString(SNAPSHOT_QUERY_MODE), SNAPSHOT_QUERY_MODE.defaultValueAsString());
+        this.snapshotQueryModeCustomName = config.getString(SNAPSHOT_QUERY_MODE_CUSTOM_NAME, "");
+        this.snapshotModeConfigurationBasedSnapshotData = config.getBoolean(SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_DATA);
+        this.snapshotModeConfigurationBasedSnapshotSchema = config.getBoolean(SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_SCHEMA);
+        this.snapshotModeConfigurationBasedStream = config.getBoolean(SNAPSHOT_MODE_CONFIGURATION_BASED_START_STREAM);
+        this.snapshotModeConfigurationBasedSnapshotOnSchemaError = config.getBoolean(SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_SCHEMA_ERROR);
+        this.snapshotModeConfigurationBasedSnapshotOnDataError = config.getBoolean(SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_DATA_ERROR);
+        this.isLogPositionCheckEnabled = config.getBoolean(LOG_POSITION_CHECK_ENABLED);
+        this.isAdvancedMetricsEnabled = config.getBoolean(ADVANCED_METRICS_ENABLE);
+
+        this.signalingDataCollectionId = !Strings.isNullOrBlank(this.signalingDataCollection)
+                ? TableId.parse(this.signalingDataCollection)
+                : null;
     }
 
     private static List<String> getSignalEnabledChannels(Configuration config) {
@@ -1064,6 +1305,10 @@ public abstract class CommonConnectorConfig {
 
     public abstract String getConnectorName();
 
+    public abstract EnumeratedValue getSnapshotMode();
+
+    public abstract Optional<? extends EnumeratedValue> getSnapshotLockingMode();
+
     public String getHeartbeatTopicsPrefix() {
         return heartbeatTopicsPrefix;
     }
@@ -1072,12 +1317,12 @@ public abstract class CommonConnectorConfig {
         return heartbeatInterval;
     }
 
-    public Duration getRetriableRestartWait() {
-        return retriableRestartWait;
-    }
-
     public Duration getSnapshotDelay() {
         return snapshotDelay;
+    }
+
+    public Duration getStreamingDelay() {
+        return streamingDelay;
     }
 
     public int getSnapshotFetchSize() {
@@ -1174,6 +1419,10 @@ public abstract class CommonConnectorConfig {
     @SuppressWarnings("unchecked")
     public <T extends AbstractSourceInfo> SourceInfoStructMaker<T> getSourceInfoStructMaker() {
         return (SourceInfoStructMaker<T>) sourceInfoStructMaker;
+    }
+
+    public TransactionMetadataFactory getTransactionMetadataFactory() {
+        return getTransactionMetadataFactory(TRANSACTION_METADATA_FACTORY);
     }
 
     public EnumSet<Envelope.Operation> getSkippedOperations() {
@@ -1316,6 +1565,46 @@ public abstract class CommonConnectorConfig {
                 || APICURIO_AVRO_CONVERTER.equals(keyConverter) || APICURIO_AVRO_CONVERTER.equals(valueConverter);
     }
 
+    public String snapshotLockingModeCustomName() {
+        return this.snapshotLockingModeCustomName;
+    }
+
+    public boolean snapshotModeConfigurationBasedSnapshotData() {
+        return this.snapshotModeConfigurationBasedSnapshotData;
+    }
+
+    public boolean snapshotModeConfigurationBasedSnapshotSchema() {
+        return this.snapshotModeConfigurationBasedSnapshotSchema;
+    }
+
+    public boolean snapshotModeConfigurationBasedStream() {
+        return this.snapshotModeConfigurationBasedStream;
+    }
+
+    public boolean snapshotModeConfigurationBasedSnapshotOnSchemaError() {
+        return this.snapshotModeConfigurationBasedSnapshotOnSchemaError;
+    }
+
+    public boolean snapshotModeConfigurationBasedSnapshotOnDataError() {
+        return this.snapshotModeConfigurationBasedSnapshotOnDataError;
+    }
+
+    public boolean isLogPositionCheckEnabled() {
+        return isLogPositionCheckEnabled;
+    }
+
+    public boolean isAdvancedMetricsEnabled() {
+        return isAdvancedMetricsEnabled;
+    }
+
+    public EnumeratedValue snapshotQueryMode() {
+        return this.snapshotQueryMode;
+    }
+
+    public String snapshotQueryModeCustomName() {
+        return this.snapshotQueryModeCustomName;
+    }
+
     /**
      * Returns the connector-specific {@link SourceInfoStructMaker} based on the given configuration.
      */
@@ -1348,26 +1637,26 @@ public abstract class CommonConnectorConfig {
         return signalEnabledChannels;
     }
 
-    public Optional<String[]> parseSignallingMessage(Struct value) {
-        final Struct after = value.getStruct(Envelope.FieldName.AFTER);
-        if (after == null) {
-            LOGGER.warn("After part of signal '{}' is missing", value);
+    public Optional<String[]> parseSignallingMessage(Struct value, String fieldName) {
+        final Struct event = value.getStruct(fieldName);
+        if (event == null) {
+            LOGGER.warn("Field {} part of signal '{}' is missing", fieldName, value);
             return Optional.empty();
         }
-        List<org.apache.kafka.connect.data.Field> fields = after.schema().fields();
+        List<org.apache.kafka.connect.data.Field> fields = event.schema().fields();
         if (fields.size() != 3) {
-            LOGGER.warn("The signal event '{}' should have 3 fields but has {}", after, fields.size());
+            LOGGER.warn("The signal event '{}' should have 3 fields but has {}", event, fields.size());
             return Optional.empty();
         }
         return Optional.of(new String[]{
-                after.getString(fields.get(0).name()),
-                after.getString(fields.get(1).name()),
-                after.getString(fields.get(2).name())
+                event.getString(fields.get(0).name()),
+                event.getString(fields.get(1).name()),
+                event.getString(fields.get(2).name())
         });
     }
 
     public boolean isSignalDataCollection(DataCollectionId dataCollectionId) {
-        return signalingDataCollection != null && TableId.parse(signalingDataCollection).equals(dataCollectionId);
+        return signalingDataCollectionId != null && signalingDataCollectionId.equals(dataCollectionId);
     }
 
     public Optional<String> customRetriableException() {
@@ -1413,5 +1702,13 @@ public abstract class CommonConnectorConfig {
 
         sourceInfoStructMaker.init(connector, version, connectorConfig);
         return sourceInfoStructMaker;
+    }
+
+    public TransactionMetadataFactory getTransactionMetadataFactory(Field transactionMetadataFactoryField) {
+        final TransactionMetadataFactory factory = config.getInstance(transactionMetadataFactoryField, TransactionMetadataFactory.class, config);
+        if (factory == null) {
+            throw new DebeziumException("Unable to instantiate the transaction struct maker class " + TRANSACTION_METADATA_FACTORY);
+        }
+        return factory;
     }
 }

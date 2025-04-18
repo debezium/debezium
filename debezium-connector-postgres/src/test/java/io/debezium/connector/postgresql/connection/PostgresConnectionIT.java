@@ -6,6 +6,7 @@
 
 package io.debezium.connector.postgresql.connection;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -76,6 +77,7 @@ public class PostgresConnectionIT {
             assertNotNull(serverInfo.server());
             assertNotNull(serverInfo.username());
             assertNotNull(serverInfo.database());
+            assertThat(serverInfo.version()).isPositive();
             Map<String, String> permissionsByRoleName = serverInfo.permissionsByRoleName();
             assertNotNull(permissionsByRoleName);
             assertTrue(!permissionsByRoleName.isEmpty());
@@ -151,7 +153,7 @@ public class PostgresConnectionIT {
 
     @Test
     public void shouldDetectRunningConncurrentTxOnInit() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         // drop the slot from the previous connection
         final String slotName = "block";
         try (PostgresConnection connection = TestHelper.create()) {

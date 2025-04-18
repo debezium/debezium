@@ -20,14 +20,14 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 
 /**
  * Integration Tests for config skip.messages.without.change
  *
  * @author Ronak Jain
  */
-public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnectorTest {
+public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractAsyncEngineConnectorTest {
 
     @Before
     public void before() throws Exception {
@@ -55,7 +55,7 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
         Configuration config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.COLUMN_INCLUDE_LIST, "updates_test.debezium_test.id, updates_test.debezium_test.white")
                 .with(PostgresConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, true)
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         start(PostgresConnector.class, config);
@@ -95,7 +95,7 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
         Configuration config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.COLUMN_EXCLUDE_LIST, "updates_test.debezium_test.black")
                 .with(PostgresConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, true)
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         start(PostgresConnector.class, config);
@@ -133,7 +133,7 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
         Configuration config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.COLUMN_INCLUDE_LIST, "updates_test.debezium_test.id, updates_test.debezium_test.white")
                 .with(PostgresConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, true)
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         start(PostgresConnector.class, config);
@@ -174,7 +174,7 @@ public class PostgresSkipMessagesWithoutChangeConfigIT extends AbstractConnector
         Configuration config = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.COLUMN_INCLUDE_LIST, "updates_test.debezium_test.id, updates_test.debezium_test.white")
                 .with(PostgresConnectorConfig.SKIP_MESSAGES_WITHOUT_CHANGE, false)
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NEVER)
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.NO_DATA)
                 .build();
 
         start(PostgresConnector.class, config);

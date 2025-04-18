@@ -5,8 +5,7 @@
  */
 package io.debezium.testing.testcontainers;
 
-import static io.debezium.testing.testcontainers.util.DockerUtils.logDockerDesktopBanner;
-import static java.util.concurrent.TimeUnit.MINUTES;
+import static io.debezium.testing.testcontainers.util.DockerUtils.logContainerVMBanner;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
 import static org.awaitility.Awaitility.await;
@@ -45,7 +44,10 @@ import io.debezium.testing.testcontainers.util.RandomPortResolver;
 public class MongoDbReplicaSet implements MongoDbDeployment {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbReplicaSet.class);
-
+    private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
+    private static final String STARTUP_TIMEOUT = System.getProperty(TEST_PROPERTY_PREFIX + "mongo.replica.primary.startup.timeout.seconds");
+    private static final long DEFAULT_STARTUP_TIMEOUT = 60;
+    private final long STARTUP_TIMEOUT_SECONDS = STARTUP_TIMEOUT != null ? Long.parseLong(STARTUP_TIMEOUT) : DEFAULT_STARTUP_TIMEOUT;
     private final String name;
     private final int memberCount;
     private final boolean configServer;
@@ -76,12 +78,14 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
 
     public static class Builder {
 
+        private static final Network commonNetwork = Network.newNetwork();
+
         private String name = "rs0";
         private String namespace = "test-mongo";
         private int memberCount = 3;
         private boolean configServer = false;
 
-        private Network network = Network.newNetwork();
+        private Network network = commonNetwork;
         private PortResolver portResolver = new RandomPortResolver();
         private boolean skipDockerDesktopLogWarning = false;
         private DockerImageName imageName;
@@ -186,7 +190,7 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
             members.add(mongoDbContainer);
         }
 
-        logDockerDesktopBanner(LOGGER, getHostNames(), builder.skipDockerDesktopLogWarning);
+        logContainerVMBanner(LOGGER, getHostNames(), builder.skipDockerDesktopLogWarning);
     }
 
     public String getName() {
@@ -342,7 +346,7 @@ public class MongoDbReplicaSet implements MongoDbDeployment {
 
     public void awaitReplicaPrimary() {
         await()
-                .atMost(1, MINUTES)
+                .atMost(Duration.ofSeconds(STARTUP_TIMEOUT_SECONDS))
                 .pollDelay(1, SECONDS)
                 .ignoreException(IllegalStateException.class)
                 .until(() -> tryPrimary().isPresent());

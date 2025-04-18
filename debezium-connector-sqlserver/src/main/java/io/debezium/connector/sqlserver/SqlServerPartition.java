@@ -5,6 +5,9 @@
  */
 package io.debezium.connector.sqlserver;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -20,13 +23,24 @@ public class SqlServerPartition extends AbstractPartition implements Partition {
 
     private final String serverName;
     private final Map<String, String> sourcePartition;
+    private final List<Map<String, String>> supportedFormats;
     private final int hashCode;
 
     public SqlServerPartition(String serverName, String databaseName) {
+        this(serverName, databaseName, true);
+    }
+
+    public SqlServerPartition(String serverName, String databaseName, boolean multiPartitionMode) {
         super(databaseName);
         this.serverName = serverName;
 
         this.sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, serverName, DATABASE_PARTITION_KEY, databaseName);
+
+        // for connectors working in single-partition mode the format of a partition has been changed in Debezium 2.0,
+        // the legacy/old format of the partition should still be supported along with the new format
+        // the new format has precedence over the old format
+        this.supportedFormats = multiPartitionMode ? Collections.singletonList(this.sourcePartition)
+                : Arrays.asList(this.sourcePartition, Collect.hashMapOf(SERVER_PARTITION_KEY, serverName));
 
         this.hashCode = Objects.hash(serverName, databaseName);
     }
@@ -34,6 +48,11 @@ public class SqlServerPartition extends AbstractPartition implements Partition {
     @Override
     public Map<String, String> getSourcePartition() {
         return sourcePartition;
+    }
+
+    @Override
+    public List<Map<String, String>> getSupportedFormats() {
+        return supportedFormats;
     }
 
     /**
@@ -75,9 +94,10 @@ public class SqlServerPartition extends AbstractPartition implements Partition {
         @Override
         public Set<SqlServerPartition> getPartitions() {
             String serverName = connectorConfig.getLogicalName();
+            boolean multiPartitionMode = connectorConfig.getDatabaseNames().size() > 1;
 
             return connectorConfig.getDatabaseNames().stream()
-                    .map(databaseName -> new SqlServerPartition(serverName, databaseName))
+                    .map(databaseName -> new SqlServerPartition(serverName, databaseName, multiPartitionMode))
                     .collect(Collectors.toSet());
         }
     }

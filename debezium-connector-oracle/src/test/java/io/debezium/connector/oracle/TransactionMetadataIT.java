@@ -25,7 +25,7 @@ import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.util.Collect;
 import io.debezium.util.Testing;
 
@@ -34,7 +34,7 @@ import io.debezium.util.Testing;
  *
  * @author Jiri Pechanec
  */
-public class TransactionMetadataIT extends AbstractConnectorTest {
+public class TransactionMetadataIT extends AbstractAsyncEngineConnectorTest {
 
     private static OracleConnection connection;
 
@@ -92,7 +92,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
     public void transactionMetadata() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER,DEBEZIUM\\.ORDERS")
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(OracleConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
                 .with(OracleConnectorConfig.LOG_MINING_STRATEGY, OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG)
                 .build();
@@ -151,7 +151,7 @@ public class TransactionMetadataIT extends AbstractConnectorTest {
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER,DEBEZIUM\\.ORDERS")
-                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                     .with(OracleConnectorConfig.PROVIDE_TRANSACTION_METADATA, true)
                     .with(OracleConnectorConfig.LOG_MINING_STRATEGY, OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG)
                     .build();

@@ -55,6 +55,7 @@ unit_statement
     | alter_materialized_view_log
     | alter_user
     | alter_view
+    | alter_audit_policy
 
     | analyze
     | associate_statistics
@@ -81,6 +82,7 @@ unit_statement
     | create_trigger
     | create_type
     | create_synonym
+    | create_audit_policy
 
     | drop_function
     | drop_package
@@ -1387,6 +1389,80 @@ alter_view_editionable
     : {isVersion12()}? (EDITIONABLE | NONEDITIONABLE)
     ;
 
+// https://docs.oracle.com/en/database/oracle/oracle-database/21/sqlrf/ALTER-AUDIT-POLICY-Unified-Auditing.html
+alter_audit_policy
+    : ALTER AUDIT POLICY p = id_expression ADD? (
+        privilege_audit_clause? action_audit_clause? role_audit_clause?
+        | (ONLY TOPLEVEL)?
+    ) DROP? (privilege_audit_clause? action_audit_clause? role_audit_clause? | (ONLY TOPLEVEL)?) (
+        CONDITION (DROP | CHAR_STRING EVALUATE PER (STATEMENT | SESSION | INSTANCE))
+    )?
+    ;
+
+privilege_audit_clause
+    : PRIVILEGES system_privilege (',' system_privilege)*
+    ;
+
+action_audit_clause
+    : (standard_actions | component_actions | system_actions)+
+    ;
+
+system_actions
+    : ACTIONS system_privilege (',' system_privilege)*
+    ;
+
+standard_actions
+    : ACTIONS actions_clause (',' actions_clause)*
+    ;
+
+actions_clause
+    : (object_action | ALL) ON (
+        DIRECTORY directory_name
+        | (MINING MODEL)? (schema_name '.')? id_expression
+    )
+    | (system_action | ALL)
+    ;
+
+role_audit_clause
+    : ROLES role_name (',' role_name)*
+    ;
+
+component_actions
+    : ACTIONS COMPONENT '=' (
+        (DATAPUMP | DIRECT_LOAD | OLS | XS) component_action (',' component_action)*
+        | DV component_action ON id_expression (',' component_action ON id_expression)*
+        | PROTOCOL (FTP | HTTP | AUTHENTICATION)
+    )
+    ;
+
+component_action
+    : id_expression
+    ;
+
+object_action
+    : ALTER
+    | GRANT
+    | READ
+    | EXECUTE
+    | AUDIT
+    | COMMENT
+    | DELETE
+    | INDEX
+    | INSERT
+    | LOCK
+    | SELECT
+    | UPDATE
+    | FLASHBACK
+    | RENAME
+    ;
+
+system_action
+    : id_expression
+    | (CREATE | ALTER | DROP) JAVA
+    | LOCK TABLE
+    | (READ | WRITE | EXECUTE) DIRECTORY
+    ;
+
 create_view
     : CREATE (OR REPLACE)? (OR? FORCE)? EDITIONABLE? EDITIONING? VIEW
       tableview_name (IF NOT EXISTS)? view_options?
@@ -1435,7 +1511,7 @@ out_of_line_ref_constraint
     ;
 
 out_of_line_constraint
-    : ( (CONSTRAINT constraint_name)?
+    : ( ((CONSTRAINT | CONSTRAINTS) constraint_name)?
           ( UNIQUE '(' column_name (',' column_name)* ')'
           | PRIMARY KEY '(' column_name (',' column_name)* ')'
           | foreign_key_clause
@@ -1443,6 +1519,7 @@ out_of_line_constraint
           )
        )
       constraint_state?
+      parallel_clause?
     ;
 
 constraint_state
@@ -1903,11 +1980,22 @@ relational_table
           physical_properties?
           column_properties?
           table_partitioning_clauses?
+          logminer_relational_table_attributes? // LogMiner-specific
           (CACHE | NOCACHE)? (RESULT_CACHE '(' MODE (DEFAULT | FORCE) ')')?
           parallel_clause?
+          monitoring_nomonitoring?
           (ROWDEPENDENCIES | NOROWDEPENDENCIES)?
           (enable_disable_clause+)? row_movement_clause? logical_replication_clause? flashback_archive_clause? annotations_clause?
         ;
+
+logminer_relational_table_attributes
+    : logminer_relational_table_attribute logminer_relational_table_attribute*
+    ;
+
+logminer_relational_table_attribute
+    : segment_attributes_clause
+    | parallel_clause
+    ;
 
 relational_property
     : ( out_of_line_constraint
@@ -2090,6 +2178,7 @@ partitioning_storage_clause
       | OVERFLOW (TABLESPACE tablespace)?
       | table_compression
       | key_compression
+      | inmemory_table_clause
       | lob_partitioning_storage
       | VARRAY varray_item STORE AS (BASICFILE | SECUREFILE)? LOB lob_segname
       )+
@@ -2243,6 +2332,7 @@ et_oracle_datapump
       // Undocumented, internal DATAPUMP operations used by Oracle
       | DEBUG '=' '(' UNSIGNED_INTEGER ',' UNSIGNED_INTEGER ')'
       | DATAPUMP INTERNAL TABLE tableview_name
+      | TEMPLATE_TABLE tableview_name
       | JOB '(' schema_name ',' tableview_name ',' UNSIGNED_INTEGER ')'
       | WORKERID UNSIGNED_INTEGER
       | PARALLEL UNSIGNED_INTEGER
@@ -2599,6 +2689,13 @@ create_synonym
     // Synonym's schema cannot be specified for public synonyms
     : CREATE (OR REPLACE)? PUBLIC SYNONYM synonym_name FOR (schema_name PERIOD)? schema_object_name (AT_SIGN link_name)?
     | CREATE (OR REPLACE)? SYNONYM (schema_name PERIOD)? synonym_name FOR (schema_name PERIOD)? schema_object_name (AT_SIGN link_name)?
+    ;
+
+// https://docs.oracle.com/en/database/oracle/oracle-database/21/sqlrf/CREATE-AUDIT-POLICY-Unified-Auditing.html
+create_audit_policy
+    : CREATE AUDIT POLICY p = id_expression privilege_audit_clause? action_audit_clause? role_audit_clause? (
+        WHEN quoted_string EVALUATE PER (STATEMENT | SESSION | INSTANCE)
+    )? (ONLY TOPLEVEL)? container_clause?
     ;
 
 comment_on_table
@@ -2996,7 +3093,7 @@ merge_table_partition
     ;
 
 modify_table_partition
-    : MODIFY (PARTITION partition_name
+    : MODIFY ((PARTITION | SUBPARTITION) partition_name
              ((ADD | DROP) list_values_clause)? (ADD range_subpartition_desc)? (REBUILD? UNUSABLE LOCAL INDEXES)? (shrink_clause)?
               | range_partitions)
     ;
@@ -3194,7 +3291,7 @@ modify_column_clauses
     ;
 
 modify_col_properties
-    : column_name datatype? (DEFAULT column_default_value)? (ENCRYPT encryption_spec | DECRYPT)? inline_constraint* lob_storage_clause? annotations_clause? //TODO alter_xmlschema_clause
+    : column_name datatype? (DEFAULT (ON NULL_)? column_default_value)? (ENCRYPT encryption_spec | DECRYPT)? inline_constraint* lob_storage_clause? annotations_clause? //TODO alter_xmlschema_clause
     ;
 
 modify_col_visibility
@@ -3346,7 +3443,13 @@ column_definition
 
 column_default_value
     : constant
-    | expression;
+    | interval_default_value_expression
+    | expression
+    ;
+
+interval_default_value_expression
+    : '('? INTERVAL concatenation? interval_expression ')'?
+    ;
 
 virtual_column_definition
     : column_name (datatype (COLLATE collation_name)?)?
@@ -3354,6 +3457,9 @@ virtual_column_definition
         (GENERATED ALWAYS)?
         AS '(' expression ')'
         VIRTUAL? evaluation_edition_clause? unusable_editions_clause? inline_constraint*
+        // Oracle tools and DBMS_METADATA can return this in some use cases
+        // This is used internally by Oracle to mark the virtual column for statistics only
+        (BY USER FOR STATISTICS)?
     ;
 
 annotations_clause
@@ -3433,7 +3539,7 @@ object_type_col_properties
     ;
 
 constraint_clauses
-    : ADD '(' (out_of_line_constraint* | out_of_line_ref_constraint) ')'
+    : ADD '(' (out_of_line_constraint (',' out_of_line_constraint)* | out_of_line_ref_constraint) ')'
     | ADD  (out_of_line_constraint* | out_of_line_ref_constraint)
     | MODIFY (CONSTRAINT constraint_name | PRIMARY KEY | UNIQUE '(' column_name (',' column_name)* ')')  constraint_state CASCADE?
     | RENAME CONSTRAINT old_constraint_name TO new_constraint_name
@@ -5243,7 +5349,7 @@ constant
     ;
 
 numeric
-    : UNSIGNED_INTEGER
+    : UNSIGNED_INTEGER '.'?
     | APPROXIMATE_NUM_LIT
     ;
 
@@ -6650,6 +6756,7 @@ non_reserved_keywords_pre12c
     | POWERMULTISET_BY_CARDINALITY
     | POWERMULTISET
     | POWER
+    | POSITION
     | PQ_DISTRIBUTE
     | PQ_MAP
     | PQ_NOMAP
@@ -7214,6 +7321,7 @@ non_reserved_keywords_pre12c
     | TBLORIDXPARTNUM
     | TEMPFILE
     | TEMPLATE
+    | TEMPLATE_TABLE
     | TEMPORARY
     | TEMP_TABLE
     | TEST

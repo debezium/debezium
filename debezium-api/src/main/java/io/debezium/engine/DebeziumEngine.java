@@ -16,9 +16,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 
-import org.slf4j.LoggerFactory;
-
 import io.debezium.DebeziumException;
+import io.debezium.common.annotation.Incubating;
 import io.debezium.engine.format.ChangeEventFormat;
 import io.debezium.engine.format.KeyValueChangeEventFormat;
 import io.debezium.engine.format.KeyValueHeaderChangeEventFormat;
@@ -45,6 +44,15 @@ import io.debezium.engine.spi.OffsetCommitPolicy;
 public interface DebeziumEngine<R> extends Runnable, Closeable {
 
     String OFFSET_FLUSH_INTERVAL_MS_PROP = "offset.flush.interval.ms";
+
+    /**
+     * @return this engine's signaler, if it supports signaling
+     * @throws UnsupportedOperationException if signaling is not supported by this engine
+     */
+    @Incubating
+    default Signaler getSignaler() {
+        throw new UnsupportedOperationException("Signaling is not supported by this engine");
+    }
 
     /**
      * A callback function to be notified when the connector completes.
@@ -174,6 +182,31 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
         default boolean supportsTombstoneEvents() {
             return true;
         }
+    }
+
+    /**
+     * A record representing signal sent to the engine via {@link DebeziumEngine.Signaler}.
+     * @param id the unique identifier of the signal sent, usually UUID, can be used for deduplication
+     * @param type the unique logical name of the code executing the signal
+     * @param data  the data in JSON format that are passed to the signal code
+     * @param additionalData additional data which might be required by  specific signal types
+     */
+    @Incubating
+    record Signal(String id, String type, String data, Map<String, Object> additionalData) {
+    }
+
+    /**
+     * Signaler defines the contract for sending signals to connector tasks.
+     */
+    @Incubating
+    interface Signaler {
+
+        /**
+         * Send a signal to the connector.
+         *
+         * @param signal the signal to send
+         */
+        void signal(Signal signal);
     }
 
     /**
@@ -335,17 +368,7 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
     }
 
     private static BuilderFactory determineBuilderFactory() {
-        final ServiceLoader<BuilderFactory> loader = ServiceLoader.load(BuilderFactory.class);
-        final Iterator<BuilderFactory> iterator = loader.iterator();
-        if (!iterator.hasNext()) {
-            throw new DebeziumException("No implementation of Debezium engine builder was found");
-        }
-        final BuilderFactory builder = iterator.next();
-        if (iterator.hasNext()) {
-            LoggerFactory.getLogger(Builder.class)
-                    .warn("More than one Debezium engine builder implementation was found, using {} (in Debezium 2.6 you can ignore this warning)", builder.getClass());
-        }
-        return builder;
+        return determineBuilderFactory("io.debezium.embedded.async.ConvertingAsyncEngineBuilderFactory");
     }
 
     private static BuilderFactory determineBuilderFactory(String builderFactory) {

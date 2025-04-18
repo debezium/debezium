@@ -5,6 +5,8 @@
  */
 package io.debezium.relational;
 
+import java.util.Objects;
+
 /**
  * A logical representation of a change table containing changes for a given source table.
  * There is usually one change table for each source table.  When the schema of the source table is changed,
@@ -62,6 +64,23 @@ public class ChangeTable {
 
     public void setSourceTable(Table sourceTable) {
         this.sourceTable = sourceTable;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(captureInstance, sourceTableId, changeTableId, changeTableObjectId);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof ChangeTable) {
+            ChangeTable that = (ChangeTable) obj;
+            return captureInstance.equals(that.captureInstance)
+                    && sourceTableId.equals(that.sourceTableId)
+                    && changeTableId.equals(that.changeTableId)
+                    && changeTableObjectId == that.changeTableObjectId;
+        }
+        return false;
     }
 
     @Override

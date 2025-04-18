@@ -7,7 +7,6 @@ package io.debezium.embedded.async;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Field;
-import io.debezium.embedded.EmbeddedEngine;
 import io.debezium.embedded.EmbeddedEngineConfig;
 
 /**
@@ -18,16 +17,15 @@ import io.debezium.embedded.EmbeddedEngineConfig;
 public interface AsyncEngineConfig extends EmbeddedEngineConfig {
 
     int AVAILABLE_CORES = Runtime.getRuntime().availableProcessors();
-    int RECORD_PROCESSING_THREADS_CAP = 16;
 
     /**
      * An optional field that specifies the number of threads to be used for processing CDC records.
      */
     Field RECORD_PROCESSING_THREADS = Field.create("record.processing.threads")
-            .withDescription("The number of threads to be used for processing CDC records. The default is number of available machine cores with upper "
-                    + "limit of " + RECORD_PROCESSING_THREADS_CAP + " threads. If you want to use all available thread without any limitation, use 'AVAILABLE_CORES' "
-                    + "placeholder.")
-            .withDefault(AVAILABLE_CORES);
+            .withDescription("The number of threads to be used for processing CDC records. If you want to use all available threads, you can use "
+                    + "'AVAILABLE_CORES' placeholder. If the number of threads is not specified, the threads will be created as needed, using "
+                    + "Java 'Executors.newCachedThreadPool()' executor service.")
+            .withDefault(""); // We need to set some non-null value to avoid Kafka config validation failures.
 
     /**
      * An optional field that specifies maximum time in ms to wait for submitted records to finish processing when the task shut down is called.
@@ -56,8 +54,8 @@ public interface AsyncEngineConfig extends EmbeddedEngineConfig {
      * An optional field that specifies if the default {@link io.debezium.engine.DebeziumEngine.ChangeConsumer} should be created for consuming records or not.
      * If only {@link java.util.function.Consumer} is provided to the engine and this option is set to {@code true} (the default is {@code false}), engine will create default
      * {@link io.debezium.engine.DebeziumEngine.ChangeConsumer} and use it for record processing. Default {@link io.debezium.engine.DebeziumEngine.ChangeConsumer}
-     * implementation is taken from legacy {@link EmbeddedEngine}, so this option allows to use almost the same implementation for record processing as {@link EmbeddedEngine}.
-     * The only difference to {@link EmbeddedEngine} is that SMTs will be still run in parallel, even when this option is turned on.
+     * implementation is taken from legacy EmbeddedEngine, so this option allows to use almost the same implementation for record processing as EmbeddedEngine.
+     * The only difference to EmbeddedEngine is that SMTs will be still run in parallel, even when this option is turned on.
      * This option doesn't have any effect when {@link io.debezium.engine.DebeziumEngine.ChangeConsumer} is already provided to the engine in the configuration.
      */
     Field RECORD_PROCESSING_WITH_SERIAL_CONSUMER = Field.create("record.processing.with.serial.consumer")

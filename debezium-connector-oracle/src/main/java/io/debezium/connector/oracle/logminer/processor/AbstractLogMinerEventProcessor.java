@@ -13,9 +13,9 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -23,9 +23,7 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-import org.infinispan.commons.util.CloseableIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,6 +43,8 @@ import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceM
 import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.connector.oracle.logminer.events.DmlEvent;
 import io.debezium.connector.oracle.logminer.events.EventType;
+import io.debezium.connector.oracle.logminer.events.ExtendedStringBeginEvent;
+import io.debezium.connector.oracle.logminer.events.ExtendedStringWriteEvent;
 import io.debezium.connector.oracle.logminer.events.LobEraseEvent;
 import io.debezium.connector.oracle.logminer.events.LobWriteEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
@@ -57,11 +57,14 @@ import io.debezium.connector.oracle.logminer.events.XmlEndEvent;
 import io.debezium.connector.oracle.logminer.events.XmlWriteEvent;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.parser.DmlParserException;
+import io.debezium.connector.oracle.logminer.parser.ExtendedStringParser;
+import io.debezium.connector.oracle.logminer.parser.LogMinerColumnResolverDmlParser;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntryImpl;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlParser;
 import io.debezium.connector.oracle.logminer.parser.SelectLobParser;
 import io.debezium.connector.oracle.logminer.parser.XmlBeginParser;
+import io.debezium.connector.oracle.logminer.processor.LogMinerTransactionCache.ScnDetails;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
@@ -70,6 +73,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Clock;
+import io.debezium.util.Loggings;
 import io.debezium.util.Strings;
 
 import oracle.sql.RAW;
@@ -79,14 +83,15 @@ import oracle.sql.RAW;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransaction> implements LogMinerEventProcessor {
+public abstract class AbstractLogMinerEventProcessor<T extends Transaction> implements LogMinerEventProcessor, CacheProvider<T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractLogMinerEventProcessor.class);
+    private static final Logger ABANDONED_DETAILS_LOGGER = LoggerFactory.getLogger(AbstractLogMinerEventProcessor.class.getName() + ".AbandonedDetails");
     private static final String NO_SEQUENCE_TRX_ID_SUFFIX = "ffffffff";
     private static final String XML_WRITE_PREAMBLE = "XML_REDO := ";
     private static final String XML_WRITE_PREAMBLE_NULL = XML_WRITE_PREAMBLE + "NULL";
-    protected final OracleConnection jdbcConnection;
 
+    private final OracleConnection jdbcConnection;
     private final ChangeEventSourceContext context;
     private final OracleConnectorConfig connectorConfig;
     private final OracleDatabaseSchema schema;
@@ -95,7 +100,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     private final EventDispatcher<OraclePartition, TableId> dispatcher;
     private final LogMinerStreamingChangeEventSourceMetrics metrics;
     private final LogMinerDmlParser dmlParser;
+    private final LogMinerColumnResolverDmlParser reconstructColumnDmlParser;
     private final SelectLobParser selectLobParser;
+    private final ExtendedStringParser extendedStringParser;
     private final XmlBeginParser xmlBeginParser;
     private final Tables.TableFilter tableFilter;
 
@@ -108,16 +115,14 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     private Scn lastProcessedScn = Scn.NULL;
     private boolean sequenceUnavailable = false;
 
-    private final Set<String> abandonedTransactionsCache = new HashSet<>();
-
-    public AbstractLogMinerEventProcessor(ChangeEventSourceContext context,
-                                          OracleConnectorConfig connectorConfig,
-                                          OracleDatabaseSchema schema,
-                                          OraclePartition partition,
-                                          OracleOffsetContext offsetContext,
-                                          EventDispatcher<OraclePartition, TableId> dispatcher,
-                                          LogMinerStreamingChangeEventSourceMetrics metrics,
-                                          OracleConnection jdbcConnection) {
+    protected AbstractLogMinerEventProcessor(ChangeEventSourceContext context,
+                                             OracleConnectorConfig connectorConfig,
+                                             OracleDatabaseSchema schema,
+                                             OraclePartition partition,
+                                             OracleOffsetContext offsetContext,
+                                             EventDispatcher<OraclePartition, TableId> dispatcher,
+                                             LogMinerStreamingChangeEventSourceMetrics metrics,
+                                             OracleConnection jdbcConnection) {
         this.context = context;
         this.connectorConfig = connectorConfig;
         this.schema = schema;
@@ -127,15 +132,13 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         this.metrics = metrics;
         this.tableFilter = connectorConfig.getTableFilters().dataCollectionFilter();
         this.counters = new Counters();
-        this.dmlParser = new LogMinerDmlParser();
+        this.dmlParser = new LogMinerDmlParser(connectorConfig);
+        this.reconstructColumnDmlParser = new LogMinerColumnResolverDmlParser(connectorConfig);
         this.selectLobParser = new SelectLobParser();
+        this.extendedStringParser = new ExtendedStringParser();
         this.xmlBeginParser = new XmlBeginParser();
         this.sqlQuery = LogMinerQueryBuilder.build(connectorConfig);
         this.jdbcConnection = jdbcConnection;
-    }
-
-    protected Set<String> getAbandonedTransactionsCache() {
-        return abandonedTransactionsCache;
     }
 
     protected OracleConnectorConfig getConfig() {
@@ -153,7 +156,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @return true if the transaction has been recently processed, false otherwise
      */
     protected boolean isRecentlyProcessed(String transactionId) {
-        return false;
+        return getProcessedTransactionsCache().containsKey(transactionId);
     }
 
     /**
@@ -163,7 +166,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @return true if the schema change has been seen, false otherwise.
      */
     protected boolean hasSchemaChangeBeenSeen(LogMinerEventRow row) {
-        return false;
+        return getSchemaChangesCache().containsKey(row.getScn().toString());
     }
 
     /**
@@ -185,12 +188,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     }
 
     /**
-     * Returns the {@code TransactionCache} implementation.
-     * @return the transaction cache, never {@code null}
-     */
-    protected abstract Map<String, T> getTransactionCache();
-
-    /**
      * Creates a new transaction based on the supplied {@code START} event.
      *
      * @param row the event row, must not be {@code null}
@@ -203,7 +200,61 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      *
      * @param row the event row that contains the row identifier, must not be {@code null}
      */
-    protected abstract void removeEventWithRowId(LogMinerEventRow row);
+    protected void removeEventWithRowId(LogMinerEventRow row) {
+        final T transaction = getTransactionCache().getTransaction(row.getTransactionId());
+        if (transaction != null) {
+            if (removeTransactionEventWithRowId(transaction, row)) {
+                return;
+            }
+            Loggings.logWarningAndTraceRecord(LOGGER, row,
+                    "Cannot apply undo change in transaction '{}' with SCN '{}' on table '{}' since event with row-id {} was not found.",
+                    row.getTransactionId(), row.getScn(), row.getTableId(), row.getRowId());
+        }
+        else if (isTransactionIdWithNoSequence(row.getTransactionId())) {
+            // This means that Oracle LogMiner found an event that should be undone but its corresponding
+            // undo entry was read in a prior mining session and the transaction's sequence could not be
+            // resolved.
+            final String prefix = getTransactionIdPrefix(row.getTransactionId());
+            LOGGER.debug("Undo change refers to a transaction that has no explicit sequence, '{}'", row.getTransactionId());
+            LOGGER.debug("Checking all transactions with prefix '{}'", prefix);
+
+            if (getTransactionCache().streamTransactionsAndReturn(
+                    stream -> stream.filter(t -> t.getTransactionId().startsWith(prefix))
+                            .anyMatch(t -> removeTransactionEventWithRowId(t, row)))) {
+                return;
+            }
+
+            Loggings.logWarningAndTraceRecord(LOGGER, row,
+                    "Cannot apply undo change in transaction '{}' with SCN '{}' on table '{}' since event with row-id {} was not found.",
+                    row.getTransactionId(), row.getScn(), row.getTableId(), row.getRowId());
+        }
+        else if (!getConfig().isLobEnabled()) {
+            Loggings.logWarningAndTraceRecord(LOGGER, row,
+                    "Cannot apply undo change with SCN '{}' on table '{}' since transaction '{}' was not found.",
+                    row.getScn(), row.getTableId(), row.getTransactionId());
+        }
+        else {
+            // While the code should never get here, log a warning if it does.
+            Loggings.logWarningAndTraceRecord(LOGGER, row,
+                    "Failed to apply undo change with SCN '{}' on table '{}' in transaction '{}' with row-id '{}'",
+                    row.getScn(), row.getTableId(), row.getTransactionId(), row.getRowId());
+        }
+    }
+
+    protected boolean removeTransactionEventWithRowId(T transaction, LogMinerEventRow row) {
+        if (getTransactionCache().removeTransactionEventWithRowId(transaction, row.getRowId())) {
+            // This metric won't necessarily be accurate when LOB is enabled, it will scale based on the
+            // number of times a given transaction is re-mined.
+            metrics.increasePartialRollbackCount();
+            counters.partialRollbackCount++;
+
+            Loggings.logDebugAndTraceRecord(LOGGER, row,
+                    "Undo change on table '{}' applied to transaction event with row-id '{}'",
+                    row.getTableId(), row.getRowId());
+            return true;
+        }
+        return false;
+    }
 
     /**
      * Returns the number of events associated with the specified transaction.
@@ -211,7 +262,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @param transaction the transaction, must not be {@code null}
      * @return the number of events in the transaction
      */
-    protected abstract int getTransactionEventCount(T transaction);
+    protected int getTransactionEventCount(T transaction) {
+        return getTransactionCache().getTransactionEventCount(transaction);
+    }
 
     // todo: can this be removed in favor of a single implementation?
     protected boolean isTrxIdRawValue() {
@@ -256,11 +309,11 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
                 if (metrics.getNumberOfActiveTransactions() > 0 && LOGGER.isDebugEnabled()) {
                     // This is wrapped in try-with-resources specifically for Infinispan performance
-                    try (Stream<T> stream = getTransactionCache().values().stream()) {
-                        LOGGER.debug("All active transactions: {}",
-                                stream.map(t -> t.getTransactionId() + " (" + t.getStartScn() + ")")
+                    getTransactionCache().transactions(transactions -> {
+                        LOGGER.debug("All action transactions: {}",
+                                transactions.map(t -> t.getTransactionId() + " (" + t.getStartScn() + ")")
                                         .collect(Collectors.joining(",")));
-                    }
+                    });
                 }
 
                 metrics.setLastProcessedRowsCount(counters.rows);
@@ -273,6 +326,18 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                     return calculateNewStartScn(endScn, offsetContext.getCommitScn().getMaxCommittedScn());
                 }
             }
+        }
+    }
+
+    @Override
+    public void displayCacheStatistics() {
+        LOGGER.info("Overall Cache Statistics:");
+        LOGGER.info("\tTransactions        : {}", getTransactionCache().getTransactionCount());
+        LOGGER.info("\tRecent Transactions : {}", getProcessedTransactionsCache().size());
+        LOGGER.info("\tSchema Changes      : {}", getSchemaChangesCache().size());
+        LOGGER.info("\tEvents              : {}", getTransactionCache().getTransactionEvents());
+        if (!getTransactionCache().isEmpty() && LOGGER.isDebugEnabled()) {
+            getTransactionCache().eventKeys(stream -> stream.forEach(eventKey -> LOGGER.debug("\t\tFound Key: {}", eventKey)));
         }
     }
 
@@ -291,7 +356,15 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @return a prepared query statement, never {@code null}
      * @throws SQLException if a database exception occurred creating the statement
      */
-    protected abstract PreparedStatement createQueryStatement() throws SQLException;
+    protected PreparedStatement createQueryStatement() throws SQLException {
+        final PreparedStatement statement = jdbcConnection.connection()
+                .prepareStatement(getQueryString(),
+                        ResultSet.TYPE_FORWARD_ONLY,
+                        ResultSet.CONCUR_READ_ONLY,
+                        ResultSet.HOLD_CURSORS_OVER_COMMIT);
+        statement.setQueryTimeout((int) jdbcConnection.config().getQueryTimeout().toSeconds());
+        return statement;
+    }
 
     /**
      * Calculates the new starting system change number based on the current processing range.
@@ -301,7 +374,60 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @return the system change number to start then next mining iteration from, never {@code null}
      * @throws InterruptedException if the current thread is interrupted
      */
-    protected abstract Scn calculateNewStartScn(Scn endScn, Scn maxCommittedScn) throws InterruptedException;
+    protected Scn calculateNewStartScn(Scn endScn, Scn maxCommittedScn) throws InterruptedException {
+        // Cleanup caches based on current state of the transaction cache
+        final Scn minCacheScn;
+        final Instant minCacheScnChangeTime;
+        final Optional<ScnDetails> eldestScnDetails = getTransactionCache().getEldestTransactionScnDetailsInCache();
+        if (eldestScnDetails.isPresent()) {
+            minCacheScn = eldestScnDetails.get().scn();
+            minCacheScnChangeTime = eldestScnDetails.get().changeTime();
+        }
+        else {
+            minCacheScn = Scn.NULL;
+            minCacheScnChangeTime = null;
+        }
+
+        if (!minCacheScn.isNull()) {
+            abandonTransactions(getConfig().getLogMiningTransactionRetention());
+            purgeCache(minCacheScn);
+        }
+        else {
+            getSchemaChangesCache().removeIf(e -> true);
+        }
+
+        if (getConfig().isLobEnabled()) {
+            if (getTransactionCache().isEmpty() && !maxCommittedScn.isNull()) {
+                offsetContext.setScn(maxCommittedScn);
+                dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
+            }
+            else {
+                if (!minCacheScn.isNull()) {
+                    getProcessedTransactionsCache().removeIf(entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) < 0);
+                    offsetContext.setScn(minCacheScn.subtract(Scn.valueOf(1)));
+                    dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
+                }
+            }
+            return offsetContext.getScn();
+        }
+        else {
+
+            if (!getLastProcessedScn().isNull() && getLastProcessedScn().compareTo(endScn) < 0) {
+                // If the last processed SCN is before the endScn we need to use the last processed SCN as the
+                // next starting point as the LGWR buffer didn't flush all entries from memory to disk yet.
+                endScn = getLastProcessedScn();
+            }
+
+            offsetContext.setScn(minCacheScn.isNull() ? endScn : minCacheScn.subtract(Scn.valueOf(1)));
+            metrics.setOldestScnDetails(minCacheScn, minCacheScnChangeTime);
+            metrics.setOffsetScn(offsetContext.getScn());
+
+            // optionally dispatch a heartbeat event
+            dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
+
+            return endScn;
+        }
+    }
 
     /**
      * Processes the LogMiner results.
@@ -325,6 +451,12 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @throws InterruptedException if the dispatcher was interrupted sending an event
      */
     protected void processRow(OraclePartition partition, LogMinerEventRow row) throws SQLException, InterruptedException {
+        final String transactionId = row.getTransactionId();
+        if (isRecentlyProcessed(transactionId)) {
+            LOGGER.debug("Transaction {} has been seen by connector, skipped.", transactionId);
+            return;
+        }
+
         if (!row.getEventType().equals(EventType.MISSING_SCN)) {
             lastProcessedScn = row.getScn();
             lastProcessedScnChangeTime = row.getChangeTime();
@@ -349,8 +481,10 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             // DDL events get filtered inside the DDL handler
             // We do the non-DDL ones here to cover multiple switch handlers in one place.
             if (!EventType.DDL.equals(row.getEventType()) && !tableFilter.isIncluded(row.getTableId())) {
-                LOGGER.trace("Skipping change associated with table '{}' which does not match filters.", row.getTableId());
-                return;
+                if (isNonIncludedTableSkipped(row)) {
+                    LOGGER.trace("Skipping change associated with table '{}' which does not match filters.", row.getTableId());
+                    return;
+                }
             }
         }
 
@@ -378,6 +512,15 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             case LOB_ERASE:
                 handleLobErase(row);
                 break;
+            case EXTENDED_STRING_BEGIN:
+                handleExtendedStringBegin(row);
+                break;
+            case EXTENDED_STRING_WRITE:
+                handleExtendedStringWrite(row);
+                break;
+            case EXTENDED_STRING_END:
+                handleExtendedStringEnd(row);
+                break;
             case XML_BEGIN:
                 handleXmlBegin(row);
                 break;
@@ -391,6 +534,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             case UPDATE:
             case DELETE:
                 handleDataEvent(row);
+                break;
+            case REPLICATION_MARKER:
+                handleReplicationMarker(row);
                 break;
             case UNSUPPORTED:
                 handleUnsupportedEvent(row);
@@ -414,19 +560,15 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      */
     protected void handleStart(LogMinerEventRow row) {
         final String transactionId = row.getTransactionId();
-        final T transaction = getTransactionCache().get(transactionId);
+        final T transaction = getTransactionCache().getTransaction(transactionId);
         if (transaction == null && !isRecentlyProcessed(transactionId)) {
-            getTransactionCache().put(transactionId, createTransaction(row));
-            metrics.setActiveTransactionCount(getTransactionCache().size());
+            getTransactionCache().addTransaction(createTransaction(row));
+            metrics.setActiveTransactionCount(getTransactionCache().getTransactionCount());
         }
         else if (transaction != null && !isRecentlyProcessed(transactionId)) {
             LOGGER.trace("Transaction {} is not yet committed and START event detected.", transactionId);
-            resetTransactionToStart(transaction);
+            getTransactionCache().resetTransactionToStart(transaction);
         }
-    }
-
-    protected void resetTransactionToStart(T transaction) {
-        transaction.start();
     }
 
     /**
@@ -442,52 +584,66 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             return;
         }
 
-        final T transaction = getAndRemoveTransactionFromCache(transactionId);
+        final T transaction = getTransactionCache().getAndRemoveTransaction(transactionId);
         if (transaction == null) {
+            if (!offsetContext.getCommitScn().hasCommitAlreadyBeenHandled(row)) {
+                LOGGER.debug("Transaction {} not found in cache with SCN {}, no events to commit.", transactionId, row.getScn());
+            }
             handleCommitNotFoundInBuffer(row);
-            LOGGER.debug("Transaction {} not found, commit skipped.", transactionId);
+        }
+
+        final Scn smallestScn = calculateSmallestScn();
+        final Scn commitScn = row.getScn();
+        if (offsetContext.getCommitScn().hasCommitAlreadyBeenHandled(row)) {
+            if (transaction != null) {
+                if (transaction.getNumberOfEvents() > 0) {
+                    final Scn lastCommittedScn = offsetContext.getCommitScn().getCommitScnForRedoThread(row.getThread());
+                    LOGGER.debug("Transaction {} has already been processed. "
+                            + "Offset Commit SCN {}, Transaction Commit SCN {}, Last Seen Commit SCN {}.",
+                            transactionId, offsetContext.getCommitScn(), commitScn, lastCommittedScn);
+                }
+                cleanupAfterTransactionRemovedFromCache(transaction, false);
+                metrics.setActiveTransactionCount(getTransactionCache().getTransactionCount());
+            }
             return;
         }
 
-        // Calculate the smallest SCN that remains in the transaction cache
-        final Optional<T> oldestTransaction = getOldestTransactionInCache();
-        final Scn smallestScn;
-        if (oldestTransaction.isPresent()) {
-            smallestScn = oldestTransaction.get().getStartScn();
-            metrics.setOldestScnDetails(smallestScn, oldestTransaction.get().getChangeTime());
-        }
-        else {
-            smallestScn = Scn.NULL;
-            metrics.setOldestScnDetails(Scn.valueOf(-1), null);
-        }
+        int numEvents = (transaction == null) ? 0 : getTransactionEventCount(transaction);
 
-        final Scn commitScn = row.getScn();
-        if (offsetContext.getCommitScn().hasCommitAlreadyBeenHandled(row)) {
-            if (transaction.getNumberOfEvents() > 0) {
-                final Scn lastCommittedScn = offsetContext.getCommitScn().getCommitScnForRedoThread(row.getThread());
-                LOGGER.debug("Transaction {} has already been processed. "
-                        + "Offset Commit SCN {}, Transaction Commit SCN {}, Last Seen Commit SCN {}.",
-                        transactionId, offsetContext.getCommitScn(), commitScn, lastCommittedScn);
+        // There are situations where Oracle records empty transactions in the redo and these
+        // do not make any changes. In such cases, LogMiner fails to reconcile the thread id
+        // for the commit, and leaves it assigned to 0. This ultimately leads to the commit
+        // recorded for the wrong redo thread. Given that we cannot just "guess" the thread
+        // as there may not have been a transaction recorded at all when LOB isn't enabled,
+        // all we can do is ignore the COMMIT.
+        final boolean skipCommit = row.getThread() == 0 && numEvents == 0;
+
+        LOGGER.debug("{} transaction {} with {} events (scn: {}, thread: {}, oldest buffer scn: {}): {}",
+                skipCommit ? "Skipping commit for" : "Committing",
+                transactionId, numEvents, row.getScn(), row.getThread(), smallestScn, row);
+
+        if (skipCommit) {
+            if (transaction != null) {
+                cleanupAfterTransactionRemovedFromCache(transaction, false);
             }
-            cleanupAfterTransactionRemovedFromCache(transaction, false);
-            metrics.setActiveTransactionCount(getTransactionCache().size());
             return;
         }
 
         counters.commitCount++;
 
-        int numEvents = getTransactionEventCount(transaction);
-        LOGGER.debug("Committing transaction {} with {} events (scn: {}, oldest buffer scn: {}): {}",
-                transactionId, numEvents, row.getScn(), smallestScn, row);
+        // When a COMMIT is received, regardless of the number of events it has, it still
+        // must be recorded in the commit scn for the node to guarantee updates to the
+        // offsets. This must be done prior to dispatching the transaction-commit or the
+        // heartbeat event that follows commit dispatch.
+        offsetContext.getCommitScn().recordCommit(row);
 
-        final ZoneOffset databaseOffset = metrics.getDatabaseOffset();
-
-        final boolean skipExcludedUserName = isTransactionUserExcluded(transaction);
-        TransactionCommitConsumer.Handler<LogMinerEvent> delegate = new TransactionCommitConsumer.Handler<>() {
-            private int numEvents = getTransactionEventCount(transaction);
-
-            @Override
-            public void accept(LogMinerEvent event, long eventsProcessed) throws InterruptedException {
+        Instant start = Instant.now();
+        boolean dispatchTransactionCommittedEvent = false;
+        if (numEvents > 0) {
+            final boolean skipEvents = isTransactionSkipped(transaction);
+            dispatchTransactionCommittedEvent = !skipEvents;
+            final ZoneOffset databaseOffset = metrics.getDatabaseOffset();
+            TransactionCommitConsumer.Handler<LogMinerEvent> delegate = (event, eventsProcessed) -> {
                 // Update SCN in offset context only if processed SCN less than SCN of other transactions
                 if (smallestScn.isNull() || commitScn.compareTo(smallestScn) < 0) {
                     offsetContext.setScn(event.getScn());
@@ -501,13 +657,20 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                 offsetContext.setTableId(event.getTableId());
                 offsetContext.setRedoThread(row.getThread());
                 offsetContext.setRsId(event.getRsId());
+                offsetContext.setRowId(event.getRowId());
+                offsetContext.setCommitTime(row.getChangeTime().minusSeconds(databaseOffset.getTotalSeconds()));
+
+                if (eventsProcessed == 1) {
+                    offsetContext.setStartScn(event.getScn());
+                    offsetContext.setStartTime(event.getChangeTime().minusSeconds(databaseOffset.getTotalSeconds()));
+                }
 
                 if (event instanceof RedoSqlDmlEvent) {
                     offsetContext.setRedoSql(((RedoSqlDmlEvent) event).getRedoSql());
                 }
 
                 final DmlEvent dmlEvent = (DmlEvent) event;
-                if (!skipExcludedUserName) {
+                if (!skipEvents) {
                     LogMinerChangeRecordEmitter logMinerChangeRecordEmitter;
                     if (dmlEvent instanceof TruncateEvent) {
                         // a truncate event is seen by logminer as a DDL event type.
@@ -540,37 +703,27 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
                 // Clear redo SQL
                 offsetContext.setRedoSql(null);
-
-            }
-        };
-
-        // When a COMMIT is received, regardless of the number of events it has, it still
-        // must be recorded in the commit scn for the node to guarantee updates to the
-        // offsets. This must be done prior to dispatching the transaction-commit or the
-        // heartbeat event that follows commit dispatch.
-        offsetContext.getCommitScn().recordCommit(row);
-
-        Instant start = Instant.now();
-        int dispatchedEventCount = 0;
-        if (numEvents > 0) {
+            };
             try (TransactionCommitConsumer commitConsumer = new TransactionCommitConsumer(delegate, connectorConfig, schema)) {
-                final Iterator<LogMinerEvent> iterator = getTransactionEventIterator(transaction);
-                while (iterator.hasNext()) {
+                getTransactionCache().forEachEvent(transaction, event -> {
                     if (!context.isRunning()) {
-                        return;
+                        return false;
                     }
-
-                    final LogMinerEvent event = iterator.next();
-                    LOGGER.trace("Dispatching event {} {}", ++dispatchedEventCount, event.getEventType());
+                    LOGGER.trace("Dispatching event {}", event.getEventType());
                     commitConsumer.accept(event);
-                }
+                    return true;
+                });
             }
         }
 
         offsetContext.setEventScn(commitScn);
         offsetContext.setRsId(row.getRsId());
+        offsetContext.setRowId("");
+        offsetContext.setStartScn(Scn.NULL);
+        offsetContext.setCommitTime(null);
+        offsetContext.setStartTime(null);
 
-        if (getTransactionEventCount(transaction) > 0 && !skipExcludedUserName) {
+        if (dispatchTransactionCommittedEvent) {
             dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, transaction.getChangeTime());
         }
         else {
@@ -579,14 +732,33 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
 
         metrics.calculateLagFromSource(row.getChangeTime());
 
-        finalizeTransactionCommit(transactionId, commitScn);
-        cleanupAfterTransactionRemovedFromCache(transaction, false);
+        if (transaction != null) {
+            finalizeTransactionCommit(transactionId, commitScn);
+            cleanupAfterTransactionRemovedFromCache(transaction, false);
+            metrics.setActiveTransactionCount(getTransactionCache().getTransactionCount());
+        }
 
         metrics.incrementCommittedTransactionCount();
-        metrics.setActiveTransactionCount(getTransactionCache().size());
         metrics.setCommitScn(commitScn);
         metrics.setOffsetScn(offsetContext.getScn());
         metrics.setLastCommitDuration(Duration.between(start, Instant.now()));
+    }
+
+    /**
+     * Calculate the smallest SCN that remains in the transaction cache.
+     *
+     * @return the smallest SCN
+     */
+    private Scn calculateSmallestScn() {
+        return getTransactionCache().getEldestTransactionScnDetailsInCache()
+                .map(scnDetails -> {
+                    metrics.setOldestScnDetails(scnDetails.scn(), scnDetails.changeTime());
+                    return scnDetails.scn();
+                })
+                .orElseGet(() -> {
+                    metrics.setOldestScnDetails(Scn.valueOf(-1), null);
+                    return Scn.NULL;
+                });
     }
 
     /**
@@ -599,7 +771,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         // In the event the transaction was prematurely removed due to retention policy, when we do find
         // the transaction's commit in the logs in the future, we should remove the entry if it exists
         // to avoid any potential memory-leak with the cache.
-        abandonedTransactionsCache.remove(row.getTransactionId());
+        getTransactionCache().removeAbandonedTransaction(row.getTransactionId());
     }
 
     /**
@@ -612,16 +784,18 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         // In the event the transaction was prematurely removed due to retention policy, when we do find
         // the transaction's rollback in the logs in the future, we should remove the entry if it exists
         // to avoid any potential memory-leak with the cache.
-        abandonedTransactionsCache.remove(row.getTransactionId());
+        getTransactionCache().removeAbandonedTransaction(row.getTransactionId());
     }
 
     /**
-     * Gets a transaction instance from the transaction cache while also removing its cache entry.
+     * Purge the necessary caches with all entries that occurred prior to the specified change number.
      *
-     * @param transactionId the transaction's unique identifier, should not be {@code null}
-     * @return the transaction instance if found, {@code null} if the transaction wasn't found
+     * @param minCacheScn the minimum system change number to keep entries until
      */
-    protected abstract T getAndRemoveTransactionFromCache(String transactionId);
+    protected void purgeCache(Scn minCacheScn) {
+        getProcessedTransactionsCache().removeIf(entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) < 0);
+        getSchemaChangesCache().removeIf(entry -> Scn.valueOf(entry.getKey()).compareTo(minCacheScn) < 0);
+    }
 
     /**
      * Removes the items associated with the transaction (e.g. events if they are stored independently).
@@ -631,20 +805,13 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      */
     protected void cleanupAfterTransactionRemovedFromCache(T transaction, boolean isAbandoned) {
         if (isAbandoned) {
-            abandonedTransactionsCache.add(transaction.getTransactionId());
+            getTransactionCache().abandon(transaction);
         }
         else {
-            abandonedTransactionsCache.remove(transaction.getTransactionId());
+            getTransactionCache().removeAbandonedTransaction(transaction.getTransactionId());
         }
+        getTransactionCache().removeTransactionEvents(transaction);
     }
-
-    /**
-     * Get an iterator over the events that are part of the specified transaction.
-     *
-     * @param transaction the transaction instance, should never be {@code null}
-     * @return an iterator over the transaction's events, never {@code null}
-     */
-    protected abstract Iterator<LogMinerEvent> getTransactionEventIterator(T transaction);
 
     /**
      * Finalizes the commit of a transaction.
@@ -652,30 +819,42 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @param transactionId the transaction's unique identifier, should not be {@code null}
      * @param commitScn the transaction's system change number, should not be {@code null}
      */
-    protected abstract void finalizeTransactionCommit(String transactionId, Scn commitScn);
+    protected void finalizeTransactionCommit(String transactionId, Scn commitScn) {
+        getTransactionCache().removeAbandonedTransaction(transactionId);
+        // cache recently committed transactions by transaction id
+        if (getConfig().isLobEnabled()) {
+            getProcessedTransactionsCache().put(transactionId, commitScn.toString());
+        }
+    }
 
     /**
-     * Returns only the first transaction id in the transaction buffer.
+     * Check whether the supplied transaction should be skipped based on exclusion rules.
      *
-     * @return the first active transaction in the buffer, or {@code null} if there is none.
+     * @param transaction the transaction, should not be {@code null}
+     * @return {@code true} if the transaction should be skipped; {@code false} otherwise
      */
-    protected abstract String getFirstActiveTransactionKey();
-
-    /**
-     * Check whether the supplied username associated with the specified transaction is excluded.
-     *
-     * @param transaction the transaction, never {@code null}
-     * @return true if the transaction should be skipped; false if transaction should be emitted
-     */
-    protected boolean isTransactionUserExcluded(T transaction) {
+    protected boolean isTransactionSkipped(T transaction) {
         if (transaction != null) {
-            if (transaction.getUserName() == null && getTransactionEventCount(transaction) > 0) {
-                LOGGER.debug("Detected transaction with null username {}", transaction);
-                return false;
+            // Check whether transaction should be skipped by LogMiner USERNAME field
+            if (!Strings.isNullOrBlank(transaction.getUserName())) {
+                if (connectorConfig.getLogMiningUsernameExcludes().contains(transaction.getUserName())) {
+                    LOGGER.debug("Skipped transaction with excluded username {}", transaction.getUserName());
+                    return true;
+                }
             }
-            else if (connectorConfig.getLogMiningUsernameExcludes().contains(transaction.getUserName())) {
-                LOGGER.debug("Skipped transaction with excluded username {}", transaction);
-                return true;
+
+            // Check whether transaction should be skipped by LogMiner CLIENT_ID field
+            if (!Strings.isNullOrBlank(transaction.getClientId())) {
+                if (connectorConfig.getLogMiningClientIdExcludes().contains(transaction.getClientId())) {
+                    LOGGER.debug("Skipped transaction with excluded client id {}", transaction.getClientId());
+                    return true;
+                }
+                else if (!connectorConfig.getLogMiningClientIdIncludes().isEmpty()) {
+                    if (!connectorConfig.getLogMiningClientIdIncludes().contains(transaction.getClientId())) {
+                        LOGGER.debug("Skipped transaction with client id {}", transaction.getClientId());
+                        return true;
+                    }
+                }
             }
         }
         return false;
@@ -687,18 +866,18 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @param row the result set row
      */
     protected void handleRollback(LogMinerEventRow row) {
-        if (getTransactionCache().containsKey(row.getTransactionId())) {
+        if (getTransactionCache().containsTransaction(row.getTransactionId())) {
             LOGGER.debug("Transaction {} was rolled back.", row.getTransactionId());
             finalizeTransactionRollback(row.getTransactionId(), row.getScn());
-            metrics.setActiveTransactionCount(getTransactionCache().size());
-            metrics.incrementRolledBackTransactionCount();
-            metrics.addRolledBackTransactionId(row.getTransactionId());
-            counters.rollbackCount++;
+            metrics.setActiveTransactionCount(getTransactionCache().getTransactionCount());
         }
         else {
-            LOGGER.debug("Could not rollback transaction {}, was not found in cache.", row.getTransactionId());
+            LOGGER.debug("Transaction {} not found in cache, no events to rollback.", row.getTransactionId());
             handleRollbackNotFoundInBuffer(row);
         }
+        metrics.incrementRolledBackTransactionCount();
+        metrics.addRolledBackTransactionId(row.getTransactionId());
+        counters.rollbackCount++;
     }
 
     /**
@@ -707,7 +886,17 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @param transactionId the unique transaction identifier, never {@code null}
      * @param rollbackScn the rollback transaction's system change number, never {@code null}
      */
-    protected abstract void finalizeTransactionRollback(String transactionId, Scn rollbackScn);
+    protected void finalizeTransactionRollback(String transactionId, Scn rollbackScn) {
+        final T transaction = getTransactionCache().getTransaction(transactionId);
+        if (transaction != null) {
+            getTransactionCache().removeTransactionEvents(transaction);
+            getTransactionCache().removeTransaction(transaction);
+        }
+        getTransactionCache().removeAbandonedTransaction(transactionId);
+        if (getConfig().isLobEnabled()) {
+            getProcessedTransactionsCache().put(transactionId, rollbackScn.toString());
+        }
+    }
 
     /**
      * Handle processing a LogMinerEventRow for a {@code DDL} event.
@@ -753,21 +942,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             counters.ddlCount++;
             final TableId tableId = row.getTableId();
 
-            final int activeTransactions = getTransactionCache().size();
-            boolean advanceLowerScnBoundary = false;
-            if (activeTransactions == 0) {
-                // The DDL isn't wrapped in a transaction, fast-forward the lower boundary
-                advanceLowerScnBoundary = true;
-            }
-            else if (activeTransactions == 1) {
-                final String transactionId = getFirstActiveTransactionKey();
-                if (transactionId.equals(row.getTransactionId())) {
-                    // The row's transaction is the current and only active transaction.
-                    advanceLowerScnBoundary = true;
-                }
-            }
-
-            if (advanceLowerScnBoundary) {
+            if (canAdvanceLowerScnBoundary(row)) {
                 LOGGER.debug("Schema change advanced offset SCN to {}", row.getScn());
                 offsetContext.setScn(row.getScn());
             }
@@ -779,6 +954,12 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             offsetContext.setEventScn(row.getScn());
             offsetContext.setRedoThread(row.getThread());
             offsetContext.setRsId(row.getRsId());
+            offsetContext.setRowId("");
+
+            if (getConfig().isLobEnabled()) {
+                getSchemaChangesCache().put(row.getScn().toString(), row.getTableId().identifier());
+            }
+
             dispatcher.dispatchSchemaChangeEvent(partition, offsetContext,
                     tableId,
                     new OracleSchemaChangeEventEmitter(
@@ -788,12 +969,35 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                             tableId,
                             tableId.catalog(),
                             tableId.schema(),
+                            row.getObjectId(),
+                            // ALTER TABLE does not populate the data object id, pass object id on purpose
+                            row.getObjectId(),
                             row.getRedoSql(),
                             getSchema(),
                             row.getChangeTime(),
                             metrics,
                             () -> processTruncateEvent(row)));
+
+            if (isUsingHybridStrategy()) {
+                // Removes table from the column-based DML parser cache
+                // It will be refreshed on the next DML event that requires special parsing
+                reconstructColumnDmlParser.removeTableFromCache(tableId);
+            }
         }
+    }
+
+    private boolean canAdvanceLowerScnBoundary(LogMinerEventRow row) {
+        final int cacheSize = getTransactionCache().getTransactionCount();
+        if (cacheSize == 0) {
+            // The DDL isn't wrapped in a transaction, fast-forward the lower boundary
+            return true;
+        }
+        else if (cacheSize == 1) {
+            // The row's transaction is the current and only active transaction.
+            return getTransactionCache().streamTransactionsAndReturn(stream -> stream.map(Transaction::getTransactionId)
+                    .allMatch(trxId -> trxId.equals(row.getTransactionId())));
+        }
+        return false;
     }
 
     private void processTruncateEvent(LogMinerEventRow row) {
@@ -903,6 +1107,69 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         }
 
         addToTransaction(row.getTransactionId(), row, () -> new LobEraseEvent(row));
+    }
+
+    /**
+     * Handle processing a LogMinerEventRow for a {@code 32K_BEGIN} event.
+     *
+     * @param row the result set row
+     */
+    private void handleExtendedStringBegin(LogMinerEventRow row) {
+        if (!getConfig().isLobEnabled()) {
+            LOGGER.trace("LOB support is disabled, 32K_START '{}' skipped.", row.getRedoSql());
+            return;
+        }
+
+        LOGGER.debug("32K_BEGIN: {}", row);
+        final TableId tableId = row.getTableId();
+        final Table table = getSchema().tableFor(tableId);
+        if (table == null) {
+            LOGGER.warn("32K_BEGIN for table '{}' is not known, skipped.", tableId);
+            return;
+        }
+
+        addToTransaction(row.getTransactionId(),
+                row,
+                () -> {
+                    final LogMinerDmlEntry dmlEntry = extendedStringParser.parse(row.getRedoSql(), table);
+                    dmlEntry.setObjectName(row.getTableName());
+                    dmlEntry.setObjectOwner(row.getTablespaceName());
+
+                    final String columnName = extendedStringParser.getColumnName();
+                    return new ExtendedStringBeginEvent(row, dmlEntry, columnName);
+                });
+
+        metrics.incrementTotalChangesCount();
+    }
+
+    private void handleExtendedStringWrite(LogMinerEventRow row) {
+        if (!getConfig().isLobEnabled()) {
+            LOGGER.trace("LOB support is disabled, 32K_WRITE '{}' skipped.", row.getRedoSql());
+            return;
+        }
+
+        LOGGER.debug("32K_WRITE: scn={}, tableId={}, changeTime={}, transactionId={}",
+                row.getScn(), row.getTableId(), row.getChangeTime(), row.getTransactionId());
+
+        final TableId tableId = row.getTableId();
+        final Table table = getSchema().tableFor(tableId);
+        if (table == null) {
+            LOGGER.warn("32K_WRITE for table '{}' is not known, skipped", tableId);
+            return;
+        }
+
+        if (row.getRedoSql() != null) {
+            addToTransaction(row.getTransactionId(), row, () -> {
+                final String data = parseExtendedStringWriteSql(row.getRedoSql());
+                return new ExtendedStringWriteEvent(row, data);
+            });
+        }
+    }
+
+    private void handleExtendedStringEnd(LogMinerEventRow row) {
+        if (!getConfig().isLobEnabled()) {
+            LOGGER.trace("LOB support is disabled, 32K_END '{}' skipped.", row.getRedoSql());
+        }
     }
 
     private void handleXmlBegin(LogMinerEventRow row) {
@@ -1050,18 +1317,20 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         // so to be backward compatible, we only explicitly trigger this behavior if there is an
         // error reason for STATUS=2 in the INFO column as well as STATUS=2.
         if (row.getStatus() == 2 && !Strings.isNullOrBlank(row.getInfo())) {
-            // The SQL in the SQL_REDO column is not valid and cannot be parsed.
-            switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
-                case FAIL:
-                    LOGGER.error("Oracle LogMiner is unable to re-construct the SQL for '{}'", row);
-                    throw new DebeziumException("Oracle failed to re-construct redo SQL '" + row.getRedoSql() + "'");
-                case WARN:
-                    LOGGER.warn("Oracle LogMiner event '{}' cannot be parsed. This event will be ignored and skipped.", row);
-                    return;
-                default:
-                    // In this case, we explicitly log the situation in "debug" only and not as an error/warn.
-                    LOGGER.debug("Oracle LogMiner event '{}' cannot be parsed. This event will be ignored and skipped.", row);
-                    return;
+            if (!isUsingHybridStrategy() || (isUsingHybridStrategy() && !isTableKnown(row))) {
+                // The SQL in the SQL_REDO column is not valid and cannot be parsed.
+                switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
+                    case FAIL:
+                        LOGGER.error("Oracle LogMiner is unable to re-construct the SQL for '{}'", row);
+                        throw new DebeziumException("Oracle failed to re-construct redo SQL '" + row.getRedoSql() + "'");
+                    case WARN:
+                        LOGGER.warn("Oracle LogMiner event '{}' cannot be parsed. This event will be ignored and skipped.", row);
+                        return;
+                    default:
+                        // In this case, we explicitly log the situation in "debug" only and not as an error/warn.
+                        LOGGER.debug("Oracle LogMiner event '{}' cannot be parsed. This event will be ignored and skipped.", row);
+                        return;
+                }
             }
         }
 
@@ -1094,7 +1363,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         }
 
         addToTransaction(row.getTransactionId(), row, () -> {
-            final LogMinerDmlEntry dmlEntry = parseDmlStatement(row.getRedoSql(), table);
+            final LogMinerDmlEntry dmlEntry = parseDmlStatement(row, table);
             dmlEntry.setObjectName(row.getTableName());
             dmlEntry.setObjectOwner(row.getTablespaceName());
             if (connectorConfig.isLogMiningIncludeRedoSql()) {
@@ -1104,6 +1373,22 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         });
 
         metrics.incrementTotalChangesCount();
+    }
+
+    protected void handleReplicationMarker(LogMinerEventRow row) {
+        // GoldenGate creates replication markers in the redo logs periodically and these entries can lead to
+        // the construction of a transaction in the buffer that never has a COMMIT or ROLLBACK. When this is
+        // done by Oracle, we should automatically discard the transaction from the buffer to avoid the low
+        // watermark from advancing safely.
+        final String transactionId = row.getTransactionId();
+        final T transaction = getTransactionCache().getTransaction(transactionId);
+        if (transaction != null) {
+            LOGGER.debug("Skipping GoldenGate replication marker for transaction {} with SCN {}", transactionId, row.getScn());
+            getTransactionCache().removeTransactionEvents(transaction);
+            getTransactionCache().removeTransaction(transaction);
+        }
+        // It should not exist in this cache, but in case.
+        getTransactionCache().removeAbandonedTransaction(transactionId);
     }
 
     protected void handleUnsupportedEvent(LogMinerEventRow row) {
@@ -1136,16 +1421,18 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                             previousOffsetScn,
                             previousOffsetCommitScns);
                     metrics.incrementScnFreezeCount();
+                    counters.stuckCount = 0;
                 }
             }
             else {
+                metrics.setScnFreezeCount(0);
                 counters.stuckCount = 0;
             }
         }
     }
 
     private Table getTableForDataEvent(LogMinerEventRow row) throws SQLException, InterruptedException {
-        final TableId tableId = row.getTableId();
+        final TableId tableId = getTableIdForDataEvent(row);
         Table table = getSchema().tableFor(tableId);
         if (table == null) {
             if (!getConfig().getTableFilters().dataCollectionFilter().isIncluded(tableId)) {
@@ -1154,6 +1441,51 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             table = dispatchSchemaChangeEventAndGetTableForNewCapturedTable(tableId, offsetContext, dispatcher);
         }
         return table;
+    }
+
+    private TableId getTableIdForDataEvent(LogMinerEventRow row) throws SQLException {
+        TableId tableId = row.getTableId();
+        if (isUsingHybridStrategy()) {
+            if (tableId.table().startsWith("BIN$")) {
+                // Object was dropped but has not been purged.
+                try (OracleConnection connection = new OracleConnection(connectorConfig.getJdbcConfig())) {
+                    return connection.prepareQueryAndMap("SELECT OWNER, ORIGINAL_NAME FROM DBA_RECYCLEBIN WHERE OBJECT_NAME=?",
+                            ps -> ps.setString(1, row.getTableId().table()),
+                            rs -> {
+                                if (rs.next()) {
+                                    return new TableId(row.getTableId().catalog(), rs.getString(1), rs.getString(2));
+                                }
+                                return row.getTableId();
+                            });
+                }
+            }
+            else if (tableId.table().equalsIgnoreCase("UNKNOWN")) {
+                // Object has been dropped and purged.
+                final TableId resolvedTableId = schema.getTableIdByObjectId(row.getObjectId(), row.getDataObjectId());
+                if (resolvedTableId != null) {
+                    return resolvedTableId;
+                }
+                throw new DebeziumException("Failed to resolve UNKNOWN table name by object id lookup");
+            }
+        }
+        return tableId;
+    }
+
+    private boolean isTableKnown(LogMinerEventRow row) {
+        return !row.getTableId().table().equalsIgnoreCase("UNKNOWN");
+    }
+
+    private boolean isTableLookupByObjectIdRequired(LogMinerEventRow row) {
+        final String tableName = row.getTableId().table();
+        if (tableName.startsWith("OBJ# ")) {
+            // This is a table that has been dropped and purged
+            return true;
+        }
+        else if (tableName.startsWith("BIN$") && tableName.endsWith("==$0") && tableName.length() == 30) {
+            // This is a table that has been dropped, but not yet purged from the RECYCLEBIN
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -1220,11 +1552,63 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     /**
      * Add a transaction to the transaction map if allowed.
      *
-     * @param transactionId the unqiue transaction id
+     * @param transactionId the unique transaction id
      * @param row the LogMiner event row
      * @param eventSupplier the supplier of the event to create if the event is allowed to be added
      */
-    protected abstract void addToTransaction(String transactionId, LogMinerEventRow row, Supplier<LogMinerEvent> eventSupplier);
+    protected void addToTransaction(String transactionId, LogMinerEventRow row, Supplier<LogMinerEvent> eventSupplier) {
+        if (getTransactionCache().isAbandoned(transactionId)) {
+            LOGGER.warn("Event for abandoned transaction {}, skipped.", transactionId);
+            return;
+        }
+        if (isRecentlyProcessed(transactionId)) {
+            LOGGER.warn("Event for transaction {} skipped as transaction has been processed.", transactionId);
+            return;
+        }
+
+        T transaction = getTransactionCache().getTransaction(transactionId);
+        if (transaction != null && isTransactionOverEventThreshold(transaction)) {
+            abandonTransactionOverEventThreshold(transaction);
+            return;
+        }
+
+        final LogMinerEvent event;
+        try {
+            event = eventSupplier.get();
+        }
+        catch (DmlParserException e) {
+            switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
+                case FAIL:
+                    Loggings.logErrorAndTraceRecord(LOGGER, row, "Failed to parse SQL for event");
+                    throw e;
+                case WARN:
+                    Loggings.logWarningAndTraceRecord(LOGGER, row, "Failed to parse redo SQL, event is being ignored and skipped.");
+                    return;
+                default:
+                    // In this case, we explicitly log the situation in "debug" only and not as an error/warn.
+                    Loggings.logDebugAndTraceRecord(LOGGER, row, "Failed to parse redo SQL, event is being ignored and skipped.");
+                    return;
+            }
+        }
+
+        if (transaction == null) {
+            LOGGER.trace("Transaction {} is not in cache, creating.", transactionId);
+            transaction = createTransaction(row);
+            getTransactionCache().addTransaction(transaction);
+        }
+
+        final int eventId = transaction.getNextEventId();
+        if (!getTransactionCache().containsTransactionEvent(transaction, eventId)) {
+            // Add new event at eventId offset
+            LOGGER.trace("Transaction {}, adding event reference at key {}", transactionId, transaction.getEventId(eventId));
+            getTransactionCache().addTransactionEvent(transaction, eventId, event);
+            metrics.calculateLagFromSource(row.getChangeTime());
+        }
+
+        // When using Infinispan, this extra put is required so that the state is properly synchronized
+        getTransactionCache().syncTransaction(transaction);
+        metrics.setActiveTransactionCount(getTransactionCache().getTransactionCount());
+    }
 
     /**
      * Dispatch a schema change event for a new table and get the newly created relational table model.
@@ -1236,77 +1620,77 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
      * @throws SQLException if a database exception occurred
      * @throws InterruptedException if the event dispatch was interrupted
      */
-    private Table dispatchSchemaChangeEventAndGetTableForNewCapturedTable(TableId tableId,
-                                                                          OracleOffsetContext offsetContext,
-                                                                          EventDispatcher<OraclePartition, TableId> dispatcher)
+    @VisibleForTesting
+    public Table dispatchSchemaChangeEventAndGetTableForNewCapturedTable(TableId tableId,
+                                                                         OracleOffsetContext offsetContext,
+                                                                         EventDispatcher<OraclePartition, TableId> dispatcher)
             throws SQLException, InterruptedException {
 
         LOGGER.warn("Obtaining schema for table {}, which should be already loaded, this may signal potential bug in fetching table schemas.", tableId);
-        final String tableDdl;
-        try {
-            tableDdl = getTableMetadataDdl(tableId);
+        try (OracleConnection connection = new OracleConnection(connectorConfig.getJdbcConfig(), false)) {
+            connection.setAutoCommit(false);
+            if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
+                connection.setSessionToPdb(connectorConfig.getPdbName());
+            }
+
+            final String tableDdl = getTableMetadataDdl(connection, tableId);
+            final Long objectId = connection.getTableObjectId(tableId);
+            final Long dataObjectId = connection.getTableDataObjectId(tableId);
+
+            dispatcher.dispatchSchemaChangeEvent(partition, offsetContext, tableId,
+                    new OracleSchemaChangeEventEmitter(
+                            connectorConfig,
+                            partition,
+                            offsetContext,
+                            tableId,
+                            tableId.catalog(),
+                            tableId.schema(),
+                            objectId,
+                            dataObjectId,
+                            tableDdl,
+                            getSchema(),
+                            Instant.now(),
+                            metrics,
+                            null));
+
+            return getSchema().tableFor(tableId);
         }
         catch (NonRelationalTableException e) {
             LOGGER.warn("Table {} is not a relational table and will be skipped.", tableId);
             metrics.incrementWarningCount();
             return null;
         }
-
-        LOGGER.info("Table '{}' is new and will now be captured.", tableId);
-        offsetContext.event(tableId, Instant.now());
-        dispatcher.dispatchSchemaChangeEvent(partition, offsetContext,
-                tableId,
-                new OracleSchemaChangeEventEmitter(connectorConfig,
-                        partition,
-                        offsetContext,
-                        tableId,
-                        tableId.catalog(),
-                        tableId.schema(),
-                        tableDdl,
-                        getSchema(),
-                        Instant.now(),
-                        metrics,
-                        null));
-
-        return getSchema().tableFor(tableId);
     }
 
     /**
      * Get the specified table's create DDL statement.
      *
+     * @param connection the connection to be used, must not be {@code null}
      * @param tableId the table identifier, must not be {@code null}
      * @return the table's create DDL statement, never {@code null}
      * @throws SQLException if an exception occurred obtaining the DDL statement
      * @throws NonRelationalTableException if the table is not a relational table
      */
     @VisibleForTesting
-    public String getTableMetadataDdl(TableId tableId) throws SQLException, NonRelationalTableException {
+    public String getTableMetadataDdl(OracleConnection connection, TableId tableId) throws SQLException, NonRelationalTableException {
         counters.tableMetadataCount++;
         LOGGER.info("Getting database metadata for table '{}'", tableId);
-        // A separate connection must be used for this out-of-bands query while processing LogMiner results.
-        // This should have negligible overhead since this use case should happen rarely.
-        try (OracleConnection connection = new OracleConnection(connectorConfig.getJdbcConfig(), false)) {
-            connection.setAutoCommit(false);
-            final String pdbName = getConfig().getPdbName();
-            if (pdbName != null) {
-                connection.setSessionToPdb(pdbName);
-            }
-            return connection.getTableMetadataDdl(tableId);
-        }
+        return connection.getTableMetadataDdl(tableId);
     }
 
     /**
      * Parse a DML redo SQL statement.
      *
-     * @param redoSql the redo SQL statement
+     * @param row the result set row
      * @param table the table the SQL statement is for
      * @return a parse object for the redo SQL statement
      */
-    private LogMinerDmlEntry parseDmlStatement(String redoSql, Table table) {
+    private LogMinerDmlEntry parseDmlStatement(LogMinerEventRow row, Table table) {
         LogMinerDmlEntry dmlEntry;
+        final String redoSql = row.getRedoSql();
         try {
             Instant parseStart = Instant.now();
-            dmlEntry = dmlParser.parse(redoSql, table);
+            dmlEntry = resolveParser(row).parse(redoSql, table);
             metrics.setLastParseTimeDuration(Duration.between(parseStart, Instant.now()));
         }
         catch (DmlParserException e) {
@@ -1323,6 +1707,17 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         }
 
         return dmlEntry;
+    }
+
+    private LogMinerDmlParser resolveParser(LogMinerEventRow row) {
+        if (row.getStatus() == 2 && !Strings.isNullOrBlank(row.getInfo()) && isUsingHybridStrategy()) {
+            return reconstructColumnDmlParser;
+        }
+        return dmlParser;
+    }
+
+    private boolean isUsingHybridStrategy() {
+        return OracleConnectorConfig.LogMiningStrategy.HYBRID.equals(connectorConfig.getLogMiningStrategy());
     }
 
     private static Pattern LOB_WRITE_SQL_PATTERN = Pattern.compile(
@@ -1363,7 +1758,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         return new ParsedLobWriteSql(offset, length, data);
     }
 
-    private class ParsedLobWriteSql {
+    private static class ParsedLobWriteSql {
         final int offset;
         final int length;
         final String data;
@@ -1376,17 +1771,24 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     }
 
     /**
-     * Gets the minimum system change number stored in the transaction cache.
-     * @return the minimum system change number, never {@code null} but could be {@link Scn#NULL}.
-     */
-    protected abstract Scn getTransactionCacheMinimumScn();
-
-    /**
-     * Get the oldest transaction in the cache.
+     * Parses the data from a {@code 32K_WRITE} event.
      *
-     * @return the oldest transaction in the cache or maybe {@code null} if cache is empty
+     * @param sql the event's redo sql
+     * @return the string data being written
      */
-    protected abstract Optional<T> getOldestTransactionInCache();
+    private String parseExtendedStringWriteSql(String sql) {
+        int endIndex = sql.lastIndexOf(";");
+        if (endIndex == -1) {
+            throw new DebeziumException("Failed to find end index on 32K_WRITE operation");
+        }
+
+        endIndex = sql.lastIndexOf(";", endIndex - 1);
+        if (endIndex == -1) {
+            throw new DebeziumException("Failed to find end index on 32K_WRITE operation");
+        }
+
+        return sql.substring(12, endIndex - 1);
+    }
 
     /**
      * Returns whether the transaction id has no sequence number component.
@@ -1430,74 +1832,86 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
     protected void abandonTransactionOverEventThreshold(T transaction) {
         LOGGER.warn("Transaction {} exceeds maximum allowed number of events, transaction will be abandoned.", transaction.getTransactionId());
         metrics.incrementWarningCount();
-        getAndRemoveTransactionFromCache(transaction.getTransactionId());
-        abandonedTransactionsCache.add(transaction.getTransactionId());
+        getTransactionCache().getAndRemoveTransaction(transaction.getTransactionId());
+        cleanupAfterTransactionRemovedFromCache(transaction, true);
         metrics.incrementOversizedTransactionCount();
     }
 
+    // this implementation is different
     @Override
     public void abandonTransactions(Duration retention) throws InterruptedException {
         if (!Duration.ZERO.equals(retention)) {
             Optional<Scn> lastScnToAbandonTransactions = getLastScnToAbandon(jdbcConnection, retention);
             if (lastScnToAbandonTransactions.isPresent()) {
                 Scn thresholdScn = lastScnToAbandonTransactions.get();
-                Scn smallestScn = getTransactionCacheMinimumScn();
+                Scn smallestScn = getTransactionCache().getEldestTransactionScnDetailsInCache().map(ScnDetails::scn).orElse(Scn.NULL);
                 if (!smallestScn.isNull() && thresholdScn.compareTo(smallestScn) >= 0) {
+
+                    Map<String, T> abandoned = getTransactionCache().streamTransactionsAndReturn(stream -> stream
+                            .filter(t -> t.getStartScn().compareTo(thresholdScn) <= 0)
+                            .collect(Collectors.toMap(Transaction::getTransactionId, t -> t)));
+
                     boolean first = true;
-                    Iterator<Map.Entry<String, T>> iterator = getTransactionCache().entrySet().iterator();
-                    try {
-                        while (iterator.hasNext()) {
-                            Map.Entry<String, T> entry = iterator.next();
-                            if (entry.getValue().getStartScn().compareTo(thresholdScn) <= 0) {
-                                if (first) {
-                                    LOGGER.warn("All transactions with SCN <= {} will be abandoned.", thresholdScn);
-                                    if (LOGGER.isDebugEnabled()) {
-                                        try (Stream<String> s = getTransactionCache().keySet().stream()) {
-                                            LOGGER.debug("List of transactions in the cache before transactions being abandoned: [{}]",
-                                                    s.collect(Collectors.joining(",")));
-                                        }
-                                    }
-                                    first = false;
-                                }
-                                LOGGER.warn("Transaction {} (start SCN {}, change time {}, redo thread {}, {} events) is being abandoned.",
-                                        entry.getKey(), entry.getValue().getStartScn(), entry.getValue().getChangeTime(),
-                                        entry.getValue().getRedoThreadId(), entry.getValue().getNumberOfEvents());
-
-                                cleanupAfterTransactionRemovedFromCache(entry.getValue(), true);
-                                iterator.remove();
-
-                                metrics.addAbandonedTransactionId(entry.getKey());
-                                metrics.setActiveTransactionCount(getTransactionCache().size());
-                            }
+                    for (Map.Entry<String, T> entry : abandoned.entrySet()) {
+                        if (first) {
+                            LOGGER.warn("All transactions with SCN <= {} will be abandoned.", thresholdScn);
+                            first = false;
                         }
+                        String key = entry.getKey();
+                        T value = entry.getValue();
+
+                        LOGGER.warn("Transaction {} (start SCN {}, change time {}, redo thread {}, {} events{}) is being abandoned.",
+                                key, value.getStartScn(), value.getChangeTime(), value.getRedoThreadId(),
+                                value.getNumberOfEvents(), getLoggedAbandonedTransactionTableNames(value));
+
+                        cleanupAfterTransactionRemovedFromCache(value, true);
+
+                        getTransactionCache().removeTransaction(value);
+                        metrics.addAbandonedTransactionId(key);
                     }
-                    finally {
-                        if (iterator instanceof CloseableIterator) {
-                            ((CloseableIterator<Map.Entry<String, T>>) iterator).close();
-                        }
-                    }
+
+                    metrics.setActiveTransactionCount(getTransactionCache().getTransactionCount());
+
                     if (LOGGER.isDebugEnabled()) {
-                        try (Stream<String> s = getTransactionCache().keySet().stream()) {
-                            LOGGER.debug("List of transactions in the cache after transactions being abandoned: [{}]",
-                                    s.collect(Collectors.joining(",")));
-                        }
+                        LOGGER.debug("List of transactions in the cache before transactions being abandoned: [{}]",
+                                String.join(",", abandoned.keySet()));
+
+                        getTransactionCache().transactions(stream -> {
+                            LOGGER.debug("List of transactions in the cache after transactions begin abandoned: [{}]",
+                                    stream.map(Transaction::getTransactionId).collect(Collectors.joining(",")));
+                        });
                     }
 
                     // Update the oldest scn metric are transaction abandonment
-                    final Optional<T> oldestTransaction = getOldestTransactionInCache();
-                    if (oldestTransaction.isPresent()) {
-                        final T transaction = oldestTransaction.get();
-                        metrics.setOldestScnDetails(transaction.getStartScn(), transaction.getChangeTime());
-                    }
-                    else {
-                        metrics.setOldestScnDetails(Scn.NULL, null);
-                    }
+                    getTransactionCache().getEldestTransactionScnDetailsInCache().ifPresentOrElse(
+                            scnDetails -> metrics.setOldestScnDetails(scnDetails.scn(), scnDetails.changeTime()),
+                            () -> metrics.setOldestScnDetails(Scn.NULL, null));
 
                     offsetContext.setScn(thresholdScn);
                 }
                 dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
             }
         }
+    }
+
+    /**
+     * Calculates a list of tables that participate in the abandoned transaction, but only if the
+     * {@link #ABANDONED_DETAILS_LOGGER} logger has {@code DEBUG} logging enabled.
+     *
+     * @param transaction the transaction to inspect events for
+     * @return details about abandoned transactions, or an empty string if logging level is INFO or higher.
+     * @throws InterruptedException thrown if the thread is interrupted
+     */
+    protected String getLoggedAbandonedTransactionTableNames(T transaction) throws InterruptedException {
+        if (ABANDONED_DETAILS_LOGGER.isDebugEnabled()) {
+            final Set<String> tableNames = new HashSet<>();
+            getTransactionCache().forEachEvent(transaction, event -> {
+                tableNames.add(event.getTableId().identifier());
+                return true;
+            });
+            return String.format(", %d tables [%s]", tableNames.size(), String.join(",", tableNames));
+        }
+        return "";
     }
 
     /**
@@ -1548,31 +1962,54 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         LOGGER.debug("Getting abandon SCN breakpoint based on change time {} (retention {} minutes).",
                 getLastProcessedScnChangeTime(), retention.toMinutes());
 
-        Scn calculatedLastScn = Scn.NULL;
-        for (Transaction transaction : getTransactionCache().values()) {
-            final Instant changeTime = transaction.getChangeTime();
+        return getTransactionCache().streamTransactionsAndReturn(stream -> stream.filter(t -> {
+            final Instant changeTime = t.getChangeTime();
             final long diffMinutes = Duration.between(getLastProcessedScnChangeTime(), changeTime).abs().toMinutes();
-            if (diffMinutes > 0 && diffMinutes > retention.toMinutes()) {
-                // We either now will capture the transaction's SCN because it is the first detected transaction
-                // outside the configured retention period or the transaction has a start SCN that is more recent
-                // than the current calculated SCN but is still outside the configured retention period.
-                LOGGER.debug("Transaction {} with SCN {} started at {}, age is {} minutes.",
-                        transaction.getTransactionId(), transaction.getStartScn(), changeTime, diffMinutes);
-                if (calculatedLastScn.isNull() || calculatedLastScn.compareTo(transaction.getStartScn()) < 0) {
-                    calculatedLastScn = transaction.getStartScn();
+
+            // We either now will capture the transaction's SCN because it is the first detected transaction
+            // outside the configured retention period or the transaction has a start SCN that is more recent
+            // than the current calculated SCN but is still outside the configured retention period.
+            LOGGER.debug("Transaction {} with SCN {} started at {}, age is {} minutes.",
+                    t.getTransactionId(), t.getStartScn(), changeTime, diffMinutes);
+            return diffMinutes > 0 && diffMinutes > retention.toMinutes();
+        })
+                .max(Comparator.comparing(Transaction::getStartScn))
+                .map(Transaction::getStartScn)
+                .orElse(Scn.NULL));
+    }
+
+    /**
+     * Checks whether the non-included table is skipped.
+     *
+     * When the mining strategy is set to hybrid, this method will also update the {@link LogMinerEventRow}
+     * if a cached object identifier resolves to a table in the relational model, and will recheck the
+     * filter inclusion. When using any other mining strategy, this is not performed.
+     *
+     * @param row the current row being processed, should not be {@code null}
+     * @return {@code true} if the row is to be skipped, {@code false} otherwise
+     */
+    private boolean isNonIncludedTableSkipped(LogMinerEventRow row) {
+        if (isUsingHybridStrategy()) {
+            if (isTableLookupByObjectIdRequired(row)) {
+                // Special use case where the table has been dropped and purged, and we are processing an
+                // old event for the table that comes prior to the drop.
+                LOGGER.trace("Found DML for dropped table in history with object-id based table name {}.", row.getTableId().table());
+                final TableId tableId = schema.getTableIdByObjectId(row.getObjectId(), null);
+                if (tableId != null) {
+                    row.setTableId(tableId);
                 }
+                return !tableFilter.isIncluded(row.getTableId());
             }
         }
-
-        return calculatedLastScn;
+        return true;
     }
 
     /**
      * Wrapper for all counter variables
      *
      */
-    protected class Counters {
-        public int stuckCount;
+    protected static class Counters {
+        public int stuckCount; // it will be reset after 25 mining session iterations or if offset SCN changes
         public int dmlCount;
         public int ddlCount;
         public int insertCount;
@@ -1582,9 +2019,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
         public int rollbackCount;
         public int tableMetadataCount;
         public long rows;
+        public long partialRollbackCount;
 
         public void reset() {
-            stuckCount = 0;
             dmlCount = 0;
             ddlCount = 0;
             insertCount = 0;
@@ -1594,6 +2031,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
             rollbackCount = 0;
             tableMetadataCount = 0;
             rows = 0;
+            partialRollbackCount = 0;
         }
 
         @Override
@@ -1609,7 +2047,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends AbstractTransacti
                     ", commitCount=" + commitCount +
                     ", rollbackCount=" + rollbackCount +
                     ", tableMetadataCount=" + tableMetadataCount +
+                    ", partialRollbackCount=" + partialRollbackCount +
                     '}';
         }
     }
+
 }

@@ -131,8 +131,10 @@ public class MongoDbConnector extends BaseSourceConnector {
 
             // For RS clusters check that replica set name is present
             // Java driver is smart enough to work without it but the specs says it should be set
-            if (!connectionContext.hasRequiredReplicaSetName()) {
-                connectionStringValidation.addErrorMessage("Replica set not specified in connection string");
+            if (!connectionContext.hasReplicaSetNameIfRequired()) {
+                var type = connectionContext.getClusterType();
+                LOGGER.warn("Replica set not specified in connection string for {} cluster.", type);
+                connectionStringValidation.addErrorMessage("Replica set not specified in connection string for " + type + " cluster.");
             }
         }
         catch (MongoException e) {
@@ -142,7 +144,7 @@ public class MongoDbConnector extends BaseSourceConnector {
 
     @Override
     protected Map<String, ConfigValue> validateAllFields(Configuration config) {
-        return config.validate(MongoDbConnectorConfig.EXPOSED_FIELDS);
+        return config.validate(MongoDbConnectorConfig.ALL_FIELDS);
     }
 
     @SuppressWarnings("unchecked")

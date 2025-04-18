@@ -16,6 +16,7 @@ import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mongodb.MongoException;
 import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
@@ -220,13 +221,29 @@ public class MongoUtils {
             return client.getDatabase(database).watch(pipeline.getStages(), BsonDocument.class);
         }
 
+        // capture scope is collection
+        if (config.getCaptureScope() == MongoDbConnectorConfig.CaptureScope.COLLECTION) {
+            var captureTarget = config.getCaptureTarget().orElseThrow();
+            var database = captureTarget.split("\\.")[0];
+            var collection = captureTarget.split("\\.")[1];
+            LOGGER.info("Change stream is restricted to '{}' collection", collection);
+            return client.getDatabase(database).getCollection(collection).watch(pipeline.getStages(), BsonDocument.class);
+        }
+
         // capture scope is deployment
         return client.watch(pipeline.getStages(), BsonDocument.class);
     }
 
     public static BsonTimestamp hello(MongoClient client, String dbName) {
         var database = client.getDatabase(dbName);
-        var result = database.runCommand(new Document("hello", 1), BsonDocument.class);
+        BsonDocument result;
+        try {
+            result = database.runCommand(new Document("hello", 1), BsonDocument.class);
+        }
+        catch (MongoException e) {
+            LOGGER.error(e.getMessage(), e);
+            result = database.runCommand(new Document("isMaster", 1), BsonDocument.class);
+        }
         return result.getTimestamp("operationTime");
     }
 

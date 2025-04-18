@@ -7,6 +7,7 @@ package io.debezium.connector.oracle.logminer;
 
 import java.util.Map;
 
+import io.debezium.connector.SnapshotType;
 import io.debezium.connector.oracle.CommitScn;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleOffsetContext;
@@ -29,13 +30,14 @@ public class LogMinerOracleOffsetContextLoader implements OffsetContext.Loader<O
 
     @Override
     public OracleOffsetContext load(Map<String, ?> offset) {
-        boolean snapshot = Boolean.TRUE.equals(offset.get(SourceInfo.SNAPSHOT_KEY));
-        boolean snapshotCompleted = Boolean.TRUE.equals(offset.get(OracleOffsetContext.SNAPSHOT_COMPLETED_KEY));
+        final SnapshotType snapshot = loadSnapshot(offset).orElse(null);
+        final boolean snapshotCompleted = loadSnapshotCompleted(offset);
 
         Scn scn = OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY);
         CommitScn commitScn = CommitScn.load(offset);
         Map<String, Scn> snapshotPendingTransactions = OracleOffsetContext.loadSnapshotPendingTransactions(offset);
         Scn snapshotScn = OracleOffsetContext.loadSnapshotScn(offset);
+
         return new OracleOffsetContext(connectorConfig, scn, null, commitScn, null, snapshotScn,
                 snapshotPendingTransactions, snapshot, snapshotCompleted,
                 TransactionContext.load(offset),

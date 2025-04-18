@@ -49,6 +49,12 @@ public class ConnectorConfiguration {
         return configuration;
     }
 
+    public static ConnectorConfiguration from(Map<String, ?> map) {
+        final ConnectorConfiguration configuration = new ConnectorConfiguration();
+        map.forEach((key, val) -> configuration.configNode.put(key, val.toString()));
+        return configuration;
+    }
+
     public static ConnectorConfiguration forJdbcContainer(JdbcDatabaseContainer<?> jdbcDatabaseContainer) {
         ConnectorConfiguration configuration = new ConnectorConfiguration();
 

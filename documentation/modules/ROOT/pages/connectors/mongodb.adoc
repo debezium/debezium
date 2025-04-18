@@ -10,6 +10,7 @@
 :connector-class: MongoDb
 :connector-name: MongoDB
 :include-list-example: public.inventory
+:collection-container:  database
 ifdef::community[]
 
 :toc:
@@ -101,32 +102,7 @@ In this way the connector dynamically adjusts to changes in replica set membersh
 [id="read-preference"]
 === Read Preference
 
-You can specify MongoDB read preferences for a connection in the connector properties.
-The method that you use to set read preferences depends on the MongoDB topology, and the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`].
-
-Replica set topology::
-Set the read preference in the xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`].
-Sharded cluster topology::
-Set the read preference based on the connection mode, as shown in the following table:
-+
-.Setting the read preference for a sharded cluster based on the `mongodb.connection.mode`
-[cols="3,6",options="header"]
-|===
-|Connection mode |Property for specifying read preference
-
-|`sharded`
-|`mongodb.connection.string`
-
-|`replica_set`
-|`mongodb.connection.string.shard.params`
-
-|===
-+
-In a sharded cluster, the connector first initiates a connection to the mongos router specified in the `mongodb.connection.string`.
-For that initial connection, regardless of the connection mode, the connector honors the read preferences that are specified in the `mongodb.connection.string`.
-When the connection mode is set to `replica_set`, after the connector establishes the initial router connection, it retrieves topology information from the router's `config.shards`.
-It then uses the retrieved shard addresses to connect to individual shards in the cluster, constructing connection strings that use the connection parameters in xref:mongodb-property-mongodb-connection-string-shard-params[`mongodb.connection.string.shard.params`].
-For shard-specific connections, the connector ignores the read preferences that are set in the `mongodb.connection.string`.
+You specify read preferences for a MongoDB connection by setting the `readPreference` parameter in the xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`].
 
 // Type: assembly
 // ModuleID: how-debezium-mongodb-connectors-work
@@ -135,16 +111,6 @@ For shard-specific connections, the connector ignores the read preferences that 
 == How the MongoDB connector works
 
 An overview of the MongoDB topologies that the connector supports is useful for planning your application.
-
-When a MongoDB connector is configured and deployed, it starts by connecting to the MongoDB servers at the seed addresses, and determines the details about each of the available replica sets.
-Since each replica set has its own independent oplog, the connector will try to use a separate task for each replica set.
-The connector can limit the maximum number of tasks it will use, and if not enough tasks are available the connector will assign multiple replica sets to each task, although the task will still use a separate thread for each replica set.
-
-[NOTE]
-====
-When running the connector against a sharded cluster, use a value of `tasks.max` that is greater than the number of replica sets.
-This will allow the connector to create one task for each replica set, and will let Kafka Connect coordinate, distribute, and manage the tasks across all of the available worker processes.
-====
 
 ifdef::product[]
 The following topics provide details about how the {prodname} MongoDB connector works:
@@ -187,19 +153,6 @@ A https://docs.mongodb.com/manual/sharding/[MongoDB sharded cluster] consists of
 +
 To use the MongoDB connector with a sharded cluster, in the connector configuration, set the value of the `mongodb.connection.string` property to the  https://www.mongodb.com/docs/manual/reference/connection-string/[sharded cluster connection string].
 
-[WARNING]
-====
-The `mongodb.connection.string` property replaces the removed `mongodb.hosts` property that was used to provide earlier versions of the connector with the host address of the _configuration server_ replica.
-In the current release, use `mongodb.connection.string` to provide the connector with the addresses of MongoDB routers, also known as `mongos`.
-====
-
-[NOTE]
-====
-When the connector connects to sharded cluster, it discovers the information about each replica set that represents a shard in the cluster.
-The connector uses a separate task to capture changes from each shard.
-As shards are added or removed from the cluster, the connector  dynamically adjusts the numbers of tasks to compensate for the change.
-====
-
 [[mongodb-standalone-server]]
 MongoDB standalone server::
 The MongoDB connector is not capable of monitoring the changes of a standalone MongoDB server, since standalone servers do not have an oplog.
@@ -222,7 +175,7 @@ The MongoDB user account that you create for {prodname} requires specific databa
 The connector user requires the following permissions:
 
 * Read from the database.
-* Run the `ping` command.
+* Run the `hello` command.
 
 The connector user might also require the following permission:
 
@@ -238,13 +191,34 @@ Grant the user permission to read any database.
 `capture.scope` is set to `database`::
 Grant the user permission to read the database specified by the connector's xref:mongodb-property-capture-target[`capture.target`] property.
 
-.Permission to use the MongoDB `ping` command
+`capture.scope` is set to `collection`::
+Grant the user permission to read the collection specified by the connector's xref:mongodb-property-capture-target[`capture.target`] property.
 
-Regardless of the `capture.scope` setting, the user requires permission to run the MongoDB https://www.mongodb.com/docs/manual/reference/command/ping/[ping] command.
+ifdef::product[]
+[IMPORTANT]
+====
+The use of the {prodname} `collection` option for the `capture.scope` property is a Developer Preview feature.
+Developer Preview features are not supported by Red{nbsp}Hat in any way and are not functionally complete or production-ready.
+Do not use Developer Preview software for production or business-critical workloads.
+Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
+Customers can use this software to test functionality and provide feedback during the development process.
+Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
+
+For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
+====
+endif::product[]
+
+.Permission to use the MongoDB `hello` command
+
+Regardless of the `capture.scope` setting, the user requires permission to run the MongoDB https://www.mongodb.com/docs/manual/reference/command/hello/[hello] command.
 
 .Permission to read the `config.shards` collection
+Depending on your {prodname} environment, to enable the connector to perform offset consolidation, you must grant the connector user explicit permission to read the `config.shards` collection.
+Permission to read the `config.shards` collection is required for the following connector environments:
 
-For connectors that capture changes from a sharded MongoDB cluster, and for which the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] property is set to `replica_set`, you must grant the user permission to read the `config.shards` system collection.
+* Connectors upgraded from {prodname} 2.5 or earlier.
+* Connectors configured to capture changes from a sharded MongoDB cluster.
+
 
 
 // Type: concept
@@ -258,6 +232,31 @@ The connector uses the logical name in a number of ways: as the prefix for all t
 
 You should give each MongoDB connector a unique logical name that meaningfully describes the source MongoDB system.
 We recommend logical names begin with an alphabetic or underscore character, and remaining characters that are alphanumeric or underscore.
+
+// Type: concept
+// Title: How {prodname} MongoDB connectors perform offset consolidation
+// ModuleID: how-debezium-mongodb-connectors-perform-offset-consolidation
+[[mongodb-offset-consolidation]]
+=== Offset consolidation
+
+The {prodname} MongoDB connector no longer supports `replica_set` connections to sharded MongoDB deployments.
+As a result, the offsets recorded by connector versions that used the `replica_set` connection mode are incompatible with the current version.
+
+To minimize the affects of the connection mode change, and to prevent the connector from running unnecessary snapshots, when the connector restarts after the upgrade, it runs a procedure to consolidate offsets.
+During this offset consolidation procedure, the connector completes the following steps to reconcile offsets that were recorded by the earlier connector version:
+
+1. Offsets that were recorded by connector versions later than 2.5 are used as-is.
+2. Offsets for events that were captured in `sharded` connection mode from sharded MongoDB deployments, or from MongoDB replica set deployments, are used as-is.
+3. Shard-specific offsets that were recorded by connector versions 2.5.x and earlier are used as-is, if both of the following conditions apply:
+
+* The offsets exist for all current database shards.
+* xref:mongodb-property-allow-offset-invalidation[Offset invalidation] is enabled. +
+If offset invalidation is disabled, the connector fails to start.
+
+
+4. After the connector processes existing offsets in the preceding steps, it resumes streaming changes, and then commits offsets for new events that it captures. +
+If the offset consolidation procedure does not detect any existing offsets, the connector xref:mongodb-performing-a-snapshot[performs an initial snapshot].
+
 
 // Type: concept
 // Title: How {prodname} MongoDB connectors perform snapshots
@@ -292,6 +291,56 @@ You can find more information about snapshots in the following sections:
 * xref:debezium-postgresql-incremental-snapshots[]
 endif::product[]
 
+[id="mongodb-connector-snapshot-mode-options"]
+.Settings for `snapshot.mode` connector configuration property
+[cols="30%a,70%a",options="header"]
+|===
+|Setting |Description
+
+|`always`
+|The connector performs a snapshot every time that it starts.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
+|`initial`
+|After the connector starts, it performs an initial database snapshot.
+//as described in the xref:default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
+|`initial_only`
+|The connector performs a database snapshot.
+After the snapshot completes, the connector stops, and does not stream event records for subsequent database changes.
+
+|`never`
+|Deprecated, see `no_data`.
+
+|`no_data`
+|The connector captures the structure of all relevant tables,
+//performing all the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow],
+but it does not create `READ` events to represent the data set at the point of the connector's start-up.
+//(Step 7.b).
+
+|`when_needed`
+|After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a log position that is not available on the server.
+
+ifdef::community[]
+|`configuration_based`
+|Set the snapshot mode to `configuration_based` to control snapshot behavior through the set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
+endif::community[]
+
+ifdef::community[]
+|`custom`
+|The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
+The name is specified on the classpath of your Kafka Connect cluster.
+If you use the {prodname} `DebeziumEngine`, the name is included in the connector JAR file.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+|===
+
+For more information, see xref:mongodb-property-snapshot-mode[`snapshot.mode`] in the table of connector configuration properties.
+
 // Type: concept
 // ModuleID: debezium-mongodb-ad-hoc-snapshots
 [id="mongodb-ad-hoc-snapshots"]
@@ -308,59 +357,49 @@ include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot
 
 [WARNING]
 ====
-Incremental snapshots requires the primary key to be stably ordered. However, `String` may not guarantees stable ordering as encodings and special characters
-can lead to unexpected behaviour (https://www.mongodb.com/docs/manual/reference/bson-types/#ref-sort-string-internationalization-id3/[Mongo sort `String`]).
-Please consider using other types for the primary key when performing incremental snapshots.
+Incremental snapshots require that the primary key for each table is stably ordered.
+Because `String` fields can include special characters, and are subject to different encodings, string-based primary keys do not lend themselves to sorting in a consistent and predictable order.
+When performing incremental snapshots, it's best to set the primary key to a data type other than `String`.
+
+For more information about BSON string types in MongoDB, see the https://www.mongodb.com/docs/manual/reference/bson-types/#string/[MongoDB documentation]).
 ====
 
 .Incremental snapshots for sharded clusters
 
-ifdef::product[]
-[IMPORTANT]
-====
-Incremental snapshots for sharded clusters is a Technology Preview feature for the {prodname} MongoDB connector.
-Technology Preview features are not supported with Red Hat production service-level agreements (SLAs) and might not be functionally complete;
-therefore, Red Hat does not recommend implementing any Technology Preview features in production environments.
-This Technology Preview feature provides early access to upcoming product innovations, enabling you to test functionality and provide feedback during the development process.
-For more information about support scope, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
-
-To use incremental snapshots with sharded MongoDB clusters, you must set specific values for the following properties:
-
-* Set xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] to `sharded`.
-* Set xref:mongodb-property-incremental-snapshot-chunk-size[`incremental.snapshot.chunk.size`] to a value that is high enough to compensate for the link:https://www.mongodb.com/docs/manual/administration/change-streams-production-recommendations/#sharded-clusters[increased complexity] of change stream pipelines.
+To use incremental snapshots with sharded MongoDB clusters, you must set xref:mongodb-property-incremental-snapshot-chunk-size[`incremental.snapshot.chunk.size`] to a value that is high enough to compensate for the link:https://www.mongodb.com/docs/manual/administration/change-streams-production-recommendations/#sharded-clusters[increased complexity] of change stream pipelines.
 
 // Type: procedure
-// ModuleID: debezium-mongodb-triggering-an-incremental-snapshot
 [id="mongodb-triggering-an-incremental-snapshot"]
 ==== Triggering an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-nosql.adoc[leveloffset=+1]
 
 // Type: procedure
-// ModuleID: debezium-mongdb-using-the-kafka-signaling-channel-to-trigger-an-incremental-snapshot
 [id="mongodb-triggering-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to trigger an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
 // Type: procedure
-// ModuleID: debezium-mongodb-stopping-an-incremental-snapshot
 [id="mongodb-stopping-an-incremental-snapshot"]
 ==== Stopping an incremental snapshot
 
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-nosql.adoc[leveloffset=+1]
 
 // Type: procedure
-// ModuleID: debezium-mongodb-using-the-kafka-signaling-channel-to-stop-an-incremental-snapshot
 [id="mongodb-stopping-an-incremental-snapshot-kafka"]
 ==== Using the Kafka signaling channel to stop an incremental snapshot
 include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
 
+ifdef::community[]
+[[connector-custom-snapshot]]
+=== Custom snapshotter SPI
+include::{partialsdir}/modules/all-connectors/custom-snapshotter-spi.adoc[leveloffset=+3]
+endif::community[]
+
 // Type: concept
 [id="mongodb-blocking-snapshots"]
-==== Blocking snapshots
+=== Blocking snapshots
 
 include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
 
@@ -1020,8 +1059,8 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 |3
 |`before`
 |Contains the JSON string representation of the actual MongoDB document before change.
-+
-An _update_ event value does not contain an `before` field if the capture mode is not set to one of the `*_with_preimage` options.
+
+An _update_ event value does not contain a `before` field if the capture mode is not set to one of the `*_with_preimage` options.
 
 |4
 |`after`
@@ -1108,8 +1147,8 @@ In the `source` object, `ts_ms` indicates the time that the change was made in t
 |3
 |`before`
 |Contains the JSON string representation of the actual MongoDB document before change.
-+
-An _update_ event value does not contain an `before` field if the capture mode is not set to one of the `*_with_preimage` options.
+
+An _update_ event value does not contain a `before` field if the capture mode is not set to one of the `*_with_preimage` options.
 
 |4
 |`source`
@@ -1221,6 +1260,14 @@ endif::[]
 
 If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s Container images] for Apache Zookeeper, Apache Kafka, and Kafka Connect with the MongoDB connector already installed and ready to run.
 
+[IMPORTANT]
+====
+The {prodname} container images that you obtain from `quay.io` do not undergo rigorous testing or security analysis, and are provided for testing and evaluation purposes only.
+These images are not intended for use in production environments.
+To mitigate risk in production deployments, deploy only containers that are actively maintained by trusted vendors, and thoroughly tested for potential vulnerabilities.
+====
+
+
 You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
 
 The {prodname} xref:tutorial.adoc[tutorial] walks you through using these images, and this is a great way to learn about {prodname}.
@@ -1232,11 +1279,13 @@ You can use either of the following methods to deploy a {prodname} MongoDB conne
 * xref:openshift-streams-mongodb-connector-deployment[Use {StreamsName} to automatically create an image that includes the connector plug-in].
 +
 This is the preferred method.
-* xref:deploying-debezium-mongodb-connectors[Build a custom Kafka Connect container image from a Dockerfile].
+* xref:deploying-debezium-mongodb-connectors[Build a custom Kafka Connect container image from a Dockerfile]. +
+This Containerfile deployment method is deprecated.
+The instructions for this method are scheduled for removal in future versions of the documentation.
 
 .Additional resources
 
-* xref:mongodb-connector-properties[]
+* xref:mongodb-connector-properties[MongoDB connector configuration properties]
 
 // Type: concept
 [id="openshift-streams-mongodb-connector-deployment"]
@@ -1535,14 +1584,28 @@ Many properties have default values. Information about the properties is organiz
 
 * xref:debezium-mongodb-connector-required-configuration-properties[Required {prodname} MongoDB connector configuration properties]
 * xref:debezium-mongodb-connector-advanced-configuration-properties[Advanced {prodname} MongoDB connector configuration properties]
+* xref:debezium-mongodb-connector-pass-through-kafka-signals-configuration-properties[Pass-through Kafka signals configuration properties]
+* xref:debezium-mongodb-connector-pass-through-kafka-sink-notification-configuration-properties[Pass-through sink notification configuration properties]
 
 The following configuration properties are _required_ unless a default value is available.
 
 [id="debezium-mongodb-connector-required-configuration-properties"]
-.Required {prodname} MongoDB connector configuration properties
+==== Required {prodname} MongoDB connector configuration properties
+
 [cols="30%a,25%a,45%a",options="header"]
 |===
 |Property |Default |Description
+
+|[[mongodb-property-allow-offset-invalidation]]<<mongodb-property-allow-offset-invalidation, `+internal.mongodb.allow.offset.invalidation+`>>
+|false
+|Set this property to `true` to enable the connector to invalidate and xref:mongodb-offset-consolidation[consolidate] shard-specific offsets that were recorded by earlier connector versions.
+
+[WARNING]
+====
+
+This property permits you to modify the current default behavior.
+The property is subject to removal in a future release if the default behavior changes to permit the connector to automatically invalidate and consolidate offsets that are recorded by earlier connector versions.
+====
 
 |[[mongodb-property-name]]<<mongodb-property-name, `+name+`>>
 |No default
@@ -1556,41 +1619,6 @@ The following configuration properties are _required_ unless a default value is 
 |No default
 |Specifies a https://www.mongodb.com/docs/manual/reference/connection-string/[connection string] that the connector uses to connect to a MongoDB replica set.
 This property replaces the `mongodb.hosts` property that was available in previous versions of the MongoDB connector. +
- +
-[NOTE]
-====
-Connectors that capture changes from a sharded MongoDB cluster use this connection string only during the initial shard discovery process when xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] is set to `replica_set`.
-After the initial discovery process, connection strings are generated for each individual shard.
-====
-
-|[[mongodb-property-mongodb-connection-string-shard-params]]<<mongodb-property-mongodb-connection-string-shard-params, `+mongodb.connection.string.shard.params+`>>
-|No default
-|Specifies the URL parameters of the https://www.mongodb.com/docs/manual/reference/connection-string/[connection string], including read preferences, that the connector uses to connect to individual shards of a MongoDB sharded cluster.
-
-[NOTE]
-====
-This property applies only when the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] is set to `replica_set`.
-====
-
-|[[mongodb-property-mongodb-connection-mode]]<<mongodb-property-mongodb-connection-mode, `+mongodb.connection.mode+`>>
-|`sharded`
-|Specifies the strategy that the connector uses when it connects to a `sharded` MongoDB cluster.
-Set this property to one of the following values:
-
-`replica_set`:: The connector establishes individual connections to the replica set for each shard.
-
-`sharded`:: The connector establishes a single connection to the mongos router instance that is specified in the xref:mongodb-property-mongodb-connection-string[`mongodb.connection.string`] property.
-
-[NOTE]
-====
-The `replica_set` options allows the connector to distribute shard processing across multiple connector tasks.
-However, in this configuration, the connector bypasses the MongoDB router when it connects to individual shards, which is not recommended by MongoDB.
-====
-
-[WARNING]
-====
-Switching between connection modes invalidates stored offsets, which triggers a new snapshot.
-====
 
 |[[mongodb-property-topic-prefix]]<<mongodb-property-topic-prefix, `+topic.prefix+`>>
 |No default
@@ -1718,6 +1746,7 @@ Messages do not include a field that represents the state of the document `befor
 `change_streams_update_full`:: `update` event messages include the full document.
 Messages do not include a `before` field that represents the state of the document before the update.
 The event message returns the full state of the document in the `after` field.
+Set xref:mongodb-property-capture-mode-full-update-type[capture.mode.full.update.type] to specify how the connector fetches full documents from the database.
 +
 [NOTE]
 ====
@@ -1729,6 +1758,7 @@ If a later update modifies the source document before the connector can retrieve
 
 `change_streams_update_full_with_pre_image`::
 `update` event event messages include the full document, and include a field that represents the state of the document `before` the change.
+Set xref:mongodb-property-capture-mode-full-update-type[capture.mode.full.update.type] to specify how the connector fetches full documents from the database.
 
 `change_streams_with_pre_image`::
 `update` events do not include the full document, but include a field that represents the state of the document `before` the change.
@@ -1747,6 +1777,35 @@ Set this property to one of the following values:
 To support {link-prefix}:{link-signalling}#[{prodname} signaling], if you set `capture.scope` to `database`, the xref:mongodb-property-signal-data-collection[signaling data collection] must reside in a database that is specified by the xref:mongodb-property-capture-target[`capture.target`] property.
 ====
 
+`collection`:: Opens a change stream cursor for a single collection to watch for changes to that collection.
++
+ifdef::community[]
+[NOTE]
+====
+This feature is currently in an incubating state.
+The exact semantics, configuration options, and so forth are subject to change, based on the feedback that we receive.
+====
+endif::community[]
+ifdef::product[]
+[IMPORTANT]
+====
+The use of the {prodname} `collection` option for the `capture.scope` property is a Developer Preview feature.
+Developer Preview features are not supported by Red{nbsp}Hat in any way and are not functionally complete or production-ready.
+Do not use Developer Preview software for production or business-critical workloads.
+Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
+Customers can use this software to test functionality and provide feedback during the development process.
+Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
+
+For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
+====
+endif::product[]
++
+[WARNING]
+====
+Setting the value of the `capture.scope` property to `collection` prevents the connector from using the default `source` {link-prefix}:{link-signalling}[signaling] channel.
+Because the `source` channel must be enabled to permit connectors to process incremental snapshot signals -- even for signals are sent over the Kafka, JMX, or File channels -- the connector cannot perform incremental snapshots when `capture-scope` is set to `collection`.
+====
+
 |[[mongodb-property-capture-target]]<<mongodb-property-capture-target, `+capture.target+`>>
 |
 | Specifies the database that the connector monitors for changes.
@@ -1760,19 +1819,6 @@ Fully-qualified names for fields are of the form _databaseName_._collectionName_
 |[[mongodb-property-field-renames]]<<mongodb-property-field-renames, `+field.renames+`>>
 |_empty string_
 |An optional comma-separated list of the fully-qualified replacements of fields that should be used to rename fields in change event message values. Fully-qualified replacements for fields are of the form _databaseName_._collectionName_._fieldName_._nestedFieldName_:__newNestedFieldName__, where _databaseName_ and _collectionName_ may contain the wildcard (*) which matches any characters, the colon character (:) is used to determine rename mapping of field. The next field replacement is applied to the result of the previous field replacement in the list, so keep this in mind when renaming multiple fields that are in the same path.
-
-|[[mongodb-property-tasks-max]]<<mongodb-property-tasks-max, `+tasks.max+`>>
-|`1`
-|Specifies the maximum number of tasks that the connector uses to connect to a sharded cluster.
-When you use the connector with a single MongoDB replica set, the default value is acceptable.
-But when a cluster contains multiple shards, to enable Kafka Connect to distribute the work for each replica set, specify a value that is equal to or greater than the number of shards in the cluster.
-The MongoDB connector can then use a separate task to connect to the replica set for each shard in the cluster.
-
-[NOTE]
-====
-This property has an effect only when the connector is connected to a sharded MongoDB cluster and the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] property is set to `replica_set`.
-When the xref:mongodb-property-mongodb-connection-mode[`mongodb.connection.mode`] is set to `sharded`, or if the connector is connected to an unsharded MongoDB replica set deployment, the connector ignores this setting, and defaults to using only a single task.
-====
 
 |[[mongodb-property-tombstones-on-delete]]<<mongodb-property-tombstones-on-delete, `+tombstones.on.delete+`>>
 |`true`
@@ -1806,12 +1852,39 @@ See {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming] for more de
 The following _advanced_ configuration properties have good defaults that will work in most situations and therefore rarely need to be specified in the connector's configuration.
 
 [id="debezium-mongodb-connector-advanced-configuration-properties"]
-.{prodname} MongoDB connector advanced configuration properties
+==== {prodname} MongoDB connector advanced configuration properties
+
 [cols="30%a,25%a,45%a",options="header"]
 |===
 |Property
 |Default
 |Description
+
+|[[mongodb-property-capture-mode-full-update-type]]<<mongodb-property-capture-mode-full-update-type, `+capture.mode.full.update.type+`>>
+|`lookup`
+|Specifies how the connector looks up the full value of an updated document when the xref:mongodb-property-capture-mode[`capture.mode`] is set retrieve full documents.
+The connector retrieves full documents when its `capture.mode` is set to one of the following options:
+
+* `change_streams_update_full`
+* `change_streams_update_full_with_pre-image`
+
+To use this option with a MongoDB change streams collection, you must configure the collection to https://www.mongodb.com/docs/manual/changeStreams/#change-streams-with-document-pre--and-post-images[return document pre- and post-images].
+Pre- and post-images for an operation are available only if the required configuration is in place before the operation occurs.
+
+Set this property to one of the following values:
+
+`lookup`:: The connector uses a separate lookup to fetch the updated full MongoDB document.
+
+[WARNING]
+====
+If the lookup process fails to retrieve a document, it cannot populate the full document to the `after` state in the event payload.
+In such a situation, the connector emits an event message that contains a `null` value in the `after` field.
+
+Failed lookups can occur because a delete operation removed the document immediately after it was created, or because a change to the sharding key results in the document being moved to a different location.
+Sharding key changes can result when you modify any of the properties that make up the key.
+====
+`post_image`:: The connector uses MongoDB post images to populate events with the full MongoDB document.
+The database must be running MongoDB 6.0 or later to use this option.
 
 |[[mongodb-property-max-batch-size]]<<mongodb-property-max-batch-size, `+max.batch.size+`>>
 |`2048`
@@ -1834,21 +1907,33 @@ To specify the number of bytes that the queue can consume, set this property to 
 If xref:mongodb-property-max-queue-size[`max.queue.size`] is also set, writing to the queue is blocked when the size of the queue reaches the limit specified by either property.
 For example, if you set `max.queue.size=1000`, and `max.queue.size.in.bytes=5000`, writing to the queue is blocked after the queue contains 1000 records, or after the volume of the records in the queue reaches 5000 bytes.
 
-|[[mongodb-property-poll-interval-ms]]<<mongodb-property-poll-interval-ms, `+poll.interval.ms+`>>
-|`1000`
-|Positive integer value that specifies the number of milliseconds the connector should wait during each iteration for new change events to appear. Defaults to 500 milliseconds, or 0.5 second.
-
-|[[mongodb-property-connect-backoff-initial-delay-ms]]<<mongodb-property-connect-backoff-initial-delay-ms, `+connect.backoff.initial.delay.ms+`>>
-|`1000`
-|Positive integer value that specifies the initial delay when trying to reconnect to a primary after the first failed connection attempt or when no primary is available. Defaults to 1 second (1000 ms).
-
-|[[mongodb-property-connect-backoff-max-delay-ms]]<<mongodb-property-connect-backoff-max-delay-ms, `+connect.backoff.max.delay.ms+`>>
-|`1000`
-|Positive integer value that specifies the maximum delay when trying to reconnect to a primary after repeated failed connection attempts or when no primary is available. Defaults to 120 seconds (120,000 ms).
-
 |[[mongodb-property-connect-max-attempts]]<<mongodb-property-connect-max-attempts, `+connect.max.attempts+`>>
 |`16`
 |Positive integer value that specifies the maximum number of failed connection attempts to a replica set primary before an exception occurs and task is aborted. Defaults to 16, which with the defaults for `connect.backoff.initial.delay.ms` and `connect.backoff.max.delay.ms` results in just over 20 minutes of attempts before failing.
+
+|[[mongodb-property-ssl-keystore]]<<mongodb-property-ssl-keystore, `+mongodb.ssl.keystore+`>>
+|No Default
+|An optional setting that specifies the location of the key store file. A key store file can be used for two-way authentication between the client and the MongoDB server.
+
+|[[mongodb-property-mongodb-ssl-keystore-password]]<<mongodb-property-mongodb-ssl-keystore-password, `+mongodb.ssl.keystore.password+`>>
+|No Default
+|The password for the key store file. Specify a password only if the xref:mongodb-property-ssl-keystore[`mongodb.ssl.keystore`] is configured.
+
+|[[mongodb-property-mongodb-ssl-keystore-type]]<<mongodb-property-mongodb-ssl-keystore-type, `+mongodb.ssl.keystore.type+`>>
+|No Default
+|The type of key store file. Specify a type only if the xref:mongodb-property-ssl-keystore[`mongodb.ssl.keystore`] is configured.
+
+|[[mongodb-property-mongodb-ssl-truststore]]<<mongodb-property-mongodb-ssl-truststore, `+mongodb.ssl.truststore+`>>
+|No Default
+|The location of the trust store file for the server certificate verification.
+
+|[[mongodb-property-mongodb-ssl-truststore-password]]<<mongodb-property-mongodb-ssl-truststore-password, `+mongodb.ssl.truststore.password+`>>
+|No Default
+|The password for the trust store file. Used to check the integrity of the truststore, and unlock the truststore. Specify a password only if the xref:mongodb-property-mongodb-ssl-truststore[`mongodb.ssl.truststore`] is configured.
+
+|[[mongodb-property-mongodb-ssl-truststore-type]]<<mongodb-property-mongodb-ssl-truststore-type, `+mongodb.ssl.truststore.type+`>>
+|No Default
+|The type of trust store file. Specify a type only if the xref:mongodb-property-mongodb-ssl-truststore[`mongodb.ssl.truststore`] is configured.
 
 ifdef::community[]
 |[[mongodb-property-source-struct-version]]<<mongodb-property-source-struct-version, `+source.struct.version+`>>
@@ -1875,9 +1960,16 @@ Disabled by default.
 
 |[[mongodb-property-skipped-operations]]<<mongodb-property-skipped-operations, `+skipped.operations+`>>
 |`t`
-|A comma-separated list of operation types that will be skipped during streaming.
-The operations include: `c` for inserts/create, `u` for updates/replace, `d` for deletes, `t` for truncates, and `none` to not skip any aforementioned operations.
-By default, for consistency with other Debezium connectors, truncate operations are skipped (not emitted by this connector). However, since MongoDB https://www.mongodb.com/docs/manual/reference/change-events/#operation-types[does not support] truncate change events, this is effectively the same as specifying `none`.
+|A comma-separated list of the operation types that you want the connector to skip during streaming.
+You can configure the connector to skip the following types of operations:
+
+* `c` (insert/create)
+* `u` (update)
+* `d` (delete)
+* `t` (truncate)
+
+Set the value to `none` if you do not want the connector to skip any operations.
+Because MongoDB https://www.mongodb.com/docs/manual/reference/change-events/#operation-types[does not support] truncate change events, setting the default `t` value has the same effect as setting the value to `none`.
 
 |[[mongodb-property-snapshot-collection-filter-overrides]]<<mongodb-property-snapshot-collection-filter-overrides, `+snapshot.collection.filter.overrides+`>>
 |No default
@@ -1889,6 +1981,12 @@ For each collection that you specify, also specify another configuration propert
 |No default
 |An interval in milliseconds that the connector should wait before taking a snapshot after starting up; +
 Can be used to avoid snapshot interruptions when starting multiple connectors in a cluster, which may cause re-balancing of connectors.
+
+|[[mongodb-property-streaming-delay-ms]]<<mongodb-property-streaming-delay-ms, `+streaming.delay.ms+`>>
+|0
+|Specifies the time, in milliseconds, that the connector delays the start of the streaming process after it completes a snapshot.
+Setting a delay interval helps to prevent the connector from restarting snapshots in the event that a failure occurs immediately after the snapshot completes, but before the streaming process begins.
+Set a delay value that is higher than the value of the {link-kafka-docs}/#connectconfigs_offset.flush.interval.ms[`offset.flush.interval.ms`] property that is set for the Kafka Connect worker.
 
 |[[mongodb-property-snapshot-fetch-size]]<<mongodb-property-snapshot-fetch-size, `+snapshot.fetch.size+`>>
 |`0`
@@ -1911,15 +2009,85 @@ That is, the specified expression is matched against the entire name string of t
 |Positive integer value that specifies the maximum number of threads used to perform an intial sync of the collections in a replica set. Defaults to 1.
 
 |[[mongodb-property-snapshot-mode]]<<mongodb-property-snapshot-mode, `+snapshot.mode+`>>
-|`initial`
+|_initial_
 |Specifies the criteria for performing a snapshot when the connector starts.
 Set the property to one of the following values:
 
-`initial`::
-When the connector starts, if it does not detect a value in its offsets topic, it performs a snapshot of the database.
+`always`:: The connector performs a snapshot every time that it starts.
+The snapshot includes the structure and data of the captured tables.
+Specify this value to populate topics with a complete representation of the data from the captured tables every time that the connector starts.
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
 
-`never`::
-When the connector starts, it skips the snapshot process and immediately begins to stream change events for operations that the database records to the oplog.
+`initial`:: When the connector starts, it performs an initial database snapshot.
+//as described in the xref:default-workflow-for-performing-an-initial-snapshot[default workflow for creating an initial snapshot].
+After the snapshot completes, the connector begins to stream event records for subsequent database changes.
+
+`initial_only`:: The connector performs a database a snapshot only when no offsets have been recorded for the logical server name.
+After the snapshot completes, the connector stops.
+It does not transition to streaming event records for subsequent database changes.
+
+`never`:: Deprecated, see `no_data`.
+
+`no_data`:: The connector runs a snapshot that captures the structure of all relevant tables,
+//, performing all the steps described in the xref:default-workflow-for-performing-an-initial-snapshot[default snapshot workflow], except that
+but it does not create `READ` events to represent the data set at the point of the connector's start-up.
+// (Step 7.b).
+
+`when_needed`:: After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+
+* It cannot detect any topic offsets.
+* A previously recorded offset specifies a log position that is not available on the server.
+
+ifdef::community[]
+`configuration_based`:: With this option, you control snapshot behavior through a set of connector properties that have the prefix 'snapshot.mode.configuration.based'.
+
+endif::community[]
+
+ifdef::community[]
+`custom`:: The `custom` snapshot mode lets you inject your own implementation of the `io.debezium.spi.snapshot.Snapshotter` interface.
+Set the `snapshot.mode.custom.name` configuration property to the name provided by the `name()` method of your implementation.
+
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
+
+ifdef::community[]
+|[[mongodb-property-snapshot-mode-configuration-based-snapshot-data]]<<mongodb-property-configuration-based-snapshot-data, `+snapshot.mode.configuration.based.snapshot.data+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes table data when it performs a snapshot.
+endif::community[]
+
+ifdef::community[]
+|[[mongodb-property-snapshot-mode-configuration-based-snapshot-schema]]<<mongodb-property-configuration-based-snapshot-schema, `+snapshot.mode.configuration.based.snapshot.schema+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes the table schema when it performs a snapshot.
+endif::community[]
+
+ifdef::community[]
+|[[mongodb-property-snapshot-mode-configuration-based-start-stream]]<<mongodb-property-configuration-based-start-stream, `+snapshot.mode.configuration.based.start.stream+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector begins to stream change events after a snapshot completes.
+endif::community[]
+
+ifdef::community[]
+|[[mongodb-property-snapshot-mode-configuration-based-snapshot-on-schema-error]]<<mongodb-property-configuration-based-snapshot-on-schema-error, `+snapshot.mode.configuration.based.snapshot.on.schema.error+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, set this property to specify whether the connector includes table schema in a snapshot if the schema history topic is not available.
+endif::community[]
+
+ifdef::community[]
+|[[mongodb-property-snapshot-mode-configuration-based-snapshot-on-data-error]]<<mongodb-property-configuration-based-snapshot-on-data-error, `+snapshot.mode.configuration.based.snapshot.on.data.error+`>>
+|false
+|If the `snapshot.mode` is set to `configuration_based`, this property specifies whether the connector attempts to snapshot table data if it does not find the last committed offset in the transaction log. +
+Set the value to `true` to instruct the connector to perform a new snapshot.
+endif::community[]
+
+ifdef::community[]
+|[[mongodb-property-snapshot-mode-custom-name]]<<mongodb-property-snapshot-mode-custom-name, `+snapshot.mode.custom.name+`>>
+|No default
+|If `snapshot.mode` is set to `custom`, use this setting to specify the name of the custom implementation that is provided in the `name()` method that is defined in the 'io.debezium.spi.snapshot.Snapshotter' interface.
+After a connector restart, {prodname} calls the specified custom implementation to determine whether to perform a snapshot.
+For more information, see xref:connector-custom-snapshot[custom snapshotter SPI].
+endif::community[]
 
 |[[mongodb-property-provide-transaction-metadata]]<<mongodb-property-provide-transaction-metadata, `+provide.transaction.metadata+`>>
 |`false`
@@ -2030,9 +2198,7 @@ endif::community[]
 Increasing the chunk size provides greater efficiency, because the snapshot runs fewer snapshot queries of a greater size.
 However, larger chunk sizes also require more memory to buffer the snapshot data.
 Adjust the chunk size to a value that provides the best performance in your environment. +
-ifdef::product[]
-Incremental snapshots is a Technology Preview feature for the {prodname} MongoDB connector.
-endif::product[]
+
 
 |[[mongodb-property-incremental-snapshot-watermarking-strategy]]<<mongodb-property-incremental-snapshot-watermarking-strategy, `+incremental.snapshot.watermarking.strategy+`>>
 |`insert_insert`
@@ -2076,23 +2242,42 @@ For example, if the topic prefix is `fulfillment`, the default topic name is `fu
 
 |[[mongodb-property-custom-metric-tags]]<<mongodb-property-custom-metric-tags, `custom.metric.tags`>>
 |`No default`
-|The custom metric tags will accept key-value pairs to customize the MBean object name which should be appended the end of regular name, each key would represent a tag for the MBean object name, and the corresponding value would be the value of that tag the key is. For example: `k1=v1,k2=v2`.
+|Defines tags that customize MBean object names by adding metadata that provides contextual information.
+Specify a comma-separated list of key-value pairs.
+Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example,  +
+`k1=v1,k2=v2`
+
+The connector appends the specified tags to the base MBean object name.
+Tags can help you to organize and categorize metrics data.
+You can define tags to identify particular application instances, environments, regions, versions, and so forth.
+For more information, see xref:customized-mbean-names[Customized MBean names].
 
 |[[mongodb-property-errors-max-retires]]<<mongodb-property-errors-max-retires, `errors.max.retries`>>
 |`-1`
-|The maximum number of retries on retriable errors (e.g. connection errors) before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).
+|Specifies how the connector responds after an operation that results in a retriable error, such as a connection error. +
+Set one of the following options:
+
+`-1`:: No limit. The connector always restarts automatically, and retries the operation, regardless of the number of previous failures.
+
+`0`:: Disabled. The connector fails immediately, and never retries the operation.
+User intervention is required to restart the connector.
+
+`> 0`:: The connector restarts automatically until it reaches the specified maximum number of retries.
+After the next failure, the connector stops, and user intervention is required to restart it.
 
 |===
 
-[id="debezium-mongodb-connector-kafka-signals-configuration-properties"]
-==== {prodname} connector Kafka signals configuration properties
+
+[id="debezium-mongodb-connector-pass-through-kafka-signals-configuration-properties"]
+==== Pass-through properties for configuring how the MongoDB connector interacts with the Kafka signaling topic
 
 include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
 
-[id="debezium-mongodb-connector-kafka-notifications-configuration-properties"]
-==== {prodname} connector sink notifications configuration properties
 
-include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-notification-configuration-properties.adoc[leveloffset=+1]
+[id="debezium-mongodb-connector-pass-through-kafka-sink-notification-configuration-properties"]
+==== Pass-through properties for configuring the MongoDB connector sink notification channel
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-sink-notification-configuration-properties.adoc[leveloffset=+1]
 
 // Type: assembly
 // ModuleID: monitoring-debezium-mongodb-connector-performance
@@ -2106,6 +2291,13 @@ The {prodname} MongoDB connector has two metric types in addition to the built-i
 * xref:mongodb-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.
 
 The {link-prefix}:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details about how to expose these metrics by using JMX.
+
+// Type: concept
+// ModuleID: monitoring-debezium-mongodb-connectors-customized-mbean-names
+// Title: Customized names for MongoDB connector snapshot and streaming MBean objects
+=== Customized MBean names
+
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=mbeans-shared]
 
 // Type: reference
 // ModuleID: monitoring-debezium-during-mongodb-snapshots

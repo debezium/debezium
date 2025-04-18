@@ -21,10 +21,10 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.data.Envelope;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.logging.LogInterceptor;
 
-public class TimescaleDbTest extends AbstractConnectorTest {
+public class TimescaleDbTest extends AbstractAsyncEngineConnectorTest {
 
     private TimescaleDb<SourceRecord> transformation;
 

@@ -8,10 +8,12 @@ package io.debezium.transforms;
 import static io.debezium.data.Envelope.FieldName.OPERATION;
 import static io.debezium.data.Envelope.FieldName.SOURCE;
 import static io.debezium.data.Envelope.FieldName.TIMESTAMP;
+import static io.debezium.data.Envelope.FieldName.TIMESTAMP_NS;
+import static io.debezium.data.Envelope.FieldName.TIMESTAMP_US;
 import static io.debezium.data.Envelope.FieldName.TRANSACTION;
-import static io.debezium.pipeline.txmetadata.TransactionMonitor.DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY;
-import static io.debezium.pipeline.txmetadata.TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY;
-import static io.debezium.pipeline.txmetadata.TransactionMonitor.DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY;
+import static io.debezium.pipeline.txmetadata.TransactionStructMaker.DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY;
+import static io.debezium.pipeline.txmetadata.TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY;
+import static io.debezium.pipeline.txmetadata.TransactionStructMaker.DEBEZIUM_TRANSACTION_TOTAL_ORDER_KEY;
 import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.ADD_FIELDS;
 import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.ADD_FIELDS_PREFIX;
 import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.ADD_HEADERS;
@@ -19,6 +21,7 @@ import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.ADD_H
 import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DROP_TOMBSTONES;
 import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.HANDLE_DELETES;
 import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.HANDLE_TOMBSTONE_DELETES;
+import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.REPLACE_NULL_WITH_DEFAULT;
 import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.ROUTE_BY_FIELD;
 
 import java.util.Arrays;
@@ -30,6 +33,7 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -42,6 +46,7 @@ import org.apache.kafka.connect.transforms.util.SchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.Module;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
@@ -58,7 +63,7 @@ import io.debezium.util.Strings;
  * @param <R> the subtype of {@link ConnectRecord} on which this transformation will operate
  * @author Harvey Yue
  */
-public abstract class AbstractExtractNewRecordState<R extends ConnectRecord<R>> implements Transformation<R> {
+public abstract class AbstractExtractNewRecordState<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractExtractNewRecordState.class);
     private static final Pattern FIELD_SEPARATOR = Pattern.compile("\\.");
@@ -72,6 +77,11 @@ public abstract class AbstractExtractNewRecordState<R extends ConnectRecord<R>> 
     protected List<FieldReference> additionalHeaders;
     protected List<FieldReference> additionalFields;
     protected String routeByField;
+
+    @Override
+    public String version() {
+        return Module.version();
+    }
 
     @Override
     public void configure(final Map<String, ?> configs) {
@@ -91,13 +101,13 @@ public abstract class AbstractExtractNewRecordState<R extends ConnectRecord<R>> 
         // handle deleted records
         if (!Strings.isNullOrBlank(config.getString(HANDLE_TOMBSTONE_DELETES))) {
             DeleteTombstoneHandling deleteTombstoneHandling = DeleteTombstoneHandling.parse(config.getString(HANDLE_TOMBSTONE_DELETES));
-            extractRecordStrategy = new DefaultDeleteHandlingStrategy<>(deleteTombstoneHandling);
+            extractRecordStrategy = new DefaultDeleteHandlingStrategy<>(deleteTombstoneHandling, config.getBoolean(REPLACE_NULL_WITH_DEFAULT));
         }
         else {
             // will be removed in further release
             boolean dropTombstones = config.getBoolean(DROP_TOMBSTONES);
             DeleteHandling handleDeletes = DeleteHandling.parse(config.getString(HANDLE_DELETES));
-            extractRecordStrategy = new LegacyDeleteHandlingStrategy<>(handleDeletes, dropTombstones);
+            extractRecordStrategy = new LegacyDeleteHandlingStrategy<>(handleDeletes, dropTombstones, config.getBoolean(REPLACE_NULL_WITH_DEFAULT));
             LOGGER.warn(
                     "The deleted record handling configs \"drop.tombstones\" and \"delete.handling.mode\" have been deprecated, " +
                             "please use \"delete.tombstone.handling.mode\" instead.");
@@ -218,6 +228,8 @@ public abstract class AbstractExtractNewRecordState<R extends ConnectRecord<R>> 
                     return TRANSACTION;
                 case OPERATION:
                 case TIMESTAMP:
+                case TIMESTAMP_US:
+                case TIMESTAMP_NS:
                     return null;
                 // for mongodb
                 case UPDATE_DESCRIPTION:

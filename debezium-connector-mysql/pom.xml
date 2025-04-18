@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>2.6.0-SNAPSHOT</version>
+        <version>3.2.0-SNAPSHOT</version>
         <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -11,10 +11,25 @@
     <name>Debezium Connector for MySQL</name>
     <packaging>jar</packaging>
 
+    <dependencyManagement>
+        <dependencies>
+            <!-- Guava library with testscope forces Error Prone as compile and leaks into package -->
+            <dependency>
+                <groupId>com.google.errorprone</groupId>
+                <artifactId>error_prone_annotations</artifactId>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-connector-binlog</artifactId>
         </dependency>
         <dependency>
             <groupId>io.debezium</groupId>
@@ -29,7 +44,7 @@
             <artifactId>debezium-ddl-parser</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.zendesk</groupId>
+            <groupId>io.debezium</groupId>
             <artifactId>mysql-binlog-connector-java</artifactId>
         </dependency>
         <dependency>
@@ -57,15 +72,17 @@
                 </exclusion>
             </exclusions>
         </dependency>
-        <dependency>
-            <groupId>org.mariadb.jdbc</groupId>
-            <artifactId>mariadb-java-client</artifactId>
-        </dependency>
 
         <!-- Testing -->
         <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-core</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-connector-binlog</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
@@ -151,6 +168,16 @@
             <artifactId>rest-assured</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.opentelemetry.javaagent</groupId>
+            <artifactId>opentelemetry-testing-common</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry.javaagent</groupId>
+            <artifactId>opentelemetry-agent-for-testing</artifactId>
+            <scope>test</scope>
+        </dependency>
 
         <!-- Used for unit testing with Kafka -->
         <dependency>
@@ -174,17 +201,14 @@
         <mysql.ssl.port>3306</mysql.ssl.port>
         <mysql.replica.port>3306</mysql.replica.port> <!-- by default use primary as 'replica' -->
         <mysql.init.timeout>60000</mysql.init.timeout> <!-- 60 seconds -->
+        <apicurio.image>quay.io/apicurio/apicurio-registry-mem</apicurio.image>
         <apicurio.port>8080</apicurio.port>
         <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
-        <mysql.database.adapter>mysql</mysql.database.adapter>
+        <mysql.server.image.source>container-registry.oracle.com/mysql/community-server</mysql.server.image.source>
         <mysql.database.protocol>jdbc:mysql</mysql.database.protocol>
         <mysql.database.jdbc.driver>com.mysql.cj.jdbc.Driver</mysql.database.jdbc.driver>
         <mysql.replica.fileset.path>${project.basedir}/src/test/docker/init-replica</mysql.replica.fileset.path>
-        <!--
-        MariaDB specific
-        -->
-        <mariadb.server.image.source>mariadb</mariadb.server.image.source>
-        <version.mariadb.server>11.1.2</version.mariadb.server>
+        <percona.server.image.source>quay.io/debezium</percona.server.image.source>
         <!--
         By default, we should use the docker image maintained by the MySQL team. This property is changed with different profiles.
         However, we run one container with GTIDs and one without.
@@ -228,7 +252,7 @@
                                     <color>yellow</color>
                                 </log>
                                 <wait>
-                                    <log>(MySQL|MariaDB) init process done. Ready for start up.(?s)(.*)(mysqld|mariadbd): ready for connections.</log>
+                                    <log>(MySQL) init process done. Ready for start up.(?s)(.*)(mysqld): ready for connections.</log>
                                     <time>${mysql.init.timeout}</time>
                                 </wait>
                             </run>
@@ -287,7 +311,7 @@
                                     <color>yellow</color>
                                 </log>
                                 <wait>
-                                    <log>(MySQL|MariaDB) init process done. Ready for start up.(?s)(.*)(mysqld|mariadbd): ready for connections.</log>
+                                    <log>(MySQL) init process done. Ready for start up.(?s)(.*)(mysqld): ready for connections.</log>
                                     <time>${mysql.init.timeout}</time>
                                 </wait>
                             </run>
@@ -345,7 +369,7 @@
                                     <color>cyan</color>
                                 </log>
                                 <wait>
-                                    <log>(MySQL|MariaDB) init process done. Ready for start up.(?s)(.*)(mysqld|mariadbd): ready for connections.</log>
+                                    <log>(MySQL) init process done. Ready for start up.(?s)(.*)(mysqld): ready for connections.</log>
                                     <time>${mysql.init.timeout}</time>
                                 </wait>
                             </run>
@@ -403,7 +427,7 @@
                                     <color>magenta</color>
                                 </log>
                                 <wait>
-                                    <log>(MySQL|MariaDB) init process done. Ready for start up.(?s)(.*)(mysqld|mariadbd): ready for connections.</log>
+                                    <log>(MySQL) init process done. Ready for start up.(?s)(.*)(mysqld): ready for connections.</log>
                                     <time>${mysql.init.timeout}</time>
                                 </wait>
                             </run>
@@ -463,7 +487,7 @@
                                 </wait>
                             </run>
                             <build>
-                                <from>percona/percona-server:${version.mysql.percona.server}</from>
+                                <from>${percona.server.image.source}/percona-server:${version.mysql.percona.server}</from>
                                 <assembly>
                                     <inline>
                                         <fileSets>
@@ -475,7 +499,7 @@
                                                 <outputDirectory>etc/mysql</outputDirectory>
                                             </fileSet>
                                             <fileSet>
-                                                <directory>${project.basedir}/src/test/docker/init</directory>
+                                                <directory>${project.basedir}/src/test/docker/init-percona</directory>
                                                 <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
                                             </fileSet>
                                         </fileSets>
@@ -489,7 +513,7 @@
                             </external>
                         </image>
                         <image>
-                            <name>apicurio/apicurio-registry-mem:${version.apicurio}</name>
+                            <name>${apicurio.image}:${version.apicurio}</name>
                             <run>
                                 <namingStrategy>none</namingStrategy>
                                 <ports>
@@ -550,12 +574,12 @@
                         <database.replica.hostname>${docker.host.address}</database.replica.hostname>
                         <database.replica.port>${mysql.replica.port}</database.replica.port>
                         <!-- Specifies which driver to use for the tests -->
-                        <connector.adapter>${mysql.database.adapter}</connector.adapter>
                         <database.protocol>${mysql.database.protocol}</database.protocol>
                         <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                         <database.ssl.mode>disabled</database.ssl.mode>
                     </systemPropertyVariables>
+                    <argLine>-javaagent:"${settings.localRepository}/@{opentelemetry.agent.for.testing.artifact.relative.path}"</argLine>
                     <runOrder>${runOrder}</runOrder>
                 </configuration>
                 <executions>
@@ -699,7 +723,6 @@
                                 <database.replica.port>${mysql.port}</database.replica.port>
                                 <database.ssl.mode>disabled</database.ssl.mode>
                                 <!-- Specifies which driver to use for the tests -->
-                                <connector.adapter>${mysql.database.adapter}</connector.adapter>
                                 <database.protocol>${mysql.database.protocol}</database.protocol>
                                 <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
                                 <skipLongRunningTests>false</skipLongRunningTests>
@@ -720,7 +743,6 @@
                                         <database.port>${mysql.port}</database.port>
                                         <database.replica.port>${mysql.port}</database.replica.port>
                                         <!-- Specifies which driver to use for the tests -->
-                                        <connector.adapter>${mysql.database.adapter}</connector.adapter>
                                         <database.protocol>${mysql.database.protocol}</database.protocol>
                                         <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
                                     </systemPropertyVariables>
@@ -737,7 +759,6 @@
                                         <database.port>${mysql.gtid.port}</database.port>
                                         <database.replica.port>${mysql.gtid.replica.port}</database.replica.port>
                                         <!-- Specifies which driver to use for the tests -->
-                                        <connector.adapter>${mysql.database.adapter}</connector.adapter>
                                         <database.protocol>${mysql.database.protocol}</database.protocol>
                                         <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
                                     </systemPropertyVariables>
@@ -774,7 +795,6 @@
                                         <database.port>${mysql.ssl.port}</database.port>
                                         <database.replica.port>${mysql.ssl.port}</database.replica.port>
                                         <!-- Specifies which driver to use for the tests -->
-                                        <connector.adapter>${mysql.database.adapter}</connector.adapter>
                                         <database.protocol>${mysql.database.protocol}</database.protocol>
                                         <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
                                     </systemPropertyVariables>
@@ -929,22 +949,7 @@
                 </plugins>
             </build>
             <properties>
-                <docker.filter>${docker.dbs},apicurio/apicurio-registry-mem:${version.apicurio}</docker.filter>
-            </properties>
-        </profile>
-        <!-- Profile used to toggle MariaDB instead of MySQL -->
-        <profile>
-            <id>mariadb</id>
-            <activation>
-                <activeByDefault>false</activeByDefault>
-            </activation>
-            <properties>
-                <mysql.server.image.source>${mariadb.server.image.source}</mysql.server.image.source>
-                <version.mysql.server>${version.mariadb.server}</version.mysql.server>
-                <mysql.database.adapter>mariadb</mysql.database.adapter>
-                <mysql.database.protocol>jdbc:mariadb</mysql.database.protocol>
-                <mysql.database.jdbc.driver>org.mariadb.jdbc.Driver</mysql.database.jdbc.driver>
-                <mysql.replica.fileset.path>${project.basedir}/src/test/docker/init-mariadb-replica</mysql.replica.fileset.path>
+                <docker.filter>${docker.dbs},${apicurio.image}:${version.apicurio}</docker.filter>
             </properties>
         </profile>
 
@@ -1010,7 +1015,6 @@
                                 <!-- Specifies which driver to use for the tests -->
                                 <database.protocol>${mysql.database.protocol}</database.protocol>
                                 <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
-                                <connector.adapter>${mysql.database.adapter}</connector.adapter>
                                 <skipLongRunningTests>false</skipLongRunningTests>
                                 <isAssemblyProfileActive>true</isAssemblyProfileActive>
                             </systemPropertyVariables>
@@ -1091,7 +1095,6 @@
                                 <!-- Specifies which driver to use for the tests -->
                                 <database.protocol>${mysql.database.protocol}</database.protocol>
                                 <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
-                                <connector.adapter>${mysql.database.adapter}</connector.adapter>
                                 <skipLongRunningTests>false</skipLongRunningTests>
                                 <isAssemblyProfileActive>true</isAssemblyProfileActive>
                             </systemPropertyVariables>
@@ -1170,7 +1173,6 @@
                                 <!-- Specifies which driver to use for the tests -->
                                 <database.protocol>${mysql.database.protocol}</database.protocol>
                                 <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
-                                <connector.adapter>${mysql.database.adapter}</connector.adapter>
                                 <skipLongRunningTests>false</skipLongRunningTests>
                                 <isAssemblyProfileActive>true</isAssemblyProfileActive>
                             </systemPropertyVariables>
@@ -1249,7 +1251,6 @@
                                 <!-- Specifies which driver to use for the tests -->
                                 <database.protocol>${mysql.database.protocol}</database.protocol>
                                 <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
-                                <connector.adapter>${mysql.database.adapter}</connector.adapter>
                                 <skipLongRunningTests>false</skipLongRunningTests>
                                 <isAssemblyProfileActive>true</isAssemblyProfileActive>
                                 <database.ssl.truststore>${project.basedir}/src/test/resources/ssl/truststore</database.ssl.truststore>

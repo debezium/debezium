@@ -8,10 +8,10 @@ package io.debezium.connector.mongodb;
 import java.util.concurrent.TimeUnit;
 
 import org.bson.BsonDocument;
-import org.bson.BsonString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mongodb.MongoException;
 import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
@@ -28,6 +28,7 @@ import io.debezium.function.BlockingRunnable;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 
 /**
@@ -44,17 +45,20 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
     private final MongoDbTaskContext taskContext;
     private final MongoDbStreamingChangeEventSourceMetrics streamingMetrics;
+    private final SnapshotterService snapshotterService;
     private MongoDbOffsetContext effectiveOffset;
 
     public MongoDbStreamingChangeEventSource(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext,
                                              EventDispatcher<MongoDbPartition, CollectionId> dispatcher,
-                                             ErrorHandler errorHandler, Clock clock, MongoDbStreamingChangeEventSourceMetrics streamingMetrics) {
+                                             ErrorHandler errorHandler, Clock clock, MongoDbStreamingChangeEventSourceMetrics streamingMetrics,
+                                             SnapshotterService snapshotterService) {
         this.connectorConfig = connectorConfig;
         this.dispatcher = dispatcher;
         this.errorHandler = errorHandler;
         this.clock = clock;
         this.taskContext = taskContext;
         this.streamingMetrics = streamingMetrics;
+        this.snapshotterService = snapshotterService;
     }
 
     @Override
@@ -70,6 +74,12 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
      */
     @Override
     public void execute(ChangeEventSourceContext context, MongoDbPartition partition, MongoDbOffsetContext offsetContext) {
+
+        if (!snapshotterService.getSnapshotter().shouldStream()) {
+            LOGGER.info("Streaming is not enabled in configuration");
+            return;
+        }
+
         try (MongoDbConnection mongo = taskContext.getConnection(dispatcher, partition)) {
             mongo.execute("Reading change stream", client -> {
                 readChangeStream(client, context, partition);
@@ -93,7 +103,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
 
         try (var cursor = BufferingChangeStreamCursor.fromIterable(stream, taskContext, streamingMetrics, clock).start()) {
             while (context.isRunning()) {
-                waitWhenStreamingPaused(context);
+                waitWhenStreamingPaused(context, cursor);
                 var resumableEvent = cursor.tryNext();
                 if (resumableEvent == null) {
                     continue;
@@ -108,14 +118,20 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
                 }
             }
         }
+        catch (MongoException e) {
+            LOGGER.error("Error while reading change stream", e);
+            errorHandler.setProducerThrowable(e);
+        }
     }
 
-    private void waitWhenStreamingPaused(ChangeEventSourceContext context) {
+    private void waitWhenStreamingPaused(ChangeEventSourceContext context, BufferingChangeStreamCursor cursor) {
         if (context.isPaused()) {
             errorHandled(() -> {
                 LOGGER.info("Streaming will now pause");
+                cursor.pause();
                 context.streamingPaused();
                 context.waitSnapshotCompletion();
+                cursor.resume();
                 LOGGER.info("Streaming resumed");
             });
         }
@@ -189,10 +205,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
         if (offsetContext.lastResumeToken() != null) {
             LOGGER.info("Resuming streaming from token '{}'", offsetContext.lastResumeToken());
-
-            final BsonDocument doc = new BsonDocument();
-            doc.put("_data", new BsonString(offsetContext.lastResumeToken()));
-            stream.resumeAfter(doc);
+            stream.resumeAfter(offsetContext.lastResumeTokenDoc());
         }
         else if (offsetContext.lastTimestamp() != null) {
             LOGGER.info("Resuming streaming from operation time '{}'", offsetContext.lastTimestamp());

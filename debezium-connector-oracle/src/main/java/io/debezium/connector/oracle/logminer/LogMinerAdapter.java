@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.oracle.AbstractStreamingAdapter;
@@ -44,6 +45,7 @@ import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.RelationalSnapshotChangeEventSource.RelationalSnapshotContext;
 import io.debezium.relational.TableId;
 import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 import io.debezium.util.HexConverter;
 import io.debezium.util.Strings;
@@ -93,7 +95,8 @@ public class LogMinerAdapter extends AbstractStreamingAdapter<LogMinerStreamingC
                                                                                       OracleDatabaseSchema schema,
                                                                                       OracleTaskContext taskContext,
                                                                                       Configuration jdbcConfig,
-                                                                                      LogMinerStreamingChangeEventSourceMetrics streamingMetrics) {
+                                                                                      LogMinerStreamingChangeEventSourceMetrics streamingMetrics,
+                                                                                      SnapshotterService snapshotterService) {
         return new LogMinerStreamingChangeEventSource(
                 connectorConfig,
                 connection,
@@ -102,7 +105,8 @@ public class LogMinerAdapter extends AbstractStreamingAdapter<LogMinerStreamingC
                 clock,
                 schema,
                 jdbcConfig,
-                streamingMetrics);
+                streamingMetrics,
+                snapshotterService);
     }
 
     @Override
@@ -148,6 +152,11 @@ public class LogMinerAdapter extends AbstractStreamingAdapter<LogMinerStreamingC
             }
             return determineSnapshotOffset(connectorConfig, conn, currentScn.get(), pendingTransactions, tableName);
         }
+    }
+
+    @Override
+    public Scn getOffsetScn(OracleOffsetContext offsetContext) {
+        return offsetContext.getScn();
     }
 
     @Override
@@ -254,14 +263,16 @@ public class LogMinerAdapter extends AbstractStreamingAdapter<LogMinerStreamingC
                 .build();
     }
 
-    private void addLogsToSession(List<LogFile> logs, OracleConnection connection) throws SQLException {
+    @VisibleForTesting
+    void addLogsToSession(List<LogFile> logs, OracleConnection connection) throws SQLException {
         for (LogFile logFile : logs) {
             LOGGER.debug("\tAdding log: {}", logFile.getFileName());
             connection.executeWithoutCommitting(SqlUtils.addLogFileStatement("DBMS_LOGMNR.ADDFILE", logFile.getFileName()));
         }
     }
 
-    private void startSession(OracleConnection connection) throws SQLException {
+    @VisibleForTesting
+    void startSession(OracleConnection connection) throws SQLException {
         // We explicitly use the ONLINE data dictionary mode here.
         // Since we are only concerned about non-SQL columns, it is safe to always use this mode
         final String query = "BEGIN sys.dbms_logmnr.start_logmnr("
@@ -287,9 +298,10 @@ public class LogMinerAdapter extends AbstractStreamingAdapter<LogMinerStreamingC
         }
     }
 
-    private Scn getOldestScnAvailableInLogs(OracleConnectorConfig config, OracleConnection connection) throws SQLException {
-        final Duration archiveLogRetention = config.getLogMiningArchiveLogRetention();
-        final String archiveLogDestinationName = config.getLogMiningArchiveDestinationName();
+    @VisibleForTesting
+    Scn getOldestScnAvailableInLogs(OracleConnectorConfig config, OracleConnection connection) throws SQLException {
+        final Duration archiveLogRetention = config.getArchiveLogRetention();
+        final String archiveLogDestinationName = config.getArchiveLogDestinationName();
         return connection.queryAndMap(SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveLogDestinationName),
                 rs -> {
                     if (rs.next()) {
@@ -302,15 +314,17 @@ public class LogMinerAdapter extends AbstractStreamingAdapter<LogMinerStreamingC
                 });
     }
 
-    private List<LogFile> getOrderedLogsFromScn(OracleConnectorConfig config, Scn sinceScn, OracleConnection connection) throws SQLException {
-        return LogMinerHelper.getLogFilesForOffsetScn(connection, sinceScn, config.getLogMiningArchiveLogRetention(),
-                config.isArchiveLogOnlyMode(), config.getLogMiningArchiveDestinationName())
+    @VisibleForTesting
+    List<LogFile> getOrderedLogsFromScn(OracleConnectorConfig config, Scn sinceScn, OracleConnection connection) throws SQLException {
+        final LogFileCollector collector = new LogFileCollector(config, connection);
+        return collector.getLogs(sinceScn)
                 .stream()
                 .sorted(Comparator.comparing(LogFile::getSequence))
                 .collect(Collectors.toList());
     }
 
-    private void getPendingTransactionsFromLogs(OracleConnection connection, Scn currentScn, Map<String, Scn> pendingTransactions) throws SQLException {
+    @VisibleForTesting
+    void getPendingTransactionsFromLogs(OracleConnection connection, Scn currentScn, Map<String, Scn> pendingTransactions) throws SQLException {
         final Scn oldestScn = getOldestScnAvailableInLogs(connectorConfig, connection);
         final List<LogFile> logFiles = getOrderedLogsFromScn(connectorConfig, oldestScn, connection);
         if (!logFiles.isEmpty()) {
@@ -319,7 +333,7 @@ public class LogMinerAdapter extends AbstractStreamingAdapter<LogMinerStreamingC
                 startSession(connection);
 
                 LOGGER.info("\tQuerying transaction logs, please wait...");
-                connection.query("SELECT START_SCN, XID FROM V$LOGMNR_CONTENTS WHERE OPERATION_CODE=7 AND SCN >= " + currentScn + " AND START_SCN < " + currentScn,
+                connection.query("SELECT START_SCN, XID FROM V$LOGMNR_CONTENTS WHERE OPERATION_CODE=7 AND SCN >= " + currentScn + " AND START_SCN <= " + currentScn,
                         rs -> {
                             while (rs.next()) {
                                 final String transactionId = HexConverter.convertToHexString(rs.getBytes("XID"));
@@ -343,7 +357,8 @@ public class LogMinerAdapter extends AbstractStreamingAdapter<LogMinerStreamingC
         }
     }
 
-    private List<LogFile> getMostRecentLogFilesForSearch(List<LogFile> allLogFiles) {
+    @VisibleForTesting
+    List<LogFile> getMostRecentLogFilesForSearch(List<LogFile> allLogFiles) {
         Map<Integer, List<LogFile>> recentLogsPerThread = new HashMap<>();
         for (LogFile logFile : allLogFiles) {
             if (!recentLogsPerThread.containsKey(logFile.getThread())) {

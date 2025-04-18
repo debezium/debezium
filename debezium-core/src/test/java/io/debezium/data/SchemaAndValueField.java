@@ -31,6 +31,18 @@ public class SchemaAndValueField {
         return this;
     }
 
+    public Schema schema() {
+        return schema;
+    }
+
+    public String fieldName() {
+        return fieldName;
+    }
+
+    public Object value() {
+        return value;
+    }
+
     public void assertFor(Struct content) {
         assertSchema(content);
         assertValue(content);

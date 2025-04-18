@@ -7,15 +7,20 @@ package io.debezium.connector.oracle.logminer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Properties;
+
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 
+import io.debezium.config.Configuration;
+import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleValueConverters;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.events.EventType;
+import io.debezium.connector.oracle.logminer.parser.LogMinerColumnResolverDmlParser;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlParser;
 import io.debezium.doc.FixFor;
@@ -35,11 +40,12 @@ public class LogMinerDmlParserTest {
     public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
 
     private LogMinerDmlParser fastDmlParser;
+    private LogMinerColumnResolverDmlParser columnResolverDmlParser;
 
     @Before
     public void beforeEach() throws Exception {
-        // Create LogMinerDmlParser
-        fastDmlParser = new LogMinerDmlParser();
+        fastDmlParser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.empty()));
+        columnResolverDmlParser = new LogMinerColumnResolverDmlParser(new OracleConnectorConfig(Configuration.empty()));
     }
 
     // Oracle's generated SQL avoids common spacing patterns such as spaces between column values or values
@@ -531,5 +537,171 @@ public class LogMinerDmlParserTest {
         assertThat(entry.getOldValues()[0]).isEqualTo("I||am");
         assertThat(entry.getOldValues()[1]).isEqualTo("test||case");
         assertThat(entry.getNewValues()).isEmpty();
+    }
+
+    @Test
+    @FixFor("DBZ-3401")
+    public void shouldParseInsertOnSchemaVersionMismatch() throws Exception {
+        final Table table = Table.editor()
+                .tableId(TableId.parse("DEBEZIUM.DBZ3401"))
+                .addColumn(Column.editor().name("ID").create())
+                .addColumn(Column.editor().name("DATA").create())
+                .create();
+
+        // Test columns in forward order
+        String sql = "insert into \"DEBEZIUM\".\"DBZ3401\" (\"COL 1\",\"COL 2\") values (HEXTORAW('a'),HEXTORAW('b'));";
+        LogMinerDmlEntry entry = columnResolverDmlParser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.INSERT);
+        assertThat(entry.getOldValues()).isEmpty();
+        assertThat(entry.getNewValues()).hasSize(2);
+        assertThat(entry.getNewValues()[0]).isEqualTo("HEXTORAW('a')");
+        assertThat(entry.getNewValues()[1]).isEqualTo("HEXTORAW('b')");
+
+        // Test columns in reverse order
+        sql = "insert into \"DEBEZIUM\".\"DBZ3401\" (\"COL 2\",\"COL 1\") values (HEXTORAW('b'),HEXTORAW('a'));";
+        entry = columnResolverDmlParser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.INSERT);
+        assertThat(entry.getOldValues()).isEmpty();
+        assertThat(entry.getNewValues()).hasSize(2);
+        assertThat(entry.getNewValues()[0]).isEqualTo("HEXTORAW('a')");
+        assertThat(entry.getNewValues()[1]).isEqualTo("HEXTORAW('b')");
+    }
+
+    @Test
+    @FixFor("DBZ-3401")
+    public void shouldParseUpdateOnSchemaVersionMismatch() throws Exception {
+        final Table table = Table.editor()
+                .tableId(TableId.parse("DEBEZIUM.DBZ3401"))
+                .addColumn(Column.editor().name("ID").create())
+                .addColumn(Column.editor().name("DATA").create())
+                .create();
+
+        // Test columns in forward order
+        String sql = "update \"DEBEZIUM\".\"DBZ3401\" set \"COL 1\" = HEXTORAW('c'), \"COL 2\" = HEXTORAW('d') where \"COL 1\" = HEXTORAW('a') and \"COL 2\" = HEXTORAW('b');";
+        LogMinerDmlEntry entry = columnResolverDmlParser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues()[0]).isEqualTo("HEXTORAW('a')");
+        assertThat(entry.getOldValues()[1]).isEqualTo("HEXTORAW('b')");
+        assertThat(entry.getNewValues()).hasSize(2);
+        assertThat(entry.getNewValues()[0]).isEqualTo("HEXTORAW('c')");
+        assertThat(entry.getNewValues()[1]).isEqualTo("HEXTORAW('d')");
+
+        // Test columns in reverse order
+        sql = "update \"DEBEZIUM\".\"DBZ3401\" set \"COL 2\" = HEXTORAW('d'), \"COL 1\" = HEXTORAW('c') where \"COL 2\" = HEXTORAW('b') and \"COL 1\" = HEXTORAW('a');";
+        entry = columnResolverDmlParser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues()[0]).isEqualTo("HEXTORAW('a')");
+        assertThat(entry.getOldValues()[1]).isEqualTo("HEXTORAW('b')");
+        assertThat(entry.getNewValues()).hasSize(2);
+        assertThat(entry.getNewValues()[0]).isEqualTo("HEXTORAW('c')");
+        assertThat(entry.getNewValues()[1]).isEqualTo("HEXTORAW('d')");
+    }
+
+    @Test
+    @FixFor("DBZ-3401")
+    public void shouldParseDeleteOnSchemaVersionMismatch() throws Exception {
+        final Table table = Table.editor()
+                .tableId(TableId.parse("DEBEZIUM.DBZ3401"))
+                .addColumn(Column.editor().name("ID").create())
+                .addColumn(Column.editor().name("DATA").create())
+                .create();
+
+        // Test where columns in forward order
+        String sql = "delete from \"DEBEZIUM\".\"DBZ3401\" where \"COL 1\" = HEXTORAW('a') and \"COL 2\" = HEXTORAW('b');";
+        LogMinerDmlEntry entry = columnResolverDmlParser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.DELETE);
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues()[0]).isEqualTo("HEXTORAW('a')");
+        assertThat(entry.getOldValues()[1]).isEqualTo("HEXTORAW('b')");
+        assertThat(entry.getNewValues()).isEmpty();
+
+        // Test where columns in reverse order
+        sql = "delete from \"DEBEZIUM\".\"DBZ3401\" where \"COL 2\" = HEXTORAW('b') and \"COL 1\" = HEXTORAW('a');";
+        entry = columnResolverDmlParser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.DELETE);
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues()[0]).isEqualTo("HEXTORAW('a')");
+        assertThat(entry.getOldValues()[1]).isEqualTo("HEXTORAW('b')");
+        assertThat(entry.getNewValues()).isEmpty();
+    }
+
+    @Test
+    @FixFor("DBZ-8200")
+    public void shouldParseUpdateStatementWithUnescapedQuotes() throws Exception {
+        final Properties properties = new Properties();
+        properties.put("internal.log.mining.sql.relaxed.quote.detection", "true");
+        final LogMinerDmlParser parser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.from(properties)));
+
+        final Table table = Table.editor()
+                .tableId(TableId.parse("HEVPROD.FALLDOSSIER"))
+                .addColumn(Column.editor().name("UNFALLBESCHREIBUNG").create())
+                .addColumn(Column.editor().name("PKEY").create())
+                .create();
+
+        String sql = "update \"HEVPROD\".\"FALLDOSSIER\" set \"UNFALLBESCHREIBUNG\" = '\" je suis sortie de la piscine et j'ai gliss?e sur le sol mouill?. Je suis tomb?e en arri?re en me tapant fortement l'arri?re du cr?ne, l'?paule droite et la fesse droite. Je me suis par la suite repos?e mais durant la nuit j'ai du faire appel ? un m?decin sur place ? l'h?tel directement car j'ai eu des naus?es/vomissements et des douleurs qui ne passaient pas du tout malgr? le Dafalgan et Irfen\"' where \"PKEY\" = '2310822';";
+        LogMinerDmlEntry entry = parser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues()[0]).isNull(); // not provided
+        assertThat(entry.getOldValues()[1]).isEqualTo("2310822");
+        assertThat(entry.getNewValues()).hasSize(2);
+        assertThat(entry.getNewValues()[0]).isEqualTo(
+                "\" je suis sortie de la piscine et j'ai gliss?e sur le sol mouill?. Je suis tomb?e en arri?re en me tapant fortement l'arri?re du cr?ne, l'?paule droite et la fesse droite. Je me suis par la suite repos?e mais durant la nuit j'ai du faire appel ? un m?decin sur place ? l'h?tel directement car j'ai eu des naus?es/vomissements et des douleurs qui ne passaient pas du tout malgr? le Dafalgan et Irfen\"");
+        assertThat(entry.getNewValues()[1]).isEqualTo("2310822");
+    }
+
+    @Test
+    @FixFor("DBZ-8034")
+    public void shouldParseUpdateStatementWithUnescapedQuotesDuex() throws Exception {
+        final Properties properties = new Properties();
+        properties.put("internal.log.mining.sql.relaxed.quote.detection", "true");
+        final LogMinerDmlParser parser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.from(properties)));
+
+        final Table table = Table.editor()
+                .tableId(TableId.parse("HEVPROD.FALLDOSSIER"))
+                .addColumn(Column.editor().name("UNFALLBESCHREIBUNG").create())
+                .addColumn(Column.editor().name("PKEY").create())
+                .create();
+
+        String sql = "update \"ASEDBUSR\".\"FALLDOSSIER\" set \"UNFALLBESCHREIBUNG\" = '\"Le Livreur était entrain de rouler sur la route. Le casque du livreur s'est détendu à cause du vent et le livreur a voulu le remettre correctement sur la têtê. En même temps, la selle du vélo à bouge ce qui a déséquilibrer le livreur qui est tombé. En freinant, le livreur a été projeté par dessus le vélo. Le livreur était en descente mais roulait à une vitesse raisonable.\"' where \"PKEY\" = '3228569776';";
+        LogMinerDmlEntry entry = parser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getOldValues()).hasSize(2);
+        assertThat(entry.getOldValues()[0]).isNull(); // not provided
+        assertThat(entry.getOldValues()[1]).isEqualTo("3228569776");
+        assertThat(entry.getNewValues()).hasSize(2);
+        assertThat(entry.getNewValues()[0]).isEqualTo(
+                "\"Le Livreur était entrain de rouler sur la route. Le casque du livreur s'est détendu à cause du vent et le livreur a voulu le remettre correctement sur la têtê. En même temps, la selle du vélo à bouge ce qui a déséquilibrer le livreur qui est tombé. En freinant, le livreur a été projeté par dessus le vélo. Le livreur était en descente mais roulait à une vitesse raisonable.\"");
+        assertThat(entry.getNewValues()[1]).isEqualTo("3228569776");
+    }
+
+    @Test
+    @FixFor("DBZ-8869")
+    public void shouldNotTruncateColumnValueWhenApostropheFollowedByComma() throws Exception {
+        final Properties properties = new Properties();
+        properties.put("internal.log.mining.sql.relaxed.quote.detection", "true");
+        final LogMinerDmlParser parser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.from(properties)));
+
+        final Table table = Table.editor()
+                .tableId(TableId.parse("SCHEMA.TAB"))
+                .addColumn(Column.editor().name("NAME").create())
+                .addColumn(Column.editor().name("DESCRIPTION").create())
+                .addColumn(Column.editor().name("ID").create())
+                .create();
+
+        String sql = "update \"SCHEMA\".\"TAB\" set \"DESCRIPTION\" = 'Nello svolgere la sua attivita', del liquido uticante penetrava nei guanti di sicurezza scottando la pelle dei polsi', \"NAME\" = 'Another field', does it work?' where \"ID\" = '1' and \"NAME\" = 'Acme';";
+        LogMinerDmlEntry entry = parser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getOldValues()).hasSize(3);
+        assertThat(entry.getOldValues()[0]).isEqualTo("Acme");
+        assertThat(entry.getOldValues()[1]).isNull(); // not provided
+        assertThat(entry.getOldValues()[2]).isEqualTo("1");
+        assertThat(entry.getNewValues()).hasSize(3);
+        assertThat(entry.getNewValues()[0]).isEqualTo("Another field', does it work?");
+        assertThat(entry.getNewValues()[1])
+                .isEqualTo("Nello svolgere la sua attivita', del liquido uticante penetrava nei guanti di sicurezza scottando la pelle dei polsi");
+        assertThat(entry.getNewValues()[2]).isEqualTo("1");
     }
 }

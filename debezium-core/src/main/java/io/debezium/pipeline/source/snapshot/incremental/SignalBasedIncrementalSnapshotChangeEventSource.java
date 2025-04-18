@@ -8,6 +8,7 @@ package io.debezium.pipeline.source.snapshot.incremental;
 import static io.debezium.config.CommonConnectorConfig.WatermarkStrategy.INSERT_DELETE;
 
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.Objects;
 
 import org.slf4j.Logger;
@@ -27,6 +28,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
+import io.debezium.util.Loggings;
 
 @NotThreadSafe
 public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition, T extends DataCollectionId>
@@ -34,7 +36,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SignalBasedIncrementalSnapshotChangeEventSource.class);
     private final String signalWindowStatement;
-    private final String signalWindowDeleteStatement;
+    private SignalMetadata signalMetadata;
 
     public SignalBasedIncrementalSnapshotChangeEventSource(RelationalDatabaseConnectorConfig config,
                                                            JdbcConnection jdbcConnection,
@@ -45,8 +47,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
                                                            NotificationService<P, ? extends OffsetContext> notificationService) {
         super(config, jdbcConnection, dispatcher, databaseSchema, clock, progressListener, dataChangeEventListener, notificationService);
         signalWindowStatement = "INSERT INTO " + getSignalTableName(config.getSignalingDataCollectionId())
-                + " VALUES (?, ?, null)";
-        signalWindowDeleteStatement = "DELETE FROM " + getSignalTableName(config.getSignalingDataCollectionId()) + " WHERE id = ?";
+                + " VALUES (?, ?, ?)";
     }
 
     @Override
@@ -57,7 +58,7 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
             LOGGER.warn("Context is null, skipping message processing");
             return;
         }
-        LOGGER.trace("Checking window for table '{}', key '{}', window contains '{}'", dataCollectionId, key, window);
+        Loggings.logTraceAndTraceRecord(LOGGER, key, "Checking window for table '{}', window contains '{}'", dataCollectionId, window);
         if (!window.isEmpty() && context.deduplicationNeeded()) {
             deduplicateWindow(dataCollectionId, key);
         }
@@ -65,10 +66,12 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
 
     @Override
     protected void emitWindowOpen() throws SQLException {
+        signalMetadata = new SignalMetadata(Instant.now(), null);
         jdbcConnection.prepareUpdate(signalWindowStatement, x -> {
             LOGGER.trace("Emitting open window for chunk = '{}'", context.currentChunkId());
             x.setString(1, context.currentChunkId() + "-open");
             x.setString(2, OpenIncrementalSnapshotWindow.NAME);
+            x.setString(3, signalMetadata.metadataString());
         });
         jdbcConnection.commit();
     }
@@ -89,6 +92,6 @@ public class SignalBasedIncrementalSnapshotChangeEventSource<P extends Partition
             return new DeleteWindowCloser<>(jdbcConnection, signalTable, this);
         }
 
-        return new InsertWindowCloser(jdbcConnection, signalTable);
+        return new InsertWindowCloser(jdbcConnection, signalTable, new SignalMetadata(signalMetadata.getOpenWindowTimestamp(), Instant.now()));
     }
 }

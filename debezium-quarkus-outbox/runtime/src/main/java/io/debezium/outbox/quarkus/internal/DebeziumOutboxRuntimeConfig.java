@@ -7,13 +7,15 @@ package io.debezium.outbox.quarkus.internal;
 
 import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.annotations.ConfigRoot;
+import io.smallrye.config.ConfigMapping;
 
 /**
  * Debezium outbox Quarkus extension runtime configuration properties.
  *
  * @author Chris Cranford
  */
-@ConfigRoot(phase = ConfigPhase.RUN_TIME, name = "debezium-outbox")
-public class DebeziumOutboxRuntimeConfig extends DebeziumOutboxCommonRuntimeConfig {
+@ConfigMapping(prefix = "quarkus.debezium-outbox")
+@ConfigRoot(phase = ConfigPhase.RUN_TIME)
+public interface DebeziumOutboxRuntimeConfig extends DebeziumOutboxCommonRuntimeConfig {
 
 }

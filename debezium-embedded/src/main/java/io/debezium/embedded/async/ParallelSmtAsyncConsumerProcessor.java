@@ -5,8 +5,9 @@
  */
 package io.debezium.embedded.async;
 
-import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 
@@ -15,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.StopEngineException;
 
 /**
  * {@link RecordProcessor} which transforms the records in parallel. Records are passed to the user-provided {@link Consumer} in arbitrary order, once they are
@@ -37,13 +39,25 @@ public class ParallelSmtAsyncConsumerProcessor extends AbstractRecordProcessor<S
     @Override
     public void processRecords(final List<SourceRecord> records) throws Exception {
         LOGGER.debug("Thread {} is submitting {} records for processing.", Thread.currentThread().getName(), records.size());
-        final List<Future<Void>> recordFutures = new ArrayList<>(records.size());
-        records.stream().forEachOrdered(r -> recordFutures.add(recordService.submit(new ProcessingCallables.TransformAndConsumeRecord(r, transformations, consumer))));
+        final Future<Void>[] recordFutures = new Future[records.size()];
+        Iterator<SourceRecord> recordsIterator = records.iterator();
+        for (int i = 0; recordsIterator.hasNext(); i++) {
+            recordFutures[i] = recordService.submit(new ProcessingCallables.TransformAndConsumeRecord(recordsIterator.next(), transformations, consumer));
+        }
 
         LOGGER.trace("Waiting for the batch to finish processing.");
-        for (int i = 0; i < records.size(); i++) {
-            recordFutures.get(i);
-            committer.markProcessed(records.get(i));
+        recordsIterator = records.iterator();
+        for (int i = 0; recordsIterator.hasNext(); i++) {
+            try {
+                recordFutures[i].get();
+            }
+            catch (ExecutionException e) {
+                if (e.getCause() instanceof StopEngineException) {
+                    committer.markProcessed(recordsIterator.next());
+                }
+                throw e;
+            }
+            committer.markProcessed(recordsIterator.next());
         }
 
         LOGGER.trace("Marking batch as finished.");

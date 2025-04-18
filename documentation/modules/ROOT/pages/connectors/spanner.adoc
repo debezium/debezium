@@ -9,6 +9,7 @@
 :linkattrs:
 :icons: font
 :source-highlighter: highlight.js
+:connector-name: Spanner
 
 toc::[]
 
@@ -24,7 +25,7 @@ The connector does not support the snapshot feature at the moment. The first tim
 [[spanner-overview]]
 == Overview
 
-To read and process database changes, the connector queries from a change stream. 
+To read and process database changes, the connector queries from a change stream.
 
 The connector produces a change event for every row-level insert, update, and delete operation that was captured and sends change event records for each table in a separate Kafka topic. Client applications read the Kafka topics that correspond to the database tables of interest, and can react to every row-level event they receive from those topics.
 
@@ -129,7 +130,7 @@ The following skeleton JSON documents show the basic structure for the key and v
 
 |1
 |`schema`
-|The first `schema` field is part of the event key. It specifies a Kafka Connect schema that describes what is in the event key's `payload` portion. In other words, the first `schema` field describes the structure of the primary key. 
+|The first `schema` field is part of the event key. It specifies a Kafka Connect schema that describes what is in the event key's `payload` portion. In other words, the first `schema` field describes the structure of the primary key.
 
 |2
 |`payload`
@@ -246,7 +247,7 @@ PRIMARY KEY (id);
 [[spanner-create-events]]
 === _create_ events
 
-The following example shows the value portion of a change event that the connector generates for an operation that creates data in the `Users` table. If a Spanner column is marked is non-optional, its value is required for all mutations that insert a row. All primary key columns in Spanner will be marked as non-optional. Note that even if a non-key column is marked as non-optional in Spanner, it will be shown as optional in the schema. Only primary key columns are marked as non-optional in the schema. 
+The following example shows the value portion of a change event that the connector generates for an operation that creates data in the `Users` table. If a Spanner column is marked is non-optional, its value is required for all mutations that insert a row. All primary key columns in Spanner will be marked as non-optional. Note that even if a non-key column is marked as non-optional in Spanner, it will be shown as optional in the schema. Only primary key columns are marked as non-optional in the schema.
 
 [source,json,options="nowrap",indent=0,subs="+attributes"]
 ----
@@ -558,18 +559,18 @@ a|Mandatory field that describes the source metadata for the event. This field c
 * The instance ID
 * The database ID
 * The change stream name
-* The transaction ID    
+* The transaction ID
 * The low watermark, which represents the timestamp at which all records with commit timestamp less than the low watermark timestamp have already been streamed out by the connector
 * The commit timestamp for when the change was made in the database
-* The timestamp at which the connnector processed the change 
-* The number of records in the originating transaction 
-* The transaction tag 
-* Whether or not the transaction was a system transaction 
-* The value capture type 
-* The originating partition token used to query this change event 
-* The mod number in the original data change event received from Spanner 
-* Whether or not the data change event was the last record in the transaction in the partition 
-* The total number of change stream partitions in the transaction 
+* The timestamp at which the connnector processed the change
+* The number of records in the originating transaction
+* The transaction tag
+* Whether or not the transaction was a system transaction
+* The value capture type
+* The originating partition token used to query this change event
+* The mod number in the original data change event received from Spanner
+* Whether or not the data change event was the last record in the transaction in the partition
+* The total number of change stream partitions in the transaction
 
 |9
 |`op`
@@ -672,18 +673,18 @@ a|Mandatory field that describes the source metadata for the event. The `source`
 * The instance ID
 * The database ID
 * The change stream name
-* The transaction ID    
+* The transaction ID
 * The low watermark, which represents the timestamp at which all records with commit timestamp less than the low watermark timestamp have already been streamed out by the connector
 * The commit timestamp for when the change was made in the database
-* The timestamp at which the connnector processed the change 
-* The number of records in the originating transaction 
-* The transaction tag 
-* Whether or not the transaction was a system transaction 
-* The value capture type 
-* The originating partition token used to query this change event 
-* The mod number in the original data change event received from Spanner 
-* Whether or not the data change event was the last record in the transaction in the partition 
-* The total number of change stream partitions in the transaction 
+* The timestamp at which the connnector processed the change
+* The number of records in the originating transaction
+* The transaction tag
+* Whether or not the transaction was a system transaction
+* The value capture type
+* The originating partition token used to query this change event
+* The mod number in the original data change event received from Spanner
+* Whether or not the data change event was the last record in the transaction in the partition
+* The total number of change stream partitions in the transaction
 
 |4
 |`op`
@@ -776,18 +777,18 @@ a|Mandatory field that describes the source metadata for the event. In a _delete
 * The instance ID
 * The database ID
 * The change stream name
-* The transaction ID    
+* The transaction ID
 * The low watermark, which represents the timestamp at which all records with commit timestamp less than the low watermark timestamp have already been streamed out by the connector
 * The commit timestamp for when the change was made in the database
-* The timestamp at which the connnector processed the change 
-* The number of records in the originating transaction 
-* The transaction tag 
-* Whether or not the transaction was a system transaction 
-* The value capture type 
-* The originating partition token used to query this change event 
-* The mod number in the original data change event received from Spanner 
-* Whether or not the data change event was the last record in the transaction in the partition 
-* The total number of change stream partitions in the transaction 
+* The timestamp at which the connnector processed the change
+* The number of records in the originating transaction
+* The transaction tag
+* Whether or not the transaction was a system transaction
+* The value capture type
+* The originating partition token used to query this change event
+* The mod number in the original data change event received from Spanner
+* Whether or not the data change event was the last record in the transaction in the partition
+* The total number of change stream partitions in the transaction
 
 |4
 |`op`
@@ -843,7 +844,10 @@ The Spanner connector represents changes to rows with events that are structured
 |`STRING`
 |`STRING`
 
+|`FLOAT32`
 |`FLOAT`
+
+|`FLOAT64`
 |`DOUBLE`
 
 |`NUMERIC`
@@ -866,7 +870,7 @@ The Spanner connector represents changes to rows with events that are structured
 * Make sure to provide a project ID, Spanner instance ID, Spanner database ID, and change stream name. See link:https://cloud.google.com/spanner/docs/change-streams/manage[documentation] on how to create change streams.
 * Make sure to create and configure a GCP service account with the proper credentials. The service account key will need to be provided in the connector configuration. See more link:https://cloud.google.com/iam/docs/service-accounts[information] about service accounts here.
 
-See the following section on how to configure a {prodname} Spanner connector. 
+See the following section on how to configure a {prodname} Spanner connector.
 
 // Type: assembly
 // ModuleID: deploying-and-managing-debezium-spanner-connectors
@@ -877,6 +881,14 @@ See the following section on how to configure a {prodname} Spanner connector.
 With link:https://zookeeper.apache.org[Zookeeper], link:http://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect] installed, the remaining tasks to deploy a {prodname} Spanner connector are to download the link:https://repo1.maven.org/maven2/io/debezium/debezium-connector-spanner/{debezium-version}/debezium-connector-spanner-{debezium-version}-plugin.tar.gz[connector's plug-in archive], extract the JAR files into your Kafka Connect environment, and add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`]. You then need to restart your Kafka Connect process to pick up the new JAR files.
 
 If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s Container images] for Zookeeper, Kafka and Kafka Connect with the Spanner connector already installed and ready to run. You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
+
+[IMPORTANT]
+====
+The {prodname} container images that you obtain from `quay.io` do not undergo rigorous testing or security analysis, and are provided for testing and evaluation purposes only.
+These images are not intended for use in production environments.
+To mitigate risk in production deployments, deploy only containers that are actively maintained by trusted vendors, and thoroughly tested for potential vulnerabilities.
+====
+
 
 // Type: concept
 // ModuleID:debezium-spanner-connector-configuration-example
@@ -909,7 +921,7 @@ You can choose to produce events for a subset of the schemas and tables. Optiona
 <4> The GCP Project ID.
 <5> The Spanner Instance ID.
 <6> The Spanner Database ID.
-<7> The GCP service account key JSON. 
+<7> The GCP service account key JSON.
 <8> The maximum number of tasks.
 
 See the xref:spanner-connector-properties[complete list of Spanner connector properties] that can be specified in these configurations.
@@ -950,6 +962,13 @@ The {prodname} Spanner connector provides only one type of metric in addition to
 
 xref:{link-debezium-monitoring}#monitoring-debezium[{prodname} monitoring documentation] provides details for how to expose these metrics by using JMX.
 
+// Type: concept
+// ModuleID: monitoring-debezium-spanner-connectors-customized-mbean-names
+// Title: Customized names for Spanner connector snapshot and streaming MBean objects
+=== Customized MBean names
+
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=mbeans-shared]
+
 // Type: reference
 // ModuleID: monitoring-debezium-spanner-connector-record-streaming
 // Title: Monitoring {prodname} Spanner connector record streaming
@@ -989,7 +1008,7 @@ include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[levelo
 |[[connectors-strm-metric-millisecondsbehindsource]]<<connectors-strm-metric-millisecondsbehindsource, `+MilliSecondsBehindSource+`>>
 |`long`
 |The number of milliseconds between the last change event's timestamp and the connector processing it.
-The values will incoporate any differences between the clocks on the machines where the database server and the connector are running.
+The values will incorporate any differences between the clocks on the machines where the database server and the connector are running.
 
 |[[connectors-strm-metric-numberofcommittedtransactions]]<<connectors-strm-metric-numberofcommittedtransactions, `+NumberOfCommittedTransactions+`>>
 |`long`
@@ -1243,11 +1262,28 @@ The following _advanced_ configuration properties have defaults that work in mos
 
 |[[spanner-property-custom-metric-tags]]<<spanner-property-custom-metric-tags, `custom.metric.tags`>>
 |`No default`
-|The custom metric tags will accept key-value pairs to customize the MBean object name which should be appended the end of regular name, each key would represent a tag for the MBean object name, and the corresponding value would be the value of that tag the key is. For example: `k1=v1,k2=v2`.
+|Defines tags that customize MBean object names by adding metadata that provides contextual information.
+Specify a comma-separated list of key-value pairs.
+Each key represents a tag for the MBean object name, and the corresponding value represents a value for the key, for example,  +
+`k1=v1,k2=v2`
+
+The connector appends the specified tags to the base MBean object name.
+Tags can help you to organize and categorize metrics data.
+You can define tags to identify particular application instances, environments, regions, versions, and so forth.
+For more information, see xref:customized-mbean-names[Customized MBean names].
 
 |[[spanner-property-errors-max-retires]]<<spanner-property-errors-max-retires, `errors.max.retries`>>
 |`-1`
-|The maximum number of retries on retriable errors (e.g. connection errors) before failing (-1 = no limit, 0 = disabled, > 0 = num of retries).
+|Specifies how the connector responds after an operation that results in a retriable error, such as a connection error. +
+Set one of the following options:
+
+`-1`:: No limit. The connector always restarts automatically, and retries the operation, regardless of the number of previous failures.
+
+`0`:: Disabled. The connector fails immediately, and never retries the operation.
+User intervention is required to restart the connector.
+
+`> 0`:: The connector restarts automatically until it reaches the specified maximum number of retries.
+After the next failure, the connector stops, and user intervention is required to restart it.
 
 |===
 

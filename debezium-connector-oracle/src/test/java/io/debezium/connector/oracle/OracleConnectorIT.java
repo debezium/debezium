@@ -21,6 +21,7 @@ import java.math.BigInteger;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
@@ -67,6 +68,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.connector.SnapshotType;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
@@ -74,8 +76,10 @@ import io.debezium.connector.oracle.OracleConnectorConfig.TransactionSnapshotBou
 import io.debezium.connector.oracle.junit.SkipOnDatabaseOption;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnDatabaseOptionRule;
+import io.debezium.connector.oracle.junit.SkipTestDependingOnStrategyRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
+import io.debezium.connector.oracle.junit.SkipWhenLogMiningStrategyIs;
 import io.debezium.connector.oracle.logminer.LogMinerAdapter;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.logminer.processor.AbstractLogMinerEventProcessor;
@@ -89,8 +93,8 @@ import io.debezium.data.SchemaAndValueField;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
 import io.debezium.embedded.EmbeddedEngineConfig;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
@@ -99,6 +103,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.history.MemorySchemaHistory;
 import io.debezium.storage.file.history.FileSchemaHistory;
+import io.debezium.util.Strings;
 import io.debezium.util.Testing;
 
 import ch.qos.logback.classic.Level;
@@ -108,7 +113,7 @@ import ch.qos.logback.classic.Level;
  *
  * @author Gunnar Morling
  */
-public class OracleConnectorIT extends AbstractConnectorTest {
+public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(OracleConnectorIT.class);
 
     private static final long MICROS_PER_SECOND = TimeUnit.SECONDS.toMicros(1);
@@ -120,6 +125,8 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
     @Rule
     public final TestRule skipOptionRule = new SkipTestDependingOnDatabaseOptionRule();
+    @Rule
+    public final TestRule skipStrategyRule = new SkipTestDependingOnStrategyRule();
 
     private static OracleConnection connection;
 
@@ -256,7 +263,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             assertThat(after1.get("ID")).isEqualTo(1);
             assertThat(after1.get("C1")).isEqualTo(BigDecimal.valueOf(25L));
             assertThat(after1.get("C2")).isEqualTo("Test");
-            assertThat(record1.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+            assertThat(record1.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(SnapshotType.INITIAL.toString());
             assertThat(record1.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(true);
 
             // insert
@@ -300,7 +307,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(after.get("SCORE")).isEqualTo(BigDecimal.valueOf(1234.56));
         assertThat(after.get("REGISTERED")).isEqualTo(toMicroSecondsSinceEpoch(LocalDateTime.of(2018, 2, 22, 0, 0, 0)));
 
-        assertThat(record1.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(record1.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(SnapshotType.INITIAL.toString());
         assertThat(record1.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(false);
 
         Struct source = (Struct) ((Struct) record1.value()).get("source");
@@ -314,7 +321,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(after.get("SCORE")).isEqualTo(BigDecimal.valueOf(2345.67));
         assertThat(after.get("REGISTERED")).isNull();
 
-        assertThat(record2.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(record2.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(SnapshotType.INITIAL.toString());
         assertThat(record2.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(true);
 
         source = (Struct) ((Struct) record2.value()).get("source");
@@ -378,7 +385,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(source.get(SourceInfo.TXID_KEY)).isNull();
         assertThat(source.get(SourceInfo.TIMESTAMP_KEY)).isNotNull();
 
-        assertThat(record1.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(record1.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(SnapshotType.INITIAL.toString());
         assertThat(record1.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(false);
 
         SourceRecord record2 = testTableRecords.get(1);
@@ -386,7 +393,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         after = (Struct) ((Struct) record2.value()).get("after");
         assertThat(after.get("ID")).isEqualTo(2);
 
-        assertThat(record2.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(record2.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(SnapshotType.INITIAL.toString());
         assertThat(record2.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(true);
 
         source = (Struct) ((Struct) record2.value()).get("source");
@@ -453,7 +460,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         assertThat(source.get(SourceInfo.TXID_KEY)).isNull();
         assertThat(source.get(SourceInfo.TIMESTAMP_KEY)).isNotNull();
 
-        assertThat(record1.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(record1.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(SnapshotType.INITIAL.toString());
         assertThat(record1.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(false);
 
         SourceRecord record2 = testTableRecords.get(1);
@@ -461,7 +468,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         after = (Struct) ((Struct) record2.value()).get("after");
         assertThat(after.get("ID")).isEqualTo(2);
 
-        assertThat(record2.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(true);
+        assertThat(record2.sourceOffset().get(SourceInfo.SNAPSHOT_KEY)).isEqualTo(SnapshotType.INITIAL.toString());
         assertThat(record2.sourceOffset().get(SNAPSHOT_COMPLETED_KEY)).isEqualTo(true);
 
         expectedRecordCount = 30;
@@ -617,7 +624,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     public void shouldReadChangeStreamForExistingTable() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build();
 
         start(OracleConnector.class, config);
@@ -707,7 +714,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     public void deleteWithoutTombstone() throws Exception {
         Configuration config = TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(OracleConnectorConfig.TOMBSTONES_ON_DELETE, false)
                 .build();
 
@@ -858,7 +865,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         if (useDatabaseName) {
             final String dbName = TestHelper.getDatabaseName();
             config = TestHelper.defaultConfig()
-                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                     .with("column.mask.with.12.chars", dbName + ".DEBEZIUM.MASKED_HASHED_COLUMN_TABLE.NAME")
                     .with("column.mask.hash.SHA-256.with.salt.CzQMA0cB5K",
                             dbName + ".DEBEZIUM.MASKED_HASHED_COLUMN_TABLE.NAME2," + dbName + ".DEBEZIUM.MASKED_HASHED_COLUMN_TABLE.NAME3")
@@ -867,7 +874,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
         else {
             config = TestHelper.defaultConfig()
-                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                     .with("column.mask.with.12.chars", "DEBEZIUM.MASKED_HASHED_COLUMN_TABLE.NAME")
                     .with("column.mask.hash.SHA-256.with.salt.CzQMA0cB5K", "DEBEZIUM.MASKED_HASHED_COLUMN_TABLE.NAME2,DEBEZIUM.MASKED_HASHED_COLUMN_TABLE.NAME3")
                     .with("column.truncate.to.4.chars", "DEBEZIUM.TRUNCATED_COLUMN_TABLE.NAME")
@@ -927,13 +934,13 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         final Configuration config;
         if (useDatabaseName) {
             config = TestHelper.defaultConfig()
-                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                     .with(OracleConnectorConfig.MSG_KEY_COLUMNS, "(.*).debezium.customer:id,name")
                     .build();
         }
         else {
             config = TestHelper.defaultConfig()
-                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                     .with(OracleConnectorConfig.MSG_KEY_COLUMNS, "debezium.customer:id,name")
                     .build();
         }
@@ -960,7 +967,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     @FixFor({ "DBZ-1916", "DBZ-1830" })
     public void shouldPropagateSourceTypeByDatatype() throws Exception {
         final Configuration config = TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with("datatype.propagate.source.type", ".+\\.NUMBER,.+\\.VARCHAR2,.+\\.FLOAT")
                 .build();
 
@@ -1843,7 +1850,6 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-3151")
-    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.OLR, reason = "XML not supported")
     public void testSnapshotCompletesWithSystemGeneratedUniqueIndexOnKeylessTable() throws Exception {
         TestHelper.dropTable(connection, "XML_TABLE");
         try {
@@ -1923,7 +1929,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             connection.execute("ALTER TABLE debezium.offset_test ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
             final Configuration config = TestHelper.defaultConfig()
-                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.OFFSET_TEST")
                     .build();
 
@@ -2027,6 +2033,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     // todo: should this test be removed since its now covered in OracleClobDataTypesIT?
     @Test
     @FixFor("DBZ-3257")
+    @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Cannot use lob.enabled with Hybrid")
     public void shouldSnapshotAndStreamClobDataTypes() throws Exception {
         TestHelper.dropTable(connection, "clob_test");
         try {
@@ -2817,7 +2824,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3978")
-                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                     .with(OracleConnectorConfig.LOG_MINING_USERNAME_EXCLUDE_LIST, "DEBEZIUM")
                     // This test expects the filtering to occur in the connector, not the query
                     .with(OracleConnectorConfig.LOG_MINING_QUERY_FILTER_MODE, "none")
@@ -2952,7 +2959,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     public void shouldCreateSnapshotSchemaOnlyRecoveryExceptionWithoutOffset() {
         final Path path = Testing.Files.createTestingPath("missing-history.txt").toAbsolutePath();
         Configuration config = defaultConfig()
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY_RECOVERY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.RECOVERY)
                 .with(FileSchemaHistory.FILE_PATH, path)
                 .build();
 
@@ -2968,7 +2975,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     public void shouldCreateSnapshotSchemaOnlyRecovery() throws Exception {
         try {
             Configuration.Builder builder = defaultConfig()
-                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3986")
                     .with(OracleConnectorConfig.SCHEMA_HISTORY, MemorySchemaHistory.class.getName())
                     .with(EmbeddedEngineConfig.OFFSET_STORAGE, FileOffsetBackingStore.class.getName());
@@ -2977,7 +2984,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             // Insert a row of data in advance
             connection.execute("INSERT INTO DBZ3986 (ID, DATA) values (3, 'asuka')");
-            builder.with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY_RECOVERY);
+            builder.with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.RECOVERY);
             config = builder.build();
 
             start(OracleConnector.class, config);
@@ -3001,7 +3008,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     public void shouldCreateSnapshotSchemaOnlyExceptionWithoutHistory() throws Exception {
         try {
             Configuration.Builder builder = defaultConfig()
-                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3986")
                     .with(OracleConnectorConfig.SCHEMA_HISTORY, MemorySchemaHistory.class.getName())
                     .with(EmbeddedEngineConfig.OFFSET_STORAGE, FileOffsetBackingStore.class.getName());
@@ -3022,7 +3029,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     public void shouldSkipDataOnSnapshotSchemaOnly() throws Exception {
         try {
             Configuration.Builder builder = defaultConfig()
-                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY)
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3986")
                     .with(OracleConnectorConfig.SCHEMA_HISTORY, MemorySchemaHistory.class.getName())
                     .with(EmbeddedEngineConfig.OFFSET_STORAGE, MemoryOffsetBackingStore.class.getName());
@@ -3240,6 +3247,32 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         else {
             config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.DATABASE_NAME, TestHelper.getDatabaseName().toLowerCase())
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
+                    .build();
+        }
+
+        connection.execute("INSERT INTO debezium.customer (id,name) values (1, 'Bugs Bunny')");
+        start(OracleConnector.class, config);
+
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        List<SourceRecord> records = consumeRecordsByTopic(1).recordsForTopic("server1.DEBEZIUM.CUSTOMER");
+        assertThat(((Struct) records.get(0).value()).getStruct(AFTER).get("ID")).isEqualTo(1);
+    }
+
+    @Test
+    @FixFor("DBZ-8710")
+    public void shouldTreatQuotedPdbOrDatabaseNameAsCaseSensitive() throws Exception {
+        final Configuration config;
+        if (TestHelper.isUsingPdb()) {
+            config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.PDB_NAME, "\"" + TestHelper.getDatabaseName() + "\"")
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
+                    .build();
+        }
+        else {
+            config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.DATABASE_NAME, "\"" + TestHelper.getDatabaseName() + "\"")
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
                     .build();
         }
@@ -3597,6 +3630,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-4842")
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Only applies to LogMiner")
+    @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Hybrid strategy now detects and handles this use case")
     public void shouldRestartAfterCapturedTableIsDroppedWhileConnectorDown() throws Exception {
         TestHelper.dropTable(connection, "dbz4842");
         try {
@@ -3903,6 +3937,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-4953")
+    @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Cannot use lob.enabled with Hybrid")
     public void shouldStreamTruncateEventWhenLobIsEnabled() throws Exception {
         TestHelper.dropTable(connection, "dbz4953");
         try {
@@ -4073,6 +4108,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-5147")
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Only applies to Oracle LogMiner implementation")
+    @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Test overrides strategy as requires online_catalog")
     public void shouldStopWhenErrorProcessingFailureHandlingModeIsDefault() throws Exception {
         TestHelper.dropTable(connection, "dbz5147");
         try {
@@ -4127,6 +4163,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-5147")
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Only applies to Oracle LogMiner implementation")
+    @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Test overrides strategy as requires online_catalog")
     public void shouldLogWarningAndSkipWhenErrorProcessingFailureHandlingModeIsWarn() throws Exception {
         TestHelper.dropTable(connection, "dbz5147");
         try {
@@ -4188,6 +4225,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-5147")
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Only applies to Oracle LogMiner implementation")
+    @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Test overrides strategy as requires online_catalog")
     public void shouldSilentlySkipWhenErrorProcessingFailureHandlingModeIsSkip() throws Exception {
         TestHelper.dropTable(connection, "dbz5147");
         try {
@@ -4246,7 +4284,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     }
 
     @Test
-    @FixFor("DBZ-5139")
+    @FixFor({ "DBZ-5139", "DBZ-8880" })
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Applies only to LogMiner")
     public void shouldDiscardTransactionThatExceedsEventThreshold() throws Exception {
         TestHelper.dropTable(connection, "dbz5139");
@@ -4448,10 +4486,13 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5441")
                     .build();
 
+            int waitTime = TestHelper.defaultMessageConsumerPollTimeout() * 2;
+
             final LogInterceptor streamInterceptor;
             switch (TestHelper.getAdapter(config)) {
                 case XSTREAM:
                     streamInterceptor = new LogInterceptor("io.debezium.connector.oracle.xstream.LcrEventHandler");
+                    waitTime *= 2; // XStream on CI can be quite slow, double the wait time to avoid failure
                     break;
                 default:
                     streamInterceptor = new LogInterceptor(AbstractLogMinerEventProcessor.class);
@@ -4470,7 +4511,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             connection.execute("INSERT INTO DEBEZIUM.DBZ5441 (id,lvl) values (1,1)");
 
             Awaitility.await()
-                    .atMost(120, TimeUnit.SECONDS)
+                    .atMost(waitTime, TimeUnit.SECONDS)
                     .until(() -> streamInterceptor.containsMessage("is not a relational table and will be skipped"));
 
             assertNoRecordsToConsume();
@@ -4487,6 +4528,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-5682")
+    @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Cannot use lob.enabled with Hybrid")
     public void shouldCaptureChangesForTableUniqueIndexWithNullColumnValuesWhenLobEnabled() throws Exception {
         TestHelper.dropTable(connection, "dbz5682");
         try {
@@ -4746,8 +4788,12 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
             stopConnector();
 
-            assertThat(interceptor.containsMessage("Cannot undo change on table"))
+            assertThat(interceptor.containsMessage("Cannot apply undo change"))
                     .as("Unable to correctly undo operation within transaction")
+                    .isFalse();
+
+            assertThat(interceptor.containsMessage("Failed to apply undo change"))
+                    .as("Unable to apply undo operation")
                     .isFalse();
         }
         finally {
@@ -4757,6 +4803,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-6107")
+    @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Cannot use lob.enabled with Hybrid")
     public void shouldNotConsolidateBulkUpdateWhenLobEnabledIfUpdatesAreDifferentLogicalRowsWithoutLobColumns() throws Exception {
         TestHelper.dropTable(connection, "dbz6107");
         try {
@@ -4813,6 +4860,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
 
     @Test
     @FixFor("DBZ-6107")
+    @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Cannot use lob.enabled with Hybrid")
     public void shouldNotConsolidateBulkUpdateWhenLobEnabledIfUpdatesAreDifferentLogicalRowsWithLobColumns() throws Exception {
         TestHelper.dropTable(connection, "dbz6107");
         try {
@@ -5126,6 +5174,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
     @Test
     @FixFor("DBZ-5395")
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Applies to LogMiner only")
+    @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Cannot use lob.enabled with Hybrid")
     public void testShouldAdvanceStartScnWhenNoActiveTransactionsBetweenIterationsWhenLobEnabled() throws Exception {
         TestHelper.dropTable(connection, "dbz5395");
         try {
@@ -5213,13 +5262,13 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                 waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
                 // Get the number of fetching queries up to this point.
-                final Long fetchingQueryCount = getStreamingMetric("FetchingQueryCount");
+                final Long fetchingQueryCount = getStreamingMetric("FetchQueryCount");
 
                 connection.execute("INSERT INTO dbz6355 (id,name) VALUES (3, 'Donald Duck')");
 
                 // Fetch for a few mining iterations to guarantee that the abandonment process has fired
                 Awaitility.waitAtMost(Duration.ofSeconds(60)).until(() -> {
-                    return (fetchingQueryCount + 5L) <= (Long) getStreamingMetric("FetchingQueryCount");
+                    return (fetchingQueryCount + 5L) <= (Long) getStreamingMetric("FetchQueryCount");
                 });
 
                 // Commit in progress transaction
@@ -5371,7 +5420,7 @@ public class OracleConnectorIT extends AbstractConnectorTest {
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6528")
                     .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.getDatabaseName() + ".C##DBZUSER.SIGNALS")
                     .with(OracleConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, "true")
-                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.SCHEMA_ONLY.getValue())
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
                     .build();
 
             start(OracleConnector.class, config);
@@ -5529,6 +5578,9 @@ public class OracleConnectorIT extends AbstractConnectorTest {
             catch (ConditionTimeoutException e) {
                 // ignored
             }
+
+            // Assert connector did not fail
+            assertConnectorIsRunning();
 
             // Just concerned that every iteration has lag greater than deviation.
             stopConnector();
@@ -5706,6 +5758,239 @@ public class OracleConnectorIT extends AbstractConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "dbz6975");
+        }
+    }
+
+    @Test
+    @FixFor({ "DBZ-4332", "DBZ-7823" })
+    public void shouldCaptureRowIdForDataChanges() throws Exception {
+        TestHelper.dropTable(connection, "dbz4332");
+        try {
+            connection.execute("CREATE TABLE dbz4332 (id number(9,0), data varchar2(50), primary key(id))");
+            TestHelper.streamTable(connection, "dbz4332");
+
+            connection.execute("INSERT INTO dbz4332 VALUES (1, 'snapshot')");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4332")
+                    .with(OracleConnectorConfig.TOMBSTONES_ON_DELETE, "false")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz4332 VALUES (2, 'streaming')");
+            connection.execute("UPDATE dbz4332 set data = 'update'");
+            connection.execute("DELETE FROM dbz4332");
+
+            final SourceRecords sourceRecords = consumeRecordsByTopic(6);
+            final List<SourceRecord> records = sourceRecords.recordsForTopic("server1.DEBEZIUM.DBZ4332");
+            assertThat(records).hasSize(6);
+
+            for (int i = 0; i < records.size(); i++) {
+                final Struct source = ((Struct) records.get(i).value()).getStruct("source");
+                if (i == 0) {
+                    // Snapshots do not capture row ids
+                    assertThat(source.get("row_id")).isNull();
+                }
+                else {
+                    assertThat(source.get("row_id")).isNotNull();
+                }
+            }
+
+            stopConnector();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz4332");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-7831")
+    public void shouldStreamChangesForTableWithSingleQuote() throws Exception {
+        TestHelper.dropTable(connection, "\"debezium_test'\"");
+        try {
+            connection.execute("CREATE TABLE \"debezium_test'\"\n" +
+                    "(\n" +
+                    "    id NUMBER(10),\n" +
+                    "    first_name VARCHAR2(50),\n" +
+                    "    last_name VARCHAR2(50),\n" +
+                    "    PRIMARY KEY(ID)\n" +
+                    ")");
+            connection.execute("INSERT INTO \"debezium_test'\" (id,first_name,last_name) values (1,'Andy','Griffith')");
+            TestHelper.streamTable(connection, "\"debezium_test'\"");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.debezium_test'")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO \"debezium_test'\" (id,first_name,last_name) values (2,'Elmer','Fudd')");
+
+            final SourceRecords sourceRecords = consumeRecordsByTopic(2);
+            final List<SourceRecord> records = sourceRecords.recordsForTopic("server1.DEBEZIUM.debezium_test_");
+            assertThat(records).hasSize(2);
+        }
+        finally {
+            TestHelper.dropTable(connection, "\"debezium_test'\"");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-8577")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Specific to LogMiner")
+    public void shouldRestoreConnectionStateWhenConnectionIsRestartedOnMiningRestartConnectToPdb() throws Exception {
+        TestHelper.dropTable(connection, "dbz8577");
+        try {
+            connection.execute("CREATE TABLE dbz8577 (id number(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz8577");
+
+            Configuration tempConfig = TestHelper.defaultConfig().build();
+
+            final Configuration.Builder builder = TestHelper.defaultConfig();
+            if (!Strings.isNullOrEmpty(tempConfig.getString(OracleConnectorConfig.PDB_NAME))) {
+                // For this use case, both PDB and DBNAME should refer to PDB
+                // This is an unconventional configuration, but permissible.
+                builder.with(OracleConnectorConfig.DATABASE_NAME, tempConfig.getString(OracleConnectorConfig.PDB_NAME));
+            }
+            builder.with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8577")
+                    .with(OracleConnectorConfig.LOG_MINING_RESTART_CONNECTION, "true");
+
+            start(OracleConnector.class, builder.build());
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Wait for CURRENT_SCN to be seen by the connector
+            // Then force a log switch
+            // Then wait for new CURRENT_SCN to be seen by the connector
+            waitForCurrentScnToHaveBeenSeenByConnector();
+            TestHelper.forceLogfileSwitch();
+            waitForCurrentScnToHaveBeenSeenByConnector();
+
+            // Insert a row to act as a marker
+            connection.execute("INSERT INTO dbz8577 (id,data) values (1,'test')");
+
+            final SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ8577")).hasSize(1);
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz8577");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-8577")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Specific to LogMiner")
+    public void shouldRestoreConnectionStateWhenConnectionIsRestartedOnMiningRestart() throws Exception {
+        TestHelper.dropTable(connection, "dbz8577");
+        try {
+            connection.execute("CREATE TABLE dbz8577 (id number(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz8577");
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8577")
+                    .with(OracleConnectorConfig.LOG_MINING_RESTART_CONNECTION, "true")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Wait for CURRENT_SCN to be seen by the connector
+            // Then force a log switch
+            // Then wait for new CURRENT_SCN to be seen by the connector
+            waitForCurrentScnToHaveBeenSeenByConnector();
+            TestHelper.forceLogfileSwitch();
+            waitForCurrentScnToHaveBeenSeenByConnector();
+
+            // Insert a row to act as a marker
+            connection.execute("INSERT INTO dbz8577 (id,data) values (1,'test')");
+
+            final SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ8577")).hasSize(1);
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz8577");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-8740")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Applies to LogMiner")
+    public void shouldPopulateCommitScnAndTimestampInSourceInfoBlock() throws Exception {
+        TestHelper.dropTable(connection, "dbz8740");
+        try {
+            connection.execute("CREATE TABLE dbz8740 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz8740");
+
+            final Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8740")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            // Insert, wait 2 seconds, and insert to guarantee differing SCN values
+            connection.execute("INSERT INTO dbz8740 (id,data) values (1,'Test1')");
+            Thread.sleep(2000);
+            connection.execute("INSERT INTO dbz8740 (id,data) values (2,'Test2')");
+
+            final SourceRecords records = consumeRecordsByTopic(2);
+            final List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ8740");
+            assertThat(tableRecords).hasSize(2);
+
+            // Verify that the source info fields are populated
+
+            Struct after1 = ((Struct) tableRecords.get(0).value()).getStruct(FieldName.AFTER);
+            assertThat(after1.get("ID")).isEqualTo(1);
+            assertThat(after1.get("DATA")).isEqualTo("Test1");
+
+            Struct source1 = ((Struct) tableRecords.get(0).value()).getStruct(FieldName.SOURCE);
+            assertThat(source1.get(SourceInfo.COMMIT_SCN_KEY)).isNotNull();
+            assertThat(source1.get(SourceInfo.COMMIT_TIMESTAMP_KEY)).isNotNull();
+            assertThat(source1.get(SourceInfo.START_SCN_KEY)).isNotNull();
+            assertThat(source1.get(SourceInfo.START_TIMESTAMP_KEY)).isNotNull();
+
+            Struct after2 = ((Struct) tableRecords.get(1).value()).getStruct(FieldName.AFTER);
+            assertThat(after2.get("ID")).isEqualTo(2);
+            assertThat(after2.get("DATA")).isEqualTo("Test2");
+
+            Struct source2 = ((Struct) tableRecords.get(1).value()).getStruct(FieldName.SOURCE);
+            assertThat(source2.get(SourceInfo.COMMIT_SCN_KEY)).isNotNull();
+            assertThat(source2.get(SourceInfo.COMMIT_TIMESTAMP_KEY)).isNotNull();
+            assertThat(source2.get(SourceInfo.START_SCN_KEY)).isNotNull();
+            assertThat(source2.get(SourceInfo.START_TIMESTAMP_KEY)).isNotNull();
+
+            // Test that first transaction values are prior to second transaction values
+
+            final Scn startScn1 = Scn.valueOf(source1.getString(SourceInfo.START_SCN_KEY));
+            final Scn startScn2 = Scn.valueOf(source2.getString(SourceInfo.START_SCN_KEY));
+            assertThat(startScn1.compareTo(startScn2) < 0).isTrue();
+
+            final Instant startTime1 = Instant.ofEpochMilli(source1.getInt64(SourceInfo.START_TIMESTAMP_KEY));
+            final Instant startTime2 = Instant.ofEpochMilli(source2.getInt64(SourceInfo.START_TIMESTAMP_KEY));
+            assertThat(startTime1.isBefore(startTime2)).isTrue();
+
+            final Scn commitScn1 = Scn.valueOf(source1.getString(SourceInfo.COMMIT_SCN_KEY));
+            final Scn commitScn2 = Scn.valueOf(source2.getString(SourceInfo.COMMIT_SCN_KEY));
+            assertThat(commitScn1.compareTo(commitScn2) < 0).isTrue();
+
+            final Instant commitTime1 = Instant.ofEpochMilli(source1.getInt64(SourceInfo.COMMIT_TIMESTAMP_KEY));
+            final Instant commitTime2 = Instant.ofEpochMilli(source2.getInt64(SourceInfo.COMMIT_TIMESTAMP_KEY));
+            assertThat(commitTime1.isBefore(commitTime2)).isTrue();
+
+            assertNoRecordsToConsume();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz8740");
         }
     }
 

@@ -22,9 +22,10 @@ import io.debezium.util.Collect;
 public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
 
     private static final String DEFAULT_TABLE_NAME = "debezium_database_history";
-    public static final Field PROP_TABLE_NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.name")
+    public static final Field PROP_TABLE_NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "table.name")
             .withDescription("The database key that will be used to store the database schema history")
-            .withDefault(DEFAULT_TABLE_NAME);
+            .withDefault(DEFAULT_TABLE_NAME)
+            .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.name");
 
     /**
      * Table that will store database history.
@@ -46,9 +47,10 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
     /**
      * Field that will store the CREATE TABLE DDL for schema history.
      */
-    public static final Field PROP_TABLE_DDL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.ddl")
+    public static final Field PROP_TABLE_DDL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "table.ddl")
             .withDescription("CREATE TABLE statement for schema history table")
-            .withDefault(DEFAULT_TABLE_DDL);
+            .withDefault(DEFAULT_TABLE_DDL)
+            .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.ddl");
 
     private static final String DEFAULT_TABLE_SELECT = "SELECT id, history_data, history_data_seq FROM %s"
             + " ORDER BY record_insert_ts, record_insert_seq, id, history_data_seq";
@@ -56,24 +58,28 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
     /**
      * Field that will store the Schema history SELECT query.
      */
-    public static final Field PROP_TABLE_SELECT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.select")
+    public static final Field PROP_TABLE_SELECT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "table.select")
             .withDescription("SELECT statement to get the schema history from a database table")
-            .withDefault(DEFAULT_TABLE_SELECT);
+            .withDefault(DEFAULT_TABLE_SELECT)
+            .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.select");
 
     private static final String DEFAULT_TABLE_DATA_EXISTS_SELECT = "SELECT * FROM %s LIMIT 1";
 
     /**
      *  Field that will store the Schema history SELECT query to check existence of the table.
      */
-    public static final Field PROP_TABLE_DATA_EXISTS_SELECT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.select")
+    public static final Field PROP_TABLE_DATA_EXISTS_SELECT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "table.exists")
             .withDescription("SELECT statement to check existence of the storage table")
-            .withDefault(DEFAULT_TABLE_DATA_EXISTS_SELECT);
+            .withDefault(DEFAULT_TABLE_DATA_EXISTS_SELECT)
+            .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.exists");
 
     private static final String DEFAULT_TABLE_DATA_INSERT = "INSERT INTO %s(id, history_data, history_data_seq, record_insert_ts, record_insert_seq) VALUES ( ?, ?, ?, ?, ? )";
 
-    public static final Field PROP_TABLE_DATA_INSERT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.insert")
+    public static final Field PROP_TABLE_DATA_INSERT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "table.insert")
             .withDescription("INSERT statement to add new records to the schema storage table")
-            .withDefault(DEFAULT_TABLE_DATA_INSERT);
+            .withDefault(DEFAULT_TABLE_DATA_INSERT)
+            .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.insert");
+
     private String tableName;
     private String tableCreate;
     private String tableSelect;

@@ -9,7 +9,7 @@ jobs:
     # Suffix for job name
     identifier: "postgres-12-decoderbufs"
     targets:
-      - centos-stream-8-x86_64
+      - centos-stream-9
     skip_build: true
     manual_trigger: true
     labels:
@@ -29,7 +29,7 @@ jobs:
     # Suffix for job name
     identifier: "postgres-12-pgoutput"
     targets:
-      - centos-stream-8-x86_64
+      - centos-stream-9
     skip_build: true
     manual_trigger: true
     labels:
@@ -49,7 +49,7 @@ jobs:
     # Suffix for job name
     identifier: "postgres-15-decoderbufs"
     targets:
-      - centos-stream-8-x86_64
+      - centos-stream-9
     skip_build: true
     manual_trigger: true
     labels:
@@ -70,7 +70,7 @@ jobs:
     # Suffix for job name
     identifier: "postgres-15-pgoutput"
     targets:
-      - centos-stream-8-x86_64
+      - centos-stream-9
     skip_build: true
     manual_trigger: true
     labels:
@@ -90,7 +90,7 @@ jobs:
     # Suffix for job name
     identifier: "mysql-8-none"
     targets:
-      - centos-stream-8-x86_64
+      - centos-stream-9
     skip_build: true
     manual_trigger: true
     labels:
@@ -110,7 +110,7 @@ jobs:
     # Suffix for job name
     identifier: "mysql-8-assembly"
     targets:
-      - centos-stream-8-x86_64
+      - centos-stream-9
     skip_build: true
     manual_trigger: true
     labels:
@@ -130,7 +130,7 @@ jobs:
     # Suffix for job name
     identifier: "sqlserver-2017"
     targets:
-      - centos-stream-8-x86_64
+      - centos-stream-9
     skip_build: true
     manual_trigger: true
     labels:
@@ -149,7 +149,7 @@ jobs:
     # Suffix for job name
     identifier: "sqlserver-2022"
     targets:
-      - centos-stream-8-x86_64
+      - centos-stream-9
     skip_build: true
     manual_trigger: true
     labels:
@@ -168,7 +168,7 @@ jobs:
     # Suffix for job name
     identifier: "mongodb-4"
     targets:
-      - centos-stream-8-x86_64
+      - centos-stream-9
     skip_build: true
     manual_trigger: true
     labels:
@@ -188,7 +188,7 @@ jobs:
     # Suffix for job name
     identifier: "mongodb-5"
     targets:
-      - centos-stream-8-x86_64
+      - centos-stream-9
     skip_build: true
     manual_trigger: true
     labels:
@@ -208,7 +208,7 @@ jobs:
     # Suffix for job name
     identifier: "mongodb-6"
     targets:
-      - centos-stream-8-x86_64
+      - centos-stream-9
     skip_build: true
     manual_trigger: true
     labels:
@@ -234,6 +234,7 @@ jobs:
     manual_trigger: true
     labels:
       - oracle
+      - oracle-logminer
     tf_extra_params:
       test:
         tmt:
@@ -255,6 +256,7 @@ jobs:
     manual_trigger: true
     labels:
       - oracle
+      - oracle-xstream
     tf_extra_params:
       test:
         tmt:
@@ -277,6 +279,7 @@ jobs:
     manual_trigger: true
     labels:
       - oracle
+      - oracle-logminer
     tf_extra_params:
       test:
         tmt:
@@ -298,6 +301,7 @@ jobs:
     manual_trigger: true
     labels:
       - oracle
+      - oracle-xstream
     tf_extra_params:
       test:
         tmt:
@@ -321,6 +325,7 @@ jobs:
     labels:
       - oracle
       - oracle-23
+      - oracle-logminer
     tf_extra_params:
       test:
         tmt:
@@ -332,3 +337,49 @@ jobs:
             TEST_PROFILE: oracle
 
   ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "oracle-19-ispn"
+    targets:
+      centos-stream-8-x86_64:
+        distros: [ "debezium-tf-1930" ]
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - oracle
+      - oracle-logminer
+      - oracle-infinispan
+    tf_extra_params:
+      test:
+        tmt:
+          name: oracle
+      environments:
+        - variables:
+            ORACLE_VERSION: 19.3.0
+            ORACLE_PROFILE_ARGS: "-Poracle-infinispan-buffer -pl debezium-connector-oracle"
+            TEST_PROFILE: oracle
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
+    identifier: "oracle-19-ehcache"
+    targets:
+      centos-stream-8-x86_64:
+        distros: [ "debezium-tf-1930" ]
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - oracle
+      - oracle-logminer
+      - oracle-ehcache
+    tf_extra_params:
+      test:
+        tmt:
+          name: oracle
+      environments:
+        - variables:
+            ORACLE_VERSION: 19.3.0
+            ORACLE_PROFILE_ARGS: "-Poracle-ehcache -pl debezium-connector-oracle"
+            TEST_PROFILE: oracle

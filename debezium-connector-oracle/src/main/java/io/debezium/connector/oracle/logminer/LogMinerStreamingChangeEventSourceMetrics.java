@@ -11,6 +11,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -57,6 +58,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
     private final AtomicReference<Scn> oldestScn = new AtomicReference<>(Scn.NULL);
     private final AtomicReference<Instant> oldestScnTime = new AtomicReference<>();
     private final AtomicReference<String[]> currentLogFileNames = new AtomicReference<>(new String[0]);
+    private final AtomicReference<String[]> minedLogFileNames = new AtomicReference<>(new String[0]);
     private final AtomicReference<String[]> redoLogStatuses = new AtomicReference<>(new String[0]);
     private final AtomicReference<ZoneOffset> databaseZoneOffset = new AtomicReference<>(ZoneOffset.UTC);
 
@@ -75,6 +77,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
     private final AtomicLong oversizedTransactionCount = new AtomicLong();
     private final AtomicLong changesCount = new AtomicLong();
     private final AtomicLong scnFreezeCount = new AtomicLong();
+    private final AtomicLong partialRollbackCount = new AtomicLong();
 
     private final DurationHistogramMetric batchProcessingDuration = new DurationHistogramMetric();
     private final DurationHistogramMetric fetchQueryDuration = new DurationHistogramMetric();
@@ -122,6 +125,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
         rolledBackTransactionCount.set(0);
         oversizedTransactionCount.set(0);
         scnFreezeCount.set(0);
+        partialRollbackCount.set(0);
 
         fetchQueryDuration.reset();
         batchProcessingDuration.reset();
@@ -173,12 +177,17 @@ public class LogMinerStreamingChangeEventSourceMetrics
         if (Objects.isNull(oldestScnTime.get())) {
             return 0L;
         }
-        return Duration.between(Instant.now(), oldestScnTime.get()).toMillis();
+        return Duration.between(oldestScnTime.get(), Instant.now()).abs().toMillis();
     }
 
     @Override
     public String[] getCurrentLogFileNames() {
         return currentLogFileNames.get();
+    }
+
+    @Override
+    public String[] getMinedLogFileNames() {
+        return minedLogFileNames.get();
     }
 
     @Override
@@ -381,6 +390,11 @@ public class LogMinerStreamingChangeEventSourceMetrics
     }
 
     @Override
+    public long getNumberOfPartialRollbackCount() {
+        return partialRollbackCount.get();
+    }
+
+    @Override
     public Set<String> getRolledBackTransactionIds() {
         return rolledBackTransactionIds.getAll();
     }
@@ -446,24 +460,33 @@ public class LogMinerStreamingChangeEventSourceMetrics
      */
     public void setOldestScnDetails(Scn oldestScn, Instant changeTime) {
         this.oldestScn.set(oldestScn);
-        this.oldestScnTime.set(changeTime);
+        this.oldestScnTime.set(oldestScn.isNull() ? null : getAdjustedChangeTime(changeTime));
     }
 
     /**
-     * Set the current iteration's logs that are being mined.
+     * Set the current iteration's online redo logs that are being mined.
      *
-     * @param logFileNames current set of logs that are part of the mining session.
+     * @param redoLogFileNames current set of online redo logs that are part of the mining session.
      */
-    public void setCurrentLogFileNames(Set<String> logFileNames) {
-        this.currentLogFileNames.set(logFileNames.toArray(String[]::new));
-        if (logFileNames.size() < minimumLogsMined.get()) {
-            minimumLogsMined.set(logFileNames.size());
+    public void setCurrentLogFileNames(Set<String> redoLogFileNames) {
+        this.currentLogFileNames.set(redoLogFileNames.toArray(String[]::new));
+    }
+
+    /**
+     * Set all logs that are currently being mined.
+     *
+     * @param minedLogFileNames all logs that are part of the mining session
+     */
+    public void setMinedLogFileNames(Set<String> minedLogFileNames) {
+        this.minedLogFileNames.set(minedLogFileNames.toArray(String[]::new));
+        if (minedLogFileNames.size() < minimumLogsMined.get()) {
+            minimumLogsMined.set(minedLogFileNames.size());
         }
         else if (minimumLogsMined.get() == 0) {
-            minimumLogsMined.set(logFileNames.size());
+            minimumLogsMined.set(minedLogFileNames.size());
         }
-        if (logFileNames.size() > maximumLogsMined.get()) {
-            maximumLogsMined.set(logFileNames.size());
+        if (minedLogFileNames.size() > maximumLogsMined.get()) {
+            maximumLogsMined.set(minedLogFileNames.size());
         }
     }
 
@@ -539,6 +562,16 @@ public class LogMinerStreamingChangeEventSourceMetrics
      */
     public void incrementScnFreezeCount() {
         scnFreezeCount.incrementAndGet();
+    }
+
+    /**
+     * Sets the number of times the system change number is considered frozen and has not changed over several consecutive
+     * LogMiner query batches.
+     *
+     * @param scnFreezeCount number of times the system change number is considered frozen
+     */
+    public void setScnFreezeCount(long scnFreezeCount) {
+        this.scnFreezeCount.set(scnFreezeCount);
     }
 
     /**
@@ -666,10 +699,15 @@ public class LogMinerStreamingChangeEventSourceMetrics
      */
     public void calculateLagFromSource(Instant changeTime) {
         if (changeTime != null) {
-            final Instant adjustedTime = changeTime.plusMillis(timeDifference.longValue())
-                    .minusSeconds(databaseZoneOffset.get().getTotalSeconds());
-            lagFromSourceDuration.set(Duration.between(adjustedTime, clock.instant()).abs());
+            lagFromSourceDuration.set(Duration.between(getAdjustedChangeTime(changeTime), clock.instant()).abs());
         }
+    }
+
+    /**
+     * Increases the number of partial rollback events detected.
+     */
+    public void increasePartialRollbackCount() {
+        partialRollbackCount.addAndGet(1);
     }
 
     @Override
@@ -683,8 +721,8 @@ public class LogMinerStreamingChangeEventSourceMetrics
                 ", commitScn=" + commitScn +
                 ", oldestScn=" + oldestScn +
                 ", oldestScnTime=" + oldestScnTime +
-                ", currentLogFileNames=" + currentLogFileNames +
-                ", redoLogStatuses=" + redoLogStatuses +
+                ", currentLogFileNames=" + Arrays.asList(currentLogFileNames.get()) +
+                ", redoLogStatuses=" + Arrays.asList(redoLogStatuses.get()) +
                 ", databaseZoneOffset=" + databaseZoneOffset +
                 ", batchSize=" + batchSize +
                 ", logSwitchCount=" + logSwitchCount +
@@ -711,7 +749,15 @@ public class LogMinerStreamingChangeEventSourceMetrics
                 ", processGlobalAreaMemory=" + processGlobalAreaMemory +
                 ", abandonedTransactionIds=" + abandonedTransactionIds +
                 ", rolledBackTransactionIds=" + rolledBackTransactionIds +
-                "} " + super.toString();
+                "} ";
+    }
+
+    private Instant getAdjustedChangeTime(Instant changeTime) {
+        if (changeTime == null) {
+            return null;
+        }
+        return changeTime.plusMillis(timeDifference.longValue())
+                .minusSeconds(databaseZoneOffset.get().getTotalSeconds());
     }
 
     /**
@@ -770,6 +816,11 @@ public class LogMinerStreamingChangeEventSourceMetrics
         Duration getTotal() {
             return total.get();
         }
+
+        @Override
+        public String toString() {
+            return String.format("{min=%s,max=%s,total=%s}", min.get(), max.get(), total.get());
+        }
     }
 
     /**
@@ -810,6 +861,11 @@ public class LogMinerStreamingChangeEventSourceMetrics
         public long getMax() {
             return max.get();
         }
+
+        @Override
+        public String toString() {
+            return String.format("{value=%d,max=%d}", value.get(), max.get());
+        }
     }
 
     /**
@@ -838,6 +894,11 @@ public class LogMinerStreamingChangeEventSourceMetrics
 
         public Set<T> getAll() {
             return this.cache.get().keySet();
+        }
+
+        @Override
+        public String toString() {
+            return getAll().toString();
         }
     }
 

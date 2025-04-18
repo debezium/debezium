@@ -3,6 +3,9 @@ folder("release") {
     displayName("Release")
 }
 
+def containerImagePipelineParameters = evaluate(readFileFromWorkspace('jenkins-jobs/job-dsl/release/parameters/deploy_docker_images_parameters.groovy'))
+def commonParameters = evaluate(readFileFromWorkspace('jenkins-jobs/job-dsl/release/parameters/common_parameters.groovy'))
+
 pipelineJob('release/release-deploy-container-images') {
     displayName('Debezium Deploy Container Images')
     description('Build and deploy Container images to the registry')
@@ -22,13 +25,11 @@ pipelineJob('release/release-deploy-container-images') {
 
     parameters {
         stringParam('MAIL_TO', 'jpechane@redhat.com')
-        stringParam('DEBEZIUM_REPOSITORY', 'debezium/debezium', 'Repository from which Debezium is built')
-        stringParam('IMAGES_REPOSITORY', 'github.com/debezium/container-images.git', 'Repository with Debezium Dockerfiles')
-        stringParam('IMAGES_BRANCH', 'main', 'Branch used for images repository')
-        stringParam('STREAMS_TO_BUILD_COUNT', '2', 'How many most recent streams should be built')
-        stringParam('TAGS_PER_STREAM_COUNT', '1', 'How any most recent tags per stream should be built')
-        stringParam('MULTIPLATFORM_PLATFORMS', 'linux/amd64,linux/arm64', 'Which platforms to build images for')
-        booleanParam('SKIP_UI', true, 'Should UI image be skipped (skipped by default due to build failure on CI)?')
+        booleanParam('DRY_RUN', false, 'When checked the changes and artifacts are not pushed to repositories and registries')
+
+        // Pass the parameters context to the function
+        commonParameters(delegate)
+        containerImagePipelineParameters(delegate)
     }
 
     definition {

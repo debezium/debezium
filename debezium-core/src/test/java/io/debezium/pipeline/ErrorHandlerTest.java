@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Optional;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.RetriableException;
@@ -18,6 +19,7 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.EnumeratedValue;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.util.LoggingContext;
@@ -38,6 +40,16 @@ public class ErrorHandlerTest {
         @Override
         public String getConnectorName() {
             return "test";
+        }
+
+        @Override
+        public EnumeratedValue getSnapshotMode() {
+            return null;
+        }
+
+        @Override
+        public Optional<EnumeratedValue> getSnapshotLockingMode() {
+            return Optional.empty();
         }
 
         @Override

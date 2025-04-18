@@ -28,38 +28,4 @@ public class CustomPartialTableTestSnapshot extends CustomStartFromStreamingTest
         return Optional.empty();
     }
 
-    @Override
-    public void validate(boolean offsetContextExists, boolean isSnapshotInProgress) {
-
-    }
-
-    @Override
-    public boolean shouldStream() {
-        return true;
-    }
-
-    @Override
-    public boolean shouldSnapshot() {
-        return true;
-    }
-
-    @Override
-    public boolean shouldSnapshotOnSchemaError() {
-        return false;
-    }
-
-    @Override
-    public boolean shouldSnapshotOnDataError() {
-        return false;
-    }
-
-    @Override
-    public boolean shouldSnapshotSchema() {
-        return false;
-    }
-
-    @Override
-    public boolean shouldStreamEventsStartingFromSnapshot() {
-        return false;
-    }
 }

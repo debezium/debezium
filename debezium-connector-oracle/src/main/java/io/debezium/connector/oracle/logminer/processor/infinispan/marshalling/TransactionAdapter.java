@@ -35,11 +35,13 @@ public class TransactionAdapter {
      * @param numberOfEvents the number of events in the transaction
      * @param userName the user name
      * @param redoThreadId the redo thread id
+     * @param clientId the client id
      * @return the constructed Transaction instance
      */
     @ProtoFactory
-    public InfinispanTransaction factory(String transactionId, String scn, String changeTime, int numberOfEvents, String userName, Integer redoThreadId) {
-        return new InfinispanTransaction(transactionId, Scn.valueOf(scn), Instant.parse(changeTime), userName, numberOfEvents, redoThreadId);
+    public InfinispanTransaction factory(String transactionId, String scn, String changeTime, int numberOfEvents, String userName, Integer redoThreadId,
+                                         String clientId) {
+        return new InfinispanTransaction(transactionId, Scn.valueOf(scn), Instant.parse(changeTime), userName, numberOfEvents, redoThreadId, clientId);
     }
 
     /**
@@ -109,5 +111,16 @@ public class TransactionAdapter {
     @ProtoField(number = 6)
     public Integer getRedoThreadId(InfinispanTransaction transaction) {
         return transaction.getRedoThreadId();
+    }
+
+    /**
+     * A ProtoStream handler to extract the {@code clientId} field from the {@link InfinispanTransaction}.
+     *
+     * @param transaction the transaction instance, must not be {@code null}
+     * @return the clientId
+     */
+    @ProtoField(number = 7)
+    public String getClientId(InfinispanTransaction transaction) {
+        return transaction.getClientId();
     }
 }

@@ -20,6 +20,7 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
 
@@ -41,8 +42,11 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
 
         TestHelper.dropTable(connection, "a");
         TestHelper.dropTable(connection, "b");
+        TestHelper.dropTable(connection, "a42");
         connection.execute("CREATE TABLE a (\"Pk\" numeric(9,0) primary key, aa numeric(9,0))");
         connection.execute("CREATE TABLE b (\"Pk\" numeric(9,0) primary key, aa numeric(9,0))");
+        connection.execute("CREATE TABLE a42 (pk1 numeric(9,0), pk2 numeric(9,0), pk3 numeric(9,0), pk4 numeric(9,0), aa numeric(9,0))");
+        TestHelper.streamTable(connection, "a42");
 
         // todo: creates signal table in the PDB, do we want it to be in the CDB?
         TestHelper.dropTable(connection, "debezium_signal");
@@ -61,6 +65,7 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
         if (connection != null) {
             TestHelper.dropTable(connection, "a");
             TestHelper.dropTable(connection, "b");
+            TestHelper.dropTable(connection, "a42");
             TestHelper.dropTable(connection, "debezium_signal");
             connection.close();
         }
@@ -116,6 +121,21 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
     }
 
     @Override
+    protected String noPKTopicName() {
+        return "server1.DEBEZIUM.A42";
+    }
+
+    @Override
+    protected String noPKTableName() {
+        return "DEBEZIUM.A42";
+    }
+
+    @Override
+    protected String returnedIdentifierName(String queriedID) {
+        return queriedID.toUpperCase();
+    }
+
+    @Override
     protected List<String> tableNames() {
         return List.of("DEBEZIUM.A", "DEBEZIUM.B");
     }
@@ -123,6 +143,11 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
     @Override
     protected String tableDataCollectionId() {
         return TestHelper.getDatabaseName() + ".DEBEZIUM.A";
+    }
+
+    @Override
+    protected String noPKTableDataCollectionId() {
+        return TestHelper.getDatabaseName() + ".DEBEZIUM.A42";
     }
 
     @Override
@@ -138,9 +163,10 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
     @Override
     protected Configuration.Builder config() {
         return TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.NO_DATA)
                 .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.getDatabaseName() + ".DEBEZIUM.DEBEZIUM_SIGNAL")
-                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.A,DEBEZIUM\\.B")
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.A,DEBEZIUM\\.B,DEBEZIUM\\.A42")
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "DEBEZIUM\\.A42:pk1,pk2,pk3,pk4")
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true);
     }
 
@@ -157,6 +183,7 @@ public class IncrementalSnapshotCaseSensitiveIT extends AbstractIncrementalSnaps
                 .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.INITIAL)
                 .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.getDatabaseName() + ".DEBEZIUM.DEBEZIUM_SIGNAL")
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, tableIncludeList)
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, "DEBEZIUM\\.A42:pk1,pk2,pk3,pk4")
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedDdl);
     }
 

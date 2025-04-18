@@ -41,6 +41,13 @@ public interface ChangeRecordEmitter<P extends Partition> {
     Operation getOperation();
 
     /**
+     * Returns true if the record should be ignored.
+     */
+    default boolean ignoreRecord() {
+        return false;
+    }
+
+    /**
      * Callback passed to {@link ChangeRecordEmitter}s, allowing them to produce one
      * or more change records.
      */

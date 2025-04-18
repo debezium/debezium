@@ -111,12 +111,12 @@ public class MongoDbConnectionContext {
     /**
      * Determines if RS name is specified when required
      *
-     * @return False if RS name is not specified, and we are connected to sharded cluster. True otherwise
+     * @return True if RS name is specified or not required. False otherwise.
      */
-    public boolean hasRequiredReplicaSetName() {
+    public boolean hasReplicaSetNameIfRequired() {
         if (getRequiredReplicaSetName().isPresent()) {
             return true;
         }
-        return getClusterDescription().getType() == ClusterType.SHARDED;
+        return getClusterDescription().getType() != ClusterType.REPLICA_SET;
     }
 }

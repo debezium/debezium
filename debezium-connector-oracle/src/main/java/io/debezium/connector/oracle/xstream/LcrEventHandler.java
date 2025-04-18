@@ -105,6 +105,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                 return;
             }
 
+            offsetContext.setRowId(""); // specifically reset on each event
             offsetContext.setScn(lcrPosition.getScn());
             offsetContext.setEventScn(lcrPosition.getScn());
             offsetContext.setLcrPosition(lcrPosition.toString());
@@ -150,7 +151,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
     }
 
     private void dispatchDataChangeEvent(RowLCR lcr, Map<String, Object> chunkValues) throws InterruptedException {
-        LOGGER.info("Processing DML event {}", lcr);
+        LOGGER.debug("Processing DML event {}", lcr);
 
         if (RowLCR.COMMIT.equals(lcr.getCommandType())) {
             final Instant commitTimestamp = lcr.getSourceTime().timestampValue().toInstant();
@@ -229,6 +230,11 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                 LOGGER.trace("\tColumn '{}' not supplied, initialized with unavailable value", column.name());
                 chunkValues.put(column.name(), OracleValueConverters.UNAVAILABLE_VALUE);
             }
+        }
+
+        final Object rowIdObject = lcr.getAttribute("ROW_ID");
+        if (rowIdObject != null) {
+            offsetContext.setRowId(rowIdObject.toString());
         }
 
         dispatcher.dispatchDataChangeEvent(

@@ -80,7 +80,6 @@ public class SqlServerReselectColumnsProcessorIT extends AbstractReselectProcess
     @Override
     protected void createTable() throws Exception {
         connection.execute("CREATE TABLE dbz4321 (id int identity(1,1) primary key, data varchar(50), data2 int)");
-        TestHelper.enableTableCdc(connection, "dbz4321");
     }
 
     @Override
@@ -109,4 +108,8 @@ public class SqlServerReselectColumnsProcessorIT extends AbstractReselectProcess
         return consumeRecordsByTopic(3);
     }
 
+    @Override
+    protected void enableTableForCdc() throws Exception {
+        TestHelper.enableTableCdc(connection, "dbz4321");
+    }
 }

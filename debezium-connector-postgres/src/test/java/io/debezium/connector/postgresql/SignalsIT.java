@@ -30,11 +30,12 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.spi.CustomActionProvider;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.engine.DebeziumEngine;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.signal.actions.Log;
 
-public class SignalsIT extends AbstractConnectorTest {
+public class SignalsIT extends AbstractAsyncEngineConnectorTest {
 
     private static final String INSERT_STMT = "INSERT INTO s1.a (aa) VALUES (1);";
     private static final String SETUP_TABLES_STMT = "DROP SCHEMA IF EXISTS s1 CASCADE;" +
@@ -63,24 +64,34 @@ public class SignalsIT extends AbstractConnectorTest {
     }
 
     @Test
+    public void signalLogViaInProcessChannel() throws InterruptedException {
+        signalLog(false, false);
+    }
+
+    @Test
     public void signalLogWithEscapedCharacter() throws InterruptedException {
         signalLog(true);
     }
 
     private void signalLog(boolean includingEscapedCharacter) throws InterruptedException {
+        signalLog(includingEscapedCharacter, true);
+    }
+
+    private void signalLog(boolean includingEscapedCharacter, boolean useSource) throws InterruptedException {
         // Testing.Print.enable();
         final LogInterceptor logInterceptor = new LogInterceptor(Log.class);
 
         String signalTable = "s1.debezium_signal";
-        String signalTableWithEscapedCharacter = "s1.\"debezium_signal\\\"";
+        String signalTableWithEscapedCharacter = "s1.\"debezium_signal\"";
 
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(includingEscapedCharacter ? SETUP_TABLES_STMT.replace(signalTable, signalTableWithEscapedCharacter) : SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, includingEscapedCharacter ? signalTableWithEscapedCharacter : signalTable)
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, "500")
+                .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,in-process")
                 .build();
         start(PostgresConnector.class, config);
         assertConnectorIsRunning();
@@ -93,15 +104,23 @@ public class SignalsIT extends AbstractConnectorTest {
         // insert and verify a new record
         TestHelper.execute(INSERT_STMT);
 
-        // Insert the signal record
-        String insertSql = String.format("INSERT INTO %s VALUES('1', 'log', '{\"message\": \"Signal message at offset ''{}''\"}')",
-                includingEscapedCharacter ? signalTableWithEscapedCharacter : signalTable);
-        TestHelper.execute(insertSql);
+        int expectedNumRecords;
+        if (useSource) {
+            expectedNumRecords = 2;
+            // Insert the signal record
+            String insertSql = String.format("INSERT INTO %s VALUES('1', 'log', '{\"message\": \"Signal message at offset ''{}''\"}')",
+                    includingEscapedCharacter ? signalTableWithEscapedCharacter : signalTable);
+            TestHelper.execute(insertSql);
+        }
+        else {
+            expectedNumRecords = 1;
+            getSignaler().signal(new DebeziumEngine.Signal("1", "log", "{\"message\": \"Signal message at offset ''{}''\"}", null));
+        }
 
         waitForAvailableRecords(800, TimeUnit.MILLISECONDS);
 
-        final SourceRecords records = consumeRecordsByTopic(2);
-        assertThat(records.allRecordsInOrder()).hasSize(2);
+        final SourceRecords records = consumeRecordsByTopic(expectedNumRecords);
+        assertThat(records.allRecordsInOrder()).hasSize(expectedNumRecords);
         assertThat(logInterceptor.containsMessage("Signal message at offset")).isTrue();
     }
 
@@ -113,7 +132,7 @@ public class SignalsIT extends AbstractConnectorTest {
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, "500")
@@ -147,7 +166,7 @@ public class SignalsIT extends AbstractConnectorTest {
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, "500")
@@ -227,7 +246,7 @@ public class SignalsIT extends AbstractConnectorTest {
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, "500")
                 .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "jmx")
@@ -253,7 +272,7 @@ public class SignalsIT extends AbstractConnectorTest {
         TestHelper.dropDefaultReplicationSlot();
         TestHelper.execute(SETUP_TABLES_STMT);
         Configuration config = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, "500")
                 .with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "jmx")

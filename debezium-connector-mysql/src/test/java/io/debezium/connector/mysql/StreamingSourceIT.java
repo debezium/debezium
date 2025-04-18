@@ -5,487 +5,48 @@
  */
 package io.debezium.connector.mysql;
 
-import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static io.debezium.junit.EqualityCheck.LESS_THAN_OR_EQUAL;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
-import java.lang.management.ManagementFactory;
-import java.nio.file.Path;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-import javax.management.MBeanServer;
-
-import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.source.SourceRecord;
-import org.awaitility.Awaitility;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TestRule;
 
-import io.debezium.DebeziumException;
-import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
-import io.debezium.config.Configuration;
-import io.debezium.connector.mysql.MySqlConnectorConfig.SecureConnectionMode;
-import io.debezium.connector.mysql.junit.SkipTestDependingOnDatabaseRule;
-import io.debezium.connector.mysql.junit.SkipWhenDatabaseIs;
-import io.debezium.connector.mysql.junit.SkipWhenDatabaseIs.Type;
-import io.debezium.data.Envelope;
-import io.debezium.data.KeyValueStore;
-import io.debezium.data.KeyValueStore.Collection;
-import io.debezium.data.SchemaChangeHistory;
-import io.debezium.data.VerifyRecord;
+import io.debezium.connector.binlog.BinlogStreamingSourceIT;
+import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs;
+import io.debezium.connector.binlog.util.TestHelper;
+import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
-import io.debezium.heartbeat.DatabaseHeartbeatImpl;
-import io.debezium.heartbeat.Heartbeat;
-import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipWhenDatabaseVersion;
-import io.debezium.junit.logging.LogInterceptor;
-import io.debezium.relational.history.SchemaHistory;
-import io.debezium.schema.AbstractTopicNamingStrategy;
-import io.debezium.time.ZonedTimestamp;
-import io.debezium.util.Testing;
 
 /**
  * @author Randall Hauch, Jiri Pechanec
  *
  */
-@SkipWhenDatabaseIs(value = Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, reason = "DDL uses fractional second data types, not supported until MySQL 5.6"))
-public class StreamingSourceIT extends AbstractAsyncEngineConnectorTest {
-
-    private static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-binlog.txt").toAbsolutePath();
-    private final UniqueDatabase DATABASE = new UniqueDatabase("logical_server_name", "connector_test_ro")
-            .withDbHistoryPath(SCHEMA_HISTORY_PATH);
+public class StreamingSourceIT extends BinlogStreamingSourceIT<MySqlConnector> implements MySqlCommon {
 
     private static final String SET_TLS_PROTOCOLS = "database.enabledTLSProtocols";
 
-    private Configuration config;
-    private KeyValueStore store;
-    private SchemaChangeHistory schemaChanges;
-
-    @Rule
-    public TestRule skipRule = new SkipTestDependingOnDatabaseRule();
-
-    @Before
-    public void beforeEach() {
-        stopConnector();
-        DATABASE.createAndInitialize();
-        initializeConnectorTestFramework();
-        Testing.Files.delete(SCHEMA_HISTORY_PATH);
-
-        this.store = KeyValueStore.createForTopicsBeginningWith(DATABASE.getServerName() + ".");
-        this.schemaChanges = new SchemaChangeHistory(DATABASE.getServerName());
-    }
-
-    @After
-    public void afterEach() {
-        try {
-            stopConnector();
-        }
-        finally {
-            Testing.Files.delete(SCHEMA_HISTORY_PATH);
-        }
-    }
-
-    protected int consumeAtLeast(int minNumber) throws InterruptedException {
-        return consumeAtLeast(minNumber, 20, TimeUnit.SECONDS);
-    }
-
-    protected int consumeAtLeast(int minNumber, long timeout, TimeUnit unit) throws InterruptedException {
-        final SourceRecords records = consumeRecordsByTopic(minNumber);
-        final int count = records.allRecordsInOrder().size();
-        records.forEach(record -> {
-            VerifyRecord.isValid(record);
-            store.add(record);
-            schemaChanges.add(record);
-        });
-        Testing.print("" + count + " records");
-        return count;
-    }
-
-    protected long filterAtLeast(final int minNumber, final long timeout, final TimeUnit unit) throws InterruptedException {
-        final long targetNumber = minNumber;
-        long startTime = System.currentTimeMillis();
-        while (getNumberOfEventsFiltered() < targetNumber && (System.currentTimeMillis() - startTime) < unit.toMillis(timeout)) {
-            // Ignore the records polled.
-            consumeRecord();
-        }
-        return getNumberOfEventsFiltered();
-    }
-
-    private long getNumberOfEventsFiltered() {
-        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-        try {
-            return (long) mbeanServer.getAttribute(getStreamingMetricsObjectName("mysql", DATABASE.getServerName(), "streaming"),
-                    "NumberOfEventsFiltered");
-        }
-        catch (Exception e) {
-            throw new DebeziumException(e);
-        }
-    }
-
-    private long getNumberOfSkippedEvents() {
-        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-        try {
-            return (long) mbeanServer.getAttribute(getStreamingMetricsObjectName("mysql", DATABASE.getServerName(), "streaming"),
-                    "NumberOfSkippedEvents");
-        }
-        catch (Exception e) {
-            throw new DebeziumException(e);
-        }
-    }
-
-    protected Configuration.Builder simpleConfig() {
-        return DATABASE.defaultConfig()
-                .with(MySqlConnectorConfig.USER, "replicator")
-                .with(MySqlConnectorConfig.PASSWORD, "replpass")
-                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(MySqlConnectorConfig.INCLUDE_SQL_QUERY, false)
-                .with(MySqlConnectorConfig.SNAPSHOT_MODE, MySqlConnectorConfig.SnapshotMode.NEVER);
-    }
-
-    @Test
-    public void shouldCreateSnapshotOfSingleDatabase() throws Exception {
-        // Use the DB configuration to define the connector's configuration ...
-        config = simpleConfig()
-                .build();
-        // Start the connector ...
-        start(MySqlConnector.class, config);
-
-        // Poll for records ...
-        // Testing.Print.enable();
-        int expected = 9 + 9 + 4 + 5 + 1; // only the inserts for our 4 tables in this database and 1 create table
-        int consumed = consumeAtLeast(expected);
-        assertThat(consumed).isGreaterThanOrEqualTo(expected);
-
-        store.sourceRecords().forEach(System.out::println);
-        // There should be no schema changes ...
-        assertThat(schemaChanges.recordCount()).isEqualTo(0);
-
-        // Check the records via the store ...
-        assertThat(store.collectionCount()).isEqualTo(5);
-        Collection products = store.collection(DATABASE.getDatabaseName(), productsTableName());
-        assertThat(products.numberOfCreates()).isEqualTo(9);
-        assertThat(products.numberOfUpdates()).isEqualTo(0);
-        assertThat(products.numberOfDeletes()).isEqualTo(0);
-        assertThat(products.numberOfReads()).isEqualTo(0);
-        assertThat(products.numberOfTombstones()).isEqualTo(0);
-        assertThat(products.numberOfKeySchemaChanges()).isEqualTo(1);
-        assertThat(products.numberOfValueSchemaChanges()).isEqualTo(1);
-
-        Collection products_on_hand = store.collection(DATABASE.getDatabaseName(), "products_on_hand");
-        assertThat(products_on_hand.numberOfCreates()).isEqualTo(9);
-        assertThat(products_on_hand.numberOfUpdates()).isEqualTo(0);
-        assertThat(products_on_hand.numberOfDeletes()).isEqualTo(0);
-        assertThat(products_on_hand.numberOfReads()).isEqualTo(0);
-        assertThat(products_on_hand.numberOfTombstones()).isEqualTo(0);
-        assertThat(products_on_hand.numberOfKeySchemaChanges()).isEqualTo(1);
-        assertThat(products_on_hand.numberOfValueSchemaChanges()).isEqualTo(1);
-
-        Collection customers = store.collection(DATABASE.getDatabaseName(), "customers");
-        assertThat(customers.numberOfCreates()).isEqualTo(4);
-        assertThat(customers.numberOfUpdates()).isEqualTo(0);
-        assertThat(customers.numberOfDeletes()).isEqualTo(0);
-        assertThat(customers.numberOfReads()).isEqualTo(0);
-        assertThat(customers.numberOfTombstones()).isEqualTo(0);
-        assertThat(customers.numberOfKeySchemaChanges()).isEqualTo(1);
-        assertThat(customers.numberOfValueSchemaChanges()).isEqualTo(1);
-
-        Collection orders = store.collection(DATABASE.getDatabaseName(), "orders");
-        assertThat(orders.numberOfCreates()).isEqualTo(5);
-        assertThat(orders.numberOfUpdates()).isEqualTo(0);
-        assertThat(orders.numberOfDeletes()).isEqualTo(0);
-        assertThat(orders.numberOfReads()).isEqualTo(0);
-        assertThat(orders.numberOfTombstones()).isEqualTo(0);
-        assertThat(orders.numberOfKeySchemaChanges()).isEqualTo(1);
-        assertThat(orders.numberOfValueSchemaChanges()).isEqualTo(1);
-    }
-
-    @Test
-    public void shouldCreateSnapshotOfSingleDatabaseWithSchemaChanges() throws Exception {
-        // Use the DB configuration to define the connector's configuration ...
-        config = simpleConfig()
-                .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, true)
-                .build();
-
-        // Start the connector ...
-        start(MySqlConnector.class, config);
-
-        // Poll for records ...
-        // Testing.Print.enable();
-        int expectedSchemaChangeCount = 5 + 2; // 5 tables plus 2 alters
-        int expected = (9 + 9 + 4 + 5 + 1) + expectedSchemaChangeCount; // only the inserts for our 4 tables in this database, plus
-        // schema changes
-        int consumed = consumeAtLeast(expected);
-        assertThat(consumed).isGreaterThanOrEqualTo(expected);
-
-        // There should be no schema changes ...
-        assertThat(schemaChanges.recordCount()).isEqualTo(expectedSchemaChangeCount);
-        final List<String> expectedAffectedTables = Arrays.asList(
-                null, // CREATE DATABASE
-                "Products", // CREATE TABLE
-                "Products", // ALTER TABLE
-                "products_on_hand", // CREATE TABLE
-                "customers", // CREATE TABLE
-                "orders", // CREATE TABLE
-                "dbz_342_timetest" // CREATE TABLE
-        );
-        final List<String> affectedTables = new ArrayList<>();
-        schemaChanges.forEach(record -> {
-            affectedTables.add(((Struct) record.value()).getStruct("source").getString("table"));
-            assertThat(((Struct) record.value()).getStruct("source").get("db")).isEqualTo(DATABASE.getDatabaseName());
-        });
-        assertThat(affectedTables).isEqualTo(expectedAffectedTables);
-
-        // Check the records via the store ...
-        assertThat(store.collectionCount()).isEqualTo(5);
-        Collection products = store.collection(DATABASE.getDatabaseName(), productsTableName());
-        assertThat(products.numberOfCreates()).isEqualTo(9);
-        assertThat(products.numberOfUpdates()).isEqualTo(0);
-        assertThat(products.numberOfDeletes()).isEqualTo(0);
-        assertThat(products.numberOfReads()).isEqualTo(0);
-        assertThat(products.numberOfTombstones()).isEqualTo(0);
-        assertThat(products.numberOfKeySchemaChanges()).isEqualTo(1);
-        assertThat(products.numberOfValueSchemaChanges()).isEqualTo(1);
-
-        Collection products_on_hand = store.collection(DATABASE.getDatabaseName(), "products_on_hand");
-        assertThat(products_on_hand.numberOfCreates()).isEqualTo(9);
-        assertThat(products_on_hand.numberOfUpdates()).isEqualTo(0);
-        assertThat(products_on_hand.numberOfDeletes()).isEqualTo(0);
-        assertThat(products_on_hand.numberOfReads()).isEqualTo(0);
-        assertThat(products_on_hand.numberOfTombstones()).isEqualTo(0);
-        assertThat(products_on_hand.numberOfKeySchemaChanges()).isEqualTo(1);
-        assertThat(products_on_hand.numberOfValueSchemaChanges()).isEqualTo(1);
-
-        Collection customers = store.collection(DATABASE.getDatabaseName(), "customers");
-        assertThat(customers.numberOfCreates()).isEqualTo(4);
-        assertThat(customers.numberOfUpdates()).isEqualTo(0);
-        assertThat(customers.numberOfDeletes()).isEqualTo(0);
-        assertThat(customers.numberOfReads()).isEqualTo(0);
-        assertThat(customers.numberOfTombstones()).isEqualTo(0);
-        assertThat(customers.numberOfKeySchemaChanges()).isEqualTo(1);
-        assertThat(customers.numberOfValueSchemaChanges()).isEqualTo(1);
-
-        Collection orders = store.collection(DATABASE.getDatabaseName(), "orders");
-        assertThat(orders.numberOfCreates()).isEqualTo(5);
-        assertThat(orders.numberOfUpdates()).isEqualTo(0);
-        assertThat(orders.numberOfDeletes()).isEqualTo(0);
-        assertThat(orders.numberOfReads()).isEqualTo(0);
-        assertThat(orders.numberOfTombstones()).isEqualTo(0);
-        assertThat(orders.numberOfKeySchemaChanges()).isEqualTo(1);
-        assertThat(orders.numberOfValueSchemaChanges()).isEqualTo(1);
-    }
-
-    /**
-     * Setup a DATABASE_INCLUDE_LIST filter that filters all events.
-     * Verify all events are properly filtered.
-     * Verify numberOfFilteredEvents metric is incremented correctly.
-     */
-    @Test
-    @FixFor("DBZ-1206")
-    public void shouldFilterAllRecordsBasedOnDatabaseIncludeListFilter() throws Exception {
-        // Define configuration that will ignore all events from MySQL source.
-        config = simpleConfig()
-                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, "db-does-not-exist")
-                .build();
-
-        // Start the connector ...
-        start(MySqlConnector.class, config);
-        waitForStreamingRunning("mysql", DATABASE.getServerName(), "streaming");
-
-        // Lets wait for at least 35 events to be filtered.
-        final int expectedFilterCount = 35;
-        final long numberFiltered = filterAtLeast(expectedFilterCount, 20, TimeUnit.SECONDS);
-
-        // All events should have been filtered.
-        assertThat(numberFiltered).isGreaterThanOrEqualTo(expectedFilterCount);
-
-        // There should be no schema changes
-        assertThat(schemaChanges.recordCount()).isEqualTo(0);
-
-        // There should be no records
-        assertThat(store.collectionCount()).isEqualTo(0);
-
-        // There should be no skipped
-        assertThat(getNumberOfSkippedEvents()).isEqualTo(0);
-    }
-
-    @Test
-    @FixFor("DBZ-183")
-    public void shouldHandleTimestampTimezones() throws Exception {
-        final UniqueDatabase REGRESSION_DATABASE = new UniqueDatabase("logical_server_name", "regression_test")
-                .withDbHistoryPath(SCHEMA_HISTORY_PATH);
-        REGRESSION_DATABASE.createAndInitialize();
-
-        String tableName = "dbz_85_fractest";
-        config = simpleConfig().with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, REGRESSION_DATABASE.getDatabaseName())
-                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, REGRESSION_DATABASE.qualifiedTableName(tableName))
-                .build();
-
-        // Start the connector ...
-        start(MySqlConnector.class, config);
-
-        int expectedChanges = 1; // only 1 insert
-
-        consumeAtLeast(expectedChanges);
-
-        String dateTime = MySqlTestConnection.isMariaDb() ? "2014-09-08T17:51:04.77" : "2014-09-08T17:51:04.780";
-
-        // Check the records via the store ...
-        List<SourceRecord> sourceRecords = store.sourceRecords();
-        assertThat(sourceRecords.size()).isEqualTo(1);
-        // TIMESTAMP should be converted to UTC, using the DB's (or connection's) time zone
-        ZonedDateTime expectedTimestamp = ZonedDateTime.of(
-                LocalDateTime.parse(dateTime),
-                UniqueDatabase.TIMEZONE)
-                .withZoneSameInstant(ZoneOffset.UTC);
-
-        String expectedTimestampString = expectedTimestamp.format(ZonedTimestamp.FORMATTER);
-        SourceRecord sourceRecord = sourceRecords.get(0);
-        Struct value = (Struct) sourceRecord.value();
-        Struct after = value.getStruct(Envelope.FieldName.AFTER);
-        String actualTimestampString = after.getString("c4");
-        assertThat(actualTimestampString).isEqualTo(expectedTimestampString);
-    }
-
-    @Test
-    @FixFor("DBZ-342")
-    public void shouldHandleMySQLTimeCorrectly() throws Exception {
-        final UniqueDatabase REGRESSION_DATABASE = new UniqueDatabase("logical_server_name", "regression_test")
-                .withDbHistoryPath(SCHEMA_HISTORY_PATH);
-        REGRESSION_DATABASE.createAndInitialize();
-
-        String tableName = "dbz_342_timetest";
-        config = simpleConfig().with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
-                .with(MySqlConnectorConfig.DATABASE_INCLUDE_LIST, REGRESSION_DATABASE.getDatabaseName())
-                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, REGRESSION_DATABASE.qualifiedTableName(tableName))
-                .build();
-
-        // Start the connector ...
-        start(MySqlConnector.class, config);
-
-        int expectedChanges = 1; // only 1 insert
-
-        consumeAtLeast(expectedChanges);
-
-        // Check the records via the store ...
-        List<SourceRecord> sourceRecords = store.sourceRecords();
-        assertThat(sourceRecords.size()).isEqualTo(1);
-
-        SourceRecord sourceRecord = sourceRecords.get(0);
-        Struct value = (Struct) sourceRecord.value();
-        Struct after = value.getStruct(Envelope.FieldName.AFTER);
-
-        String durationValue = "PT517H51M4.78S";
-        long timeWithNanoSeconds = 1_864_264_780_000_000L;
-        int nanos = 780;
-        if (MySqlTestConnection.isMariaDb()) {
-            durationValue = "PT517H51M4.77S";
-            timeWithNanoSeconds = 1_864_264_770_000_000L;
-            nanos = 770;
-        }
-
-        // '517:51:04.777'
-        long c1 = after.getInt64("c1");
-        Duration c1Time = Duration.ofNanos(c1 * 1_000);
-        Duration c1ExpectedTime = toDuration(durationValue);
-        assertEquals(c1ExpectedTime, c1Time);
-        assertEquals(c1ExpectedTime.toNanos(), c1Time.toNanos());
-        assertThat(c1Time.toNanos()).isEqualTo(timeWithNanoSeconds);
-        assertThat(c1Time).isEqualTo(Duration.ofHours(517).plusMinutes(51).plusSeconds(4).plusMillis(nanos));
-
-        // '-13:14:50'
-        long c2 = after.getInt64("c2");
-        Duration c2Time = Duration.ofNanos(c2 * 1_000);
-        Duration c2ExpectedTime = toDuration("-PT13H14M50S");
-        assertEquals(c2ExpectedTime, c2Time);
-        assertEquals(c2ExpectedTime.toNanos(), c2Time.toNanos());
-        assertThat(c2Time.toNanos()).isEqualTo(-47690000000000L);
-        assertTrue(c2Time.isNegative());
-        assertThat(c2Time).isEqualTo(Duration.ofHours(-13).minusMinutes(14).minusSeconds(50));
-
-        // '-733:00:00.0011'
-        long c3 = after.getInt64("c3");
-        Duration c3Time = Duration.ofNanos(c3 * 1_000);
-        Duration c3ExpectedTime = toDuration("-PT733H0M0.001S");
-        assertEquals(c3ExpectedTime, c3Time);
-        assertEquals(c3ExpectedTime.toNanos(), c3Time.toNanos());
-        assertThat(c3Time.toNanos()).isEqualTo(-2638800001000000L);
-        assertTrue(c3Time.isNegative());
-        assertThat(c3Time).isEqualTo(Duration.ofHours(-733).minusMillis(1));
-
-        // '-1:59:59.0011'
-        long c4 = after.getInt64("c4");
-        Duration c4Time = Duration.ofNanos(c4 * 1_000);
-        Duration c4ExpectedTime = toDuration("-PT1H59M59.001S");
-        assertEquals(c4ExpectedTime, c4Time);
-        assertEquals(c4ExpectedTime.toNanos(), c4Time.toNanos());
-        assertThat(c4Time.toNanos()).isEqualTo(-7199001000000L);
-        assertTrue(c4Time.isNegative());
-        assertThat(c4Time).isEqualTo(Duration.ofHours(-1).minusMinutes(59).minusSeconds(59).minusMillis(1));
-
-        // '-838:59:58.999999'
-        long c5 = after.getInt64("c5");
-        Duration c5Time = Duration.ofNanos(c5 * 1_000);
-        Duration c5ExpectedTime = toDuration("-PT838H59M58.999999S");
-        assertEquals(c5ExpectedTime, c5Time);
-        assertEquals(c5ExpectedTime.toNanos(), c5Time.toNanos());
-        assertThat(c5Time.toNanos()).isEqualTo(-3020398999999000L);
-        assertTrue(c5Time.isNegative());
-        assertThat(c5Time).isEqualTo(Duration.ofHours(-838).minusMinutes(59).minusSeconds(58).minusNanos(999999000));
-    }
-
-    @Test(expected = ConnectException.class)
-    public void shouldFailOnSchemaInconsistency() throws Exception {
-        inconsistentSchema(null);
-    }
-
-    @Test
-    public void shouldWarnOnSchemaInconsistency() throws Exception {
-        inconsistentSchema(EventProcessingFailureHandlingMode.WARN);
-    }
-
-    @Test
-    public void shouldIgnoreOnSchemaInconsistency() throws Exception {
-        inconsistentSchema(EventProcessingFailureHandlingMode.SKIP);
-    }
-
     @Test
     @FixFor("DBZ-1208")
-    @SkipWhenDatabaseIs(value = Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 5, minor = 6, reason = "MySQL 5.6 does not support SSL"))
-    @SkipWhenDatabaseIs(value = Type.MARIADB, reason = "MariaDB does not support SSL by default")
+    @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 5, minor = 6, reason = "MySQL 5.6 does not support SSL"))
+    @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "MariaDB does not support SSL by default")
     public void shouldFailOnUnknownTlsProtocol() {
-        final UniqueDatabase REGRESSION_DATABASE = new UniqueDatabase("logical_server_name", "regression_test")
+        final UniqueDatabase REGRESSION_DATABASE = TestHelper.getUniqueDatabase("logical_server_name", "regression_test")
                 .withDbHistoryPath(SCHEMA_HISTORY_PATH);
         REGRESSION_DATABASE.createAndInitialize();
 
         config = simpleConfig()
-                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.REQUIRED)
+                .with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.MySqlSecureConnectionMode.REQUIRED)
                 .with(SET_TLS_PROTOCOLS, "TLSv1.7")
                 .build();
 
         // Start the connector ...
         Map<String, Object> result = new HashMap<>();
-        start(MySqlConnector.class, config, (success, message, error) -> {
+        start(getConnectorClass(), config, (success, message, error) -> {
             result.put("success", success);
             result.put("message", message);
         });
@@ -498,134 +59,24 @@ public class StreamingSourceIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-1208")
-    @SkipWhenDatabaseIs(value = Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 5, minor = 6, reason = "MySQL 5.6 does not support SSL"))
-    @SkipWhenDatabaseIs(value = Type.MARIADB, reason = "MariaDB does not support SSL by default")
+    @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MYSQL, versions = @SkipWhenDatabaseVersion(check = LESS_THAN_OR_EQUAL, major = 5, minor = 6, reason = "MySQL 5.6 does not support SSL"))
+    @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "MariaDB does not support SSL by default")
     public void shouldAcceptTls12() throws Exception {
-        final UniqueDatabase REGRESSION_DATABASE = new UniqueDatabase("logical_server_name", "regression_test")
+        final UniqueDatabase REGRESSION_DATABASE = TestHelper.getUniqueDatabase("logical_server_name", "regression_test")
                 .withDbHistoryPath(SCHEMA_HISTORY_PATH);
         REGRESSION_DATABASE.createAndInitialize();
 
         config = simpleConfig()
-                .with(MySqlConnectorConfig.SSL_MODE, SecureConnectionMode.REQUIRED)
+                .with(MySqlConnectorConfig.SSL_MODE, MySqlConnectorConfig.MySqlSecureConnectionMode.REQUIRED)
                 .with(SET_TLS_PROTOCOLS, "TLSv1.2")
                 .build();
 
         // Start the connector ...
         AtomicReference<Throwable> exception = new AtomicReference<>();
-        start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
+        start(getConnectorClass(), config, (success, message, error) -> exception.set(error));
 
-        waitForStreamingRunning("mysql", DATABASE.getServerName(), "streaming");
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName(), "streaming");
         assertThat(exception.get()).isNull();
     }
 
-    @Test()
-    @FixFor("DBZ-4029")
-    public void testHeartbeatActionQueryExecuted() throws Exception {
-        final String HEARTBEAT_TOPIC_PREFIX_VALUE = "myheartbeat";
-
-        config = simpleConfig()
-                .with(MySqlConnectorConfig.USER, "snapper")
-                .with(MySqlConnectorConfig.PASSWORD, "snapperpass")
-                .with(AbstractTopicNamingStrategy.DEFAULT_HEARTBEAT_TOPIC_PREFIX, HEARTBEAT_TOPIC_PREFIX_VALUE)
-                .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
-                .with(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME,
-                        String.format("INSERT INTO %s.test_heartbeat_table (text) VALUES ('test_heartbeat');",
-                                DATABASE.getDatabaseName()))
-                .build();
-
-        // Create the heartbeat table
-        try (MySqlTestConnection connection = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
-            connection.execute("CREATE TABLE test_heartbeat_table (text TEXT);");
-        }
-        // Start the connector ...
-        AtomicReference<Throwable> exception = new AtomicReference<>();
-        start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
-
-        waitForStreamingRunning("mysql", DATABASE.getServerName(), "streaming");
-
-        // Confirm that the heartbeat.action.query was executed with the heartbeat
-        final String slotQuery = String.format("SELECT COUNT(*) FROM %s.test_heartbeat_table;", DATABASE.getDatabaseName());
-        final JdbcConnection.ResultSetMapper<Integer> slotQueryMapper = rs -> {
-            rs.next();
-            return rs.getInt(1);
-        };
-
-        Awaitility.await()
-                .alias("Awaiting heartbeat action query insert")
-                .pollInterval(100, TimeUnit.MILLISECONDS)
-                .atMost(waitTimeForRecords() * 30, TimeUnit.SECONDS)
-                .until(() -> {
-                    try (MySqlTestConnection connection = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
-                        int numOfHeartbeatActions = connection.queryAndMap(slotQuery, slotQueryMapper);
-                        return numOfHeartbeatActions > 0;
-                    }
-                });
-    }
-
-    private void inconsistentSchema(EventProcessingFailureHandlingMode mode) throws InterruptedException, SQLException {
-        final LogInterceptor logInterceptor = new LogInterceptor(MySqlStreamingChangeEventSource.class);
-        Configuration.Builder builder = simpleConfig()
-                .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
-                .with(MySqlConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("orders"));
-
-        if (mode == null) {
-            config = builder.build();
-        }
-        else {
-            config = builder
-                    .with(MySqlConnectorConfig.INCONSISTENT_SCHEMA_HANDLING_MODE, mode)
-                    .build();
-        }
-
-        // Start the connector ...
-        start(MySqlConnector.class, config);
-
-        // Poll for records ...
-        // Testing.Print.enable();
-        int expected = 5;
-        int consumed = consumeAtLeast(expected);
-        assertThat(consumed).isGreaterThanOrEqualTo(expected);
-
-        stopConnector();
-        config = builder.with(MySqlConnectorConfig.TABLE_INCLUDE_LIST,
-                DATABASE.qualifiedTableName("orders") + "," + DATABASE.qualifiedTableName("customers")).build();
-
-        AtomicReference<Throwable> exception = new AtomicReference<>();
-        start(MySqlConnector.class, config, (success, message, error) -> exception.set(error));
-
-        try (
-                MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName());
-                JdbcConnection connection = db.connect();
-                Connection jdbc = connection.connection();
-                Statement statement = jdbc.createStatement()) {
-            if (mode == null) {
-                waitForStreamingRunning("mysql", DATABASE.getServerName(), "streaming");
-            }
-            statement.executeUpdate("INSERT INTO customers VALUES (default,'John','Lazy','john.lazy@acme.com')");
-        }
-
-        if (mode == null) {
-            Awaitility.await().atMost(Duration.ofSeconds(waitTimeForRecords()))
-                    .until(() -> logInterceptor.containsMessage("Error during binlog processing."));
-            waitForEngineShutdown();
-        }
-        else {
-            waitForStreamingRunning("mysql", DATABASE.getServerName(), "streaming");
-        }
-        stopConnector();
-        final Throwable e = exception.get();
-        if (e != null) {
-            throw (RuntimeException) e;
-        }
-    }
-
-    private Duration toDuration(String duration) {
-        return Duration.parse(duration);
-    }
-
-    private String productsTableName() throws SQLException {
-        try (MySqlTestConnection db = MySqlTestConnection.forTestDatabase(DATABASE.getDatabaseName())) {
-            return db.isTableIdCaseSensitive() ? "products" : "Products";
-        }
-    }
 }

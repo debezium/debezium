@@ -146,7 +146,7 @@ The following table lists the variables that {prodname} binds into the evaluatio
 |`keySchema` |Schema of the message key.|`org.apache.kafka.connect{zwsp}.data{zwsp}.Schema`
 |`valueSchema`|Schema of the message value.| `org.apache.kafka.connect{zwsp}.data{zwsp}.Schema`
 |`topic`|Name of the target topic.| String
-|`headers`
+|`header`
 a|A Java map of message headers. The key field is the header name.
 The `headers` variable exposes the following properties:
 
@@ -225,6 +225,21 @@ For example:
 value.op == 'u' ? 'updates' : null
 ----
 
+.Go with TinyGo
+When you create content-based routing conditions by using Go with the TinyGo compiler, you can leverage a fully typed API for lazy access to the fields.
+For example:
+
+[source,go]
+----
+var value = debezium.Get(proxyPtr, "value")
+if !debezium.IsNull(value) {
+    var op = debezium.GetString(debezium.Get(proxyPtr, "value.op"))
+    if op == "u" {
+        return debezium.SetString("updates")
+    }
+}
+return debezium.SetNull()
+----
 
 // Type: reference
 // ModuleID: options-for-configuring-the-content-based-routing-transformation
@@ -245,11 +260,13 @@ If the name of the topic does not match the value in `topic.regex`, the SMT pass
 
 |[[content-based-router-language]]<<content-based-router-language, `language`>>
 |
-|The language in which the expression is written. Must begin with `jsr223.`, for example, `jsr223.groovy`, or `jsr223.graal.js`. {prodname} supports bootstrapping through the https://jcp.org/en/jsr/detail?id=223[JSR 223 API ("Scripting for the Java (TM) Platform")] only.
+|The language in which the expression is written. For JSR223 must begin with `jsr223.`, for example, `jsr223.groovy`, or `jsr223.graal.js`. {prodname} supports bootstrapping through the https://jcp.org/en/jsr/detail?id=223[JSR 223 API ("Scripting for the Java (TM) Platform")].
+It should be either `wasm.chicory` or `wasm.chicory-interpreter` for Go based filters.
 
 |[[content-based-router-topic-expression]]<<content-based-router-topic-expression, `topic.expression`>>
 |
 |The expression to be evaluated for every message. Must evaluate to a `String` value where a result of non-null reroutes the message to a new topic, and a `null` value routes the message to the default topic.
+With Go specifies the filesystem location where the `wasm` expression is available to be evaluated for every message. The Go function must evaluate to a String value or Null.
 
 |[[content-based-router-null-handling-mode]]<<content-based-router-null-handling-mode, `null.handling.mode`>>
 |`keep`

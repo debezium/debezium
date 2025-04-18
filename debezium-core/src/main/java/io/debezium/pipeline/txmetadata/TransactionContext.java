@@ -30,12 +30,13 @@ import io.debezium.spi.schema.DataCollectionId;
 @NotThreadSafe
 public class TransactionContext {
 
-    private static final String OFFSET_TRANSACTION_ID = TransactionMonitor.DEBEZIUM_TRANSACTION_KEY + "_" + TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY;
-    private static final String OFFSET_TABLE_COUNT_PREFIX = TransactionMonitor.DEBEZIUM_TRANSACTION_KEY + "_"
-            + TransactionMonitor.DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY + "_";
+    public static final String OFFSET_TRANSACTION_ID = TransactionStructMaker.DEBEZIUM_TRANSACTION_KEY + "_" + TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY;
+    private static final String OFFSET_TABLE_COUNT_PREFIX = TransactionStructMaker.DEBEZIUM_TRANSACTION_KEY + "_"
+            + TransactionStructMaker.DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY + "_";
     private static final int OFFSET_TABLE_COUNT_PREFIX_LENGTH = OFFSET_TABLE_COUNT_PREFIX.length();
 
     private String transactionId = null;
+
     private final Map<String, Long> perTableEventCount = new HashMap<>();
     private final Map<String, Long> viewPerTableEventCount = Collections.unmodifiableMap(perTableEventCount);
     private long totalEventCount = 0;
@@ -55,6 +56,15 @@ public class TransactionContext {
             offset.put(tableCountPrefix + e.getKey(), e.getValue());
         }
         return offset;
+    }
+
+    /**
+     * Instance method to allow for overriding by custom transaction contexts.
+     * @param offsets Offsets to load
+     * @return TransactionContext instance with loaded offsets
+     */
+    public TransactionContext newTransactionContextFromOffsets(Map<String, ?> offsets) {
+        return TransactionContext.load(offsets);
     }
 
     @SuppressWarnings("unchecked")
@@ -89,9 +99,26 @@ public class TransactionContext {
         return totalEventCount;
     }
 
-    public void beginTransaction(String txId) {
+    public void setTransactionId(String transactionId) {
+        this.transactionId = transactionId;
+    }
+
+    public void putPerTableEventCount(Map<String, Long> perTableEventCount) {
+        this.perTableEventCount.putAll(perTableEventCount);
+    }
+
+    public void setTotalEventCount(long totalEventCount) {
+        this.totalEventCount = totalEventCount;
+    }
+
+    public void beginTransaction(TransactionInfo transactionInfo) {
         reset();
-        transactionId = txId;
+        transactionId = transactionInfo.getTransactionId();
+    }
+
+    public void beginTransaction(String transactionId) {
+        // Needed for backward compatibility where other connectors directly call/interact with beginTransaction
+        beginTransaction(new DefaultTransactionInfo(transactionId));
     }
 
     public void endTransaction() {

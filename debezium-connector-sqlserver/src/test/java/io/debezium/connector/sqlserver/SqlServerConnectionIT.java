@@ -7,6 +7,7 @@
 package io.debezium.connector.sqlserver;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -26,6 +27,7 @@ import org.awaitility.Awaitility;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcValueConverters;
@@ -103,7 +105,7 @@ public class SqlServerConnectionIT {
             // and issue a test call to a CDC wrapper function
             Thread.sleep(5_000); // Need to wait to make sure the min_lsn is available
 
-            Testing.Print.enable();
+            // Testing.Print.enable();
             connection.query(
                     "select * from cdc.fn_cdc_get_all_changes_dbo_testTable(sys.fn_cdc_get_min_lsn('dbo_testTable'), sys.fn_cdc_get_max_lsn(), N'all')",
                     rs -> {
@@ -303,7 +305,7 @@ public class SqlServerConnectionIT {
                     tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "datetimeoffset_column", "2019-01-01T00:00:00.1234567+02:00", tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "smalldatetime_column", toMillis(OffsetDateTime.of(2019, 1, 1, 12, 34, 0, 0, databaseZoneOffset)), tableSchemaBuilder);
-            assertColumnHasDefaultValue(table, "time_column", toNanos(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)), tableSchemaBuilder);
+            assertColumnHasDefaultValue(table, "time_column", toNanos(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_456_700, databaseZoneOffset)), tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "time_0_column", (int) toMillis(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 0, databaseZoneOffset)), tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "time_1_column", (int) toMillis(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 100_000_000, databaseZoneOffset)),
                     tableSchemaBuilder);
@@ -311,14 +313,13 @@ public class SqlServerConnectionIT {
                     tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "time_3_column", (int) toMillis(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)),
                     tableSchemaBuilder);
-            // JDBC connector does not support full precision for type time(n), n = 4, 5, 6, 7
-            assertColumnHasDefaultValue(table, "time_4_column", toMicros(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)),
+            assertColumnHasDefaultValue(table, "time_4_column", toMicros(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_400_000, databaseZoneOffset)),
                     tableSchemaBuilder);
-            assertColumnHasDefaultValue(table, "time_5_column", toMicros(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)),
+            assertColumnHasDefaultValue(table, "time_5_column", toMicros(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_450_000, databaseZoneOffset)),
                     tableSchemaBuilder);
-            assertColumnHasDefaultValue(table, "time_6_column", toMicros(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)),
+            assertColumnHasDefaultValue(table, "time_6_column", toMicros(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_456_000, databaseZoneOffset)),
                     tableSchemaBuilder);
-            assertColumnHasDefaultValue(table, "time_7_column", toNanos(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_000_000, databaseZoneOffset)),
+            assertColumnHasDefaultValue(table, "time_7_column", toNanos(OffsetDateTime.of(1970, 1, 1, 12, 34, 56, 123_456_700, databaseZoneOffset)),
                     tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "char_column", "aaa", tableSchemaBuilder);
             assertColumnHasDefaultValue(table, "varchar_column", "bbb", tableSchemaBuilder);
@@ -579,6 +580,22 @@ public class SqlServerConnectionIT {
         TestHelper.createTestDatabases(TestHelper.TEST_DATABASE_1, TestHelper.TEST_DATABASE_2);
         try (SqlServerConnection connection = TestHelper.multiPartitionTestConnection()) {
             assertThat(connection.connection().getCatalog()).isEqualTo("master");
+        }
+    }
+
+    @Test
+    public void whenQueryTakesMoreThenConfiguredQueryTimeoutAnExceptionMustBeThrown() throws SQLException {
+
+        TestHelper.createTestDatabase();
+        Configuration config = TestHelper.defaultConnectorConfig()
+                .with("database.query.timeout.ms", "1000").build();
+
+        try (SqlServerConnection conn = TestHelper.testConnection(config)) {
+            conn.connect();
+
+            assertThatThrownBy(() -> conn.execute("WAITFOR DELAY '00:01'"))
+                    .isInstanceOf(SQLException.class)
+                    .hasMessage("The query has timed out.");
         }
     }
 

@@ -5,6 +5,12 @@
  */
 package io.debezium.connector.oracle;
 
+import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_ARCHIVE_LOG_ONLY_MODE;
+import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS;
+import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_TYPE;
+import static io.debezium.connector.oracle.OracleConnectorConfig.validateEhCacheGlobalConfigField;
+import static io.debezium.connector.oracle.OracleConnectorConfig.validateEhcacheConfigFieldRequired;
+import static io.debezium.connector.oracle.OracleConnectorConfig.validateLogMiningInfinispanCacheConfiguration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -13,6 +19,8 @@ import static org.junit.Assert.assertTrue;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -185,11 +193,11 @@ public class OracleConnectorConfigTest {
     @Test
     @FixFor("DBZ-2754")
     public void testTransactionRetention() throws Exception {
-        final Field transactionRetentionField = OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION;
+        final Field transactionRetentionField = OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION_MS;
 
         Configuration config = Configuration.create()
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
-                .with(transactionRetentionField, 3)
+                .with(transactionRetentionField, 10_800_000)
                 .build();
 
         assertThat(config.validateAndRecord(Collections.singletonList(transactionRetentionField), LOGGER::error)).isTrue();
@@ -241,7 +249,7 @@ public class OracleConnectorConfigTest {
         assertThat(config.validateAndRecord(Collections.singletonList(snapshotLockMode), LOGGER::error)).isTrue();
 
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
-        assertThat(connectorConfig.getSnapshotLockingMode().usesLocking()).isTrue();
+        assertThat(connectorConfig.getSnapshotLockingMode().get().usesLocking()).isTrue();
 
         config = Configuration.create()
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "myserver")
@@ -251,7 +259,7 @@ public class OracleConnectorConfigTest {
         assertThat(config.validateAndRecord(Collections.singletonList(snapshotLockMode), LOGGER::error)).isTrue();
 
         connectorConfig = new OracleConnectorConfig(config);
-        assertThat(connectorConfig.getSnapshotLockingMode().usesLocking()).isFalse();
+        assertThat(connectorConfig.getSnapshotLockingMode().get().usesLocking()).isFalse();
     }
 
     @Test
@@ -338,5 +346,58 @@ public class OracleConnectorConfigTest {
                 .with(OracleConnectorConfig.OLR_PORT, "9000")
                 .build();
         assertThat(config.validateAndRecord(fields, LOGGER::error)).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-8886")
+    public void shouldReturnDefaultValueForInvalidLogMiningBufferWhenValidateLogMiningInfinispanCache() {
+        Configuration configuration = Configuration.create()
+                .with(LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS.name(), "aValue")
+                .with(LOG_MINING_BUFFER_TYPE.name(), "null")
+                .build();
+
+        Field.ValidationOutput unreachableState = (field, value, problemMessage) -> {
+            throw new RuntimeException("unreachable state");
+        };
+
+        List<Integer> actual = Stream.of(
+                () -> validateEhCacheGlobalConfigField(configuration, LOG_MINING_ARCHIVE_LOG_ONLY_MODE, unreachableState),
+                () -> validateLogMiningInfinispanCacheConfiguration(configuration, LOG_MINING_ARCHIVE_LOG_ONLY_MODE, unreachableState),
+                (Supplier<Integer>) () -> validateEhcacheConfigFieldRequired(configuration, LOG_MINING_ARCHIVE_LOG_ONLY_MODE, unreachableState))
+                .map(Supplier::get)
+                .toList();
+
+        assertThat(actual).containsOnly(0);
+    }
+
+    @Test
+    @FixFor("DBZ-8886")
+    public void shouldReturnInvalidValueForLogMiningBufferWhenValidateLogMiningBufferType() {
+        Configuration configuration = Configuration.create()
+                .with(LOG_MINING_BUFFER_TYPE.name(), "null")
+                .build();
+
+        boolean actual = LOG_MINING_BUFFER_TYPE.validate(
+                configuration,
+                (field, value, problemMessage) -> assertThat(problemMessage).isEqualTo("Value must be one of ehcache, memory, infinispan_embedded, infinispan_remote"));
+
+        assertThat(actual).isFalse();
+    }
+
+    @Test
+    @FixFor("DBZ-8886")
+    public void shouldReturnValidValueForLogMiningBufferWhenValidateLogMiningBufferType() {
+        final Configuration configuration = Configuration.create()
+                .with(LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS.name(), "A_CORRECT_VALUE")
+                .with(LOG_MINING_BUFFER_TYPE.name(), "infinispan_embedded")
+                .build();
+
+        boolean actual = LOG_MINING_BUFFER_TYPE.validate(
+                configuration,
+                (field, value, problemMessage) -> {
+                    throw new RuntimeException("unreachable state");
+                });
+
+        assertThat(actual).isTrue();
     }
 }

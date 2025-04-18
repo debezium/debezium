@@ -1,0 +1,78 @@
+If you want a snapshot to include only a subset of the content in a {data-collection}, you can modify the signal request by appending an `additional-conditions` parameter to the snapshot signal.
+
+The SQL query for a typical snapshot takes the following form:
+
+[source,sql,subs="+attributes,+quotes"]
+----
+SELECT * FROM _<tableName>_ ....
+----
+
+By adding an `additional-conditions` parameter, you append a `WHERE` condition to the SQL query, as in the following example:
+
+[source,sql,subs="+attributes,+quotes"]
+----
+SELECT * FROM _<data-collection>_ WHERE _<filter>_ ....
+----
+
+The following example shows a SQL query to send an ad hoc incremental snapshot request with an additional condition to the signaling {data-collection}:
+[source,sql,indent=0,subs="+attributes,+quotes"]
+----
+INSERT INTO _<signalTable>_ (id, type, data) VALUES (_'<id>'_, _'<snapshotType>'_, '{"data-collections": ["_<fullyQualfiedTableName>_","_<fullyQualfiedTableName>_"],"type":"_<snapshotType>_","additional-conditions":[{"data-collection": "_<fullyQualfiedTableName>_", "filter": "_<additional-condition>_"}]}');
+----
+
+For example, suppose you have a `products` {data-collection} that contains the following columns:
+
+* `id` (primary key)
+* `color`
+* `quantity`
+
+If you want an incremental snapshot of the `products` {data-collection} to include only the data items where `color=blue`, you can use the following SQL statement to trigger the snapshot:
+
+include::{snippetsdir}/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=snapshot-additional-conditions-example]
+
+The `additional-conditions` parameter also enables you to pass conditions that are based on more than one column.
+For example, using the `products` {data-collection} from the previous example, you can submit a query that triggers an incremental snapshot that includes the data of only those items for which `color=blue` and `quantity>10`:
+
+include::{snippetsdir}/{context}-frag-signaling-fq-table-formats.adoc[leveloffset=+1,tags=snapshot-multiple-additional-conditions-example]
+
+The following example, shows the JSON for an incremental snapshot event that is captured by a connector.
+
+.Incremental snapshot event message
+====
+[source,json,index=0]
+----
+{
+    "before":null,
+    "after": {
+        "pk":"1",
+        "value":"New data"
+    },
+    "source": {
+        ...
+        "snapshot":"incremental" <1>
+    },
+    "op":"r", <2>
+    "ts_ms":"1620393591654",
+    "ts_us":"1620393591654547",
+    "ts_ns":"1620393591654547920",
+    "transaction":null
+}
+----
+====
+.Description of fields in an incremental snapshot event message
+[cols="1,1,4",options="header"]
+|===
+|Item |Field name |Description
+|1
+|`snapshot`
+|Specifies the type of snapshot operation to run. +
+Currently, the only valid options are `blocking` and `incremental`. +
+Specifying a `type` value in the SQL query that you submit to the signaling {data-collection} is optional. +
+If you do not specify a value, the connector runs an incremental snapshot.
+
+|2
+|`op`
+|Specifies the event type. +
+The value for snapshot events is `r`, signifying a `READ` operation.
+
+|===

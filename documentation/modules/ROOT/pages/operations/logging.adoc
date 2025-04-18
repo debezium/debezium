@@ -73,7 +73,8 @@ If you are running {prodname} connectors in a Kafka Connect process,
 then Kafka Connect uses the Log4j configuration file (for example, `/opt/kafka/config/connect-log4j.properties`) in the Kafka installation.
 By default, this file contains the following configuration:
 
-.connect-log4j.properties
+.Default configuration in `connect-log4j.properties`
+====
 [source,properties,options="nowrap"]
 ----
 log4j.rootLogger=INFO, stdout  // <1>
@@ -83,7 +84,8 @@ log4j.appender.stdout.layout=org.apache.log4j.PatternLayout  // <3>
 log4j.appender.stdout.layout.ConversionPattern=[%d] %p %m (%c)%n  // <4>
 ...
 ----
-.Descriptions of `connect-log4j.properties` settings
+====
+.Descriptions of default `connect-log4j.properties` settings
 [cols="1,7",options="header",subs="+attributes"]
 |===
 |Property |Description
@@ -142,14 +144,15 @@ This means that you can control all of the log messages for a specific class or 
 
 .Procedure
 
-. Open the `log4j.properties` file.
+. Open the `connect-log4j.properties` file.
 
 . Configure a logger for the connector.
 +
 The following example configures loggers for the MySQL connector and for the database schema history implementation used by the connector,
 and sets them to log `DEBUG` level messages: +
 +
-.log4j.properties
+.connect-log4j.properties configuration to enable loggers and set the log level to `DEBUG`
+====
 [source,properties,options="nowrap"]
 ----
 ...
@@ -160,8 +163,9 @@ log4j.additivity.io.debezium.connector.mysql=false  // <3>
 log4j.additivity.io.debezium.storage.kafka.history=false
 ...
 ----
+====
 +
-.Descriptions of `log4j.properties` settings
+.Descriptions of `connect-log4j.properties` settings for enabling loggers and setting the log level
 [cols="1,7",options="header",subs="+attributes"]
 |===
 |Property |Description
@@ -200,7 +204,8 @@ For example, consider a scenario in which you are unsure why the MySQL connector
 Rather than turn on `DEBUG` or `TRACE` logging for the entire connector,
 you can keep the connector's logging level at `INFO` and then configure `DEBUG` or `TRACE` on just the class that is reading the binlog:
 +
-.log4j.properties
+.connect-log4j.properties configuration that enables `DEBUG` logging for the `BinlogReader` class
+====
 [source,properties,options="nowrap"]
 ----
 ...
@@ -213,6 +218,7 @@ log4j.additivity.io.debezium.storage.kafka.history=false
 log4j.additivity.io.debezium.connector.mysql.BinlogReader=false
 ...
 ----
+====
 
 // Type: procedure
 // ModuleID: setting-the-debezium-logging-level-with-the-kafka-connect-rest-api
@@ -221,13 +227,13 @@ log4j.additivity.io.debezium.connector.mysql.BinlogReader=false
 === Dynamically setting the logging level with the Kafka Connect REST API
 
 You can use the Kafka Connect REST API to set logging levels for a connector dynamically at runtime.
-Unlike log level changes that you set in `log4j.properties`, changes that you make via the API take effect immediately, and do not require you to restart the worker.
+Unlike log level changes that you set in `connect-log4j.properties`, changes that you make via the API take effect immediately, and do not require you to restart the worker.
 
 The log level setting that you specify in the API applies only to the worker at the endpoint that receives the request.
 The log levels of other workers in the cluster remain unchanged.
 
 The specified level is not persisted after the worker restarts.
-To make persistent changes to the logging level, set the log level in `log4j.properties` by xref:changing-logging-level[configuring loggers] or xref:adding-mapped-diagnostic-contexts[adding mapped diagnostic contexts].
+To make persistent changes to the logging level, set the log level in `connect-log4j.properties` by xref:changing-logging-level[configuring loggers] or xref:adding-mapped-diagnostic-contexts[adding mapped diagnostic contexts].
 
 .Procedure
 
@@ -281,38 +287,37 @@ Each thread associated with a connector would use a distinct value,
 so you can find all of the log messages associated with this particular activity.
 
 To enable MDC for a connector,
-you configure an appender in the `log4j.properties` file.
+you configure an appender in the `connect-log4j.properties` file.
 
 .Procedure
 
-. Open the `log4j.properties` file.
+. Open the `connect-log4j.properties` file.
 
 . Configure an appender to use any of the supported {prodname} MDC properties.
+In the following example, the `stdout` appender is configured to use these MDC properties.
 +
---
-In the following example, the `stdout` appender is configured to use these MDC properties:
-
-.log4j.properties
+.connect-log4j.properties configuration that sets the `stdout` appender to use MDC properties
+====
 [source,properties,options="nowrap"]
 ----
 ...
 log4j.appender.stdout.layout.ConversionPattern=%d{ISO8601} %-5p  %X{dbz.connectorType}|%X{dbz.connectorName}|%X{dbz.connectorContext}  %m   [%c]%n
 ...
 ----
-
+====
 The configuration in the preceding example produces log messages similar to the ones in the following output:
-
++
 [source,shell,options="nowrap"]
 ----
 ...
 2017-02-07 20:49:37,692 INFO   MySQL|dbserver1|snapshot  Starting snapshot for jdbc:mysql://mysql:3306/?useInformationSchema=true&nullCatalogMeansCurrent=false&useSSL=false&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=convertToNull with user 'debezium'   [io.debezium.connector.mysql.SnapshotReader]
 2017-02-07 20:49:37,696 INFO   MySQL|dbserver1|snapshot  Snapshot is using user 'debezium' with these MySQL grants:   [io.debezium.connector.mysql.SnapshotReader]
-2017-02-07 20:49:37,697 INFO   MySQL|dbserver1|snapshot  	GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'debezium'@'%'   [io.debezium.connector.mysql.SnapshotReader]
+2017-02-07 20:49:37,697 INFO   MySQL|dbserver1|snapshot  GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'debezium'@'%'   [io.debezium.connector.mysql.SnapshotReader]
 ...
 ----
 
 Each line in the log includes the connector type (for example, `MySQL`), the name of the connector (for example, `dbserver1`), and the activity of the thread (for example, `snapshot`).
---
+
 ifdef::product[]
 
 // Category: debezium-using
@@ -321,7 +326,7 @@ ifdef::product[]
 == {prodname} logging on OpenShift
 
 If you are using {prodname} on OpenShift, you can use the Kafka Connect loggers to configure the {prodname} loggers and logging levels.
-For more information about configuring logging properties in a Kafka Connect schema, see link:{LinkStreamsOpenShift}#type-KafkaConnectSpec-schema-reference[{NameStreamsOpenShift}].
+For more information about configuring logging properties in a Kafka Connect schema, see link:{LinkDeployManageStreamsOpenShift}#external-logging_str[{NameDeployManageStreamsOpenShift}].
 
 endif::product[]
 

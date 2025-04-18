@@ -20,7 +20,8 @@ mvn org.apache.maven.plugins:maven-dependency-plugin:2.8:get \
     -Dmaven.repo.local=${MAVEN_REPO}
 ```
 
-Add Oracle drivers for oracle connector
+If the tests are run also against Oracle connector, add Oracle drivers for oracle connector
+
 ``` bash
 ORACLE_ARTIFACT_VERSION=$(mvn -q -DforceStdout help:evaluate -Dexpression=version.oracle.driver)
 ORACLE_INSTANTCLIENT_ARTIFACT_VERSION=$(mvn -q -DforceStdout help:evaluate -Dexpression=version.oracle.instantclient)
@@ -28,9 +29,21 @@ ORACLE_ARTIFACT_DIR="${PWD}/oracle-libs/${ORACLE_ARTIFACT_VERSION}.0"
 
 mkdir -p ${ORACLE_ARTIFACT_DIR}
 cd ${ORACLE_ARTIFACT_DIR}
+```
+
+Download [Oracle Instant Client package](https://www.oracle.com/database/technologies/instant-client/downloads.html), unpack it and place `ojdbc8.jar` or `ojdbc11.jar` along with `xstreams.jar` to `${ORACLE_ARTIFACT_DIR}` folder.
+The downloaded Oracle Instant Client version has to be the same as `ORACLE_ARTIFACT_VERSION`. 
+
+```bash
+# Used by older versions of Debezium
 mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=ojdbc8 \
     -Dversion=${ORACLE_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=ojdbc8.jar \
     -Dmaven.repo.local=${MAVEN_REPO}
+# Used by newer versions of Debezium    
+mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=ojdbc11 \
+    -Dversion=${ORACLE_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=ojdbc11.jar \
+    -Dmaven.repo.local=${MAVEN_REPO}
+# Used by both older/newer Debezium versions    
 mvn install:install-file -DgroupId=com.oracle.instantclient -DartifactId=xstreams \
     -Dversion=${ORACLE_INSTANTCLIENT_ARTIFACT_VERSION} -Dpackaging=jar -Dfile=xstreams.jar \
     -Dmaven.repo.local=${MAVEN_REPO}
@@ -66,6 +79,8 @@ Prepare namespace and pull secret for the testsuite
     --from-file=.dockercfg=<path/to/.dockercfg> \
     --type=kubernetes.io/dockercfg \
     -n debezium-testsuite
+    oc secrets link default <secret_name> --for=pull
+    oc secrets link builder <secret_name> --for=pull
 ```
 
 Edit Pod template

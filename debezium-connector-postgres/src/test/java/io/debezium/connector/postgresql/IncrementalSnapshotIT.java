@@ -15,8 +15,10 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -27,6 +29,9 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
+import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot.DecoderPluginName;
+import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
@@ -95,7 +100,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
 
     protected Configuration.Builder config() {
         return TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
                 .with(PostgresConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 10)
@@ -117,7 +122,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
             tableIncludeList = "s1.a,s1.b";
         }
         return TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NEVER.getValue())
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with(PostgresConnectorConfig.SIGNAL_DATA_COLLECTION, "s1.debezium_signal")
                 .with(CommonConnectorConfig.SIGNAL_POLL_INTERVAL_MS, 5)
@@ -155,6 +160,16 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     }
 
     @Override
+    protected String noPKTopicName() {
+        return "test_server.s1.a42";
+    }
+
+    @Override
+    protected String noPKTableName() {
+        return "s1.a42";
+    }
+
+    @Override
     protected List<String> tableNames() {
         return List.of("s1.a", "s1.b");
     }
@@ -183,7 +198,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     @Test
     @FixFor("DBZ-6481")
     public void insertsEnumPk() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         final var enumValues = List.of("UP", "DOWN", "LEFT", "RIGHT", "STORY");
 
         try (JdbcConnection connection = databaseConnection()) {
@@ -198,6 +213,10 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
 
         sendAdHocSnapshotSignal("s1.enumpk");
 
+        assertExpectedRecordsEnumPk(enumValues);
+    }
+
+    protected void assertExpectedRecordsEnumPk(List<String> enumValues) throws InterruptedException {
         // SNAPSHOT signal, OPEN WINDOW signal + data + CLOSE WINDOW signal
         final var records = consumeRecordsByTopic(enumValues.size() + 3).allRecordsInOrder();
         for (int i = 0; i < enumValues.size(); i++) {
@@ -250,6 +269,37 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
     }
 
     @Test
+    @FixFor("DBZ-7617")
+    public void incrementalSnapshotMustRespectMessageKeyColumnsOrder() throws Exception {
+        // Testing.Print.enable();
+
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            connection.executeWithoutCommitting("INSERT INTO s1.a4 (pk1, pk2, pk3, pk4, aa) VALUES (3, 1, 1, 1, 0)");
+            connection.executeWithoutCommitting("INSERT INTO s1.a4 (pk1, pk2, pk3, pk4, aa) VALUES (2, 2, 2, 2, 1)");
+            connection.executeWithoutCommitting("INSERT INTO s1.a4 (pk1, pk2, pk3, pk4, aa) VALUES (1, 2, 2, 2, 2)");
+
+            connection.commit();
+        }
+
+        startConnector(builder -> mutableConfig(false, true)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.a4")
+                .with(RelationalDatabaseConnectorConfig.MSG_KEY_COLUMNS, String.format("%s:%s", "s1.a4", "pk2,pk1")));
+
+        sendAdHocSnapshotSignal("s1.a4");
+
+        Thread.sleep(5000);
+
+        SourceRecords sourceRecords = consumeAvailableRecordsByTopic();
+        List<Integer> ordered = sourceRecords.recordsForTopic("test_server.s1.a4").stream()
+                .map(sourceRecord -> ((Struct) sourceRecord.value()).getStruct("after").getInt32(valueFieldName()))
+                .collect(Collectors.toList());
+
+        assertThat(ordered).containsExactly(0, 2, 1);
+
+    }
+
+    @Test
     public void inserts4PksWithKafkaSignal() throws Exception {
         // Testing.Print.enable();
 
@@ -287,28 +337,6 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
                 k -> k.getInt32("pk1") * 1_000 + k.getInt32("pk2") * 100 + k.getInt32("pk3") * 10 + k.getInt32("pk4"),
                 record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()),
                 "test_server.s1.a4",
-                null);
-        for (int i = 0; i < expectedRecordCount; i++) {
-            assertThat(dbChanges).contains(entry(i + 1, i));
-        }
-    }
-
-    @Test
-    public void insertsWithoutPks() throws Exception {
-        // Testing.Print.enable();
-
-        populate4WithoutPkTable();
-        startConnector();
-
-        sendAdHocSnapshotSignal("s1.a42");
-
-        final int expectedRecordCount = ROW_COUNT;
-        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
-                expectedRecordCount,
-                x -> true,
-                k -> k.getInt32("pk1") * 1_000 + k.getInt32("pk2") * 100 + k.getInt32("pk3") * 10 + k.getInt32("pk4"),
-                record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()),
-                "test_server.s1.a42",
                 null);
         for (int i = 0; i < expectedRecordCount; i++) {
             assertThat(dbChanges).contains(entry(i + 1, i));
@@ -420,15 +448,72 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         }
     }
 
-    protected void populate4PkTable() throws SQLException {
+    @Test
+    public void shouldOutputRecordsInCloudEventsFormat() throws Exception {
+        // Testing.Print.enable();
+
         try (JdbcConnection connection = databaseConnection()) {
-            populate4PkTable(connection, "s1.a4");
+            populateTable(connection, "s1.anumeric");
+        }
+        startConnector(x -> x.with("value.converter", "io.debezium.converters.CloudEventsConverter")
+                .with("value.converter.serializer.type", "json")
+                .with("value.converter.data.serializer.type", "json"));
+
+        sendAdHocSnapshotSignal("s1.anumeric");
+
+        final SourceRecords snapshotRecords = consumeRecordsByTopic(ROW_COUNT);
+        final List<SourceRecord> snapshotTable1 = snapshotRecords.recordsForTopic("test_server.s1.anumeric");
+
+        // test snapshot
+        for (SourceRecord sourceRecord : snapshotTable1) {
+            CloudEventsConverterTest.shouldConvertToCloudEventsInJson(sourceRecord, false);
         }
     }
 
-    protected void populate4WithoutPkTable() throws SQLException {
+    @Test
+    @FixFor("DBZ-8150")
+    @SkipWhenDecoderPluginNameIsNot(value = DecoderPluginName.PGOUTPUT, reason = "Only pgoutput ignores generated columns")
+    public void ignoreGeneratedColumn() throws Exception {
+        // Testing.Print.enable();
+
+        // create table with generated column
+        final String SETUP_TABLES = "CREATE TABLE s1.gencol_table (pk int, gencol varchar(10) GENERATED ALWAYS AS ('aa') STORED, aa integer, bb varchar(2), PRIMARY KEY(pk));";
+        TestHelper.execute(SETUP_TABLES);
+
+        // start connector
+        startConnector(x -> x
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.gencol_table")
+                .with(PostgresConnectorConfig.COLUMN_EXCLUDE_LIST, "s1.gencol_table.gencol"));
+        waitForConnectorToStart();
+
+        // insert record that will use schema from relation message without generated column
         try (JdbcConnection connection = databaseConnection()) {
-            populate4PkTable(connection, "s1.a42");
+            connection.execute("INSERT INTO s1.gencol_table (pk, aa, bb) VALUES (1, 1, 'a')");
+        }
+
+        // pgoutput plug-in does not send generated column value
+        var record = consumeRecord();
+        assertThat(record.valueSchema().field("gencol")).isNull();
+
+        sendAdHocSnapshotSignal("s1.gencol_table");
+
+        final var topicName = "test_server.s1.gencol_table";
+        consumeMixedWithIncrementalSnapshot(1, topicName);
+
+        // insert records that will use schema generated by incremental snapshot
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.execute("INSERT INTO s1.gencol_table (pk, aa, bb) VALUES (2, 2, 'b')");
+        }
+
+        final var records = consumeRecordsByTopicUntil((cnt, r) -> r.topic().equals(topicName));
+        final var data = records.recordsForTopic(topicName);
+        assertThat(data).hasSize(1);
+        assertThat(data.get(0).valueSchema().field("gencol")).isNull();
+    }
+
+    protected void populate4PkTable() throws SQLException {
+        try (JdbcConnection connection = databaseConnection()) {
+            populate4PkTable(connection, "s1.a4");
         }
     }
 }

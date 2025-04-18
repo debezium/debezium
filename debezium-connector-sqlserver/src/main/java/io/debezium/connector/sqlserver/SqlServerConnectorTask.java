@@ -14,6 +14,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.bean.StandardBeanNames;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -92,17 +93,21 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 new SqlServerPartition.Provider(connectorConfig),
                 new SqlServerOffsetContext.Loader(connectorConfig));
 
-        schema.recover(offsets);
-
         // Manual Bean Registration
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, metadataConnection);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, offsets);
 
         // Service providers
         registerServiceProviders(connectorConfig.getServiceRegistry());
+
+        final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
+
+        validateAndLoadSchemaHistory(connectorConfig, dataConnection::validateLogPosition, offsets, schema,
+                snapshotterService.getSnapshotter());
 
         taskContext = new SqlServerTaskContext(connectorConfig, schema);
 
@@ -133,13 +138,19 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 connectorConfig.getTableFilters().dataCollectionFilter(),
                 DataChangeEvent::new,
                 metadataProvider,
+                connectorConfig.createHeartbeat(
+                        topicNamingStrategy,
+                        schemaNameAdjuster,
+                        connectionFactory::newConnection,
+                        exception -> {
+                            final String sqlErrorId = exception.getMessage();
+                            throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
+                        }),
                 schemaNameAdjuster,
                 signalProcessor);
 
         NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                 connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
-
-        SnapshotterService snapshotterService = null; // TODO with DBZ-7303
 
         ChangeEventSourceCoordinator<SqlServerPartition, SqlServerOffsetContext> coordinator = new SqlServerChangeEventSourceCoordinator(
                 offsets,
@@ -165,16 +176,17 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
     public List<SourceRecord> doPoll() throws InterruptedException {
         final List<DataChangeEvent> records = queue.poll();
 
-        final List<SourceRecord> sourceRecords = records.stream()
+        return records.stream()
                 .map(DataChangeEvent::getRecord)
                 .collect(Collectors.toList());
+    }
 
+    @Override
+    protected void resetErrorHandlerRetriesIfNeeded(List<SourceRecord> records) {
         // Reset the retries if all partitions have streamed without exceptions at least once after a restart
         if (coordinator.getErrorHandler().getRetries() > 0 && ((SqlServerChangeEventSourceCoordinator) coordinator).firstStreamingIterationCompletedSuccessfully()) {
             coordinator.getErrorHandler().resetRetries();
         }
-
-        return sourceRecords;
     }
 
     @Override
@@ -206,4 +218,5 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
     protected Iterable<Field> getAllConfigurationFields() {
         return SqlServerConnectorConfig.ALL_FIELDS;
     }
+
 }

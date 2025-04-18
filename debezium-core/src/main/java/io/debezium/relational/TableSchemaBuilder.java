@@ -33,6 +33,7 @@ import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.mapping.ColumnMapper;
 import io.debezium.relational.mapping.ColumnMappers;
 import io.debezium.schema.FieldNameSelector.FieldNamer;
+import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Loggings;
@@ -60,6 +61,7 @@ public class TableSchemaBuilder {
     private final ValueConverterProvider valueConverterProvider;
     private final DefaultValueConverter defaultValueConverter;
     private final Schema sourceInfoSchema;
+    private final Schema transactionSchema;
     private final FieldNamer<Column> fieldNamer;
     private final CustomConverterRegistry customConverterRegistry;
     private final boolean multiPartitionMode;
@@ -82,6 +84,18 @@ public class TableSchemaBuilder {
                 customConverterRegistry, sourceInfoSchema, fieldNamer, multiPartitionMode, null);
     }
 
+    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider,
+                              SchemaNameAdjuster schemaNameAdjuster,
+                              CustomConverterRegistry customConverterRegistry,
+                              Schema sourceInfoSchema,
+                              Schema transactionSchema,
+                              FieldNamer<Column> fieldNamer,
+                              boolean multiPartitionMode) {
+        this(valueConverterProvider, null, schemaNameAdjuster,
+                customConverterRegistry, sourceInfoSchema, transactionSchema, fieldNamer,
+                multiPartitionMode, null);
+    }
+
     /**
      * Create a new instance of the builder.
      *
@@ -100,6 +114,19 @@ public class TableSchemaBuilder {
                 customConverterRegistry, sourceInfoSchema, fieldNamer, multiPartitionMode, null);
     }
 
+    public TableSchemaBuilder(ValueConverterProvider valueConverterProvider,
+                              DefaultValueConverter defaultValueConverter,
+                              SchemaNameAdjuster schemaNameAdjuster,
+                              CustomConverterRegistry customConverterRegistry,
+                              Schema sourceInfoSchema,
+                              FieldNamer<Column> fieldNamer,
+                              boolean multiPartitionMode,
+                              EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode) {
+        this(valueConverterProvider, defaultValueConverter, schemaNameAdjuster,
+                customConverterRegistry, sourceInfoSchema, SchemaFactory.get().transactionBlockSchema(),
+                fieldNamer, multiPartitionMode, eventConvertingFailureHandlingMode);
+    }
+
     /**
      * Create a new instance of the builder.
      *
@@ -114,6 +141,7 @@ public class TableSchemaBuilder {
                               SchemaNameAdjuster schemaNameAdjuster,
                               CustomConverterRegistry customConverterRegistry,
                               Schema sourceInfoSchema,
+                              Schema transactionSchema,
                               FieldNamer<Column> fieldNamer,
                               boolean multiPartitionMode,
                               EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode) {
@@ -122,6 +150,7 @@ public class TableSchemaBuilder {
         this.defaultValueConverter = Optional.ofNullable(defaultValueConverter)
                 .orElse(DefaultValueConverter.passthrough());
         this.sourceInfoSchema = sourceInfoSchema;
+        this.transactionSchema = transactionSchema;
         this.fieldNamer = fieldNamer;
         this.customConverterRegistry = customConverterRegistry;
         this.multiPartitionMode = multiPartitionMode;
@@ -183,6 +212,7 @@ public class TableSchemaBuilder {
                 .withName(schemaNameAdjuster.adjust(envelopSchemaName))
                 .withRecord(valSchema)
                 .withSource(sourceInfoSchema)
+                .withTransaction(transactionSchema)
                 .build();
 
         // Create the generators ...
@@ -217,7 +247,7 @@ public class TableSchemaBuilder {
             return (row) -> {
                 Struct result = new Struct(schema);
                 for (int i = 0; i != numFields; ++i) {
-                    validateIncomingRowToInternalMetadata(recordIndexes, fields, converters, row, i);
+                    validateIncomingRowToInternalMetadata(columnSetName, recordIndexes, fields, converters, row, i);
                     Object value = row[recordIndexes[i]];
                     ValueConverter converter = converters[i];
                     if (converter != null) {
@@ -244,19 +274,19 @@ public class TableSchemaBuilder {
         return null;
     }
 
-    private void validateIncomingRowToInternalMetadata(int[] recordIndexes, Field[] fields, ValueConverter[] converters,
+    private void validateIncomingRowToInternalMetadata(TableId tableId, int[] recordIndexes, Field[] fields, ValueConverter[] converters,
                                                        Object[] row, int position) {
         if (position >= converters.length) {
-            LOGGER.error("Error requesting a converter, converters: {}, requested index: {}", converters.length, position);
+            LOGGER.error("Error requesting a converter, converters: {}, requested index: {} of {}", converters.length, position, tableId);
             throw new ConnectException(
                     "Column indexing array is larger than number of converters, internal schema representation is probably out of sync with real database schema");
         }
         if (position >= fields.length) {
-            LOGGER.error("Error requesting a field, fields: {}, requested index: {}", fields.length, position);
+            LOGGER.error("Error requesting a field, fields: {}, requested index: {} of {}", fields.length, position, tableId);
             throw new ConnectException("Too few schema fields, internal schema representation is probably out of sync with real database schema");
         }
         if (recordIndexes[position] >= row.length) {
-            LOGGER.error("Error requesting a row value, row: {}, requested index: {} at position {}", row.length, recordIndexes[position], position);
+            LOGGER.error("Error requesting a row value, row: {}, requested index: {} at position {} of {}", row.length, recordIndexes[position], position, tableId);
             throw new ConnectException("Data row is smaller than a column index, internal schema representation is probably out of sync with real database schema");
         }
     }
@@ -286,7 +316,7 @@ public class TableSchemaBuilder {
             return (row) -> {
                 Struct result = new Struct(schema);
                 for (int i = 0; i != numFields; ++i) {
-                    validateIncomingRowToInternalMetadata(recordIndexes, fields, converters, row, i);
+                    validateIncomingRowToInternalMetadata(tableId, recordIndexes, fields, converters, row, i);
                     Object value = row[recordIndexes[i]];
 
                     ValueConverter converter = converters[i];
@@ -298,7 +328,7 @@ public class TableSchemaBuilder {
                             result.put(fields[i], value);
                         }
                         catch (final Exception e) {
-                            Column col = columns.get(i);
+                            Column col = columnsThatShouldBeAdded.get(i);
                             String message = "Failed to properly convert data value for '{}.{}' of type {}";
                             if (eventConvertingFailureHandlingMode == null) {
                                 Loggings.logErrorAndTraceRecord(LOGGER, row,

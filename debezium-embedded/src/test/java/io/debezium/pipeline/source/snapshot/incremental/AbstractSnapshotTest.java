@@ -7,7 +7,9 @@ package io.debezium.pipeline.source.snapshot.incremental;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -38,6 +40,8 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
     protected static final int PARTITION_NO = 0;
     protected static final String SERVER_NAME = "test_server";
     private static final int MAXIMUM_NO_RECORDS_CONSUMES = 5;
+    protected final Path signalsFile = Paths.get("src", "test", "resources")
+            .resolve("debezium_signaling_file.txt");
 
     protected abstract Class<T> connectorClass();
 
@@ -169,6 +173,11 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
         return consumeMixedWithIncrementalSnapshot(recordCount, topicName());
     }
 
+    protected Map<Integer, Integer> consumeMixedWithIncrementalSnapshot(int recordCount, Consumer<List<SourceRecord>> recordConsumer) throws InterruptedException {
+        return consumeMixedWithIncrementalSnapshot(recordCount, record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()), x -> true,
+                recordConsumer, topicName());
+    }
+
     protected Map<Integer, Integer> consumeMixedWithIncrementalSnapshot(int recordCount, String topicName) throws InterruptedException {
         return consumeMixedWithIncrementalSnapshot(recordCount, record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()), x -> true, null,
                 topicName);
@@ -273,7 +282,7 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
         start(connectorClass(), config, callback);
         waitForConnectorToStart();
 
-        waitForAvailableRecords(5, TimeUnit.SECONDS);
+        waitForAvailableRecords(waitTimeForRecords(), TimeUnit.SECONDS);
         if (expectNoRecords) {
             // there shouldn't be any snapshot records
             assertNoRecordsToConsume();
@@ -299,6 +308,22 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
     @Override
     protected int getMaximumEnqueuedRecordCount() {
         return ROW_COUNT * 3;
+    }
+
+    protected void sendExecuteSnapshotFileSignal(String fullTableNames) throws IOException {
+
+        sendExecuteSnapshotFileSignal(fullTableNames, "INCREMENTAL", signalsFile);
+
+    }
+
+    protected void sendExecuteSnapshotFileSignal(String fullTableNames, String type, Path signalFile) throws IOException {
+
+        String signalValue = String.format(
+                "{\"id\":\"12345\",\"type\":\"execute-snapshot\",\"data\": {\"data-collections\": [\"%s\"], \"type\": \"%s\"}}",
+                fullTableNames, type);
+
+        java.nio.file.Files.write(signalFile, signalValue.getBytes());
+
     }
 
     protected void sendAdHocSnapshotSignal(String... dataCollectionIds) throws SQLException {
@@ -389,7 +414,7 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
         }
     }
 
-    private static String buildAdditionalConditions(Map<String, String> additionalConditions) {
+    protected static String buildAdditionalConditions(Map<String, String> additionalConditions) {
 
         return additionalConditions.entrySet().stream()
                 .map(cond -> String.format("{\"data-collection\": \"%s\", \"filter\": \"%s\"}", cond.getKey(), cond.getValue()))

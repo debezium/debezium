@@ -8,6 +8,8 @@ on:
       - main
       - 1.*
       - 2.*
+      - 3.*
+      - 4.*
 
 jobs:
   build:
@@ -51,4 +53,4 @@ jobs:
         continue-on-error: false
         with:
           script: |
-            throw new Error('Commit has no DBZ-xxx prefiix')
+            throw new Error('Commit has no DBZ-xxx prefix')

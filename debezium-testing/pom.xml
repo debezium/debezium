@@ -3,13 +3,20 @@
   <parent>
     <groupId>io.debezium</groupId>
     <artifactId>debezium-parent</artifactId>
-    <version>2.6.0-SNAPSHOT</version>
+    <version>3.2.0-SNAPSHOT</version>
     <relativePath>../debezium-parent/pom.xml</relativePath>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>debezium-testing</artifactId>
   <name>Debezium Testing</name>
   <packaging>pom</packaging>
+
+  <properties>
+    <maven.compiler.source>${debezium.java.source}</maven.compiler.source>
+    <maven.compiler.target>${debezium.java.specific.target}</maven.compiler.target>
+    <maven.compiler.release>${debezium.java.specific.target}</maven.compiler.release>
+    <maven.compiler.testRelease>${debezium.java.specific.target}</maven.compiler.testRelease>
+  </properties>
   <modules>
     <module>debezium-testing-testcontainers</module>
     <module>debezium-testing-system</module>

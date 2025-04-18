@@ -46,8 +46,7 @@ public interface ReplicationMessage {
         TRUNCATE,
         MESSAGE,
         BEGIN,
-        COMMIT,
-        NOOP
+        COMMIT
     }
 
     /**
@@ -187,6 +186,14 @@ public interface ReplicationMessage {
     }
 
     /**
+     * Returns true if the message is a skipped message.
+     * Note that the table ID may be absent for skipped messages.
+     */
+    default boolean isSkippedMessage() {
+        return false;
+    }
+
+    /**
      * A special message type that is used to replace event filtered already at {@link MessageDecoder}.
      * Enables {@link PostgresStreamingChangeEventSource} to advance LSN forward even in case of such messages.
      */
@@ -196,8 +203,8 @@ public interface ReplicationMessage {
         private final Instant commitTime;
         private final Operation operation;
 
-        public NoopMessage(Long transactionId, Instant commitTime) {
-            this.operation = Operation.NOOP;
+        public NoopMessage(Long transactionId, Instant commitTime, Operation operation) {
+            this.operation = operation;
             this.transactionId = transactionId;
             this.commitTime = commitTime;
         }
@@ -235,6 +242,11 @@ public interface ReplicationMessage {
         @Override
         public Instant getCommitTime() {
             return commitTime;
+        }
+
+        @Override
+        public boolean isSkippedMessage() {
+            return true;
         }
     }
 }

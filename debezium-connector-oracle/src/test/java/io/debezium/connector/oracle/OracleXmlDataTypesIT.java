@@ -30,13 +30,13 @@ import org.junit.Test;
 import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
-import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
-import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
+import io.debezium.connector.oracle.junit.SkipTestDependingOnStrategyRule;
+import io.debezium.connector.oracle.junit.SkipWhenLogMiningStrategyIs;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.util.Testing;
 
@@ -49,8 +49,8 @@ import oracle.xml.parser.v2.XMLDocument;
  *
  * @author Chris Cranford
  */
-@SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.OLR, reason = "Does not support XML data types")
-public class OracleXmlDataTypesIT extends AbstractConnectorTest {
+@SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Hybrid does not support XML")
+public class OracleXmlDataTypesIT extends AbstractAsyncEngineConnectorTest {
 
     // Short XML files
     private static final String XML_DATA = Testing.Files.readResourceAsString("data/test_xml_data_short.xml");
@@ -61,7 +61,7 @@ public class OracleXmlDataTypesIT extends AbstractConnectorTest {
     private static final String XML_LONG_DATA2 = Testing.Files.readResourceAsString("data/test_xml_data_long2.xml");
 
     @Rule
-    public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
+    public final TestRule skipStrategyRule = new SkipTestDependingOnStrategyRule();
 
     private OracleConnection connection;
 

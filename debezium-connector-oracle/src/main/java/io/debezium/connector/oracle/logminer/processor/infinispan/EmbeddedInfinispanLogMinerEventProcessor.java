@@ -12,11 +12,8 @@ import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFF
 
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 
-import org.infinispan.Cache;
 import org.infinispan.commons.api.BasicCache;
-import org.infinispan.commons.util.CloseableIterator;
 import org.infinispan.configuration.cache.Configuration;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.configuration.global.GlobalConfiguration;
@@ -35,9 +32,10 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
-import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
-import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
+import io.debezium.connector.oracle.logminer.processor.CacheProvider;
+import io.debezium.connector.oracle.logminer.processor.LogMinerCache;
+import io.debezium.connector.oracle.logminer.processor.LogMinerTransactionCache;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.TableId;
@@ -58,10 +56,9 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
     private final EmbeddedCacheManager cacheManager;
     private final boolean dropBufferOnStop;
 
-    private final Cache<String, InfinispanTransaction> transactionCache;
-    private final Cache<String, LogMinerEvent> eventCache;
-    private final Cache<String, String> processedTransactionsCache;
-    private final Cache<String, String> schemaChangesCache;
+    private final LogMinerTransactionCache<InfinispanTransaction> transactionCache;
+    private final LogMinerCache<String, String> processedTransactionsCache;
+    private final LogMinerCache<String, String> schemaChangesCache;
 
     public EmbeddedInfinispanLogMinerEventProcessor(ChangeEventSourceContext context,
                                                     OracleConnectorConfig connectorConfig,
@@ -78,12 +75,14 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
                 parseAndGetGlobalConfiguration(connectorConfig));
         this.dropBufferOnStop = connectorConfig.isLogMiningBufferDropOnStop();
 
-        this.transactionCache = createCache(TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS);
-        this.processedTransactionsCache = createCache(PROCESSED_TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS);
-        this.schemaChangesCache = createCache(SCHEMA_CHANGES_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES);
-        this.eventCache = createCache(EVENTS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS);
+        this.transactionCache = new InfinispanLogMinerTransactionCache(
+                createCache(TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS),
+                createCache(EVENTS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS));
+        this.processedTransactionsCache = new InfinispanLogMinerCache<>(
+                createCache(PROCESSED_TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS));
+        this.schemaChangesCache = new InfinispanLogMinerCache<>(
+                createCache(SCHEMA_CHANGES_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_SCHEMA_CHANGES));
 
-        reCreateInMemoryCache();
         displayCacheStatistics();
     }
 
@@ -92,7 +91,6 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
         if (dropBufferOnStop) {
             LOGGER.info("Clearing infinispan caches");
             transactionCache.clear();
-            eventCache.clear();
             schemaChangesCache.clear();
             processedTransactionsCache.clear();
 
@@ -107,87 +105,21 @@ public class EmbeddedInfinispanLogMinerEventProcessor extends AbstractInfinispan
     }
 
     @Override
-    public BasicCache<String, InfinispanTransaction> getTransactionCache() {
+    public LogMinerTransactionCache<InfinispanTransaction> getTransactionCache() {
         return transactionCache;
     }
 
     @Override
-    public BasicCache<String, LogMinerEvent> getEventCache() {
-        return eventCache;
-    }
-
-    @Override
-    public BasicCache<String, String> getSchemaChangesCache() {
+    public LogMinerCache<String, String> getSchemaChangesCache() {
         return schemaChangesCache;
     }
 
     @Override
-    public BasicCache<String, String> getProcessedTransactionsCache() {
+    public LogMinerCache<String, String> getProcessedTransactionsCache() {
         return processedTransactionsCache;
     }
 
-    @Override
-    protected Scn getTransactionCacheMinimumScn() {
-        Scn minimumScn = Scn.NULL;
-        try (CloseableIterator<InfinispanTransaction> iterator = transactionCache.values().iterator()) {
-            while (iterator.hasNext()) {
-                final Scn transactionScn = iterator.next().getStartScn();
-                if (minimumScn.isNull()) {
-                    minimumScn = transactionScn;
-                }
-                else {
-                    if (transactionScn.compareTo(minimumScn) < 0) {
-                        minimumScn = transactionScn;
-                    }
-                }
-            }
-        }
-        return minimumScn;
-    }
-
-    @Override
-    protected Optional<InfinispanTransaction> getOldestTransactionInCache() {
-        InfinispanTransaction transaction = null;
-        if (!transactionCache.isEmpty()) {
-            try (CloseableIterator<InfinispanTransaction> iterator = transactionCache.values().iterator()) {
-                // Seed with the first element
-                transaction = iterator.next();
-                while (iterator.hasNext()) {
-                    final InfinispanTransaction entry = iterator.next();
-                    int comparison = entry.getStartScn().compareTo(transaction.getStartScn());
-                    if (comparison < 0) {
-                        // if entry has a smaller scn, it came before.
-                        transaction = entry;
-                    }
-                    else if (comparison == 0) {
-                        // if entry has an equal scn, compare the change times.
-                        if (entry.getChangeTime().isBefore(transaction.getChangeTime())) {
-                            transaction = entry;
-                        }
-                    }
-                }
-            }
-        }
-        return Optional.ofNullable(transaction);
-    }
-
-    @Override
-    protected String getFirstActiveTransactionKey() {
-        try (CloseableIterator<String> iterator = transactionCache.keySet().iterator()) {
-            if (iterator.hasNext()) {
-                return iterator.next();
-            }
-        }
-        return null;
-    }
-
-    @Override
-    protected void purgeCache(Scn minCacheScn) {
-        removeIf(processedTransactionsCache.entrySet().iterator(), entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) < 0);
-        removeIf(schemaChangesCache.entrySet().iterator(), entry -> Scn.valueOf(entry.getKey()).compareTo(minCacheScn) < 0);
-    }
-
-    private <K, V> Cache<K, V> createCache(String cacheName, OracleConnectorConfig connectorConfig, Field field) {
+    private <K, V> BasicCache<K, V> createCache(String cacheName, OracleConnectorConfig connectorConfig, Field field) {
         Objects.requireNonNull(cacheName);
 
         final String cacheConfiguration = connectorConfig.getConfig().getString(field);

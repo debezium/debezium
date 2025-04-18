@@ -1,6 +1,6 @@
 #! /usr/bin/env bash
 
-CONNECTORS="db2 mongodb mysql oracle postgres sqlserver"
+CONNECTORS="db2 mongodb mysql mariadb oracle postgres sqlserver jdbc"
 OPTS=$(getopt -o d:o:c: --long dir:,output:,connectors: -n 'parse-options' -- "$@")
 if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
 eval set -- "$OPTS"
@@ -59,6 +59,16 @@ for groovy_script in **/groovy/*.{zip,jar}; do
     fi
     echo "$artifact"
     echo "$artifact::$groovy_script" >> "$OUTPUT"
+done
+
+for jackson_lib in **/jackson/*.jar; do
+    name=$(echo "$jackson_lib" | sed -rn 's@^(.*)-[0-9]\..*$@\1@p')
+    artifact="$name"
+    if [[ ! $artifact ]]; then
+        continue
+    fi
+    echo "$artifact"
+    echo "$artifact::$jackson_lib" >> "$OUTPUT"
 done
 
 popd || exit

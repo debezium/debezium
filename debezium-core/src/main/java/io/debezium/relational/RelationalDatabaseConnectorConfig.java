@@ -249,6 +249,15 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .required()
             .withDescription("The name of the database from which the connector should capture changes");
 
+    public static final Field QUERY_TIMEOUT_MS = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.QUERY_TIMEOUT_MS)
+            .withDisplayName("Query timeout")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 12))
+            .withDefault(600000)
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isOptional)
+            .withDescription("Time to wait for a query to execute, given in milliseconds. Defaults to 600 seconds (600,000 ms); zero means there is no limit.");
+
     /**
      * A comma-separated list of regular expressions that match the fully-qualified names of tables to be monitored.
      * Fully-qualified names for tables are of the form {@code <databaseName>.<tableName>} or

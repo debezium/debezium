@@ -12,10 +12,14 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mongodb.MongoChangeStreamException;
+import com.mongodb.MongoCommandException;
+import com.mongodb.client.ChangeStreamIterable;
 import com.mongodb.client.MongoClient;
 
 import io.debezium.DebeziumException;
@@ -23,6 +27,8 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.CollectionId;
 import io.debezium.connector.mongodb.Filters;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
+import io.debezium.connector.mongodb.MongoDbOffsetContext;
+import io.debezium.connector.mongodb.MongoDbTaskContext;
 import io.debezium.connector.mongodb.MongoUtils;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.function.BlockingFunction;
@@ -146,6 +152,16 @@ public final class MongoDbConnection implements AutoCloseable {
      * @return the collection identifiers; never null
      */
     public List<CollectionId> collections() throws InterruptedException {
+        if (connectorConfig.getCaptureScope() == MongoDbConnectorConfig.CaptureScope.COLLECTION) {
+            return connectorConfig.getCaptureTarget()
+                    .map(String::valueOf)
+                    .map(captureTarget -> captureTarget.split("\\."))
+                    .map(parts -> new CollectionId(parts[0], parts[1]))
+                    .filter(collectionId -> filters.collectionFilter().test(collectionId))
+                    .map(List::of)
+                    .orElse(List.of());
+        }
+
         return execute("get collections in databases", client -> {
             List<CollectionId> collections = new ArrayList<>();
             Set<String> databaseNames = databaseNames();
@@ -179,6 +195,41 @@ public final class MongoDbConnection implements AutoCloseable {
 
     private boolean isRunning() {
         return running.get();
+    }
+
+    public boolean validateLogPosition(MongoDbOffsetContext offset, MongoDbTaskContext taskContext) {
+
+        LOGGER.info("Found existing offset for at {}", offset.getOffset());
+        final BsonDocument token = offset.lastResumeTokenDoc();
+
+        return isValidResumeToken(token, taskContext);
+    }
+
+    private boolean isValidResumeToken(BsonDocument token, MongoDbTaskContext taskContext) {
+
+        if (token == null) {
+            return false;
+        }
+
+        try {
+            return execute("Checking change stream", client -> {
+                ChangeStreamIterable<BsonDocument> stream = MongoUtils.openChangeStream(client, taskContext);
+                stream.resumeAfter(token);
+
+                try (var ignored = stream.cursor()) {
+                    LOGGER.info("Valid resume token present, so no snapshot will be performed'");
+                    return true;
+                }
+                catch (MongoCommandException | MongoChangeStreamException e) {
+                    LOGGER.info("Invalid resume token present, snapshot will be performed'");
+                    return false;
+                }
+            });
+        }
+        catch (InterruptedException e) {
+            throw new DebeziumException("Interrupted while validating resume token", e);
+        }
+
     }
 
     @Override

@@ -6,16 +6,28 @@
 
 package io.debezium.converters.recordandmetadata;
 
+import java.util.Set;
+
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.DataException;
 
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.data.Envelope;
+import io.debezium.util.Collect;
 
 public class RecordAndMetadataBaseImpl implements RecordAndMetadata {
+
+    protected static final Set<String> SOURCE_FIELDS = Collect.unmodifiableSet(
+            AbstractSourceInfo.DEBEZIUM_VERSION_KEY,
+            AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY,
+            AbstractSourceInfo.SERVER_NAME_KEY,
+            AbstractSourceInfo.TIMESTAMP_KEY,
+            AbstractSourceInfo.SNAPSHOT_KEY,
+            AbstractSourceInfo.DATABASE_NAME_KEY);
 
     private final Struct record;
     private final Schema originalDataSchema;
@@ -23,11 +35,6 @@ public class RecordAndMetadataBaseImpl implements RecordAndMetadata {
     public RecordAndMetadataBaseImpl(Struct record, Schema originalDataSchema) {
         this.record = record;
         this.originalDataSchema = originalDataSchema;
-    }
-
-    @Override
-    public Struct record() {
-        return record;
     }
 
     @Override
@@ -63,6 +70,12 @@ public class RecordAndMetadataBaseImpl implements RecordAndMetadata {
     }
 
     @Override
+    public String traceParent() {
+        throw new DataException(
+                "Value for `traceparent` CloudEvents field currently can't be obtained from a record value and can only be obtained from a record header");
+    }
+
+    @Override
     public String dataSchemaName() {
         String connectorType = source().getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
         return "io.debezium.connector." + connectorType + ".Data";
@@ -85,5 +98,34 @@ public class RecordAndMetadataBaseImpl implements RecordAndMetadata {
         }
 
         return builder.build();
+    }
+
+    @Override
+    public Struct data(String... dataFields) {
+        Schema dataSchema = dataSchema(dataFields);
+        Struct data = new Struct(dataSchema);
+
+        for (Field field : dataSchema.fields()) {
+            data.put(field, record.get(field));
+        }
+
+        return data;
+    }
+
+    @Override
+    public String connectorType() {
+        return source().getString(AbstractSourceInfo.DEBEZIUM_CONNECTOR_KEY);
+    }
+
+    @Override
+    public Object sourceField(String name, Set<String> connectorSpecificSourceFields) {
+        if (SOURCE_FIELDS.contains(name)) {
+            return source().get(name);
+        }
+        if (connectorSpecificSourceFields.contains(name)) {
+            return source().get(name);
+        }
+
+        throw new DataException("No such field \"" + name + "\" in the \"source\" field of events from " + connectorType() + " connector");
     }
 }

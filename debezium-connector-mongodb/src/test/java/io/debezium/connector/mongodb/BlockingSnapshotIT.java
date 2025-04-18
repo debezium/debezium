@@ -29,6 +29,8 @@ import javax.management.MBeanException;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ReflectionException;
+import javax.management.openmbean.CompositeDataSupport;
+import javax.management.openmbean.TabularDataSupport;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -38,7 +40,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
@@ -133,7 +137,7 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
     public void executeBlockingSnapshotWithAdditionalCondition() throws Exception {
         // Testing.Print.enable();
 
-        populateDataCollection(dataCollectionNames().get(1).toString());
+        populateDataCollection(dataCollectionNames().get(1));
 
         startConnector(Function.identity());
 
@@ -148,6 +152,60 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
         int signalingRecords = 1; // from streaming
 
         assertRecordsWithValuesPresent(500 + signalingRecords, IntStream.rangeClosed(0, 499).boxed().collect(Collectors.toList()), topicNames().get(1));
+
+    }
+
+    @FixFor("DBZ-7903")
+    @Test
+    public void aFailedBlockingSnapshotShouldNotCauseInitialSnapshotOnRestart() throws Exception {
+        // Testing.Print.enable();
+
+        populateDataCollection(dataCollectionNames().get(0));
+        populateDataCollection(dataCollectionNames().get(1));
+
+        startConnector(Function.identity());
+
+        waitForSnapshotToBeCompleted("mongodb", "mongo1", "0", null);
+
+        List<Integer> expectedValues = IntStream.rangeClosed(0, 999).boxed().collect(Collectors.toList());
+
+        assertRecordsWithValuesPresent(ROW_COUNT, expectedValues, topicName());
+
+        stopConnector();
+        assertConnectorNotRunning();
+
+        List<String> collectionNames = List.of(FULL_COLLECTION_NAME, FULL_COLLECTION2_NAME);
+
+        startConnector(x -> x.with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, String.join(",", collectionNames)));
+        assertConnectorIsRunning();
+
+        sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(
+                Map.of(collectionNames.get(0), "{}",
+                        collectionNames.get(1), "{error}"),
+                collectionNames.get(0), collectionNames.get(1));
+
+        waitForLogMessage("Snapshot was not completed successfully", AbstractSnapshotChangeEventSource.class);
+
+        // Here we expect one record less since the last record (999) is buffered.
+        // This to maintain the same behavior of initial snapshot.
+        // Followup JIRA https://issues.redhat.com/browse/DBZ-8335
+        expectedValues = IntStream.rangeClosed(0, 998).boxed().collect(Collectors.toList());
+
+        waitForAvailableRecords(60, TimeUnit.SECONDS);
+
+        assertRecordsWithValuesPresent(ROW_COUNT, expectedValues, topicName());
+
+        insertRecords(1, ROW_COUNT * 2);
+
+        waitForAvailableRecords();
+
+        assertRecordsWithValuesPresent(1, List.of(2000), topicName(), consumeRecordsByTopic(1, 10));
+
+        stopConnector();
+
+        startConnector(Function.identity());
+
+        assertNoRecordsToConsume();
 
     }
 
@@ -230,11 +288,14 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
 
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
 
-        Map<String, Object> rowsScanned = (Map<String, Object>) mbeanServer.getAttribute(getSnapshotMetricsObjectName(connector, server, task, database),
+        final var rowsScanned = (TabularDataSupport) mbeanServer.getAttribute(getSnapshotMetricsObjectName(connector, server, task, database),
                 "RowsScanned");
 
-        String unquotedTableName = table.replace("`", "");
-        return (Long) rowsScanned.get(unquotedTableName);
+        final var scannedRowsByCollection = rowsScanned.values().stream().map(c -> ((CompositeDataSupport) c))
+                .collect(Collectors.toMap(compositeDataSupport -> compositeDataSupport.get("key").toString(), compositeDataSupport -> compositeDataSupport.get("value")));
+
+        final var unquotedCollectionName = table.replace("`", "");
+        return (Long) scannedRowsByCollection.get(unquotedCollectionName);
     }
 
     private static List<Integer> getExpectedValues(Long totalSnapshotRecords) {
@@ -276,6 +337,12 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
     private void assertRecordsWithValuesPresent(int expectedRecords, List<Integer> expectedValues, String topicName) throws InterruptedException {
 
         SourceRecords snapshotAndStreamingRecords = consumeRecordsByTopic(expectedRecords, 10);
+        assertRecordsWithValuesPresent(expectedRecords, expectedValues, topicName, snapshotAndStreamingRecords);
+    }
+
+    private void assertRecordsWithValuesPresent(int expectedRecords, List<Integer> expectedValues, String topicName, SourceRecords snapshotAndStreamingRecords)
+            throws InterruptedException {
+
         assertThat(snapshotAndStreamingRecords.allRecordsInOrder().size()).isEqualTo(expectedRecords);
         List<Integer> actual = snapshotAndStreamingRecords.recordsForTopic(topicName).stream()
                 .map(record -> extractFieldValue(record, "aa"))
@@ -293,7 +360,7 @@ public class BlockingSnapshotIT extends AbstractMongoConnectorIT {
 
     private void insertRecords(int rowCount, int startingPkId) {
 
-        final Document[] documents = new Document[ROW_COUNT];
+        final Document[] documents = new Document[rowCount];
         for (int i = 0; i < rowCount; i++) {
             final Document doc = new Document();
             doc.append(DOCUMENT_ID, i + startingPkId + 1).append("aa", i + startingPkId);

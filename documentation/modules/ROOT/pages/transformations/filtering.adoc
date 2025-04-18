@@ -24,7 +24,9 @@ For example:
 * It is necessary to compile the transformation up front and deploy it to Kafka Connect.
 * Every change needs code recompilation and redeployment, leading to inflexible operations.
 
-The filter SMT supports scripting languages that integrate with https://jcp.org/en/jsr/detail?id=223[JSR 223] (Scripting for the Java(TM) Platform).
+The filter SMT supports scripting languages that integrate with https://jcp.org/en/jsr/detail?id=223[JSR 223] (Scripting for the Java(TM) Platform) and incubating support for Go (https://tinygo.org/[TinyGo] + https://webassembly.org/[WebAssembly]).
+
+== JSR 223
 
 {prodname} does not come with any implementations of the JSR 223 API.
 To use an expression language with {prodname}, you must download the JSR 223 script engine implementation for the language.
@@ -37,6 +39,48 @@ ifdef::product[]
 Depending on the method that you use to deploy {prodname}, you can automatically download the required artifacts from Maven Central,
 or you can manually download the artifacts, and then add them to your {prodname} connector plug-in directories, along any other JAR files used by the language implementation.
 endif::product[]
+
+== Go
+
+{prodname} offers a community maintained helper PDK(Plugin Development Kit) to ease the use with Go, you can get it with:
+
+[source]
+----
+go get github.com/debezium/debezium-smt-go-pdk
+----
+
+A minimal filtering logic would look like:
+
+[source,go]
+----
+package main
+
+import (
+	"github.com/debezium/debezium-smt-go-pdk"
+)
+
+//export process
+func process(proxyPtr uint32) uint32 {
+	...
+}
+
+func main() {}
+----
+
+The `main` function is required by the Wasm compilation target and the `process` function is the entrypoint to execute the actual filtering logic.
+
+To compile the filter we suggest to use a recent version of TinyGo, for example:
+
+[source,bash]
+----
+docker run --rm \
+    -v ./:/src \
+    -w /src tinygo/tinygo:0.34.0 bash \
+    -c "tinygo build --no-debug -target=wasm-unknown -o /tmp/tmp.wasm myfilter.go && cat /tmp/tmp.wasm" > \
+    myfilter.wasm
+----
+
+You can find more details in the PDK repository: https://github.com/debezium/debezium-smt-go-pdk[Debezium SMT Go PDK].
 
 // Type: procedure
 // Title: Setting up the {prodname} filter SMT
@@ -62,8 +106,10 @@ With https://zookeeper.apache.org[Zookeeper], http://kafka.apache.org/[Kafka], {
 
 . Download the link:https://repo1.maven.org/maven2/io/debezium/debezium-scripting/{debezium-version}/debezium-scripting-{debezium-version}.tar.gz[scripting SMT archive]
 . Extract the contents of the archive into the {prodname} plug-in directories of your Kafka Connect environment.
-. Obtain a JSR-223 script engine implementation and add its contents to the {prodname} plug-in directories of your Kafka Connect environment.
-. Restart your Kafka Connect process to pick up the new JAR files.
+. Either:
+    .. obtain a JSR-223 script engine implementation and add its contents to the {prodname} plug-in directories of your Kafka Connect environment.
+    .. make available on disk the compiled `.wasm` file
+. Restart your Kafka Connect process to pick up the new configuration.
 endif::community[]
 
 ifdef::product[]
@@ -117,6 +163,18 @@ transforms.filter.condition=value.op == 'u' && value.before.id == 2
 The preceding example specifies the use of the `Groovy` expression language.
 The regular expression `value.op == 'u' && value.before.id == 2` removes all messages, except those that represent update (`u`) records with `id` values that are equal to `2`.
 
+When using Go:
+
+[source]
+----
+...
+transforms=filter
+transforms.filter.type=io.debezium.transforms.Filter
+transforms.filter.language=wasm.chicory
+transforms.filter.expression=file://myfilter.wasm
+...
+----
+
 .Customizing the configuration
 The preceding example shows a simple SMT configuration that is designed to process only DML events, which contain an `op` field.
 Other types of messages that a connector might emit (heartbeat messages, tombstone messages, or metadata messages about schema changes and transactions) do not contain this field.
@@ -141,15 +199,12 @@ The following table lists the variables that {prodname} binds into the evaluatio
 |`keySchema` |Schema of the message key.|`org.apache.kafka.connect{zwsp}.data{zwsp}.Schema`
 |`valueSchema`|Schema of the message value.| `org.apache.kafka.connect{zwsp}.data{zwsp}.Schema`
 |`topic`|Name of the target topic.| String
-|`headers`
-a|A Java map of message headers. The key field is the header name.
-The `headers` variable exposes the following properties:
+|`header`|A Java map of message headers. The key field is the header name.
+The `header` variable exposes the following properties:
 
 * `value` (of type `Object`)
-
 * `schema` (of type `org.apache.kafka{zwsp}.connect{zwsp}.data{zwsp}.Schema`)
-
-| `java.util.Map{zwsp}<String, {zwsp}io.debezium.transforms{zwsp}.scripting{zwsp}.RecordHeader>`
+|`java.util.Map{zwsp}<String, {zwsp}io.debezium.transforms{zwsp}.scripting{zwsp}.RecordHeader>`
 |===
 
 An expression can invoke arbitrary methods on its variables.
@@ -220,6 +275,19 @@ For example:
 value.op == 'u' && value.before.id == 2
 ----
 
+.Go with TinyGo
+If you use Go with the TinyGo compiler to define filtering conditions, you can leverage a fully typed API for lazy access to the fields.
+For example:
+
+[source,go]
+----
+var op = debezium.GetString(debezium.Get(proxyPtr, "value.op"))
+var beforeId = debezium.GetInt8(debezium.Get(proxyPtr, "value.before.id"))
+
+return debezium.SetBool(op != "d" || beforeId != 2)
+----
+
+
 // Type: reference
 // ModuleID: options-for-configuring-filter-transformation
 // Title: Options for configuring filter transformation
@@ -243,12 +311,17 @@ If the name of the topic does not match the value in `topic.regex`, the SMT pass
 
 |[[filter-language]]<<filter-language, `language`>>
 |
-|The language in which the expression is written. Must begin with `jsr223.`, for example, `jsr223.groovy`, or `jsr223.graal.js`.
-{prodname} supports bootstrapping through the https://jcp.org/en/jsr/detail?id=223[JSR 223 API ("Scripting for the Java (TM) Platform")] only.
+|The language in which the expression is written. For JSR223 must begin with `jsr223.`, for example, `jsr223.groovy`, or `jsr223.graal.js`.
+{prodname} supports bootstrapping through the https://jcp.org/en/jsr/detail?id=223[JSR 223 API ("Scripting for the Java (TM) Platform")].
+It should be either `wasm.chicory` or `wasm.chicory-interpreter` for Go based filters.
 
 |[[filter-condition]]<<filter-condition, `condition`>>
 |
 |The expression to be evaluated for every message. Must evaluate to a Boolean value where a result of `true` keeps the message, and a result of `false` removes it.
+
+|[[filter-expression]]<<filter-expression, `expression`>>
+|
+|The filesystem location where the `wasm` expression is available to be evaluated for every message. The Go function must evaluate to a Boolean value where a result of `true` keeps the message, and a result of `false` removes it.
 
 |[[filter-null-handling-mode]]<<filter-null-handling-mode, `null.handling.mode`>>
 |`keep`

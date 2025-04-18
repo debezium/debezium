@@ -20,8 +20,6 @@ import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 
-import io.debezium.ddl.parser.mysql.generated.MySqlParser;
-import io.debezium.ddl.parser.mysql.generated.MySqlParser.RenameTableContext;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.AbstractDdlParser;
@@ -240,21 +238,6 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      */
     public void signalCreateTable(TableId id, ParserRuleContext ctx) {
         signalCreateTable(id, getText(ctx));
-    }
-
-    /**
-     * Signal an alter table event to ddl changes listener.
-     *
-     * @param id         the table identifier; may not be null
-     * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
-     * @param ctx        the start of the statement; may not be null
-     */
-    public void signalAlterTable(TableId id, TableId previousId, MySqlParser.RenameTableClauseContext ctx) {
-        final RenameTableContext parent = (RenameTableContext) ctx.getParent();
-        Interval interval = new Interval(ctx.getParent().start.getStartIndex(),
-                parent.renameTableClause().get(0).start.getStartIndex() - 1);
-        String prefix = ctx.getParent().start.getInputStream().getText(interval);
-        signalAlterTable(id, previousId, prefix + getText(ctx));
     }
 
     /**

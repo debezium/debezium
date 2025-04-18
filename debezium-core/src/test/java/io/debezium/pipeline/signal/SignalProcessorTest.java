@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -23,6 +24,7 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.EnumeratedValue;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.common.BaseSourceInfo;
 import io.debezium.document.DocumentReader;
@@ -226,6 +228,16 @@ public class SignalProcessorTest {
             public String getConnectorName() {
                 return null;
             }
+
+            @Override
+            public EnumeratedValue getSnapshotMode() {
+                return null;
+            }
+
+            @Override
+            public Optional<EnumeratedValue> getSnapshotLockingMode() {
+                return Optional.empty();
+            }
         };
     }
 
@@ -253,12 +265,12 @@ public class SignalProcessorTest {
         }
 
         @Override
-        public boolean isSnapshotRunning() {
+        public boolean isInitialSnapshotRunning() {
             return false;
         }
 
         @Override
-        public void preSnapshotStart() {
+        public void preSnapshotStart(boolean onDemand) {
 
         }
 

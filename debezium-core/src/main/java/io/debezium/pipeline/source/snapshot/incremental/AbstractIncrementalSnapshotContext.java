@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.UUID;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -95,6 +96,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
      * Determines if the incremental snapshot was paused or not.
      */
     private final AtomicBoolean paused = new AtomicBoolean(false);
+    private final LinkedBlockingQueue<String> dataCollectionsToStop = new LinkedBlockingQueue<>();
 
     public AbstractIncrementalSnapshotContext(boolean useCatalogBeforeSchema) {
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
@@ -171,6 +173,13 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         }
     }
 
+    @Override
+    public List<String> getDataCollectionsToStop() {
+        List<String> drainedList = new ArrayList<>();
+        dataCollectionsToStop.drainTo(drainedList);
+        return drainedList;
+    }
+
     public boolean snapshotRunning() {
         return !snapshotDataCollection.isEmpty();
     }
@@ -197,27 +206,42 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         LOGGER.trace("Adding data collections names {} to snapshot", dataCollectionIds);
         final List<DataCollection<T>> newDataCollectionIds = dataCollectionIds.stream()
                 .map(buildDataCollection(additionalCondition, surrogateKey))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .collect(Collectors.toList());
         addTablesIdsToSnapshot(newDataCollectionIds);
         this.correlationId = correlationId;
         return newDataCollectionIds;
     }
 
-    private Function<String, DataCollection<T>> buildDataCollection(List<AdditionalCondition> additionalCondition, String surrogateKey) {
+    private Function<String, Optional<DataCollection<T>>> buildDataCollection(List<AdditionalCondition> additionalCondition, String surrogateKey) {
         return expandedCollectionName -> {
             String filter = additionalCondition.stream()
                     .filter(condition -> condition.getDataCollection().matcher(expandedCollectionName).matches())
                     .map(AdditionalCondition::getFilter)
                     .findFirst()
                     .orElse("");
-            return new DataCollection<T>((T) TableId.parse(expandedCollectionName, useCatalogBeforeSchema), filter, surrogateKey);
+            try {
+                TableId parsedTable = TableId.parse(expandedCollectionName, useCatalogBeforeSchema);
+                return Optional.of(new DataCollection<T>((T) parsedTable, filter, surrogateKey));
+            }
+            catch (Exception e) {
+                LOGGER.warn("Unable to parse table identifier from {}. Skipping it.", expandedCollectionName);
+                return Optional.empty();
+            }
         };
     }
 
     @Override
-    public void stopSnapshot() {
-        this.snapshotDataCollection.clear();
-        this.correlationId = null;
+    public void requestSnapshotStop(List<String> dataCollectionIds) {
+        if (snapshotRunning()) {
+            if (dataCollectionIds == null || dataCollectionIds.isEmpty()) {
+                dataCollectionsToStop.add(".*");
+            }
+            else {
+                dataCollectionsToStop.addAll(dataCollectionIds);
+            }
+        }
     }
 
     @Override
@@ -348,7 +372,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
                 + Arrays.toString(maximumKey) + "]";
     }
 
-    private static class SnapshotDataCollection<T> extends LinkedList<DataCollection<T>> {
+    private static class SnapshotDataCollection<T> extends LinkedBlockingQueue<DataCollection<T>> {
 
         public static final String DATA_COLLECTIONS_TO_SNAPSHOT_KEY = INCREMENTAL_SNAPSHOT_KEY + "_collections";
 
@@ -370,12 +394,12 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
         void add(List<DataCollection<T>> dataCollectionIds) {
             this.dataCollectionsToSnapshot.addAll(dataCollectionIds);
-            this.dataCollectionsToSnapshotJson = jsonString();
+            this.dataCollectionsToSnapshotJson = computeJsonString();
         }
 
         DataCollection<T> getNext() {
             DataCollection<T> nextDataCollection = this.dataCollectionsToSnapshot.poll();
-            this.dataCollectionsToSnapshotJson = jsonString();
+            this.dataCollectionsToSnapshotJson = computeJsonString();
             return nextDataCollection;
         }
 
@@ -398,26 +422,27 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
         public boolean remove(List<DataCollection<T>> toRemove) {
             boolean removed = this.dataCollectionsToSnapshot.removeAll(toRemove);
-            this.dataCollectionsToSnapshotJson = jsonString();
+            this.dataCollectionsToSnapshotJson = computeJsonString();
             return removed;
         }
 
         public String dataCollectionsAsJsonString() {
-            return this.dataCollectionsToSnapshotJson;
-        }
-
-        public Queue<DataCollection<T>> getDataCollectionsToSnapshot() {
-            return this.dataCollectionsToSnapshot;
-        }
-
-        private String jsonString() {
-            // TODO Handle non-standard table ids containing dots, commas etc.
 
             if (!Strings.isNullOrEmpty(dataCollectionsToSnapshotJson)) {
                 // A cached value to improve performance since this method is called in the "store"
                 // that is called during events processing
                 return dataCollectionsToSnapshotJson;
             }
+
+            return computeJsonString();
+        }
+
+        public Queue<DataCollection<T>> getDataCollectionsToSnapshot() {
+            return this.dataCollectionsToSnapshot;
+        }
+
+        private String computeJsonString() {
+            // TODO Handle non-standard table ids containing dots, commas etc.
 
             try {
                 List<LinkedHashMap<String, String>> dataCollectionsMap = dataCollectionsToSnapshot.stream()

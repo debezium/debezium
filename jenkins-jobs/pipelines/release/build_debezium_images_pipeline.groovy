@@ -2,6 +2,10 @@ import groovy.json.*
 import java.util.*
 import com.cloudbees.groovy.cps.NonCPS
 
+@Library("dbz-libs") _
+
+DRY_RUN = common.getDryRun()
+
 IMAGES_DIR = 'images'
 TAG_REST_ENDPOINT = "https://api.github.com/repos/${params.DEBEZIUM_REPOSITORY}/tags"
 STREAMS_TO_BUILD_COUNT = params.STREAMS_TO_BUILD_COUNT.toInteger()
@@ -169,7 +173,7 @@ node('Slave') {
             dir(IMAGES_DIR) {
                 sh """
                 ./setup-local-builder.sh
-                docker run --privileged --rm tonistiigi/binfmt --install all
+                docker run --privileged --rm mirror.gcr.io/tonistiigi/binfmt --install all
                 """
             }
             sh ""
@@ -178,7 +182,7 @@ node('Slave') {
             echo "Building images for streams $streamsToBuild"
             dir(IMAGES_DIR) {
                 sh """
-                DEBEZIUM_VERSIONS=\"${streamsToBuild.join(' ')}\" LATEST_STREAM=\"$stableStream\" ./build-all-multiplatform.sh
+                DRY_RUN=$DRY_RUN DEBEZIUM_VERSIONS=\"${streamsToBuild.join(' ')}\" LATEST_STREAM=\"$stableStream\" PLATFORM_CONDUCTOR_PLATFORM=linux/amd64 PLATFORM_STAGE_PLATFORM=linux/amd64 ./build-all-multiplatform.sh
                 """
             }
         }
@@ -195,9 +199,9 @@ node('Slave') {
                         sh """
                             git checkout v$tag
                             git fetch origin $IMAGES_BRANCH:$IMAGES_BRANCH
-                            git checkout $IMAGES_BRANCH build-all-multiplatform.sh build-debezium-multiplatform.sh build-mongo-multiplatform.sh build-postgres-multiplatform.sh
+                            git checkout $IMAGES_BRANCH build-all-multiplatform.sh build-debezium-multiplatform.sh build-postgres-multiplatform.sh
                             echo '========== Building UI only for linux/amd64, arm64 not working =========='
-                            DEBEZIUM_UI_PLATFORM=linux/amd64 RELEASE_TAG=$tag ./build-debezium-multiplatform.sh $stream $MULTIPLATFORM_PLATFORMS
+                            DRY_RUN=$DRY_RUN PLATFORM_CONDUCTOR_PLATFORM=linux/amd64 PLATFORM_STAGE_PLATFORM=linux/amd64 RELEASE_TAG=$tag ./build-debezium-multiplatform.sh $stream $MULTIPLATFORM_PLATFORMS
                             git reset --hard
                         """
                     }

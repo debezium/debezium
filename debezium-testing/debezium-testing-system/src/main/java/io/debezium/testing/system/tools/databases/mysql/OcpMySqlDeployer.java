@@ -40,8 +40,15 @@ public final class OcpMySqlDeployer extends AbstractOcpDatabaseDeployer<MySqlCon
 
     @Override
     public MySqlController deploy() {
-        LOGGER.info("Deploying persistent volume claim");
-        ocp.persistentVolumeClaims().inNamespace(ConfigProperties.OCP_PROJECT_MYSQL).createOrReplace(volumeClaim);
+        PersistentVolumeClaim ocpPvc = ocp.persistentVolumeClaims().inNamespace(ConfigProperties.OCP_PROJECT_MYSQL)
+                .withName(volumeClaim.getMetadata().getName()).get();
+        if (ocpPvc == null) {
+            LOGGER.info("Deploying persistent volume claim");
+            ocp.persistentVolumeClaims().inNamespace(ConfigProperties.OCP_PROJECT_MYSQL).createOrReplace(volumeClaim);
+        }
+        else {
+            LOGGER.info("Persistent volume claim already exists. Skipping deployment");
+        }
         return super.deploy();
     }
 

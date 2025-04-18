@@ -54,9 +54,9 @@ The [Command Query Responsibility Separation (CQRS)](http://martinfowler.com/bli
 The following software is required to work with the Debezium codebase and build it locally:
 
 * [Git](https://git-scm.com) 2.2.1 or later
-* JDK 17 or later, e.g. [OpenJDK](http://openjdk.java.net/projects/jdk/)
+* JDK 21 or later, e.g. [OpenJDK](http://openjdk.java.net/projects/jdk/)
 * [Docker Engine](https://docs.docker.com/engine/install/) or [Docker Desktop](https://docs.docker.com/desktop/) 1.9 or later
-* [Apache Maven](https://maven.apache.org/index.html) 3.8.4 or later  
+* [Apache Maven](https://maven.apache.org/index.html) 3.9.8 or later  
   (or invoke the wrapper with `./mvnw` for Maven commands)
 
 See the links above for installation instructions on your platform. You can verify the versions are installed and running:
@@ -89,6 +89,15 @@ The Docker Maven Plugin will resolve the docker host by checking the following e
     export DOCKER_TLS_VERIFY=1
 
 These can be set automatically if using Docker Machine or something similar.
+
+#### Colima
+In order to run testcontainers against [colima](https://github.com/abiosoft/colima) the env vars below should be set (assume we use `default` profile of colima)
+
+    colima start
+    export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
+    export TESTCONTAINERS_HOST_OVERRIDE="0.0.0.0"
+    export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"
+
 
 ### Building the code
 

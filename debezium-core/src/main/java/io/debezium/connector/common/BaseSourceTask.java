@@ -14,6 +14,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -22,6 +23,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -29,21 +31,31 @@ import org.apache.kafka.connect.source.SourceTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.SingleThreadAccess;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.function.LogPositionValidator;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.notification.channels.NotificationChannel;
 import io.debezium.pipeline.signal.channels.SignalChannelReader;
+import io.debezium.pipeline.signal.channels.process.SignalChannelWriter;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.processors.PostProcessorRegistryServiceProvider;
+import io.debezium.schema.DatabaseSchema;
+import io.debezium.schema.HistorizedDatabaseSchema;
 import io.debezium.service.spi.ServiceRegistry;
+import io.debezium.snapshot.SnapshotLockProvider;
+import io.debezium.snapshot.SnapshotQueryProvider;
+import io.debezium.snapshot.SnapshotterServiceProvider;
+import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
+import io.debezium.util.Loggings;
 import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 
@@ -59,6 +71,99 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     private static final Duration INITIAL_POLL_PERIOD_IN_MILLIS = Duration.ofMillis(TimeUnit.SECONDS.toMillis(5));
     private static final Duration MAX_POLL_PERIOD_IN_MILLIS = Duration.ofMillis(TimeUnit.HOURS.toMillis(1));
     private Configuration config;
+    private List<SignalChannelReader> signalChannels;
+
+    protected void validateAndLoadSchemaHistory(CommonConnectorConfig config, LogPositionValidator logPositionValidator, Offsets<P, O> previousOffsets,
+                                                DatabaseSchema schema,
+                                                Snapshotter snapshotter) {
+
+        for (Map.Entry<P, O> previousOffset : previousOffsets) {
+
+            Partition partition = previousOffset.getKey();
+            OffsetContext offset = previousOffset.getValue();
+
+            if (offset == null) {
+                if (snapshotter.shouldSnapshotOnSchemaError()) {
+                    // We are in schema only recovery mode, use the existing redo log position
+                    // would like to also verify redo log position exists, but it defaults to 0 which is technically valid
+                    throw new DebeziumException("Could not find existing redo log information while attempting schema only recovery snapshot");
+                }
+                LOGGER.info("Connector started for the first time.");
+                if (schema.isHistorized()) {
+                    ((HistorizedDatabaseSchema) schema).initializeStorage();
+                }
+                return;
+            }
+
+            if (offset.isInitialSnapshotRunning()) {
+                // The last offset was an incomplete snapshot and now the snapshot was disabled
+                if (!snapshotter.shouldSnapshotData(true, true) &&
+                        !snapshotter.shouldSnapshotSchema(true, true)) {
+                    // No snapshots are allowed
+                    throw new DebeziumException("The connector previously stopped while taking a snapshot, but now the connector is configured "
+                            + "to never allow snapshots. Reconfigure the connector to use snapshots initially or when needed.");
+                }
+            }
+            else {
+
+                if (schema.isHistorized() && !((HistorizedDatabaseSchema) schema).historyExists()) {
+
+                    LOGGER.warn("Database schema history was not found but was expected");
+
+                    if (snapshotter.shouldSnapshotOnSchemaError()) {
+
+                        LOGGER.info("The db-history topic is missing but we are in {} snapshot mode. " +
+                                "Attempting to snapshot the current schema and then begin reading the redo log from the last recorded offset.",
+                                snapshotter.name());
+                        if (schema.isHistorized()) {
+                            ((HistorizedDatabaseSchema) schema).initializeStorage();
+                        }
+                        return;
+                    }
+                    else {
+                        throw new DebeziumException("The db history topic is missing. You may attempt to recover it by reconfiguring the connector to recovery.");
+                    }
+                }
+
+                if (config.isLogPositionCheckEnabled()) {
+
+                    boolean logPositionAvailable = isLogPositionAvailable(logPositionValidator, partition, offset, config);
+
+                    if (!logPositionAvailable) {
+                        LOGGER.warn("Last recorded offset is no longer available on the server.");
+
+                        if (snapshotter.shouldSnapshotOnDataError()) {
+
+                            LOGGER.info("The last recorded offset is no longer available but we are in {} snapshot mode. " +
+                                    "Attempting to snapshot data to fill the gap.",
+                                    snapshotter.name());
+
+                            previousOffsets.resetOffset(previousOffsets.getTheOnlyPartition());
+
+                            return;
+                        }
+
+                        LOGGER.warn("The connector is trying to read redo log starting at " + offset + ", but this is no longer "
+                                + "available on the server. Reconfigure the connector to use a snapshot when needed if you want to recover. " +
+                                "If not the connector will streaming from the last available position in the log");
+                    }
+                }
+
+                if (schema.isHistorized()) {
+                    ((HistorizedDatabaseSchema) schema).recover(partition, offset);
+                }
+            }
+        }
+    }
+
+    public boolean isLogPositionAvailable(LogPositionValidator logPositionValidator, Partition partition, OffsetContext offsetContext, CommonConnectorConfig config) {
+
+        if (logPositionValidator == null) {
+            LOGGER.warn("Current JDBC connection implementation is not providing a log position validator implementation. The check will always be 'true'");
+            return true;
+        }
+        return logPositionValidator.validate(partition, offsetContext, config);
+    }
 
     public enum State {
         RESTARTING,
@@ -104,6 +209,13 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     private final List<NotificationChannel> notificationChannels;
 
+    /**
+     * A flag to record whether the offsets stored in the offset store are loaded for the first time.
+     * This is typically used to reduce logging in case a connector like PostgreSQL reads offsets
+     * not only on connector startup but repeatedly during execution time too.
+     */
+    private boolean offsetLoadedInPast = false;
+
     protected BaseSourceTask() {
         // Use exponential delay to log the progress frequently at first, but the quickly tapering off to once an hour...
         pollOutputDelay = ElapsedTimeStrategy.exponential(clock, INITIAL_POLL_PERIOD_IN_MILLIS, MAX_POLL_PERIOD_IN_MILLIS);
@@ -132,10 +244,12 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
 
             if (LOGGER.isInfoEnabled()) {
-                LOGGER.info("Starting {} with configuration:", getClass().getSimpleName());
+                StringBuilder configLogBuilder = new StringBuilder("Starting " + getClass().getSimpleName() + " with configuration:");
                 withMaskedSensitiveOptions(config).forEach((propName, propValue) -> {
-                    LOGGER.info("   {} = {}", propName, propValue);
+                    configLogBuilder.append("\n   ").append(propName).append(" = ").append(propValue);
                 });
+                configLogBuilder.append("\n");
+                LOGGER.info(configLogBuilder.toString());
             }
             try {
                 this.coordinator = start(config);
@@ -152,8 +266,31 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         }
     }
 
+    /**
+     * Returns the available signal channels.
+     * <p>
+     *     The signal channels are loaded using the {@link ServiceLoader} mechanism and cached for the lifetime of the task.
+     * </p>
+     *
+     * @return list of loaded signal channels
+     */
     public List<SignalChannelReader> getAvailableSignalChannels() {
-        return availableSignalChannels.stream().map(ServiceLoader.Provider::get).collect(Collectors.toList());
+        if (signalChannels == null) {
+            signalChannels = availableSignalChannels.stream().map(ServiceLoader.Provider::get).collect(Collectors.toList());
+        }
+        return signalChannels;
+    }
+
+    /**
+     * Returns the first available signal channel writer
+     *
+     * @return the first available signal channel writer empty optional if not available
+     */
+    public Optional<? extends SignalChannelWriter> getAvailableSignalChannelWriter() {
+        return getAvailableSignalChannels().stream()
+                .filter(SignalChannelWriter.class::isInstance)
+                .map(SignalChannelWriter.class::cast)
+                .findFirst();
     }
 
     protected Configuration withMaskedSensitiveOptions(Configuration config) {
@@ -181,6 +318,9 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
             final List<SourceRecord> records = doPoll();
             logStatistics(records);
+
+            resetErrorHandlerRetriesIfNeeded(records);
+
             return records;
         }
         catch (RetriableException e) {
@@ -224,6 +364,20 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         stateLock.lock();
         lastOffsets.put(partition, lastOffset);
         stateLock.unlock();
+    }
+
+    /**
+     * Should be called to reset the error handler's retry counter upon a successful poll or when known
+     * that the connector task has recovered from a previous failure state.
+     */
+    protected void resetErrorHandlerRetriesIfNeeded(List<SourceRecord> records) {
+        // When a connector throws a retriable error, the task is not re-created and instead the previous
+        // error handler is passed into the new error handler, propagating the retry count. This method
+        // allows resetting that counter when a successful poll iteration step contains new records so that when a
+        // future failure is thrown, the maximum retry count can be utilized.
+        if (!records.isEmpty() && coordinator != null && coordinator.getErrorHandler().getRetries() > 0) {
+            coordinator.getErrorHandler().resetRetries();
+        }
     }
 
     /**
@@ -314,8 +468,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     protected abstract void doStop();
 
     @Override
-    public void commitRecord(SourceRecord record) throws InterruptedException {
-        LOGGER.trace("Committing record {}", record);
+    public void commitRecord(SourceRecord record, RecordMetadata metadata) throws InterruptedException {
+        Loggings.logTraceAndTraceRecord(LOGGER, record, "Committing record");
 
         Map<String, ?> currentOffset = record.sourceOffset();
         if (currentOffset != null) {
@@ -346,7 +500,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
         }
         else {
-            LOGGER.warn("Couldn't commit processed log positions with the source database due to a concurrent connector shutdown or restart");
+            LOGGER.info("Couldn't commit processed log positions with the source database due to a concurrent connector shutdown or restart");
         }
     }
 
@@ -370,7 +524,13 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
             if (offset != null) {
                 found = true;
-                LOGGER.info("Found previous partition offset {}: {}", partition, offset.getOffset());
+                if (offsetLoadedInPast) {
+                    LOGGER.debug("Found previous partition offset {}: {}", partition, offset.getOffset());
+                }
+                else {
+                    LOGGER.info("Found previous partition offset {}: {}", partition, offset.getOffset());
+                    offsetLoadedInPast = true;
+                }
             }
         }
 
@@ -408,6 +568,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     protected void registerServiceProviders(ServiceRegistry serviceRegistry) {
         serviceRegistry.registerServiceProvider(new PostProcessorRegistryServiceProvider());
+        serviceRegistry.registerServiceProvider(new SnapshotLockProvider());
+        serviceRegistry.registerServiceProvider(new SnapshotQueryProvider());
+        serviceRegistry.registerServiceProvider(new SnapshotterServiceProvider());
     }
-
 }

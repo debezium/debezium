@@ -16,21 +16,23 @@ import java.util.stream.Collectors;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.ParseTree;
 
-import com.mysql.cj.CharsetMapping;
-
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.antlr.AntlrDdlParserListener;
 import io.debezium.antlr.DataTypeResolver;
 import io.debezium.antlr.DataTypeResolver.DataTypeEntry;
-import io.debezium.connector.mysql.MySqlSystemVariables;
-import io.debezium.connector.mysql.MySqlValueConverters;
+import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
+import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.mysql.antlr.listener.MySqlAntlrDdlParserListener;
 import io.debezium.ddl.parser.mysql.generated.MySqlLexer;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser.CharsetNameContext;
 import io.debezium.ddl.parser.mysql.generated.MySqlParser.CollationNameContext;
+import io.debezium.ddl.parser.mysql.generated.MySqlParser.RenameTableClauseContext;
+import io.debezium.ddl.parser.mysql.generated.MySqlParser.RenameTableContext;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.SystemVariables;
@@ -46,27 +48,25 @@ import io.debezium.relational.Tables.TableFilter;
 public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser> {
 
     private final ConcurrentMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
-    private final MySqlValueConverters converters;
     private final TableFilter tableFilter;
+    private final BinlogCharsetRegistry charsetRegistry;
 
+    @VisibleForTesting
     public MySqlAntlrDdlParser() {
-        this(null, TableFilter.includeAll());
+        this(TableFilter.includeAll());
     }
 
-    public MySqlAntlrDdlParser(MySqlValueConverters converters) {
-        this(converters, TableFilter.includeAll());
-    }
-
-    public MySqlAntlrDdlParser(MySqlValueConverters converters, TableFilter tableFilter) {
-        this(true, false, false, converters, tableFilter);
+    @VisibleForTesting
+    public MySqlAntlrDdlParser(TableFilter tableFilter) {
+        this(true, false, false, tableFilter, null);
     }
 
     public MySqlAntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, boolean includeComments,
-                               MySqlValueConverters converters, TableFilter tableFilter) {
+                               TableFilter tableFilter, BinlogCharsetRegistry charsetRegistry) {
         super(throwErrorsFromTreeWalk, includeViews, includeComments);
-        systemVariables = new MySqlSystemVariables();
-        this.converters = converters;
+        systemVariables = new BinlogSystemVariables();
         this.tableFilter = tableFilter;
+        this.charsetRegistry = charsetRegistry;
     }
 
     @Override
@@ -91,7 +91,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
 
     @Override
     protected SystemVariables createNewSystemVariablesInstance() {
-        return new MySqlSystemVariables();
+        return new BinlogSystemVariables();
     }
 
     @Override
@@ -182,6 +182,8 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
                         .setDefaultLengthScaleDimension(10, 0),
                 new DataTypeEntry(Types.BIT, MySqlParser.BIT)
                         .setDefaultLengthDimension(1),
+                new DataTypeEntry(Types.OTHER, MySqlParser.VECTOR)
+                        .setDefaultLengthDimension(2048),
                 new DataTypeEntry(Types.TIME, MySqlParser.TIME),
                 new DataTypeEntry(Types.TIMESTAMP_WITH_TIMEZONE, MySqlParser.TIMESTAMP),
                 new DataTypeEntry(Types.TIMESTAMP, MySqlParser.DATETIME),
@@ -379,9 +381,9 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
      * @return the name of the character set for the current database, or null if not known ...
      */
     public String currentDatabaseCharset() {
-        String charsetName = systemVariables.getVariable(MySqlSystemVariables.CHARSET_NAME_DATABASE);
+        String charsetName = systemVariables.getVariable(BinlogSystemVariables.CHARSET_NAME_DATABASE);
         if (charsetName == null || "DEFAULT".equalsIgnoreCase(charsetName)) {
-            charsetName = systemVariables.getVariable(MySqlSystemVariables.CHARSET_NAME_SERVER);
+            charsetName = systemVariables.getVariable(BinlogSystemVariables.CHARSET_NAME_SERVER);
         }
         return charsetName;
     }
@@ -431,10 +433,6 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         return option.replaceAll(",", "\\\\,").replaceAll("\\\\'", "'").replace("''", "'");
     }
 
-    public MySqlValueConverters getConverters() {
-        return converters;
-    }
-
     public TableFilter getTableFilter() {
         return tableFilter;
     }
@@ -453,14 +451,28 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         }
         else if (collationNode != null && collationNode.getText() != null) {
             final String collationName = withoutQuotes(collationNode.getText()).toLowerCase();
-            for (int index = 0; index < CharsetMapping.MAP_SIZE; index++) {
-                if (collationName.equals(
-                        CharsetMapping.getStaticCollationNameForCollationIndex(index))) {
-                    charsetName = CharsetMapping.getStaticMysqlCharsetNameForCollationIndex(index);
+            for (int index = 0; index < charsetRegistry.getCharsetMapSize(); index++) {
+                if (collationName.equals(charsetRegistry.getCollationNameForCollationIndex(index))) {
+                    charsetName = charsetRegistry.getCharsetNameForCollationIndex(index);
                     break;
                 }
             }
         }
         return charsetName;
+    }
+
+    /**
+     * Signal an alter table event to ddl changes listener.
+     *
+     * @param id         the table identifier; may not be null
+     * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
+     * @param ctx        the start of the statement; may not be null
+     */
+    public void signalAlterTable(TableId id, TableId previousId, RenameTableClauseContext ctx) {
+        final RenameTableContext parent = (RenameTableContext) ctx.getParent();
+        Interval interval = new Interval(ctx.getParent().start.getStartIndex(),
+                parent.renameTableClause().get(0).start.getStartIndex() - 1);
+        String prefix = ctx.getParent().start.getInputStream().getText(interval);
+        signalAlterTable(id, previousId, prefix + getText(ctx));
     }
 }

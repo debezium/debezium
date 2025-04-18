@@ -28,7 +28,7 @@ public class DefaultMongoDbAuthProvider implements MongoDbAuthProvider {
         var authSource = connectorConfig.getAuthSource();
 
         if (user != null || password != null) {
-            settings.credential(MongoCredential.createCredential(user, authSource, password.toCharArray()));
+            settings.credential(MongoCredential.createCredential(user, authSource, password != null ? password.toCharArray() : null));
         }
         return settings;
     }

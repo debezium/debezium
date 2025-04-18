@@ -9,31 +9,31 @@ import static io.debezium.transforms.HeaderToValue.Operation.MOVE;
 import static java.lang.String.format;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigException;
+import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.transforms.Transformation;
-import org.apache.kafka.connect.transforms.util.SchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.Module;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.util.BoundedConcurrentHashMap;
+import io.debezium.util.Loggings;
 
-public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation<R> {
+public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HeaderToValue.class);
     public static final String FIELDS_CONF = "fields";
@@ -42,8 +42,6 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
     private static final String MOVE_OPERATION = "move";
     private static final String COPY_OPERATION = "copy";
     private static final int CACHE_SIZE = 64;
-    public static final String NESTING_SEPARATOR = ".";
-    public static final String ROOT_FIELD_NAME = "payload";
 
     enum Operation {
         MOVE(MOVE_OPERATION),
@@ -145,32 +143,32 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
     public R apply(R record) {
 
         if (record.value() == null) {
-            LOGGER.trace("Tombstone {} arrived and will be skipped", record.key());
+            Loggings.logTraceAndTraceRecord(LOGGER, record.key(), "Tombstone record arrived and will be skipped");
             return record;
         }
 
         final Struct value = requireStruct(record.value(), "Header field insertion");
 
-        LOGGER.trace("Processing record {}", value);
-        Map<String, Header> headerToProcess = StreamSupport.stream(record.headers().spliterator(), false)
-                .filter(header -> headers.contains(header.key()))
-                .collect(Collectors.toMap(Header::key, Function.identity()));
+        Loggings.logTraceAndTraceRecord(LOGGER, value, "Processing record");
 
-        if (LOGGER.isTraceEnabled()) {
-            LOGGER.trace("Header to be processed: {}", headersToString(headerToProcess));
+        final List<ConnectRecordUtil.NewEntry> newEntries = new LinkedList<>();
+        final Iterator<Header> iter = record.headers().iterator();
+        while (iter.hasNext()) {
+            final Header header = iter.next();
+            int headerIndex = headers.indexOf(header.key());
+            if (headerIndex > -1) {
+                newEntries.add(new ConnectRecordUtil.NewEntry(fields.get(headerIndex), header.schema(), header.value()));
+            }
         }
 
-        if (headerToProcess.isEmpty()) {
+        if (newEntries.isEmpty()) {
             return record;
         }
 
-        Schema updatedSchema = schemaUpdateCache.computeIfAbsent(value.schema(), valueSchema -> makeNewSchema(valueSchema, headerToProcess));
-
+        Schema updatedSchema = schemaUpdateCache.computeIfAbsent(value.schema(), valueSchema -> ConnectRecordUtil.makeNewSchema(valueSchema, newEntries));
         LOGGER.trace("Updated schema fields: {}", updatedSchema.fields());
-
-        Struct updatedValue = makeUpdatedValue(value, headerToProcess, updatedSchema);
-
-        LOGGER.trace("Updated value: {}", updatedValue);
+        Struct updatedValue = ConnectRecordUtil.makeUpdatedValue(value, newEntries, updatedSchema);
+        Loggings.logTraceAndTraceRecord(LOGGER, updatedValue, "Updated value");
 
         Headers updatedHeaders = record.headers();
         if (MOVE.equals(operation)) {
@@ -196,110 +194,6 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
         return updatedHeaders;
     }
 
-    private Struct makeUpdatedValue(Struct originalValue, Map<String, Header> headerToProcess, Schema updatedSchema) {
-
-        List<String> nestedFields = fields.stream().filter(field -> field.contains(NESTING_SEPARATOR)).collect(Collectors.toList());
-
-        return buildUpdatedValue(ROOT_FIELD_NAME, originalValue, headerToProcess, updatedSchema, nestedFields, 0);
-    }
-
-    private Struct buildUpdatedValue(String fieldName, Struct originalValue, Map<String, Header> headerToProcess, Schema updatedSchema, List<String> nestedFields,
-                                     int level) {
-
-        Struct updatedValue = new Struct(updatedSchema);
-        for (org.apache.kafka.connect.data.Field field : originalValue.schema().fields()) {
-            if (originalValue.get(field) != null) {
-                if (isContainedIn(field.name(), nestedFields)) {
-                    Struct nestedField = requireStruct(originalValue.get(field), "Nested field");
-                    updatedValue.put(field.name(),
-                            buildUpdatedValue(field.name(), nestedField, headerToProcess, updatedSchema.field(field.name()).schema(), nestedFields, ++level));
-                }
-                else {
-                    updatedValue.put(field.name(), originalValue.get(field));
-                }
-            }
-        }
-
-        for (int i = 0; i < headers.size(); i++) {
-
-            Header currentHeader = headerToProcess.get(headers.get(i));
-
-            if (currentHeader != null) {
-                Optional<String> fieldNameToAdd = getFieldName(fields.get(i), fieldName, level);
-                fieldNameToAdd.ifPresent(s -> updatedValue.put(s, currentHeader.value()));
-            }
-        }
-
-        return updatedValue;
-    }
-
-    private boolean isContainedIn(String fieldName, List<String> nestedFields) {
-
-        return nestedFields.stream().anyMatch(s -> s.contains(fieldName));
-    }
-
-    private Schema makeNewSchema(Schema oldSchema, Map<String, Header> headerToProcess) {
-
-        List<String> nestedFields = fields.stream().filter(field -> field.contains(NESTING_SEPARATOR)).collect(Collectors.toList());
-
-        return buildNewSchema(ROOT_FIELD_NAME, oldSchema, headerToProcess, nestedFields, 0);
-    }
-
-    private Schema buildNewSchema(String fieldName, Schema oldSchema, Map<String, Header> headerToProcess, List<String> nestedFields, int level) {
-
-        if (oldSchema.type().isPrimitive()) {
-            return oldSchema;
-        }
-
-        // Get fields from original schema
-        SchemaBuilder newSchemabuilder = SchemaUtil.copySchemaBasics(oldSchema, SchemaBuilder.struct());
-        for (org.apache.kafka.connect.data.Field field : oldSchema.fields()) {
-            if (isContainedIn(field.name(), nestedFields)) {
-
-                newSchemabuilder.field(field.name(), buildNewSchema(field.name(), field.schema(), headerToProcess, nestedFields, ++level));
-            }
-            else {
-                newSchemabuilder.field(field.name(), field.schema());
-            }
-        }
-
-        LOGGER.debug("Fields copied from the old schema {}", newSchemabuilder.fields());
-        for (int i = 0; i < headers.size(); i++) {
-
-            Header currentHeader = headerToProcess.get(headers.get(i));
-            Optional<String> currentFieldName = getFieldName(fields.get(i), fieldName, level);
-            LOGGER.trace("CurrentHeader {} - currentFieldName {}", headers.get(i), currentFieldName);
-            if (currentFieldName.isPresent() && currentHeader != null) {
-                newSchemabuilder = newSchemabuilder.field(currentFieldName.get(), currentHeader.schema());
-            }
-        }
-        LOGGER.debug("Fields added from headers {}", newSchemabuilder.fields());
-        return newSchemabuilder.build();
-    }
-
-    private Optional<String> getFieldName(String destinationFieldName, String fieldName, int level) {
-
-        String[] nestedNames = destinationFieldName.split("\\.");
-        if (isRootField(fieldName, nestedNames)) {
-            return Optional.of(nestedNames[0]);
-        }
-
-        if (isChildrenOf(fieldName, level, nestedNames)) {
-            return Optional.of(nestedNames[level]);
-        }
-
-        return Optional.empty();
-    }
-
-    private static boolean isChildrenOf(String fieldName, int level, String[] nestedNames) {
-        int parentLevel = level == 0 ? 0 : level - 1;
-        return nestedNames[parentLevel].equals(fieldName);
-    }
-
-    private static boolean isRootField(String fieldName, String[] nestedNames) {
-        return nestedNames.length == 1 && fieldName.equals(ROOT_FIELD_NAME);
-    }
-
     private String headersToString(Map<?, ?> map) {
         return map.keySet().stream()
                 .map(key -> key + "=" + map.get(key))
@@ -308,5 +202,10 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
 
     @Override
     public void close() {
+    }
+
+    @Override
+    public String version() {
+        return Module.version();
     }
 }

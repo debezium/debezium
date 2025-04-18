@@ -78,10 +78,14 @@ import io.debezium.util.VariableLatch;
  * the running thread (e.g., as is the case with {@link ExecutorService#shutdownNow()}).
  *
  * @author Randall Hauch
+ *
+ * @deprecated Use {@link io.debezium.embedded.async.AsyncEmbeddedEngine} instead.
  */
+@Deprecated
 @ThreadSafe
 public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, EmbeddedEngineConfig {
 
+    @Deprecated
     public static final class EngineBuilder implements Builder<SourceRecord> {
         private Configuration config;
         private DebeziumEngine.ChangeConsumer<SourceRecord> handler;
@@ -441,7 +445,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
                     // Create source connector task
                     final List<Map<String, String>> taskConfigs = connector.taskConfigs(1);
                     final Class<? extends Task> taskClass = connector.taskClass();
-                    task = createSourceTask(connector, taskConfigs, taskClass);
+                    task = createSourceTask(taskConfigs, taskClass);
 
                     try {
                         // start source task
@@ -507,7 +511,14 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
 
     private Map<String, String> getConnectorConfig(final SourceConnector connector, final String connectorClassName) throws EmbeddedEngineRuntimeException {
         Map<String, String> connectorConfig = workerConfig.originalsStrings();
-        Config validatedConnectorConfig = connector.validate(connectorConfig);
+        Config validatedConnectorConfig = null;
+        try {
+            validatedConnectorConfig = connector.validate(connectorConfig);
+        }
+        catch (Exception ex) {
+            String msg = "Connector configuration is not valid: " + ex.getMessage();
+            failAndThrow(msg, ex);
+        }
         ConfigInfos configInfos = AbstractHerder.generateResult(connectorClassName, Collections.emptyMap(), validatedConnectorConfig.configValues(),
                 connector.config().groups());
         if (configInfos.errorCount() > 0) {
@@ -594,7 +605,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
         connector.initialize(context);
     }
 
-    private SourceTask createSourceTask(final SourceConnector connector, final List<Map<String, String>> taskConfigs, final Class<? extends Task> taskClass)
+    private SourceTask createSourceTask(final List<Map<String, String>> taskConfigs, final Class<? extends Task> taskClass)
             throws EmbeddedEngineRuntimeException, NoSuchMethodException, InvocationTargetException {
         if (taskConfigs.isEmpty()) {
             String msg = "Unable to start connector's task class '" + taskClass.getName() + "' with no task configuration";
@@ -665,7 +676,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
                 startedSuccessfully = true;
             }
             catch (Exception ex) {
-                if (totalRetries >= maxRetries) {
+                if (maxRetries != EmbeddedEngineConfig.DEFAULT_ERROR_MAX_RETRIES && totalRetries >= maxRetries) {
                     LOGGER.error("Can't start the connector, max retries to connect exceeded; stopping connector...", ex);
                     return ex;
                 }
@@ -809,7 +820,7 @@ public final class EmbeddedEngine implements DebeziumEngine<SourceRecord>, Embed
 
             @Override
             public synchronized void markProcessed(SourceRecord record) throws InterruptedException {
-                task.commitRecord(record);
+                task.commitRecord(record, null);
                 recordsSinceLastCommit += 1;
                 offsetWriter.offset((Map<String, Object>) record.sourcePartition(), (Map<String, Object>) record.sourceOffset());
             }

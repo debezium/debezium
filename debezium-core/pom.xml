@@ -3,13 +3,14 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>2.6.0-SNAPSHOT</version>
+        <version>3.2.0-SNAPSHOT</version>
         <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
+
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-core</artifactId>
     <name>Debezium Core</name>
-    <packaging>jar</packaging>
+
     <dependencies>
         <dependency>
             <groupId>io.debezium</groupId>
@@ -86,6 +87,16 @@
             <artifactId>groovy-json</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.opentelemetry.javaagent</groupId>
+            <artifactId>opentelemetry-testing-common</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry.javaagent</groupId>
+            <artifactId>opentelemetry-agent-for-testing</artifactId>
+            <scope>test</scope>
+        </dependency>
 
         <!-- Used for unit testing with Kafka -->
         <dependency>
@@ -143,6 +154,23 @@
                 <configuration>
                     <source>15</source>
                     <target>15</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>properties</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>-javaagent:${io.opentelemetry.javaagent:opentelemetry-agent-for-testing:jar}</argLine>
                 </configuration>
             </plugin>
         </plugins>

@@ -13,13 +13,14 @@ import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.UUID;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -75,7 +76,7 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     // TODO After extracting add into source info optional block
     // incrementalSnapshotWindow{String from, String to}
     // State to be stored and recovered from offsets
-    private final Queue<DataCollection<T>> dataCollectionsToSnapshot = new LinkedList<>();
+    private final Queue<DataCollection<T>> dataCollectionsToSnapshot = new LinkedBlockingQueue<>();
 
     /**
      * The PK of the last record that was passed to Kafka Connect. In case of
@@ -100,6 +101,7 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
      * Determines if the incremental snapshot was paused or not.
      */
     private AtomicBoolean paused = new AtomicBoolean(false);
+    private final LinkedBlockingQueue<String> dataCollectionsToStop = new LinkedBlockingQueue<>();
     private ObjectMapper mapper = new ObjectMapper();
 
     private TypeReference<List<LinkedHashMap<String, String>>> mapperTypeRef = new TypeReference<>() {
@@ -179,6 +181,13 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
         }
     }
 
+    @Override
+    public List<String> getDataCollectionsToStop() {
+        List<String> drainedList = new ArrayList<>();
+        dataCollectionsToStop.drainTo(drainedList);
+        return drainedList;
+    }
+
     private String dataCollectionsToSnapshotAsString() {
         // TODO Handle non-standard table ids containing dots, commas etc.
         try {
@@ -234,18 +243,37 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
     @SuppressWarnings("unchecked")
     public List<DataCollection<T>> addDataCollectionNamesToSnapshot(String correlationId, List<String> dataCollectionIds, List<AdditionalCondition> additionalCondition,
                                                                     String surrogateKey) {
+        LOGGER.trace("Adding data collections names {} to snapshot", dataCollectionIds);
         final List<DataCollection<T>> newDataCollectionIds = dataCollectionIds.stream()
-                .map(x -> new DataCollection<T>((T) CollectionId.parse(x)))
+                .map(buildDataCollection(additionalCondition, surrogateKey))
                 .filter(x -> x.getId() != null) // Remove collections with incorrectly formatted name
                 .collect(Collectors.toList());
         addTablesIdsToSnapshot(newDataCollectionIds);
+        this.correlationId = correlationId;
         return newDataCollectionIds;
     }
 
+    private Function<String, DataCollection<T>> buildDataCollection(List<AdditionalCondition> additionalCondition, String surrogateKey) {
+        return expandedCollectionName -> {
+            String filter = additionalCondition.stream()
+                    .filter(condition -> condition.getDataCollection().matcher(expandedCollectionName).matches())
+                    .map(AdditionalCondition::getFilter)
+                    .findFirst()
+                    .orElse("");
+            return new DataCollection<T>((T) CollectionId.parse(expandedCollectionName), filter, surrogateKey);
+        };
+    }
+
     @Override
-    public void stopSnapshot() {
-        this.dataCollectionsToSnapshot.clear();
-        this.correlationId = null;
+    public void requestSnapshotStop(List<String> dataCollectionIds) {
+        if (snapshotRunning()) {
+            if (dataCollectionIds == null || dataCollectionIds.isEmpty()) {
+                dataCollectionsToStop.add(".*");
+            }
+            else {
+                dataCollectionsToStop.addAll(dataCollectionIds);
+            }
+        }
     }
 
     @Override

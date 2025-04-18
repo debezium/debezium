@@ -18,7 +18,6 @@ import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName;
-import io.debezium.relational.TableId;
 
 @SkipWhenAdapterNameIsNot(value = AdapterName.LOGMINER)
 public class SqlUtilsTest {
@@ -36,8 +35,8 @@ public class SqlUtilsTest {
         expected = "SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_MIN FROM V$DATABASE";
         assertThat(result).isEqualTo(expected);
 
-        result = SqlUtils.tableSupplementalLoggingCheckQuery(new TableId(null, "s", "t"));
-        expected = "SELECT 'KEY', LOG_GROUP_TYPE FROM ALL_LOG_GROUPS WHERE OWNER = 's' AND TABLE_NAME = 't'";
+        result = SqlUtils.tableSupplementalLoggingCheckQuery();
+        expected = "SELECT 'KEY', LOG_GROUP_TYPE FROM ALL_LOG_GROUPS WHERE OWNER=? AND TABLE_NAME=?";
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.startLogMinerStatement(Scn.valueOf(10L), Scn.valueOf(20L), OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG, true);
@@ -88,10 +87,22 @@ public class SqlUtilsTest {
                 " WHERE STATUS='VALID' AND TYPE='LOCAL' AND ROWNUM=1) AND STATUS='A')";
         assertThat(result).isEqualTo(expected);
 
+        result = SqlUtils.oldestFirstChangeQuery(Duration.ofHours(1L), null);
+        expected = "SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM V$LOG UNION SELECT MIN(FIRST_CHANGE#)" +
+                " AS FIRST_CHANGE# FROM V$ARCHIVED_LOG WHERE DEST_ID IN (SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS" +
+                " WHERE STATUS='VALID' AND TYPE='LOCAL' AND ROWNUM=1) AND STATUS='A' AND FIRST_TIME >= SYSDATE - (1/24))";
+        assertThat(result).isEqualTo(expected);
+
         result = SqlUtils.oldestFirstChangeQuery(Duration.ofHours(0L), "LOG_ARCHIVE_DEST_3");
         expected = "SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM V$LOG UNION SELECT MIN(FIRST_CHANGE#)" +
                 " AS FIRST_CHANGE# FROM V$ARCHIVED_LOG WHERE DEST_ID IN (SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS" +
                 " WHERE STATUS='VALID' AND TYPE='LOCAL' AND UPPER(DEST_NAME)='LOG_ARCHIVE_DEST_3') AND STATUS='A')";
+        assertThat(result).isEqualTo(expected);
+
+        result = SqlUtils.oldestFirstChangeQuery(Duration.ofHours(1L), "LOG_ARCHIVE_DEST_3");
+        expected = "SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# FROM V$LOG UNION SELECT MIN(FIRST_CHANGE#)" +
+                " AS FIRST_CHANGE# FROM V$ARCHIVED_LOG WHERE DEST_ID IN (SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS" +
+                " WHERE STATUS='VALID' AND TYPE='LOCAL' AND UPPER(DEST_NAME)='LOG_ARCHIVE_DEST_3') AND STATUS='A' AND FIRST_TIME >= SYSDATE - (1/24))";
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.allMinableLogsQuery(Scn.valueOf(10L), Duration.ofHours(0L), false, null);

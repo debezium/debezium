@@ -11,8 +11,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -68,7 +68,7 @@ public class DebeziumResource {
     private final Boolean isTopicCreationEnabled;
     private List<TransformDefinition> transforms = null;
     private List<PredicateDefinition> predicates = null;
-    private List<ConnectorDescriptor> availableConnectorPlugins = null;
+    private Set<ConnectorDescriptor> availableConnectorPlugins = null;
 
     private static final Pattern VERSION_PATTERN = Pattern
             .compile("([1-9][0-9]*(?:(?:\\.0)*\\.[1-9][0-9]*)*)(?:-([a-zA-Z0-9]+))?(?:(\\+)(0|[1-9][0-9]*)?)?(?:-([-a-zA-Z0-9.]+))?");
@@ -93,20 +93,20 @@ public class DebeziumResource {
         throw new IllegalArgumentException("Invalid version string: \"" + version + "\"");
     }
 
-    private static <T> void addConnectorPlugins(Map<String, ConnectorDescriptor> connectorPlugins, Collection<PluginDesc<T>> plugins) {
+    private static <T> void addConnectorPlugins(Set<ConnectorDescriptor> connectorPlugins, Collection<PluginDesc<T>> plugins) {
         plugins.stream()
                 .filter(p -> SUPPORTED_CONNECTORS.contains(p.pluginClass().getName()))
-                .forEach(p -> connectorPlugins.put(p.pluginClass().getName() + "#" + p.version(), new ConnectorDescriptor(p.pluginClass().getName(), p.version())));
+                .forEach(p -> connectorPlugins.add(new ConnectorDescriptor(p.pluginClass().getName(), p.version())));
     }
 
     private synchronized void initConnectorPlugins() {
         if (null == this.availableConnectorPlugins || this.availableConnectorPlugins.isEmpty()) {
             // TODO: improve once plugins are allowed to be added/removed during runtime by Kafka Connect, @see org.apache.kafka.connect.runtime.rest.resources.ConnectorPluginsResource
-            final Map<String, ConnectorDescriptor> connectorPlugins = new HashMap<>();
+            final Set<ConnectorDescriptor> connectorPlugins = new LinkedHashSet<>();
             Herder herder = getHerder();
             addConnectorPlugins(connectorPlugins, herder.plugins().sinkConnectors());
             addConnectorPlugins(connectorPlugins, herder.plugins().sourceConnectors());
-            this.availableConnectorPlugins = Collections.unmodifiableList(new ArrayList<>(connectorPlugins.values()));
+            this.availableConnectorPlugins = Collections.unmodifiableSet(connectorPlugins);
         }
     }
 
@@ -165,7 +165,7 @@ public class DebeziumResource {
     @GET
     @Path(CONNECTOR_PLUGINS_ENDPOINT)
     @Produces(MediaType.APPLICATION_JSON)
-    public List<ConnectorDescriptor> availableDebeziumConnectors() {
+    public Set<ConnectorDescriptor> availableDebeziumConnectors() {
         initConnectorPlugins();
         return this.availableConnectorPlugins;
     }

@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb.transforms;
 
+import static io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.REWRITE_TOMBSTONE_DELETES_WITH_ID;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -13,11 +14,13 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Field;
@@ -397,6 +400,55 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         assertThat(value.get("__ord")).isEqualTo(source.getInt32("ord"));
         assertThat(value.get("__db")).isEqualTo(source.getString("db"));
         assertThat(value.get("__db")).isEqualTo(DB_NAME);
+    }
+
+    @Test
+    @FixFor("DBZ-7695")
+    public void shouldAddFieldsForRewriteDeleteEventWithId() throws InterruptedException {
+        waitForStreamingRunning();
+
+        final Map<String, String> props = new HashMap<>();
+        props.put(ADD_FIELDS, "ord,db,op");
+        props.put(HANDLE_TOMBSTONE_DELETES, "rewrite");
+        props.put(REWRITE_TOMBSTONE_DELETES_WITH_ID.name(), "true");
+        transformation.configure(props);
+
+        // insert
+        try (var client = connect()) {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .insertOne(Document.parse("{ '_id' : 4, 'name' : 'Sally' }"));
+        }
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+        assertNoRecordsToConsume();
+
+        // delete
+        try (var client = connect()) {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .deleteOne(RawBsonDocument.parse("{ '_id' : 4 }"));
+        }
+
+        records = consumeRecordsByTopic(2);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(2);
+        assertNoRecordsToConsume();
+
+        // Extract values from SourceRecord
+        final SourceRecord record = records.allRecordsInOrder().get(0);
+        final Struct source = ((Struct) record.value()).getStruct(Envelope.FieldName.SOURCE);
+
+        // Perform transformation
+        final SourceRecord transformed = transformation.apply(record);
+        validate(transformed);
+
+        // assert source fields' values
+        final Struct value = (Struct) transformed.value();
+        assertThat(value.get("__ord")).isEqualTo(source.getInt32("ord"));
+        assertThat(value.get("__db")).isEqualTo(source.getString("db"));
+        assertThat(value.get("__db")).isEqualTo(DB_NAME);
+        assertThat(value.get("__deleted")).isEqualTo(true);
+        assertThat(value.get("__op")).isEqualTo("d");
+        assertThat(value.get("_id")).isEqualTo(4);
     }
 
     @Test
@@ -1905,6 +1957,40 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         List<Struct> f2 = transformedInsertValue.getStruct("f1").getArray("f2");
         assertThat(f2.size()).isEqualTo(2);
         assertThat(f2.get(0).getArray("f3").size()).isEqualTo(0);
+    }
+
+    @Test
+    @FixFor("DBZ-8572")
+    public void shouldSupportNestedArraysWhenItIsNotSingleField() throws InterruptedException {
+        waitForStreamingRunning();
+
+        try (var client = connect()) {
+            client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
+                    .insertOne(Document.parse("{\"f1\": [ { \"f2\": \"v1\", \"f3\": [] } ] }"));
+        }
+
+        SourceRecords records = consumeRecordsByTopic(1);
+        assertThat(records.recordsForTopic(this.topicName()).size()).isEqualTo(1);
+
+        SourceRecord insertRecord = records.recordsForTopic(this.topicName()).get(0);
+        SourceRecord transformedInsert = transformation.apply(insertRecord);
+
+        // assert schema
+        var type = transformedInsert.valueSchema().field("f1").schema().valueSchema().field("f3").schema().type();
+        assertThat(type).isEqualTo(Schema.Type.ARRAY);
+
+        // assert value
+        int nestedArraySize = Optional.of(transformedInsert.value())
+                .map(Struct.class::cast)
+                .map(v -> v.getArray("f1"))
+                .orElseThrow()
+                .stream()
+                .findFirst()
+                .map(Struct.class::cast)
+                .map(v -> v.getArray("f3"))
+                .map(Collection::size)
+                .orElseThrow();
+        assertThat(nestedArraySize).isEqualTo(0);
     }
 
     @Test

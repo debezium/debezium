@@ -21,11 +21,11 @@ import org.apache.kafka.connect.health.ConnectClusterState;
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.Module;
 import io.debezium.connector.postgresql.PostgresConnector;
+import io.debezium.metadata.CollectionId;
 import io.debezium.rest.ConnectionValidationResource;
 import io.debezium.rest.FilterValidationResource;
 import io.debezium.rest.MetricsResource;
 import io.debezium.rest.SchemaResource;
-import io.debezium.rest.model.DataCollection;
 import io.debezium.rest.model.MetricsDescriptor;
 
 /**
@@ -35,8 +35,7 @@ import io.debezium.rest.model.MetricsDescriptor;
 @Path(DebeziumPostgresConnectorResource.BASE_PATH)
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-public class DebeziumPostgresConnectorResource
-        implements SchemaResource, ConnectionValidationResource<PostgresConnector>, FilterValidationResource<PostgresConnector>, MetricsResource {
+public class DebeziumPostgresConnectorResource implements SchemaResource, ConnectionValidationResource, FilterValidationResource, MetricsResource {
 
     public static final String BASE_PATH = "/debezium/postgres";
     public static final String VERSION_ENDPOINT = "/version";
@@ -68,9 +67,9 @@ public class DebeziumPostgresConnectorResource
     }
 
     @Override
-    public List<DataCollection> getMatchingCollections(Configuration configuration) {
+    public List<CollectionId> getMatchingCollections(Configuration configuration) {
         return getConnector().getMatchingCollections(configuration).stream()
-                .map(tableId -> new DataCollection(tableId.schema(), tableId.table()))
+                .map(tableId -> new CollectionId(tableId.schema(), tableId.table()))
                 .collect(Collectors.toList());
     }
 }

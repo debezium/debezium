@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.StringTokenizer;
@@ -1070,6 +1071,29 @@ public final class Strings {
     }
 
     /**
+     * Checks if the value is empty or null, returning the default value if true, otherwise the specified value.
+     *
+     * @param value the string to check
+     * @param defaultValue the default value to return
+     * @return value if not empty or null; default value otherwise
+     */
+    public static String defaultIfEmpty(String value, String defaultValue) {
+        return isNullOrEmpty(value) ? defaultValue : value;
+    }
+
+    /**
+     * Checks if the value is blank (i.e. it's blank or only contains whitespace characters) or null, returning
+     * the default value if true, otherwise returning the specified value.
+     *
+     * @param value the string to check
+     * @param defaultValue the default value to return
+     * @return value if not blank or null; default value otherwise
+     */
+    public static String defaultIfBlank(String value, String defaultValue) {
+        return isNullOrBlank(value) ? defaultValue : value;
+    }
+
+    /**
      * Check if the string contains only digits.
      *
      * @param str the string to check
@@ -1230,4 +1254,79 @@ public final class Strings {
             tokens.addToken(input.position(tokenStart), tokenStart, input.index() + 1);
         }
     }
+
+    /**
+     * Converts a string with separators (e.g., dots, underscores) into camelCase format using Stream API.
+     *
+     * @param input the input string containing separators such as dots or underscores
+     * @return the converted string in camelCase format, or an empty string if the input is null or empty
+     */
+    public static String convertDotAndUnderscoreStringToCamelCase(String input) {
+        if (input == null || input.isEmpty()) {
+            return "";
+        }
+
+        String[] words = input.split("[._]+");
+        if (words.length == 0) {
+            return ""; // Handle edge case where input contains only separators
+        }
+
+        return java.util.stream.IntStream.range(0, words.length)
+                .filter(i -> !words[i].isEmpty()) // Skip empty segments caused by consecutive separators
+                .mapToObj(i -> i == 0
+                        ? words[i].toLowerCase() // Ensure the first word starts with lowercase
+                        : capitalizeFirstLetter(words[i])) // Capitalize the first letter of subsequent words
+                .collect(java.util.stream.Collectors.joining());
+    }
+
+    /**
+     * Capitalizes the first letter of a word and converts the rest to lowercase.
+     *
+     * @param word the word to capitalize
+     * @return the word with the first letter capitalized
+     */
+    private static String capitalizeFirstLetter(String word) {
+        if (word.isEmpty()) {
+            return "";
+        }
+        return Character.toUpperCase(word.charAt(0)) + word.substring(1).toLowerCase();
+    }
+
+    /**
+     * Converts a given string to snake_case format.
+     * <p>
+     * This method handles several common cases of transformations:
+     * <ul>
+     *     <li>Converts camelCase to snake_case (e.g., "camelCaseName" -> "camel_case_name").</li>
+     *     <li>Inserts underscores between letters and numbers (e.g., "name123" -> "name_123").</li>
+     *     <li>Inserts underscores between numbers and letters (e.g., "123name" -> "123_name").</li>
+     *     <li>Replaces dots (.) with underscores (_).</li>
+     * </ul>
+     * <p>
+     * The resulting string is converted to lowercase.
+     * </p>
+     *
+     * <h3>Examples:</h3>
+     * <pre>
+     * {@code
+     * toSnakeCase("camelCaseName");       // Returns "camel_case_name"
+     * toSnakeCase("NameWith123Numbers"); // Returns "name_with_123_numbers"
+     * toSnakeCase("123NumbersExample");  // Returns "123_numbers_example"
+     * toSnakeCase("dotted.name");        // Returns "dotted_name"
+     * toSnakeCase(null);                 // Returns null
+     * }
+     * </pre>
+     *
+     * @param name the original string to be converted; may be {@code null}
+     * @return the string transformed to snake_case, or {@code null} if the input was {@code null}
+     */
+    public static String toSnakeCase(String name) {
+        if (name == null) {
+            return null;
+        }
+        // Combine all rules into a single regular expression
+        return name.replaceAll("([a-z])([A-Z])|([a-zA-Z])([0-9])|([0-9])([a-zA-Z])|\\.", "$1$3$5_$2$4$6")
+                .toLowerCase(Locale.ROOT);
+    }
+
 }

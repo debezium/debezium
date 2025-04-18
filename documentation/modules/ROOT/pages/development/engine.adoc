@@ -20,6 +20,22 @@ They still want the same data change events, but prefer to have the connectors s
 
 This `debezium-api` module defines a small API that allows an application to easily configure and run {prodname} connectors using {prodname} Engine.
 
+Beginning with the 2.6.0 release, {prodname} provides two implementations of the `DebeziumEngine` interface.
+The older `EmbeddedEngine` implementation runs a single connector that uses only one task.
+The connector emits all records sequentially.
+
+`EmbeddedEngine` is the default implementation in {prodname} release 3.1.0.Final and older.
+Starting {prodname} release 3.2.0.Alpha1, the default implementation is `AsyncEmbeddedEngine` and `EmbeddedEngine` implementation is not available anymore.
+ 
+Beginning with the 2.6.0 release, a new `AsyncEmbeddedEngine` implementation is available.
+This implementation also runs only a single connector, but it can process records in multiple threads, and run multiple tasks, if the connector supports it (currently only the connectors for SQL Server and MongoDB support running multiple tasks within a single connector).
+Because both of these engines implement the same interface and share the same API, the code examples that follow are valid for either engine.
+Both implementations support the same configuration options.
+
+However, the new `AsyncEmbeddedEngine` provides a couple of new configuration options for setting up and fine-tuning parallel processing.
+For information about these new configuration options, see the xref:async-engine-properties[Asynchronous Engine Properties].
+To learn more about the motivation behind development of the `AsyncEmbeddedEngine` and about its implementation details, see the https://github.com/debezium/debezium-design-documents/blob/main/DDD-7.md[Asynchronous Embedded Engine design document].
+
 == Dependencies
 
 To use {prodname} Engine module, add the `debezium-api` module to your application's dependencies.
@@ -68,6 +84,34 @@ Or for the MongoDB connector:
 The remainder of this document describes embedding the MySQL connector in your application.
 Other connectors are used in a similar manner, except with connector-specific configuration, topics, and events.
 
+=== Packaging your project
+
+{prodname} uses the SPI via the ServiceLoader to load the implementation.
+The implementation can be based on the connector type, or it can be a custom implementation.
+
+Some interfaces have multiple implementations.
+For example, `io.debezium.snapshot.spi.SnapshotLock` has a default implementation in the core, and specific implementations for each connector.
+To ensure that {prodname} can locate the required implementation, you must explicitly configure your build tools to merge the `META-INF/services files`. 
+  
+
+For example, if you are using the https://maven.apache.org/plugins/maven-shade-plugin[Maven shade plugin],
+add the https://maven.apache.org/plugins/maven-shade-plugin/examples/resource-transformers.html#ServicesResourceTransformer[`ServicesResourceTransformer`] transformer, as shown in the following example:
+
+[source,xml]
+----
+...
+<configuration>
+ <transformers>
+    ...
+    <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
+    ...
+ </transformers>
+...
+</configuration>
+----
+
+Alternatively, if you use the https://maven.apache.org/plugins/maven-assembly-plugin/index.html[Maven Assembly plug-in], you can use the https://maven.apache.org/plugins/maven-assembly-plugin/examples/single/using-container-descriptor-handlers.html[metaInf-services container descriptor handlers].
+
 == In the Code
 
 Your application needs to set up an embedded engine for each connector instance you want to run.
@@ -89,7 +133,7 @@ Here's an example of code that configures and runs an embedded xref:{link-mysql-
     props.setProperty("name", "engine");
     props.setProperty("connector.class", "io.debezium.connector.mysql.MySqlConnector");
     props.setProperty("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore");
-    props.setProperty("offset.storage.file.filename", "/tmp/offsets.dat");
+    props.setProperty("offset.storage.file.filename", "/path/to/storage/offsets.dat");
     props.setProperty("offset.flush.interval.ms", "60000");
     /* begin connector properties */
     props.setProperty("database.hostname", "localhost");
@@ -98,11 +142,9 @@ Here's an example of code that configures and runs an embedded xref:{link-mysql-
     props.setProperty("database.password", "mysqlpw");
     props.setProperty("database.server.id", "85744");
     props.setProperty("topic.prefix", "my-app-connector");
-    props.setProperty("schema.history.internal",
-          "io.debezium.storage.file.history.FileSchemaHistory");
-    props.setProperty("schema.history.internal.file.filename",
-          "/path/to/storage/schemahistory.dat");
-    
+    props.setProperty("schema.history.internal", "io.debezium.storage.file.history.FileSchemaHistory");
+    props.setProperty("schema.history.internal.file.filename", "/path/to/storage/schemahistory.dat");
+
     // Create the engine with this configuration ...
     try (DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class)
             .using(props)
@@ -113,7 +155,7 @@ Here's an example of code that configures and runs an embedded xref:{link-mysql-
         // Run the engine asynchronously ...
         ExecutorService executor = Executors.newSingleThreadExecutor();
         executor.execute(engine);
-        
+
         // Do something else or wait for a signal or an event
     }
     // Engine is stopped when the main code is finished
@@ -128,8 +170,8 @@ Let's look into this code in more detail, starting with the first few lines that
     props.setProperty("name", "engine");
     props.setProperty("connector.class", "io.debezium.connector.mysql.MySqlConnector");
     props.setProperty("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore");
-    props.setProperty("offset.storage.file.filename", "/tmp/offsets.dat");
-    props.setProperty("offset.flush.interval.ms", 60000);
+    props.setProperty("offset.storage.file.filename", "/path/to/storage/offsets.dat");
+    props.setProperty("offset.flush.interval.ms", "60000");
 ----
 
 This creates a new standard `Properties` object to set several fields required by the engine regardless of which connector is being used.
@@ -147,16 +189,14 @@ The next few lines define the fields that are specific to the connector (documen
 [source,java]
 ----
     /* begin connector properties */
-    props.setProperty("database.hostname", "localhost")
-    props.setProperty("database.port", "3306")
-    props.setProperty("database.user", "mysqluser")
-    props.setProperty("database.password", "mysqlpw")
-    props.setProperty("database.server.id", "85744")
-    props.setProperty("topic.prefix", "my-app-connector")
-    props.setProperty("schema.history.internal",
-          "io.debezium.storage.file.history.FileSchemaHistory")
-    props.setProperty("schema.history.internal.file.filename",
-          "/path/to/storage/schemahistory.dat")
+    props.setProperty("database.hostname", "localhost");
+    props.setProperty("database.port", "3306");
+    props.setProperty("database.user", "mysqluser");
+    props.setProperty("database.password", "mysqlpw");
+    props.setProperty("database.server.id", "85744");
+    props.setProperty("topic.prefix", "my-app-connector");
+    props.setProperty("schema.history.internal", "io.debezium.storage.file.history.FileSchemaHistory");
+    props.setProperty("schema.history.internal.file.filename", "/path/to/storage/schemahistory.dat");
 ----
 
 Here, we set the name of the host machine and port number where the MySQL database server is running, and we define the username and password that will be used to connect to the MySQL database.
@@ -212,7 +252,7 @@ The `DebeziumEngine` is designed to be executed asynchronously by an `Executor` 
     // Run the engine asynchronously ...
     ExecutorService executor = Executors.newSingleThreadExecutor();
     executor.execute(engine);
-    
+
     // Do something else or wait for a signal or an event
 ----
 
@@ -245,12 +285,18 @@ If your application needs to wait for the engine to completely stop before exiti
 
 Alternatively you can register `CompletionCallback` while creating `DebeziumEngine` as a callback to be informed when the engine terminates.
 
-Recall that when the JVM shuts down, it only waits for daemon threads.
-Therefore, if your application exits, be sure to wait for completion of the engine or alternatively run the engine on a daemon thread.
+Recall that when the JVM shuts down, it only waits for non-daemon threads.
+Therefore, when you run the engine on a daemon thread, if your application exits, be sure to wait for the engine process to complete.
 
 Your application should always properly stop the engine to ensure graceful and complete shutdown and that each source record is sent to the application exactly one time.
 For example, do not rely upon shutting down the `ExecutorService`, since that interrupts the running threads.
 Although the `DebeziumEngine` will indeed terminate when its thread is interrupted, the engine may not terminate cleanly, and when your application is restarted it may see some of the same source records that it had processed just prior to the shutdown.
+
+As mentioned earlier, there are two implementations of the `DebeziumEngine` interface.
+The two implementations use the same API, and the preceding code sample is valid for both versions.
+The only exception is the creation of the `DebeziumEngine` instance.
+As was also mentioned in the introduction, by default, the `AsyncEmbeddedEngine` implementation is used.
+Therefore, the method `DebeziumEngine.create(Json.class)` results internally in the use of the `AsyncEmbeddedEngine` instance.
 
 [[engine-output-message-formats]]
 == Output Message Formats
@@ -270,7 +316,7 @@ Allowed values are:
 * `Json.class` - the header values are encoded as `JSON` strings
 * `JsonByteArray.class` - the header values are formatted as `JSON` and encoded as UTF-8 byte arrays
 
-Internally, the engine uses the appropriate Kafka Connect converter implementation to which the conversion is delegated.
+Internally, the engine delegates data conversion to the Kafka Connect or Apicurio converter implementation with the algorithm that is best suited to perform the conversion.
 The converter can be parametrized using engine properties to modify its behaviour.
 
 An example of `JSON` output format is
@@ -310,7 +356,7 @@ final Properties props = new Properties();
 props.setProperty("transforms", "filter, router");                                               // (1)
 props.setProperty("transforms.router.type", "org.apache.kafka.connect.transforms.RegexRouter");  // (2)
 props.setProperty("transforms.router.regex", "(.*)");                                            // (3)
-props.setProperty("transforms.router.replacement", "trf$1");                                     // (3)    
+props.setProperty("transforms.router.replacement", "trf$1");                                     // (3)
 props.setProperty("transforms.filter.type", "io.debezium.embedded.ExampleFilterTransform");      // (4)
 ----
 
@@ -404,7 +450,7 @@ class JsonChangeConsumer implements DebeziumEngine.ChangeConsumer<ChangeEvent<St
 // Create the engine with this configuration ...
 DebeziumEngine<ChangeEvent<String, String>> engine = DebeziumEngine.create(Json.class)
         .using(props)
-        .notifying(new MyChangeConsumer())
+        .notifying(new JsonChangeConsumer())
         .build();
 ----
 
@@ -480,6 +526,47 @@ The default is a periodic commity policy based upon time intervals.
 |Max delay (in ms) between retries when encountering connection errors.
 |===
 
+[[async-engine-properties]]
+=== Asynchronous Engine Properties
+
+[cols="35%a,10%a,55%a"]
+|===
+|Property
+|Default
+|Description
+
+|`record.processing.threads`
+|Threads allocated on demand, based on the workload and the number of available CPU cores.
+|The number of threads that are available to process change event records.
+If no value is specified (the default), the engine uses the Java https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/ThreadPoolExecutor.html[ThreadPoolExecutor] to dynamically adjust the number of threads, based on the current workload.
+Maximum number of threads is number of CPU cores on given machine.
+If a value is specified, the engine uses the Java https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/Executors.html#newFixedThreadPool(int)[fixed thread pool] method to create a thread pool with the specified number of threads.
+To use all available cores on given machine, set the placeholder value, `AVAILABLE_CORES`.
+
+|`record.processing.shutdown.timeout.ms`
+|1000
+|Maximum time in milliseconds to wait for processing submitted records after a task shutdown is called.
+
+|`record.processing.order`
+|`ORDERED`
+|Determines how the records should be produced.
+
+`ORDERED`:: Records are processed sequentially; that is, they are produced in the order in which they were obtained from the database.
+`UNORDERED`:: Records are processed non-sequentially; that is, they can be produced in an different order than in the source database.
+
+The non-sequential processing of the `UNORDERED` option results in better throughput, because records are produced immediately after any SMT processing and message serialization is complete, without waiting for other records.
+This option doesn't have any effect when the `ChangeConsumer` method is provided to the engine.
+
+|`record.processing.with.serial.consumer`
+|`false`
+|Specifies whether the default `ChangeConsumer` should be created from the provided `Consumer`, resulting in serial `Consumer` processing.
+This option has no effect if you specified the `ChangeConsumer` interface when you used the API to create the engine.
+
+|`task.management.timeout.ms`
+|180,000 (3 min)
+|Time, in milliseconds, that the engine waits for a task's lifecycle management operations (starting and stopping) to complete.
+|===
+
 [[database-history-properties]]
 === Database schema history properties
 
@@ -541,3 +628,4 @@ However, this dramatically increases the overhead and decreases the throughput o
 
 The bottom line is that when using embedded connectors, applications will receive each source record exactly once during normal operation (including restart after a graceful shutdown), but do need to be tolerant of receiving duplicate events immediately following a restart after a crash or improper shutdown.
 If applications need more rigorous exactly-once behavior, then they should use the full {prodname} platform that can provide exactly-once guarantees (even after crashes and restarts).
+-----

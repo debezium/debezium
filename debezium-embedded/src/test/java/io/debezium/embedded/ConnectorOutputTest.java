@@ -60,7 +60,7 @@ import io.debezium.document.ArrayWriter;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentReader;
 import io.debezium.document.Value;
-import io.debezium.embedded.EmbeddedEngine.CompletionResult;
+import io.debezium.embedded.DebeziumEngineTestUtils.CompletionResult;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.RecordChangeEvent;
 import io.debezium.engine.StopEngineException;
@@ -272,7 +272,7 @@ public abstract class ConnectorOutputTest {
 
         /**
          * Get the configuration of the test environment. Often no custom environment configuration properties are required,
-         * but they can be used to supply configuration properties to the {@link EmbeddedEngine} and the
+         * but they can be used to supply configuration properties to the {@link DebeziumEngine} and the
          * {@link JsonConverter}, {@link JsonSerializer} and {@link JsonDeserializer} instances used to read and write
          * the expected records, as well as the following:
          * <ul>
@@ -933,12 +933,15 @@ public abstract class ConnectorOutputTest {
                     .build();
 
             // Create the engine ...
-            final DebeziumEngine engine = DebeziumEngine.create(ChangeEventFormat.of(Connect.class))
+            DebeziumEngine engine = DebeziumEngine.create(ChangeEventFormat.of(Connect.class))
                     .using(engineConfig.asProperties())
                     .notifying(consumer)
                     .using(this.getClass().getClassLoader())
                     .using(problem)
                     .build();
+            // Once the async engine is stopped, it cannot be started again.
+            // We need to pass an atomic reference to timeout thread and eventually re-create the engine and update the refference.
+            final AtomicReference<DebeziumEngine> engineRef = new AtomicReference<>(engine);
 
             long connectorTimeoutInSeconds = environmentConfig.getLong(ENV_CONNECTOR_TIMEOUT_IN_SECONDS, 10);
             // Get ready to run the connector one or more times ...
@@ -951,7 +954,7 @@ public abstract class ConnectorOutputTest {
                             @Override
                             public void run() {
                                 try {
-                                    engine.close();
+                                    engineRef.get().close();
                                 }
                                 catch (IOException e) {
                                     LOGGER.warn("Failed to stop the engine: ", e);
@@ -965,6 +968,16 @@ public abstract class ConnectorOutputTest {
                 // Run the connector and block until the connector is stopped by the timeout thread or until
                 // an exception is thrown within the connector (perhaps by the consumer) ...
                 Testing.debug("Starting connector");
+                if (result.get() == ExecutionResult.RESTART_REQUESTED) {
+                    // Recreate the engine as stopped engine cannot be restarted.
+                    engine = DebeziumEngine.create(ChangeEventFormat.of(Connect.class))
+                            .using(engineConfig.asProperties())
+                            .notifying(consumer)
+                            .using(this.getClass().getClassLoader())
+                            .using(problem)
+                            .build();
+                    engineRef.set(engine);
+                }
                 result.reset();
                 engine.run();
             } while (result.get() == ExecutionResult.RESTART_REQUESTED);

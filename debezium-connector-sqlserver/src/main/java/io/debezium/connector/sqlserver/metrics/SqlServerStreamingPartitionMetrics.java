@@ -60,6 +60,11 @@ class SqlServerStreamingPartitionMetrics extends AbstractSqlServerPartitionMetri
     }
 
     @Override
+    public void resetLagBehindSource() {
+        streamingMeter.resetLagBehindSource();
+    }
+
+    @Override
     public void reset() {
         super.reset();
         streamingMeter.reset();

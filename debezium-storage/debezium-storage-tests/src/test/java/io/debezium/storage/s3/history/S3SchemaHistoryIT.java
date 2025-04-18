@@ -28,10 +28,10 @@ import com.adobe.testing.s3mock.testcontainers.S3MockContainer;
 
 import io.debezium.config.Configuration;
 import io.debezium.document.DocumentReader;
-import io.debezium.relational.history.AbstractSchemaHistoryTest;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.relational.history.SchemaHistory;
 import io.debezium.relational.history.SchemaHistoryListener;
+import io.debezium.storage.AbstractSchemaHistoryTest;
 
 import software.amazon.awssdk.auth.credentials.AnonymousCredentialsProvider;
 import software.amazon.awssdk.core.sync.ResponseTransformer;
@@ -60,7 +60,8 @@ public class S3SchemaHistoryIT extends AbstractSchemaHistoryTest {
         client = S3Client.builder()
                 .credentialsProvider(AnonymousCredentialsProvider.create())
                 .region(Region.AWS_GLOBAL)
-                .endpointOverride(URI.create(container.getHttpEndpoint())).build();
+                .endpointOverride(URI.create(container.getHttpEndpoint()))
+                .forcePathStyle(true).build();
     }
 
     @AfterClass
@@ -87,6 +88,7 @@ public class S3SchemaHistoryIT extends AbstractSchemaHistoryTest {
                 .with(S3SchemaHistory.OBJECT_NAME, OBJECT_NAME)
                 .with(S3SchemaHistory.REGION_CONFIG, Region.AWS_GLOBAL.id())
                 .with(S3SchemaHistory.ENDPOINT_CONFIG, container.getHttpEndpoint())
+                .with(S3SchemaHistory.FORCE_PATH_STYLE_CONFIG, true)
                 .build();
         history.configure(config, null, SchemaHistoryListener.NOOP, true);
         history.start();

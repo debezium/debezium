@@ -1,0 +1,32 @@
+name: MongoDB Builds
+on:
+  workflow_call:
+    inputs:
+      maven-cache-key:
+        description: "The cache key to use to restore/save build caches."
+        required: true
+        type: string
+      max-parallel:
+        description: "The maximum number of workers to consume, by default uses all available."
+        required: false
+        type: number
+
+jobs:
+  build-mongodb:
+    strategy:
+      max-parallel: ${{ inputs.max-parallel }}
+      fail-fast: false
+      matrix:
+        server-version: [ "5.0", "8.0" ]
+    name: MongoDB - ${{ matrix.server-version }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build MongoDB - ${{ matrix.server-version }}
+        uses: ./.github/actions/build-debezium-mongodb
+        with:
+          maven-cache-key: ${{ inputs.maven-cache-key }}-${{ hashFiles('**/pom.xml') }}
+          version-mongo-server: ${{ matrix.server-version }}

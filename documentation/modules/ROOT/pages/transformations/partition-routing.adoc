@@ -30,7 +30,7 @@ To calculate the destination partition, {prodname} uses a hash of the specified 
 You configure the partition routing transformation in the {prodname} connector's Kafka Connect configuration.
 The configuration specifies the following parameters:
 
-`partition.payload.field`:: Specifies the fields in the event payload that the SMT uses to calculate the destination partition.
+`partition.payload.fields`:: Specifies the fields in the event payload that the SMT uses to calculate the destination partition.
  You can use dot notation to specify nested payload fields.
 `partition.topic.num`:: Specifies the number of partitions in the destination topic.
 `partition.hash.function`:: Specifies hash function to be used hash of the fields which would determine number of the destination partition.

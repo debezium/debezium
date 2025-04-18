@@ -46,7 +46,7 @@ import io.debezium.util.Collect;
  *
  */
 public class TestHelper {
-    protected final static Logger logger = LoggerFactory.getLogger(TestHelper.class);
+    protected final static Logger LOGGER = LoggerFactory.getLogger(TestHelper.class);
 
     public static final List<Integer> MONGO_VERSION = getMongoVersion();
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
@@ -92,7 +92,7 @@ public class TestHelper {
             if (attempts.incrementAndGet() > numErrorsBeforeFailing) {
                 fail("Unable to connect to primary after " + numErrorsBeforeFailing + " errors trying to " + desc + ": " + error);
             }
-            logger.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
+            LOGGER.error("Error while attempting to {}: {}", desc, error.getMessage(), error);
         };
     }
 
@@ -108,7 +108,7 @@ public class TestHelper {
         try (var client = connect(mongo)) {
             MongoDatabase db1 = client.getDatabase(dbName);
             db1.listCollectionNames().forEach((String x) -> {
-                logger.info("Removing collection '{}' from database '{}'", x, dbName);
+                LOGGER.info("Removing collection '{}' from database '{}'", x, dbName);
                 db1.getCollection(x).drop();
             });
         }
@@ -121,6 +121,9 @@ public class TestHelper {
                     client.getDatabase(name).drop();
                 }
             });
+        }
+        catch (Exception e) {
+            LOGGER.error("Error while cleaning database", e);
         }
     }
 

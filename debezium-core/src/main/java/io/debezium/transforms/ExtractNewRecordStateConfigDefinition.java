@@ -121,7 +121,7 @@ public class ExtractNewRecordStateConfigDefinition {
     }
 
     public static final Field HANDLE_TOMBSTONE_DELETES = Field.create("delete.tombstone.handling.mode")
-            .withDisplayName("Handle delete records")
+            .withDisplayName("Handle delete and tombstone records")
             .withEnum(DeleteTombstoneHandling.class)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.MEDIUM)
@@ -202,6 +202,15 @@ public class ExtractNewRecordStateConfigDefinition {
                     + "Optionally one can also map new field name like version:VERSION,connector:CONNECTOR,source.ts_ms:EVENT_TIMESTAMP."
                     + "Please note that the new field name is case-sensitive.");
 
+    public static final Field REPLACE_NULL_WITH_DEFAULT = Field.create("replace.null.with.default")
+            .withDisplayName("replace null field value with default")
+            .withType(ConfigDef.Type.BOOLEAN)
+            .withWidth(ConfigDef.Width.SHORT)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(true)
+            .optional()
+            .withDescription("When this option is enabled, null field values are replaced by source-defined defaults when rewriting the record.");
+
     public static final Field.Set CONFIG_FIELDS = Field.setOf(
-            DROP_TOMBSTONES, HANDLE_DELETES, ROUTE_BY_FIELD, ADD_FIELDS_PREFIX, ADD_FIELDS, ADD_HEADERS_PREFIX, ADD_HEADERS);
+            HANDLE_TOMBSTONE_DELETES, DROP_TOMBSTONES, HANDLE_DELETES, ROUTE_BY_FIELD, ADD_FIELDS_PREFIX, ADD_FIELDS, ADD_HEADERS_PREFIX, ADD_HEADERS);
 }

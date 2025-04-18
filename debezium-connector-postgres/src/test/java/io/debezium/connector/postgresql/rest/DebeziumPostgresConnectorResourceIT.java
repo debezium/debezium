@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.postgresql.rest;
 
-import static io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure.DATABASE;
+import static io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper.DATABASE;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItems;
@@ -25,7 +25,7 @@ import io.debezium.connector.postgresql.PostgresConnector;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.testing.testcontainers.Connector;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
-import io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure;
+import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
 import io.restassured.http.ContentType;
 
 public class DebeziumPostgresConnectorResourceIT {
@@ -39,13 +39,13 @@ public class DebeziumPostgresConnectorResourceIT {
 
     @Before
     public void start() {
-        RestExtensionTestInfrastructure.setupDebeziumContainer(Module.version(), DebeziumPostgresConnectRestExtension.class.getName());
-        RestExtensionTestInfrastructure.startContainers(DATABASE.POSTGRES);
+        TestInfrastructureHelper.setupDebeziumContainer(Module.version(), DebeziumPostgresConnectRestExtension.class.getName());
+        TestInfrastructureHelper.startContainers(DATABASE.POSTGRES);
     }
 
     @After
     public void stop() {
-        RestExtensionTestInfrastructure.stopContainers();
+        TestInfrastructureHelper.stopContainers();
     }
 
     @Test
@@ -53,7 +53,7 @@ public class DebeziumPostgresConnectorResourceIT {
         ConnectorConfiguration config = getPostgresConnectorConfiguration(1);
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumPostgresConnectorResource.BASE_PATH + DebeziumPostgresConnectorResource.VALIDATE_CONNECTION_ENDPOINT)
                 .then().log().all()
@@ -68,7 +68,7 @@ public class DebeziumPostgresConnectorResourceIT {
 
         Locale.setDefault(new Locale("en", "US")); // to enforce errormessages in English
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumPostgresConnectorResource.BASE_PATH + DebeziumPostgresConnectorResource.VALIDATE_CONNECTION_ENDPOINT)
                 .then().log().all()
@@ -83,7 +83,7 @@ public class DebeziumPostgresConnectorResourceIT {
     @Test
     public void testInvalidConnection() {
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body("{\"connector.class\": \"" + PostgresConnector.class.getName() + "\"}")
                 .put(DebeziumPostgresConnectorResource.BASE_PATH + DebeziumPostgresConnectorResource.VALIDATE_CONNECTION_ENDPOINT)
                 .then().log().all()
@@ -104,7 +104,7 @@ public class DebeziumPostgresConnectorResourceIT {
         ConnectorConfiguration config = getPostgresConnectorConfiguration(1);
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumPostgresConnectorResource.BASE_PATH + DebeziumPostgresConnectorResource.VALIDATE_FILTERS_ENDPOINT)
                 .then().log().all()
@@ -127,7 +127,7 @@ public class DebeziumPostgresConnectorResourceIT {
                 .with("table.include.list", "inventory\\.product.*");
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumPostgresConnectorResource.BASE_PATH + DebeziumPostgresConnectorResource.VALIDATE_FILTERS_ENDPOINT)
                 .then().log().all()
@@ -147,7 +147,7 @@ public class DebeziumPostgresConnectorResourceIT {
                 .with("schema.include.list", "inventory");
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumPostgresConnectorResource.BASE_PATH + DebeziumPostgresConnectorResource.VALIDATE_FILTERS_ENDPOINT)
                 .then().log().all()
@@ -170,7 +170,7 @@ public class DebeziumPostgresConnectorResourceIT {
                 .with("schema.include.list", "+");
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumPostgresConnectorResource.BASE_PATH + DebeziumPostgresConnectorResource.VALIDATE_FILTERS_ENDPOINT)
                 .then().log().all()
@@ -190,7 +190,7 @@ public class DebeziumPostgresConnectorResourceIT {
                 .with("schema.exclude.list", "+");
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .put(DebeziumPostgresConnectorResource.BASE_PATH + DebeziumPostgresConnectorResource.VALIDATE_FILTERS_ENDPOINT)
                 .then().log().all()
@@ -209,16 +209,16 @@ public class DebeziumPostgresConnectorResourceIT {
         ConnectorConfiguration config = getPostgresConnectorConfiguration(1);
 
         var connectorName = "my-postgres-connector";
-        RestExtensionTestInfrastructure.getDebeziumContainer().registerConnector(
+        TestInfrastructureHelper.getDebeziumContainer().registerConnector(
                 connectorName,
                 config);
 
-        RestExtensionTestInfrastructure.getDebeziumContainer().ensureConnectorState(connectorName, Connector.State.RUNNING);
-        RestExtensionTestInfrastructure.waitForConnectorTaskStatus(connectorName, 0, Connector.State.RUNNING);
-        RestExtensionTestInfrastructure.getDebeziumContainer().waitForStreamingRunning("postgres", config.asProperties().getProperty("topic.prefix"));
+        TestInfrastructureHelper.getDebeziumContainer().ensureConnectorState(connectorName, Connector.State.RUNNING);
+        TestInfrastructureHelper.waitForConnectorTaskStatus(connectorName, 0, Connector.State.RUNNING);
+        TestInfrastructureHelper.getDebeziumContainer().waitForStreamingRunning("postgres", config.asProperties().getProperty("topic.prefix"));
 
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when().contentType(ContentType.JSON).accept(ContentType.JSON).body(config.toJson())
                 .get(DebeziumPostgresConnectorResource.BASE_PATH + DebeziumPostgresConnectorResource.CONNECTOR_METRICS_ENDPOINT, connectorName)
                 .then().log().all()
@@ -232,7 +232,7 @@ public class DebeziumPostgresConnectorResourceIT {
     }
 
     private static ConnectorConfiguration getPostgresConnectorConfiguration(int id, String... options) {
-        final ConnectorConfiguration config = ConnectorConfiguration.forJdbcContainer(RestExtensionTestInfrastructure.getPostgresContainer())
+        final ConnectorConfiguration config = ConnectorConfiguration.forJdbcContainer(TestInfrastructureHelper.getPostgresContainer())
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE.name(), "never") // temporarily disable snapshot mode globally until we can check if connectors inside testcontainers are in SNAPSHOT or STREAMING mode (wait for snapshot finished!)
                 .with(PostgresConnectorConfig.TOPIC_PREFIX.name(), "dbserver" + id)
                 .with(PostgresConnectorConfig.SLOT_NAME.name(), "debezium_" + id);

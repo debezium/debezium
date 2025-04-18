@@ -452,6 +452,12 @@ public final class Field {
                     Field f = fields[i];
                     configDef.define(f.name(), f.type(), f.defaultValue(), null, f.importance(), f.description(),
                             groupName, i + 1, f.width(), f.displayName(), f.dependents(), null);
+                    if (!f.deprecatedAliases().isEmpty()) {
+                        for (String alias : f.deprecatedAliases()) {
+                            configDef.define(alias, f.type(), f.defaultValue(), null, f.importance(), f.description(),
+                                    groupName, i + 1, f.width(), f.displayName(), f.dependents(), null);
+                        }
+                    }
                 }
             }
             else {
@@ -459,6 +465,12 @@ public final class Field {
                     Field f = fields[i];
                     configDef.define(f.name(), f.type(), f.defaultValue(), null, f.importance(), f.description(),
                             null, 1, f.width(), f.displayName(), f.dependents(), null);
+                    if (!f.deprecatedAliases().isEmpty()) {
+                        for (String alias : f.deprecatedAliases()) {
+                            configDef.define(alias, f.type(), f.defaultValue(), null, f.importance(), f.description(),
+                                    null, 1, f.width(), f.displayName(), f.dependents(), null);
+                        }
+                    }
                 }
             }
         }
@@ -478,6 +490,7 @@ public final class Field {
     private final java.util.Set<?> allowedValues;
     private final GroupEntry group;
     private final boolean isRequired;
+    private final java.util.Set<String> deprecatedAliases;
 
     protected Field(String name, String displayName, Type type, Width width, String description, Importance importance,
                     Supplier<Object> defaultValueGenerator, Validator validator) {
@@ -494,6 +507,14 @@ public final class Field {
     protected Field(String name, String displayName, Type type, Width width, String description, Importance importance,
                     List<String> dependents, Supplier<Object> defaultValueGenerator, Validator validator,
                     Recommender recommender, boolean isRequired, GroupEntry group, java.util.Set<?> allowedValues) {
+        this(name, displayName, type, width, description, importance, dependents, defaultValueGenerator, validator,
+                recommender, isRequired, group, allowedValues, null);
+    }
+
+    protected Field(String name, String displayName, Type type, Width width, String description, Importance importance,
+                    List<String> dependents, Supplier<Object> defaultValueGenerator, Validator validator,
+                    Recommender recommender, boolean isRequired, GroupEntry group, java.util.Set<?> allowedValues,
+                    java.util.Set<String> deprecatedAliases) {
         Objects.requireNonNull(name, "The field name is required");
         this.name = name;
         this.displayName = displayName;
@@ -508,6 +529,7 @@ public final class Field {
         this.isRequired = isRequired;
         this.group = group;
         this.allowedValues = allowedValues;
+        this.deprecatedAliases = deprecatedAliases;
         assert this.name != null;
     }
 
@@ -622,6 +644,14 @@ public final class Field {
      */
     public java.util.Set<?> allowedValues() {
         return allowedValues;
+    }
+
+    /**
+     * Get the deprecated alias names for this field.
+     * @return the java.util.Set of aliases that are deprecated; may be null if there's no set of specific values
+     */
+    public java.util.Set<String> deprecatedAliases() {
+        return Objects.requireNonNullElse(deprecatedAliases, Collections.emptySet());
     }
 
     /**
@@ -746,7 +776,7 @@ public final class Field {
      * @return the new field; never null
      */
     public <T extends Enum<T>> Field withEnum(Class<T> enumType, T defaultOption) {
-        EnumRecommender<T> recommendator = new EnumRecommender<>(enumType);
+        EnumRecommender<T> recommendator = new EnumRecommender<>(enumType, defaultOption);
         Field result = withType(Type.STRING).withRecommender(recommendator).withValidation(recommendator)
                 .withAllowedValues(getEnumLiterals(enumType));
         // Not all enums support EnumeratedValue yet
@@ -809,7 +839,7 @@ public final class Field {
      */
     public Field withDefault(String defaultValue) {
         return new Field(name(), displayName(), type(), width, description(), importance(), dependents,
-                () -> defaultValue, validator, recommender, isRequired, group, allowedValues);
+                () -> defaultValue, validator, recommender, isRequired, group, allowedValues, deprecatedAliases);
     }
 
     /**
@@ -921,6 +951,19 @@ public final class Field {
         }
         return new Field(name(), displayName(), type(), width(), description(), importance(), dependents,
                 defaultValueGenerator, actualValidator, recommender, isRequired, group, allowedValues);
+    }
+
+    public Field withDeprecatedAliases(String... deprecatedAliases) {
+        java.util.Set<String> aliases = java.util.Set.of(deprecatedAliases);
+        Validator actualValidator = validator;
+        if (null == actualValidator) {
+            actualValidator = Field::deprecatedFieldWarning;
+        }
+        else {
+            actualValidator.and(Field::deprecatedFieldWarning);
+        }
+        return new Field(name(), displayName(), type(), width(), description(), importance(), dependents(),
+                defaultValueGenerator, actualValidator, recommender, isRequired, group, allowedValues, aliases);
     }
 
     @Override
@@ -1080,12 +1123,14 @@ public final class Field {
         private final List<Object> validValues;
         private final java.util.Set<String> literals;
         private final String literalsStr;
+        private final String defaultOption;
 
-        public EnumRecommender(Class<T> enumType) {
+        public EnumRecommender(Class<T> enumType, T defaultOption) {
             // Not all enums support EnumeratedValue yet
             this.literals = getEnumLiterals(enumType);
             this.validValues = Collections.unmodifiableList(new ArrayList<>(this.literals));
             this.literalsStr = Strings.join(", ", validValues);
+            this.defaultOption = defaultOption != null ? defaultOption.name().toLowerCase() : null;
         }
 
         @Override
@@ -1102,8 +1147,11 @@ public final class Field {
         public int validate(Configuration config, Field field, ValidationOutput problems) {
             String value = config.getString(field);
             if (value == null) {
-                problems.accept(field, value, "Value must be one of " + literalsStr);
-                return 1;
+                if (defaultOption != null) {
+                    problems.accept(field, value, "Value must be one of " + literalsStr);
+                    return 1;
+                }
+                return 0;
             }
             String trimmed = value.trim().toLowerCase();
             if (!literals.contains(trimmed)) {
@@ -1377,7 +1425,6 @@ public final class Field {
     }
 
     public static int notContainEmptyElements(Configuration config, Field field, ValidationOutput problems) {
-
         if (!config.hasKey(field)) {
             return 0;
         }
@@ -1391,7 +1438,6 @@ public final class Field {
     }
 
     public static int notContainSpaceInAnyElement(Configuration config, Field field, ValidationOutput problems) {
-
         if (!config.hasKey(field)) {
             return 0;
         }
@@ -1400,6 +1446,17 @@ public final class Field {
         if (values.stream().anyMatch(h -> h.contains(SPACE))) {
             problems.accept(field, values, "Element(s) containing space not permitted");
             return 1;
+        }
+        return 0;
+    }
+
+    public static int deprecatedFieldWarning(Configuration config, Field field, ValidationOutput problems) {
+        if (!field.deprecatedAliases().isEmpty()) {
+            for (String alias : field.deprecatedAliases()) {
+                if (config.hasKey(alias)) {
+                    problems.accept(field, null, "Warning: Using deprecated config option \"" + alias + "\".");
+                }
+            }
         }
         return 0;
     }

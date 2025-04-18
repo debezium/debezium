@@ -6,7 +6,7 @@ echo $PWD
 
 if [ "$TEST_PROFILE" = "mysql" ]
 then
-  mvn clean verify ${MAVEN_ARGS},debezium-connector-mysql \
+  mvn clean verify ${CUSTOM_MAVEN_ARGS},debezium-connector-mysql \
     -Dversion.mysql.server=${MYSQL_VERSION} \
     ${EXECUTION_ARG:-} \
     -Dmysql.port=4301 \
@@ -16,7 +16,7 @@ then
     -P${PROFILE}
 elif [ "$TEST_PROFILE" = "postgres" ]
 then
-  mvn clean verify ${MAVEN_ARGS},debezium-connector-postgres \
+  mvn clean verify ${CUSTOM_MAVEN_ARGS},debezium-connector-postgres \
   -Dpostgres.port=55432 \
   ${ORACLE_ARG:-}                            \
   ${EXECUTION_ARG:-}                            \
@@ -35,6 +35,10 @@ then
     export ORACLE_CONNECTION="-Ddatabase.dbname=FREEPDB1 -Ddatabase.pdb.name=FREEPDB1"
     debezium-testing/tmt/tests/debezium/init-db.sh
   fi
+  DATABASE_USER="c##dbzuser"
+  if [[ "$ORACLE_VERSION" = *noncdb ]]; then
+    DATABASE_USER="dbzuser"
+  fi
   mvn clean verify -U -pl debezium-connector-oracle -am -fae \
     -Poracle-tests                              \
     ${ORACLE_PROFILE_ARGS:-}                    \
@@ -43,8 +47,11 @@ then
     -Ddatabase.hostname=0.0.0.0                 \
     -Ddatabase.admin.hostname=0.0.0.0           \
     -Ddatabase.port=1521  \
+    --no-transfer-progress \
+    -Dorg.slf4j.simpleLogger.showDateTime=true \
+    -Dorg.slf4j.simpleLogger.dateTimeFormat=HH:mm:ss,SSS \
     -Dinstantclient.dir=${ORACLE_ARTIFACT_DIR}     \
-    -Ddatabase.user="c##dbzuser"                  \
+    -Ddatabase.user=${DATABASE_USER}                  \
     -Dinsecure.repositories=WARN                \
     ${ORACLE_CONNECTION:-}                      \
     -Papicurio
@@ -56,11 +63,11 @@ then
   else
     export DATABASE_IMAGE="mcr.microsoft.com/mssql/server:2022-latest"
   fi
-  mvn clean verify ${MAVEN_ARGS},debezium-connector-sqlserver \
+  mvn clean verify ${CUSTOM_MAVEN_ARGS},debezium-connector-sqlserver \
   ${EXECUTION_ARG:-}                            \
   -Ddocker.db="${DATABASE_IMAGE}"
 else
-  mvn clean verify ${MAVEN_ARGS},debezium-connector-mongodb \
+  mvn clean verify ${CUSTOM_MAVEN_ARGS},debezium-connector-mongodb \
   ${EXECUTION_ARG:-}                            \
   -Dversion.mongo.server=${MONGODB_VERSION}
 fi

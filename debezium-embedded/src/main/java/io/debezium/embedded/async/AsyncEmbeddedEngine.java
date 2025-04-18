@@ -17,12 +17,15 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -62,6 +65,7 @@ import io.debezium.embedded.ConverterBuilder;
 import io.debezium.embedded.DebeziumEngineCommon;
 import io.debezium.embedded.EmbeddedEngineChangeEvent;
 import io.debezium.embedded.EmbeddedEngineConfig;
+import io.debezium.embedded.EmbeddedEngineSignaler;
 import io.debezium.embedded.EmbeddedWorkerConfig;
 import io.debezium.embedded.KafkaConnectUtil;
 import io.debezium.embedded.Transformations;
@@ -70,6 +74,7 @@ import io.debezium.engine.StopEngineException;
 import io.debezium.engine.format.ChangeEventFormat;
 import io.debezium.engine.format.KeyValueChangeEventFormat;
 import io.debezium.engine.format.KeyValueHeaderChangeEventFormat;
+import io.debezium.engine.source.DebeziumSourceConnectorContext;
 import io.debezium.engine.source.EngineSourceConnector;
 import io.debezium.engine.source.EngineSourceConnectorContext;
 import io.debezium.engine.source.EngineSourceTask;
@@ -112,14 +117,15 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     private final ExecutorService recordService;
     // A latch to make sure close() method finishes before we call completion callback, see also DBZ-7496.
     private final CountDownLatch shutDownLatch = new CountDownLatch(1);
+    private Signaler signaler;
 
     private AsyncEmbeddedEngine(Properties config,
                                 Consumer<R> consumer,
-                                DebeziumEngine.ChangeConsumer<R> handler,
+                                ChangeConsumer<R> handler,
                                 ClassLoader classLoader,
                                 io.debezium.util.Clock clock,
-                                DebeziumEngine.CompletionCallback completionCallback,
-                                DebeziumEngine.ConnectorCallback connectorCallback,
+                                CompletionCallback completionCallback,
+                                ConnectorCallback connectorCallback,
                                 OffsetCommitPolicy offsetCommitPolicy,
                                 HeaderConverter headerConverter,
                                 Function<SourceRecord, R> recordConverter) {
@@ -146,7 +152,13 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
 
         // Create thread pools for executing tasks and record pipelines.
         taskService = Executors.newFixedThreadPool(this.config.getInteger(ConnectorConfig.TASKS_MAX_CONFIG, () -> 1));
-        recordService = Executors.newFixedThreadPool(computeRecordThreads(this.config.getString(AsyncEmbeddedEngine.RECORD_PROCESSING_THREADS)));
+        final String processingThreads = this.config.getString(AsyncEmbeddedEngine.RECORD_PROCESSING_THREADS);
+        if (processingThreads == null || processingThreads.isBlank()) {
+            recordService = new ThreadPoolExecutor(0, AsyncEngineConfig.AVAILABLE_CORES, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue());
+        }
+        else {
+            recordService = Executors.newFixedThreadPool(computeRecordThreads(processingThreads));
+        }
 
         // Validate provided config and prepare Kafka worker config needed for Kafka stuff, like e.g. OffsetStore.
         if (!this.config.validateAndRecord(AsyncEngineConfig.CONNECTOR_FIELDS, LOGGER::error)) {
@@ -181,6 +193,10 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         offsetValueConverter.configure(internalConverterConfig, false);
     }
 
+    List<EngineSourceTask> tasks() {
+        return tasks;
+    }
+
     @Override
     public void run() {
         Throwable exitError = null;
@@ -202,7 +218,14 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             LOGGER.debug("Starting tasks polling.");
             setEngineState(State.STARTING_TASKS, State.POLLING_TASKS);
             runTasksPolling(tasks);
-            // Tasks run infinite polling loop until close() is called or exception is thrown.
+
+            // Check the state first - if the polling was stopped by calling close() method (not by throwing StopEngineException),
+            // engine is already in STOPPING state.
+            if (State.canBeStopped(getEngineState())) {
+                LOGGER.debug("Stopping " + AsyncEmbeddedEngine.class.getName());
+                setEngineState(State.POLLING_TASKS, State.STOPPING);
+                close(State.POLLING_TASKS);
+            }
         }
         catch (Throwable t) {
             exitError = t;
@@ -266,6 +289,12 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
      * @param stateBeforeStop {@link State} of the engine when the shutdown was requested.
      */
     private void close(final State stateBeforeStop) {
+        try {
+            stopConnector(tasks, stateBeforeStop);
+        }
+        catch (Exception e) {
+            LOGGER.warn("Failed to stop connector properly: ", e);
+        }
         if (headerConverter != null) {
             try {
                 headerConverter.close();
@@ -274,7 +303,14 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 LOGGER.warn("Failed to close header converter: ", e);
             }
         }
-        stopConnector(tasks, stateBeforeStop);
+        if (transformations != null) {
+            try {
+                transformations.close();
+            }
+            catch (IOException e) {
+                LOGGER.warn("Failed to close transformations: ", e);
+            }
+        }
         shutDownLatch.countDown();
     }
 
@@ -307,7 +343,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
      */
     private void finishShutDown(Throwable exitError) {
         try {
-            shutDownLatch.await();
+            shutDownLatch.await(config.getLong(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS), TimeUnit.MILLISECONDS);
         }
         catch (InterruptedException e) {
             LOGGER.warn("Interrupted while waiting for shutdown to finish.");
@@ -335,7 +371,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         final OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetStore, engineName, offsetKeyConverter, offsetValueConverter);
 
         LOGGER.debug("Initializing Connect connector itself");
-        connector.initialize(new EngineSourceConnectorContext(this, offsetReader, offsetWriter));
+        connector.initialize(new EngineSourceConnectorContext(this, offsetStore, offsetReader, offsetWriter));
 
         return connectorConfig;
     }
@@ -395,9 +431,10 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         }
 
         final long taskStartupTimeout = config.getLong(AsyncEngineConfig.TASK_MANAGEMENT_TIMEOUT_MS);
-        LOGGER.debug("Waiting max. for {} ms for individual source tasks to start.", taskStartupTimeout);
+        LOGGER.info("Waiting max. for {} ms for individual source tasks to start.", taskStartupTimeout);
         final int nTasks = tasks.size();
         Exception error = null;
+        int failedTasks = 0;
         // To avoid leaked resources, we have to ensure that all tasks that were scheduled to start are really started before we continue with the execution in
         // the main (engine) thread and change engine state. If any of the scheduled tasks has failed, catch the exception, wait for other tasks to start and then
         // re-throw the exception and let engine stop already running tasks gracefully during the engine shutdown.
@@ -415,6 +452,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             }
             catch (Exception e) {
                 LOGGER.debug("Task #{} (out of {} tasks) failed to start. Failed with", i + 1, nTasks, e);
+                failedTasks++;
 
                 // Store only the first error.
                 if (error == null) {
@@ -429,7 +467,11 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
 
         // If at least one task failed to start, re-throw exception and abort the start of the connector.
         if (error != null) {
+            LOGGER.error("{} task(s) out of {} failed to start.", failedTasks, nTasks);
             throw error;
+        }
+        else {
+            LOGGER.info("All tasks have started successfully.");
         }
     }
 
@@ -453,7 +495,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             try {
                 taskCompletionService.take().get();
             }
-            catch (InterruptedException e) {
+            catch (InterruptedException | CancellationException e) {
                 LOGGER.info("Task interrupted while polling.");
             }
             LOGGER.debug("Task #{} out of {} tasks has stopped polling.", i, tasks.size());
@@ -534,10 +576,13 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         LOGGER.debug("Stopping records service.");
         final long shutdownTimeout = config.getLong(AsyncEngineConfig.RECORD_PROCESSING_SHUTDOWN_TIMEOUT_MS);
         try {
+            recordService.shutdown();
             recordService.awaitTermination(shutdownTimeout, TimeUnit.MILLISECONDS);
         }
         catch (InterruptedException e) {
             LOGGER.info("Timed out while waiting for record service shutdown. Shutting it down immediately.");
+        }
+        finally {
             recordService.shutdownNow();
         }
     }
@@ -610,6 +655,27 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     }
 
     /**
+     * Stops {@link OffsetBackingStore} used by engine if there is any.
+     * If engine fails during initialization phase before connector context is created, the reference may be {@code null} and in such this method does nothing.
+     *
+     * @param connectorContext {@link DebeziumSourceConnectorContext} used by the connector or {@code null} if the context hasn't been initialized yet.
+     */
+    private void stopOffsetStore(final DebeziumSourceConnectorContext connectorContext) {
+        if (connectorContext == null || connectorContext.offsetStore() == null) {
+            LOGGER.debug("Offset store hasn't been initialized yet, closing of the offset store is skipped.");
+            return;
+        }
+
+        LOGGER.debug("Stopping offset backing store.");
+        try {
+            connectorContext.offsetStore().stop();
+        }
+        catch (Exception e) {
+            LOGGER.warn("Failed to stop offset backing store", e);
+        }
+    }
+
+    /**
      * Stops connector's tasks if they are already running and then stops connector itself.
      *
      * @param tasks {@link List<EngineSourceTask>} of source task should be stopped now.
@@ -621,6 +687,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             stopPollingIfNeeded();
             stopSourceTasks(tasks);
         }
+        stopOffsetStore(connector.context());
         LOGGER.debug("Stopping the connector.");
         connector.connectConnector().stop();
         LOGGER.debug("Calling connector callback after connector stop");
@@ -746,7 +813,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     private static boolean commitOffsets(final OffsetStorageWriter offsetWriter, final io.debezium.util.Clock clock, final long commitTimeout, final SourceTask task)
             throws InterruptedException, TimeoutException {
         final long timeout = clock.currentTimeInMillis() + commitTimeout;
-        if (!offsetWriter.beginFlush(commitTimeout, TimeUnit.MICROSECONDS)) {
+        if (!offsetWriter.beginFlush(commitTimeout, TimeUnit.MILLISECONDS)) {
             LOGGER.trace("No offset to be committed.");
             return false;
         }
@@ -768,11 +835,24 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             throw e;
         }
         catch (ExecutionException | TimeoutException e) {
-            LOGGER.warn("Flush of the offsets failed, canceling the flush.");
+            LOGGER.warn("Flush of the offsets failed, canceling the flush.", e);
             offsetWriter.cancelFlush();
             return false;
         }
         return true;
+    }
+
+    @Override
+    public Signaler getSignaler() {
+        if (signaler == null) {
+            var channels = tasks().stream()
+                    .map(EngineSourceTask::signalChannelWriter)
+                    .flatMap(Optional::stream)
+                    .toList();
+
+            signaler = new EmbeddedEngineSignaler(channels);
+        }
+        return signaler;
     }
 
     /**
@@ -917,7 +997,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                     catch (StopEngineException ex) {
                         // Ensure that we mark the record as finished in this case.
                         committer.markProcessed(record);
-                        throw ex;
+                        break;
                     }
                 }
                 committer.markBatchFinished();
@@ -945,7 +1025,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                     catch (StopEngineException ex) {
                         // Ensure that we mark the record as finished in this case.
                         committer.markProcessed(record);
-                        throw ex;
+                        break;
                     }
                 }
                 committer.markBatchFinished();
@@ -955,12 +1035,10 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
 
     /**
      * Determines the size of the thread pool which will be used for processing records. The value can be either number (provided as a {@code String} value) or
-     * a predefined placeholder from {@link ProcessingCores} enumeration. If the number of threads is provided as a number, it will be eventually limited to
-     * {@code AsyncEngineConfig.RECORD_PROCESSING_THREADS_CAP} to avoid possible overhead with too many context switches on a beefy machines with many cores, but
-     * running many other tasks.
+     * a predefined placeholder from {@link ProcessingCores} enumeration.
      *
      * @param recordProcessingThreads Requested number of processing threads as a {@code String}. It can be a number or predefined placeholder.
-     * @return Either requested number of threads or minimum of {@code AsyncEngineConfig.RECORD_PROCESSING_THREADS_CAP} and {@code AsyncEngineConfig.AVAILABLE_CORES}.
+     * @return Requested number of threads.
      */
     private int computeRecordThreads(final String recordProcessingThreads) {
         // First check if it's some our placeholder constant.
@@ -974,9 +1052,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         if (cores <= 0) {
             throw new IllegalArgumentException("Number of cores cannot be negative or zero!");
         }
-
-        // Now we apply processor cap. As we provide all available cores as the default value, we eventually reduce the value now.
-        return Math.min(cores, AsyncEngineConfig.RECORD_PROCESSING_THREADS_CAP);
+        return cores;
     }
 
     /**
@@ -1099,6 +1175,10 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
      * If there are any records, they are passed to the provided processor.
      * The {@link Callable} is {@link RetryingCallable} - if the {@link org.apache.kafka.connect.errors.RetriableException}
      * is thrown, the {@link Callable} is executed again according to configured {@link DelayStrategy} and number of retries.
+     *
+     * The polling runs in an infinite polling loop until close() is called or exception is thrown.
+     * The only exception is catching {@link StopEngineException}, which also leads to finishing the polling loop,
+     * but in this case the shutdown is graceful.
      */
     private static class PollRecords extends RetryingCallable<Void> {
         final EngineSourceTask task;
@@ -1119,7 +1199,13 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 final List<SourceRecord> changeRecords = task.connectTask().poll(); // blocks until there are values ...
                 LOGGER.trace("Thread {} polled {} records.", Thread.currentThread().getName(), changeRecords == null ? "no" : changeRecords.size());
                 if (changeRecords != null && !changeRecords.isEmpty()) {
-                    processor.processRecords(changeRecords);
+                    try {
+                        processor.processRecords(changeRecords);
+                    }
+                    catch (StopEngineException e) {
+                        LOGGER.debug("Interrupting polling loop due to receiving StopEngineException.");
+                        break;
+                    }
                 }
                 else {
                     LOGGER.trace("No records.");
@@ -1161,7 +1247,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
 
         @Override
         public void markProcessed(SourceRecord record) throws InterruptedException {
-            task.commitRecord(record);
+            task.commitRecord(record, null);
             recordsSinceLastCommit += 1;
             offsetWriter.offset(record.sourcePartition(), record.sourceOffset());
         }

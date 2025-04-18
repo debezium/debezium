@@ -4,7 +4,7 @@
   <parent>
     <groupId>io.debezium</groupId>
     <artifactId>debezium-testing</artifactId>
-    <version>2.6.0-SNAPSHOT</version>
+    <version>3.2.0-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -13,15 +13,16 @@
   <name>Debezium system integration test-suite</name>
 
   <properties>
-    <version.fabric8.client>5.12.1</version.fabric8.client>
+    <version.fabric8.client>6.10.0</version.fabric8.client>
     <version.commons.codec>1.14</version.commons.codec>
-    <version.commons.compress>1.21</version.commons.compress>
-    <version.strimzi>0.28.0</version.strimzi>
+    <version.commons.compress>1.26.0</version.commons.compress>
+    <version.strimzi>0.40.0</version.strimzi>
     <version.strimzi.kafka>${version.kafka}</version.strimzi.kafka>
     <version.assertj>3.11.1</version.assertj>
     <version.apicurio>2.4.1.Final</version.apicurio>
-    <version.apicurio.model>2.3.1.Final</version.apicurio.model>
+    <version.apicurio.model>1.1.0</version.apicurio.model>
     <version.fixture5>0.1.0</version.fixture5>
+    <version.debezium.jdbc.tests>2.6.0.Beta1</version.debezium.jdbc.tests>
 
     <product.build>false</product.build>
     <prepare.strimzi>true</prepare.strimzi>
@@ -33,10 +34,11 @@
     <!--Docker configuration-->
     <docker.image.mysql>quay.io/debezium/example-mysql-master:latest</docker.image.mysql>
     <docker.image.mysql.replica>quay.io/debezium/example-mysql-replica:latest</docker.image.mysql.replica>
+    <docker.image.mariadb>quay.io/debezium/example-mariadb:latest</docker.image.mariadb>
     <docker.image.postgresql>quay.io/debezium/example-postgres:latest</docker.image.postgresql>
     <docker.image.postgresql.replica>quay.io/debezium/postgres:15</docker.image.postgresql.replica>
-    <docker.image.mongo>quay.io/debezium/example-mongodb:latest</docker.image.mongo>
-    <docker.image.mongo.sharded>quay.io/debezium/example-mongodb:latest</docker.image.mongo.sharded>
+    <docker.image.mongo>quay.io/debezium/example-mongodb:2.6</docker.image.mongo>
+    <docker.image.mongo.sharded>quay.io/debezium/example-mongodb:2.6</docker.image.mongo.sharded>
     <docker.image.sqlserver>mcr.microsoft.com/mssql/server:2019-latest</docker.image.sqlserver>
     <docker.image.db2>quay.io/rh_integration/dbz-db2-cdc:latest</docker.image.db2>
     <docker.image.oracle>quay.io/rh_integration/dbz-oracle:19.3.0</docker.image.oracle>
@@ -46,6 +48,7 @@
     <ocp.project.debezium>debezium</ocp.project.debezium>
     <ocp.project.registry>${ocp.project.debezium}-registry</ocp.project.registry>
     <ocp.project.mysql>${ocp.project.debezium}-mysql</ocp.project.mysql>
+    <ocp.project.mariadb>${ocp.project.debezium}-mariadb</ocp.project.mariadb>
     <ocp.project.postgresql>${ocp.project.debezium}-postgresql</ocp.project.postgresql>
     <ocp.project.mongo>${ocp.project.debezium}-mongo</ocp.project.mongo>
     <ocp.project.sqlserver>${ocp.project.debezium}-sqlserver</ocp.project.sqlserver>
@@ -53,6 +56,7 @@
     <ocp.project.oracle>${ocp.project.debezium}-oracle</ocp.project.oracle>
 
     <ocp.image.mysql>${docker.image.mysql}</ocp.image.mysql>
+    <ocp.image.mariadb>${docker.image.mariadb}</ocp.image.mariadb>
     <ocp.image.mysql.replica>${docker.image.mysql.replica}</ocp.image.mysql.replica>
     <ocp.image.postgresql>${docker.image.postgresql}</ocp.image.postgresql>
     <ocp.image.postgresql.replica>${docker.image.postgresql.replica}</ocp.image.postgresql.replica>
@@ -81,6 +85,15 @@
     <database.mysql.dbz.password>dbz</database.mysql.dbz.password>
     <database.mysql.root.password>debezium</database.mysql.root.password>
 
+    <!--MariaDB configuration-->
+    <database.mariadb.port>3306</database.mariadb.port>
+    <database.mariadb.username>mariadbuser</database.mariadb.username>
+    <database.mariadb.password>mariadbpw</database.mariadb.password>
+    <database.mariadb.dbz.username>debezium</database.mariadb.dbz.username>
+    <database.mariadb.dbz.password>dbz</database.mariadb.dbz.password>
+    <database.mariadb.root.password>debezium</database.mariadb.root.password>
+
+
     <!--PostgreSQL configuration-->
     <database.postgresql.port>5432</database.postgresql.port>
     <database.postgresql.username>debezium</database.postgresql.username>
@@ -107,6 +120,10 @@
     <database.mongo.dbz.login.dbname>admin</database.mongo.dbz.login.dbname>
     <database.mongo.docker.desktop.ports>27017:27117</database.mongo.docker.desktop.ports>
     <database.mongo.docker.replica.size>1</database.mongo.docker.replica.size>
+
+    <!--Mongodb sharded configuration-->
+    <database.mongo.use.keyfile>false</database.mongo.use.keyfile>
+    <database.mongo.use.tls>false</database.mongo.use.tls>
 
     <!--DB2 configuration -->
     <database.db2.port>50000</database.db2.port>
@@ -165,6 +182,13 @@
       </dependency>
       <dependency>
         <groupId>io.debezium</groupId>
+        <artifactId>debezium-connector-mariadb</artifactId>
+        <classifier>plugin</classifier>
+        <type>zip</type>
+        <version>${version.debezium.connector}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.debezium</groupId>
         <artifactId>debezium-connector-postgres</artifactId>
         <classifier>plugin</classifier>
         <type>zip</type>
@@ -194,6 +218,13 @@
       <dependency>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-connector-oracle</artifactId>
+        <classifier>plugin</classifier>
+        <type>zip</type>
+        <version>${version.debezium.connector}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.debezium</groupId>
+        <artifactId>debezium-connector-jdbc</artifactId>
         <classifier>plugin</classifier>
         <type>zip</type>
         <version>${version.debezium.connector}</version>
@@ -255,6 +286,36 @@
     </dependency>
 
     <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>connect-api</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-reload4j</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.kafka</groupId>
+      <artifactId>connect-runtime</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>ch.qos.reload4j</groupId>
+          <artifactId>reload4j</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-reload4j</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>jackson-annotations</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
       <groupId>io.strimzi</groupId>
       <artifactId>api</artifactId>
       <version>${version.strimzi}</version>
@@ -282,6 +343,16 @@
       <groupId>io.apicurio</groupId>
       <artifactId>apicurio-registry-operator-api-model</artifactId>
       <version>${version.apicurio.model}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.logging.log4j</groupId>
+          <artifactId>log4j-api</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-simple</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
@@ -356,6 +427,7 @@
     </dependency>
 
     <dependency>
+
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
     </dependency>
@@ -407,8 +479,28 @@
     </dependency>
 
     <dependency>
+      <groupId>io.debezium</groupId>
+      <artifactId>debezium-connector-jdbc</artifactId>
+      <type>test-jar</type>
+      <scope>test</scope>
+      <version>${version.debezium.connector}</version>
+    </dependency>
+
+    <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>oracle-xe</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.freemarker</groupId>
+      <artifactId>freemarker</artifactId>
+      <version>2.3.32</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcpkix-jdk15on</artifactId>
+      <version>1.70</version>
     </dependency>
   </dependencies>
 
@@ -416,24 +508,22 @@
     <profile>
       <!-- Required to run tests against downstream -->
       <id>product</id>
-
       <properties>
         <as.apicurio.url>${as.url}/service-registry-${as.apicurio.version}-distro-connect-converter.zip</as.apicurio.url>
         <product.build>true</product.build>
       </properties>
     </profile>
+
     <profile>
       <!-- Required to run Oracle tests -->
       <id>oracleITs</id>
-
       <properties>
         <database.oracle>true</database.oracle>
       </properties>
-
       <dependencies>
         <dependency>
           <groupId>com.oracle.database.jdbc</groupId>
-          <artifactId>ojdbc8</artifactId>
+          <artifactId>ojdbc11</artifactId>
         </dependency>
       </dependencies>
     </profile>
@@ -441,7 +531,6 @@
     <profile>
       <!-- Required to run build images with Oracle connector -->
       <id>oracle-image</id>
-
       <dependencies>
         <dependency>
           <groupId>io.debezium</groupId>
@@ -475,6 +564,7 @@
                 <!--Docker Configuration-->
                 <test.docker.image.kc>${docker.image.kc}</test.docker.image.kc>
                 <test.docker.image.mysql>${docker.image.mysql}</test.docker.image.mysql>
+                <test.docker.image.mariabd>${docker.image.mariadb}</test.docker.image.mariabd>
                 <test.docker.image.mysql.replica>${docker.image.mysql.replica}</test.docker.image.mysql.replica>
                 <test.docker.image.postgresql>${docker.image.postgresql}</test.docker.image.postgresql>
                 <test.docker.image.mongo>${docker.image.mongo}</test.docker.image.mongo>
@@ -492,6 +582,7 @@
                 <test.ocp.project.debezium>${ocp.project.debezium}</test.ocp.project.debezium>
                 <test.ocp.project.registry>${ocp.project.registry}</test.ocp.project.registry>
                 <test.ocp.project.mysql>${ocp.project.mysql}</test.ocp.project.mysql>
+                <test.ocp.project.mariadb>${ocp.project.mariadb}</test.ocp.project.mariadb>
                 <test.ocp.project.postgresql>${ocp.project.postgresql}</test.ocp.project.postgresql>
                 <test.ocp.project.mongo>${ocp.project.mongo}</test.ocp.project.mongo>
                 <test.ocp.project.sqlserver>${ocp.project.sqlserver}</test.ocp.project.sqlserver>
@@ -519,6 +610,14 @@
                 <test.database.mysql.dbz.username>${database.mysql.dbz.username}</test.database.mysql.dbz.username>
                 <test.database.mysql.dbz.password>${database.mysql.dbz.password}</test.database.mysql.dbz.password>
                 <test.database.mysql.port>${database.mysql.port}</test.database.mysql.port>
+
+                <!--MariaDB configuration-->
+                <test.database.mariadb.host>${database.mariadb.host}</test.database.mariadb.host>
+                <test.database.mariadb.username>${database.mariadb.username}</test.database.mariadb.username>
+                <test.database.mariadb.password>${database.mariadb.password}</test.database.mariadb.password>
+                <test.database.mariadb.dbz.username>${database.mariadb.dbz.username}</test.database.mariadb.dbz.username>
+                <test.database.mariadb.dbz.password>${database.mariadb.dbz.password}</test.database.mariadb.dbz.password>
+                <test.database.mariadb.port>${database.mariadb.port}</test.database.mariadb.port>
 
                 <!--PostgreSQL configuration-->
                 <test.database.postgresql.host>${database.postgresql.host}</test.database.postgresql.host>
@@ -549,6 +648,10 @@
                 <test.database.mongo.dbz.login.dbname>${database.mongo.dbz.login.dbname}</test.database.mongo.dbz.login.dbname>
                 <test.database.mongo.docker.desktop.ports>${database.mongo.docker.desktop.ports}</test.database.mongo.docker.desktop.ports>
                 <test.database.mongo.docker.replica.size>${database.mongo.docker.replica.size}</test.database.mongo.docker.replica.size>
+
+                <!--Mongo sharded configuration-->
+                <test.database.mongo.use.keyfile>${database.mongo.use.keyfile}</test.database.mongo.use.keyfile>
+                <test.database.mongo.use.tls>${database.mongo.use.tls}</test.database.mongo.use.tls>
 
                 <!--DB2 configuration-->
                 <test.database.db2.host>${database.db2.host}</test.database.db2.host>

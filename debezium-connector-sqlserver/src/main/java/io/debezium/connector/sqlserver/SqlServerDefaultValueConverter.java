@@ -149,7 +149,7 @@ class SqlServerDefaultValueConverter implements DefaultValueConverter {
         });
         result.put("time", (c, v) -> { // Sample value: ('2019-01-01 00:00:00')
             String rawValue = v.substring(2, v.length() - 2);
-            return JdbcConnection.querySingleValue(connectionProvider.get(), "SELECT PARSE(? AS time)", st -> st.setString(1, rawValue), rs -> rs.getTime(1));
+            return JdbcConnection.querySingleValue(connectionProvider.get(), "SELECT PARSE(? AS time)", st -> st.setString(1, rawValue), rs -> rs.getTimestamp(1));
         });
 
         // Character strings

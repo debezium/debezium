@@ -5,19 +5,28 @@
  */
 package io.debezium.connector.oracle;
 
+import java.math.BigInteger;
+import java.sql.CallableStatement;
 import java.sql.Clob;
 import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLRecoverableException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -27,18 +36,27 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
+import io.debezium.connector.oracle.logminer.LogFile;
+import io.debezium.connector.oracle.logminer.SqlUtils;
+import io.debezium.connector.oracle.util.OracleUtils;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.spi.OffsetContext;
+import io.debezium.pipeline.spi.Partition;
+import io.debezium.relational.Attribute;
 import io.debezium.relational.Column;
 import io.debezium.relational.ColumnEditor;
+import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.util.Strings;
 
 import oracle.jdbc.OracleTypes;
+import oracle.sql.CharacterSet;
 
 public class OracleConnection extends JdbcConnection {
 
@@ -103,33 +121,18 @@ public class OracleConnection extends JdbcConnection {
     }
 
     public void setSessionToPdb(String pdbName) {
-        Statement statement = null;
-
-        try {
-            statement = connection().createStatement();
-            statement.execute("alter session set container=" + pdbName);
-        }
-        catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-        finally {
-            if (statement != null) {
-                try {
-                    statement.close();
-                }
-                catch (SQLException e) {
-                    LOGGER.error("Couldn't close statement", e);
-                }
-            }
-        }
+        setContainerAs(pdbName);
     }
 
     public void resetSessionToCdb() {
-        Statement statement = null;
+        setContainerAs("cdb$root");
+    }
 
+    private void setContainerAs(String containerName) {
+        Statement statement = null;
         try {
             statement = connection().createStatement();
-            statement.execute("alter session set container=cdb$root");
+            statement.execute("alter session set container=" + containerName);
         }
         catch (SQLException e) {
             throw new RuntimeException(e);
@@ -246,8 +249,9 @@ public class OracleConnection extends JdbcConnection {
 
     @Override
     protected String resolveCatalogName(String catalogName) {
-        final String pdbName = config().getString("pdb.name");
-        return (!Strings.isNullOrEmpty(pdbName) ? pdbName : config().getString("dbname")).toUpperCase();
+        final String pdbName = OracleUtils.getObjectName(config().getString("pdb.name"));
+        final String databaseName = OracleUtils.getObjectName(config().getString("dbname"));
+        return !Strings.isNullOrEmpty(pdbName) ? pdbName : databaseName;
     }
 
     @Override
@@ -301,9 +305,13 @@ public class OracleConnection extends JdbcConnection {
             // By querying for TABLE_TYPE is null, we are explicitly confirming what if an entry exists
             // that the table is in-fact a relational table and if the result set is empty, the object
             // is another type, likely an object-based table, in which case we cannot generate DDL.
-            final String tableType = "SELECT COUNT(1) FROM ALL_ALL_TABLES WHERE OWNER='" + tableId.schema()
-                    + "' AND TABLE_NAME='" + tableId.table() + "' AND TABLE_TYPE IS NULL";
-            if (queryAndMap(tableType, rs -> rs.next() ? rs.getInt(1) : 0) == 0) {
+            final String tableType = "SELECT COUNT(1) FROM ALL_ALL_TABLES WHERE OWNER=? AND TABLE_NAME=? AND TABLE_TYPE IS NULL";
+            if (prepareQueryAndMap(tableType,
+                    ps -> {
+                        ps.setString(1, tableId.schema());
+                        ps.setString(2, tableId.table());
+                    },
+                    rs -> rs.next() ? rs.getInt(1) : 0) == 0) {
                 throw new NonRelationalTableException("Table " + tableId + " is not a relational table");
             }
 
@@ -313,14 +321,20 @@ public class OracleConnection extends JdbcConnection {
             // In case DDL is returned as multiple DDL statements, this allows the parser to parse each separately.
             // This is only critical during streaming as during snapshot the table structure is built from JDBC driver queries.
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'SQLTERMINATOR', true); end;");
-            return queryAndMap("SELECT dbms_metadata.get_ddl('TABLE','" + tableId.table() + "','" + tableId.schema() + "') FROM DUAL", rs -> {
-                if (!rs.next()) {
-                    throw new DebeziumException("Could not get DDL metadata for table: " + tableId);
-                }
+            return prepareQueryAndMap(
+                    "SELECT dbms_metadata.get_ddl('TABLE',?,?) FROM DUAL",
+                    ps -> {
+                        ps.setString(1, tableId.table());
+                        ps.setString(2, tableId.schema());
+                    },
+                    rs -> {
+                        if (!rs.next()) {
+                            throw new DebeziumException("Could not get DDL metadata for table: " + tableId);
+                        }
 
-                Object res = rs.getObject(1);
-                return ((Clob) res).getSubString(1, (int) ((Clob) res).length());
-            });
+                        Object res = rs.getObject(1);
+                        return ((Clob) res).getSubString(1, (int) ((Clob) res).length());
+                    });
         }
         finally {
             executeWithoutCommitting("begin dbms_metadata.set_transform_param(DBMS_METADATA.SESSION_TRANSFORM, 'DEFAULT'); end;");
@@ -342,40 +356,44 @@ public class OracleConnection extends JdbcConnection {
     /**
      * Returns whether the given table exists or not.
      *
-     * @param tableName table name, should not be {@code null}
+     * @param tableId table id, should not be {@code null}
      * @return true if the table exists, false if it does not
      * @throws SQLException if a database exception occurred
      */
-    public boolean isTableExists(String tableName) throws SQLException {
-        return queryAndMap("SELECT COUNT(1) FROM USER_TABLES WHERE TABLE_NAME = '" + tableName + "'",
-                rs -> rs.next() && rs.getLong(1) > 0);
-    }
-
     public boolean isTableExists(TableId tableId) throws SQLException {
-        return queryAndMap("SELECT COUNT(1) FROM ALL_TABLES WHERE OWNER = '" + tableId.schema() + "' AND TABLE_NAME = '" + tableId.table() + "'",
+        if (Strings.isNullOrBlank(tableId.schema())) {
+            return prepareQueryAndMap("SELECT COUNT(1) FROM USER_TABLES WHERE TABLE_NAME=?",
+                    ps -> ps.setString(1, tableId.table()),
+                    rs -> rs.next() && rs.getLong(1) > 0);
+        }
+        return prepareQueryAndMap("SELECT COUNT(1) FROM ALL_TABLES WHERE OWNER=? AND TABLE_NAME=?",
+                ps -> {
+                    ps.setString(1, tableId.schema());
+                    ps.setString(2, tableId.table());
+                },
                 rs -> rs.next() && rs.getLong(1) > 0);
     }
 
     /**
      * Returns whether the given table is empty or not.
      *
-     * @param tableName table name, should not be {@code null}
+     * @param tableId table id, should not be {@code null}
      * @return true if the table has no records, false otherwise
      * @throws SQLException if a database exception occurred
      */
-    public boolean isTableEmpty(String tableName) throws SQLException {
-        return getRowCount(tableName) == 0L;
+    public boolean isTableEmpty(TableId tableId) throws SQLException {
+        return getRowCount(tableId) == 0L;
     }
 
     /**
      * Returns the number of rows in a given table.
      *
-     * @param tableName table name, should not be {@code null}
+     * @param tableId table id, should not be {@code null}
      * @return the number of rows
      * @throws SQLException if a database exception occurred
      */
-    public long getRowCount(String tableName) throws SQLException {
-        return queryAndMap("SELECT COUNT(1) FROM " + tableName, rs -> {
+    public long getRowCount(TableId tableId) throws SQLException {
+        return queryAndMap("SELECT COUNT(1) FROM " + tableId.toDoubleQuotedString(), rs -> {
             if (rs.next()) {
                 return rs.getLong(1);
             }
@@ -385,6 +403,47 @@ public class OracleConnection extends JdbcConnection {
 
     public <T> T singleOptionalValue(String query, ResultSetExtractor<T> extractor) throws SQLException {
         return queryAndMap(query, rs -> rs.next() ? extractor.apply(rs) : null);
+    }
+
+    /**
+     * Gets the first system change number in both archive and redo logs.
+     *
+     * @param archiveLogRetention retention of the archive log
+     * @param archiveDestinationName name of the archive log destination to be used for reading archive logs
+     * @return the oldest system change number
+     * @throws SQLException      if a database exception occurred
+     * @throws DebeziumException if the oldest system change number cannot be found due to no logs available
+     */
+    public Optional<Scn> getFirstScnInLogs(Duration archiveLogRetention, String archiveDestinationName) throws SQLException {
+
+        final String oldestFirstChangeQuery = SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveDestinationName);
+        final String oldestScn = singleOptionalValue(oldestFirstChangeQuery, rs -> rs.getString(1));
+
+        if (oldestScn == null) {
+            return Optional.empty();
+        }
+
+        LOGGER.trace("Oldest SCN in logs is '{}'", oldestScn);
+        return Optional.of(Scn.valueOf(oldestScn));
+    }
+
+    public boolean validateLogPosition(Partition partition, OffsetContext offset, CommonConnectorConfig config) {
+
+        final Duration archiveLogRetention = ((OracleConnectorConfig) config).getArchiveLogRetention();
+        final String archiveDestinationName = ((OracleConnectorConfig) config).getArchiveLogDestinationName();
+        final Scn storedOffset = ((OracleConnectorConfig) config).getAdapter().getOffsetScn((OracleOffsetContext) offset);
+
+        try {
+            Optional<Scn> firstAvailableScn = getFirstScnInLogs(archiveLogRetention, archiveDestinationName);
+            return firstAvailableScn.filter(isLessThan(storedOffset)).isPresent();
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Unable to get last available log position", e);
+        }
+    }
+
+    private static Predicate<Scn> isLessThan(Scn storedOffset) {
+        return scn -> scn.compareTo(storedOffset) < 0;
     }
 
     @Override
@@ -509,6 +568,16 @@ public class OracleConnection extends JdbcConnection {
         }
     }
 
+    /**
+     * Get the database system time in the database system's time zone.
+     *
+     * @return the database system time
+     * @throws SQLException if a database exception occurred
+     */
+    public OffsetDateTime getDatabaseSystemTime() throws SQLException {
+        return singleOptionalValue("SELECT SYSTIMESTAMP FROM DUAL", rs -> rs.getObject(1, OffsetDateTime.class));
+    }
+
     public boolean isArchiveLogDestinationValid(String archiveDestinationName) throws SQLException {
         return prepareQueryAndMap("SELECT STATUS, TYPE FROM V$ARCHIVE_DEST_STATUS WHERE DEST_NAME=?",
                 st -> st.setString(1, archiveDestinationName),
@@ -573,56 +642,259 @@ public class OracleConnection extends JdbcConnection {
     }
 
     @Override
-    public Map<String, Object> reselectColumns(TableId tableId, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source)
+    public Optional<Boolean> nullsSortLast() {
+        // "NULLS LAST is the default for ascending order"
+        // https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/SELECT.html
+        return Optional.of(true);
+    }
+
+    @Override
+    public Map<String, Object> reselectColumns(Table table, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source)
             throws SQLException {
-        final TableId oracleTableId = new TableId(null, tableId.schema(), tableId.table());
-        final String commitScn = source.getString(SourceInfo.COMMIT_SCN_KEY);
-        if (Strings.isNullOrEmpty(commitScn)) {
-            return optionallyDoInContainer(() -> super.reselectColumns(oracleTableId, columns, keyColumns, keyValues, source));
+        final TableId oracleTableId = new TableId(null, table.id().schema(), table.id().table());
+        if (source != null) {
+            final String commitScn = source.getString(SourceInfo.COMMIT_SCN_KEY);
+            if (!Strings.isNullOrEmpty(commitScn)) {
+                final String query = String.format("SELECT %s FROM (SELECT * FROM %s AS OF SCN ?) WHERE %s",
+                        columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
+                        quotedTableIdString(oracleTableId),
+                        keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
+                final List<Object> bindValues = new ArrayList<>(keyValues.size() + 1);
+                bindValues.add(commitScn);
+                bindValues.addAll(keyValues);
+                try {
+                    return reselectColumns(query, oracleTableId, columns, bindValues);
+                }
+                catch (SQLException e) {
+                    // Check if the exception is about a flashback area error with an aged SCN
+                    if (!(e.getErrorCode() == 1555 || e.getMessage().startsWith("ORA-01555"))) {
+                        throw e;
+                    }
+                    LOGGER.warn("Failed to re-select row for table {} and key columns {} with values {}. " +
+                            "Trying to perform re-selection without flashback.", table.id(), keyColumns, keyValues);
+                }
+            }
         }
 
-        final String query = String.format("SELECT %s FROM (SELECT * FROM %s AS OF SCN ?) WHERE %s",
+        final String query = String.format("SELECT %s FROM %s WHERE %s",
                 columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
                 quotedTableIdString(oracleTableId),
                 keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
-        final List<Object> bindValues = new ArrayList<>(keyValues.size() + 1);
-        bindValues.add(commitScn);
-        bindValues.addAll(keyValues);
-        return optionallyDoInContainer(() -> {
-            try {
-                return reselectColumns(query, oracleTableId, columns, bindValues);
+
+        return reselectColumns(query, oracleTableId, columns, keyValues);
+    }
+
+    @Override
+    protected Map<TableId, List<Attribute>> getAttributeDetails(TableId tableId, String tableType) {
+        final Map<TableId, List<Attribute>> results = new HashMap<>();
+        try {
+            getDatabaseObjectDetails(tableId, tableType, (objectId, dataObjectId) -> {
+                LOGGER.info("\tRegistering '{}' attributes: object_id={}, data_object_id={}", tableId, objectId, dataObjectId);
+                final List<Attribute> attributes = new ArrayList<>();
+                attributes.add(Attribute.editor().name(OracleDatabaseSchema.ATTRIBUTE_OBJECT_ID).value(objectId).create());
+                attributes.add(Attribute.editor().name(OracleDatabaseSchema.ATTRIBUTE_DATA_OBJECT_ID).value(dataObjectId).create());
+                results.put(tableId, attributes);
+            });
+            return results;
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to get table attributes for table: " + tableId, e);
+        }
+    }
+
+    @SuppressWarnings("resource")
+    private void getDatabaseObjectDetails(TableId tableId, String tableType, ObjectIdentifierConsumer consumer) throws SQLException {
+        final String query = "SELECT OBJECT_ID, DATA_OBJECT_ID FROM ALL_OBJECTS WHERE OBJECT_NAME=? AND OWNER=? AND OBJECT_TYPE=?";
+        prepareQuery(query, List.of(tableId.table(), tableId.schema(), tableType), (params, rs) -> {
+            if (!rs.next()) {
+                throw new SQLException("Query '" + query + "' returned no results.");
             }
-            catch (SQLException e) {
-                if (e.getErrorCode() == 1555 || e.getMessage().startsWith("ORA-01555")) {
-                    LOGGER.warn("Failed to re-select row for table {} and key columns {} with values {}. " +
-                            "Trying to perform re-selection without flashback.", tableId, keyColumns, keyValues);
-                    return super.reselectColumns(oracleTableId, columns, keyColumns, keyValues, source);
-                }
-                throw e;
-            }
+            consumer.apply(rs.getLong(1), rs.getLong(2));
         });
     }
 
-    private <T> T optionallyDoInContainer(ContainerWork<T> work) throws SQLException {
-        boolean swapped = false;
+    public Long getTableObjectId(TableId tableId) throws SQLException {
+        return prepareQueryAndMap(
+                "SELECT OBJECT_ID FROM ALL_OBJECTS WHERE OBJECT_TYPE='TABLE' AND OWNER=? AND OBJECT_NAME=?",
+                ps -> {
+                    ps.setString(1, tableId.schema());
+                    ps.setString(2, tableId.table());
+                }, rs -> rs.next() ? rs.getLong(1) : null);
+    }
+
+    public Long getTableDataObjectId(TableId tableId) throws SQLException {
+        return prepareQueryAndMap(
+                "SELECT DATA_OBJECT_ID FROM ALL_OBJECTS WHERE OBJECT_TYPE='TABLE' AND OWNER=? AND OBJECT_NAME=?",
+                ps -> {
+                    ps.setString(1, tableId.schema());
+                    ps.setString(2, tableId.table());
+                }, rs -> rs.next() ? rs.getLong(1) : null);
+    }
+
+    /**
+     * Get the nationalized character set used for {@code NVARCHAR} and {@code NCHAR} data types.
+     *
+     * This method will lazily fetch the nationalized character set once per runtime. This is because
+     * the nationalized character set must be set only at database creation, and therefore it is fine to
+     * lazily query this when needed the first time and cache the value.
+     *
+     * <a href="https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/Data-Types.html#GUID-FE15E51B-52C6-45D7-9883-4DF47716A17D">NCHAR</a>
+     * <a href="https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/Data-Types.html#GUID-CC15FC97-BE94-4FA4-994A-6DDF7F1A9904">NVARCHAR2</a>
+     *
+     * @return the character set, can only be {@code AL16UTF16} or {@code UTF8}.
+     */
+    public CharacterSet getNationalCharacterSet() {
+        final String query = "select VALUE from NLS_DATABASE_PARAMETERS where PARAMETER = 'NLS_NCHAR_CHARACTERSET'";
         try {
-            final String pdbName = config().getString("pdb.name");
-            if (!Strings.isNullOrEmpty(pdbName)) {
-                setSessionToPdb(pdbName);
-                swapped = true;
+            final String nlsCharacterSet = queryAndMap(query, rs -> {
+                if (rs.next()) {
+                    return rs.getString(1);
+                }
+                return null;
+            });
+            if (nlsCharacterSet != null) {
+                switch (nlsCharacterSet) {
+                    case "AL16UTF16":
+                        return CharacterSet.make(CharacterSet.AL16UTF16_CHARSET);
+                    case "UTF8":
+                        return CharacterSet.make(CharacterSet.UTF8_CHARSET);
+                }
             }
-            return work.execute();
+            throw new SQLException("An unexpected NLS_NCHAR_CHARACTERSET detected: " + nlsCharacterSet);
         }
-        finally {
-            if (swapped) {
-                resetSessionToCdb();
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to resolve Oracle's NLS_NCHAR_CHARACTERSET property", e);
+        }
+    }
+
+    public void removeAllLogFilesFromLogMinerSession() throws SQLException {
+        final Set<String> fileNames = queryAndMap("SELECT FILENAME AS NAME FROM V$LOGMNR_LOGS", rs -> {
+            final Set<String> results = new HashSet<>();
+            while (rs.next()) {
+                results.add(rs.getString(1));
+            }
+            return results;
+        });
+
+        for (String fileName : fileNames) {
+            LOGGER.debug("Removing file {} from LogMiner mining session.", fileName);
+            final String sql = "BEGIN SYS.DBMS_LOGMNR.REMOVE_LOGFILE(LOGFILENAME => '" + fileName + "');END;";
+            try (CallableStatement statement = connection(false).prepareCall(sql)) {
+                statement.execute();
             }
         }
+    }
+
+    public RedoThreadState getRedoThreadState() throws SQLException {
+        final String query = "SELECT * FROM V$THREAD";
+        try {
+            return queryAndMap(query, rs -> {
+                RedoThreadState.Builder builder = RedoThreadState.builder();
+                while (rs.next()) {
+                    // While this field should never be NULL, the database metadata allows it
+                    final int threadId = rs.getInt("THREAD#");
+                    if (!rs.wasNull()) {
+                        RedoThreadState.RedoThread.Builder threadBuilder = builder.thread()
+                                .threadId(threadId)
+                                .status(rs.getString("STATUS"))
+                                .enabled(rs.getString("ENABLED"))
+                                .logGroups(rs.getLong("GROUPS"))
+                                .instanceName(rs.getString("INSTANCE"))
+                                .openTime(readTimestampAsInstant(rs, "OPEN_TIME"))
+                                .currentGroupNumber(rs.getLong("CURRENT_GROUP#"))
+                                .currentSequenceNumber(rs.getLong("SEQUENCE#"))
+                                .checkpointScn(readScnColumnAsScn(rs, "CHECKPOINT_CHANGE#"))
+                                .checkpointTime(readTimestampAsInstant(rs, "CHECKPOINT_TIME"))
+                                .enabledScn(readScnColumnAsScn(rs, "ENABLE_CHANGE#"))
+                                .enabledTime(readTimestampAsInstant(rs, "ENABLE_TIME"))
+                                .disabledScn(readScnColumnAsScn(rs, "DISABLE_CHANGE#"))
+                                .disabledTime(readTimestampAsInstant(rs, "DISABLE_TIME"));
+                        if (getOracleVersion().getMajor() >= 11) {
+                            threadBuilder = threadBuilder.lastRedoSequenceNumber(rs.getLong("LAST_REDO_SEQUENCE#"))
+                                    .lastRedoBlock(rs.getLong("LAST_REDO_BLOCK"))
+                                    .lastRedoScn(readScnColumnAsScn(rs, "LAST_REDO_CHANGE#"))
+                                    .lastRedoTime(readTimestampAsInstant(rs, "LAST_REDO_TIME"));
+                        }
+                        if (getOracleVersion().getMajor() >= 12) {
+                            threadBuilder = threadBuilder.conId(rs.getLong("CON_ID"));
+                        }
+                        builder = threadBuilder.build();
+                    }
+                }
+                return builder.build();
+            });
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to read the Oracle database redo thread state", e);
+        }
+    }
+
+    public List<String> getSQLKeywords() {
+        try {
+            return Arrays.asList(connection().getMetaData().getSQLKeywords().split(","));
+        }
+        catch (SQLException e) {
+            LOGGER.debug("Failed to acquire SQL keywords from JDBC driver.", e);
+            return Collections.emptyList();
+        }
+    }
+
+    public boolean hasExtendedStringSupport() {
+        try {
+            final String value = Strings.defaultIfBlank(getDatabaseParameterValue("MAX_STRING_SIZE"), "STANDARD");
+            LOGGER.info("Oracle MAX_STRING_SIZE is {}", value);
+            return "EXTENDED".equals(value);
+        }
+        catch (Exception e) {
+            LOGGER.warn("Failed to check MAX_STRING_SIZE status, defaulting to STANDARD.", e);
+            return false;
+        }
+    }
+
+    public LogFile getArchiveLogFile(int threadId, long sequenceId) {
+        try {
+            return prepareQueryAndMap(
+                    "SELECT NAME, FIRST_CHANGE#, NEXT_CHANGE#, SEQUENCE# FROM V$ARCHIVED_LOG WHERE THREAD#=? AND SEQUENCE#=?",
+                    ps -> {
+                        ps.setInt(1, threadId);
+                        ps.setLong(2, sequenceId);
+                    },
+                    rs -> {
+                        if (!rs.next()) {
+                            return null;
+                        }
+                        return new LogFile(
+                                rs.getString(1),
+                                Scn.valueOf(rs.getString(2)),
+                                Scn.valueOf(rs.getString(3)),
+                                BigInteger.valueOf(rs.getLong(4)),
+                                LogFile.Type.ARCHIVE,
+                                threadId);
+                    });
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Failed to find archive log for redo thread {} and sequence {}", threadId, sequenceId, e);
+            return null;
+        }
+    }
+
+    public String getDatabaseParameterValue(String parameterName) throws SQLException {
+        final String query = "SELECT VALUE FROM V$PARAMETER WHERE UPPER(NAME) = UPPER(?)";
+        return prepareQueryAndMap(query, ps -> ps.setString(1, parameterName), rs -> rs.next() ? rs.getString(1) : null);
+    }
+
+    private static Scn readScnColumnAsScn(ResultSet rs, String columnName) throws SQLException {
+        final String value = rs.getString(columnName);
+        return Strings.isNullOrEmpty(value) ? Scn.NULL : Scn.valueOf(value);
+    }
+
+    private static Instant readTimestampAsInstant(ResultSet rs, String columnName) throws SQLException {
+        final Timestamp value = rs.getTimestamp(columnName);
+        return value == null ? null : value.toInstant();
     }
 
     @FunctionalInterface
-    interface ContainerWork<T> {
-        T execute() throws SQLException;
+    interface ObjectIdentifierConsumer {
+        void apply(Long objectId, Long dataObjectId);
     }
-
 }

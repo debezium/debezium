@@ -1,0 +1,555 @@
+// Category: debezium-using
+// Type: assembly
+[id="debezium-connector-for-mariadb"]
+= {prodname} connector for MariaDB
+
+:context: mariadb
+:data-collection: table
+:database-port: 3306
+:mbean-name: {context}
+:connector-file: {context}
+:connector-class: MariaDb
+:connector-name: MariaDB
+:include-list-example: inventory.*
+:MARIADB:
+:collection-container: database
+
+ifdef::community[]
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+endif::community[]
+
+ifdef::product[]
+[IMPORTANT]
+====
+The {prodname} connector for MariaDB is a Technology Preview feature only.
+Technology Preview features are not supported with Red{nbsp}Hat production service level agreements (SLAs) and might not be functionally complete.
+Red{nbsp}Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+
+For more information about the support scope of Red{nbsp}Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
+====
+endif::product[]
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=mariadb-mysql-intro]
+
+// Type: assembly
+// ModuleID: how-debezium-mariadb-connectors-work
+// Title: How {prodname} MariaDB connectors work
+[[how-the-mariadb-connector-works]]
+== How the connector works
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=how-connector-works-intro]
+
+// Type: concept
+// ModuleID: mariadb-topologies-supported-by-debezium-connectors
+// Title: MariaDB topologies supported by {prodname} connectors
+[id="supported-mariadb-topologies"]
+=== Supported MariaDB topologies
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=supported-topos]
+
+// Type: concept
+// Title: How {prodname} MariaDB connectors handle database schema changes
+[[mariadb-schema-history-topic]]
+=== Schema history topic
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=schema-history]
+
+// Type: concept
+// Title: How {prodname} MariaDB connectors expose database schema changes
+[id="mariadb-schema-change-topic"]
+=== Schema change topic
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=schema-change]
+
+
+// Type: concept
+// Title: How {prodname} MariaDB connectors perform database snapshots
+[[mariadb-snapshots]]
+=== Snapshots
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=snapshots]
+
+// Type: concept
+[id="mariadb-initial-snapshot-workflow-with-global-read-lock"]
+==== Initial snapshots that use a global read lock
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=initial-snap-global]
+
+// Type: concept
+[id="mariadb-initial-snapshot-workflow-with-table-level-locks"]
+==== Initial snapshots that use table-level locks
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=initial-snap-table-lock]
+
+
+// ModuleID: mariadb-description-of-why-initial-snapshots-capture-the-schema-history-for-all-tables
+// Title: Description of why initial snapshots capture the schema history for all tables
+// Type: concept
+[id="understanding-why-initial-snapshots-capture-the-schema-history-for-all-tables"]
+==== Understanding why initial snapshots capture the schema history for all tables
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=why-snapshot-captures-history-all]
+
+
+// Type: procedure
+[id="mariadb-capturing-data-from-tables-not-captured-by-the-initial-snapshot-no-schema-change"]
+==== Capturing data from tables not captured by the initial snapshot (no schema change)
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=cap-tbls-not-in-initial-no-schema-chg]
+
+
+// Type: procedure
+[id="mariadb-capturing-data-from-new-tables-with-schema-changes"]
+==== Capturing data from tables not captured by the initial snapshot (schema change)
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=cap-tbls-not-in-initial-schema-chg]
+
+// Type: concept
+[id="debezium-mariadb-ad-hoc-snapshots"]
+=== Ad hoc snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-ad-hoc-snapshots.adoc[leveloffset=+1]
+
+// Type: assembly
+// ModuleID: debezium-mariadb-incremental-snapshots
+[id="debezium-mariadb-incremental-snapshots"]
+=== Incremental snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-incremental-snapshot.adoc[leveloffset=+1]
+
+// Type: procedure
+[id="mariadb-triggering-an-incremental-snapshot"]
+==== Triggering an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-sql.adoc[leveloffset=+1]
+
+[id="mariadb-incremental-snapshots-additional-conditions"]
+==== Running an ad hoc incremental snapshots with `additional-conditions`
+
+include::{partialsdir}/modules/all-connectors/proc-running-an-ad-hoc-snapshot-with-additional-conditions.adoc[leveloffset=+1]
+
+
+// Type: procedure
+[id="mariadb-triggering-an-incremental-snapshot-kafka"]
+==== Using the Kafka signaling channel to trigger an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-triggering-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
+
+// Type: procedure
+[id="mariadb-stopping-an-incremental-snapshot"]
+==== Stopping an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-sql.adoc[leveloffset=+1]
+
+// Type: procedure
+[id="mariadb-stopping-an-incremental-snapshot-kafka"]
+==== Using the Kafka signaling channel to stop an incremental snapshot
+
+include::{partialsdir}/modules/all-connectors/proc-stopping-an-incremental-snapshot-kafka.adoc[leveloffset=+1]
+
+ifdef::community[]
+[id="mariadb-read-only-incremental-snapshots"]
+==== Read-only incremental snapshots
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=readonly-incremental]
+
+==== Ad hoc read-only incremental snapshots
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=adhoc-ro-incremental]
+
+endif::community[]
+
+ifdef::community[]
+[[connector-custom-snapshot]]
+=== Custom snapshotter SPI
+include::{partialsdir}/modules/all-connectors/custom-snapshotter-spi.adoc[leveloffset=+3]
+endif::community[]
+
+// Type: concept
+[id="mariadb-blocking-snapshots"]
+=== Blocking snapshots
+
+include::{partialsdir}/modules/all-connectors/con-connector-blocking-snapshot.adoc[leveloffset=+3]
+
+// Type: concept
+// Title: Default names of Kafka topics that receive {prodname} MariaDB change event records
+[[mariadb-topic-names]]
+=== Topic names
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=topic-names]
+
+[[mariadb-transaction-metadata]]
+=== Transaction metadata
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=trans-meta]
+
+// Type: assembly
+// ModuleID: descriptions-of-debezium-mariadb-connector-data-change-events
+// Title: Descriptions of {prodname} MariaDB connector data change events
+[[mariadb-events]]
+== Data change events
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=data-chg-events]
+
+// Type: concept
+// ModuleID: about-keys-in-debezium-mariadb-change-events
+// Title: About keys in {prodname} MariaDB change events
+[[mariadb-change-event-keys]]
+=== Change event keys
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=event-keys]
+
+// Type: concept
+// ModuleID: about-values-in-debezium-mariadb-change-events
+// Title: About values in {prodname} MariaDB change events
+[[mariadb-change-event-values]]
+=== Change event values
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=event-values]
+
+
+// Type: continue
+[id="mariadb-create-events"]
+=== _create_ events
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=create-events]
+
+// Type: continue
+[id="mariadb-update-events"]
+=== _update_ events
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=update-events]
+
+// Type: continue
+[id="mariadb-primary-key-updates"]
+=== Primary key updates
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=pkey-updates]
+
+
+// Type: continue
+[id="mariadb-delete-events"]
+=== _delete_ events
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=del-events]
+
+// Type: continue
+[id="mariadb-tombstone-events"]
+=== Tombstone events
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=tombstone-events]
+
+// Type: continue
+[id="mariadb-truncate-events"]
+=== _truncate_ events
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=truncate-events]
+
+// Type: reference
+// ModuleID: how-debezium-mariadb-connectors-map-data-types
+// Title: How {prodname} MariaDB connectors map data types
+[[mariadb-data-types]]
+== Data type mappings
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=data-type-mappings]
+
+[id="mariadb-basic-types"]
+=== Basic types
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=basic-data-types]
+
+
+[id="mariadb-temporal-types"]
+=== Temporal types
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=temporal-data-types]
+
+[id="mariadb-decimal-types"]
+=== Decimal types
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=decimal-data-types]
+
+[id="mariadb-boolean-values"]
+=== Boolean values
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=boolean-values]
+
+[id="mariadb-spatial-types"]
+=== Spatial types
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=spatial-data-types]
+
+// Type: concept
+// Title: Custom converters for mapping {connector-name} data to alternative data types
+[id="debezium-mariadb-connector-converters"]
+== Custom converters
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=custom-converters]
+
+=== `TINYINT(1)` to Boolean
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=tinyint-boolean-conv]
+
+=== JDBC sink data types
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=jdbc-sink-data-types]
+
+
+// Type: assembly
+// ModuleID: setting-up-mariadb-to-run-a-debezium-connector
+// Title: Setting up MariaDB to run a {prodname} connector
+[[setting-up-mariadb]]
+== Setting up MariaDB
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=setting-up-db]
+
+// Type: procedure
+// ModuleID: creating-a-mariadb-user-for-a-debezium-connector
+// Title: Creating a MariaDB user for a {prodname} connector
+[[mariadb-creating-user]]
+=== Creating a user
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=creating-a-db-user]
+
+// Type: procedure
+// ModuleID: enabling-the-mariadb-binlog-for-debezium
+// Title: Enabling the MariaDB binlog for {prodname}
+[[enable-mariadb-binlog]]
+=== Enabling the binlog
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=enabling-binlog]
+
+[IMPORTANT]
+====
+A new binary log format was introduced in MariaDB 11.4.
+When you use {prodname} with MariaDB 11.4 or later, you must set the MariaDB server variable https://mariadb.com/kb/en/replication-and-binary-log-system-variables/#binlog_legacy_event_pos[`binlog_legacy_event_pos`] to `1` (ON) to ensure that the connector can consume events in the new format.
+If you leave this variable at its default setting (`0`, or OFF), after a connector restart, {prodname} might not be able to find the resume point.
+====
+
+// Type: procedure
+// ModuleID: enabling-mariadb-gtids-for-debezium
+// Title: Enabling MariaDB Global Transaction Identifiers for {prodname}
+[[enable-mariadb-gtids]]
+=== Enabling GTIDs
+
+Global transaction identifiers (GTIDs) uniquely identify transactions that occur on a server within a cluster.
+Although not required for a {prodname} MariaDB connector, using GTIDs simplifies replication and enables you to more easily confirm if primary and replica servers are consistent.
+
+For MariaDB, GTIDs are enabled by default and no additional configuration is necessary.
+
+// Type: procedure
+// ModuleID: configuring-mariadb-session-timeouts-for-debezium
+// Title: Configuring MariaDB session timeouts for {prodname}
+[[mariadb-session-timeouts]]
+=== Configuring session timeouts
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=cfg-session-timeouts]
+
+// Type: procedure
+// ModuleID: enabling-query-log-events-for-debezium-mariadb-connectors
+// Title: Enabling query log events for {prodname} MariaDB connectors
+[[enable-query-log-events]]
+=== Enabling query log events
+
+You might want to see the original `SQL` statement for each binlog event.
+Enabling the `binlog_annotate_row_events` option in the MariaDB configuration allows you to do this.
+
+.Prerequisites
+
+* A MariaDB server.
+* Basic knowledge of SQL commands.
+* Access to the MariaDB configuration file.
+
+.Procedure
+
+* Enable `binlog_annotate_row_events` in MariaDB:
++
+[source,SQL]
+----
+mariadb> binlog_annotate_row_events=ON
+----
++
+`binlog_annotate_row_events` is set to a value that enables/disables support for including the original `SQL` statement in the binlog entry.
++
+** `ON` = enabled
+** `OFF` = disabled
+
+// Type: procedure
+// ModuleID: validate-binlog-row-value-options-for-debezium-mariadb-connectors
+// Title: validate binlog row value options for {prodname} MariaDB connectors
+[[validate-binlog-row-value-options]]
+=== Validating binlog row value options
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=validate-binlog-row-options]
+
+
+// Type: assembly
+// ModuleID: deployment-of-debezium-mariadb-connectors
+// Title: Deployment of {prodname} MariaDB connectors
+[[mariadb-deploying-a-connector]]
+== Deployment
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=deployment]
+
+ifdef::product[]
+
+// Type: concept
+[id="openshift-streams-mariadb-connector-deployment"]
+=== MariaDB connector deployment using {StreamsName}
+
+include::{partialsdir}/modules/all-connectors/con-connector-streams-deployment.adoc[leveloffset=+1]
+
+// Type: procedure
+[id="using-streams-to-deploy-a-debezium-mariadb-connector"]
+=== Using {StreamsName} to deploy a {prodname} MariaDB connector
+
+include::{partialsdir}/modules/all-connectors/proc-using-streams-to-deploy-a-debezium-mysql-sqlserver-connector.adoc[leveloffset=+1]
+
+// Type: procedure
+// ModuleID: deploying-debezium-mariadb-connectors
+=== Deploying {prodname} MariaDB connectors by building a custom Kafka Connect container image from a Dockerfile
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=deploy-via-dockerfile]
+endif::product[]
+
+ifdef::community[]
+[[mariadb-example-configuration]]
+=== MariaDB connector configuration example
+endif::community[]
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=connector-config-example]
+
+ifdef::community[]
+[[mariadb-adding-configuration]]
+=== Adding connector configuration
+endif::community[]
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=add-connector-cfg]
+
+ifdef::product[]
+// Type: procedure
+[id="verifying-that-the-debezium-mariadb-connector-is-running"]
+=== Verifying that the {prodname} MariaDB connector is running
+
+include::{partialsdir}/modules/all-connectors/proc-verifying-the-connector-deployment.adoc[leveloffset=+1]
+endif::product[]
+
+// Type: reference
+// Title: Descriptions of {prodname} MariaDB connector configuration properties
+[[mariadb-connector-properties]]
+=== Connector properties
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=connector-props-intro]
+
+[id="mariadb-required-connector-configuration-properties"]
+==== Required {prodname} MariaDB connector configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-mariadb-mysql-rqd-connector-cfg-props.adoc[leveloffset=+1]
+
+[id="mariadb-advanced-connector-configuration-properties"]
+==== Advanced {prodname} MariaDB connector configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-mariadb-mysql-adv-connector-cfg-props.adoc[leveloffset=+1]
+
+
+[id="debezium-mariadb-connector-database-history-configuration-properties"]
+==== {prodname} connector database schema history configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-configuration-database-history-properties.adoc[leveloffset=+1]
+
+
+[id="debezium-mariadb-connector-pass-through-properties"]
+==== Pass-through MariaDB connector configuration properties
+
+You can set  _pass-through_ properties in the connector configuration to customize the behavior of the Apache Kafka producer and consumer.
+For information about the full range of configuration properties for Kafka producers and consumers, see the {link-kafka-docs}/#configuration[Kafka documentation].
+
+[id="debezium-mariadb-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients"]
+===== Pass-through properties for configuring how producer and consumer clients interact with schema history topics
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-history-properties-for-configuring-producer-and-consumer-clients.adoc[leveloffset=+1]
+
+
+[id="debezium-mariadb-connector-pass-through-kafka-signals-configuration-properties"]
+===== Pass-through properties for configuring how the MariaDB connector interacts with the Kafka signaling topic
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-signals-configuration-properties.adoc[leveloffset=+1]
+
+
+[id="debezium-mariadb-connector-pass-through-signals-kafka-consumer-client-configuration-properties"]
+===== Pass-through properties for configuring the Kafka consumer client for the signaling channel
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-signals-kafka-consumer-client-configuration-properties.adoc[leveloffset=+1]
+
+
+[id="debezium-mariadb-connector-pass-through-kafka-sink-notification-configuration-properties"]
+===== Pass-through properties for configuring the MariaDB connector sink notification channel
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-sink-notification-configuration-properties.adoc[leveloffset=+1]
+
+
+[id="debezium-mariadb-connector-pass-through-database-driver-configuration-properties"]
+===== {prodname} connector pass-through database driver configuration properties
+
+include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-database-driver-configuration-properties.adoc[leveloffset=+1]
+
+// Type: assembly
+// ModuleID: monitoring-debezium-mariadb-connector-performance
+// Title: Monitoring {prodname} MariaDB connector performance
+[[mariadb-monitoring]]
+== Monitoring
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=monitoring-intro]
+
+// Type: concept
+// ModuleID: monitoring-debezium-mariadb-connectors-customized-mbean-names
+// Title: Customized names for MariaDB connector snapshot and streaming MBean objects
+=== Customized MBean names
+
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=mbeans-shared]
+
+// Type: reference
+// Title: Monitoring {prodname} during snapshots of MariaDB databases
+[[mariadb-snapshot-metrics]]
+=== Snapshot metrics
+
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-snapshot]
+
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-snapshot-metrics.adoc[leveloffset=+1]
+
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-incremental-snapshot-metrics.adoc[leveloffset=+1]
+
+// Type: reference
+// Title: Monitoring {prodname} MariaDB connector record streaming
+[[mariadb-streaming-metrics]]
+=== Streaming metrics
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=monitoring-intro]
+
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-streaming]
+
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming-metrics.adoc[leveloffset=+1]
+
+//   Moved table of connector-specific metrics to conditonalized section of the preceding shared file.
+
+// Type: reference
+// Title: Monitoring {prodname} MariaDB connector schema history
+[[mariadb-schema-history-metrics]]
+=== Schema history metrics
+
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-schema-history]
+include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-schema-history-metrics.adoc[leveloffset=+1]
+
+// Type: concept
+// Title: How {prodname} MariaDB connectors handle faults and problems
+[[mariadb-when-things-go-wrong]]
+== Behavior when things go wrong
+
+include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=wrong-things]

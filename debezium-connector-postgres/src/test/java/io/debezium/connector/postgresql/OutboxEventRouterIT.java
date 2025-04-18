@@ -58,7 +58,7 @@ public class OutboxEventRouterIT extends AbstractEventRouterTest<PostgresConnect
 
     @Override
     protected Configuration.Builder getConfigurationBuilder(boolean initialSnapshot) {
-        SnapshotMode snapshotMode = initialSnapshot ? SnapshotMode.INITIAL : SnapshotMode.NEVER;
+        SnapshotMode snapshotMode = initialSnapshot ? SnapshotMode.INITIAL : SnapshotMode.NO_DATA;
         return TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, snapshotMode.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)

@@ -14,10 +14,10 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.connector.AbstractSourceInfoStructMaker;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.relational.TableId;
+import io.debezium.schema.SchemaFactory;
 import io.debezium.time.Conversions;
 
 /**
@@ -63,15 +63,16 @@ public class SourceInfoTest {
     public void schemaIsCorrect() {
         final Schema schema = SchemaBuilder.struct()
                 .name("io.debezium.connector.postgresql.Source")
+                .version(SchemaFactory.SOURCE_INFO_DEFAULT_SCHEMA_VERSION)
                 .field("version", Schema.STRING_SCHEMA)
                 .field("connector", Schema.STRING_SCHEMA)
                 .field("name", Schema.STRING_SCHEMA)
                 .field("ts_ms", Schema.INT64_SCHEMA)
-                .field("snapshot", AbstractSourceInfoStructMaker.SNAPSHOT_RECORD_SCHEMA)
+                .field("snapshot", SchemaFactory.get().snapshotRecordSchema())
                 .field("db", Schema.STRING_SCHEMA)
                 .field("sequence", Schema.OPTIONAL_STRING_SCHEMA)
-                .field("ts_us", Schema.INT64_SCHEMA)
-                .field("ts_ns", Schema.INT64_SCHEMA)
+                .field("ts_us", Schema.OPTIONAL_INT64_SCHEMA)
+                .field("ts_ns", Schema.OPTIONAL_INT64_SCHEMA)
                 .field("schema", Schema.STRING_SCHEMA)
                 .field("table", Schema.STRING_SCHEMA)
                 .field("txId", Schema.OPTIONAL_INT64_SCHEMA)

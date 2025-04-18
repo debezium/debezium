@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.postgresql.rest;
 
-import static io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure.DATABASE;
+import static io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper.DATABASE;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.hasKey;
@@ -18,7 +18,7 @@ import org.junit.Test;
 
 import io.debezium.connector.postgresql.Module;
 import io.debezium.connector.postgresql.PostgresConnector;
-import io.debezium.testing.testcontainers.testhelper.RestExtensionTestInfrastructure;
+import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
 
 public class DebeziumPostgresConnectorResourceNoDatabaseIT {
 
@@ -31,19 +31,19 @@ public class DebeziumPostgresConnectorResourceNoDatabaseIT {
 
     @Before
     public void start() {
-        RestExtensionTestInfrastructure.setupDebeziumContainer(Module.version(), DebeziumPostgresConnectRestExtension.class.getName());
-        RestExtensionTestInfrastructure.startContainers(DATABASE.NONE);
+        TestInfrastructureHelper.setupDebeziumContainer(Module.version(), DebeziumPostgresConnectRestExtension.class.getName());
+        TestInfrastructureHelper.startContainers(DATABASE.NONE);
     }
 
     @After
     public void stop() {
-        RestExtensionTestInfrastructure.stopContainers();
+        TestInfrastructureHelper.stopContainers();
     }
 
     @Test
     public void testVersionEndpoint() {
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when()
                 .get(DebeziumPostgresConnectorResource.BASE_PATH + DebeziumPostgresConnectorResource.VERSION_ENDPOINT)
                 .then().log().all()
@@ -54,7 +54,7 @@ public class DebeziumPostgresConnectorResourceNoDatabaseIT {
     @Test
     public void testSchemaEndpoint() {
         given()
-                .port(RestExtensionTestInfrastructure.getDebeziumContainer().getFirstMappedPort())
+                .port(TestInfrastructureHelper.getDebeziumContainer().getFirstMappedPort())
                 .when()
                 .get(DebeziumPostgresConnectorResource.BASE_PATH + DebeziumPostgresConnectorResource.SCHEMA_ENDPOINT)
                 .then().log().all()

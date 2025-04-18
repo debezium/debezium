@@ -20,7 +20,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Struct;
 import org.bson.BsonBinarySubType;
@@ -273,6 +275,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     }
 
     protected void readChunk(MongoDbPartition partition, OffsetContext offsetContext) throws InterruptedException {
+        checkAndProcessStopFlag(partition, offsetContext);
         if (!context.snapshotRunning()) {
             LOGGER.info("Skipping read chunk because snapshot is not running");
             postIncrementalSnapshotCompleted();
@@ -361,12 +364,20 @@ public class MongoDbIncrementalSnapshotChangeEventSource
 
     private Object[] readMaximumKey() throws InterruptedException {
         final CollectionId collectionId = (CollectionId) currentCollection.id();
+        String additionalCondition = getAdditionalConditions();
         final AtomicReference<Object> key = new AtomicReference<>();
         mongo.execute("maximum key for '" + collectionId + "'", client -> {
             final MongoDatabase database = client.getDatabase(collectionId.dbName());
             final MongoCollection<Document> collection = database.getCollection(collectionId.name());
+            final Document lastDocument;
 
-            final Document lastDocument = collection.find().sort(new Document(DOCUMENT_ID, -1)).limit(1).first();
+            if (!additionalCondition.isEmpty()) {
+                Document condition = Document.parse(additionalCondition);
+                lastDocument = collection.find(condition).sort(new Document(DOCUMENT_ID, -1)).limit(1).first();
+            }
+            else {
+                lastDocument = collection.find().sort(new Document(DOCUMENT_ID, -1)).limit(1).first();
+            }
             if (lastDocument != null) {
                 key.set(lastDocument.get(DOCUMENT_ID));
             }
@@ -384,89 +395,119 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         final OffsetContext offsetContext = signalPayload.offsetContext;
         final String correlationId = signalPayload.id;
 
-        if (!snapshotConfiguration.getAdditionalConditions().isEmpty()) {
-            throw new UnsupportedOperationException("Additional condition not supported for MongoDB");
-        }
-
         if (!Strings.isNullOrEmpty(snapshotConfiguration.getSurrogateKey())) {
             throw new UnsupportedOperationException("Surrogate key not supported for MongoDB");
         }
 
         context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
         final boolean shouldReadChunk = !context.snapshotRunning();
-        List<String> dataCollectionIds = snapshotConfiguration.getDataCollections();
-        final List<DataCollection<CollectionId>> newDataCollectionIds = context.addDataCollectionNamesToSnapshot(correlationId, dataCollectionIds, List.of(), "");
+
+        List<String> expandedDataCollectionIds = expandAndDedupeDataCollectionIds(snapshotConfiguration.getDataCollections());
+        LOGGER.trace("Configured data collections {}", snapshotConfiguration.getDataCollections());
+        LOGGER.trace("Expanded data collections {}", expandedDataCollectionIds);
+
+        if (expandedDataCollectionIds.size() > snapshotConfiguration.getDataCollections().size()) {
+            LOGGER.info("Data-collections to snapshot have been expanded from {} to {}", snapshotConfiguration.getDataCollections(), expandedDataCollectionIds);
+        }
+
+        final List<DataCollection<CollectionId>> newDataCollectionIds = context.addDataCollectionNamesToSnapshot(correlationId, expandedDataCollectionIds,
+                snapshotConfiguration.getAdditionalConditions(), "");
 
         if (shouldReadChunk) {
 
+            List<DataCollectionId> monitoredDataCollections = newDataCollectionIds.stream()
+                    .map(DataCollection::getId).collect(Collectors.toList());
+
+            LOGGER.trace("Monitored data collections {}", newDataCollectionIds);
+
             progressListener.snapshotStarted(partition);
 
-            notificationService
-                    .incrementalSnapshotNotificationService()
-                    .notifyStarted(context, partition, offsetContext);
+            notificationService.incrementalSnapshotNotificationService().notifyStarted(context, partition, offsetContext);
 
-            progressListener.monitoredDataCollectionsDetermined(partition, newDataCollectionIds.stream()
-                    .map(x -> x.getId()).collect(Collectors.toList()));
+            progressListener.monitoredDataCollectionsDetermined(partition, monitoredDataCollections);
             readChunk(partition, offsetContext);
         }
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public void stopSnapshot(MongoDbPartition partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionPatterns) {
-
+    public void requestStopSnapshot(MongoDbPartition partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionPatterns) {
         context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
-        if (context.snapshotRunning()) {
-            if (dataCollectionPatterns == null || dataCollectionPatterns.isEmpty()) {
-                LOGGER.info("Stopping incremental snapshot.");
-                try {
-                    // This must be called prior to closeWindow to ensure that the correct state is set
-                    // to prevent chunk rads from triggering additional open/close events.
-                    context.stopSnapshot();
+        context.requestSnapshotStop(dataCollectionPatterns);
+    }
 
-                    // Clear the state
-                    window.clear();
-                    closeWindow(partition, context.currentChunkId(), offsetContext);
-
-                    progressListener.snapshotAborted(partition);
-
-                    notificationService
-                            .incrementalSnapshotNotificationService()
-                            .notifyAborted(context, partition, offsetContext);
-                }
-                catch (InterruptedException e) {
-                    LOGGER.warn("Failed to stop snapshot successfully.", e);
-                }
+    @SuppressWarnings("unchecked")
+    private void checkAndProcessStopFlag(MongoDbPartition partition, OffsetContext offsetContext) {
+        context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
+        List<String> dataCollectionsToStop = context.getDataCollectionsToStop();
+        if (dataCollectionsToStop.isEmpty()) {
+            return;
+        }
+        LOGGER.trace("Stopping incremental snapshot with context {}", context);
+        if (!context.snapshotRunning()) {
+            context.unsetCorrelationId();
+            LOGGER.warn("No active incremental snapshot, stop ignored");
+            return;
+        }
+        final List<String> expandedDataCollectionIds = expandAndDedupeDataCollectionIds(dataCollectionsToStop);
+        final List<String> stopped = new ArrayList<>();
+        LOGGER.info("Removing '{}' collections from incremental snapshot", expandedDataCollectionIds);
+        // Iterate and remove any collections that are not current.
+        // If current is marked for removal, delay that until after others have been removed.
+        DataCollectionId stopCurrentTableId = null;
+        for (String dataCollectionId : expandedDataCollectionIds) {
+            final CollectionId collectionId = CollectionId.parse(dataCollectionId);
+            if (currentCollection != null && currentCollection.id().equals(collectionId)) {
+                stopCurrentTableId = currentCollection.id();
             }
             else {
-                LOGGER.info("Removing '{}' collections from incremental snapshot", dataCollectionPatterns);
-                for (String dataCollectionId : dataCollectionPatterns) {
-                    final CollectionId collectionId = CollectionId.parse(dataCollectionId);
-                    if (currentCollection != null && currentCollection.id().equals(collectionId)) {
-                        window.clear();
-                        LOGGER.info("Removed '{}' from incremental snapshot collection list.", collectionId);
-
-                        collectionScanCompleted(partition);
-                        nextDataCollection(partition, offsetContext);
-                    }
-                    else {
-                        if (context.removeDataCollectionFromSnapshot(dataCollectionId)) {
-                            LOGGER.info("Removed '{}' from incremental snapshot collection list.", collectionId);
-                        }
-                        else {
-                            LOGGER.warn("Could not remove '{}', collection is not part of the incremental snapshot.", collectionId);
-                        }
-                    }
+                if (context.removeDataCollectionFromSnapshot(dataCollectionId)) {
+                    stopped.add(dataCollectionId);
+                    LOGGER.info("Removed '{}' from incremental snapshot collection list.", collectionId);
                 }
-
-                notificationService
-                        .incrementalSnapshotNotificationService()
-                        .notifyAborted(context, partition, offsetContext, dataCollectionPatterns);
+                else {
+                    LOGGER.warn("Could not remove '{}', collection is not part of the incremental snapshot.", collectionId);
+                }
             }
         }
-        else {
-            LOGGER.warn("No active incremental snapshot, stop ignored");
+        // If current is requested to stop, proceed with stopping it.
+        if (stopCurrentTableId != null) {
+            LOGGER.info("Removed current collection '{}' from incremental snapshot collection list.", stopCurrentTableId);
+            collectionScanCompleted(partition);
+            stopped.add(stopCurrentTableId.identifier());
+            // If snapshot has no more collections, abort; otherwise advance to the next collection.
+            if (!context.snapshotRunning()) {
+                LOGGER.info("Incremental snapshot has stopped.");
+                progressListener.snapshotAborted(partition);
+            }
+            else {
+                LOGGER.info("Advancing to next available collection in the incremental snapshot.");
+                nextDataCollection(partition, offsetContext);
+            }
         }
+        notificationService.incrementalSnapshotNotificationService().notifyAborted(context, partition, offsetContext, stopped);
+        if (!context.snapshotRunning()) {
+            context.unsetCorrelationId();
+        }
+        LOGGER.info("Removed collections from incremental snapshot: '{}'", stopped);
+    }
+
+    /**
+     * Expands the string-based list of data collection ids if supplied using regex to a list of
+     * all matching explicit data collection ids.
+     */
+    private List<String> expandAndDedupeDataCollectionIds(List<String> collectionIds) {
+        return collectionIds
+                .stream()
+                .flatMap(dataId -> {
+                    final List<String> ids = collectionSchema
+                            .collections()
+                            .stream()
+                            .map(CollectionId::identifier)
+                            .filter(t -> Pattern.compile(dataId).matcher(t).matches())
+                            .collect(Collectors.toList());
+                    return ids.isEmpty() ? Stream.of(dataId) : ids.stream();
+                }).distinct().collect(Collectors.toList());
     }
 
     /**
@@ -483,7 +524,8 @@ public class MongoDbIncrementalSnapshotChangeEventSource
             final MongoDatabase database = client.getDatabase(collectionId.dbName());
             final MongoCollection<BsonDocument> collection = database.getCollection(collectionId.name(), BsonDocument.class);
 
-            Document predicate = constructQueryPredicate(context.chunkEndPosititon(), context.maximumKey().get());
+            Document predicate = constructQueryPredicate(context.chunkEndPosititon(), context.maximumKey().get(),
+                    getAdditionalConditions());
             LOGGER.debug("\t For collection '{}' using query: '{}', key: '{}', maximum key: '{}' to get all _id fields",
                     currentCollection.id(), predicate.toJson(), context.chunkEndPosititon(), context.maximumKey().get());
 
@@ -551,7 +593,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     }
 
     private void queryChunk(MongoCollection<BsonDocument> collection, Object[] startKey, Object[] endKey) {
-        Document predicate = constructQueryPredicate(startKey, endKey);
+        Document predicate = constructQueryPredicate(startKey, endKey, getAdditionalConditions());
         LOGGER.debug("\t For collection chunk, '{}' using query: '{}', key: '{}', maximum key: '{}'", currentCollection.id(),
                 predicate.toJson(), startKey, endKey);
 
@@ -573,7 +615,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         }
     }
 
-    private Document constructQueryPredicate(Object[] startKey, Object[] endKey) {
+    private Document constructQueryPredicate(Object[] startKey, Object[] endKey, String additionalConditions) {
         final Document maxKeyPredicate = new Document();
         final Document maxKeyOp = new Document();
 
@@ -589,11 +631,24 @@ public class MongoDbIncrementalSnapshotChangeEventSource
             final Document chunkEndOp = new Document();
             chunkEndOp.put("$gt", startKey[0]);
             chunkEndPredicate.put(DOCUMENT_ID, chunkEndOp);
-            predicate = new Document();
-            predicate.put("$and", Arrays.asList(chunkEndPredicate, maxKeyPredicate));
+            if (!additionalConditions.isEmpty()) {
+                Document additionalConditionsPredicate = Document.parse(additionalConditions);
+                predicate = new Document("$and", Arrays.asList(chunkEndPredicate, maxKeyPredicate, additionalConditionsPredicate));
+            }
+            else {
+                predicate = new Document("$and", Arrays.asList(chunkEndPredicate, maxKeyPredicate));
+            }
         }
-
         return predicate;
+    }
+
+    private String getAdditionalConditions() {
+        // Strip additional parenthesis to make sure additional conditions are parsed correctly
+        return context.currentDataCollectionId().getAdditionalCondition().map(this::getStripedAdditionalConditions).orElse("");
+    }
+
+    private String getStripedAdditionalConditions(String additionalConditions) {
+        return additionalConditions.substring(1, additionalConditions.length() - 1);
     }
 
     private void incrementTableRowsScanned(long rows) {

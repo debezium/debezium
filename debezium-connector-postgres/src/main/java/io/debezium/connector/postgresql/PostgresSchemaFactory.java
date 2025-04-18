@@ -29,14 +29,14 @@ public class PostgresSchemaFactory extends SchemaFactory {
     /*
      * Postgres LogicalDecodingMessageMonitor schema
      */
+    public static final String POSTGRES_LOGICAL_DECODING_MESSAGE_MONITOR_VALUE_SCHEMA_NAME = "io.debezium.connector.postgresql.MessageValue";
+    private static final int POSTGRES_LOGICAL_DECODING_MESSAGE_MONITOR_VALUE_SCHEMA_VERSION = 1;
+
     private static final String POSTGRES_LOGICAL_DECODING_MESSAGE_MONITOR_KEY_SCHEMA_NAME = "io.debezium.connector.postgresql.MessageKey";
     private static final int POSTGRES_LOGICAL_DECODING_MESSAGE_MONITOR_KEY_SCHEMA_VERSION = 1;
 
     private static final String POSTGRES_LOGICAL_DECODING_MESSAGE_MONITOR_BLOCK_SCHEMA_NAME = "io.debezium.connector.postgresql.Message";
     private static final int POSTGRES_LOGICAL_DECODING_MESSAGE_MONITOR_BLOCK_SCHEMA_VERSION = 1;
-
-    private static final String POSTGRES_LOGICAL_DECODING_MESSAGE_MONITOR_VALUE_SCHEMA_NAME = "io.debezium.connector.postgresql.MessageValue";
-    private static final int POSTGRES_LOGICAL_DECODING_MESSAGE_MONITOR_VALUE_SCHEMA_VERSION = 1;
 
     public Schema logicalDecodingMessageMonitorKeySchema(SchemaNameAdjuster adjuster) {
         return SchemaBuilder.struct()
@@ -63,6 +63,7 @@ public class PostgresSchemaFactory extends SchemaFactory {
                 .field(Envelope.FieldName.OPERATION, Schema.STRING_SCHEMA)
                 .field(Envelope.FieldName.TIMESTAMP, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(Envelope.FieldName.SOURCE, config.getSourceInfoStructMaker().schema())
+                .field(Envelope.FieldName.TRANSACTION, config.getTransactionMetadataFactory().getTransactionStructMaker().getTransactionBlockSchema())
                 .field(LogicalDecodingMessageMonitor.DEBEZIUM_LOGICAL_DECODING_MESSAGE_KEY, logicalDecodingMessageMonitorBlockSchema(adjuster, binaryHandlingMode))
                 .build();
     }

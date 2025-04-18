@@ -60,9 +60,9 @@ CDC(Change Data Capture)를 사용하면 데이터가 오리지널 데이터베�
 아래의 소프트웨어는 로컬에서 Debezium을 빌드하기 위해 필요합니다.
 
 * [Git](https://git-scm.com) 2.2.1 버전 이상
-* JDK 17 버전 이상, 예) [OpenJDK](http://openjdk.java.net/projects/jdk/)
+* JDK 21 버전 이상, 예) [OpenJDK](http://openjdk.java.net/projects/jdk/)
 * [Docker Engine](https://docs.docker.com/engine/install/) 또는 [Docker Desktop](https://docs.docker.com/desktop/) 1.9 버전 이상
-* [Apache Maven](https://maven.apache.org/index.html) 3.8.4 버전 이상  
+* [Apache Maven](https://maven.apache.org/index.html) 3.9.8 버전 이상  
   (or invoke the wrapper with `./mvnw` for Maven commands)
 
 각 소프트웨어를 설치하기 위해서는 위의 링크의 지침을 확인하세요. 아래의 명령어를 통해 설치되었는지 확인할 수 있습니다.

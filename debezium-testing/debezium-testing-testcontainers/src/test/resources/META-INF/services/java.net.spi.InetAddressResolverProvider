@@ -1,0 +1,1 @@
+io.debezium.testing.testcontainers.util.dns.FakeDnsAddressResolverProvider

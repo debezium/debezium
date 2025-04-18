@@ -14,6 +14,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.SQLRecoverableException;
 import java.sql.Statement;
+import java.time.Duration;
 
 import org.apache.kafka.connect.errors.RetriableException;
 import org.junit.Before;
@@ -32,6 +33,7 @@ public class OracleConnectionTest {
     public void setUp() throws Exception {
 
         jdbcConfiguration = mock(JdbcConfiguration.class);
+        when(jdbcConfiguration.getQueryTimeout()).thenReturn(Duration.ZERO);
         connectionFactory = mock(JdbcConnection.ConnectionFactory.class);
         Connection connection = mock(Connection.class);
         statement = mock(Statement.class);

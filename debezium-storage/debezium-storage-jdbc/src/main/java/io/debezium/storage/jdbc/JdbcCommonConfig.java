@@ -5,6 +5,7 @@
  */
 package io.debezium.storage.jdbc;
 
+import java.time.Duration;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -26,22 +27,40 @@ public class JdbcCommonConfig {
     private static final Logger LOGGER = LoggerFactory.getLogger(JdbcCommonConfig.class);
 
     public static final String CONFIGURATION_FIELD_PREFIX_STRING = "jdbc.";
+    public static final String CONFIGURATION_FIELD_CONNECTION_GROUP = CONFIGURATION_FIELD_PREFIX_STRING + "connection.";
 
-    public static final Field PROP_JDBC_URL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "url")
+    public static final Field PROP_JDBC_URL = Field.create(CONFIGURATION_FIELD_CONNECTION_GROUP + "url")
             .withDescription("URL of the database which will be used to access the database storage")
-            .withValidation(Field::isRequired);
+            .withValidation(Field::isRequired)
+            .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "url");
 
-    public static final Field PROP_USER = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "user")
+    public static final Field PROP_USER = Field.create(CONFIGURATION_FIELD_CONNECTION_GROUP + "user")
             .withDescription("Username of the database which will be used to access the database storage")
-            .withValidation(Field::isRequired);
+            .withValidation(Field::isRequired)
+            .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "user");
 
-    public static final Field PROP_PASSWORD = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "password")
+    public static final Field PROP_PASSWORD = Field.create(CONFIGURATION_FIELD_CONNECTION_GROUP + "password")
             .withDescription("Password of the database which will be used to access the database storage")
-            .withValidation(Field::isRequired);
+            .withValidation(Field::isRequired)
+            .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "password");
+
+    private static final long DEFAULT_WAIT_RETRY_DELAY = 3000L;
+    public static final Field PROP_WAIT_RETRY_DELAY = Field.create(CONFIGURATION_FIELD_CONNECTION_GROUP + "wait.retry.delay.ms")
+            .withDescription("Delay of retry on wait for connection failure")
+            .withDefault(DEFAULT_WAIT_RETRY_DELAY)
+            .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "wait.retry.delay.ms");
+
+    private static final int DEFAULT_MAX_RETRIES = 5;
+    public static final Field PROP_MAX_RETRIES = Field.create(CONFIGURATION_FIELD_CONNECTION_GROUP + "retry.max.attempts")
+            .withDescription("Maximum number of retry attempts before giving up.")
+            .withDefault(DEFAULT_MAX_RETRIES)
+            .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "retry.max.attempts");
 
     private String jdbcUrl;
     private String user;
     private String password;
+    private Duration waitRetryDelay;
+    private int maxRetryCount;
 
     public JdbcCommonConfig(Configuration config, String prefix) {
         config = config.subset(prefix, true);
@@ -54,13 +73,15 @@ public class JdbcCommonConfig {
     }
 
     protected List<Field> getAllConfigurationFields() {
-        return Collect.arrayListOf(PROP_JDBC_URL, PROP_USER, PROP_PASSWORD);
+        return Collect.arrayListOf(PROP_JDBC_URL, PROP_USER, PROP_PASSWORD, PROP_WAIT_RETRY_DELAY, PROP_MAX_RETRIES);
     }
 
     protected void init(Configuration config) {
         jdbcUrl = config.getString(PROP_JDBC_URL);
         user = config.getString(PROP_USER);
         password = config.getString(PROP_PASSWORD);
+        waitRetryDelay = Duration.ofMillis(config.getLong(PROP_WAIT_RETRY_DELAY));
+        maxRetryCount = config.getInteger(PROP_MAX_RETRIES);
     }
 
     public String getJdbcUrl() {
@@ -73,5 +94,13 @@ public class JdbcCommonConfig {
 
     public String getPassword() {
         return password;
+    }
+
+    public Duration getWaitRetryDelay() {
+        return waitRetryDelay;
+    }
+
+    public int getMaxRetryCount() {
+        return maxRetryCount;
     }
 }

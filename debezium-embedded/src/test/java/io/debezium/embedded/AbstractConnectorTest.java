@@ -33,6 +33,7 @@ import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.management.InstanceNotFoundException;
 import javax.management.JMException;
@@ -62,6 +63,7 @@ import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.slf4j.Logger;
@@ -72,16 +74,17 @@ import io.debezium.config.Instantiator;
 import io.debezium.data.VerifyRecord;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.function.BooleanConsumer;
+import io.debezium.junit.RequiresAssemblyProfileTestRule;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.TestLogger;
-import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.pipeline.txmetadata.TransactionStatus;
+import io.debezium.pipeline.txmetadata.TransactionStructMaker;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.util.LoggingContext;
 import io.debezium.util.Testing;
 
 /**
- * An abstract base class for unit testing {@link SourceConnector} implementations using the Debezium {@link EmbeddedEngine}
+ * An abstract base class for unit testing {@link SourceConnector} implementations using the {@link DebeziumEngine}
  * with local file storage.
  * <p>
  * To use this abstract class, simply create a test class that extends it, and add one or more test methods that
@@ -93,14 +96,20 @@ import io.debezium.util.Testing;
  */
 public abstract class AbstractConnectorTest implements Testing {
 
+    @ClassRule
+    public static TestRule requiresAssemblyProfileClassRule = new RequiresAssemblyProfileTestRule();
+
     @Rule
     public TestRule skipTestRule = new SkipTestRule();
+
+    @Rule
+    public TestRule requiresAssemblyProfileRule = new RequiresAssemblyProfileTestRule();
 
     protected static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("file-connector-offsets.txt").toAbsolutePath();
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
 
     private ExecutorService executor;
-    protected TestingDebeziumEngine engine;
+    protected TestingDebeziumEngine<SourceRecord> engine;
     protected BlockingQueue<SourceRecord> consumedLines;
     protected long pollTimeoutInMs = TimeUnit.SECONDS.toMillis(10);
     protected final Logger logger = LoggerFactory.getLogger(getClass());
@@ -114,6 +123,17 @@ public abstract class AbstractConnectorTest implements Testing {
 
     @Rule
     public TestRule logTestName = new TestLogger(logger);
+
+    /**
+     * Creates instance of {@link DebeziumEngine} which should be used for testing across the testsuite.
+     */
+    protected abstract TestingDebeziumEngine<SourceRecord> createEngine(DebeziumEngine.Builder<SourceRecord> builder);
+
+    /**
+     * Creates instance of {@link DebeziumEngine.Builder} which corresponds to the {@link DebeziumEngine} provided
+     * by the {@link #createEngine(DebeziumEngine.Builder)} method.
+     */
+    protected abstract DebeziumEngine.Builder<SourceRecord> createEngineBuilder();
 
     @Before
     public final void initializeConnectorTestFramework() {
@@ -200,6 +220,16 @@ public abstract class AbstractConnectorTest implements Testing {
             engine = null;
             executor = null;
         }
+    }
+
+    /**
+     * Cleanup internal state for this class when engine is terminated in another way than by calling {@code stopConnector()} method,
+     * e.g. when the engine is stopped by throwing an exception. If the state is not cleaned up properly, engine cannot be started again
+     * as {@code start()} method checks this internal state first.
+     */
+    public void cleanupTestFwkState() {
+        engine = null;
+        executor = null;
     }
 
     /**
@@ -322,7 +352,7 @@ public abstract class AbstractConnectorTest implements Testing {
      * @param changeConsumer {@link io.debezium.engine.DebeziumEngine.ChangeConsumer} invoked when a record arrives and is stored in the queue
      */
     protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
-                         DebeziumEngine.ChangeConsumer changeConsumer) {
+                         DebeziumEngine.ChangeConsumer<SourceRecord> changeConsumer) {
         start(connectorClass, connectorConfig, loggingCompletion(), null, x -> {
         }, true, changeConsumer);
     }
@@ -360,7 +390,7 @@ public abstract class AbstractConnectorTest implements Testing {
      */
     protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
                          DebeziumEngine.CompletionCallback callback, Predicate<SourceRecord> isStopRecord,
-                         Consumer<SourceRecord> recordArrivedListener, boolean ignoreRecordsAfterStop, DebeziumEngine.ChangeConsumer changeConsumer) {
+                         Consumer<SourceRecord> recordArrivedListener, boolean ignoreRecordsAfterStop, DebeziumEngine.ChangeConsumer<SourceRecord> changeConsumer) {
         Configuration config = Configuration.copy(connectorConfig)
                 .with(EmbeddedEngineConfig.ENGINE_NAME, "testing-connector")
                 .with(EmbeddedEngineConfig.CONNECTOR_CLASS, connectorClass.getName())
@@ -404,7 +434,7 @@ public abstract class AbstractConnectorTest implements Testing {
         };
 
         // Create the connector ...
-        DebeziumEngine.Builder builder = createEngineBuilder();
+        DebeziumEngine.Builder<SourceRecord> builder = createEngineBuilder();
         builder.using(config.asProperties())
                 .notifying(getConsumer(isStopRecord, recordArrivedListener, ignoreRecordsAfterStop))
                 .using(this.getClass().getClassLoader())
@@ -433,14 +463,6 @@ public abstract class AbstractConnectorTest implements Testing {
                 fail("Interrupted while waiting for engine startup");
             }
         }
-    }
-
-    protected DebeziumEngine.Builder createEngineBuilder() {
-        return new EmbeddedEngine.EngineBuilder();
-    }
-
-    protected TestingDebeziumEngine createEngine(DebeziumEngine.Builder builder) {
-        return new TestingEmbeddedEngine((EmbeddedEngine) builder.build());
     }
 
     protected Consumer<SourceRecord> getConsumer(Predicate<SourceRecord> isStopRecord, Consumer<SourceRecord> recordArrivedListener, boolean ignoreRecordsAfterStop) {
@@ -540,7 +562,7 @@ public abstract class AbstractConnectorTest implements Testing {
         int recordsConsumed = 0;
         int nullReturn = 0;
         boolean isLastRecord = false;
-        while (!isLastRecord && isEngineRunning.get()) {
+        while (!isLastRecord) {
             SourceRecord record = consumedLines.poll(pollTimeoutInMs, TimeUnit.MILLISECONDS);
             if (record != null) {
                 nullReturn = 0;
@@ -564,6 +586,9 @@ public abstract class AbstractConnectorTest implements Testing {
             else {
                 if (++nullReturn >= breakAfterNulls) {
                     return recordsConsumed;
+                }
+                if (!isEngineRunning.get()) {
+                    break;
                 }
             }
         }
@@ -753,8 +778,8 @@ public abstract class AbstractConnectorTest implements Testing {
                 nullReturn = 0;
                 final Struct value = (Struct) record.value();
                 if (isTransactionRecord(record)) {
-                    final String status = value.getString(TransactionMonitor.DEBEZIUM_TRANSACTION_STATUS_KEY);
-                    final String txId = value.getString(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY);
+                    final String status = value.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_STATUS_KEY);
+                    final String txId = value.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY);
                     String id = Arrays.stream(txId.split(":")).findFirst().get();
                     if (status.equals(TransactionStatus.BEGIN.name())) {
                         endTransactions.add(id);
@@ -798,12 +823,12 @@ public abstract class AbstractConnectorTest implements Testing {
                 nullReturn = 0;
                 final Struct value = (Struct) record.value();
                 if (isTransactionRecord(record)) {
-                    final String status = value.getString(TransactionMonitor.DEBEZIUM_TRANSACTION_STATUS_KEY);
+                    final String status = value.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_STATUS_KEY);
                     if (status.equals(TransactionStatus.END.name())) {
-                        endTransactions.remove(value.getString(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY));
+                        endTransactions.remove(value.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY));
                     }
                     else {
-                        endTransactions.add(value.getString(TransactionMonitor.DEBEZIUM_TRANSACTION_ID_KEY));
+                        endTransactions.add(value.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY));
                     }
                 }
                 else {
@@ -951,15 +976,28 @@ public abstract class AbstractConnectorTest implements Testing {
      * @return {@code true} if records are available, or {@code false} if the timeout occurred and no records are available
      */
     protected boolean waitForAvailableRecords(long timeout, TimeUnit unit) {
-        assertThat(timeout).isGreaterThanOrEqualTo(0);
-        long now = System.currentTimeMillis();
-        long stop = now + unit.toMillis(timeout);
-        while (System.currentTimeMillis() < stop) {
-            if (!consumedLines.isEmpty()) {
-                break;
-            }
+        assertThat(timeout).isNotNegative();
+        assertThat(unit).isNotNull();
+        try {
+            Awaitility.await()
+                    .alias("Records were not available on time")
+                    .pollInterval(timeout < 10
+                            ? unit.toChronoUnit().getDuration().dividedBy(10)
+                            : unit.toChronoUnit().getDuration())
+                    .atMost(timeout, unit)
+                    .until(() -> !consumedLines.isEmpty());
+        }
+        catch (ConditionTimeoutException ignore) {
+            // IGNORE
         }
         return !consumedLines.isEmpty();
+    }
+
+    /**
+     * Wait for a maximum amount of time until the first record is available.
+     */
+    protected boolean waitForAvailableRecords() {
+        return waitForAvailableRecords(waitTimeForRecords() * 30L, TimeUnit.SECONDS);
     }
 
     /**
@@ -987,7 +1025,14 @@ public abstract class AbstractConnectorTest implements Testing {
      * Assert that there are no records to consume.
      */
     protected void assertNoRecordsToConsume() {
-        assertThat(consumedLines.isEmpty()).isTrue();
+        try {
+            assertThat(consumedLines.isEmpty()).isTrue();
+        }
+        catch (org.junit.ComparisonFailure e) {
+            System.out.println("---Assert Expected No Records, Found These---");
+            consumedLines.forEach(System.out::println);
+            throw e;
+        }
     }
 
     /**
@@ -1218,7 +1263,7 @@ public abstract class AbstractConnectorTest implements Testing {
     public void waitForEngineShutdown() {
         Awaitility.await()
                 .pollInterval(200, TimeUnit.MILLISECONDS)
-                .atMost(waitTimeForEngine() * 3, TimeUnit.MILLISECONDS)
+                .atMost(waitTimeForEngine(), TimeUnit.SECONDS)
                 .until(() -> !isEngineRunning.get());
     }
 
@@ -1266,7 +1311,7 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     public static int waitTimeForEngine() {
-        return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "engine.waittime", "1000"));
+        return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "engine.waittime", "5"));
     }
 
     public static int waitTimeForRecords() {
@@ -1295,6 +1340,19 @@ public abstract class AbstractConnectorTest implements Testing {
                 .ignoreException(InstanceNotFoundException.class)
                 .until(() -> (boolean) mbeanServer
                         .getAttribute(getSnapshotMetricsObjectName(connector, server, props), "SnapshotCompleted"));
+    }
+
+    public static void waitForSnapshotWithCustomMetricsToBeCompleted(String connector, String server, String task, String database, Map<String, String> props)
+            throws InterruptedException {
+        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
+
+        Awaitility.await()
+                .alias("Streaming was not started on time")
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
+                .ignoreException(InstanceNotFoundException.class)
+                .until(() -> (boolean) mbeanServer
+                        .getAttribute(getSnapshotMetricsObjectName(connector, server, task, database, props), "SnapshotCompleted"));
     }
 
     private static void waitForSnapshotEvent(String connector, String server, String event, String task, String database) throws InterruptedException {
@@ -1332,7 +1390,16 @@ public abstract class AbstractConnectorTest implements Testing {
                 .pollInterval(100, TimeUnit.MILLISECONDS)
                 .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
-                .until(() -> isStreamingRunning(connector, server, props));
+                .until(() -> isStreamingRunning(connector, server, null, null, props));
+    }
+
+    public static void waitForStreamingWithCustomMetricsToStart(String connector, String server, String task, String database, Map<String, String> props) {
+        Awaitility.await()
+                .alias("Streaming was not started on time")
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
+                .ignoreException(InstanceNotFoundException.class)
+                .until(() -> isStreamingRunning(connector, server, task, database, props));
     }
 
     public static void waitForConnectorShutdown(String connector, String server) {
@@ -1363,11 +1430,11 @@ public abstract class AbstractConnectorTest implements Testing {
         return false;
     }
 
-    public static boolean isStreamingRunning(String connector, String server, Map<String, String> props) {
+    public static boolean isStreamingRunning(String connector, String server, String task, String database, Map<String, String> props) {
         final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
 
         try {
-            ObjectName streamingMetricsObjectName = getStreamingMetricsObjectName(connector, server, props);
+            ObjectName streamingMetricsObjectName = getStreamingMetricsObjectName(connector, server, task, null, props);
             return (boolean) mbeanServer.getAttribute(streamingMetricsObjectName, "Connected");
         }
         catch (JMException ignored) {
@@ -1401,8 +1468,48 @@ public abstract class AbstractConnectorTest implements Testing {
         return getSnapshotMetricsObjectName(connector, server);
     }
 
+    public static ObjectName getSnapshotMetricsObjectName(String connector, String server, String task, String database, Map<String, String> props)
+            throws MalformedObjectNameException {
+
+        Map<String, String> taskAndDatabase = new HashMap<>();
+        taskAndDatabase.put("task", task);
+        taskAndDatabase.put("database", database);
+
+        String additionalProperties = Stream.of(props.entrySet(), taskAndDatabase.entrySet()).flatMap(Set::stream)
+                .filter(e -> e.getValue() != null)
+                .map(e -> String.format("%s=%s", e.getKey(), e.getValue()))
+                .collect(Collectors.joining(","));
+
+        if (additionalProperties.length() != 0) {
+            return new ObjectName("debezium." + connector + ":type=connector-metrics,context=snapshot,server=" + server + "," + additionalProperties);
+        }
+
+        return getSnapshotMetricsObjectName(connector, server);
+    }
+
     public static ObjectName getStreamingMetricsObjectName(String connector, String server) throws MalformedObjectNameException {
         return getStreamingMetricsObjectName(connector, server, getStreamingNamespace());
+    }
+
+    public static ObjectName getStreamingMetricsObjectName(String connector, String server, String context, String task, String database)
+            throws MalformedObjectNameException {
+
+        Map<String, String> props = new HashMap<>();
+        props.put("task", task);
+        props.put("database", database);
+
+        return getStreamingMetricsObjectName(connector, server, props);
+    }
+
+    public static ObjectName getStreamingMetricsObjectName(String connector, String server, String task, String database, Map<String, String> customTags)
+            throws MalformedObjectNameException {
+
+        Map<String, String> props = new HashMap<>();
+        props.put("task", task);
+        props.put("database", database);
+        props.putAll(customTags);
+
+        return getStreamingMetricsObjectName(connector, server, props);
     }
 
     public static ObjectName getStreamingMetricsObjectName(String connector, String server, String context) throws MalformedObjectNameException {

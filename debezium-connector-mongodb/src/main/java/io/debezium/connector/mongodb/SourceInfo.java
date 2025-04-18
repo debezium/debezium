@@ -109,7 +109,7 @@ public final class SourceInfo extends BaseSourceInfo {
         }
 
         public int getTime() {
-            return (this.ts != null) ? this.ts.getTime() : 0;
+            return (this.ts != null) ? this.ts.getTime() : -1;
         }
 
         public int getInc() {
@@ -171,7 +171,7 @@ public final class SourceInfo extends BaseSourceInfo {
      * @param collectionId the event's collection identifier; may not be null
      * @see #schema()
      */
-    public void collectionEvent(CollectionId collectionId, long wallTime) {
+    public void readEvent(CollectionId collectionId, long wallTime) {
         onEvent(collectionId, position, wallTime);
     }
 
@@ -193,14 +193,14 @@ public final class SourceInfo extends BaseSourceInfo {
         if (event.hasDocument()) {
             return;
         }
-        noEvent(ResumeTokens.getDataString(event.resumeToken));
+        noEvent(ResumeTokens.toBase64(event.resumeToken));
     }
 
     public void noEvent(MongoChangeStreamCursor<?> cursor) {
         if (cursor == null || cursor.getResumeToken() == null) {
             return;
         }
-        noEvent(ResumeTokens.getDataString(cursor.getResumeToken()));
+        noEvent(ResumeTokens.toBase64(cursor.getResumeToken()));
     }
 
     public void noEvent(BsonTimestamp timestamp) {
@@ -230,7 +230,7 @@ public final class SourceInfo extends BaseSourceInfo {
         String namespace = "";
         long wallTime = 0L;
         if (changeStreamEvent != null) {
-            String resumeToken = ResumeTokens.getDataString(changeStreamEvent.getResumeToken());
+            String resumeToken = ResumeTokens.toBase64(changeStreamEvent.getResumeToken());
             BsonTimestamp ts = changeStreamEvent.getClusterTime();
             position = Position.changeStreamPosition(ts, resumeToken, MongoUtils.getChangeStreamSessionTransactionId(changeStreamEvent));
             namespace = changeStreamEvent.getNamespace().getFullName();
@@ -285,7 +285,8 @@ public final class SourceInfo extends BaseSourceInfo {
 
     @Override
     protected Instant timestamp() {
-        return Instant.ofEpochSecond(position().getTime());
+        var time = position().getTime();
+        return (time == -1) ? null : Instant.ofEpochSecond(time);
     }
 
     @Override

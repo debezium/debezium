@@ -383,11 +383,32 @@ To enable the Confluent Schema Registry for a {prodname} container, install the 
 * `kafka-connect-avro-data`
 * `kafka-avro-serializer`
 * `kafka-schema-serializer`
+* `kafka-schema-converter`
 * `kafka-schema-registry-client`
 * `common-config`
 * `common-utils`
 
 You can download the preceding files from the https://packages.confluent.io/maven/[Confluent Maven repository].
+
+There are also some other JAR files required to be located into the Connect plugin directory:
+
+* `avro`
+* `commons-compress`
+* `failureaccess`
+* `guava`
+* `minimal-json`
+* `re2j`
+* `slf4j-api`
+* `snakeyaml`
+* `swagger-annotations`
+* `jackson-databind`
+* `jackson-core`
+* `jackson-annotations`
+* `jackson-dataformat-csv`
+* `logredactor`
+* `logredactor-metrics`
+
+You can download the preceding files from the https://mvnrepository.com/[Maven repository].
 
 The configuration is slightly different.
 

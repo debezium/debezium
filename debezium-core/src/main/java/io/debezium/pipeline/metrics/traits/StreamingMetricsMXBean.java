@@ -19,4 +19,6 @@ public interface StreamingMetricsMXBean extends SchemaMetricsMXBean {
     long getNumberOfCommittedTransactions();
 
     String getLastTransactionId();
+
+    void resetLagBehindSource();
 }

@@ -24,7 +24,9 @@ import io.debezium.testing.system.tools.WaitConditions;
 import io.fabric8.kubernetes.api.model.ObjectMetaBuilder;
 import io.fabric8.kubernetes.api.model.ObjectReferenceBuilder;
 import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.openshift.api.model.ClusterRoleBinding;
 import io.fabric8.openshift.api.model.ClusterRoleBindingBuilder;
+import io.fabric8.openshift.api.model.ClusterRoleBindingList;
 import io.fabric8.openshift.api.model.Project;
 import io.fabric8.openshift.api.model.ProjectBuilder;
 import io.fabric8.openshift.client.OpenShiftClient;
@@ -45,6 +47,7 @@ public class NamespacePreparationListener implements TestExecutionListener {
                     ConfigProperties.OCP_PROJECT_MONGO,
                     ConfigProperties.OCP_PROJECT_DB2,
                     ConfigProperties.OCP_PROJECT_MYSQL,
+                    ConfigProperties.OCP_PROJECT_MARIADB,
                     ConfigProperties.OCP_PROJECT_POSTGRESQL,
                     ConfigProperties.OCP_PROJECT_REGISTRY,
                     ConfigProperties.OCP_PROJECT_SQLSERVER);
@@ -74,8 +77,22 @@ public class NamespacePreparationListener implements TestExecutionListener {
         }
 
         waitForDefaultServiceAccount();
-        client.clusterRoleBindings().createOrReplace(anyUidBindingBuilder.build());
-        client.clusterRoleBindings().createOrReplace(privilegedBindingBuilder.build());
+        ClusterRoleBindingList clusterRoleBindings = client.clusterRoleBindings().list();
+        ClusterRoleBinding anyuid = anyUidBindingBuilder.build();
+        ClusterRoleBinding priviledged = privilegedBindingBuilder.build();
+        if (clusterRoleBindings.getItems().stream().anyMatch(clr -> clr.getMetadata().getName().equals(anyuid.getMetadata().getName()))) {
+            client.resource(anyuid).update();
+        }
+        else {
+            client.resource(anyuid).create();
+        }
+
+        if (clusterRoleBindings.getItems().stream().anyMatch(clr -> clr.getMetadata().getName().equals(priviledged.getMetadata().getName()))) {
+            client.resource(priviledged).update();
+        }
+        else {
+            client.resource(priviledged).create();
+        }
     }
 
     private void waitForDefaultServiceAccount() {
@@ -99,12 +116,11 @@ public class NamespacePreparationListener implements TestExecutionListener {
     }
 
     private void addServiceAccountToClusterRoleBinding(String saNamespace, ClusterRoleBindingBuilder bindingBuilder) {
-        bindingBuilder.addNewSubjectLike(new ObjectReferenceBuilder()
-                .withKind("SystemUser")
+        bindingBuilder.addToSubjects(new ObjectReferenceBuilder()
+                .withKind("ServiceAccount")
                 .withName("default")
                 .withNamespace(saNamespace)
                 .build());
-        bindingBuilder.addNewUserName("system:serviceaccount:" + saNamespace + ":default");
     }
 
     /**

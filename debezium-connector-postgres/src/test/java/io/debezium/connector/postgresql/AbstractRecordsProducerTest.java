@@ -59,6 +59,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.SnapshotType;
 import io.debezium.connector.postgresql.data.Ltree;
 import io.debezium.data.Bits;
 import io.debezium.data.Envelope;
@@ -72,7 +73,7 @@ import io.debezium.data.Xml;
 import io.debezium.data.geometry.Geography;
 import io.debezium.data.geometry.Geometry;
 import io.debezium.data.geometry.Point;
-import io.debezium.embedded.AbstractConnectorTest;
+import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.junit.TestLogger;
 import io.debezium.relational.TableId;
@@ -94,7 +95,7 @@ import io.debezium.util.Testing;
  *
  * @author Horia Chiorean (hchiorea@redhat.com)
  */
-public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest {
+public abstract class AbstractRecordsProducerTest extends AbstractAsyncEngineConnectorTest {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractRecordsProducerTest.class);
 
@@ -1129,7 +1130,7 @@ public abstract class AbstractRecordsProducerTest extends AbstractConnectorTest 
         Object lastSnapshotRecord = offset.get(SourceInfo.LAST_SNAPSHOT_RECORD_KEY);
 
         if (expectedType != SnapshotRecord.FALSE) {
-            assertTrue("Snapshot marker expected but not found", (Boolean) snapshot);
+            assertEquals(SnapshotType.INITIAL.toString(), snapshot);
         }
         else {
             assertNull("Snapshot marker not expected, but found", snapshot);
