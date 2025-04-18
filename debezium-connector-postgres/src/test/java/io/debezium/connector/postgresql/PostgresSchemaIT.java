@@ -18,6 +18,7 @@ import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -378,6 +379,10 @@ public class PostgresSchemaIT {
                 "real FLOAT4 default 1234567890.5, " +
                 "smallint INT2 default 32767, " +
                 "text TEXT default 'asdf', " +
+                "text_arr_empty_default text[] DEFAULT '{}'::text[]," +
+                "text_arr_nonempty_default text[] DEFAULT '{a,b}'::text[]," +
+                "varchar_arr_empty_default text[] DEFAULT '{}'::varchar[]," +
+                "varchar_arr_nonempty_default text[] DEFAULT '{a,b}'::varchar[]," +
                 "text_parens TEXT default 'text(parens)'," +
                 "text_func3 TEXT default concat('foo', 'bar', 'baz'), " +
                 "time_hm TIME default '12:34'::time, " +
@@ -449,6 +454,10 @@ public class PostgresSchemaIT {
             assertColumnDefault("smallint", (short) 32767, columns, defaultValueConverter);
 
             assertColumnDefault("text", "asdf", columns, defaultValueConverter);
+            assertColumnDefault("text_arr_empty_default", new ArrayList<>(), columns, defaultValueConverter);
+            assertColumnDefault("text_arr_nonempty_default", Arrays.asList("a", "b"), columns, defaultValueConverter);
+            assertColumnDefault("varchar_arr_empty_default", new ArrayList<>(), columns, defaultValueConverter);
+            assertColumnDefault("varchar_arr_nonempty_default", Arrays.asList("a", "b"), columns, defaultValueConverter);
             assertColumnDefault("text_parens", "text(parens)", columns, defaultValueConverter);
             assertColumnDefault("text_func3", "", columns, defaultValueConverter);
 
