@@ -5,6 +5,8 @@
  */
 package io.debezium.util;
 
+import java.util.Arrays;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,6 +83,18 @@ public class Loggings {
     public static Object maybeRedactSensitiveData(Object value) {
         if (LOGGER.isTraceEnabled()) {
             return value;
+        }
+        return "[REDACTED]";
+    }
+
+    /**
+     * Redact sensitive data in the log entry if sensitive logging is not enabled.
+     * @param value the value to be redacted
+     * @return the redacted value if sensitive logging is not enabled, otherwise the original value
+     */
+    public static Object maybeRedactSensitiveData(Object[] value) {
+        if (LOGGER.isTraceEnabled()) {
+            return Arrays.toString(value);
         }
         return "[REDACTED]";
     }
