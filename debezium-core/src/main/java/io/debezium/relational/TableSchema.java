@@ -7,7 +7,6 @@ package io.debezium.relational;
 
 import static io.debezium.util.Loggings.maybeRedactSensitiveData;
 
-import java.util.Arrays;
 import java.util.Objects;
 
 import org.apache.kafka.connect.data.Schema;
@@ -127,7 +126,7 @@ public class TableSchema implements DataCollectionSchema {
      */
     public Struct keyFromColumnData(Object[] columnData) {
         if (LOGGER.isTraceEnabled()) {
-            LOGGER.trace("columnData from current stack: {}", maybeRedactSensitiveData(Arrays.toString(columnData)));
+            LOGGER.trace("columnData from current stack: {}", maybeRedactSensitiveData(columnData));
         }
         return columnData == null ? null : keyGenerator.generateValue(columnData);
     }
