@@ -482,6 +482,9 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
      */
     private void runTasksPolling(final List<EngineSourceTask> tasks)
             throws ExecutionException {
+        LOGGER.debug("Calling connector callback before starting polling.");
+        connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::pollingStarted);
+        
         LOGGER.debug("Starting tasks polling.");
         final ExecutorCompletionService<Void> taskCompletionService = new ExecutorCompletionService(taskService);
         final String processorClassName = selectRecordProcessor();
@@ -500,6 +503,9 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             }
             LOGGER.debug("Task #{} out of {} tasks has stopped polling.", i, tasks.size());
         }
+
+        LOGGER.debug("Calling connector callback after polling has stopped.");
+        connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::pollingStopped);
     }
 
     /**
