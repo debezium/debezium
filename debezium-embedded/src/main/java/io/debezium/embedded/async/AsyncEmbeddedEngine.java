@@ -25,6 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -484,14 +485,25 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             throws ExecutionException {
         LOGGER.debug("Calling connector callback before starting polling.");
         connectorCallback.ifPresent(DebeziumEngine.ConnectorCallback::pollingStarted);
-        
+
         LOGGER.debug("Starting tasks polling.");
         final ExecutorCompletionService<Void> taskCompletionService = new ExecutorCompletionService(taskService);
         final String processorClassName = selectRecordProcessor();
-        for (EngineSourceTask task : tasks) {
-            final RecordProcessor processor = createRecordProcessor(processorClassName, task);
-            processor.initialize(recordService, transformations);
-            pollingFutures.add(taskCompletionService.submit(new PollRecords(task, processor, state)));
+        try {
+            for (EngineSourceTask task : tasks) {
+                final RecordProcessor processor = createRecordProcessor(processorClassName, task);
+                processor.initialize(recordService, transformations);
+                pollingFutures.add(taskCompletionService.submit(new PollRecords(task, processor, state)));
+            }
+        }
+        catch (RejectedExecutionException e) {
+            if (getEngineState().compareTo(State.POLLING_TASKS) > 0) {
+                LOGGER.debug("Engine stopped while submitting polling tasks, ignoring RejectedExecutionException and exiting gracefully.");
+                return;
+            }
+            else {
+                throw e;
+            }
         }
 
         for (int i = 0; i < tasks.size(); i++) {
