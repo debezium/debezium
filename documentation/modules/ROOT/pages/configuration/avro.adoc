@@ -80,6 +80,7 @@ This makes each record even smaller. For an I/O bound system like Kafka, this me
 
 * Avro _Serdes_ (serializers and deserializers) for Kafka producers and consumers.
 Kafka consumer applications that you write to consume change event records can use Avro Serdes to deserialize the change event records.
+* Apicurio's _Confluent compatibility mode_, enabled by setting `as-confluent: true`, allows Apicurio Registry to serialize Kafka messages using the same wire format as Confluent Schema Registry (including the magic byte and 4-byte schema ID). This enables full interoperability with Confluent clients and tools, making Apicurio a drop-in replacement without requiring changes to producers or consumers.
 
 To use the {registry} with {prodname}, add {registry} converters and their dependencies to the Kafka Connect container image that you are using for running a {prodname} connector.
 
@@ -128,6 +129,28 @@ value.converter=io.apicurio.registry.utils.converter.AvroConverter
 value.converter.apicurio.registry.url=http://apicurio:8080/apis/registry/v2
 value.converter.apicurio.registry.auto-register=true
 value.converter.apicurio.registry.find-latest=true
+schema.name.adjustment.mode=avro
+----
+or you can use the _Confluent Compatibility mode_ as follows:
++
+[source,options="nowrap"]
+----
+key.converter=io.apicurio.registry.utils.converter.AvroConverter
+key.converter.apicurio.registry.url=http://apicurio:8080/apis/registry/v2
+key.converter.apicurio.registry.auto-register=true
+key.converter.apicurio.registry.find-latest=true
+key.converter.schemas.enable": "false"
+key.converter.apicurio.registry.headers.enabled": "false"
+key.converter.apicurio.registry.as-confluent": "true"
+key.converter.apicurio.use-id: "contentId"
+value.converter=io.apicurio.registry.utils.converter.AvroConverter
+value.converter.apicurio.registry.url=http://apicurio:8080/apis/registry/v2
+value.converter.apicurio.registry.auto-register=true
+value.converter.apicurio.registry.find-latest=true
+value.converter.schemas.enable": "false"
+value.converter.apicurio.registry.headers.enabled": "false"
+value.converter.apicurio.registry.as-confluent": "true"
+value.converter.apicurio.use-id: "contentId"
 schema.name.adjustment.mode=avro
 ----
 
