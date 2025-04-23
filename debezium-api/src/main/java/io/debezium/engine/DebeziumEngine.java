@@ -105,6 +105,21 @@ public interface DebeziumEngine<R> extends Runnable, Closeable {
         default void taskStopped() {
             // nothing by default
         }
+
+        /**
+         * Called after all the tasks have been successfully started and engine has moved to polling phase, but before actual polling is started.
+         */
+        default void pollingStarted() {
+            // nothing by default
+        }
+
+        /**
+         * Called after all the tasks have successfully exited from the polling loop, i.e. the callback is not called when any of the tasks has thrown
+         * exception during polling or was interrupted abruptly.
+         */
+        default void pollingStopped() {
+            // nothing by default
+        }
     }
 
     /**
