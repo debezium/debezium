@@ -14,15 +14,16 @@ endif::community[]
 
 {prodname} connectors require persistent storage to preserve their state between restarts.
 All connectors require a mechanism to provide persistent storage for the offsets.
-In addition, connectors such as Db2, MySQL, Oracle,  and SQL Server, require additional storage, the so-called internal schema history, to record their schema evolution history.
+In addition, connectors such as Db2, MySQL, Oracle,  and SQL Server, require additional storage for their so-called internal schema history, which records changes to table schema in the database.
 
 Offset storage is provided automatically for deployments within the Kafka Connect runtime through one of the following mechanisms:
 
-* Kafka offset store for Kafka Connect distributed
-* File offset store for Kafka Connect standalone
+[horizontal]
+Kafka offset store:: Provides storage for Kafka Connect distributed.
+File offset store:: Provides storage for Kafka Connect standalone.
 
 If you run a connector in xref:development/engine.adoc[{prodname} Engine] or xref:operations/debezium-server.adoc[{prodname} Server], you must explicitly configure the offset store.
-In all deployments, you use connector properties to configure internal schema history storage.
+For connectors that work with schema-based databases, you configure internal schema history storage by setting connector properties.
 
 
 == Kafka
@@ -199,7 +200,7 @@ You must provide the link:https://en.wikipedia.org/wiki/JDBC_driver[JDBC driver]
 {prodname} can store data in the same source database from which it captures events, or you can configure it to use a different database.
 
 {prodname} provides pre-configured DML and DDL statements.
-You can use the default statements, or you can override the defaults with your own statements to provide compatibility with database dialects or to customize them for specific use cases.
+You can use these default statements, or you can override the defaults with your own statements to provide compatibility with database dialects or to customize them for specific use cases.
 
 
 === Offset Store
@@ -243,7 +244,7 @@ You can use the default statements, or you can override the defaults with your o
 |DDL statement to create the offset table.
 
 |[[jdbc-offset-table-select]]<<jdbc-offset-table-select, `offset.storage.jdbc.table.select`>>
-|xref:jdbc-offset-table-ddl-default[Select query]
+|xref:jdbc-offset-table-select-default[Select query]
 |DML statement that {prodname} uses to read offsets values from the table.
 
 |[[jdbc-offset-table-insert]]<<jdbc-offset-table-insert, `offset.storage.jdbc.table.insert`>>
@@ -530,7 +531,7 @@ INSERT INTO %s(id, history_data, history_data_seq, record_insert_ts, record_inse
 
 |[[offset-storage-redis-socket-timeout-ms]]<<offset-storage-redis-socket-timeout-ms, `offset.storage.redis.socket.timeout.ms`>>
 |2000
-|Specifies the interval, in milliseconds, that {prodname} allows for exchanging offset data with Redis before the socket times out..
+|Specifies the interval, in milliseconds, that {prodname} allows for exchanging offset data with Redis before the socket times out.
 If a data packet is not transferred with the specified interval, {prodname} closes the socket.
 
 |[[offset-storage-redis-retry-initial-delay-ms]]<<offset-storage-redis-retry-initial-delay-ms, `offset.storage.redis.retry.initial.delay.ms`>>
@@ -626,7 +627,7 @@ Specifies the maximum number of times that {prodname} retries the connection to 
 
 |[[schema-history-internal-redis-wait-timeout-ms]]<<schema-history-internal-redis-wait-timeout-ms,`schema.history.internal.storage.redis.wait.timeout.ms`>>
 |1000
-|Specifies a time, in milliseconds, that {prodname} waits for confirmation that Redis wrote data to a replica shard before the request times out.
+|Specifies the time, in milliseconds, that {prodname} waits for confirmation that Redis wrote data to a replica shard before the request times out.
 
 |[[schema-history-internal-redis-wait-retry-enabled]]<<schema-history-internal-redis-wait-retry-enabled, `schema.history.internal.storage.redis.wait.retry.enabled`>>
 |false
@@ -641,7 +642,7 @@ Specifies the maximum number of times that {prodname} retries the connection to 
 
 == Amazon S3
 
-{prodname} can use link:https://aws.amazon.com/s3/[Amazon S3] object storage service.
+{prodname} can use the link:https://aws.amazon.com/s3/[Amazon S3] object storage service.
 Typically, you would use S3 storage when you deploy {prodname} with link:https://aws.amazon.com/msk/[Amazon Managed Streaming for Apache Kafka (Amazon MSK)].
 
 === Internal schema history store
@@ -720,7 +721,7 @@ Typically, you would use Azure Blob storage when you deploy {prodname} in the li
 
 == RocketMQ
 
-Debezium can use the `RocketMqSchemaHistory` class to store and retrieve database schema changes in Apache RocketMQ.
+{prodname} can use the `RocketMqSchemaHistory` class to store and retrieve database schema changes in Apache RocketMQ.
 
 === Internal schema history store
 
