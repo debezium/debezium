@@ -2,6 +2,54 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.1.1.Final
+April 23rd 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12449976)
+
+### New features since 3.1.0.Final
+
+* The method removeTransactionEventWithRowId creates high CPU load in certain scenarios [DBZ-8860](https://issues.redhat.com/browse/DBZ-8860)
+* Fix performance regression in debezium-core [DBZ-8879](https://issues.redhat.com/browse/DBZ-8879)
+* Expose option to reset (streaming) metrics individually [DBZ-8885](https://issues.redhat.com/browse/DBZ-8885)
+* Raise more meaningful exception in case of inconsistent post processor config [DBZ-8901](https://issues.redhat.com/browse/DBZ-8901)
+* Improve lookup performance for the Oracle ObjectId cache when using the Hybrid mining strategy [DBZ-8925](https://issues.redhat.com/browse/DBZ-8925)
+* Exclude unknown tables when query filter is enabled and using a non-Hybrid strategy [DBZ-8926](https://issues.redhat.com/browse/DBZ-8926)
+
+
+### Breaking changes since 3.1.0.Final
+
+* Document using TLS encryption of Oracle connectors using JKS instead of Oracle Wallet [DBZ-8788](https://issues.redhat.com/browse/DBZ-8788)
+
+
+### Fixes since 3.1.0.Final
+
+* heartbeat.interval.ms not honored [DBZ-8551](https://issues.redhat.com/browse/DBZ-8551)
+* Signal table column names are arbitrary, but delete strategy expects column named id [DBZ-8723](https://issues.redhat.com/browse/DBZ-8723)
+* DB2 Signaling creates watermarking in the wrong schema [DBZ-8833](https://issues.redhat.com/browse/DBZ-8833)
+* When using the Oracle relaxed SQL parser setup, strings with apostrophe followed by comma are trimmed [DBZ-8869](https://issues.redhat.com/browse/DBZ-8869)
+* Oracle Ehcache buffer will silently evict entries when configured size limits are reached [DBZ-8874](https://issues.redhat.com/browse/DBZ-8874)
+* Transaction events are not removed when transaction event count over threshold  [DBZ-8880](https://issues.redhat.com/browse/DBZ-8880)
+* InstructLabIT can randomly fail due to file read/write race condition between threads [DBZ-8883](https://issues.redhat.com/browse/DBZ-8883)
+* Setting Oracle buffer type to an unsupported/invalid value is not validated properly [DBZ-8886](https://issues.redhat.com/browse/DBZ-8886)
+* Oracle timestamp columns are ignored when temporal mode set to ISOSTRING [DBZ-8889](https://issues.redhat.com/browse/DBZ-8889)
+* Kinesis Connector does not send failed records during retry, it sends records in original batch [DBZ-8893](https://issues.redhat.com/browse/DBZ-8893)
+* DDL parsing fails on "BY USER FOR STATISTICS" virtual column clause [DBZ-8895](https://issues.redhat.com/browse/DBZ-8895)
+* Postgres CapturedTables metric isn't populated. [DBZ-8897](https://issues.redhat.com/browse/DBZ-8897)
+* FieldToEmbedding SMT fails with NPE for delete records [DBZ-8907](https://issues.redhat.com/browse/DBZ-8907)
+* FieldToEmbedding SMT crashes when source field name is substring of embedding name [DBZ-8910](https://issues.redhat.com/browse/DBZ-8910)
+* Setting continuous mining for Oracle 18 or later causes NPE [DBZ-8919](https://issues.redhat.com/browse/DBZ-8919)
+* Improve performance by removing unnecessary filter check [DBZ-8921](https://issues.redhat.com/browse/DBZ-8921)
+* NullPointerException happens when a transaction commits that is unknown to the connector [DBZ-8929](https://issues.redhat.com/browse/DBZ-8929)
+* Async engine doesn't termiate gracefully upon StopEngineException [DBZ-8936](https://issues.redhat.com/browse/DBZ-8936)
+* ORA-08186 invalid timestamp specified occurs when connector is started [DBZ-8943](https://issues.redhat.com/browse/DBZ-8943)
+
+
+### Other changes since 3.1.0.Final
+
+* DebeziumServerPostgresIT shouldSnapshot randomly fails [DBZ-8928](https://issues.redhat.com/browse/DBZ-8928)
+* Remove unncessary metadata query and map fetch calls [DBZ-8938](https://issues.redhat.com/browse/DBZ-8938)
+
+
+
 ## 3.1.0.Final
 April 2nd 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12448671)
 

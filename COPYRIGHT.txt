@@ -63,6 +63,7 @@ Artur Gukasian
 Ashhar Hasan
 Ashique Ansari
 Ashmeet Lamba
+Ashok Sudhakar
 Ashwin Murali Krishnan
 Attila Szucs
 Avinash Vishwakarma
@@ -240,6 +241,7 @@ Jun Zhao
 Hady Willi
 Hang Ruan
 Hans-Peter Grahsl
+Haris Osmanagić
 Harvey Yue
 Helong Zhang
 Henk van Dyk
@@ -437,6 +439,7 @@ Oren Elias
 Ori Popowski
 Orr Ganani
 Oscar Romero
+Oskar Bonde
 Oskar Polak
 P. Aum
 Patrick Chu
