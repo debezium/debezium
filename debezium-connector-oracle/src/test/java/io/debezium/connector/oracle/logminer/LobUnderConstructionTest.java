@@ -3,10 +3,10 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.oracle.logminer.buffered.processor;
+package io.debezium.connector.oracle.logminer;
 
-import static io.debezium.connector.oracle.logminer.buffered.processor.TransactionCommitConsumer.LobFragment;
-import static io.debezium.connector.oracle.logminer.buffered.processor.TransactionCommitConsumer.LobUnderConstruction;
+import static io.debezium.connector.oracle.logminer.TransactionCommitConsumer.LobFragment;
+import static io.debezium.connector.oracle.logminer.TransactionCommitConsumer.LobUnderConstruction;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;

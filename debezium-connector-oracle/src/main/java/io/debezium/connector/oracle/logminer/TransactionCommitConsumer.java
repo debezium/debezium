@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.oracle.logminer.buffered.processor;
+package io.debezium.connector.oracle.logminer;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -24,7 +24,6 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleValueConverters;
-import io.debezium.connector.oracle.logminer.LogMinerHelper;
 import io.debezium.connector.oracle.logminer.events.DmlEvent;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.ExtendedStringBeginEvent;
@@ -993,7 +992,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     }
 
     @FunctionalInterface
-    interface Handler<T> {
+    public interface Handler<T> {
         void accept(T event, long eventsProcessed) throws InterruptedException;
     }
 }
