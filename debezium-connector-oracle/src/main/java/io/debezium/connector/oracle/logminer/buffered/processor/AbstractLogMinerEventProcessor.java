@@ -40,6 +40,7 @@ import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.LogMinerChangeRecordEmitter;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.SqlUtils;
+import io.debezium.connector.oracle.logminer.TransactionCommitConsumer;
 import io.debezium.connector.oracle.logminer.buffered.LogMinerQueryBuilder;
 import io.debezium.connector.oracle.logminer.buffered.processor.LogMinerTransactionCache.ScnDetails;
 import io.debezium.connector.oracle.logminer.events.DmlEvent;
