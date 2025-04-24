@@ -36,7 +36,6 @@ import io.debezium.connector.oracle.OracleTaskContext;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.LogFile;
 import io.debezium.connector.oracle.logminer.LogFileCollector;
-import io.debezium.connector.oracle.logminer.LogMinerOracleOffsetContextLoader;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.document.Document;
