@@ -20,11 +20,11 @@ import io.debezium.pipeline.txmetadata.TransactionContext;
 /**
  * @author Chris Cranford
  */
-public class LogMinerOracleOffsetContextLoader implements OffsetContext.Loader<OracleOffsetContext> {
+public class BufferedLogMinerOracleOffsetContextLoader implements OffsetContext.Loader<OracleOffsetContext> {
 
     private final OracleConnectorConfig connectorConfig;
 
-    public LogMinerOracleOffsetContextLoader(OracleConnectorConfig connectorConfig) {
+    public BufferedLogMinerOracleOffsetContextLoader(OracleConnectorConfig connectorConfig) {
         this.connectorConfig = connectorConfig;
     }
 

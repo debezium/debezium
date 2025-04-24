@@ -57,17 +57,13 @@ import io.debezium.util.Strings;
 /**
  * @author Chris Cranford
  */
-public class LogMinerAdapter extends AbstractStreamingAdapter<LogMinerStreamingChangeEventSourceMetrics> {
+public class BufferedLogMinerAdapter extends AbstractStreamingAdapter<LogMinerStreamingChangeEventSourceMetrics> {
 
-    private static final Duration GET_TRANSACTION_SCN_PAUSE = Duration.ofSeconds(1);
-
-    private static final int GET_TRANSACTION_SCN_ATTEMPTS = 5;
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerAdapter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(BufferedLogMinerAdapter.class);
 
     public static final String TYPE = "logminer";
 
-    public LogMinerAdapter(OracleConnectorConfig connectorConfig) {
+    public BufferedLogMinerAdapter(OracleConnectorConfig connectorConfig) {
         super(connectorConfig);
     }
 
@@ -88,7 +84,7 @@ public class LogMinerAdapter extends AbstractStreamingAdapter<LogMinerStreamingC
 
     @Override
     public OffsetContext.Loader<OracleOffsetContext> getOffsetContextLoader() {
-        return new LogMinerOracleOffsetContextLoader(connectorConfig);
+        return new BufferedLogMinerOracleOffsetContextLoader(connectorConfig);
     }
 
     @Override
@@ -101,7 +97,7 @@ public class LogMinerAdapter extends AbstractStreamingAdapter<LogMinerStreamingC
                                                                                       Configuration jdbcConfig,
                                                                                       LogMinerStreamingChangeEventSourceMetrics streamingMetrics,
                                                                                       SnapshotterService snapshotterService) {
-        return new LogMinerStreamingChangeEventSource(
+        return new BufferedLogMinerStreamingChangeEventSource(
                 connectorConfig,
                 connection,
                 dispatcher,
@@ -165,7 +161,7 @@ public class LogMinerAdapter extends AbstractStreamingAdapter<LogMinerStreamingC
 
     @Override
     public OracleOffsetContext copyOffset(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext) {
-        return new LogMinerOracleOffsetContextLoader(connectorConfig).load(offsetContext.getOffset());
+        return new BufferedLogMinerOracleOffsetContextLoader(connectorConfig).load(offsetContext.getOffset());
     }
 
     private Optional<Scn> getCurrentScn(Scn latestTableDdlScn, OracleConnection connection) throws SQLException {

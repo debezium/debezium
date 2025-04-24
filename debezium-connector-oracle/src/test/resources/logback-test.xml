@@ -28,7 +28,7 @@
     </logger>
 
     <logger
-        name="io.debezium.connector.oracle.logminer.buffered.LogMinerAdapter"
+        name="io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerAdapter"
         level="trace" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>

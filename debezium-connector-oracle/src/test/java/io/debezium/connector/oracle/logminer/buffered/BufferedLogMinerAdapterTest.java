@@ -30,12 +30,12 @@ import io.debezium.doc.FixFor;
 import io.debezium.util.HexConverter;
 
 /**
- * Unit tests for the {@link LogMinerAdapter} class.
+ * Unit tests for the {@link BufferedLogMinerAdapter} class.
  *
  * @author Chris Cranford
  */
 @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER)
-public class LogMinerAdapterTest {
+public class BufferedLogMinerAdapterTest {
 
     @Test
     @FixFor("DBZ-8141")
@@ -45,7 +45,7 @@ public class LogMinerAdapterTest {
                 .build();
 
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
-        final LogMinerAdapter adapter = createAdapter(connectorConfig);
+        final BufferedLogMinerAdapter adapter = createAdapter(connectorConfig);
         final List<LogFile> logs = List.of(new LogFile("abc", Scn.valueOf(20798000), Scn.MAX, BigInteger.valueOf(12345L), LogFile.Type.REDO, 1));
 
         // Mock up adapter methods
@@ -77,7 +77,7 @@ public class LogMinerAdapterTest {
         assertThat(pendingTransactions).containsExactly(entry("abcd", Scn.valueOf(20798317)));
     }
 
-    private static LogMinerAdapter createAdapter(OracleConnectorConfig connectorConfig) {
-        return Mockito.spy(new LogMinerAdapter(connectorConfig));
+    private static BufferedLogMinerAdapter createAdapter(OracleConnectorConfig connectorConfig) {
+        return Mockito.spy(new BufferedLogMinerAdapter(connectorConfig));
     }
 }

@@ -28,7 +28,7 @@ import io.debezium.util.Strings;
  *
  * @author Chris Cranford
  */
-public class LogMinerQueryBuilder {
+public class BufferedLogMinerQueryBuilder {
 
     private static final String EMPTY = "";
     private static final String LOGMNR_CONTENTS_VIEW = "V$LOGMNR_CONTENTS";

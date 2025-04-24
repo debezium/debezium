@@ -1324,7 +1324,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             @Override
             public StreamingAdapter getInstance(OracleConnectorConfig connectorConfig) {
                 return Instantiator.getInstanceWithProvidedConstructorType(
-                        "io.debezium.connector.oracle.logminer.buffered.LogMinerAdapter",
+                        "io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerAdapter",
                         OracleConnectorConfig.class,
                         connectorConfig);
             }
