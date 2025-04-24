@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.oracle.logminer.buffered;
+package io.debezium.connector.oracle.logminer;
 
 import static io.debezium.config.CommonConnectorConfig.SIGNAL_DATA_COLLECTION;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOB_ENABLED;
@@ -12,7 +12,7 @@ import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_QUER
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_USERNAME_EXCLUDE_LIST;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_USERNAME_INCLUDE_LIST;
 import static io.debezium.connector.oracle.OracleConnectorConfig.PDB_NAME;
-import static io.debezium.connector.oracle.logminer.buffered.LogMinerQueryBuilder.IN_CLAUSE_MAX_ELEMENTS;
+import static io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerQueryBuilder.IN_CLAUSE_MAX_ELEMENTS;
 import static io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_EXCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.SCHEMA_INCLUDE_LIST;
@@ -40,13 +40,14 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningQueryFilterMode;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
+import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerQueryBuilder;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.relational.TableId;
 import io.debezium.util.Strings;
 
 /**
- * Unit test for the {@link LogMinerQueryBuilder}.
+ * Unit test for the {@link BufferedLogMinerQueryBuilder}.
  *
  * @author Chris Cranford
  */
@@ -90,13 +91,13 @@ public class LogMinerQueryBuilderTest {
         Configuration config = TestHelper.defaultConfig().build();
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
 
-        String result = LogMinerQueryBuilder.build(connectorConfig);
+        String result = BufferedLogMinerQueryBuilder.build(connectorConfig);
         assertThat(result).isEqualTo(getQueryFromTemplate(connectorConfig));
 
         config = TestHelper.defaultConfig().with(PDB_NAME, "").build();
         connectorConfig = new OracleConnectorConfig(config);
 
-        result = LogMinerQueryBuilder.build(connectorConfig);
+        result = BufferedLogMinerQueryBuilder.build(connectorConfig);
         assertThat(result).isEqualTo(getQueryFromTemplate(connectorConfig));
     }
 
@@ -108,13 +109,13 @@ public class LogMinerQueryBuilderTest {
                 .build();
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
 
-        String result = LogMinerQueryBuilder.build(connectorConfig);
+        String result = BufferedLogMinerQueryBuilder.build(connectorConfig);
         assertThat(result).isEqualTo(getQueryFromTemplate(connectorConfig));
 
         config = TestHelper.defaultConfig().with(PDB_NAME, "").build();
         connectorConfig = new OracleConnectorConfig(config);
 
-        result = LogMinerQueryBuilder.build(connectorConfig);
+        result = BufferedLogMinerQueryBuilder.build(connectorConfig);
         assertThat(result).isEqualTo(getQueryFromTemplate(connectorConfig));
     }
 
@@ -124,13 +125,13 @@ public class LogMinerQueryBuilderTest {
         Configuration config = TestHelper.defaultConfig().with(LOB_ENABLED, true).build();
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
 
-        String result = LogMinerQueryBuilder.build(connectorConfig);
+        String result = BufferedLogMinerQueryBuilder.build(connectorConfig);
         assertThat(result).isEqualTo(getQueryFromTemplate(connectorConfig));
 
         config = TestHelper.defaultConfig().with(PDB_NAME, "").with(LOB_ENABLED, true).build();
         connectorConfig = new OracleConnectorConfig(config);
 
-        result = LogMinerQueryBuilder.build(connectorConfig);
+        result = BufferedLogMinerQueryBuilder.build(connectorConfig);
         assertThat(result).isEqualTo(getQueryFromTemplate(connectorConfig));
     }
 
@@ -164,13 +165,13 @@ public class LogMinerQueryBuilderTest {
         Configuration config = TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_CLIENTID_EXCLUDE_LIST, "abc,xyz").build();
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
 
-        String result = LogMinerQueryBuilder.build(connectorConfig);
+        String result = BufferedLogMinerQueryBuilder.build(connectorConfig);
         assertThat(result).isEqualTo(getQueryFromTemplate(connectorConfig));
 
         config = TestHelper.defaultConfig().with(OracleConnectorConfig.LOG_MINING_CLIENTID_INCLUDE_LIST, "abc,xyz").build();
         connectorConfig = new OracleConnectorConfig(config);
 
-        result = LogMinerQueryBuilder.build(connectorConfig);
+        result = BufferedLogMinerQueryBuilder.build(connectorConfig);
         assertThat(result).isEqualTo(getQueryFromTemplate(connectorConfig));
     }
 
@@ -217,11 +218,11 @@ public class LogMinerQueryBuilderTest {
     private void assertQuery(ConfigBuilder builder) {
         // STORE_ONLY_CAPTURED_TABLES_DDL default (false)
         OracleConnectorConfig config = builder.with(STORE_ONLY_CAPTURED_TABLES_DDL, "false").build();
-        assertThat(LogMinerQueryBuilder.build(config)).isEqualTo(getQueryFromTemplate(config));
+        assertThat(BufferedLogMinerQueryBuilder.build(config)).isEqualTo(getQueryFromTemplate(config));
 
         // STORE_ONLY_CAPTURED_TABLES_DDL non-default (true)
         config = builder.with(STORE_ONLY_CAPTURED_TABLES_DDL, "true").build();
-        assertThat(LogMinerQueryBuilder.build(config)).isEqualTo(getQueryFromTemplate(config));
+        assertThat(BufferedLogMinerQueryBuilder.build(config)).isEqualTo(getQueryFromTemplate(config));
     }
 
     private String getQueryFromTemplate(OracleConnectorConfig config) {
