@@ -138,7 +138,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         this.selectLobParser = new SelectLobParser();
         this.extendedStringParser = new ExtendedStringParser();
         this.xmlBeginParser = new XmlBeginParser();
-        this.sqlQuery = BufferedLogMinerQueryBuilder.build(connectorConfig);
+        this.sqlQuery = new BufferedLogMinerQueryBuilder(connectorConfig).getQuery();
         this.jdbcConnection = jdbcConnection;
     }
 
