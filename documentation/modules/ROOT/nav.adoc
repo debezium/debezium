@@ -9,6 +9,7 @@
 ** xref:configuration/topic-auto-create-config.adoc[Customizing Topic Auto-Creation]
 ** xref:configuration/signalling.adoc[Sending Signals to Debezium]
 ** xref:configuration/notification.adoc[Receive notifications from Debezium]
+** xref:configuration/storage.adoc[Store Debezium state]
 * Source Connectors
 ** xref:connectors/index.adoc[Overview]
 ** xref:connectors/mysql.adoc[MySQL]
