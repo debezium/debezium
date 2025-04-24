@@ -244,7 +244,7 @@
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
                     <runOrder>${runOrder}</runOrder>
-                    <argLine>--add-opens java.base/java.net=ALL-UNNAMED -javaagent:"${settings.localRepository}/@{opentelemetry.agent.for.testing.artifact.relative.path}"</argLine>
+                    <argLine>--add-opens java.base/java.net=ALL-UNNAMED -javaagent:"${settings.localRepository}/@{opentelemetry.agent.for.testing.artifact.relative.path}" -Dio.opentelemetry.javaagent.slf4j.simpleLogger.defaultLogLevel=off</argLine>
                 </configuration>
             </plugin>
             <plugin>
