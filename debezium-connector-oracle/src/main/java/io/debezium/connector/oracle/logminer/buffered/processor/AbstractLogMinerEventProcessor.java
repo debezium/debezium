@@ -41,7 +41,7 @@ import io.debezium.connector.oracle.logminer.LogMinerChangeRecordEmitter;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.connector.oracle.logminer.TransactionCommitConsumer;
-import io.debezium.connector.oracle.logminer.buffered.LogMinerQueryBuilder;
+import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerQueryBuilder;
 import io.debezium.connector.oracle.logminer.buffered.processor.LogMinerTransactionCache.ScnDetails;
 import io.debezium.connector.oracle.logminer.events.DmlEvent;
 import io.debezium.connector.oracle.logminer.events.EventType;
@@ -138,7 +138,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         this.selectLobParser = new SelectLobParser();
         this.extendedStringParser = new ExtendedStringParser();
         this.xmlBeginParser = new XmlBeginParser();
-        this.sqlQuery = LogMinerQueryBuilder.build(connectorConfig);
+        this.sqlQuery = BufferedLogMinerQueryBuilder.build(connectorConfig);
         this.jdbcConnection = jdbcConnection;
     }
 

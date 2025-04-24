@@ -80,8 +80,8 @@ import io.debezium.connector.oracle.junit.SkipTestDependingOnStrategyRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIs;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenLogMiningStrategyIs;
-import io.debezium.connector.oracle.logminer.buffered.LogMinerAdapter;
-import io.debezium.connector.oracle.logminer.buffered.LogMinerStreamingChangeEventSource;
+import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerAdapter;
+import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.logminer.buffered.processor.AbstractLogMinerEventProcessor;
 import io.debezium.connector.oracle.logminer.buffered.processor.memory.MemoryLogMinerEventProcessor;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -3073,7 +3073,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4161_WITH_A_NAME_THAT_IS_GREATER_THAN_30")
                     .build();
 
-            LogInterceptor logInterceptor = new LogInterceptor(LogMinerStreamingChangeEventSource.class);
+            LogInterceptor logInterceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
 
@@ -3116,7 +3116,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4161")
                     .build();
 
-            LogInterceptor logInterceptor = new LogInterceptor(LogMinerStreamingChangeEventSource.class);
+            LogInterceptor logInterceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
 
@@ -3483,7 +3483,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     public void shouldSnapshotAndStreamAllRecordsThatSpanAcrossSnapshotStreamingBoundarySmallTrxs() throws Exception {
         TestHelper.dropTable(connection, "dbz5085");
         try {
-            LogInterceptor logInterceptor = new LogInterceptor(LogMinerAdapter.class);
+            LogInterceptor logInterceptor = new LogInterceptor(BufferedLogMinerAdapter.class);
 
             setConsumeTimeout(10, TimeUnit.SECONDS);
 
@@ -3558,7 +3558,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     public void shouldSnapshotAndStreamAllRecordsThatSpanAcrossSnapshotStreamingBoundaryLargeTrxs() throws Exception {
         TestHelper.dropTable(connection, "dbz5085");
         try {
-            LogInterceptor logInterceptor = new LogInterceptor(LogMinerAdapter.class);
+            LogInterceptor logInterceptor = new LogInterceptor(BufferedLogMinerAdapter.class);
 
             setConsumeTimeout(10, TimeUnit.SECONDS);
 
@@ -3990,7 +3990,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
                     .with(OracleConnectorConfig.LOG_MINING_SESSION_MAX_MS, 10_000L)
                     .build();
 
-            LogInterceptor logInterceptor = new LogInterceptor(LogMinerStreamingChangeEventSource.class);
+            LogInterceptor logInterceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
 
@@ -4022,7 +4022,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4963")
                     .build();
 
-            LogInterceptor logInterceptor = new LogInterceptor(LogMinerStreamingChangeEventSource.class);
+            LogInterceptor logInterceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
 
@@ -5330,8 +5330,8 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
                 .with(OracleConnectorConfig.LOG_MINING_RESTART_CONNECTION, "true")
                 .build();
 
-        LogInterceptor logInterceptor = new LogInterceptor(LogMinerStreamingChangeEventSource.class);
-        logInterceptor.setLoggerLevel(LogMinerStreamingChangeEventSource.class, Level.DEBUG);
+        LogInterceptor logInterceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
+        logInterceptor.setLoggerLevel(BufferedLogMinerStreamingChangeEventSource.class, Level.DEBUG);
 
         start(OracleConnector.class, config);
         assertConnectorIsRunning();
@@ -5359,8 +5359,8 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
                 .with(OracleConnectorConfig.LOG_MINING_RESTART_CONNECTION, "true")
                 .build();
 
-        LogInterceptor logInterceptor = new LogInterceptor(LogMinerStreamingChangeEventSource.class);
-        logInterceptor.setLoggerLevel(LogMinerStreamingChangeEventSource.class, Level.DEBUG);
+        LogInterceptor logInterceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
+        logInterceptor.setLoggerLevel(BufferedLogMinerStreamingChangeEventSource.class, Level.DEBUG);
 
         start(OracleConnector.class, config);
         assertConnectorIsRunning();
@@ -5540,8 +5540,8 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
                     .with(OracleConnectorConfig.LOG_MINING_BATCH_SIZE_MIN, "100")
                     .build();
 
-            final LogInterceptor sourceLogging = new LogInterceptor(LogMinerStreamingChangeEventSource.class);
-            sourceLogging.setLoggerLevel(LogMinerStreamingChangeEventSource.class, Level.DEBUG);
+            final LogInterceptor sourceLogging = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
+            sourceLogging.setLoggerLevel(BufferedLogMinerStreamingChangeEventSource.class, Level.DEBUG);
 
             final LogInterceptor processorLogging = new LogInterceptor(AbstractLogMinerEventProcessor.class);
             processorLogging.setLoggerLevel(AbstractLogMinerEventProcessor.class, Level.DEBUG);
@@ -5612,8 +5612,8 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
                     .with(OracleConnectorConfig.LOG_MINING_BATCH_SIZE_MIN, "100")
                     .build();
 
-            final LogInterceptor sourceLogging = new LogInterceptor(LogMinerStreamingChangeEventSource.class);
-            sourceLogging.setLoggerLevel(LogMinerStreamingChangeEventSource.class, Level.DEBUG);
+            final LogInterceptor sourceLogging = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
+            sourceLogging.setLoggerLevel(BufferedLogMinerStreamingChangeEventSource.class, Level.DEBUG);
 
             start(OracleConnector.class, config);
             assertConnectorIsRunning();

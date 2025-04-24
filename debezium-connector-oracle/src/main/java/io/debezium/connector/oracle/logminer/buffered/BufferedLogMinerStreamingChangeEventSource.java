@@ -65,9 +65,9 @@ import io.debezium.util.Strings;
  * A {@link StreamingChangeEventSource} based on Oracle's LogMiner utility.
  * The event handler loop is executed in a separate executor.
  */
-public class LogMinerStreamingChangeEventSource implements StreamingChangeEventSource<OraclePartition, OracleOffsetContext> {
+public class BufferedLogMinerStreamingChangeEventSource implements StreamingChangeEventSource<OraclePartition, OracleOffsetContext> {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(LogMinerStreamingChangeEventSource.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(BufferedLogMinerStreamingChangeEventSource.class);
     private static final int MAXIMUM_NAME_LENGTH = 30;
     private static final String ALL_COLUMN_LOGGING = "ALL COLUMN LOGGING";
     private static final int MINING_START_RETRIES = 5;
@@ -99,11 +99,11 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
     private long currentSleepTime;
     private final SnapshotterService snapshotterService;
 
-    public LogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
-                                              OracleConnection jdbcConnection, EventDispatcher<OraclePartition, TableId> dispatcher,
-                                              ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema,
-                                              Configuration jdbcConfig, LogMinerStreamingChangeEventSourceMetrics streamingMetrics,
-                                              SnapshotterService snapshotterService) {
+    public BufferedLogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
+                                                      OracleConnection jdbcConnection, EventDispatcher<OraclePartition, TableId> dispatcher,
+                                                      ErrorHandler errorHandler, Clock clock, OracleDatabaseSchema schema,
+                                                      Configuration jdbcConfig, LogMinerStreamingChangeEventSourceMetrics streamingMetrics,
+                                                      SnapshotterService snapshotterService) {
         this.jdbcConnection = jdbcConnection;
         this.dispatcher = dispatcher;
         this.clock = clock;
@@ -307,7 +307,7 @@ public class LogMinerStreamingChangeEventSource implements StreamingChangeEventS
                 }
                 LOGGER.info("\tGroup #{}: {} bytes", rs.getInt(1), logSize);
             }
-            if (config.getAdapter().getType().equals(LogMinerAdapter.TYPE)) {
+            if (config.getAdapter().getType().equals(BufferedLogMinerAdapter.TYPE)) {
                 if (config.getLogMiningStrategy() == OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO) {
                     if (potentiallySmallLogs) {
                         LOGGER.warn("Redo logs may be sized too small using the default mining strategy, " +
