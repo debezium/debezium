@@ -6,7 +6,6 @@
 package io.debezium.connector.oracle.logminer;
 
 import java.math.BigInteger;
-import java.sql.CallableStatement;
 import java.sql.SQLException;
 import java.text.DecimalFormat;
 import java.time.Duration;
@@ -71,12 +70,15 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private final JdbcConfiguration jdbcConfiguration;
     private final boolean useContinuousMining;
     private final LogFileCollector logCollector;
+    private final LogMinerSessionContext sessionContext;
     private final String pathToDictionary;
 
     private List<LogFile> currentLogFiles;
     private List<BigInteger> currentRedoLogSequences;
     private OracleOffsetContext effectiveOffset;
     private OraclePartition partition;
+    private int currentBatchSize;
+    private long currentSleepTime;
 
     public AbstractLogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
                                                       OracleConnection jdbcConnection,
@@ -96,6 +98,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         this.jdbcConfiguration = JdbcConfiguration.adapt(jdbcConfig);
         this.useContinuousMining = connectorConfig.isLogMiningContinuousMining(jdbcConnection.getOracleVersion());
         this.logCollector = new LogFileCollector(connectorConfig, jdbcConnection);
+        this.sessionContext = new LogMinerSessionContext(jdbcConnection, useContinuousMining, connectorConfig.getLogMiningStrategy());
         this.pathToDictionary = connectorConfig.getLogMiningPathToDictionary();
 
         metrics.setBatchSize(connectorConfig.getLogMiningBatchSizeDefault());
@@ -353,9 +356,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         return result;
     }
 
-    private int currentBatchSize;
-    private long currentSleepTime;
-
     /**
      * Checks whether the connector is operating in archive only mode and waits for the specified scn
      * to be available in the logs.
@@ -512,24 +512,18 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      */
     protected void prepareLogsForMining(boolean postMiningSessionEnded, Scn lowerBoundsScn) throws SQLException {
         if (!useContinuousMining) {
-            jdbcConnection.removeAllLogFilesFromLogMinerSession();
+            sessionContext.removeAllLogFilesFromSession();
         }
 
         if ((!postMiningSessionEnded || !useContinuousMining) && isUsingCatalogInRedoStrategy()) {
-            LOGGER.trace("Building data dictionary");
-            jdbcConnection.executeWithoutCommitting(
-                    "BEGIN DBMS_LOGMNR_D.BUILD (options => DBMS_LOGMNR_D.STORE_IN_REDO_LOGS); END;");
+            sessionContext.writeDataDictionaryToRedoLogs();
         }
 
         currentLogFiles = logCollector.getLogs(lowerBoundsScn);
 
         if (!useContinuousMining) {
             for (LogFile logFile : currentLogFiles) {
-                LOGGER.trace("Adding log file {} to the mining session.", logFile.getFileName());
-                final String query = SqlUtils.addLogFileStatement("DBMS_LOGMNR.ADDFILE", logFile.getFileName());
-                try (CallableStatement st = jdbcConnection.connection(false).prepareCall(query)) {
-                    st.execute();
-                }
+                sessionContext.addLogFile(logFile.getFileName());
             }
 
             currentRedoLogSequences = currentLogFiles.stream()
@@ -562,34 +556,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     }
 
     /**
-     * Resolves all the mining session options based on the configuration.
-     *
-     * @return options to set when starting a LogMiner session.
-     */
-    protected List<String> getMiningSessionOptions() {
-        final List<String> miningOptions = new ArrayList<>();
-        if (isUsingCatalogInRedoStrategy()) {
-            miningOptions.add("DBMS_LOGMNR.DICT_FROM_REDO_LOGS");
-            miningOptions.add("DBMS_LOGMNR.DDL_DICT_TRACKING");
-        }
-        else {
-            miningOptions.add("DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG");
-        }
-
-        if (useContinuousMining) {
-            miningOptions.add("DBMS_LOGMNR.CONTINUOUS_MINE");
-        }
-
-        if (isUsingCommittedDataOnly()) {
-            miningOptions.add("DBMS_LOGMNR.COMMITTED_DATA_ONLY");
-        }
-
-        miningOptions.add("DBMS_LOGMNR.NO_ROWID_IN_STMT");
-
-        return miningOptions;
-    }
-
-    /**
      * Starts a mining session
      *
      * @param startScn starting system change number, may be {@link Scn#NULL} to leave unset
@@ -603,34 +569,15 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             LOGGER.debug("Starting mining session [startScn={}, endScn={}, strategy={}, attempts={}/{}]",
                     startScn, endScn, connectorConfig.getLogMiningStrategy(), attempts, MINING_START_RETRIES);
 
-            final StringBuilder query = new StringBuilder(64);
-            query.append("BEGIN sys.dbms_logmnr.start_logmnr(");
-            if (!startScn.isNull()) {
-                query.append("startScn => '").append(startScn).append("', ");
-            }
-            if (!endScn.isNull()) {
-                query.append("endScn => '").append(endScn).append("', ");
-            }
-            query.append("options => ").append(String.join(" + ", getMiningSessionOptions()));
-            if (connectorConfig.getLogMiningStrategy() == OracleConnectorConfig.LogMiningStrategy.DICTIONARY_FROM_FILE) {
-                query.append(", DICTFILENAME => '").append(this.pathToDictionary).append("'");
-            }
-            query.append("); END;");
-
-            Instant start = Instant.now();
-
-            // NOTE: we treat lowerBoundsScn as the _exclusive_ lower bound for mining,
-            // whereas START_LOGMNR takes an _inclusive_ lower bound, hence the increment.
-            jdbcConnection.executeWithoutCommitting(query.toString());
-
-            metrics.setLastMiningSessionStartDuration(Duration.between(start, Instant.now()));
+            sessionContext.startSession(startScn, endScn, isUsingCommittedDataOnly(), pathToDictionary);
+            metrics.setLastMiningSessionStartDuration(sessionContext.getLastSessionStartTime());
 
             return true;
         }
-        catch (SQLException e) {
+        catch (Exception e) {
             LogMinerDatabaseStateWriter.writeLogMinerStartParameters(jdbcConnection);
 
-            if (e.getErrorCode() == 1291 || e.getMessage().startsWith("ORA-01291")) {
+            if (e instanceof RetriableLogMinerException) {
                 if (attempts <= MINING_START_RETRIES) {
                     LOGGER.warn("Failed to start Oracle LogMiner session, retrying...");
                     return false;
@@ -655,18 +602,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if the current mining session cannot be ended gracefully
      */
     protected void endMiningSession() throws SQLException {
-        try {
-            LOGGER.trace("Ending log mining session");
-            jdbcConnection.executeWithoutCommitting("BEGIN SYS.DBMS_LOGMNR.END_LOGMNR(); END;");
-        }
-        catch (SQLException e) {
-            if (e.getMessage().toUpperCase().contains("ORA-01307")) {
-                LOGGER.info("LogMiner mining session is already closed.");
-                return;
-            }
-            // LogMiner failed to terminate properly, a restart of the connector will be required.
-            throw e;
-        }
+        sessionContext.endMiningSession();
     }
 
     /**

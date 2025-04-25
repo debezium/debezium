@@ -27,12 +27,8 @@ public class SqlUtilsTest {
 
     @Test
     public void testStatements() {
-        String result = SqlUtils.addLogFileStatement("ADD", "FILENAME");
-        String expected = "BEGIN sys.dbms_logmnr.add_logfile(LOGFILENAME => 'FILENAME', OPTIONS => ADD);END;";
-        assertThat(expected.equals(result)).isTrue();
-
-        result = SqlUtils.databaseSupplementalLoggingMinCheckQuery();
-        expected = "SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_MIN FROM V$DATABASE";
+        String result = SqlUtils.databaseSupplementalLoggingMinCheckQuery();
+        String expected = "SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_MIN FROM V$DATABASE";
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.tableSupplementalLoggingCheckQuery();
@@ -164,10 +160,6 @@ public class SqlUtilsTest {
                 "A.DICTIONARY_END, A.THREAD# AS THREAD FROM V$ARCHIVED_LOG A WHERE A.NAME IS NOT NULL AND A.ARCHIVED = 'YES' AND A.STATUS = 'A' " +
                 "AND A.NEXT_CHANGE# > 10 AND A.DEST_ID IN (SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS WHERE STATUS='VALID' " +
                 "AND TYPE='LOCAL' AND ROWNUM=1) AND A.FIRST_TIME >= SYSDATE - (1/24) ORDER BY 7";
-        assertThat(result).isEqualTo(expected);
-
-        result = SqlUtils.deleteLogFileStatement("file_name");
-        expected = "BEGIN SYS.DBMS_LOGMNR.REMOVE_LOGFILE(LOGFILENAME => 'file_name');END;";
         assertThat(result).isEqualTo(expected);
     }
 }

@@ -26,6 +26,7 @@ import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.oracle.AbstractStreamingAdapter;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.OracleConnectorConfig.TransactionSnapshotBoundaryMode;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
@@ -213,39 +214,6 @@ public abstract class AbstractLogMinerStreamingAdapter
                 .build();
     }
 
-    protected void addLogsToSession(List<LogFile> logs, OracleConnection connection) throws SQLException {
-        for (LogFile logFile : logs) {
-            LOGGER.debug("\tAdding log: {}", logFile.getFileName());
-            connection.executeWithoutCommitting(SqlUtils.addLogFileStatement("DBMS_LOGMNR.ADDFILE", logFile.getFileName()));
-        }
-    }
-
-    protected void startSession(OracleConnection connection) throws SQLException {
-        // We explicitly use the ONLINE data dictionary mode here.
-        // Since we are only concerned about non-SQL columns, it is safe to always use this mode
-        final String query = "BEGIN sys.dbms_logmnr.start_logmnr("
-                + "OPTIONS => DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG + DBMS_LOGMNR.NO_ROWID_IN_STMT);"
-                + "END;";
-        LOGGER.debug("\tStarting mining session");
-        connection.executeWithoutCommitting(query);
-    }
-
-    private void stopSession(OracleConnection connection) throws SQLException {
-        // stop the current mining session
-        try {
-            LOGGER.debug("\tStopping mining session");
-            connection.executeWithoutCommitting("BEGIN SYS.DBMS_LOGMNR.END_LOGMNR(); END;");
-        }
-        catch (SQLException e) {
-            if (e.getMessage().toUpperCase().contains("ORA-01307")) {
-                LOGGER.debug("LogMiner mining session is already closed.");
-            }
-            else {
-                throw e;
-            }
-        }
-    }
-
     protected Scn getOldestScnAvailableInLogs(OracleConnectorConfig config, OracleConnection connection) throws SQLException {
         final Duration archiveLogRetention = config.getArchiveLogRetention();
         final String archiveLogDestinationName = config.getArchiveLogDestinationName();
@@ -273,9 +241,9 @@ public abstract class AbstractLogMinerStreamingAdapter
         final Scn oldestScn = getOldestScnAvailableInLogs(connectorConfig, connection);
         final List<LogFile> logFiles = getOrderedLogsFromScn(connectorConfig, oldestScn, connection);
         if (!logFiles.isEmpty()) {
-            try {
-                addLogsToSession(getMostRecentLogFilesForSearch(logFiles), connection);
-                startSession(connection);
+            try (var context = new LogMinerSessionContext(connection, false, LogMiningStrategy.ONLINE_CATALOG)) {
+                context.addLogFiles(getMostRecentLogFilesForSearch(logFiles));
+                context.startSession(Scn.NULL, Scn.NULL, false, connectorConfig.getLogMiningPathToDictionary());
 
                 LOGGER.info("\tQuerying transaction logs, please wait...");
                 connection.query("SELECT START_SCN, XID FROM V$LOGMNR_CONTENTS WHERE OPERATION_CODE=7 AND SCN >= " + currentScn + " AND START_SCN <= " + currentScn,
@@ -295,9 +263,6 @@ public abstract class AbstractLogMinerStreamingAdapter
             }
             catch (Exception e) {
                 throw new DebeziumException("Failed to resolve snapshot offset", e);
-            }
-            finally {
-                stopSession(connection);
             }
         }
     }

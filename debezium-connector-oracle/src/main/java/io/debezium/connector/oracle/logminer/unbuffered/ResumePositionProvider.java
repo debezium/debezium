@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.oracle.logminer.unbuffered;
 
-import java.sql.CallableStatement;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.LinkedHashMap;
@@ -17,9 +16,10 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.LogFile;
-import io.debezium.connector.oracle.logminer.SqlUtils;
+import io.debezium.connector.oracle.logminer.LogMinerSessionContext;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.util.Clock;
@@ -50,6 +50,7 @@ public class ResumePositionProvider implements AutoCloseable {
     private final Duration updateInterval;
 
     private OracleConnection connection;
+    private LogMinerSessionContext sessionContext;
     private volatile Timer queryTimer;
 
     public ResumePositionProvider(OracleConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig) {
@@ -63,6 +64,7 @@ public class ResumePositionProvider implements AutoCloseable {
     public void close() throws Exception {
         if (connection != null) {
             LOGGER.info("Stopping the unbuffered resume position provider");
+            sessionContext.close();
             connection.close();
         }
     }
@@ -86,21 +88,15 @@ public class ResumePositionProvider implements AutoCloseable {
                 if (!Strings.isNullOrEmpty(connectorConfig.getPdbName())) {
                     connection.resetSessionToCdb();
                 }
+
+                sessionContext = new LogMinerSessionContext(connection, false, LogMiningStrategy.ONLINE_CATALOG);
             }
 
-            connection.removeAllLogFilesFromLogMinerSession();
+            sessionContext.removeAllLogFilesFromSession();
 
-            for (LogFile logFile : logFiles) {
-                final String query = SqlUtils.addLogFileStatement("DBMS_LOGMNR.ADDFILE", logFile.getFileName());
-                try (CallableStatement st = connection.connection(false).prepareCall(query)) {
-                    st.execute();
-                }
-            }
+            sessionContext.addLogFiles(logFiles);
 
-            final String query = "BEGIN sys.dbms_logmnr.start_logmnr('" +
-                    currentResumeScn + "', OPTIONS => DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG); END;";
-
-            connection.executeWithoutCommitting(query);
+            sessionContext.startSession(currentResumeScn, Scn.NULL, false, connectorConfig.getLogMiningPathToDictionary());
 
             final Scn resumeScn = connection.prepareQueryAndMap(
                     "SELECT * FROM V$LOGMNR_CONTENTS WHERE OPERATION_CODE IN (6,7,36) AND SCN <= ?",
@@ -141,12 +137,7 @@ public class ResumePositionProvider implements AutoCloseable {
             return resumeScn;
         }
         finally {
-            try {
-                connection.executeWithoutCommitting("BEGIN SYS.DBMS_LOGMNR.END_LOGMNR(); END;");
-            }
-            catch (SQLException e) {
-                // ignored
-            }
+            sessionContext.endMiningSession();
             queryTimer = resetTimer();
         }
     }
