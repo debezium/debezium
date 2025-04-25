@@ -7,7 +7,6 @@ package io.debezium.connector.oracle.logminer;
 
 import java.time.Duration;
 
-import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.util.Strings;
 
@@ -202,41 +201,6 @@ public class SqlUtils {
     }
 
     // ***** LogMiner methods ***
-    /**
-     * This returns statement to build LogMiner view for online redo log files
-     * @param startScn mine from
-     * @param endScn mine till
-     * @param strategy Log Mining strategy
-     * @param continuousMining whether to use continuous mining
-     * @return statement todo: handle corruption. STATUS (Double) — value of 0 indicates it is executable
-     */
-    public static String startLogMinerStatement(Scn startScn, Scn endScn, OracleConnectorConfig.LogMiningStrategy strategy, boolean continuousMining) {
-        String miningStrategy;
-        if (strategy.equals(OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO)) {
-            miningStrategy = "DBMS_LOGMNR.DICT_FROM_REDO_LOGS + DBMS_LOGMNR.DDL_DICT_TRACKING ";
-        }
-        else {
-            miningStrategy = "DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG ";
-        }
-        if (continuousMining) {
-            miningStrategy += " + DBMS_LOGMNR.CONTINUOUS_MINE ";
-        }
-        return "BEGIN sys.dbms_logmnr.start_logmnr(" +
-                "startScn => '" + startScn + "', " +
-                "endScn => '" + endScn + "', " +
-                "OPTIONS => " + miningStrategy +
-                " + DBMS_LOGMNR.NO_ROWID_IN_STMT);" +
-                "END;";
-    }
-
-    public static String addLogFileStatement(String option, String fileName) {
-        return "BEGIN sys.dbms_logmnr.add_logfile(LOGFILENAME => '" + fileName + "', OPTIONS => " + option + ");END;";
-    }
-
-    public static String deleteLogFileStatement(String fileName) {
-        return "BEGIN SYS.DBMS_LOGMNR.REMOVE_LOGFILE(LOGFILENAME => '" + fileName + "');END;";
-    }
-
     public static String getScnByTimeDeltaQuery(Scn scn, Duration duration) {
         if (scn == null) {
             return null;

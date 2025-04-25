@@ -13,7 +13,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 
-import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
@@ -27,26 +26,12 @@ public class SqlUtilsTest {
 
     @Test
     public void testStatements() {
-        String result = SqlUtils.addLogFileStatement("ADD", "FILENAME");
-        String expected = "BEGIN sys.dbms_logmnr.add_logfile(LOGFILENAME => 'FILENAME', OPTIONS => ADD);END;";
-        assertThat(expected.equals(result)).isTrue();
-
-        result = SqlUtils.databaseSupplementalLoggingMinCheckQuery();
-        expected = "SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_MIN FROM V$DATABASE";
+        String result = SqlUtils.databaseSupplementalLoggingMinCheckQuery();
+        String expected = "SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_MIN FROM V$DATABASE";
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.tableSupplementalLoggingCheckQuery();
         expected = "SELECT 'KEY', LOG_GROUP_TYPE FROM ALL_LOG_GROUPS WHERE OWNER=? AND TABLE_NAME=?";
-        assertThat(result).isEqualTo(expected);
-
-        result = SqlUtils.startLogMinerStatement(Scn.valueOf(10L), Scn.valueOf(20L), OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG, true);
-        expected = "BEGIN sys.dbms_logmnr.start_logmnr(startScn => '10', endScn => '20', " +
-                "OPTIONS => DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG  + DBMS_LOGMNR.CONTINUOUS_MINE  + DBMS_LOGMNR.NO_ROWID_IN_STMT);END;";
-        assertThat(result).isEqualTo(expected);
-
-        result = SqlUtils.startLogMinerStatement(Scn.valueOf(10L), Scn.valueOf(20L), OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO, false);
-        expected = "BEGIN sys.dbms_logmnr.start_logmnr(startScn => '10', endScn => '20', " +
-                "OPTIONS => DBMS_LOGMNR.DICT_FROM_REDO_LOGS + DBMS_LOGMNR.DDL_DICT_TRACKING  + DBMS_LOGMNR.NO_ROWID_IN_STMT);END;";
         assertThat(result).isEqualTo(expected);
 
         result = SqlUtils.getScnByTimeDeltaQuery(Scn.valueOf(123L), Duration.ofMinutes(1));
@@ -158,10 +143,6 @@ public class SqlUtilsTest {
                 "A.DICTIONARY_END, A.THREAD# AS THREAD FROM V$ARCHIVED_LOG A WHERE A.NAME IS NOT NULL AND A.ARCHIVED = 'YES' AND A.STATUS = 'A' " +
                 "AND A.NEXT_CHANGE# > 10 AND A.DEST_ID IN (SELECT DEST_ID FROM V$ARCHIVE_DEST_STATUS WHERE STATUS='VALID' " +
                 "AND TYPE='LOCAL' AND ROWNUM=1) AND A.FIRST_TIME >= SYSDATE - (1/24) ORDER BY 7";
-        assertThat(result).isEqualTo(expected);
-
-        result = SqlUtils.deleteLogFileStatement("file_name");
-        expected = "BEGIN SYS.DBMS_LOGMNR.REMOVE_LOGFILE(LOGFILENAME => 'file_name');END;";
         assertThat(result).isEqualTo(expected);
     }
 }

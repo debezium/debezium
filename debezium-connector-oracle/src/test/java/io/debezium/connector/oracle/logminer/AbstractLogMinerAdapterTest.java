@@ -46,8 +46,6 @@ public abstract class AbstractLogMinerAdapterTest<T extends AbstractLogMinerStre
         // Mock up adapter methods
         Mockito.doReturn(Scn.valueOf(20798000)).when(adapter).getOldestScnAvailableInLogs(Mockito.any(), Mockito.any());
         Mockito.doReturn(logs).when(adapter).getOrderedLogsFromScn(Mockito.any(), Mockito.any(), Mockito.any());
-        Mockito.doNothing().when(adapter).addLogsToSession(Mockito.any(), Mockito.any());
-        Mockito.doNothing().when(adapter).startSession(Mockito.any());
 
         final Connection connection = Mockito.mock(Connection.class);
         final Statement statement = Mockito.mock(Statement.class);
