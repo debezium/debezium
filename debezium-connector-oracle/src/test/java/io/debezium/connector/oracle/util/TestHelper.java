@@ -161,7 +161,20 @@ public class TestHelper {
             builder.withDefault(OracleConnectorConfig.OLR_HOST, OPENLOGREPLICATOR_HOST);
             builder.withDefault(OracleConnectorConfig.OLR_PORT, OPENLOGREPLICATOR_PORT);
         }
+        else if (adapter().equals(ConnectorAdapter.LOG_MINER_UNBUFFERED)) {
+            // Speeds up tests
+            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MIN_MS, 0);
+            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_INCREMENT_MS, 500);
+            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_DEFAULT_MS, 500);
+            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MAX_MS, 1000);
+        }
         else {
+            // Speeds up tests
+            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MIN_MS, 0);
+            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_INCREMENT_MS, 500);
+            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_DEFAULT_MS, 500);
+            builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MAX_MS, 1000);
+
             final Boolean readOnly = Boolean.parseBoolean(System.getProperty(OracleConnectorConfig.LOG_MINING_READ_ONLY.name()));
             if (readOnly) {
                 builder.with(OracleConnectorConfig.LOG_MINING_READ_ONLY, readOnly);
@@ -558,7 +571,11 @@ public class TestHelper {
     }
 
     public static int defaultMessageConsumerPollTimeout() {
-        return 120;
+        if (adapter().equals(ConnectorAdapter.XSTREAM)) {
+            return 120;
+        }
+        // Speeds up tests for LogMiner and OLR
+        return 20;
     }
 
     public static ConnectorAdapter adapter() {

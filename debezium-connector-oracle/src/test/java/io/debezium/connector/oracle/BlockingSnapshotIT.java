@@ -34,8 +34,8 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest<OracleConne
     public void before() throws Exception {
         connection = TestHelper.testConnection();
 
-        TestHelper.dropTable(connection, "a");
-        TestHelper.dropTable(connection, "b");
+        TestHelper.dropAllTables();
+
         connection.execute("CREATE TABLE a (pk numeric(9,0) primary key, aa numeric(9,0))");
         connection.execute("CREATE TABLE b (pk numeric(9,0) primary key, aa numeric(9,0))");
         connection.execute("GRANT INSERT on a to " + TestHelper.getConnectorUserName());
@@ -57,9 +57,7 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest<OracleConne
     public void after() throws Exception {
         stopConnector();
         if (connection != null) {
-            TestHelper.dropTable(connection, "a");
-            TestHelper.dropTable(connection, "b");
-            TestHelper.dropTable(connection, "debezium_signal");
+            TestHelper.dropAllTables();
             connection.close();
         }
     }

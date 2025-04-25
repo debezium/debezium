@@ -34,7 +34,8 @@ public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<S
                 .field(SourceInfo.ROW_ID, Schema.OPTIONAL_STRING_SCHEMA)
                 .field(SourceInfo.COMMIT_TIMESTAMP_KEY, Schema.OPTIONAL_INT64_SCHEMA)
                 .field(SourceInfo.START_SCN_KEY, Schema.OPTIONAL_STRING_SCHEMA)
-                .field(SourceInfo.START_TIMESTAMP_KEY, Schema.OPTIONAL_INT64_SCHEMA).build();
+                .field(SourceInfo.START_TIMESTAMP_KEY, Schema.OPTIONAL_INT64_SCHEMA)
+                .field(SourceInfo.TXSEQ_KEY, Schema.OPTIONAL_INT64_SCHEMA).build();
     }
 
     @Override
@@ -50,6 +51,7 @@ public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<S
                 .put(SourceInfo.SCHEMA_NAME_KEY, sourceInfo.tableSchema())
                 .put(SourceInfo.TABLE_NAME_KEY, sourceInfo.table())
                 .put(SourceInfo.TXID_KEY, sourceInfo.getTransactionId())
+                .put(SourceInfo.TXSEQ_KEY, sourceInfo.getTransactionSequence())
                 .put(SourceInfo.EVENT_SCN_KEY, eventScn);
 
         if (sourceInfo.getLcrPosition() != null) {
@@ -69,10 +71,14 @@ public class OracleSourceInfoStructMaker extends AbstractSourceInfoStructMaker<S
         }
 
         ret.put(CommitScn.SQL_SEQUENCE_NUMBER_KEY, sourceInfo.getSsn());
+        ret.put(CommitScn.REDO_THREAD_KEY, sourceInfo.getRedoThread());
 
-        final CommitScn commitScn = sourceInfo.getCommitScn();
-        if (commitScn != null) {
-            commitScn.store(sourceInfo, ret);
+        // While sourceInfo.getCommitScn() tracks CommitScn details by redo thread, these
+        // need to be set independently of the commit scn details per event, so here
+        // the source information block is built on the event-specific details
+        final Scn eventCommitScn = sourceInfo.getEventCommitScn();
+        if (eventCommitScn != null && !eventCommitScn.isNull()) {
+            ret.put(SourceInfo.COMMIT_SCN_KEY, eventCommitScn.toString());
         }
 
         if (sourceInfo.getCommitTime() != null) {

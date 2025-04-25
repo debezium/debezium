@@ -6,7 +6,6 @@
 package io.debezium.connector.oracle.logminer.buffered.processor;
 
 import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -20,8 +19,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -60,24 +57,25 @@ import io.debezium.connector.oracle.logminer.events.XmlWriteEvent;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.connector.oracle.logminer.parser.DmlParserException;
 import io.debezium.connector.oracle.logminer.parser.ExtendedStringParser;
+import io.debezium.connector.oracle.logminer.parser.LobWriteParser;
+import io.debezium.connector.oracle.logminer.parser.LobWriteParser.LobWrite;
 import io.debezium.connector.oracle.logminer.parser.LogMinerColumnResolverDmlParser;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntryImpl;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlParser;
 import io.debezium.connector.oracle.logminer.parser.SelectLobParser;
 import io.debezium.connector.oracle.logminer.parser.XmlBeginParser;
+import io.debezium.connector.oracle.logminer.parser.XmlWriteParser;
+import io.debezium.connector.oracle.logminer.parser.XmlWriteParser.XmlWrite;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
-import io.debezium.text.ParsingException;
 import io.debezium.util.Clock;
 import io.debezium.util.Loggings;
 import io.debezium.util.Strings;
-
-import oracle.sql.RAW;
 
 /**
  * An abstract implementation of {@link LogMinerEventProcessor} that all processors should extend.
@@ -89,8 +87,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractLogMinerEventProcessor.class);
     private static final Logger ABANDONED_DETAILS_LOGGER = LoggerFactory.getLogger(AbstractLogMinerEventProcessor.class.getName() + ".AbandonedDetails");
     private static final String NO_SEQUENCE_TRX_ID_SUFFIX = "ffffffff";
-    private static final String XML_WRITE_PREAMBLE = "XML_REDO := ";
-    private static final String XML_WRITE_PREAMBLE_NULL = XML_WRITE_PREAMBLE + "NULL";
 
     private final OracleConnection jdbcConnection;
     private final ChangeEventSourceContext context;
@@ -587,7 +583,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
 
         final T transaction = getTransactionCache().getAndRemoveTransaction(transactionId);
         if (transaction == null) {
-            if (!offsetContext.getCommitScn().hasCommitAlreadyBeenHandled(row)) {
+            if (!offsetContext.getCommitScn().hasEventScnBeenHandled(row)) {
                 LOGGER.debug("Transaction {} not found in cache with SCN {}, no events to commit.", transactionId, row.getScn());
             }
             handleCommitNotFoundInBuffer(row);
@@ -595,7 +591,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
 
         final Scn smallestScn = calculateSmallestScn();
         final Scn commitScn = row.getScn();
-        if (offsetContext.getCommitScn().hasCommitAlreadyBeenHandled(row)) {
+        if (offsetContext.getCommitScn().hasEventScnBeenHandled(row)) {
             if (transaction != null) {
                 if (transaction.getNumberOfEvents() > 0) {
                     final Scn lastCommittedScn = offsetContext.getCommitScn().getCommitScnForRedoThread(row.getThread());
@@ -652,6 +648,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                 }
 
                 offsetContext.setEventScn(event.getScn());
+                offsetContext.setEventCommitScn(row.getScn());
                 offsetContext.setTransactionId(transactionId);
                 offsetContext.setUserName(transaction.getUserName());
                 offsetContext.setSourceTime(event.getChangeTime().minusSeconds(databaseOffset.getTotalSeconds()));
@@ -931,7 +928,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
             return;
         }
 
-        if (offsetContext.getCommitScn().hasCommitAlreadyBeenHandled(row)) {
+        if (offsetContext.getCommitScn().hasEventScnBeenHandled(row)) {
             final Scn commitScn = offsetContext.getCommitScn().getCommitScnForRedoThread(row.getThread());
             LOGGER.trace("DDL: SQL '{}' skipped with {} (SCN) <= {} (commit SCN for redo thread {})",
                     row.getRedoSql(), row.getScn(), commitScn, row.getThread());
@@ -1082,8 +1079,8 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
 
         if (row.getRedoSql() != null) {
             addToTransaction(row.getTransactionId(), row, () -> {
-                final ParsedLobWriteSql parsed = parseLobWriteSql(row.getRedoSql());
-                return new LobWriteEvent(row, parsed.data, parsed.offset, parsed.length);
+                final LobWrite parsedEvent = LobWriteParser.parse(row.getRedoSql());
+                return new LobWriteEvent(row, parsedEvent.data(), parsedEvent.offset(), parsedEvent.length());
             });
         }
     }
@@ -1211,74 +1208,10 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
             return;
         }
 
-        addToTransaction(row.getTransactionId(), row, () -> getXmlWriteEventFromRow(row));
-    }
-
-    private XmlWriteEvent getXmlWriteEventFromRow(LogMinerEventRow row) {
-        final String sql = row.getRedoSql();
-        if (!sql.startsWith(XML_WRITE_PREAMBLE)) {
-            throw new ParsingException(null, "XML write operation does not start with XML_REDO preamble");
-        }
-
-        try {
-            final String xml;
-            if (XML_WRITE_PREAMBLE_NULL.equals(sql)) {
-                // The XML field is being explicitly set to NULL
-                return new XmlWriteEvent(row, null, 0);
-            }
-            else if (sql.charAt(XML_WRITE_PREAMBLE.length()) == '\'') {
-                // The XML is not provided as HEXTORAW, which means it was likely stored inline as a
-                // VARCHAR column data type because the text is relatively short, i.e. short CLOB.
-                int lastQuoteIndex = sql.lastIndexOf('\'');
-                if (lastQuoteIndex == -1) {
-                    throw new IllegalStateException("Failed to find end of XML document");
-                }
-                // indices here remove leading and trailing single quotes
-                xml = sql.substring(XML_WRITE_PREAMBLE.length() + 1, lastQuoteIndex);
-            }
-            else {
-                // The XML is provided as HEXTORAW, which means that it was stored out of bands in
-                // LOB storage and not inline in the data page. The contents of the XML will
-                // require being decoded.
-                int lastParenIndex = sql.lastIndexOf(')');
-                if (lastParenIndex == -1) {
-                    throw new IllegalStateException("Failed to find end of XML document");
-                }
-
-                // indices are meant to preserve the prefix function call and suffix parenthesis
-                String xmlHex = sql.substring(XML_WRITE_PREAMBLE.length(), lastParenIndex + 1);
-
-                // NOTE: Oracle generates a small bug here where the initial row starts the function
-                // argument with a single quote but the last entry to fulfill the data does not
-                // end-quote the argument, but rather simply stops with a parenthesis.
-                if (!xmlHex.startsWith("HEXTORAW('") || !xmlHex.endsWith(")")) {
-                    throw new IllegalStateException("Invalid HEXTORAW XML decoded data");
-                }
-                else {
-                    if (xmlHex.endsWith("')")) {
-                        // Handles situation when Oracle fixes bug
-                        xmlHex = xmlHex.substring(10, xmlHex.length() - 2);
-                    }
-                    else {
-                        // Compensates for the bug
-                        xmlHex = xmlHex.substring(10, xmlHex.length() - 1);
-                    }
-                }
-
-                xml = new String(RAW.hexString2Bytes(xmlHex), StandardCharsets.UTF_8);
-            }
-
-            int lastColonIndex = sql.lastIndexOf(':');
-            if (lastColonIndex == -1) {
-                throw new IllegalStateException("Failed to find XML document length");
-            }
-
-            final Integer length = Integer.parseInt(sql.substring(lastColonIndex + 1).trim());
-            return new XmlWriteEvent(row, xml, length);
-        }
-        catch (Exception e) {
-            throw new ParsingException(null, "Failed to parse XML write data", e);
-        }
+        addToTransaction(row.getTransactionId(), row, () -> {
+            final XmlWrite parsedEvent = XmlWriteParser.parse(row.getRedoSql());
+            return new XmlWriteEvent(row, parsedEvent.data(), parsedEvent.length());
+        });
     }
 
     private void handleXmlEnd(LogMinerEventRow row) {
@@ -1719,56 +1652,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
 
     private boolean isUsingHybridStrategy() {
         return OracleConnectorConfig.LogMiningStrategy.HYBRID.equals(connectorConfig.getLogMiningStrategy());
-    }
-
-    private static Pattern LOB_WRITE_SQL_PATTERN = Pattern.compile(
-            "(?s).* := ((?:HEXTORAW\\()?'.*'(?:\\))?);\\s*dbms_lob.write\\([^,]+,\\s*(\\d+)\\s*,\\s*(\\d+)\\s*,[^,]+\\);.*");
-
-    /**
-     * Parses a {@code LOB_WRITE} operation SQL fragment.
-     *
-     * @param sql sql statement
-     * @return the parsed statement
-     * @throws DebeziumException if an unexpected SQL fragment is provided that cannot be parsed
-     */
-    private ParsedLobWriteSql parseLobWriteSql(String sql) {
-        if (sql == null) {
-            return null;
-        }
-
-        Matcher m = LOB_WRITE_SQL_PATTERN.matcher(sql.trim());
-        if (!m.matches()) {
-            throw new DebeziumException("Unable to parse unsupported LOB_WRITE SQL: " + sql);
-        }
-
-        String data = m.group(1);
-        if (data.startsWith("'")) {
-            // string data; drop the quotes
-            data = data.substring(1, data.length() - 1);
-        }
-        int length = Integer.parseInt(m.group(2));
-        int offset = Integer.parseInt(m.group(3)) - 1; // Oracle uses 1-based offsets
-
-        // Double check whether Oracle may have escaped single-quotes in the SQL data.
-        // This avoids unintended truncation during the LOB merge phase during the commit
-        // logic handled by TransactionCommitConsumer.
-        if (data.contains("''")) {
-            data = data.replaceAll("''", "'");
-        }
-
-        return new ParsedLobWriteSql(offset, length, data);
-    }
-
-    private static class ParsedLobWriteSql {
-        final int offset;
-        final int length;
-        final String data;
-
-        ParsedLobWriteSql(int _offset, int _length, String _data) {
-            offset = _offset;
-            length = _length;
-            data = _data;
-        }
     }
 
     /**

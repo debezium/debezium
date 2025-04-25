@@ -212,17 +212,17 @@ public class CommitScnTest {
 
         // Test with Scn equals to one
         when(row.getScn()).thenReturn(new Scn(BigInteger.ONE));
-        assertThat(commitScn.hasCommitAlreadyBeenHandled(row)).isEqualTo(true);
+        assertThat(commitScn.hasEventScnBeenHandled(row)).isEqualTo(true);
 
         // Test with Scn equals to zero and contains transactionId
         when(row.getScn()).thenReturn(new Scn(BigInteger.ZERO));
         when(row.getTransactionId()).thenReturn("123456789");
-        assertThat(commitScn.hasCommitAlreadyBeenHandled(row)).isEqualTo(true);
+        assertThat(commitScn.hasEventScnBeenHandled(row)).isEqualTo(true);
 
         // Test with Scn equals to commit Scn and contains transactionId
         when(row.getScn()).thenReturn(new Scn(BigInteger.valueOf(12345L)));
         when(row.getTransactionId()).thenReturn("234567890");
-        assertThat(commitScn.hasCommitAlreadyBeenHandled(row)).isEqualTo(true);
+        assertThat(commitScn.hasEventScnBeenHandled(row)).isEqualTo(true);
     }
 
     @Test
@@ -233,12 +233,12 @@ public class CommitScnTest {
 
         // Test with Scn bigger than commit Scn
         when(row.getScn()).thenReturn(new Scn(BigInteger.valueOf(12346L)));
-        assertThat(commitScn.hasCommitAlreadyBeenHandled(row)).isEqualTo(false);
+        assertThat(commitScn.hasEventScnBeenHandled(row)).isEqualTo(false);
 
         // Test with Scn equals to commit Scn and not contains transactionId
         when(row.getScn()).thenReturn(new Scn(BigInteger.valueOf(12345L)));
         when(row.getTransactionId()).thenReturn("234567891");
-        assertThat(commitScn.hasCommitAlreadyBeenHandled(row)).isEqualTo(false);
+        assertThat(commitScn.hasEventScnBeenHandled(row)).isEqualTo(false);
     }
 
     private static String encodedCommitScn(CommitScn value) {

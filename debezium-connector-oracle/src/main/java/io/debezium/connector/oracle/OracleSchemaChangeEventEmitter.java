@@ -15,7 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
-import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerAdapter;
+import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingAdapter;
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
 import io.debezium.relational.Attribute;
 import io.debezium.relational.Table;
@@ -218,7 +218,7 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
     }
 
     void applyTableObjectAttributes(TableId tableId) {
-        if (connectorConfig.getAdapter() instanceof BufferedLogMinerAdapter) {
+        if (connectorConfig.getAdapter() instanceof AbstractLogMinerStreamingAdapter) {
             if (OracleConnectorConfig.LogMiningStrategy.HYBRID.equals(connectorConfig.getLogMiningStrategy())) {
                 // todo: centralize this with other attribute set locations
                 final Table table = schema.tableFor(tableId);
