@@ -39,7 +39,7 @@ import io.debezium.util.Testing;
 /**
  * @author Chris Cranford
  */
-@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Flush strategy only applies to LogMiner implementation")
+@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED, reason = "Flush strategy only applies to LogMiner implementation")
 @SkipOnReadOnly(reason = "Test expects flush table, not applicable during read only.")
 public class FlushStrategyIT extends AbstractAsyncEngineConnectorTest {
 

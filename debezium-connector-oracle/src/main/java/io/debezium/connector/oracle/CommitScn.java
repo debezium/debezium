@@ -54,12 +54,27 @@ public class CommitScn implements Comparable<Scn> {
     }
 
     /**
+     * Examines all redo threads and returns the minimum committed scn.
+     *
+     * @return the minimum recorded commit across all redo threads
+     */
+    public Scn getMinCommittedScn() {
+        return redoThreadCommitScns.values().stream()
+                .map(RedoThreadCommitScn::getCommitScn)
+                .min(Scn::compareTo)
+                .orElse(Scn.NULL);
+    }
+
+    /**
      * Examines all redo threads and returns the maximum committed scn.
      *
      * @return the maximum recorded commit across all redo threads
      */
     public Scn getMaxCommittedScn() {
-        return redoThreadCommitScns.values().stream().map(RedoThreadCommitScn::getCommitScn).max(Scn::compareTo).orElse(Scn.NULL);
+        return redoThreadCommitScns.values().stream()
+                .map(RedoThreadCommitScn::getCommitScn)
+                .max(Scn::compareTo)
+                .orElse(Scn.NULL);
     }
 
     /**
@@ -87,17 +102,30 @@ public class CommitScn implements Comparable<Scn> {
     }
 
     /**
-     * Checks whether the transaction associated with the commit event has been handled.
+     * Checks whether the scn and transaction associated with the event has been handled.
      *
-     * @param row the transaction commit event, should never be {@code null}
-     * @return true if the commit has been handled, false if it has not
+     * @param row the event, should never be {@code null}
+     * @return true if the scn has been handled, false if it has not
      */
-    public boolean hasCommitAlreadyBeenHandled(LogMinerEventRow row) {
-        final RedoThreadCommitScn commitScn = redoThreadCommitScns.get(row.getThread());
-        if (commitScn != null) {
-            final Set<String> txIds = commitScn.getTxIds();
-            return commitScn.getCommitScn().compareTo(row.getScn()) > 0 ||
-                    (commitScn.getCommitScn().compareTo(row.getScn()) == 0 && txIds.contains(row.getTransactionId()));
+    public boolean hasEventScnBeenHandled(LogMinerEventRow row) {
+        return hasBeenHandled(row.getThread(), row.getScn(), row.getTransactionId());
+    }
+
+    /**
+     * Checks whether the specified thread, scn, and transaction id tuple has been seen.
+     *
+     * @param threadId the redo thread
+     * @param scn the system change number, should not be {@code null}
+     * @param transactionId the transaction identifier, should not be {@code null}
+     * @return true if the tuple has been handled/seen, false otherwise
+     */
+    public boolean hasBeenHandled(int threadId, Scn scn, String transactionId) {
+        final RedoThreadCommitScn redoThreadCommitScn = redoThreadCommitScns.get(threadId);
+        if (redoThreadCommitScn != null) {
+            final Set<String> txIds = redoThreadCommitScn.getTxIds();
+            return redoThreadCommitScn.getCommitScn().compareTo(scn) > 0 ||
+                    (redoThreadCommitScn.getCommitScn().compareTo(scn) == 0 &&
+                            txIds.contains(transactionId));
         }
         return false;
     }

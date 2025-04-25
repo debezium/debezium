@@ -1147,7 +1147,8 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
     @Test
     @FixFor("DBZ-3645")
     public void shouldNotEmitBlobFieldValuesWhenLobSupportIsNotEnabled() throws Exception {
-        boolean logMinerAdapter = TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER);
+        boolean logMinerAdapter = TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER) ||
+                TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER_UNBUFFERED);
         TestHelper.dropTable(connection, "dbz3645");
         try {
             connection.execute("CREATE TABLE dbz3645 (id numeric(9,0), data blob, primary key(id))");

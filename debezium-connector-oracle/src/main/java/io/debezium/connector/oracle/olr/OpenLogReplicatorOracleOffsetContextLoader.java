@@ -41,7 +41,7 @@ public class OpenLogReplicatorOracleOffsetContextLoader implements OffsetContext
         return new OracleOffsetContext(connectorConfig, scn, scnIndex, commitScn, null, null, null,
                 snapshot, snapshotCompleted,
                 TransactionContext.load(offset),
-                SignalBasedIncrementalSnapshotContext.load(offset));
+                SignalBasedIncrementalSnapshotContext.load(offset), null, null);
     }
 
 }

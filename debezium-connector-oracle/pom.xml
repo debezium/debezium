@@ -408,6 +408,19 @@
             </build>
         </profile>
         <!--
+            Profile: oracle-logminer-unbuffered
+            This profile should be used to run the connector with the LogMiner unbuffered adapter.
+        -->
+        <profile>
+            <id>oracle-logminer-unbuffered</id>
+            <properties>
+                <adapter.name>logminer_unbuffered</adapter.name>
+            </properties>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+        </profile>
+        <!--
         Profile: oracle-olr
         This profile should be used to run the connector with the OpenLogReplicator adapter.
         -->

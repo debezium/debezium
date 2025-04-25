@@ -25,7 +25,8 @@ public class NotificationsIT extends AbstractNotificationsIT<OracleConnector> {
     public void before() throws SQLException {
         connection = TestHelper.testConnection();
 
-        TestHelper.dropTable(connection, "a");
+        TestHelper.dropAllTables();
+
         connection.execute("CREATE TABLE a (pk numeric(9,0) primary key, aa numeric(9,0))");
         TestHelper.streamTable(connection, "a");
 
@@ -36,6 +37,8 @@ public class NotificationsIT extends AbstractNotificationsIT<OracleConnector> {
     @After
     public void after() {
         stopConnector();
+
+        TestHelper.dropAllTables();
     }
 
     protected List<String> collections() {

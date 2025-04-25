@@ -19,6 +19,7 @@ import io.debezium.relational.TableId;
 public class SourceInfo extends BaseSourceInfo {
 
     public static final String TXID_KEY = "txId";
+    public static final String TXSEQ_KEY = "txSeq";
     public static final String SCN_KEY = "scn";
     public static final String EVENT_SCN_KEY = "scn";
     public static final String COMMIT_SCN_KEY = "commit_scn";
@@ -35,12 +36,20 @@ public class SourceInfo extends BaseSourceInfo {
     // Tracks thread-specific values when using multiple threads during snapshot
     private final ThreadLocal<String> rowId = new ThreadLocal<>();
 
+    // Offset information
     private Scn scn;
-    private CommitScn commitScn;
-    private Scn eventScn;
-    private Scn startScn;
-    private String lcrPosition;
+    private CommitScn commitScn; // LogMiner only
+    private String lcrPosition; // XStream only
+    private Long scnIndex; // OLR only
+
+    // Offset and Source information block
     private String transactionId;
+    private Long transactionSequence;
+
+    // Source information block
+    private Scn eventScn;
+    private Scn eventCommitScn;
+    private Scn startScn;
     private String userName;
     private Instant sourceTime;
     private Instant commitTime;
@@ -49,7 +58,6 @@ public class SourceInfo extends BaseSourceInfo {
     private Integer redoThread;
     private String rsId;
     private long ssn;
-    private Long scnIndex;
     private String redoSql;
 
     protected SourceInfo(OracleConnectorConfig connectorConfig) {
@@ -80,6 +88,10 @@ public class SourceInfo extends BaseSourceInfo {
         return eventScn;
     }
 
+    public Scn getEventCommitScn() {
+        return eventCommitScn;
+    }
+
     public void setScn(Scn scn) {
         this.scn = scn;
     }
@@ -104,6 +116,10 @@ public class SourceInfo extends BaseSourceInfo {
         this.eventScn = eventScn;
     }
 
+    public void setEventCommitScn(Scn eventCommitScn) {
+        this.eventCommitScn = eventCommitScn;
+    }
+
     public String getLcrPosition() {
         return lcrPosition;
     }
@@ -118,6 +134,14 @@ public class SourceInfo extends BaseSourceInfo {
 
     public void setTransactionId(String transactionId) {
         this.transactionId = transactionId;
+    }
+
+    public Long getTransactionSequence() {
+        return transactionSequence;
+    }
+
+    public void setTransactionSequence(Long transactionSequence) {
+        this.transactionSequence = transactionSequence;
     }
 
     public String getUserName() {

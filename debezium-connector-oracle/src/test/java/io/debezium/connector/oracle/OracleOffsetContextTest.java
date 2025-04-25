@@ -109,4 +109,22 @@ public class OracleOffsetContextTest {
         assertThat(writeValues.get(OracleOffsetContext.SNAPSHOT_PENDING_TRANSACTIONS_KEY)).isNull();
         assertThat(writeValues.get(OracleOffsetContext.SNAPSHOT_SCN_KEY)).isNull();
     }
+
+    @Test
+    @FixFor({ "DBZ-8924" })
+    @SkipWhenAdapterNameIsNot(SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_UNBUFFERED)
+    public void shouldCorrectlyDeserializeTransactionDetails() throws Exception {
+        final Map<String, Object> offsetValues = new HashMap<>();
+        offsetValues.put(SourceInfo.SCN_KEY, 12345L);
+        offsetValues.put(SourceInfo.COMMIT_SCN_KEY, 23456L);
+        offsetValues.put(SourceInfo.TXID_KEY, "123");
+        offsetValues.put(SourceInfo.TXSEQ_KEY, 98765L);
+
+        final OracleOffsetContext offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
+
+        assertThat(offsetContext.getScn()).isEqualTo(Scn.valueOf("12345"));
+        assertThat(offsetContext.getCommitScn().getMaxCommittedScn()).isEqualTo(Scn.valueOf("23456"));
+        assertThat(offsetContext.getTransactionId()).isEqualTo("123");
+        assertThat(offsetContext.getTransactionSequence()).isEqualTo(98765L);
+    }
 }

@@ -340,7 +340,8 @@ public class OracleConnectorFilterIT extends AbstractAsyncEngineConnectorTest {
     private void shouldApplySchemaAndTableInclusionConfiguration() throws Exception {
         Field option = OracleConnectorConfig.TABLE_INCLUDE_LIST;
         boolean includeDdlChanges = true;
-        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
+        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)
+                || TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER_UNBUFFERED)) {
             // LogMiner currently does not support DDL changes during streaming phase
             includeDdlChanges = false;
         }

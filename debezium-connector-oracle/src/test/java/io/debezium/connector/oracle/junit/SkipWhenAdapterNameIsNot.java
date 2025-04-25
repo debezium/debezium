@@ -37,7 +37,19 @@ public @interface SkipWhenAdapterNameIsNot {
         LOGMINER {
             @Override
             boolean isNotEqualTo(String adapterName) {
+                return !(adapterName.equalsIgnoreCase("logminer") || adapterName.equalsIgnoreCase("logminer_unbuffered"));
+            }
+        },
+        LOGMINER_BUFFERED {
+            @Override
+            boolean isNotEqualTo(String adapterName) {
                 return !adapterName.equalsIgnoreCase("logminer");
+            }
+        },
+        LOGMINER_UNBUFFERED {
+            @Override
+            boolean isNotEqualTo(String adapterName) {
+                return !adapterName.equalsIgnoreCase("logminer_unbuffered");
             }
         },
         OLR {

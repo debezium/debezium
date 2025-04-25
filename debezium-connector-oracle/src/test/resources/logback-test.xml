@@ -28,12 +28,6 @@
     </logger>
 
     <logger
-        name="io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerAdapter"
-        level="trace" additivity="false">
-        <appender-ref ref="CONSOLE" />
-    </logger>
-
-    <logger
         name="io.debezium.connector.oracle.logminer.buffered.processor.AbstractLogMinerEventProcessor.AbandonedDetails"
         level="debug"
         additivity="false">
@@ -47,6 +41,21 @@
     </logger>
 
     <!-- Necessary for log assertion tests -->
+    <logger
+            name="io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerAdapter"
+            level="trace" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+    <logger
+            name="io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingAdapter"
+            level="trace" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+    <logger
+        name="io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource"
+        level="trace" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
     <logger
         name="io.debezium.connector.oracle.logminer.processor"
         level="trace" additivity="false">

@@ -20,7 +20,7 @@ import io.debezium.connector.oracle.util.TestHelper;
 /**
  * @author Chris Cranford
  */
-@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Only applicable for LogMiner")
+@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED)
 public class MemoryProcessorTest extends AbstractProcessorUnitTest<MemoryLogMinerEventProcessor> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MemoryProcessorTest.class);

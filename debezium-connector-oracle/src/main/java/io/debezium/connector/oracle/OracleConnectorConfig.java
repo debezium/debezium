@@ -81,6 +81,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     protected final static Duration ARCHIVE_LOG_ONLY_POLL_TIME = Duration.ofMillis(10_000);
 
+    protected final static long DEFAULT_RESUME_POSITION_INTERVAL = 10_000L;
+
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
 
@@ -709,6 +711,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(OracleConnectorConfig::validateClientIdExcludeList)
             .withDescription("Comma separated list of client ids to exclude from LogMiner query.");
 
+    public static final Field LOG_MINING_RESUME_POSITION_INTERVAL_MS = Field.createInternal("log.mining.resume.position.interval.ms")
+            .withDisplayName("The interval that the LogMiner unbuffered resume position is updated")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(DEFAULT_RESUME_POSITION_INTERVAL)
+            .withValidation(Field::isPositiveLong)
+            .withDescription("The interval that the resume position is updated");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -793,7 +804,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_READONLY_HOSTNAME,
                     LOG_MINING_SQL_RELAXED_QUOTE_DETECTION,
                     LOG_MINING_CLIENTID_INCLUDE_LIST,
-                    LOG_MINING_CLIENTID_EXCLUDE_LIST)
+                    LOG_MINING_CLIENTID_EXCLUDE_LIST,
+                    LOG_MINING_RESUME_POSITION_INTERVAL_MS)
             .events(SOURCE_INFO_STRUCT_MAKER)
             .create();
 
@@ -875,6 +887,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final String openLogReplicatorHostname;
     private final Integer openLogReplicatorPort;
 
+    private final Duration resumePositionUpdateInterval;
+
     public OracleConnectorConfig(Configuration config) {
         super(
                 OracleConnector.class, config,
@@ -953,6 +967,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.openLogReplicatorSource = config.getString(OLR_SOURCE);
         this.openLogReplicatorHostname = config.getString(OLR_HOST);
         this.openLogReplicatorPort = config.getInteger(OLR_PORT, 0);
+
+        this.resumePositionUpdateInterval = Duration.ofMillis(config.getLong(LOG_MINING_RESUME_POSITION_INTERVAL_MS));
     }
 
     public String getDatabaseName() {
@@ -1348,6 +1364,21 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             public StreamingAdapter getInstance(OracleConnectorConfig connectorConfig) {
                 return Instantiator.getInstanceWithProvidedConstructorType(
                         "io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerAdapter",
+                        OracleConnectorConfig.class,
+                        connectorConfig);
+            }
+        },
+
+        LOG_MINER_UNBUFFERED("LogMiner_Unbuffered") {
+            @Override
+            public String getConnectionUrl() {
+                return "jdbc:oracle:thin:@${" + JdbcConfiguration.HOSTNAME + "}:${" + JdbcConfiguration.PORT + "}/${" + JdbcConfiguration.DATABASE + "}";
+            }
+
+            @Override
+            public StreamingAdapter getInstance(OracleConnectorConfig connectorConfig) {
+                return Instantiator.getInstanceWithProvidedConstructorType(
+                        "io.debezium.connector.oracle.logminer.unbuffered.UnbufferedLogMinerAdapter",
                         OracleConnectorConfig.class,
                         connectorConfig);
             }
@@ -2119,6 +2150,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return logMiningClientIdExcludes;
     }
 
+    /**
+     * The interval that the unbuffered resume position is recalculated.
+     */
+    public Duration getResumePositionUpdateInterval() {
+        return resumePositionUpdateInterval;
+    }
+
     @Override
     public String getConnectorName() {
         return Module.name();
@@ -2148,7 +2186,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     public static int requiredWhenNoUrl(Configuration config, Field field, ValidationOutput problems) {
-
         // Validates that the field is required but only when an URL field is not present
         if (config.getString(URL) == null) {
             return Field.isRequired(config, field, problems);
@@ -2157,7 +2194,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     public static int requiredWhenNoHostname(Configuration config, Field field, ValidationOutput problems) {
-
         // Validates that the field is required but only when an URL field is not present
         if (config.getString(HOSTNAME) == null) {
             return Field.isRequired(config, field, problems);
@@ -2166,12 +2202,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     public static int validateRacNodes(Configuration config, Field field, ValidationOutput problems) {
-        int errors = 0;
-        if (ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
+        if (isBufferedLogMiner(config)) {
             // If no "database.port" is specified, guarantee that "rac.nodes" (if not empty) specifies the
             // port designation for each comma-delimited value.
             final boolean portProvided = config.hasKey(PORT.name());
             if (!portProvided) {
+                int errors = 0;
                 final Set<String> racNodes = Strings.setOf(config.getString(RAC_NODES), String::new);
                 for (String racNode : racNodes) {
                     String[] parts = racNode.split(":");
@@ -2180,9 +2216,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                         errors++;
                     }
                 }
+                return errors;
             }
         }
-        return errors;
+        return 0;
     }
 
     public static int validateDictionaryFromFile(Configuration config, Field field, ValidationOutput problems) {
@@ -2194,69 +2231,72 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     private static int validateLogMiningBufferType(Configuration config, Field field, ValidationOutput problems) {
-        final String bufferTypeName = config.getString(LOG_MINING_BUFFER_TYPE);
-        final LogMiningBufferType bufferType = LogMiningBufferType.parse(bufferTypeName);
+        if (isBufferedLogMiner(config)) {
+            final String bufferTypeName = config.getString(LOG_MINING_BUFFER_TYPE);
+            final LogMiningBufferType bufferType = LogMiningBufferType.parse(bufferTypeName);
 
-        if (bufferType == null) {
-            if (!Strings.isNullOrBlank(bufferTypeName)) {
-                LOGGER.error("The option '{}' was specified with an invalid configuration value '{}'",
-                        LOG_MINING_BUFFER_TYPE.name(),
-                        bufferTypeName);
-            }
-            return 1;
-        }
-        else if (LogMiningBufferType.INFINISPAN_REMOTE.equals(bufferType)) {
-            // Must supply the Hotrod server list property as a minimum when using Infinispan cluster mode
-            final String serverList = config.getString(RemoteInfinispanLogMinerEventProcessor.HOTROD_SERVER_LIST);
-            if (Strings.isNullOrEmpty(serverList)) {
-                LOGGER.error("The option '{}' must be supplied when using the buffer type '{}'",
-                        RemoteInfinispanLogMinerEventProcessor.HOTROD_SERVER_LIST,
-                        bufferType.name());
+            if (bufferType == null) {
+                if (!Strings.isNullOrBlank(bufferTypeName)) {
+                    LOGGER.error("The option '{}' was specified with an invalid configuration value '{}'",
+                            LOG_MINING_BUFFER_TYPE.name(),
+                            bufferTypeName);
+                }
                 return 1;
+            }
+            else if (LogMiningBufferType.INFINISPAN_REMOTE.equals(bufferType)) {
+                // Must supply the Hotrod server list property as a minimum when using Infinispan cluster mode
+                final String serverList = config.getString(RemoteInfinispanLogMinerEventProcessor.HOTROD_SERVER_LIST);
+                if (Strings.isNullOrEmpty(serverList)) {
+                    LOGGER.error("The option '{}' must be supplied when using the buffer type '{}'",
+                            RemoteInfinispanLogMinerEventProcessor.HOTROD_SERVER_LIST,
+                            bufferType.name());
+                    return 1;
+                }
             }
         }
         return 0;
     }
 
     public static int validateLogMiningInfinispanCacheConfiguration(Configuration config, Field field, ValidationOutput problems) {
-        if (LogMiningBufferType.parseWithDefaultFallback(config.getString(LOG_MINING_BUFFER_TYPE)).isInfinispan()) {
-            return Field.isRequired(config, field, problems);
+        if (isBufferedLogMiner(config)) {
+            if (LogMiningBufferType.parseWithDefaultFallback(config.getString(LOG_MINING_BUFFER_TYPE)).isInfinispan()) {
+                return Field.isRequired(config, field, problems);
+            }
         }
         return 0;
     }
 
     public static int validateLogMiningReadOnly(Configuration config, Field field, ValidationOutput problems) {
-        if (config.getBoolean(LOG_MINING_READ_ONLY)) {
-            LOGGER.warn("When using '{}', the LogMiner tablespace requires write access for the Oracle background LogMiner process; however, " +
-                    "the connector itself will not perform any write operations against the database.", LOG_MINING_READ_ONLY.name());
-            final Set<String> racNodes = Strings.setOf(config.getString(RAC_NODES), String::new);
-            if (!racNodes.isEmpty()) {
-                LOGGER.warn("The property '{}' is set, but is ignored due to using read-only mode.", RAC_NODES.name());
+        if (isBufferedLogMiner(config)) {
+            if (config.getBoolean(LOG_MINING_READ_ONLY)) {
+                LOGGER.warn("When using '{}', the LogMiner tablespace requires write access for the Oracle background LogMiner process; however, " +
+                        "the connector itself will not perform any write operations against the database.", LOG_MINING_READ_ONLY.name());
+                final Set<String> racNodes = Strings.setOf(config.getString(RAC_NODES), String::new);
+                if (!racNodes.isEmpty()) {
+                    LOGGER.warn("The property '{}' is set, but is ignored due to using read-only mode.", RAC_NODES.name());
+                }
             }
         }
         return 0;
     }
 
     public static int validateLogMiningFlushTableName(Configuration config, Field field, ValidationOutput problems) {
-        if (config.getBoolean(LOG_MINING_READ_ONLY)) {
-            // This option is not required when using read-only mode
-            return 0;
+        if (isBufferedLogMiner(config) && !config.getBoolean(LOG_MINING_READ_ONLY)) {
+            return Field.isRequired(config, field, problems);
         }
-        else if (ConnectorAdapter.XSTREAM.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
-            // This option is not required when using XStream
-            return 0;
-        }
-        return Field.isRequired(config, field, problems);
+        return 0;
     }
 
     public static int validateUsernameExcludeList(Configuration config, Field field, ValidationOutput problems) {
-        final String includeList = config.getString(LOG_MINING_USERNAME_INCLUDE_LIST);
-        final String excludeList = config.getString(LOG_MINING_USERNAME_EXCLUDE_LIST);
+        if (isLogMiner(config)) {
+            final String includeList = config.getString(LOG_MINING_USERNAME_INCLUDE_LIST);
+            final String excludeList = config.getString(LOG_MINING_USERNAME_EXCLUDE_LIST);
 
-        if (includeList != null && excludeList != null) {
-            problems.accept(TABLE_EXCLUDE_LIST, excludeList,
-                    String.format("\"%s\" is already specified", LOG_MINING_USERNAME_INCLUDE_LIST.name()));
-            return 1;
+            if (includeList != null && excludeList != null) {
+                problems.accept(TABLE_EXCLUDE_LIST, excludeList,
+                        String.format("\"%s\" is already specified", LOG_MINING_USERNAME_INCLUDE_LIST.name()));
+                return 1;
+            }
         }
         return 0;
     }
@@ -2269,47 +2309,35 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     public static int validateLogMiningIncludeRedoSql(Configuration config, Field field, ValidationOutput problems) {
-        if (config.getBoolean(field)) {
-            if (ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
-                if (config.getBoolean(LOB_ENABLED)) {
-                    problems.accept(field, config.getBoolean(field), String.format(
-                            "The configuration property '%s' cannot be enabled when '%s' is set to true.",
-                            field.name(), LOB_ENABLED.name()));
-                    return 1;
-                }
-            }
-            else {
-                problems.accept(field, config.getBoolean(field), String.format(
-                        "The configuration property '%s' requires '%s' set to '%s' and without '%s' enabled.",
-                        field.name(), CONNECTOR_ADAPTER.name(), ConnectorAdapter.LOG_MINER.getValue(), LOB_ENABLED.name()));
+        if (config.getBoolean(field) && isLogMiner(config) && config.getBoolean(LOB_ENABLED)) {
+            problems.accept(field, config.getBoolean(field), String.format(
+                    "The configuration property '%s' cannot be enabled when '%s' is set to true.",
+                    field.name(), LOB_ENABLED.name()));
+            return 1;
+        }
+        return 0;
+    }
+
+    public static int validateLogMiningStrategy(Configuration config, Field field, ValidationOutput problems) {
+        if (isLogMiner(config) && config.getBoolean(LOB_ENABLED)) {
+            // When LOB is enabled, the combination is not valid with the hybrid strategy.
+            // This is because we currently are not capable of decoding all LOB-based operations in
+            // the LogMiner event stream to support CLOB, NCLOB, BLOB, XML, and JSON just yet.
+            // This is an ongoing, work-in-progress strategy.
+            final String strategy = config.getString(LOG_MINING_STRATEGY);
+            if (LogMiningStrategy.HYBRID.equals(LogMiningStrategy.parse(strategy))) {
+                problems.accept(LOG_MINING_STRATEGY, strategy,
+                        String.format("The hybrid mining strategy is not compatible when enabling '%s'. " +
+                                "Please use a different '%s' or do not enable '%s'.",
+                                LOB_ENABLED.name(), LOG_MINING_STRATEGY.name(), LOB_ENABLED.name()));
                 return 1;
             }
         }
         return 0;
     }
 
-    public static int validateLogMiningStrategy(Configuration config, Field field, ValidationOutput problems) {
-        if (ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
-            if (config.getBoolean(LOB_ENABLED)) {
-                // When LOB is enabled, the combination is not valid with the hybrid strategy.
-                // This is because we currently are not capable of decoding all LOB-based operations in
-                // the LogMiner event stream to support CLOB, NCLOB, BLOB, XML, and JSON just yet.
-                // This is an ongoing, work-in-progress strategy.
-                final String strategy = config.getString(LOG_MINING_STRATEGY);
-                if (LogMiningStrategy.HYBRID.equals(LogMiningStrategy.parse(strategy))) {
-                    problems.accept(LOG_MINING_STRATEGY, strategy,
-                            String.format("The hybrid mining strategy is not compatible when enabling '%s'. " +
-                                    "Please use a different '%s' or do not enable '%s'.",
-                                    LOB_ENABLED.name(), LOG_MINING_STRATEGY.name(), LOB_ENABLED.name()));
-                    return 1;
-                }
-            }
-        }
-        return 0;
-    }
-
     public static int validateEhCacheGlobalConfigField(Configuration config, Field field, ValidationOutput problems) {
-        if (ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
+        if (isBufferedLogMiner(config)) {
             if (LogMiningBufferType.parseWithDefaultFallback(config.getString(LOG_MINING_BUFFER_TYPE)).isEhcache()) {
                 // The string cannot include any `<cache ` or `<default-serializers` tags.
                 final String globalConfig = config.getString(LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG, "").toLowerCase();
@@ -2326,7 +2354,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     public static int validateEhcacheConfigFieldRequired(Configuration config, Field field, ValidationOutput problems) {
-        if (ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
+        if (isBufferedLogMiner(config)) {
             if (LogMiningBufferType.parseWithDefaultFallback(config.getString(LOG_MINING_BUFFER_TYPE)).isEhcache()) {
                 return Field.isRequired(config, field, problems);
             }
@@ -2335,15 +2363,18 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     public static int validateObjectIdCacheSize(Configuration config, Field field, ValidationOutput problems) {
-        int result = Field.isRequired(config, field, problems);
-        if (result != 0) {
-            return result;
+        if (isLogMiner(config)) {
+            int result = Field.isRequired(config, field, problems);
+            if (result != 0) {
+                return result;
+            }
+            return Field.isPositiveInteger(config, field, problems);
         }
-        return Field.isPositiveInteger(config, field, problems);
+        return 0;
     }
 
     public static int validateClientIdExcludeList(Configuration config, Field field, ValidationOutput problems) {
-        if (ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)))) {
+        if (isLogMiner(config)) {
             final String includeList = config.getString(LOG_MINING_CLIENTID_INCLUDE_LIST);
             final String excludeList = config.getString(LOG_MINING_CLIENTID_EXCLUDE_LIST);
             if (includeList != null && excludeList != null) {
@@ -2353,5 +2384,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             }
         }
         return 0;
+    }
+
+    private static boolean isBufferedLogMiner(Configuration config) {
+        return ConnectorAdapter.LOG_MINER.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)));
+    }
+
+    private static boolean isUnbufferedLogMiner(Configuration config) {
+        return ConnectorAdapter.LOG_MINER_UNBUFFERED.equals(ConnectorAdapter.parse(config.getString(CONNECTOR_ADAPTER)));
+    }
+
+    private static boolean isLogMiner(Configuration config) {
+        return isBufferedLogMiner(config) || isUnbufferedLogMiner(config);
     }
 }
