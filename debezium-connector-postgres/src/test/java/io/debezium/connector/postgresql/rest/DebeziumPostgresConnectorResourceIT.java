@@ -14,6 +14,7 @@ import static org.hamcrest.CoreMatchers.is;
 import java.util.Locale;
 import java.util.Map;
 
+import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
@@ -60,6 +61,7 @@ public class DebeziumPostgresConnectorResourceIT {
                 .statusCode(200)
                 .assertThat().body("status", equalTo("VALID"))
                 .body("validationResults.size()", is(0));
+        Assertions.fail("Fail on purpose to check if test is displayed properly");
     }
 
     @Test
@@ -78,6 +80,7 @@ public class DebeziumPostgresConnectorResourceIT {
                 .rootPath("validationResults[0]")
                 .body("property", is(PostgresConnectorConfig.HOSTNAME.name()))
                 .body("message", is("Error while validating connector config: The connection attempt failed."));
+        Assertions.assertThat(true).as("Forced to TRUE and expecting TRUE").isTrue();
     }
 
     @Test
@@ -97,6 +100,7 @@ public class DebeziumPostgresConnectorResourceIT {
                                         "The 'database.dbname' value is invalid: A value is required"),
                                 Map.of("property", PostgresConnectorConfig.TOPIC_PREFIX.name(), "message", "The 'topic.prefix' value is invalid: A value is required"),
                                 Map.of("property", PostgresConnectorConfig.HOSTNAME.name(), "message", "The 'database.hostname' value is invalid: A value is required")));
+        Assertions.assertThat(false).as("Forced to FALSE and expecting TRUE").isTrue();
     }
 
     @Test
