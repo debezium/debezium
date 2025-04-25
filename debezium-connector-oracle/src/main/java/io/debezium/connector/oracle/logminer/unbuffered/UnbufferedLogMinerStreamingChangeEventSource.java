@@ -1061,7 +1061,6 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
     }
 
     private void dispatchSchemaChanges() throws InterruptedException {
-        LOGGER.info("Dispatching {} queued DDL events.", ddlQueue.size());
         for (LogMinerEventRow event : ddlQueue) {
             final TableId tableId = event.getTableId();
 
