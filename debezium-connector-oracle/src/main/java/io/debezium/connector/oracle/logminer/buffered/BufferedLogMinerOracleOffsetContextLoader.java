@@ -41,7 +41,7 @@ public class BufferedLogMinerOracleOffsetContextLoader implements OffsetContext.
         return new OracleOffsetContext(connectorConfig, scn, null, commitScn, null, snapshotScn,
                 snapshotPendingTransactions, snapshot, snapshotCompleted,
                 TransactionContext.load(offset),
-                SignalBasedIncrementalSnapshotContext.load(offset));
+                SignalBasedIncrementalSnapshotContext.load(offset), null, null);
     }
 
 }

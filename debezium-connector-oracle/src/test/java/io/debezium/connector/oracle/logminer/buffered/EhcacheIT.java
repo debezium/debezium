@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.oracle.logminer.buffered;
 
-import static io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName.LOGMINER;
+import static io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
@@ -41,7 +41,7 @@ import io.debezium.pipeline.ErrorHandler;
  *
  * @author Chris Cranford
  */
-@SkipWhenAdapterNameIsNot(value = LOGMINER)
+@SkipWhenAdapterNameIsNot(value = LOGMINER_BUFFERED)
 public class EhcacheIT extends AbstractAsyncEngineConnectorTest {
 
     @Rule

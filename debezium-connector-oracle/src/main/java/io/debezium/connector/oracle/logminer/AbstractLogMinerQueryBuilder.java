@@ -52,7 +52,7 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
         return query.append("SELECT ")
                 .append("SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, ")
                 .append("USERNAME, ROW_ID, ROLLBACK, RS_ID, STATUS, INFO, SSN, THREAD#, DATA_OBJ#, DATA_OBJV#, DATA_OBJD#, ")
-                .append("CLIENT_ID ")
+                .append("CLIENT_ID, START_SCN, COMMIT_SCN, START_TIMESTAMP, COMMIT_TIMESTAMP, SEQUENCE# ")
                 .append("FROM ")
                 .append(LOGMNR_CONTENTS_VIEW).append(" ")
                 .append(!Strings.isNullOrEmpty(whereClause) ? "WHERE " + whereClause : "")

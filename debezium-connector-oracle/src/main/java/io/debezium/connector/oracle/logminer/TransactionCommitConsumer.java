@@ -108,6 +108,12 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         for (final RowState rowState : pending) {
             prepareAndDispatch(rowState.event);
         }
+
+        // For situations where the consumer instance is reused, reset internal state
+        rows.clear();
+        currentLobDetails.reset();
+        currentExtendedStringDetails.reset();
+        currentXmlDetails.reset();
     }
 
     @Override

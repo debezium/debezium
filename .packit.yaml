@@ -293,6 +293,30 @@ jobs:
   - job: tests
     trigger: pull_request
     # Suffix for job name
+    identifier: "oracle-19-logminer-unbuffered"
+    targets:
+      centos-stream-8-x86_64:
+        distros: [ "debezium-tf-1930" ]
+    skip_build: true
+    manual_trigger: true
+    labels:
+      - oracle
+      - oracle-logminer
+      - oracle-logminer-unbuffered
+    tf_extra_params:
+      test:
+        tmt:
+          name: oracle
+      environments:
+        - variables:
+            ORACLE_VERSION: 19.3.0
+            TEST_PROFILE: oracle
+            ORACLE_PROFILE_ARGS: "-Poracle-logminer-unbuffered -pl debezium-connector-oracle"
+
+  ###############################################################################################
+  - job: tests
+    trigger: pull_request
+    # Suffix for job name
     identifier: "oracle-19-xs"
     targets:
       centos-stream-8-x86_64:

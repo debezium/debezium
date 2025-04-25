@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.oracle.logminer.buffered;
+package io.debezium.connector.oracle.logminer.unbuffered;
 
 import org.junit.Rule;
 import org.junit.rules.TestRule;
@@ -15,17 +15,18 @@ import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerAdapterTest;
 
 /**
- * Unit tests for the {@link BufferedLogMinerAdapter} class.
+ * Unit tests for the {@link UnbufferedLogMinerAdapter} class.
  *
  * @author Chris Cranford
  */
-@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED)
-public class BufferedLogMinerAdapterTest extends AbstractLogMinerAdapterTest<BufferedLogMinerAdapter> {
+@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_UNBUFFERED)
+public class UnbufferedLogMinerAdapterTest extends AbstractLogMinerAdapterTest<UnbufferedLogMinerAdapter> {
 
     @Rule
     public final TestRule skipAdapterRule = new SkipTestDependingOnAdapterNameRule();
 
-    protected BufferedLogMinerAdapter createAdapter(OracleConnectorConfig connectorConfig) {
-        return Mockito.spy(new BufferedLogMinerAdapter(connectorConfig));
+    @Override
+    protected UnbufferedLogMinerAdapter createAdapter(OracleConnectorConfig connectorConfig) {
+        return Mockito.spy(new UnbufferedLogMinerAdapter(connectorConfig));
     }
 }

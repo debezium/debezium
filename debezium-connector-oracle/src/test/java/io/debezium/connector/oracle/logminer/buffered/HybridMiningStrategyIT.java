@@ -75,7 +75,7 @@ import io.debezium.util.Testing;
 /**
  * @author Chris Cranford
  */
-@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Only applies to LogMiner")
+@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED)
 public class HybridMiningStrategyIT extends AbstractAsyncEngineConnectorTest {
 
     @Rule

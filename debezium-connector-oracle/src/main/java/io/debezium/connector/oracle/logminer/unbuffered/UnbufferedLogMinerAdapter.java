@@ -3,8 +3,9 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.oracle.logminer.buffered;
+package io.debezium.connector.oracle.logminer.unbuffered;
 
+import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -23,27 +24,24 @@ import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 
 /**
- * An implementation of {@link AbstractLogMinerStreamingAdapter} for capturing changes from LogMiner
- * using heap and off-heap cache/buffer mechanisms while reading LogMiner data in uncommitted mode.
+ * An Oracle LogMiner {@link io.debezium.connector.oracle.StreamingAdapter} implementation that relies on
+ * Oracle LogMiner's {@code COMMITTED_DATA_ONLY} mode to capture changes without requiring that the
+ * connector buffer large transactions.
  *
  * @author Chris Cranford
  */
-public class BufferedLogMinerAdapter extends AbstractLogMinerStreamingAdapter {
+@Incubating
+public class UnbufferedLogMinerAdapter extends AbstractLogMinerStreamingAdapter {
 
-    public static final String TYPE = "logminer";
+    public static final String TYPE = "logminer_unbuffered";
 
-    public BufferedLogMinerAdapter(OracleConnectorConfig connectorConfig) {
+    public UnbufferedLogMinerAdapter(OracleConnectorConfig connectorConfig) {
         super(connectorConfig);
     }
 
     @Override
     public String getType() {
         return TYPE;
-    }
-
-    @Override
-    public OffsetContext.Loader<OracleOffsetContext> getOffsetContextLoader() {
-        return new BufferedLogMinerOracleOffsetContextLoader(connectorConfig);
     }
 
     @Override
@@ -56,7 +54,7 @@ public class BufferedLogMinerAdapter extends AbstractLogMinerStreamingAdapter {
                                                                                       Configuration jdbcConfig,
                                                                                       LogMinerStreamingChangeEventSourceMetrics streamingMetrics,
                                                                                       SnapshotterService snapshotterService) {
-        return new BufferedLogMinerStreamingChangeEventSource(
+        return new UnbufferedLogMinerStreamingChangeEventSource(
                 connectorConfig,
                 connection,
                 dispatcher,
@@ -68,8 +66,12 @@ public class BufferedLogMinerAdapter extends AbstractLogMinerStreamingAdapter {
     }
 
     @Override
-    public OracleOffsetContext copyOffset(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext) {
-        return new BufferedLogMinerOracleOffsetContextLoader(connectorConfig).load(offsetContext.getOffset());
+    public OffsetContext.Loader<OracleOffsetContext> getOffsetContextLoader() {
+        return new UnbufferedLogMinerOracleOffsetContextLoader(connectorConfig);
     }
 
+    @Override
+    public OracleOffsetContext copyOffset(OracleConnectorConfig connectorConfig, OracleOffsetContext offsetContext) {
+        return new UnbufferedLogMinerOracleOffsetContextLoader(connectorConfig).load(offsetContext.getOffset());
+    }
 }

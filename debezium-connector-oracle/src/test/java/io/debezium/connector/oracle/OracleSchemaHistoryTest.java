@@ -78,7 +78,7 @@ public class OracleSchemaHistoryTest extends AbstractSchemaHistoryTest {
         final OracleOffsetContext position = new OracleOffsetContext(new OracleConnectorConfig(config), Scn.valueOf(999),
                 null, CommitScn.valueOf(999L), null, Scn.valueOf(999), Collections.emptyMap(), null, true,
                 new TransactionContext(),
-                new SignalBasedIncrementalSnapshotContext<>());
+                new SignalBasedIncrementalSnapshotContext<>(), null, null);
 
         return Offsets.of(source, position);
     }
