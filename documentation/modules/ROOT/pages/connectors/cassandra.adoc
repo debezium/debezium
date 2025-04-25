@@ -955,7 +955,7 @@ To re-bootstrap an individual table, you can manually remove the recorded offset
 
 The Cassandra connector should be deployed each Cassandra node in a Cassandra cluster.
 The Cassandra connector Jar file takes in a CDC configuration (.properties) file.
-See xref:{link-cassandra-connector}#cassandra-example-configuration[see example configurations] for reference.
+See xref:{link-cassandra-connector}#cassandra-example-configuration[example configurations] for reference.
 
 [[cassandra-example-configuration]]
 === Example configuration
@@ -988,6 +988,45 @@ snapshot.consistency=ONE
 snapshot.mode=ALWAYS
 
 latest.commit.log.only=true
+----
+
+[[cassandra-connection-configuration]]
+=== Connection Configuration
+
+Cassanadra connector uses the Cassandra driver to configure connections to Cassanadra, which must be supplied using a
+separate `application.conf` file. You can find a full reference on the driver's configuration
+https://docs.datastax.com/en/developer/java-driver/4.2/manual/core/configuration/reference/[here] and below is an
+example:
+
+[source,properties,indent=0]
+----
+datastax-java-driver {
+  basic {
+    request.timeout = 20 seconds
+    contact-points = [ "spark-master-1:9042" ]
+    load-balancing-policy {
+      local-datacenter = "dc1"
+    }
+  }
+  advanced {
+    auth-provider {
+      class = PlainTextAuthProvider
+      username = user
+      password = pass
+    }
+    ssl-engine-factory {
+     ...
+    }
+  }
+}
+----
+
+In order for the Debezium connector to read/use this application configuration file, it must be set in the connector
+properties file as follows:
+
+[source,properties,indent=0]
+----
+cassandra.driver.config.file=/path/to/application/configuration.conf
 ----
 
 [[cassandra-monitoring]]
@@ -1091,29 +1130,9 @@ Must be one of 'INITIAL', 'ALWAYS', or 'NEVER'. The default snapshot mode is 'IN
 |No default
 |The absolute path of the YAML config file used by a Cassandra node.
 
-|[[cassandra-property-cassandra-hosts]]<<cassandra-property-cassandra-hosts, `cassandra.hosts`>>
-|`localhost`
-|One or more addresses of Cassandra nodes that driver uses to discover topology, separated by ","
-
-|[[cassandra-property-cassandra-port]]<<cassandra-property-cassandra-port, `cassandra.port`>>
-|`9042`
-|The port used to connect to Cassandra host(s).
-
-|[[cassandra-property-cassandra-username]]<<cassandra-property-cassandra-username, `cassandra.username`>>
-|No default
-|The username used when connecting to Cassandra hosts.
-
-|[[cassandra-property-cassandra-password]]<<cassandra-property-cassandra-password, `cassandra.password`>>
-|No default
-|The password used when connecting to Cassandra hosts.
-
-|[[cassandra-property-cassandra-ssl-enabled]]<<cassandra-property-cassandra-ssl-enabled, `cassandra.ssl.enabled`>>
-|`false`
-|If set to true, Cassandra connector agent will use SSL to connect to Cassandra node.
-
-|[[cassandra-property-cassandra-ssl-config-path]]<<cassandra-property-cassandra-ssl-config-path, `cassandra.ssl.config.path`>>
-|No default
-|The SSL config file path required for storage node. An example of config file can be found at the bottom of the page.
+|[[cassandra-property-cassandra-driver-config-file]]<<cassandra-property-cassandra-driver-config-file, `cassandra.driver.config.file`>>
+|`application.conf`
+|Path to Cassandra driver configuration file
 
 |[[cassandra-property-commit-log-real-time-processing-enabled]]<<cassandra-property-commit-log-real-time-processing-enabled, `commit.log.real.time.processing.enabled`>>
 |`false`
