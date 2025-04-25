@@ -158,7 +158,6 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             // except once per iteration.
             databaseOffset = getMetrics().getDatabaseOffset();
 
-            Scn oldMinLogScn = minLogScn;
             minLogScn = resumePositionProvider.computeResumePositionFromLogs(minLogScn, minCommitScn, getCurrentLogFiles());
 
             getMetrics().setOffsetScn(minLogScn);
