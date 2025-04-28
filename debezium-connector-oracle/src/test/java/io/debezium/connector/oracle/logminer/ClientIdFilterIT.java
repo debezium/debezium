@@ -80,17 +80,7 @@ public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
 
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            final LogInterceptor logInterceptor;
-            switch (TestHelper.adapter()) {
-                case LOG_MINER_UNBUFFERED -> {
-                    logInterceptor = new LogInterceptor(UnbufferedLogMinerStreamingChangeEventSource.class);
-                    logInterceptor.setLoggerLevel(UnbufferedLogMinerStreamingChangeEventSource.class, Level.DEBUG);
-                }
-                default -> {
-                    logInterceptor = new LogInterceptor(AbstractLogMinerEventProcessor.class);
-                    logInterceptor.setLoggerLevel(AbstractLogMinerEventProcessor.class, Level.DEBUG);
-                }
-            }
+            final LogInterceptor logInterceptor = TestHelper.getEventProcessorLogInterceptor();
 
             try (OracleConnection testConnection = TestHelper.testConnection()) {
                 testConnection.connection().setClientInfo("OCSID.CLIENTID", "abc");
