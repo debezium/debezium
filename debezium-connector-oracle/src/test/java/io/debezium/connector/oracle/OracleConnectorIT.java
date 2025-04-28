@@ -85,7 +85,6 @@ import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEven
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.logminer.buffered.processor.AbstractLogMinerEventProcessor;
 import io.debezium.connector.oracle.logminer.buffered.processor.memory.MemoryLogMinerEventProcessor;
-import io.debezium.connector.oracle.logminer.unbuffered.UnbufferedLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.converters.spi.CloudEventsMaker;
@@ -4144,11 +4143,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             connection.execute("ALTER TABLE dbz5147 drop column data2");
             connection.execute("INSERT INTO dbz5147 values (3, 'test3')");
 
-            final LogInterceptor interceptor;
-            switch (TestHelper.getAdapter(config)) {
-                case LOG_MINER_UNBUFFERED -> interceptor = new LogInterceptor(UnbufferedLogMinerStreamingChangeEventSource.class);
-                default -> interceptor = new LogInterceptor(AbstractLogMinerEventProcessor.class);
-            }
+            final LogInterceptor interceptor = TestHelper.getEventProcessorLogInterceptor();
 
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
@@ -4204,13 +4199,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             connection.execute("ALTER TABLE dbz5147 drop column data2");
             connection.execute("INSERT INTO dbz5147 values (3, 'test3')");
 
-            final LogInterceptor interceptor;
-            if (TestHelper.isUnbufferedLogMiner()) {
-                interceptor = new LogInterceptor(UnbufferedLogMinerStreamingChangeEventSource.class);
-            }
-            else {
-                interceptor = new LogInterceptor(AbstractLogMinerEventProcessor.class);
-            }
+            final LogInterceptor interceptor = TestHelper.getEventProcessorLogInterceptor();
 
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
@@ -4500,18 +4489,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
 
             int waitTime = TestHelper.defaultMessageConsumerPollTimeout() * 2;
 
-            final LogInterceptor streamInterceptor;
-            switch (TestHelper.getAdapter(config)) {
-                case XSTREAM:
-                    streamInterceptor = new LogInterceptor("io.debezium.connector.oracle.xstream.LcrEventHandler");
-                    waitTime *= 2; // XStream on CI can be quite slow, double the wait time to avoid failure
-                    break;
-                case LOG_MINER_UNBUFFERED:
-                    streamInterceptor = new LogInterceptor(UnbufferedLogMinerStreamingChangeEventSource.class);
-                    break;
-                default:
-                    streamInterceptor = new LogInterceptor(AbstractLogMinerEventProcessor.class);
-            }
+            final LogInterceptor streamInterceptor = TestHelper.getEventProcessorLogInterceptor();
 
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
@@ -5614,6 +5592,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     @Test
     @FixFor("DBZ-6660")
     @Ignore("Test can be flaky when using a brand new docker instance")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED)
     public void shouldUseEndScnIfDeviationProducesScnOutsideOfUndoRetention() throws Exception {
         try {
             TestHelper.dropTable(connection, "dbz6660");
