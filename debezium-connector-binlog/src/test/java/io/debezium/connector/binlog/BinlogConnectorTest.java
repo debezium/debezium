@@ -24,4 +24,9 @@ public interface BinlogConnectorTest<C extends SourceConnector> {
     BinlogTestConnection getTestReplicaDatabaseConnection(String databaseName);
 
     boolean isMariaDb();
+
+    default void executeStatements(String databaseName, String... statements) {
+        throw new UnsupportedOperationException("not support operation for the datasource");
+    }
+
 }
