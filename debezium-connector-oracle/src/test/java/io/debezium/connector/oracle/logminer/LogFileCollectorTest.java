@@ -44,7 +44,7 @@ import io.debezium.jdbc.JdbcConnection;
  *
  * @author Chris Cranford
  */
-@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER)
+@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER)
 public class LogFileCollectorTest {
 
     @Rule

@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.oracle.logminer;
 
-import static io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName.LOGMINER;
+import static io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
@@ -42,7 +42,7 @@ import ch.qos.logback.classic.Level;
  *
  * @author Chris Cranford
  */
-@SkipWhenAdapterNameIsNot(value = LOGMINER)
+@SkipWhenAdapterNameIsNot(value = ANY_LOGMINER)
 public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
 
     @Rule
