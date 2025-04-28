@@ -34,7 +34,7 @@ public @interface SkipWhenAdapterNameIsNot {
                 return !adapterName.equalsIgnoreCase("xstream");
             }
         },
-        LOGMINER {
+        ANY_LOGMINER {
             @Override
             boolean isNotEqualTo(String adapterName) {
                 return !(adapterName.equalsIgnoreCase("logminer") || adapterName.equalsIgnoreCase("logminer_unbuffered"));

@@ -42,7 +42,7 @@ import io.debezium.util.Testing;
  *
  * @author Chris Cranford
  */
-@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "LogMiner specific")
+@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "LogMiner specific")
 public class LogFileCollectorIT extends AbstractAsyncEngineConnectorTest {
 
     @Rule

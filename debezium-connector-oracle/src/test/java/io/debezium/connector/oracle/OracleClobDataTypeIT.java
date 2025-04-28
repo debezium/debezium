@@ -1923,7 +1923,7 @@ public class OracleClobDataTypeIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-4366")
-    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Xstream marks chunks as end of rows")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Xstream marks chunks as end of rows")
     public void shouldStreamClobsWrittenInChunkedMode() throws Exception {
         TestHelper.dropTable(connection, "dbz4366");
         try {
@@ -2043,7 +2043,7 @@ public class OracleClobDataTypeIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-5266")
-    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Commit SCN is only applicable to LogMiner")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Commit SCN is only applicable to LogMiner")
     public void shouldUpdateCommitScnOnLobTransaction() throws Exception {
         TestHelper.dropTable(connection, "dbz5266");
         try {
@@ -2096,7 +2096,7 @@ public class OracleClobDataTypeIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-5266")
-    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Commit SCN is only applicable to LogMiner")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Commit SCN is only applicable to LogMiner")
     public void shouldUpdateCommitScnOnNonLobTransactionWithLobEnabled() throws Exception {
         TestHelper.dropTable(connection, "dbz5266");
         try {
@@ -2138,7 +2138,7 @@ public class OracleClobDataTypeIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-5266")
-    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Commit SCN is only applicable to LogMiner")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Commit SCN is only applicable to LogMiner")
     public void shouldUpdateCommitScnOnNonLobTransactionWithLobDisabled() throws Exception {
         TestHelper.dropTable(connection, "dbz5266");
         try {

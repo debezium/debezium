@@ -31,7 +31,7 @@ import io.debezium.util.Testing;
 /**
  * @author Chris Cranford
  */
-@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Other adapters do not support ROWID data types")
+@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Other adapters do not support ROWID data types")
 public class OracleRowIdDataTypeIT extends AbstractAsyncEngineConnectorTest {
 
     private static OracleConnection connection;

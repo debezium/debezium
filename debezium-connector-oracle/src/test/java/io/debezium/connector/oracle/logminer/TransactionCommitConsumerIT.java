@@ -33,7 +33,7 @@ import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 /**
  * @author Chris Cranford
  */
-@SkipWhenAdapterNameIsNot(SkipWhenAdapterNameIsNot.AdapterName.LOGMINER)
+@SkipWhenAdapterNameIsNot(SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER)
 @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Cannot use lob.enabled with Hybrid")
 public class TransactionCommitConsumerIT extends AbstractAsyncEngineConnectorTest {
 

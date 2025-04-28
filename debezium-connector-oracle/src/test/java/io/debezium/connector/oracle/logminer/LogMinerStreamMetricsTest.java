@@ -31,7 +31,7 @@ import io.debezium.pipeline.source.spi.EventMetadataProvider;
 /**
  * @author Chris Cranford
  */
-@SkipWhenAdapterNameIsNot(SkipWhenAdapterNameIsNot.AdapterName.LOGMINER)
+@SkipWhenAdapterNameIsNot(SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER)
 public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMinerStreamingChangeEventSourceMetrics> {
 
     @Override

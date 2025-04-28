@@ -39,7 +39,7 @@ import io.debezium.util.Testing;
  *
  * @author Chris Cranford
  */
-@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Requires LogMiner")
+@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Requires LogMiner")
 public class LogMinerSourceInfoRedoSqlIT extends AbstractAsyncEngineConnectorTest {
 
     @Rule
