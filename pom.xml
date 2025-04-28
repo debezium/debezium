@@ -147,7 +147,7 @@
         <version.informix.changestream.client>1.1.3</version.informix.changestream.client>
         <version.informix.driver>4.50.11</version.informix.driver>
         <version.cassandra.driver>4.14.0</version.cassandra.driver>
-        <version.mariadb.driver>3.5.0</version.mariadb.driver>
+        <version.mariadb.driver>3.5.3</version.mariadb.driver>
         <!-- These two should be aligned by major versions but minor could vary -->
         <!-- Oracle publishes the driver versions more frequently than the instant client -->
         <version.oracle.driver>21.15.0.0</version.oracle.driver>
