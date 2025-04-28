@@ -57,7 +57,17 @@
         <appender-ref ref="CONSOLE" />
     </logger>
     <logger
-        name="io.debezium.connector.oracle.logminer.processor"
+        name="io.debezium.connector.oracle.logminer.buffered.processor"
+        level="trace" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+    <logger
+        name="io.debezium.connector.oracle.logminer.unbuffered"
+        level="debug" additivity="false">
+        <appender-ref ref="CONSOLE" />
+    </logger>
+    <logger
+        name="io.debezium.connector.oracle.olr.OpenLogReplicatorStreamingChangeEventSource"
         level="trace" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
