@@ -153,15 +153,15 @@ public class TestHelper {
         jdbcConfiguration.forEach(
                 (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
 
-        if (adapter().equals(ConnectorAdapter.XSTREAM)) {
+        if (isXStream()) {
             builder.withDefault(OracleConnectorConfig.XSTREAM_SERVER_NAME, "dbzxout");
         }
-        else if (adapter().equals(ConnectorAdapter.OLR)) {
+        else if (isOpenLogReplicator()) {
             builder.withDefault(OracleConnectorConfig.OLR_SOURCE, OPENLOGREPLICATOR_SOURCE);
             builder.withDefault(OracleConnectorConfig.OLR_HOST, OPENLOGREPLICATOR_HOST);
             builder.withDefault(OracleConnectorConfig.OLR_PORT, OPENLOGREPLICATOR_PORT);
         }
-        else if (adapter().equals(ConnectorAdapter.LOG_MINER_UNBUFFERED)) {
+        else if (isUnbufferedLogMiner()) {
             // Speeds up tests
             builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_MIN_MS, 0);
             builder.with(OracleConnectorConfig.LOG_MINING_SLEEP_TIME_INCREMENT_MS, 500);
@@ -581,11 +581,8 @@ public class TestHelper {
             }
         }
 
-        if (adapter().equals(ConnectorAdapter.XSTREAM)) {
-            return 120;
-        }
         // Speeds up tests for LogMiner and OLR
-        return 20;
+        return isXStream() ? 120 : 20;
     }
 
     public static ConnectorAdapter adapter() {
@@ -593,8 +590,28 @@ public class TestHelper {
         return (s == null || s.length() == 0) ? ConnectorAdapter.LOG_MINER : ConnectorAdapter.parse(s);
     }
 
+    public static boolean isAnyLogMiner() {
+        return isBufferedLogMiner() || isUnbufferedLogMiner();
+    }
+
+    public static boolean isBufferedLogMiner() {
+        return ConnectorAdapter.LOG_MINER.equals(adapter());
+    }
+
+    public static boolean isUnbufferedLogMiner() {
+        return ConnectorAdapter.LOG_MINER_UNBUFFERED.equals(adapter());
+    }
+
+    public static boolean isXStream() {
+        return ConnectorAdapter.XSTREAM.equals(adapter());
+    }
+
+    public static boolean isOpenLogReplicator() {
+        return ConnectorAdapter.OLR.equals(adapter());
+    }
+
     public static LogMiningStrategy logMiningStrategy() {
-        if (ConnectorAdapter.LOG_MINER.equals(adapter())) {
+        if (isAnyLogMiner()) {
             // This won't catch all use cases where the user overrides the default configuration in the test
             // itself but generally this should be satisfactory for marker annotations based on static or
             // CLI provided configurations.

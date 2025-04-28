@@ -4205,7 +4205,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             connection.execute("INSERT INTO dbz5147 values (3, 'test3')");
 
             final LogInterceptor interceptor;
-            if (TestHelper.adapter().equals(ConnectorAdapter.LOG_MINER_UNBUFFERED)) {
+            if (TestHelper.isUnbufferedLogMiner()) {
                 interceptor = new LogInterceptor(UnbufferedLogMinerStreamingChangeEventSource.class);
             }
             else {
