@@ -278,7 +278,7 @@ public class OracleConnectorFilterIT extends AbstractAsyncEngineConnectorTest {
     private void shouldApplyTableInclusionConfiguration() throws Exception {
         Field option = OracleConnectorConfig.TABLE_INCLUDE_LIST;
         boolean includeDdlChanges = true;
-        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
+        if (TestHelper.isBufferedLogMiner()) {
             // LogMiner currently does not support DDL changes during streaming phase
             includeDdlChanges = false;
         }
@@ -340,8 +340,7 @@ public class OracleConnectorFilterIT extends AbstractAsyncEngineConnectorTest {
     private void shouldApplySchemaAndTableInclusionConfiguration() throws Exception {
         Field option = OracleConnectorConfig.TABLE_INCLUDE_LIST;
         boolean includeDdlChanges = true;
-        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)
-                || TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER_UNBUFFERED)) {
+        if (TestHelper.isAnyLogMiner()) {
             // LogMiner currently does not support DDL changes during streaming phase
             includeDdlChanges = false;
         }
@@ -394,8 +393,7 @@ public class OracleConnectorFilterIT extends AbstractAsyncEngineConnectorTest {
         assertThat(testTableRecords).isNull();
 
         testTableRecords = records.recordsForTopic("server1.DEBEZIUM2.TABLE2");
-        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.XSTREAM) ||
-                TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.OLR)) {
+        if (TestHelper.isXStream() || TestHelper.isOpenLogReplicator()) {
             assertThat(testTableRecords).isNull();
         }
         else {
@@ -421,7 +419,7 @@ public class OracleConnectorFilterIT extends AbstractAsyncEngineConnectorTest {
     private void shouldApplyTableExclusionsConfiguration() throws Exception {
         Field option = OracleConnectorConfig.TABLE_EXCLUDE_LIST;
         boolean includeDdlChanges = true;
-        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
+        if (TestHelper.isBufferedLogMiner()) {
             // LogMiner currently does not support DDL changes during streaming phase
             includeDdlChanges = false;
         }
@@ -484,14 +482,10 @@ public class OracleConnectorFilterIT extends AbstractAsyncEngineConnectorTest {
         Field option = OracleConnectorConfig.TABLE_EXCLUDE_LIST;
         boolean includeDdlChanges = true;
         boolean isLogMiner = false;
-        boolean isOlr = false;
-        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
+        if (TestHelper.isBufferedLogMiner()) {
             // LogMiner currently does not support DDL changes during streaming phase
             includeDdlChanges = false;
             isLogMiner = true;
-        }
-        else if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.OLR)) {
-            isOlr = true;
         }
 
         Configuration config = TestHelper.defaultConfig()
