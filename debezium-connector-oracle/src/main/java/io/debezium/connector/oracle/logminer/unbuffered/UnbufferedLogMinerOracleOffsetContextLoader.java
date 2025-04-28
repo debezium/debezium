@@ -32,19 +32,18 @@ public class UnbufferedLogMinerOracleOffsetContextLoader implements OffsetContex
 
     @Override
     public OracleOffsetContext load(Map<String, ?> offset) {
-        return new OracleOffsetContext(
-                connectorConfig,
-                OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY),
-                null,
-                CommitScn.load(offset),
-                null,
-                OracleOffsetContext.loadSnapshotScn(offset),
-                OracleOffsetContext.loadSnapshotPendingTransactions(offset),
-                loadSnapshot(offset).orElse(null),
-                loadSnapshotCompleted(offset),
-                TransactionContext.load(offset),
-                SignalBasedIncrementalSnapshotContext.load(offset),
-                OracleOffsetContext.loadTransactionId(offset),
-                OracleOffsetContext.loadTransactionSequence(offset));
+        return OracleOffsetContext.create()
+                .logicalName(connectorConfig)
+                .scn(OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY))
+                .commitScn(CommitScn.load(offset))
+                .snapshotScn(OracleOffsetContext.loadSnapshotScn(offset))
+                .snapshotPendingTransactions(OracleOffsetContext.loadSnapshotPendingTransactions(offset))
+                .snapshot(loadSnapshot(offset).orElse(null))
+                .snapshotCompleted(loadSnapshotCompleted(offset))
+                .transactionContext(TransactionContext.load(offset))
+                .incrementalSnapshotContext(SignalBasedIncrementalSnapshotContext.load(offset))
+                .transactionId(OracleOffsetContext.loadTransactionId(offset))
+                .transactionSequence(OracleOffsetContext.loadTransactionSequence(offset))
+                .build();
     }
 }

@@ -7,11 +7,9 @@ package io.debezium.connector.oracle.olr;
 
 import java.util.Map;
 
-import io.debezium.connector.SnapshotType;
 import io.debezium.connector.oracle.CommitScn;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleOffsetContext;
-import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.SourceInfo;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -32,16 +30,16 @@ public class OpenLogReplicatorOracleOffsetContextLoader implements OffsetContext
 
     @Override
     public OracleOffsetContext load(Map<String, ?> offset) {
-        final SnapshotType snapshot = loadSnapshot(offset).orElse(null);
-        boolean snapshotCompleted = loadSnapshotCompleted(offset);
-
-        Scn scn = OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY);
-        Long scnIndex = (Long) offset.get(SourceInfo.SCN_INDEX_KEY);
-        CommitScn commitScn = CommitScn.valueOf((String) null);
-        return new OracleOffsetContext(connectorConfig, scn, scnIndex, commitScn, null, null, null,
-                snapshot, snapshotCompleted,
-                TransactionContext.load(offset),
-                SignalBasedIncrementalSnapshotContext.load(offset), null, null);
+        return OracleOffsetContext.create()
+                .logicalName(connectorConfig)
+                .scn(OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY))
+                .scnIndex((Long) offset.get(SourceInfo.SCN_INDEX_KEY))
+                .commitScn(CommitScn.empty())
+                .snapshot(loadSnapshot(offset).orElse(null))
+                .snapshotCompleted(loadSnapshotCompleted(offset))
+                .transactionContext(TransactionContext.load(offset))
+                .incrementalSnapshotContext(SignalBasedIncrementalSnapshotContext.load(offset))
+                .build();
     }
 
 }
