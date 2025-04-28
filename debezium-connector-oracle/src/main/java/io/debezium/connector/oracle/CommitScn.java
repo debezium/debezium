@@ -286,6 +286,15 @@ public class CommitScn implements Comparable<Scn> {
         return new CommitScn(Collections.emptySet());
     }
 
+    /**
+     * Creates an empty {@link CommitScn} with no redo thread commit details.
+     *
+     * @return an empty commit scn container
+     */
+    public static CommitScn empty() {
+        return new CommitScn(new HashSet<>());
+    }
+
     public static SchemaBuilder schemaBuilder(SchemaBuilder schemaBuilder) {
         return schemaBuilder.field(REDO_THREAD_KEY, Schema.OPTIONAL_INT32_SCHEMA);
     }
