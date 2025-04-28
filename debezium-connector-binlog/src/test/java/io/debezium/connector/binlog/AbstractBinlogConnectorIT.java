@@ -11,6 +11,7 @@ import org.apache.kafka.connect.source.SourceConnector;
 
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.jdbc.JdbcConnection;
 
 /**
  * Abstract base class for all binlog-based connector integration tests.
@@ -50,4 +51,16 @@ public abstract class AbstractBinlogConnectorIT<C extends SourceConnector>
         }
     }
 
+    @Override
+    public void executeStatements(String targetDatabase, String... statements) {
+        try (JdbcConnection jdbcConnection = getTestDatabaseConnection(targetDatabase).connect();
+                var statement = jdbcConnection.connection().createStatement()) {
+            for (String sql : statements) {
+                statement.execute(sql);
+            }
+        }
+        catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
