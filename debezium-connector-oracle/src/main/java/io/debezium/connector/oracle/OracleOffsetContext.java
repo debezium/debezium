@@ -48,21 +48,11 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
      */
     private Map<String, Scn> snapshotPendingTransactions;
 
-    public OracleOffsetContext(OracleConnectorConfig connectorConfig, Scn scn, Long scnIndex, CommitScn commitScn,
-                               String lcrPosition, Scn snapshotScn, Map<String, Scn> snapshotPendingTransactions,
-                               SnapshotType snapshot, boolean snapshotCompleted, TransactionContext transactionContext,
-                               IncrementalSnapshotContext<TableId> incrementalSnapshotContext,
-                               String transactionId, Long transactionSequence) {
-        this(connectorConfig, scn, scnIndex, lcrPosition, snapshotScn, snapshotPendingTransactions, snapshot,
-                snapshotCompleted, transactionContext, incrementalSnapshotContext, transactionId, transactionSequence);
-        sourceInfo.setCommitScn(commitScn);
-    }
-
-    public OracleOffsetContext(OracleConnectorConfig connectorConfig, Scn scn, Long scnIndex, String lcrPosition,
-                               Scn snapshotScn, Map<String, Scn> snapshotPendingTransactions, SnapshotType snapshot,
-                               boolean snapshotCompleted, TransactionContext transactionContext,
-                               IncrementalSnapshotContext<TableId> incrementalSnapshotContext,
-                               String transactionId, Long transactionSequence) {
+    private OracleOffsetContext(OracleConnectorConfig connectorConfig, Scn scn, Long scnIndex, CommitScn commitScn, String lcrPosition,
+                                Scn snapshotScn, Map<String, Scn> snapshotPendingTransactions, SnapshotType snapshot,
+                                boolean snapshotCompleted, TransactionContext transactionContext,
+                                IncrementalSnapshotContext<TableId> incrementalSnapshotContext,
+                                String transactionId, Long transactionSequence) {
         super(new SourceInfo(connectorConfig), snapshotCompleted);
         sourceInfo.setScn(scn);
         sourceInfo.setScnIndex(scnIndex);
@@ -72,7 +62,7 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         // During streaming this value will be updated by the current event handler.
         sourceInfo.setEventScn(scn);
         sourceInfo.setLcrPosition(lcrPosition);
-        sourceInfo.setCommitScn(CommitScn.valueOf((String) null));
+        sourceInfo.setCommitScn(commitScn);
         sourceInfoSchema = sourceInfo.schema();
 
         // Snapshot SCN is a new field and may be null in cases where the offsets are being read from
@@ -107,6 +97,7 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
         private Scn snapshotScn;
         private String transactionId;
         private Long transactionSequence;
+        private CommitScn commitScn = CommitScn.empty();
 
         public Builder logicalName(OracleConnectorConfig connectorConfig) {
             this.connectorConfig = connectorConfig;
@@ -168,8 +159,13 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
             return this;
         }
 
+        public Builder commitScn(CommitScn commitScn) {
+            this.commitScn = commitScn;
+            return this;
+        }
+
         public OracleOffsetContext build() {
-            return new OracleOffsetContext(connectorConfig, scn, scnIndex, lcrPosition, snapshotScn,
+            return new OracleOffsetContext(connectorConfig, scn, scnIndex, commitScn, lcrPosition, snapshotScn,
                     snapshotPendingTransactions, snapshot, snapshotCompleted, transactionContext,
                     incrementalSnapshotContext, transactionId, transactionSequence);
         }

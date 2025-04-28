@@ -7,7 +7,6 @@ package io.debezium.connector.oracle.xstream;
 
 import java.util.Map;
 
-import io.debezium.connector.SnapshotType;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.Scn;
@@ -31,23 +30,27 @@ public class XStreamOracleOffsetContextLoader implements OffsetContext.Loader<Or
 
     @Override
     public OracleOffsetContext load(Map<String, ?> offset) {
-        final SnapshotType snapshot = loadSnapshot(offset).orElse(null);
-        boolean snapshotCompleted = loadSnapshotCompleted(offset);
+        return OracleOffsetContext.create()
+                .logicalName(connectorConfig)
+                .scn(resolveScn(offset))
+                .lcrPosition(loadLcrPosition(offset))
+                .snapshotScn(OracleOffsetContext.loadSnapshotScn(offset))
+                .snapshotPendingTransactions(OracleOffsetContext.loadSnapshotPendingTransactions(offset))
+                .snapshot(loadSnapshot(offset).orElse(null))
+                .snapshotCompleted(loadSnapshotCompleted(offset))
+                .transactionContext(TransactionContext.load(offset))
+                .incrementalSnapshotContext(SignalBasedIncrementalSnapshotContext.load(offset))
+                .build();
+    }
 
-        String lcrPosition = (String) offset.get(SourceInfo.LCR_POSITION_KEY);
+    private Scn resolveScn(Map<String, ?> offset) {
+        final String lcrPosition = loadLcrPosition(offset);
+        return lcrPosition != null
+                ? LcrPosition.valueOf(lcrPosition).getScn()
+                : OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY);
+    }
 
-        final Scn scn;
-        if (lcrPosition != null) {
-            scn = LcrPosition.valueOf(lcrPosition).getScn();
-        }
-        else {
-            scn = OracleOffsetContext.getScnFromOffsetMapByKey(offset, SourceInfo.SCN_KEY);
-        }
-
-        final Map<String, Scn> snapshotPendingTransactions = OracleOffsetContext.loadSnapshotPendingTransactions(offset);
-        final Scn snapshotScn = OracleOffsetContext.loadSnapshotScn(offset);
-        return new OracleOffsetContext(connectorConfig, scn, null, lcrPosition, snapshotScn, snapshotPendingTransactions,
-                snapshot, snapshotCompleted, TransactionContext.load(offset), SignalBasedIncrementalSnapshotContext.load(offset),
-                null, null);
+    private String loadLcrPosition(Map<String, ?> offset) {
+        return (String) offset.get(SourceInfo.LCR_POSITION_KEY);
     }
 }
