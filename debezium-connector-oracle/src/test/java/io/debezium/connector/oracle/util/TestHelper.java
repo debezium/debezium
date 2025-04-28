@@ -571,6 +571,16 @@ public class TestHelper {
     }
 
     public static int defaultMessageConsumerPollTimeout() {
+        final String messageConsumerPollTimeout = System.getProperty("test.message.consumer.poll.timeout");
+        if (!Strings.isNullOrEmpty(messageConsumerPollTimeout)) {
+            try {
+                return Integer.parseInt(messageConsumerPollTimeout);
+            }
+            catch (Exception e) {
+                LOGGER.warn("The provided 'test.message.consumer.poll.timeout' is invalid, using defaults", e);
+            }
+        }
+
         if (adapter().equals(ConnectorAdapter.XSTREAM)) {
             return 120;
         }
