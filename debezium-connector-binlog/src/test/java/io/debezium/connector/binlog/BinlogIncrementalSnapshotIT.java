@@ -406,7 +406,7 @@ public abstract class BinlogIncrementalSnapshotIT<C extends SourceConnector>
                 .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink")
                 .with(CommonConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 1),
                 loggingCompletion(), false);
-        waitForConnectorToStart();
+        waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
 
         sendAdHocSnapshotSignal(DATABASE.qualifiedTableName("a4"));
 
