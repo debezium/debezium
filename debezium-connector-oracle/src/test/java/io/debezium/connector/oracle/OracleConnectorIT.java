@@ -5237,7 +5237,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             TestHelper.streamTable(connection, "dbz6355");
 
             Configuration config = TestHelper.defaultConfig()
-                    .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION_MS, 10000L) // 1 Minute retention
+                    .with(OracleConnectorConfig.LOG_MINING_TRANSACTION_RETENTION_MS, 60000L) // 1 Minute retention
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6355")
                     .build();
 
@@ -5269,8 +5269,8 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             try (OracleConnection otherConnection = TestHelper.testConnection()) {
                 otherConnection.executeWithoutCommitting("INSERT INTO dbz6355 (id,name) values (2, 'Minnie Mouse')");
 
-                LOGGER.info("Waiting {}ms for second change to age; should not be captured.", 15_000L);
-                Thread.sleep(15_000L);
+                LOGGER.info("Waiting {}ms for second change to age; should not be captured.", 70_000L);
+                Thread.sleep(70_000L);
 
                 // Restart the connector after downtime
                 start(OracleConnector.class, config);
