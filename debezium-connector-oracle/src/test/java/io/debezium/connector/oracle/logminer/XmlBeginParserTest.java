@@ -28,7 +28,7 @@ import io.debezium.text.ParsingException;
  *
  * @author Chris Cranford
  */
-@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER)
+@SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER)
 public class XmlBeginParserTest {
 
     @Rule

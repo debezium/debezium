@@ -1520,7 +1520,7 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-4366")
-    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Xstream marks chunks as end of rows")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Xstream marks chunks as end of rows")
     public void shouldStreamBlobsWrittenInChunkedMode() throws Exception {
         TestHelper.dropTable(connection, "dbz4366");
         try {
@@ -1571,7 +1571,7 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-4366")
-    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Xstream marks chunks as end of rows")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Xstream marks chunks as end of rows")
     public void shouldStreamBlobsWrittenInInterleavedChunkedMode() throws Exception {
         TestHelper.dropTable(connection, "dbz4366");
         try {
@@ -1633,7 +1633,7 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-4366")
-    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Xstream marks chunks as end of rows")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Xstream marks chunks as end of rows")
     public void shouldStreamBlobsWrittenInInterleavedChunkedMode2() throws Exception {
         TestHelper.dropTable(connection, "dbz4366");
         try {
@@ -1694,7 +1694,7 @@ public class OracleBlobDataTypesIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-4366")
-    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER, reason = "Xstream marks chunks as end of rows")
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER, reason = "Xstream marks chunks as end of rows")
     public void shouldStreamBlobsWrittenInInterleavedChunkedMode3() throws Exception {
         TestHelper.dropTable(connection, "dbz4366");
         try {
