@@ -50,7 +50,7 @@ public class OracleOffsetContextTest {
 
         final OracleOffsetContext offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
         assertThat(offsetContext.getScn()).isEqualTo(Scn.valueOf("12345"));
-        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
+        if (TestHelper.isBufferedLogMiner()) {
             assertThat(offsetContext.getCommitScn().getMaxCommittedScn()).isEqualTo(Scn.valueOf("23456"));
         }
     }
@@ -64,7 +64,7 @@ public class OracleOffsetContextTest {
 
         final OracleOffsetContext offsetContext = (OracleOffsetContext) offsetLoader.load(offsetValues);
         assertThat(offsetContext.getScn()).isEqualTo(Scn.valueOf("12345"));
-        if (TestHelper.adapter().equals(OracleConnectorConfig.ConnectorAdapter.LOG_MINER)) {
+        if (TestHelper.isBufferedLogMiner()) {
             assertThat(offsetContext.getCommitScn().getMaxCommittedScn()).isEqualTo(Scn.valueOf("23456"));
         }
     }
