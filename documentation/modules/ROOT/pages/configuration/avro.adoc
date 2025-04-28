@@ -154,6 +154,14 @@ value.converter.apicurio.use-id: "contentId"
 schema.name.adjustment.mode=avro
 ----
 
+When using Apicurio Registry in Confluent compatibility mode, the parameters are configured in a specific way to imitate exactly how Confluent Schema Registry works, both on the wire format and in client expectations.
+
+* `converter.apicurio.registry.as-confluent: true`:
+Forces Apicurio to serialize Kafka messages with the same structure as Confluent (magic byte + 4-byte schema ID).
+* `converter.apicurio.use-id: true` (or `globalId`): Ensures that only a numeric schema ID is written in the message, matching what Confluent consumers expect.
+* `converter.schemas.enable: false`: Prevents embedding the full Avro schema inside the Kafka message, which Confluent deserializers do not expect (they fetch the schema by ID from the registry).
+* `converter.apicurio.registry.headers.enabled: false`: Disables Apicurio-specific metadata headers that Confluent clients wouldn't understand, keeping the message format clean and compatible.
+
 Internally, Kafka Connect always uses JSON key/value converters for storing configuration and offsets.
 
 // Type: procedure
