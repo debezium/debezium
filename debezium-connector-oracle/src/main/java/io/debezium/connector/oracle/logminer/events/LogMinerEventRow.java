@@ -210,13 +210,12 @@ public class LogMinerEventRow {
      *
      * @param resultSet the result set to be read, should never be {@code null}
      * @param catalogName the catalog name, should never be {@code null}
-     * @param isTxIdRawValue whether the transaction id should be read as a raw value or not
      * @return a populated instance of a LogMinerEventRow object.
      * @throws SQLException if there was a problem reading the result set
      */
-    public static LogMinerEventRow fromResultSet(ResultSet resultSet, String catalogName, boolean isTxIdRawValue) throws SQLException {
+    public static LogMinerEventRow fromResultSet(ResultSet resultSet, String catalogName) throws SQLException {
         LogMinerEventRow row = new LogMinerEventRow();
-        row.initializeFromResultSet(resultSet, catalogName, isTxIdRawValue);
+        row.initializeFromResultSet(resultSet, catalogName);
         return row;
     }
 
@@ -225,17 +224,16 @@ public class LogMinerEventRow {
      *
      * @param resultSet the result set to be read, should never be {@code null}
      * @param catalogName the catalog name, should never be {@code null}
-     * @param isTxIdRawValue whether the transaction id should be read as a raw value or not
      * @throws SQLException if there was a problem reading the result set
      */
-    private void initializeFromResultSet(ResultSet resultSet, String catalogName, boolean isTxIdRawValue) throws SQLException {
+    private void initializeFromResultSet(ResultSet resultSet, String catalogName) throws SQLException {
         // Initialize the state from the result set
         this.scn = getScn(resultSet, SCN);
         this.tableName = resultSet.getString(TABLE_NAME);
         this.tablespaceName = resultSet.getString(TABLESPACE_NAME);
         this.eventType = EventType.from(resultSet.getInt(OPERATION_CODE));
         this.changeTime = getTime(resultSet, CHANGE_TIME);
-        this.transactionId = getTransactionId(resultSet, isTxIdRawValue);
+        this.transactionId = getTransactionId(resultSet);
         this.operation = resultSet.getString(OPERATION);
         this.userName = resultSet.getString(USERNAME);
         this.rowId = resultSet.getString(ROW_ID);
@@ -260,12 +258,9 @@ public class LogMinerEventRow {
         }
     }
 
-    private String getTransactionId(ResultSet rs, boolean asRawValue) throws SQLException {
-        if (asRawValue) {
-            byte[] result = rs.getBytes(TX_ID);
-            return result != null ? HexConverter.convertToHexString(result) : null;
-        }
-        return rs.getString(TX_ID);
+    private String getTransactionId(ResultSet rs) throws SQLException {
+        byte[] result = rs.getBytes(TX_ID);
+        return result != null ? HexConverter.convertToHexString(result) : null;
     }
 
     private Instant getTime(ResultSet rs, int columnIndex) throws SQLException {

@@ -265,11 +265,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         return getTransactionCache().getTransactionEventCount(transaction);
     }
 
-    // todo: can this be removed in favor of a single implementation?
-    protected boolean isTrxIdRawValue() {
-        return true;
-    }
-
     @Override
     public Scn process(Scn startScn, Scn endScn) throws SQLException, InterruptedException {
         batchMetrics.reset();
@@ -439,7 +434,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         while (context.isRunning() && hasNextWithMetricsUpdate(resultSet)) {
             batchMetrics.rowObserved();
             batchMetrics.rowProcessed();
-            processRow(partition, LogMinerEventRow.fromResultSet(resultSet, getConfig().getCatalogName(), isTrxIdRawValue()));
+            processRow(partition, LogMinerEventRow.fromResultSet(resultSet, getConfig().getCatalogName()));
         }
     }
 
