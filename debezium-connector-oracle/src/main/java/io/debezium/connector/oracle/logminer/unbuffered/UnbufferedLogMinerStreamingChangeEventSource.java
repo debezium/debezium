@@ -87,7 +87,6 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
     private static final Logger LOGGER = LoggerFactory.getLogger(UnbufferedLogMinerStreamingChangeEventSource.class);
 
     private final String miningQuery;
-    private final Counters counters;
     private final TableFilter tableFilter;
     private final LogMinerDmlParser dmlParser;
     private final LogMinerColumnResolverDmlParser reconstructColumnDmlParser;
@@ -113,7 +112,6 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                                                         LogMinerStreamingChangeEventSourceMetrics metrics) {
         super(connectorConfig, jdbcConnection, dispatcher, errorHandler, clock, schema, jdbcConfig, metrics);
         this.miningQuery = new UnbufferedLogMinerQueryBuilder(connectorConfig).getQuery();
-        this.counters = new Counters();
         this.tableFilter = connectorConfig.getTableFilters().dataCollectionFilter();
         this.dmlParser = new LogMinerDmlParser(connectorConfig);
         this.reconstructColumnDmlParser = new LogMinerColumnResolverDmlParser(connectorConfig);
@@ -260,7 +258,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
      */
     private Scn process(ChangeEventSource.ChangeEventSourceContext context, Scn minCommitScn)
             throws SQLException, InterruptedException {
-        counters.reset();
+        getBatchMetrics().reset();
 
         try (PreparedStatement statement = createQueryStatement()) {
             LOGGER.debug("Fetching results with COMMIT_SCN >= {}", minCommitScn);
@@ -277,7 +275,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
 
                 Scn newMinCommitScn = minCommitScn;
                 while (context.isRunning() && hasNextWithMetricsUpdate(resultSet)) {
-                    counters.rows++;
+                    getBatchMetrics().rowObserved();
 
                     final LogMinerEventRow event = LogMinerEventRow.fromResultSet(resultSet, catalogName, true);
                     if (!hasEventBeenProcessed(event)) {
@@ -302,6 +300,8 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                                 case EXTENDED_STRING_END -> handleExtendedStringEndEvent(event);
                                 default -> Loggings.logDebugAndTraceRecord(LOGGER, event, "Skipped event {}", event.getEventType());
                             }
+
+                            getBatchMetrics().rowProcessed();
                         }
                     }
 
@@ -311,21 +311,18 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                     }
                 }
 
-                final Duration totalProcessTime = Duration.between(startProcessTime, Instant.now());
-                getMetrics().setLastCapturedDmlCount(counters.dmlCount);
+                getBatchMetrics().updateStreamingMetrics();
 
-                LOGGER.debug("{}.", counters);
+                LOGGER.debug("{}.", getBatchMetrics());
                 LOGGER.debug(
                         "Processed in {} ms. Lag: {}. Query Min Commit SCN: {}, New Min Commit SCN: {}, Offset SCN: {}, Offset Commit SCN: {}, Sleep: {}",
-                        totalProcessTime.toMillis(),
+                        Duration.between(startProcessTime, Instant.now()),
                         getMetrics().getLagFromSourceInMilliseconds(),
                         minCommitScn,
                         newMinCommitScn,
                         getOffsetContext().getScn(),
                         getOffsetContext().getCommitScn(),
                         getMetrics().getSleepTimeInMilliseconds());
-
-                getMetrics().setLastProcessedRowsCount(counters.rows);
 
                 return newMinCommitScn;
             }
@@ -553,7 +550,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
 
         getEventDispatcher().dispatchTransactionCommittedEvent(getPartition(), getOffsetContext(), event.getChangeTime());
 
-        counters.commitCount++;
+        getBatchMetrics().commitObserved();
     }
 
     private void handleRollbackEvent(LogMinerEventRow event) {
@@ -619,13 +616,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             }
         }
 
-        counters.dmlCount++;
-
-        switch (event.getEventType()) {
-            case INSERT -> counters.insertCount++;
-            case UPDATE -> counters.updateCount++;
-            case DELETE -> counters.deleteCount++;
-        }
+        getBatchMetrics().dataChangeEventObserved(event.getEventType());
 
         // If we receive a DML event within a transaction that contains DDL events, flush the DDL
         // events before processing the DML event.
@@ -889,7 +880,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                 connection.setSessionToPdb(getConfig().getPdbName());
             }
 
-            counters.tableMetadataCount++;
+            getBatchMetrics().tableMetadataQueryObserved();
             final String tableDdl = connection.getTableMetadataDdl(tableId);
 
             final Long objectId = connection.getTableObjectId(tableId);
@@ -1096,54 +1087,9 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                 reconstructColumnDmlParser.removeTableFromCache(tableId);
             }
 
-            counters.ddlCount++;
+            getBatchMetrics().schemaChangeObserved();
         }
         ddlQueue.clear();
-    }
-
-    // todo: borrowed from processor class
-    private static class Counters {
-        public int stuckCount; // it will be reset after 25 mining session iterations or if offset SCN changes
-        public int dmlCount;
-        public int ddlCount;
-        public int insertCount;
-        public int updateCount;
-        public int deleteCount;
-        public int commitCount;
-        public int rollbackCount;
-        public int tableMetadataCount;
-        public long rows;
-        public long partialRollbackCount;
-
-        public void reset() {
-            dmlCount = 0;
-            ddlCount = 0;
-            insertCount = 0;
-            updateCount = 0;
-            deleteCount = 0;
-            commitCount = 0;
-            rollbackCount = 0;
-            tableMetadataCount = 0;
-            rows = 0;
-            partialRollbackCount = 0;
-        }
-
-        @Override
-        public String toString() {
-            return "Counters{" +
-                    "rows=" + rows +
-                    ", stuckCount=" + stuckCount +
-                    ", dmlCount=" + dmlCount +
-                    ", ddlCount=" + ddlCount +
-                    ", insertCount=" + insertCount +
-                    ", updateCount=" + updateCount +
-                    ", deleteCount=" + deleteCount +
-                    ", commitCount=" + commitCount +
-                    ", rollbackCount=" + rollbackCount +
-                    ", tableMetadataCount=" + tableMetadataCount +
-                    ", partialRollbackCount=" + partialRollbackCount +
-                    '}';
-        }
     }
 
 }
