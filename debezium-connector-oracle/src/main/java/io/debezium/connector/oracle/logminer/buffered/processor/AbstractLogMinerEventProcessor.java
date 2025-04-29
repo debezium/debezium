@@ -36,6 +36,7 @@ import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.LogMinerChangeRecordEmitter;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
+import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics.BatchMetrics;
 import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.connector.oracle.logminer.TransactionCommitConsumer;
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerQueryBuilder;
@@ -102,10 +103,11 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
     private final ExtendedStringParser extendedStringParser;
     private final XmlBeginParser xmlBeginParser;
     private final Tables.TableFilter tableFilter;
+    private final BatchMetrics batchMetrics;
 
-    protected final Counters counters;
     protected final String sqlQuery;
 
+    private int stuckCount = 0;
     private Scn currentOffsetScn = Scn.NULL;
     private Map<Integer, Scn> currentOffsetCommitScns = new HashMap<>();
     private Instant lastProcessedScnChangeTime = null;
@@ -128,7 +130,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         this.dispatcher = dispatcher;
         this.metrics = metrics;
         this.tableFilter = connectorConfig.getTableFilters().dataCollectionFilter();
-        this.counters = new Counters();
+        this.batchMetrics = metrics.getBatchMetrics();
         this.dmlParser = new LogMinerDmlParser(connectorConfig);
         this.reconstructColumnDmlParser = new LogMinerColumnResolverDmlParser(connectorConfig);
         this.selectLobParser = new SelectLobParser();
@@ -243,7 +245,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
             // This metric won't necessarily be accurate when LOB is enabled, it will scale based on the
             // number of times a given transaction is re-mined.
             metrics.increasePartialRollbackCount();
-            counters.partialRollbackCount++;
+            batchMetrics.partialRollbackObserved();
 
             Loggings.logDebugAndTraceRecord(LOGGER, row,
                     "Undo change on table '{}' applied to transaction event with row-id '{}'",
@@ -270,7 +272,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
 
     @Override
     public Scn process(Scn startScn, Scn endScn) throws SQLException, InterruptedException {
-        counters.reset();
+        batchMetrics.reset();
 
         try (PreparedStatement statement = createQueryStatement()) {
             LOGGER.debug("Fetching results for SCN [{}, {}]", startScn, endScn);
@@ -286,10 +288,9 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                 Instant startProcessTime = Instant.now();
                 processResults(this.partition, resultSet);
 
-                Duration totalTime = Duration.between(startProcessTime, Instant.now());
-                metrics.setLastCapturedDmlCount(counters.dmlCount);
+                batchMetrics.updateStreamingMetrics();
 
-                if (counters.dmlCount > 0 || counters.commitCount > 0 || counters.rollbackCount > 0) {
+                if (batchMetrics.hasProcessedAnyTransactions()) {
                     warnPotentiallyStuckScn(currentOffsetScn, currentOffsetCommitScns);
 
                     currentOffsetScn = offsetContext.getScn();
@@ -298,10 +299,13 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                     }
                 }
 
-                LOGGER.debug("{}.", counters);
+                LOGGER.debug("{}.", batchMetrics);
                 LOGGER.debug("Processed in {} ms. Lag: {}. Offset SCN: {}, Offset Commit SCN: {}, Active Transactions: {}, Sleep: {}",
-                        totalTime.toMillis(), metrics.getLagFromSourceInMilliseconds(), offsetContext.getScn(),
-                        offsetContext.getCommitScn(), metrics.getNumberOfActiveTransactions(),
+                        Duration.between(startProcessTime, Instant.now()),
+                        metrics.getLagFromSourceInMilliseconds(),
+                        offsetContext.getScn(),
+                        offsetContext.getCommitScn(),
+                        metrics.getNumberOfActiveTransactions(),
                         metrics.getSleepTimeInMilliseconds());
 
                 if (metrics.getNumberOfActiveTransactions() > 0 && LOGGER.isDebugEnabled()) {
@@ -313,9 +317,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
                     });
                 }
 
-                metrics.setLastProcessedRowsCount(counters.rows);
-
-                if (counters.rows == 0) {
+                if (!batchMetrics.hasProcessedRows()) {
                     // When no rows are processed, don't advance the SCN
                     return startScn;
                 }
@@ -435,7 +437,8 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
      */
     protected void processResults(OraclePartition partition, ResultSet resultSet) throws SQLException, InterruptedException {
         while (context.isRunning() && hasNextWithMetricsUpdate(resultSet)) {
-            counters.rows++;
+            batchMetrics.rowObserved();
+            batchMetrics.rowProcessed();
             processRow(partition, LogMinerEventRow.fromResultSet(resultSet, getConfig().getCatalogName(), isTrxIdRawValue()));
         }
     }
@@ -626,7 +629,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
             return;
         }
 
-        counters.commitCount++;
+        batchMetrics.commitObserved();
 
         // When a COMMIT is received, regardless of the number of events it has, it still
         // must be recorded in the commit scn for the node to guarantee updates to the
@@ -875,7 +878,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
         }
         metrics.incrementRolledBackTransactionCount();
         metrics.addRolledBackTransactionId(row.getTransactionId());
-        counters.rollbackCount++;
+        batchMetrics.rollbackObserved();
     }
 
     /**
@@ -937,7 +940,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
 
         LOGGER.trace("DDL: '{}' {}", row.getRedoSql(), row);
         if (row.getTableName() != null) {
-            counters.ddlCount++;
+            batchMetrics.schemaChangeObserved();
             final TableId tableId = row.getTableId();
 
             if (canAdvanceLowerScnBoundary(row)) {
@@ -1268,18 +1271,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
             }
         }
 
-        counters.dmlCount++;
-        switch (row.getEventType()) {
-            case INSERT:
-                counters.insertCount++;
-                break;
-            case UPDATE:
-                counters.updateCount++;
-                break;
-            case DELETE:
-                counters.deleteCount++;
-                break;
-        }
+        batchMetrics.dataChangeEventObserved(row.getEventType());
 
         final Table table = getTableForDataEvent(row);
         if (table == null) {
@@ -1348,19 +1340,19 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
             final Scn scn = offsetContext.getScn();
             final Map<Integer, Scn> commitScns = offsetContext.getCommitScn().getCommitScnForAllRedoThreads();
             if (previousOffsetScn.equals(scn) && !previousOffsetCommitScns.equals(commitScns)) {
-                counters.stuckCount++;
-                if (counters.stuckCount == 25) {
+                stuckCount++;
+                if (stuckCount == 25) {
                     LOGGER.warn("Offset SCN {} has not changed in 25 mining session iterations. " +
                             "This indicates long running transaction(s) are active.  Commit SCNs {}.",
                             previousOffsetScn,
                             previousOffsetCommitScns);
                     metrics.incrementScnFreezeCount();
-                    counters.stuckCount = 0;
+                    stuckCount = 0;
                 }
             }
             else {
                 metrics.setScnFreezeCount(0);
-                counters.stuckCount = 0;
+                stuckCount = 0;
             }
         }
     }
@@ -1607,7 +1599,7 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
      */
     @VisibleForTesting
     public String getTableMetadataDdl(OracleConnection connection, TableId tableId) throws SQLException, NonRelationalTableException {
-        counters.tableMetadataCount++;
+        batchMetrics.tableMetadataQueryObserved();
         LOGGER.info("Getting database metadata for table '{}'", tableId);
         return connection.getTableMetadataDdl(tableId);
     }
@@ -1886,54 +1878,6 @@ public abstract class AbstractLogMinerEventProcessor<T extends Transaction> impl
             }
         }
         return true;
-    }
-
-    /**
-     * Wrapper for all counter variables
-     *
-     */
-    protected static class Counters {
-        public int stuckCount; // it will be reset after 25 mining session iterations or if offset SCN changes
-        public int dmlCount;
-        public int ddlCount;
-        public int insertCount;
-        public int updateCount;
-        public int deleteCount;
-        public int commitCount;
-        public int rollbackCount;
-        public int tableMetadataCount;
-        public long rows;
-        public long partialRollbackCount;
-
-        public void reset() {
-            dmlCount = 0;
-            ddlCount = 0;
-            insertCount = 0;
-            updateCount = 0;
-            deleteCount = 0;
-            commitCount = 0;
-            rollbackCount = 0;
-            tableMetadataCount = 0;
-            rows = 0;
-            partialRollbackCount = 0;
-        }
-
-        @Override
-        public String toString() {
-            return "Counters{" +
-                    "rows=" + rows +
-                    ", stuckCount=" + stuckCount +
-                    ", dmlCount=" + dmlCount +
-                    ", ddlCount=" + ddlCount +
-                    ", insertCount=" + insertCount +
-                    ", updateCount=" + updateCount +
-                    ", deleteCount=" + deleteCount +
-                    ", commitCount=" + commitCount +
-                    ", rollbackCount=" + rollbackCount +
-                    ", tableMetadataCount=" + tableMetadataCount +
-                    ", partialRollbackCount=" + partialRollbackCount +
-                    '}';
-        }
     }
 
 }
