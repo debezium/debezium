@@ -31,6 +31,7 @@ import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.RedoThreadState;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics.BatchMetrics;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -204,6 +205,10 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
     protected LogMinerStreamingChangeEventSourceMetrics getMetrics() {
         return metrics;
+    }
+
+    protected BatchMetrics getBatchMetrics() {
+        return metrics.getBatchMetrics();
     }
 
     protected boolean isUsingContinuousMining() {

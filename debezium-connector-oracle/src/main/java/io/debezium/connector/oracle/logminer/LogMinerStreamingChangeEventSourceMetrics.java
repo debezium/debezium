@@ -28,6 +28,7 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.oracle.AbstractOracleStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.util.LRUCacheMap;
 import io.debezium.util.Strings;
@@ -111,6 +112,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
         this.sleepTime.set(connectorConfig.getLogMiningSleepTimeDefault().toMillis());
         this.clock = clock;
         this.startTime = clock.instant();
+        this.batchMetrics = new BatchMetrics(this);
         reset();
     }
 
@@ -902,4 +904,111 @@ public class LogMinerStreamingChangeEventSourceMetrics
         }
     }
 
+    private final BatchMetrics batchMetrics;
+
+    public BatchMetrics getBatchMetrics() {
+        return batchMetrics;
+    }
+
+    public static class BatchMetrics {
+
+        private final LogMinerStreamingChangeEventSourceMetrics metrics;
+
+        private int schemaChangeCount;
+        private int dataChangeCount;
+        private int insertCount;
+        private int updateCount;
+        private int deleteCount;
+        private int commitCount;
+        private int rollbackCount;
+        private int partialRollbackCount;
+        private int jdbcRows;
+        private int processedRows;
+        private int metadataQueryCount;
+
+        public BatchMetrics(LogMinerStreamingChangeEventSourceMetrics metrics) {
+            this.metrics = metrics;
+        }
+
+        public void schemaChangeObserved() {
+            schemaChangeCount++;
+        }
+
+        public void dataChangeEventObserved(EventType eventType) {
+            dataChangeCount++;
+
+            switch (eventType) {
+                case INSERT -> insertCount++;
+                case UPDATE -> updateCount++;
+                case DELETE -> deleteCount++;
+            }
+        }
+
+        public void commitObserved() {
+            commitCount++;
+        }
+
+        public void rollbackObserved() {
+            rollbackCount++;
+        }
+
+        public void partialRollbackObserved() {
+            partialRollbackCount++;
+        }
+
+        public void rowObserved() {
+            jdbcRows++;
+        }
+
+        public void rowProcessed() {
+            processedRows++;
+        }
+
+        public void tableMetadataQueryObserved() {
+            metadataQueryCount++;
+        }
+
+        public void updateStreamingMetrics() {
+            metrics.setLastCapturedDmlCount(dataChangeCount);
+            metrics.setLastProcessedRowsCount(processedRows);
+        }
+
+        public boolean hasProcessedAnyTransactions() {
+            return dataChangeCount > 0 || commitCount > 0 || rollbackCount > 0;
+        }
+
+        public boolean hasProcessedRows() {
+            return processedRows > 0;
+        }
+
+        public void reset() {
+            schemaChangeCount = 0;
+            dataChangeCount = 0;
+            insertCount = 0;
+            updateCount = 0;
+            deleteCount = 0;
+            commitCount = 0;
+            rollbackCount = 0;
+            partialRollbackCount = 0;
+            jdbcRows = 0;
+            processedRows = 0;
+            metadataQueryCount = 0;
+        }
+
+        @Override
+        public String toString() {
+            return "BatchMetrics: " +
+                    "jdbcRows=" + jdbcRows +
+                    ", processedRows=" + processedRows +
+                    ", dmlCount=" + dataChangeCount +
+                    ", ddlCount=" + schemaChangeCount +
+                    ", insertCount=" + insertCount +
+                    ", updateCount=" + updateCount +
+                    ", deleteCount=" + deleteCount +
+                    ", commitCount=" + commitCount +
+                    ", rollbackCount=" + rollbackCount +
+                    ", partialRollbackCount=" + partialRollbackCount +
+                    ", tableMetadataCount=" + metadataQueryCount;
+        }
+    }
 }
