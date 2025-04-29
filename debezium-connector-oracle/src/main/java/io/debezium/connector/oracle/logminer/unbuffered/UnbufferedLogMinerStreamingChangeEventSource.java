@@ -277,7 +277,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                 while (context.isRunning() && hasNextWithMetricsUpdate(resultSet)) {
                     getBatchMetrics().rowObserved();
 
-                    final LogMinerEventRow event = LogMinerEventRow.fromResultSet(resultSet, catalogName, true);
+                    final LogMinerEventRow event = LogMinerEventRow.fromResultSet(resultSet, catalogName);
                     if (!hasEventBeenProcessed(event)) {
                         if (!isEventSkipped(event)) {
                             switch (event.getEventType()) {
