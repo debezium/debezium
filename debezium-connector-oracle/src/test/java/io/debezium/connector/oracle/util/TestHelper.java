@@ -37,7 +37,6 @@ import io.debezium.embedded.async.AsyncEmbeddedEngine;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.storage.file.history.FileSchemaHistory;
-import io.debezium.storage.kafka.history.KafkaSchemaHistory;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
 import io.debezium.testing.testcontainers.OracleContainer;
 import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
