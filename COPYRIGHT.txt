@@ -63,10 +63,12 @@ Artur Gukasian
 Ashhar Hasan
 Ashique Ansari
 Ashmeet Lamba
+Ashok Sudhakar
 Ashwin Murali Krishnan
 Attila Szucs
 Avinash Vishwakarma
 Aykut Farsak
+Aziza Kalmasova
 baabgai
 Babur Duisenov
 Balázs Németh
@@ -135,6 +137,7 @@ Daan Gerits
 Daan Roosen
 Daniel Petisme
 dario
+Dave Charron
 Dave Cramer
 Dave Cumberland
 David Beck
@@ -240,6 +243,8 @@ Jun Zhao
 Hady Willi
 Hang Ruan
 Hans-Peter Grahsl
+Haris Bin Saif
+Haris Osmanagić
 Harvey Yue
 Helong Zhang
 Henk van Dyk
@@ -303,6 +308,7 @@ Jos Huiting
 Jose Carvajal Hilario
 Jose Luis
 Jose Luis Sánchez
+Joseph Koshakow
 Josh Arenberg
 Josh Ribera
 Josh Stanfield
@@ -367,6 +373,7 @@ Mark Drilling
 Mark Ducommun
 Mark Lambert
 Markus Kull
+Micro Huang
 Martin Medek
 Martin Sillence
 Martin Tosney
@@ -437,6 +444,7 @@ Oren Elias
 Ori Popowski
 Orr Ganani
 Oscar Romero
+Oskar Bonde
 Oskar Polak
 P. Aum
 Patrick Chu
@@ -446,11 +454,13 @@ Paul Mellor
 Paul Tzen
 Paweł Malon
 Peng Lyu
+Petar Kostov
 Peter Goransson
 Peter Junos
 Peter Larsson
 Peter Urbanetz
 Philip Sanetra
+Philipp Bouzid
 Philippe Labat
 Piotr Piastucki
 Plugaru Tudor
