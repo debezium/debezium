@@ -175,21 +175,6 @@ public class TestInfrastructureHelper {
         MoreStartables.deepStartSync(containers.get());
     }
 
-    public static void copyIntoContainer(DATABASE database, String filePathToTransfer, String containerPath) {
-        final Supplier<Stream<Startable>> containers = getContainers(database);
-
-        if ("true".equals(System.getenv("CI"))) {
-            containers.get().forEach(container -> {
-                if (container instanceof GenericContainer<?>) {
-                    if (((GenericContainer<?>) container).isRunning()) {
-                        LOGGER.warn("Container {} is running. Copy into is not permitted", ((GenericContainer<?>) container).getContainerName());
-                    }
-                    ((GenericContainer<?>) container).withCopyToContainer(Transferable.of(readBytesFromResource(filePathToTransfer)), containerPath);
-                }
-            });
-        }
-    }
-
     public static void setupDebeziumContainer(String connectorVersion, String restExtensionClassses) {
         setupDebeziumContainer(connectorVersion, restExtensionClassses, DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST);
     }
@@ -246,67 +231,12 @@ public class TestInfrastructureHelper {
                 .dependsOn(KAFKA_CONTAINER);
     }
 
-    public static void setupSqlServerTDEncryption() throws IOException, InterruptedException {
-
-        SQL_SERVER_CONTAINER.execInContainer(
-                "/opt/mssql-tools18/bin/sqlcmd",
-                "-S", "localhost",
-                "-U", "SA",
-                "-P", "Password!",
-                "-i", "/opt/mssql-tools18/bin/setup-sqlserver-database-with-encryption.sql",
-                "-N", "-C");
-    }
-
-    public static void defaultDebeziumContainer() {
-        defaultDebeziumContainer(null);
-    }
-
-    public static GenericContainer<?> getKafkaContainer() {
-        return KAFKA_CONTAINER;
-    }
-
     public static DebeziumContainer getDebeziumContainer() {
         return DEBEZIUM_CONTAINER;
-    }
-
-    public static PostgreSQLContainer<?> getPostgresContainer() {
-        return POSTGRES_CONTAINER;
-    }
-
-    public static MySQLContainer<?> getMySqlContainer() {
-        return MYSQL_CONTAINER;
-    }
-
-    public static MongoDbReplicaSet getMongoDbContainer() {
-        return MONGODB_REPLICA;
-    }
-
-    public static MSSQLServerContainer<?> getSqlServerContainer() {
-        return SQL_SERVER_CONTAINER;
     }
 
     public static OracleContainer getOracleContainer() {
         return ORACLE_CONTAINER;
     }
 
-    public static MariaDBContainer getMariaDbContainer() {
-        return MARIADB_CONTAINER;
-    }
-
-    public static void waitForConnectorTaskStatus(String connectorName, int taskNumber, Connector.State state) {
-        Awaitility.await()
-                // this needs to be set to at least a minimum of ~65-70 seconds because PostgreSQL now
-                // retries on certain failure conditions with a 10s between them.
-                .atMost(120, TimeUnit.SECONDS)
-                .until(() -> TestInfrastructureHelper.getDebeziumContainer().getConnectorTaskState(connectorName, taskNumber) == state);
-    }
-
-    private static byte[] readBytesFromResource(String path) {
-        try {
-            return TestInfrastructureHelper.class.getResourceAsStream(path).readAllBytes();
-        }
-        catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
 }
