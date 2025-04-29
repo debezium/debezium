@@ -112,22 +112,23 @@ node('Slave') {
             def INPUT_URL = "$MAVEN_CENTRAL/io/debezium/debezium-operator-dist/$RELEASE_VERSION/debezium-operator-dist-$RELEASE_VERSION-helm-chart.tar.gz"
 
             dir(TMP_WORKDIR) {
-                sh(
-                        label: 'Download and verify helm chart',
-                        script: """
-                            echo "Input url: $INPUT_URL"
-                            curl -fLjs -o "debezium-operator-${RELEASE_SEM_VERSION}.tar.gz" "$INPUT_URL"
-                        """
-                )
+                if (!DRY_RUN) {
+                    sh(
+                            label: 'Download and verify helm chart',
+                            script: """
+                                echo "Input url: $INPUT_URL"
+                                curl -fLjs -o "debezium-operator-${RELEASE_SEM_VERSION}.tar.gz" "$INPUT_URL"
+                            """
+                    )
 
-                sh(     label: 'Unzip and repackage',
-                        script: """
-                            tar -xvzf debezium-operator-${RELEASE_SEM_VERSION}.tar.gz --one-top-level=debezium-operator-${RELEASE_SEM_VERSION} --strip-components=1
-                            helm package debezium-operator-${RELEASE_SEM_VERSION}
-                            cp debezium-operator-${RELEASE_SEM_VERSION}.tgz ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-operator
-                        """
-                )
-
+                    sh(label: 'Unzip and repackage',
+                            script: """
+                                tar -xvzf debezium-operator-${RELEASE_SEM_VERSION}.tar.gz --one-top-level=debezium-operator-${RELEASE_SEM_VERSION} --strip-components=1
+                                helm package debezium-operator-${RELEASE_SEM_VERSION}
+                                cp debezium-operator-${RELEASE_SEM_VERSION}.tgz ${WORKSPACE}/${HELM_CHART_OUTPUT_DIR}/debezium-operator
+                            """
+                    )
+                }
             }
 
             stage('Create a GH release') {
