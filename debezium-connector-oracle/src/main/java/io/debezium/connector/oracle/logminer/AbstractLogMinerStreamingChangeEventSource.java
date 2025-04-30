@@ -164,8 +164,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         finally {
             LOGGER.info("Streaming metrics at shutdown: {}", metrics);
             LOGGER.info("Offsets as shutdown: {}", offsetContext);
-
-            cleanup();
         }
     }
 
@@ -173,9 +171,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                                                       OraclePartition partition,
                                                       OracleOffsetContext offsetContext)
             throws Exception;
-
-    protected void cleanup() {
-    }
 
     protected OraclePartition getPartition() {
         return partition;

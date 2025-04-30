@@ -228,7 +228,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
     }
 
     @Override
-    protected void cleanup() {
+    public void close() {
         try {
             resumePositionProvider.close();
         }
