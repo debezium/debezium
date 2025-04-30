@@ -167,16 +167,39 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                         try (
                                 Statement stmt = conn.createStatement();
                                 ResultSet rs = stmt.executeQuery(config.getTableSelect())) {
+                            StringBuilder historyDataBuilder = new StringBuilder();
+                            boolean isNotFirst = false;
                             while (rs.next()) {
-                                String historyData = rs.getString("history_data");
-
-                                if (historyData.isEmpty() == false) {
-                                    try {
-                                        records.accept(new HistoryRecord(reader.read(historyData)));
+                                // warning: No continuity check - nice to have
+                                int recordInsertSeq = rs.getInt("history_data_seq");
+                                String historyDataSpc = rs.getString("history_data");
+                                // Reduce if else execution
+                                if (isNotFirst) {
+                                    // must be ordered by ts asc !!!
+                                    // check if the prev record is the completed json
+                                    if (recordInsertSeq == 0) {
+                                        try {
+                                            records.accept(new HistoryRecord(reader.read(historyDataBuilder.toString())));
+                                        } catch (IOException e) {
+                                            throw new DebeziumException(e);
+                                        }
+                                        // clear
+                                        historyDataBuilder.setLength(0);
+                                        // continue
                                     }
-                                    catch (IOException e) {
-                                        throw new DebeziumException(e);
-                                    }
+                                    historyDataBuilder.append(historyDataSpc);
+                                } else {
+                                    // first record
+                                    historyDataBuilder.append(historyDataSpc);
+                                    isNotFirst = true;
+                                }
+                            }
+                            // the last record  - must not be empty
+                            if (!historyDataBuilder.isEmpty()) {
+                                try {
+                                    records.accept(new HistoryRecord(reader.read(historyDataBuilder.toString())));
+                                } catch (IOException e) {
+                                    throw new DebeziumException(e);
                                 }
                             }
                         }
