@@ -28,7 +28,7 @@ import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
-import io.debezium.connector.oracle.logminer.buffered.processor.ehcache.CacheCapacityExceededException;
+import io.debezium.connector.oracle.logminer.buffered.ehcache.CacheCapacityExceededException;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
 import io.debezium.doc.FixFor;

@@ -83,8 +83,6 @@ import io.debezium.connector.oracle.junit.SkipWhenLogMiningStrategyIs;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingAdapter;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource;
-import io.debezium.connector.oracle.logminer.buffered.processor.AbstractLogMinerEventProcessor;
-import io.debezium.connector.oracle.logminer.buffered.processor.memory.MemoryLogMinerEventProcessor;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.converters.spi.CloudEventsMaker;
@@ -4256,7 +4254,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             connection.execute("ALTER TABLE dbz5147 drop column data2");
             connection.execute("INSERT INTO dbz5147 values (3, 'test3')");
 
-            final LogInterceptor interceptor = new LogInterceptor(AbstractLogMinerEventProcessor.class);
+            final LogInterceptor interceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
 
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
@@ -4729,13 +4727,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5907")
                     .build();
 
-            final LogInterceptor interceptor;
-            if (config.getString(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE).equals("memory")) {
-                interceptor = new LogInterceptor(MemoryLogMinerEventProcessor.class.getName());
-            }
-            else {
-                interceptor = new LogInterceptor(AbstractLogMinerEventProcessor.class.getName());
-            }
+            final LogInterceptor interceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
 
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
@@ -5204,7 +5196,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     public void testBacklogTransactionShouldNotBeAbandon() throws Exception {
         TestHelper.dropTable(connection, "dbz6355");
         try {
-            final LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerEventProcessor.class);
+            final LogInterceptor logInterceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
 
             connection.execute("CREATE TABLE dbz6355 (id numeric(9,0) primary key, name varchar2(50))");
             TestHelper.streamTable(connection, "dbz6355");
@@ -5537,8 +5529,8 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             final LogInterceptor sourceLogging = new LogInterceptor(AbstractLogMinerStreamingChangeEventSource.class);
             sourceLogging.setLoggerLevel(AbstractLogMinerStreamingChangeEventSource.class, Level.DEBUG);
 
-            final LogInterceptor processorLogging = new LogInterceptor(AbstractLogMinerEventProcessor.class);
-            processorLogging.setLoggerLevel(AbstractLogMinerEventProcessor.class, Level.DEBUG);
+            final LogInterceptor processorLogging = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
+            processorLogging.setLoggerLevel(BufferedLogMinerStreamingChangeEventSource.class, Level.DEBUG);
 
             start(OracleConnector.class, config);
             assertConnectorIsRunning();

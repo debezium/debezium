@@ -8,7 +8,7 @@ package io.debezium.connector.oracle.logminer.parser;
 import java.util.Arrays;
 import java.util.Objects;
 
-import io.debezium.connector.oracle.logminer.buffered.processor.infinispan.marshalling.VisibleForMarshalling;
+import io.debezium.connector.oracle.logminer.buffered.infinispan.marshalling.VisibleForMarshalling;
 import io.debezium.connector.oracle.logminer.events.EventType;
 
 /**

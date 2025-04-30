@@ -27,7 +27,7 @@ import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
-import io.debezium.connector.oracle.logminer.buffered.processor.AbstractLogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.logminer.unbuffered.UnbufferedLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.Envelope;
@@ -130,8 +130,8 @@ public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
 
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerEventProcessor.class);
-            logInterceptor.setLoggerLevel(AbstractLogMinerEventProcessor.class, Level.DEBUG);
+            LogInterceptor logInterceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
+            logInterceptor.setLoggerLevel(BufferedLogMinerStreamingChangeEventSource.class, Level.DEBUG);
 
             try (OracleConnection testConnection = TestHelper.testConnection()) {
                 testConnection.connection().setClientInfo("OCSID.CLIENTID", "abc");
@@ -185,8 +185,8 @@ public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
                     logInterceptor.setLoggerLevel(UnbufferedLogMinerStreamingChangeEventSource.class, Level.DEBUG);
                 }
                 default -> {
-                    logInterceptor = new LogInterceptor(AbstractLogMinerEventProcessor.class);
-                    logInterceptor.setLoggerLevel(AbstractLogMinerEventProcessor.class, Level.DEBUG);
+                    logInterceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
+                    logInterceptor.setLoggerLevel(BufferedLogMinerStreamingChangeEventSource.class, Level.DEBUG);
                 }
             }
 
@@ -236,8 +236,8 @@ public class ClientIdFilterIT extends AbstractAsyncEngineConnectorTest {
 
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            LogInterceptor logInterceptor = new LogInterceptor(AbstractLogMinerEventProcessor.class);
-            logInterceptor.setLoggerLevel(AbstractLogMinerEventProcessor.class, Level.DEBUG);
+            LogInterceptor logInterceptor = new LogInterceptor(BufferedLogMinerStreamingChangeEventSource.class);
+            logInterceptor.setLoggerLevel(BufferedLogMinerStreamingChangeEventSource.class, Level.DEBUG);
 
             try (OracleConnection testConnection = TestHelper.testConnection()) {
                 testConnection.connection().setClientInfo("OCSID.CLIENTID", "abc");
