@@ -5,6 +5,7 @@
  */
 package io.debezium.testing.testcontainers.testhelper;
 
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
@@ -172,10 +173,6 @@ public class TestInfrastructureHelper {
         MoreStartables.deepStartSync(containers.get());
     }
 
-    public static void setupDebeziumContainer(String connectorVersion, String restExtensionClassses) {
-        setupDebeziumContainer(connectorVersion, restExtensionClassses, DEBEZIUM_CONTAINER_IMAGE_VERSION_LATEST);
-    }
-
     private static void waitForDebeziumContainerIsStopped() {
         Awaitility.await()
                 .atMost(DebeziumContainer.waitTimeForRecords() * 5L, TimeUnit.SECONDS)
@@ -204,6 +201,16 @@ public class TestInfrastructureHelper {
         if (null != restExtensionClasses && !restExtensionClasses.isEmpty()) {
             DEBEZIUM_CONTAINER.withEnv("CONNECT_REST_EXTENSION_CLASSES", restExtensionClasses);
         }
+    }
+
+    public static void setupSqlServerTDEncryption() throws IOException, InterruptedException {
+        SQL_SERVER_CONTAINER.execInContainer(
+                "/opt/mssql-tools18/bin/sqlcmd",
+                "-S", "localhost",
+                "-U", "SA",
+                "-P", "Password!",
+                "-i", "/opt/mssql-tools18/bin/setup-sqlserver-database-with-encryption.sql",
+                "-N", "-C");
     }
 
     public static void defaultDebeziumContainer(String debeziumContainerImageVersion) {
