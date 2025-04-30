@@ -28,6 +28,7 @@ import io.debezium.relational.history.TableChanges.TableChangesSerializer;
 import io.debezium.text.MultipleParsingExceptions;
 import io.debezium.text.ParsingException;
 import io.debezium.util.Clock;
+import io.debezium.util.Loggings;
 
 /**
  * @author Randall Hauch
@@ -131,8 +132,7 @@ public abstract class AbstractSchemaHistory implements SchemaHistory {
                         ddlParser.setCurrentSchema(recovered.schemaName()); // may be null
                     }
                     if (ddlFilter.test(ddl)) {
-                        logger.info("a DDL '{}' was filtered out of processing by regular expression '{}'", ddl,
-                                config.getString(DDL_FILTER));
+                        Loggings.logDebugAndTraceRecord(logger, ddl, "A DDL was filtered out of processing by regular expression '{}'", config.getString(DDL_FILTER));
                         return;
                     }
                     try {
