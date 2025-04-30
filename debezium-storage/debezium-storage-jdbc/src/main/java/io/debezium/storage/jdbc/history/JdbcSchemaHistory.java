@@ -178,7 +178,6 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                                     // must be ordered by ts asc !!!
                                     // check if the prev record is the completed json
                                     if (recordInsertSeq == 0) {
-                                        // Exception 'java. io. IOException' is never thrown in the corresponding try block
                                         try {
                                             records.accept(new HistoryRecord(reader.read(historyDataBuilder.toString())));
                                         } catch (IOException e) {
