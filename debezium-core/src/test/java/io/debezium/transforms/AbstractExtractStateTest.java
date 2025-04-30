@@ -34,8 +34,6 @@ import io.debezium.util.Collect;
 public abstract class AbstractExtractStateTest {
 
     // for ExtractNewRecordState
-    protected static final String DROP_TOMBSTONES = "drop.tombstones";
-    protected static final String HANDLE_DELETES = "delete.handling.mode";
     protected static final String HANDLE_TOMBSTONE_DELETES = "delete.tombstone.handling.mode";
     protected static final String ROUTE_BY_FIELD = "route.by.field";
     protected static final String ADD_FIELDS = "add.fields";
