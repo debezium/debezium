@@ -34,7 +34,6 @@ jobs:
       sqlserver-changed: ${{ steps.changed-files-sqlserver.outputs.any_changed }}
       jdbc-changed: ${{ steps.changed-files-jdbc.outputs.any_changed }}
       outbox-changed: ${{ steps.changed-files-outbox.outputs.any_changed }}
-      rest-extension-changed: ${{ steps.changed-files-rest-extension.outputs.any_changed }}
       schema-generator-changed: ${{ steps.changed-files-schema-generator.outputs.any_changed }}
       debezium-testing-changed: ${{ steps.changed-files-debezium-testing.outputs.any_changed }}
       debezium-testing-mongodb-changed: ${{ steps.changed-files-debezium-testing-mongodb.outputs.any_changed }}
@@ -132,13 +131,6 @@ jobs:
             debezium-quarkus-outbox/**
             debezium-quarkus-outbox-common/**
             debezium-quarkus-outbox-reactive/**
-
-      - name: Get modified files (REST Extension)
-        id: changed-files-rest-extension
-        uses: tj-actions/changed-files@v46.0.5
-        with:
-          files: |
-            debezium-connect-rest-extension/**
 
       - name: Get modified files (Schema Generator)
         id: changed-files-schema-generator
@@ -528,18 +520,6 @@ jobs:
       - name: Checkout Action
         uses: actions/checkout@v4
       - uses: ./.github/actions/build-debezium-outbox
-        with:
-          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
-
-  build_rest_extension:
-    name: "REST Extension"
-    needs: [ check_style, file_changes ]
-    runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.rest-extension-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
-    steps:
-      - name: Checkout Action
-        uses: actions/checkout@v4
-      - uses: ./.github/actions/build-debezium-rest-extension
         with:
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
 
