@@ -928,7 +928,6 @@ public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
             final Map<String, String> props = new HashMap<>();
             props.put(ADD_FIELDS,
                     "source.table:META_SRC_TABLENAME,source.ts_ms:META_SRC_TS_MS,source.ts_us:META_SRC_TS_US,source.ts_ns:META_SRC_TS_NS,ts_ms:META_TS_MS,ts_us:META_TS_US,ts_ns:META_TS_NS,op:META_SRC_OP,source.scn:META_SRC_SCN,source.snapshot:META_SRC_SNAPSHOT,source.user_name:META_SRC_USER,changes:META_SRC_CHANGES");
-            props.put(DROP_TOMBSTONES, "false");
             props.put(HANDLE_TOMBSTONE_DELETES, "rewrite");
             transform.configure(props);
 

@@ -156,14 +156,11 @@ The following `.properties` example sets several event flattening SMT options:
 ----
 transforms=unwrap,...
 transforms.unwrap.type=io.debezium.transforms.ExtractNewRecordState
-transforms.unwrap.drop.tombstones=false
-transforms.unwrap.delete.handling.mode=rewrite
+transforms.unwrap.delete.tombtone.handling.mode=rewrite
 transforms.unwrap.add.fields=table,lsn
 ----
 
-`drop.tombstones=false`:: Keeps tombstone records for `DELETE` operations in the event stream.
-
-`delete.handling.mode=rewrite`:: For `DELETE` operations, edits the Kafka record by flattening the `value` field that was in the change event. The `value` field directly contains the key/value pairs that were in the `before` field. The SMT adds `__deleted` and sets it to `true`, for example:
+`delete.tombstone.handling.mode=rewrite`:: For `DELETE` operations, removes tombstones, and edits the Kafka record by flattening the `value` field that was in the change event. The `value` field directly contains the key/value pairs that were in the `before` field. The SMT adds `__deleted` and sets it to `true`, for example:
 +
 [source,json,indent=0]
 ----
@@ -205,7 +202,7 @@ transforms=unwrap,...
 transforms.unwrap.type=io.debezium.transforms.ExtractNewRecordState
 transforms.unwrap.add.fields=op,table,lsn,source.ts_ms
 transforms.unwrap.add.headers=db
-transforms.unwrap.delete.handling.mode=rewrite
+transforms.unwrap.delete.tombstone.handling.mode=rewrite
 ----
 
 With that configuration, a simplified Kafka record would contain something like the following:
@@ -226,7 +223,7 @@ Also, simplified Kafka records would have a `__db` header.
 
 In the simplified Kafka record, the SMT prefixes the metadata field names with a double underscore. When you specify a struct, the SMT also inserts an underscore between the struct name and the field name.
 
-To add metadata to a simplified Kafka record that is for a `DELETE` operation, you must also configure `delete.handling.mode=rewrite`.
+To add metadata to a simplified Kafka record that is for a `DELETE` operation, you must also configure `delete.tombstone.handling.mode=rewrite`.
 
 // Type: concept
 // Title: Options for applying the event flattening transformation selectively
@@ -257,37 +254,10 @@ The following table describes the options that you can specify to configure the 
 |Default
 |Description
 
-|[[extract-new-record-state-drop-tombstones]]xref:extract-new-record-state-drop-tombstones[`drop.tombstones`]
-|`true`
-|{prodname} generates a tombstone record for each `DELETE` operation. The default behavior is that event flattening SMT removes tombstone records from the stream. To keep tombstone records in the stream, specify `drop.tombstones=false`.
-[NOTE]
-====
-This option is scheduled for removal in a future release.
-In its place, use the xref:extract-new-record-state-delete-tombstone-handling-mode[`delete.tombstone.handling.mode`] option.
-====
-|[[extract-new-record-state-delete-handling-mode]]xref:extract-new-record-state-delete-handling-mode[`delete.handling{zwsp}.mode`]
-|`drop`
-|{prodname} generates a change event record for each `DELETE` operation. The default behavior is that event flattening SMT removes these records from the stream. To keep Kafka records for `DELETE` operations in the stream, set `delete.handling.mode` to `none` or `rewrite`. +
- +
-Specify `none` to keep the change event record in the stream. The record contains only `"value": "null"`.  +
- +
-Specify `rewrite` to keep the change event record in the stream and edit the record to have a `value` field that contains the key/value pairs that were in the `before` field and also add `+__deleted: true+` to the `value`. This is another way to indicate that the record has been deleted. +
- +
-When you  specify `rewrite`, the updated simplified records for `DELETE` operations might be all you need to track deleted records. You can consider accepting the default behavior of dropping the tombstone records that the {prodname} connector creates.
-[NOTE]
-====
-This option is scheduled for removal in a future release.
-In its place, use the xref:extract-new-record-state-delete-tombstone-handling-mode[`delete.tombstone.handling.mode`] option.
-====
-
 |[[extract-new-record-state-delete-tombstone-handling-mode]]xref:extract-new-record-state-delete-tombstone-handling-mode[`delete.tombstone.handling.mode`]
-|No default
+|`tombstone`
 |{prodname} generates a change event record for each `DELETE` operation. This setting determines how the event flattening SMT handles `DELETE` events from the stream.
 
-[NOTE]
-====
-The setting for this option takes precedence over any conflicting settings that you might configure for the deprecated xref:extract-new-record-state-drop-tombstones[`drop.tombstones`] or xref:extract-new-record-state-delete-handling-mode[`delete.handling.mode`] options.
-====
 Set one of the following options:
 
 `drop`:: The SMT removes both the `DELETE` event and `TOMBSTONE` from the stream.

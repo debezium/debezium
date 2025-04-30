@@ -16,58 +16,6 @@ public class ExtractNewRecordStateConfigDefinition {
     public static final String DELETED_FIELD = "__deleted";
     public static final String METADATA_FIELD_PREFIX = "__";
 
-    @Deprecated
-    public enum DeleteHandling implements EnumeratedValue {
-        DROP("drop"),
-        REWRITE("rewrite"),
-        NONE("none");
-
-        private final String value;
-
-        DeleteHandling(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String getValue() {
-            return value;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @return the matching option, or null if no match is found
-         */
-        public static DeleteHandling parse(String value) {
-            if (value == null) {
-                return null;
-            }
-            value = value.trim();
-            for (DeleteHandling option : DeleteHandling.values()) {
-                if (option.getValue().equalsIgnoreCase(value)) {
-                    return option;
-                }
-            }
-            return null;
-        }
-
-        /**
-         * Determine if the supplied value is one of the predefined options.
-         *
-         * @param value the configuration property value; may not be null
-         * @param defaultValue the default value; may be null
-         * @return the matching option, or null if no match is found and the non-null default is invalid
-         */
-        public static DeleteHandling parse(String value, String defaultValue) {
-            DeleteHandling mode = parse(value);
-            if (mode == null && defaultValue != null) {
-                mode = parse(defaultValue);
-            }
-            return mode;
-        }
-    }
-
     public enum DeleteTombstoneHandling implements EnumeratedValue {
         DROP("drop"),
         TOMBSTONE("tombstone"),
@@ -125,36 +73,12 @@ public class ExtractNewRecordStateConfigDefinition {
             .withEnum(DeleteTombstoneHandling.class)
             .withWidth(ConfigDef.Width.MEDIUM)
             .withImportance(ConfigDef.Importance.MEDIUM)
-            .optional()
+            .withDefault(DeleteTombstoneHandling.TOMBSTONE.getValue())
             .withDescription("How to handle delete records. Options are: "
                     + "drop - Remove the delete event and tombstone from the stream."
                     + "tombstone (default) - For each delete event, leave only a tombstone in the stream."
                     + "rewrite - Remove tombstone from the record, and add a `__deleted` field with the value `true`."
                     + "rewrite-with-tombstone - Retain tombstone in record and add a `__deleted` field with the value `true`.");
-
-    @Deprecated
-    public static final Field DROP_TOMBSTONES = Field.create("drop.tombstones")
-            .withDisplayName("Drop tombstones")
-            .withType(ConfigDef.Type.BOOLEAN)
-            .withWidth(ConfigDef.Width.SHORT)
-            .withImportance(ConfigDef.Importance.LOW)
-            .withDefault(true)
-            .withDescription("Debezium by default generates a tombstone record to enable Kafka compaction after "
-                    + "a delete record was generated. This record is usually filtered out to avoid duplicates "
-                    + "as a delete record is converted to a tombstone record, too"
-                    + "Note: This option is scheduled for removal in a future release, use \"delete.tombstone.handling.mode\" instead");
-
-    @Deprecated
-    public static final Field HANDLE_DELETES = Field.create("delete.handling.mode")
-            .withDisplayName("Handle delete records")
-            .withEnum(DeleteHandling.class, DeleteHandling.DROP)
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.MEDIUM)
-            .withDescription("How to handle delete records. Options are: "
-                    + "none - records are passed,"
-                    + "drop - records are removed (the default),"
-                    + "rewrite - __deleted field is added to records."
-                    + "Note: This option is scheduled for removal in a future release, use \"delete.tombstone.handling.mode\" instead");
 
     public static final Field ROUTE_BY_FIELD = Field.create("route.by.field")
             .withDisplayName("Route by field name")
@@ -212,5 +136,5 @@ public class ExtractNewRecordStateConfigDefinition {
             .withDescription("When this option is enabled, null field values are replaced by source-defined defaults when rewriting the record.");
 
     public static final Field.Set CONFIG_FIELDS = Field.setOf(
-            HANDLE_TOMBSTONE_DELETES, DROP_TOMBSTONES, HANDLE_DELETES, ROUTE_BY_FIELD, ADD_FIELDS_PREFIX, ADD_FIELDS, ADD_HEADERS_PREFIX, ADD_HEADERS);
+            HANDLE_TOMBSTONE_DELETES, ROUTE_BY_FIELD, ADD_FIELDS_PREFIX, ADD_FIELDS, ADD_HEADERS_PREFIX, ADD_HEADERS);
 }
