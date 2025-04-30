@@ -171,7 +171,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                             boolean isNotFirst = false;
                             while (rs.next()) {
                                 // warning: No continuity check - nice to have
-                                int recordInsertSeq = rs.getInt("record_insert_seq");
+                                int recordInsertSeq = rs.getInt("history_data_seq");
                                 String historyDataSpc = rs.getString("history_data");
                                 // Reduce if else execution
                                 if (isNotFirst) {
