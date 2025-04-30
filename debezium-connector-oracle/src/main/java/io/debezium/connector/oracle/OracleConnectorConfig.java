@@ -33,17 +33,10 @@ import io.debezium.config.Field.ValidationOutput;
 import io.debezium.config.Instantiator;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
-import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
-import io.debezium.connector.oracle.logminer.buffered.processor.LogMinerEventProcessor;
-import io.debezium.connector.oracle.logminer.buffered.processor.ehcache.EhcacheLogMinerEventProcessor;
-import io.debezium.connector.oracle.logminer.buffered.processor.infinispan.EmbeddedInfinispanLogMinerEventProcessor;
-import io.debezium.connector.oracle.logminer.buffered.processor.infinispan.RemoteInfinispanLogMinerEventProcessor;
-import io.debezium.connector.oracle.logminer.buffered.processor.memory.MemoryLogMinerEventProcessor;
+import io.debezium.connector.oracle.logminer.buffered.infinispan.RemoteInfinispanCacheProvider;
 import io.debezium.connector.oracle.logminer.logwriter.LogWriterFlushStrategy;
 import io.debezium.connector.oracle.util.OracleUtils;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.ColumnFilterMode;
 import io.debezium.relational.HistorizedRelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
@@ -1490,76 +1483,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     public enum LogMiningBufferType implements EnumeratedValue {
-        MEMORY("memory") {
-            @Override
-            public LogMinerEventProcessor createProcessor(ChangeEventSourceContext context,
-                                                          OracleConnectorConfig connectorConfig,
-                                                          OracleConnection connection,
-                                                          EventDispatcher<OraclePartition, TableId> dispatcher,
-                                                          OraclePartition partition,
-                                                          OracleOffsetContext offsetContext,
-                                                          OracleDatabaseSchema schema,
-                                                          LogMinerStreamingChangeEventSourceMetrics metrics) {
-                return new MemoryLogMinerEventProcessor(context, connectorConfig, connection, dispatcher, partition,
-                        offsetContext, schema, metrics);
-            }
-        },
-
-        INFINISPAN_EMBEDDED("infinispan_embedded") {
-            @Override
-            public LogMinerEventProcessor createProcessor(ChangeEventSourceContext context,
-                                                          OracleConnectorConfig connectorConfig,
-                                                          OracleConnection connection,
-                                                          EventDispatcher<OraclePartition, TableId> dispatcher,
-                                                          OraclePartition partition,
-                                                          OracleOffsetContext offsetContext,
-                                                          OracleDatabaseSchema schema,
-                                                          LogMinerStreamingChangeEventSourceMetrics metrics) {
-                return new EmbeddedInfinispanLogMinerEventProcessor(context, connectorConfig, connection, dispatcher,
-                        partition, offsetContext, schema, metrics);
-            }
-        },
-
-        INFINISPAN_REMOTE("infinispan_remote") {
-            @Override
-            public LogMinerEventProcessor createProcessor(ChangeEventSourceContext context,
-                                                          OracleConnectorConfig connectorConfig,
-                                                          OracleConnection connection,
-                                                          EventDispatcher<OraclePartition, TableId> dispatcher,
-                                                          OraclePartition partition,
-                                                          OracleOffsetContext offsetContext,
-                                                          OracleDatabaseSchema schema,
-                                                          LogMinerStreamingChangeEventSourceMetrics metrics) {
-                return new RemoteInfinispanLogMinerEventProcessor(context, connectorConfig, connection, dispatcher,
-                        partition, offsetContext, schema, metrics);
-            }
-        },
-
-        EHCACHE("ehcache") {
-            @Override
-            public LogMinerEventProcessor createProcessor(ChangeEventSourceContext context,
-                                                          OracleConnectorConfig connectorConfig,
-                                                          OracleConnection connection,
-                                                          EventDispatcher<OraclePartition, TableId> dispatcher,
-                                                          OraclePartition partition,
-                                                          OracleOffsetContext offsetContext,
-                                                          OracleDatabaseSchema schema,
-                                                          LogMinerStreamingChangeEventSourceMetrics metrics) {
-                return new EhcacheLogMinerEventProcessor(context, connectorConfig, connection, dispatcher,
-                        partition, offsetContext, schema, metrics);
-            }
-        };
+        MEMORY("memory"),
+        INFINISPAN_EMBEDDED("infinispan_embedded"),
+        INFINISPAN_REMOTE("infinispan_remote"),
+        EHCACHE("ehcache");
 
         private final String value;
-
-        /**
-         * Creates the buffer type's specific processor implementation
-         */
-        public abstract LogMinerEventProcessor createProcessor(ChangeEventSourceContext context, OracleConnectorConfig connectorConfig,
-                                                               OracleConnection connection, EventDispatcher<OraclePartition, TableId> dispatcher,
-                                                               OraclePartition partition,
-                                                               OracleOffsetContext offsetContext, OracleDatabaseSchema schema,
-                                                               LogMinerStreamingChangeEventSourceMetrics metrics);
 
         LogMiningBufferType(String value) {
             this.value = value;
@@ -2189,10 +2118,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             }
             else if (LogMiningBufferType.INFINISPAN_REMOTE.equals(bufferType)) {
                 // Must supply the Hotrod server list property as a minimum when using Infinispan cluster mode
-                final String serverList = config.getString(RemoteInfinispanLogMinerEventProcessor.HOTROD_SERVER_LIST);
+                final String serverList = config.getString(RemoteInfinispanCacheProvider.HOTROD_SERVER_LIST);
                 if (Strings.isNullOrEmpty(serverList)) {
                     LOGGER.error("The option '{}' must be supplied when using the buffer type '{}'",
-                            RemoteInfinispanLogMinerEventProcessor.HOTROD_SERVER_LIST,
+                            RemoteInfinispanCacheProvider.HOTROD_SERVER_LIST,
                             bufferType.name());
                     return 1;
                 }

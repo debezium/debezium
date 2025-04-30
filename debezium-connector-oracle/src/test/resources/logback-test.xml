@@ -47,17 +47,16 @@
         <appender-ref ref="CONSOLE" />
     </logger>
     <logger
+        name="io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource"
+        level="trace" additivity="false">
+    </logger>
+    <logger
             name="io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingAdapter"
             level="trace" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
     <logger
         name="io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource"
-        level="trace" additivity="false">
-        <appender-ref ref="CONSOLE" />
-    </logger>
-    <logger
-        name="io.debezium.connector.oracle.logminer.buffered.processor"
         level="trace" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
