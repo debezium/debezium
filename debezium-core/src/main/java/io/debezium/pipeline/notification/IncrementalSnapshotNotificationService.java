@@ -132,9 +132,9 @@ public class IncrementalSnapshotNotificationService<P extends Partition, O exten
                 Map.of(
                         DATA_COLLECTIONS, dataCollections,
                         CURRENT_COLLECTION_IN_PROGRESS, incrementalSnapshotContext.currentDataCollectionId().getId().identifier(),
-                        MAXIMUM_KEY, incrementalSnapshotContext.maximumKey().isPresent() ? Arrays.stream(incrementalSnapshotContext.maximumKey().get())
-                                .map(x -> Objects.toString(x, "<null>")).collect(Collectors.joining(","))
-                                : "\"<null>\"",
+                        MAXIMUM_KEY,
+                        incrementalSnapshotContext.maximumKey().map(mk -> Arrays.stream(mk).map(x -> Objects.toString(x, "<null>")).collect(Collectors.joining(",")))
+                                .orElse("\"<null>\""),
                         LAST_PROCESSED_KEY, Arrays.stream(incrementalSnapshotContext.chunkEndPosititon())
                                 .map(x -> Objects.toString(x, "<null>")).collect(Collectors.joining(","))),
                 offsetContext),
