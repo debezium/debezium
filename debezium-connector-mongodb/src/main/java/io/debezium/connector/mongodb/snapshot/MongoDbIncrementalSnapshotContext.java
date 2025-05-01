@@ -217,7 +217,7 @@ public class MongoDbIncrementalSnapshotContext<T> implements IncrementalSnapshot
             return dataCollectionsList;
         }
         catch (JsonProcessingException e) {
-            throw new DebeziumException("Cannot de-serialize dataCollectionsToSnapshot information");
+            throw new DebeziumException("Cannot de-serialize dataCollectionsToSnapshot information: " + dataCollectionsStr);
         }
     }
 
