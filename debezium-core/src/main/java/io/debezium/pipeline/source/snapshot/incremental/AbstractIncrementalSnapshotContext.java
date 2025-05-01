@@ -472,7 +472,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
                         .collect(Collectors.toList());
             }
             catch (JsonProcessingException e) {
-                throw new DebeziumException("Cannot de-serialize dataCollectionsToSnapshot information");
+                throw new DebeziumException("Cannot de-serialize dataCollectionsToSnapshot information: " + dataCollectionsStr);
             }
         }
     }
