@@ -7,10 +7,13 @@ package io.debezium.connector.oracle.logminer;
 
 import static io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.runners.Parameterized.Parameters;
 
 import java.lang.management.ManagementFactory;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -25,6 +28,8 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
@@ -44,6 +49,7 @@ import io.debezium.junit.logging.LogInterceptor;
  * @author Chris Cranford
  */
 @SkipWhenAdapterNameIsNot(value = ANY_LOGMINER, reason = "LogMiner specific")
+@RunWith(Parameterized.class)
 public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
 
     @Rule
@@ -63,6 +69,20 @@ public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
+    @Parameters(name = "{index}: lobEnabled={0}")
+    public static Collection<Object[]> lobEnabled() {
+        return Arrays.asList(new Object[][]{
+                { "false" },
+                { "true" }
+        });
+    }
+
+    private final String lobEnabled;
+
+    public UsernameFilterIT(String lobEnabled) {
+        this.lobEnabled = lobEnabled;
+    }
+
     @Test
     @FixFor("DBZ-3978")
     @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED, reason = "Buffered filters at commit time while unbuffered filters at transaction start")
@@ -77,6 +97,7 @@ public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ3978")
                     .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.NO_DATA)
                     .with(OracleConnectorConfig.LOG_MINING_USERNAME_EXCLUDE_LIST, "DEBEZIUM")
+                    .with(OracleConnectorConfig.LOB_ENABLED, lobEnabled)
                     // This test expects the filtering to occur in the connector, not the query
                     .with(OracleConnectorConfig.LOG_MINING_QUERY_FILTER_MODE, "none")
                     .build();
@@ -119,6 +140,7 @@ public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8884")
                     .with(OracleConnectorConfig.LOG_MINING_USERNAME_INCLUDE_LIST, "DEBEZIUM")
+                    .with(OracleConnectorConfig.LOB_ENABLED, lobEnabled)
                     // This test expects the filtering to occur in the connector, not the query
                     .with(OracleConnectorConfig.LOG_MINING_QUERY_FILTER_MODE, "none")
                     .build();
@@ -181,6 +203,7 @@ public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8884")
                     .with(OracleConnectorConfig.LOG_MINING_USERNAME_INCLUDE_LIST, "DEBEZIUM")
+                    .with(OracleConnectorConfig.LOB_ENABLED, lobEnabled)
                     // This test expects the filtering to occur at the query level
                     .with(OracleConnectorConfig.LOG_MINING_QUERY_FILTER_MODE, "in")
                     .build();
@@ -238,6 +261,7 @@ public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8884")
                     .with(OracleConnectorConfig.LOG_MINING_USERNAME_INCLUDE_LIST, "abc")
+                    .with(OracleConnectorConfig.LOB_ENABLED, lobEnabled)
                     .build();
 
             start(OracleConnector.class, config);
@@ -274,6 +298,7 @@ public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ8884")
                     .with(OracleConnectorConfig.LOG_MINING_USERNAME_INCLUDE_LIST, "DEBEZIUM")
                     .with(OracleConnectorConfig.LOG_MINING_USERNAME_EXCLUDE_LIST, "DEBEZIUM")
+                    .with(OracleConnectorConfig.LOB_ENABLED, lobEnabled)
                     .build();
 
             start(OracleConnector.class, config);
