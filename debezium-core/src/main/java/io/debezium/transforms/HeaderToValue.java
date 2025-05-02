@@ -267,7 +267,6 @@ public class HeaderToValue<R extends ConnectRecord<R>> implements Transformation
 
             Header currentHeader = headerToProcess.get(headers.get(i));
             Optional<String> currentFieldName = getFieldName(fields.get(i), fieldName, level);
-            Loggings.logTraceAndTraceRecord(LOGGER, List.of(headers.get(i), currentFieldName), "CurrentHeader and currentFieldName");
             if (currentFieldName.isPresent() && currentHeader != null) {
                 newSchemabuilder = newSchemabuilder.field(currentFieldName.get(), currentHeader.schema());
             }
