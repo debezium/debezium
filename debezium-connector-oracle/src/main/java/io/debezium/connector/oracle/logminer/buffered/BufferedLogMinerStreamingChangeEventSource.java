@@ -378,14 +378,16 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
      */
     private void handleStartEvent(LogMinerEventRow event) {
         final String transactionId = event.getTransactionId();
-        final Transaction transaction = getTransactionCache().getTransaction(transactionId);
-        if (transaction == null && !isRecentlyProcessed(transactionId)) {
-            getTransactionCache().addTransaction(transactionFactory.createTransaction(event));
-            getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
-        }
-        else if (transaction != null && !isRecentlyProcessed(transactionId)) {
-            LOGGER.trace("Transaction {} is not yet committed and START event detected.", transactionId);
-            getTransactionCache().resetTransactionToStart(transaction);
+        if (!isRecentlyProcessed(transactionId)) {
+            final Transaction transaction = getTransactionCache().getTransaction(transactionId);
+            if (transaction == null) {
+                getTransactionCache().addTransaction(transactionFactory.createTransaction(event));
+                getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
+            }
+            else {
+                LOGGER.trace("Transaction {} is not yet committed and START event detected.", transactionId);
+                getTransactionCache().resetTransactionToStart(transaction);
+            }
         }
     }
 
@@ -573,20 +575,22 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
      * @param event the event, should not be {@code null}
      */
     private void handleRollbackEvent(LogMinerEventRow event) {
-        if (getTransactionCache().containsTransaction(event.getTransactionId())) {
-            LOGGER.debug("Transaction {} was rolled back.", event.getTransactionId());
-            finalizeTransaction(event.getTransactionId(), event.getScn(), true);
+        final String transactionId = event.getTransactionId();
+        if (getTransactionCache().containsTransaction(transactionId)) {
+            LOGGER.debug("Transaction {} was rolled back.", transactionId);
+            finalizeTransaction(transactionId, event.getScn(), true);
             getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
         }
         else {
-            LOGGER.debug("Transaction {} not found in cache, no events to rollback.", event.getTransactionId());
+            LOGGER.debug("Transaction {} not found in cache, no events to rollback.", transactionId);
             // In the event the transaction was prematurely removed due to retention policy, when we do find
             // the transaction's rollback in the logs in the future, we should remove the entry if it exists
             // to avoid any potential memory-leak with the cache.
-            getTransactionCache().removeAbandonedTransaction(event.getTransactionId());
+            getTransactionCache().removeAbandonedTransaction(transactionId);
         }
+
         getMetrics().incrementRolledBackTransactionCount();
-        getMetrics().addRolledBackTransactionId(event.getTransactionId());
+        getMetrics().addRolledBackTransactionId(transactionId);
         getBatchMetrics().rollbackObserved();
     }
 
