@@ -720,13 +720,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withValidation(Field::isPositiveLong)
             .withDescription("The interval that the resume position is updated");
 
+    public static final Field SIGNAL_DATA_COLLECTION = CommonConnectorConfig.SIGNAL_DATA_COLLECTION
+            .withValidation(OracleConnectorConfig::validateSignalDataCollection);
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
                     SCHEMA_INCLUDE_LIST,
                     SCHEMA_EXCLUDE_LIST,
                     RelationalDatabaseConnectorConfig.TABLE_IGNORE_BUILTIN,
-                    CommonConnectorConfig.QUERY_FETCH_SIZE)
+                    CommonConnectorConfig.QUERY_FETCH_SIZE,
+                    CommonConnectorConfig.SIGNAL_DATA_COLLECTION)
             .type(
                     HOSTNAME,
                     PORT,
@@ -806,7 +810,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_CLIENTID_INCLUDE_LIST,
                     LOG_MINING_CLIENTID_EXCLUDE_LIST,
                     LOG_MINING_RESUME_POSITION_INTERVAL_MS)
-            .events(SOURCE_INFO_STRUCT_MAKER)
+            .events(SOURCE_INFO_STRUCT_MAKER,
+                    SIGNAL_DATA_COLLECTION)
             .create();
 
     /**
@@ -2380,6 +2385,21 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             if (includeList != null && excludeList != null) {
                 problems.accept(LOG_MINING_CLIENTID_EXCLUDE_LIST, excludeList,
                         String.format("\"%s\": is already specified", LOG_MINING_CLIENTID_INCLUDE_LIST.name()));
+                return 1;
+            }
+        }
+        return 0;
+    }
+
+    public static int validateSignalDataCollection(Configuration config, Field field, ValidationOutput problems) {
+        final String signalDataCollection = config.getString(SIGNAL_DATA_COLLECTION);
+        if (!Strings.isNullOrEmpty(signalDataCollection)) {
+            final TableId tableId = TableId.parse(signalDataCollection);
+            if (Strings.isNullOrEmpty(tableId.catalog())
+                    || Strings.isNullOrEmpty(tableId.schema())
+                    || Strings.isNullOrEmpty(tableId.table())) {
+                problems.accept(SIGNAL_DATA_COLLECTION, signalDataCollection,
+                        "Please specify the signal data collection as '<database>.<schema>.<table>'.");
                 return 1;
             }
         }
