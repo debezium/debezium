@@ -8,6 +8,7 @@ package io.debezium.connector.oracle;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_ARCHIVE_LOG_ONLY_MODE;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS;
 import static io.debezium.connector.oracle.OracleConnectorConfig.LOG_MINING_BUFFER_TYPE;
+import static io.debezium.connector.oracle.OracleConnectorConfig.SIGNAL_DATA_COLLECTION;
 import static io.debezium.connector.oracle.OracleConnectorConfig.validateEhCacheGlobalConfigField;
 import static io.debezium.connector.oracle.OracleConnectorConfig.validateEhcacheConfigFieldRequired;
 import static io.debezium.connector.oracle.OracleConnectorConfig.validateLogMiningInfinispanCacheConfiguration;
@@ -399,5 +400,21 @@ public class OracleConnectorConfigTest {
                 });
 
         assertThat(actual).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-9001")
+    public void shouldFailValidationDueToSignalDataCollectionNotFullyQualified() {
+        List<Field> fields = List.of(SIGNAL_DATA_COLLECTION);
+        final Configuration config = Configuration.create().with(SIGNAL_DATA_COLLECTION, "schema.table").build();
+        assertThat(config.validateAndRecord(fields, LOGGER::error)).isFalse();
+    }
+
+    @Test
+    @FixFor("DBZ-9001")
+    public void shouldNotFailValidationDueToSignalDataCollectionFullyQualified() {
+        List<Field> fields = List.of(SIGNAL_DATA_COLLECTION);
+        final Configuration config = Configuration.create().with(SIGNAL_DATA_COLLECTION, "db.schema.table").build();
+        assertThat(config.validateAndRecord(fields, LOGGER::error)).isTrue();
     }
 }
