@@ -13,7 +13,6 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 import org.slf4j.Logger;
@@ -25,11 +24,8 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.CommitScn;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
-import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
-import io.debezium.connector.oracle.OracleOffsetContext;
 import io.debezium.connector.oracle.OraclePartition;
-import io.debezium.connector.oracle.OracleSchemaChangeEventEmitter;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.logminer.LogMinerChangeRecordEmitter;
@@ -37,38 +33,16 @@ import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceM
 import io.debezium.connector.oracle.logminer.TransactionCommitConsumer;
 import io.debezium.connector.oracle.logminer.events.DmlEvent;
 import io.debezium.connector.oracle.logminer.events.EventType;
-import io.debezium.connector.oracle.logminer.events.ExtendedStringBeginEvent;
-import io.debezium.connector.oracle.logminer.events.ExtendedStringWriteEvent;
-import io.debezium.connector.oracle.logminer.events.LobEraseEvent;
-import io.debezium.connector.oracle.logminer.events.LobWriteEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.logminer.events.RedoSqlDmlEvent;
-import io.debezium.connector.oracle.logminer.events.SelectLobLocatorEvent;
 import io.debezium.connector.oracle.logminer.events.TruncateEvent;
-import io.debezium.connector.oracle.logminer.events.XmlBeginEvent;
-import io.debezium.connector.oracle.logminer.events.XmlEndEvent;
-import io.debezium.connector.oracle.logminer.events.XmlWriteEvent;
-import io.debezium.connector.oracle.logminer.parser.DmlParserException;
-import io.debezium.connector.oracle.logminer.parser.ExtendedStringParser;
-import io.debezium.connector.oracle.logminer.parser.LobWriteParser;
-import io.debezium.connector.oracle.logminer.parser.LobWriteParser.LobWrite;
-import io.debezium.connector.oracle.logminer.parser.LogMinerColumnResolverDmlParser;
 import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntry;
-import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntryImpl;
-import io.debezium.connector.oracle.logminer.parser.LogMinerDmlParser;
-import io.debezium.connector.oracle.logminer.parser.SelectLobParser;
-import io.debezium.connector.oracle.logminer.parser.XmlBeginParser;
-import io.debezium.connector.oracle.logminer.parser.XmlWriteParser;
-import io.debezium.connector.oracle.logminer.parser.XmlWriteParser.XmlWrite;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
-import io.debezium.pipeline.source.spi.ChangeEventSource;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.relational.Tables.TableFilter;
-import io.debezium.text.ParsingException;
 import io.debezium.util.Clock;
 import io.debezium.util.Loggings;
 import io.debezium.util.Stopwatch;
@@ -87,18 +61,11 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
     private static final Logger LOGGER = LoggerFactory.getLogger(UnbufferedLogMinerStreamingChangeEventSource.class);
 
     private final String miningQuery;
-    private final TableFilter tableFilter;
-    private final LogMinerDmlParser dmlParser;
-    private final LogMinerColumnResolverDmlParser reconstructColumnDmlParser;
     private final boolean includeSql;
     private final TransactionCommitConsumer accumulator;
-    private final SelectLobParser selectLobParser;
-    private final XmlBeginParser xmlBeginParser;
-    private final ExtendedStringParser extendedStringParser;
     private final List<LogMinerEventRow> ddlQueue = new ArrayList<>();
     private final ResumePositionProvider resumePositionProvider;
 
-    private boolean sequenceUnavailable = false;
     private boolean skipCurrentTransaction = false;
     private ZoneOffset databaseOffset;
 
@@ -112,20 +79,13 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                                                         LogMinerStreamingChangeEventSourceMetrics metrics) {
         super(connectorConfig, jdbcConnection, dispatcher, errorHandler, clock, schema, jdbcConfig, metrics);
         this.miningQuery = new UnbufferedLogMinerQueryBuilder(connectorConfig).getQuery();
-        this.tableFilter = connectorConfig.getTableFilters().dataCollectionFilter();
-        this.dmlParser = new LogMinerDmlParser(connectorConfig);
-        this.reconstructColumnDmlParser = new LogMinerColumnResolverDmlParser(connectorConfig);
         this.includeSql = connectorConfig.isLogMiningIncludeRedoSql();
         this.accumulator = new TransactionCommitConsumer(this::dispatchEvent, connectorConfig, schema);
-        this.selectLobParser = new SelectLobParser();
-        this.xmlBeginParser = new XmlBeginParser();
-        this.extendedStringParser = new ExtendedStringParser();
         this.resumePositionProvider = new ResumePositionProvider(connectorConfig, getJdbcConfiguration());
     }
 
     @Override
-    protected void executeLogMiningStreaming(ChangeEventSource.ChangeEventSourceContext context, OraclePartition partition, OracleOffsetContext offsetContext)
-            throws Exception {
+    protected void executeLogMiningStreaming() throws Exception {
 
         Scn upperBoundsScn = Scn.NULL;
 
@@ -141,10 +101,10 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
 
         prepareLogsForMining(false, minLogScn);
 
-        while (context.isRunning()) {
+        while (getContext().isRunning()) {
 
             // Check if we should break when using archive log only mode
-            if (isArchiveLogOnlyModeAndScnIsNotAvailable(context, minLogScn)) {
+            if (isArchiveLogOnlyModeAndScnIsNotAvailable(minLogScn)) {
                 break;
             }
 
@@ -193,7 +153,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
 
             if (startMiningSession(minLogScn, Scn.NULL, miningStartAttempts)) {
                 miningStartAttempts = 1;
-                minCommitScn = process(context, minCommitScn);
+                minCommitScn = process(minCommitScn);
 
                 getMetrics().setLastBatchProcessingDuration(Duration.between(batchStartTime, Instant.now()));
             }
@@ -205,19 +165,16 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
 
             pauseBetweenMiningSessions();
 
-            if (context.isPaused()) {
-                LOGGER.info("Streaming will now pause");
-
-                context.streamingPaused();
+            if (getContext().isPaused()) {
                 // Blocking snapshots will be based on the last commit flush
                 // So we need to temporarily advance the SCN to that point.
                 Scn currentOffsetScn = getOffsetContext().getScn();
                 getOffsetContext().setScn(minCommitScn);
-                context.waitSnapshotCompletion();
+
+                executeBlockingSnapshot();
 
                 // Now restore the old resume SCN position.
                 getOffsetContext().setScn(currentOffsetScn);
-                LOGGER.info("Streaming resumed");
             }
         }
     }
@@ -237,6 +194,25 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         }
     }
 
+    @Override
+    protected void enqueueEvent(LogMinerEventRow event, LogMinerEvent dispatchedEvent) throws InterruptedException {
+        accumulator.accept(dispatchedEvent);
+    }
+
+    @Override
+    protected void executeDataChangeEventPreDispatchSteps(LogMinerEventRow event) throws InterruptedException {
+        // If we receive a DML event within a transaction that contains DDL events, flush the DDL
+        // events before processing the DML event.
+        if (!ddlQueue.isEmpty()) {
+            if (!event.getCommitScn().equals(getOffsetContext().getEventCommitScn())) {
+                // Given that DDL events do not carry a COMMIT_SCN, overlay the DML's COMMIT_SCN
+                // since its part of the same transaction.
+                getOffsetContext().setEventCommitScn(event.getCommitScn());
+            }
+            dispatchSchemaChanges();
+        }
+    }
+
     private PreparedStatement createQueryStatement() throws SQLException {
         final PreparedStatement statement = getConnection().connection()
                 .prepareStatement(miningQuery,
@@ -250,14 +226,12 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
     /**
      * Processes the Oracle LogMiner data between the specified bounds.
      *
-     * @param context the change event source context, should not be {@code null}
      * @param minCommitScn mining range lower bounds SCN, should not be {@code null}
      * @return the next iteration's lower bounds SCN, never {@code null}
      * @throws SQLException if a database exception occurred
      * @throws InterruptedException if the thread is interrupted
      */
-    private Scn process(ChangeEventSource.ChangeEventSourceContext context, Scn minCommitScn)
-            throws SQLException, InterruptedException {
+    private Scn process(Scn minCommitScn) throws SQLException, InterruptedException {
         getBatchMetrics().reset();
 
         try (PreparedStatement statement = createQueryStatement()) {
@@ -274,36 +248,11 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                 final String catalogName = getConfig().getCatalogName();
 
                 Scn newMinCommitScn = minCommitScn;
-                while (context.isRunning() && hasNextWithMetricsUpdate(resultSet)) {
+                while (getContext().isRunning() && hasNextWithMetricsUpdate(resultSet)) {
                     getBatchMetrics().rowObserved();
 
                     final LogMinerEventRow event = LogMinerEventRow.fromResultSet(resultSet, catalogName);
-                    if (!hasEventBeenProcessed(event)) {
-                        if (!isEventSkipped(event)) {
-                            switch (event.getEventType()) {
-                                case MISSING_SCN -> handleMissingScnEvent(event);
-                                case START -> handleStartEvent(event);
-                                case COMMIT -> handleCommitEvent(event);
-                                case ROLLBACK -> handleRollbackEvent(event);
-                                case DDL -> handleSchemaChangeEvent(event);
-                                case INSERT, UPDATE, DELETE -> handleDataChangeEvent(event);
-                                case REPLICATION_MARKER -> handleReplicationMarkerEvent(event);
-                                case UNSUPPORTED -> handleUnsupportedEvent(event);
-                                case SELECT_LOB_LOCATOR -> handleSelectLobLocatorEvent(event);
-                                case LOB_WRITE -> handleLobWriteEvent(event);
-                                case LOB_ERASE -> handleLobEraseEvent(event);
-                                case XML_BEGIN -> handleXmlBeginEvent(event);
-                                case XML_WRITE -> handleXmlWriteEvent(event);
-                                case XML_END -> handleXmlEndEvent(event);
-                                case EXTENDED_STRING_BEGIN -> handleExtendedStringBeginEvent(event);
-                                case EXTENDED_STRING_WRITE -> handleExtendedStringWriteEvent(event);
-                                case EXTENDED_STRING_END -> handleExtendedStringEndEvent(event);
-                                default -> Loggings.logDebugAndTraceRecord(LOGGER, event, "Skipped event {}", event.getEventType());
-                            }
-
-                            getBatchMetrics().rowProcessed();
-                        }
-                    }
+                    processEvent(event);
 
                     if (EventType.COMMIT.equals(event.getEventType())) {
                         newMinCommitScn = event.getCommitScn();
@@ -312,6 +261,10 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                 }
 
                 getBatchMetrics().updateStreamingMetrics();
+
+                if (getBatchMetrics().hasProcessedAnyTransactions()) {
+                    getOffsetActivityMonitor().checkForStaleOffsets();
+                }
 
                 LOGGER.debug("{}.", getBatchMetrics());
                 LOGGER.debug(
@@ -329,117 +282,58 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         }
     }
 
-    private boolean hasNextWithMetricsUpdate(ResultSet resultSet) throws SQLException {
-        final Instant start = Instant.now();
-        boolean result = false;
-        try {
-            if (resultSet.next()) {
-                getMetrics().setLastResultSetNextDuration(Duration.between(start, Instant.now()));
-                result = true;
-            }
+    /**
+     * Process a specific event.
+     *
+     * @param event the event, should not be {@code null}
+     * @throws SQLException if a database exception occurs
+     * @throws InterruptedException if the thread is interrupted
+     */
+    private void processEvent(LogMinerEventRow event) throws SQLException, InterruptedException {
+        if (!hasEventBeenProcessed(event)) {
+            if (!isEventSkipped(event)) {
+                getBatchMetrics().rowProcessed();
 
-            // Reset sequence unavailability on successful read from the result set
-            if (sequenceUnavailable) {
-                LOGGER.debug("The previous batch's unavailable log problem has been cleared.");
-                sequenceUnavailable = false;
+                switch (event.getEventType()) {
+                    case MISSING_SCN -> handleMissingScnEvent(event);
+                    case START -> handleStartEvent(event);
+                    case COMMIT -> handleCommitEvent(event);
+                    case ROLLBACK -> handleRollbackEvent(event);
+                    case DDL -> handleSchemaChangeEvent(event);
+                    case INSERT, UPDATE, DELETE -> handleDataChangeEvent(event);
+                    case REPLICATION_MARKER -> handleReplicationMarkerEvent(event);
+                    case UNSUPPORTED -> handleUnsupportedEvent(event);
+                    case SELECT_LOB_LOCATOR -> handleSelectLobLocatorEvent(event);
+                    case LOB_WRITE -> handleLobWriteEvent(event);
+                    case LOB_ERASE -> handleLobEraseEvent(event);
+                    case XML_BEGIN -> handleXmlBeginEvent(event);
+                    case XML_WRITE -> handleXmlWriteEvent(event);
+                    case XML_END -> handleXmlEndEvent(event);
+                    case EXTENDED_STRING_BEGIN -> handleExtendedStringBeginEvent(event);
+                    case EXTENDED_STRING_WRITE -> handleExtendedStringWriteEvent(event);
+                    case EXTENDED_STRING_END -> handleExtendedStringEndEvent(event);
+                    default -> Loggings.logDebugAndTraceRecord(LOGGER, event, "Skipped event {}", event.getEventType());
+                }
             }
         }
-        catch (SQLException e) {
-            // Oracle's online redo logs can be defined with dynamic names using the instance
-            // configuration property LOG_ARCHIVE_FORMAT.
-            //
-            // Dynamically named online redo logs can lead to ORA-00310 errors if a log switch
-            // happens while the processor is iterating the LogMiner session's result set and
-            // LogMiner can no longer read the next batch of records from the log.
-            //
-            // LogMiner only validates that there are no gaps and that the logs are available
-            // when the session is first started and any change in the logs later will raise
-            // these types of errors.
-            //
-            // Catching the ORA-00310 and treating it as the end of the result set will allow
-            // the connector's outer loop to re-evaluate the log state and start a new LogMiner
-            // session with the new logs. The connector will then begin streaming from where
-            // it left off. If any other exception is caught here, it'll be thrown.
-            if (!e.getMessage().startsWith("ORA-00310")) {
-                // throw any non ORA-00310 error, old behavior
-                throw e;
-            }
-            else if (sequenceUnavailable) {
-                // If an ORA-00310 error was raised on the previous iteration and wasn't cleared
-                // after re-evaluation of the log availability and the mining session, we will
-                // explicitly stop the connector to avoid an infinite loop.
-                LOGGER.error("The log availability error '{}' wasn't cleared, stop requested.", e.getMessage());
-                throw e;
-            }
-
-            LOGGER.debug("A mined log is no longer available: {}", e.getMessage());
-            LOGGER.warn("Restarting mining session after a log became unavailable.");
-
-            // Track that we gracefully stopped due to a ORA-00310.
-            // Will be used to detect an infinite loop of this error across sequential iterations
-            sequenceUnavailable = true;
-        }
-        return result;
     }
 
+    /**
+     * Checks whether the event should be skipped.
+     *
+     * @param event the event, should not be {@code null}
+     * @return true if the event is skipped, false otherwise
+     */
     private boolean isEventSkipped(LogMinerEventRow event) {
-        if (skipCurrentTransaction) {
-            return true;
-        }
-
-        if (event.getScn().compareTo(getOffsetContext().getSnapshotScn()) < 0) {
-            final Map<String, Scn> snapshotPendingTrxs = getOffsetContext().getSnapshotPendingTransactions();
-            if (snapshotPendingTrxs == null || !snapshotPendingTrxs.containsKey(event.getTransactionId())) {
-                LOGGER.info("Skipping event {} (SCN {}) because it is already included by the initial snapshot",
-                        event.getEventType(), event.getScn());
-                return true;
-            }
-        }
-
-        if (event.getTableId() != null) {
-            if (!EventType.DDL.equals(event.getEventType()) && !tableFilter.isIncluded(event.getTableId())) {
-                if (isNonIncludedTableSkipped(event)) {
-                    LOGGER.debug("Skipping change associated with table '{}' which does not match filters.", event.getTableId());
-                    return true;
-                }
-            }
-        }
-        return false;
+        return skipCurrentTransaction || isEventIncludedInSnapshot(event) || isNonSchemaChangeEventSkipped(event);
     }
 
-    private boolean isNonIncludedTableSkipped(LogMinerEventRow row) {
-        if (isUsingHybridStrategy()) {
-            if (isTableLookupByObjectIdRequired(row)) {
-                // Special use case where the table has been dropped and purged, and we are processing an
-                // old event for the table that comes prior to the drop.
-                LOGGER.trace("Found DML for dropped table in history with object-id based table name {}.", row.getTableId().table());
-                final TableId tableId = getSchema().getTableIdByObjectId(row.getObjectId(), null);
-                if (tableId != null) {
-                    row.setTableId(tableId);
-                }
-                return !tableFilter.isIncluded(row.getTableId());
-            }
-        }
-        return true;
-    }
-
-    private boolean isUsingHybridStrategy() {
-        return LogMiningStrategy.HYBRID.equals(getConfig().getLogMiningStrategy());
-    }
-
-    private boolean isTableLookupByObjectIdRequired(LogMinerEventRow row) {
-        final String tableName = row.getTableId().table();
-        if (tableName.startsWith("OBJ# ")) {
-            // This is a table that has been dropped and purged
-            return true;
-        }
-        else if (tableName.startsWith("BIN$") && tableName.endsWith("==$0") && tableName.length() == 30) {
-            // This is a table that has been dropped, but not yet purged from the RECYCLEBIN
-            return true;
-        }
-        return false;
-    }
-
+    /**
+     * Checks whether the event has previously been processed.
+     *
+     * @param event the event, should not be {@code null}
+     * @return true if the event has previously been processed, false otherwise
+     */
     private boolean hasEventBeenProcessed(LogMinerEventRow event) {
         // DDL events and their corresponding START events do not have a COMMIT_SCN value.
         // In such cases, we default to the event's SCN instead.
@@ -457,10 +351,11 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         return false;
     }
 
-    private void handleMissingScnEvent(LogMinerEventRow event) {
-        Loggings.logWarningAndTraceRecord(LOGGER, event, "Event with `MISSING_SCN` operation found with SCN {}", event.getScn());
-    }
-
+    /**
+     * Handles processing {@code START} operation events.
+     *
+     * @param event the event, should never be {@code null}
+     */
     private void handleStartEvent(LogMinerEventRow event) {
         skipCurrentTransaction = false;
 
@@ -529,6 +424,12 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         getOffsetContext().setTransactionSequence(null);
     }
 
+    /**
+     * Handles processing {@code COMMIT} operation events.
+     *
+     * @param event the event, should never be {@code null}
+     * @throws InterruptedException if the thread is interrupted
+     */
     private void handleCommitEvent(LogMinerEventRow event) throws InterruptedException {
         Loggings.logDebugAndTraceRecord(
                 LOGGER,
@@ -553,241 +454,55 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         getBatchMetrics().commitObserved();
     }
 
+    /**
+     * Handles processing {@code ROLLBACK} operation events.
+     *
+     * @param event the event, should not be {@code null}
+     */
     private void handleRollbackEvent(LogMinerEventRow event) {
         throw new DebeziumException("Rollback event with SCN " + event.getScn() + " found, but should not be in this mode");
     }
 
-    private void handleSchemaChangeEvent(LogMinerEventRow event) throws InterruptedException {
-        // todo: need to check that if a transaction is stopped mid-dispatch with a DDL, the DDL are not reprocessed
-
-        final TableId tableId = event.getTableId();
-        final boolean skipEvent = getConfig().getLogMiningSchemaChangesUsernameExcludes().stream()
-                .anyMatch(name -> name.equalsIgnoreCase(event.getUserName()));
-
-        if (skipEvent) {
-            Loggings.logDebugAndTraceRecord(LOGGER, event,
-                    "User '{}' is in schema change exclusions, DDL skipped.", event.getUserName());
-        }
-        else if (!Strings.isNullOrEmpty(event.getInfo()) && event.getInfo().startsWith("INTERNAL DDL")) {
-            // Internal DDL operations are skipped.
-            Loggings.logDebugAndTraceRecord(LOGGER, event, "Internal DDL skipped.");
-        }
-        else if (tableId != null && getSchema().storeOnlyCapturedTables() && !tableFilter.isIncluded(tableId)) {
-            Loggings.logDebugAndTraceRecord(LOGGER, event,
-                    "Skipped DDL associated with table '{}' because schema history only stores included tables.", tableId);
-        }
-        else if (getOffsetContext().getCommitScn().hasEventScnBeenHandled(event)) {
-            final Scn commitScn = getOffsetContext().getCommitScn().getCommitScnForRedoThread(event.getThread());
-            LOGGER.trace("DDL skipped with SCN {} <= Commit SCN {} for thread {}: {}",
-                    event.getScn(), commitScn, event.getRowId(), Loggings.maybeRedactSensitiveData(event));
-        }
-        else if (tableId != null) {
-            if (!Strings.isNullOrBlank(event.getTableName())) {
-                Loggings.logDebugAndTraceRecord(LOGGER, event, "Processing DDL event with SCN {}: {}",
-                        event.getScn(), event.getRedoSql());
-
-                // In transactions that wrap DDL operations, the START and DDL event markers do not carry
-                // START_SCN, START_TIMESTAMP, COMMIT_SCN, nor COMMIT_TIMESTAMP values. If we emit the
-                // DDL immediately, this leads to issues with synchronization points. So instead, all
-                // DDL events within the transaction scope are delayed until the COMMIT..
-                ddlQueue.add(event);
-            }
-        }
-    }
-
-    private void handleDataChangeEvent(LogMinerEventRow event) throws SQLException, InterruptedException {
-        if (Strings.isNullOrBlank(event.getRedoSql())) {
-            LOGGER.trace("Data event in transaction {} with SCN {} has empty redo SQL: {}",
-                    event.getTransactionId(), event.getScn(), Loggings.maybeRedactSensitiveData(event));
+    /**
+     * Handles processing {@code DDL} operation events.
+     *
+     * @param event the event, should not be {@code null}
+     */
+    private void handleSchemaChangeEvent(LogMinerEventRow event) {
+        if (isSchemaChangeEventSkipped(event)) {
             return;
         }
 
-        Loggings.logDebugAndTraceRecord(LOGGER, event, "DML: {}", event);
+        if (!Strings.isNullOrBlank(event.getTableName())) {
+            Loggings.logDebugAndTraceRecord(LOGGER, event, "Processing DDL event with SCN {}: {}",
+                    event.getScn(), event.getRedoSql());
 
-        // LogMiner reports LONG data types with STATUS=2 on UPDATE events, but there is no value
-        // in the INFO column, and the record can be managed by the connector successfully. To
-        // be backward compatible, only trigger this behavior if there is an error reason when
-        // STATUS=2 in the INFO column.
-        if (event.hasErrorStatus() && !Strings.isNullOrBlank(event.getInfo())) {
-            if (!isUsingHybridStrategy() || (isUsingHybridStrategy() && !isTableKnown(event.getTableId()))) {
-                // Fail-fast: The SQL_REDO column is not valid and cannot be parsed
-                notifyEventProcessingFailure(event);
-                return;
-            }
-        }
-
-        getBatchMetrics().dataChangeEventObserved(event.getEventType());
-
-        // If we receive a DML event within a transaction that contains DDL events, flush the DDL
-        // events before processing the DML event.
-        if (!ddlQueue.isEmpty()) {
-            if (!event.getCommitScn().equals(getOffsetContext().getEventCommitScn())) {
-                // Given that DDL events do not carry a COMMIT_SCN, overlay the DML's COMMIT_SCN
-                // since its part of the same transaction.
-                getOffsetContext().setEventCommitScn(event.getCommitScn());
-            }
-            dispatchSchemaChanges();
-        }
-
-        final Table table = getTableForDataEvent(event);
-        if (table != null) {
-            final LogMinerDmlEntry parsedEvent = parseDmlStatement(event, table);
-            accumulator.accept(includeSql
-                    ? new RedoSqlDmlEvent(event, parsedEvent, event.getRedoSql())
-                    : new DmlEvent(event, parsedEvent));
+            // In transactions that wrap DDL operations, the START and DDL event markers do not carry
+            // START_SCN, START_TIMESTAMP, COMMIT_SCN, nor COMMIT_TIMESTAMP values. If we emit the
+            // DDL immediately, this leads to issues with synchronization points. So instead, all
+            // DDL events within the transaction scope are delayed until the COMMIT.
+            ddlQueue.add(event);
         }
     }
 
+    /**
+     * Handles processing {@code REPLICATION_MARKER} operation events.
+     *
+     * @param event the event, should not be {@code null}
+     */
     private void handleReplicationMarkerEvent(LogMinerEventRow event) {
         // Normally we would do something with this; however this can be safely ignored.
         LOGGER.trace("Skipped GoldenGate replication marker event: {}", Loggings.maybeRedactSensitiveData(event));
     }
 
-    private void handleUnsupportedEvent(LogMinerEventRow event) {
-        if (!Strings.isNullOrEmpty(event.getTableName())) {
-            Loggings.logWarningAndTraceRecord(LOGGER, event,
-                    "An unsupported operation detected for table '{}' in transaction {} with SCN {} on redo thread {}.",
-                    event.getTableId(), event.getTransactionId(), event.getScn(), event.getThread());
-        }
-    }
-
-    private void handleSelectLobLocatorEvent(LogMinerEventRow event) throws InterruptedException {
-        if (getConfig().isLobEnabled()) {
-            final TableId tableId = event.getTableId();
-            final Table table = getSchema().tableFor(tableId);
-            if (table == null) {
-                return;
-            }
-
-            final LogMinerDmlEntry parsedEvent = selectLobParser.parse(event.getRedoSql(), table);
-            parsedEvent.setObjectName(event.getTableName());
-            parsedEvent.setObjectOwner(event.getTablespaceName());
-
-            accumulator.accept(new SelectLobLocatorEvent(
-                    event,
-                    parsedEvent,
-                    selectLobParser.getColumnName(),
-                    selectLobParser.isBinary()));
-
-            getMetrics().incrementTotalChangesCount();
-        }
-    }
-
-    private void handleLobWriteEvent(LogMinerEventRow event) throws InterruptedException {
-        if (getConfig().isLobEnabled() && !Strings.isNullOrEmpty(event.getRedoSql())) {
-            final TableId tableId = event.getTableId();
-            final Table table = getSchema().tableFor(tableId);
-            if (table == null) {
-                return;
-            }
-
-            final LobWrite parsedEvent = LobWriteParser.parse(event.getRedoSql());
-            if (parsedEvent == null) {
-                return;
-            }
-
-            accumulator.accept(new LobWriteEvent(event, parsedEvent.data(), parsedEvent.offset(), parsedEvent.length()));
-        }
-    }
-
-    private void handleLobEraseEvent(LogMinerEventRow event) throws InterruptedException {
-        if (getConfig().isLobEnabled()) {
-            final TableId tableId = event.getTableId();
-            final Table table = getSchema().tableFor(tableId);
-            if (table != null) {
-                accumulator.accept(new LobEraseEvent(event));
-            }
-        }
-    }
-
-    private void handleXmlBeginEvent(LogMinerEventRow event) throws InterruptedException {
-        if (getConfig().isLobEnabled()) {
-            final TableId tableId = event.getTableId();
-            final Table table = getSchema().tableFor(tableId);
-            if (table != null) {
-                final LogMinerDmlEntry parsedEvent = xmlBeginParser.parse(event.getRedoSql(), table);
-                parsedEvent.setObjectName(event.getTableName());
-                parsedEvent.setObjectOwner(event.getTablespaceName());
-                accumulator.accept(new XmlBeginEvent(event, parsedEvent, xmlBeginParser.getColumnName()));
-            }
-        }
-    }
-
-    private void handleXmlWriteEvent(LogMinerEventRow event) throws InterruptedException {
-        if (getConfig().isLobEnabled()) {
-            final TableId tableId = event.getTableId();
-            final Table table = getSchema().tableFor(tableId);
-            if (table != null) {
-                final XmlWrite parsedEvent = XmlWriteParser.parse(event.getRedoSql());
-                accumulator.accept(new XmlWriteEvent(event, parsedEvent.data(), parsedEvent.length()));
-            }
-        }
-    }
-
-    private void handleXmlEndEvent(LogMinerEventRow event) throws InterruptedException {
-        if (getConfig().isLobEnabled()) {
-            final TableId tableId = event.getTableId();
-            final Table table = getSchema().tableFor(tableId);
-            if (table != null) {
-                accumulator.accept(new XmlEndEvent(event));
-            }
-        }
-    }
-
-    private void handleExtendedStringBeginEvent(LogMinerEventRow event) throws InterruptedException {
-        if (getConfig().isLobEnabled()) {
-            final TableId tableId = event.getTableId();
-            final Table table = getSchema().tableFor(tableId);
-            if (table != null) {
-                final LogMinerDmlEntry parsedEvent = extendedStringParser.parse(event.getRedoSql(), table);
-                parsedEvent.setObjectName(event.getTableName());
-                parsedEvent.setObjectOwner(event.getTablespaceName());
-                accumulator.accept(new ExtendedStringBeginEvent(event, parsedEvent, extendedStringParser.getColumnName()));
-            }
-        }
-    }
-
-    private void handleExtendedStringWriteEvent(LogMinerEventRow event) throws InterruptedException {
-        if (getConfig().isLobEnabled()) {
-            final TableId tableId = event.getTableId();
-            final Table table = getSchema().tableFor(tableId);
-            if (table != null) {
-
-                final String data;
-                try {
-                    final String sql = event.getRedoSql();
-                    int endIndex = sql.lastIndexOf(";");
-                    if (endIndex == -1) {
-                        throw new DebeziumException("Failed to find end index on 32K_WRITE operation");
-                    }
-
-                    endIndex = sql.lastIndexOf(";", endIndex - 1);
-                    if (endIndex == -1) {
-                        throw new DebeziumException("Failed to find end index on 32K_WRITE operation");
-                    }
-
-                    data = sql.substring(12, endIndex - 1);
-                }
-                catch (Exception e) {
-                    throw new ParsingException(null, "Failed to parse 32K_WRITE event", e);
-                }
-
-                accumulator.accept(new ExtendedStringWriteEvent(event, data));
-            }
-        }
-    }
-
-    private void handleExtendedStringEndEvent(LogMinerEventRow event) {
-        // no-op
-    }
-
-    private void handleTruncateEvent(LogMinerEventRow event) {
+    @Override
+    protected void handleTruncateEvent(LogMinerEventRow event) throws InterruptedException {
         try {
             final Table table = getTableForDataEvent(event);
             if (table != null) {
                 LOGGER.debug("Dispatching TRUNCATE event for table '{}' with SCN {}", table.id(), event.getScn());
 
-                final LogMinerDmlEntry parsedEvent = LogMinerDmlEntryImpl.forValuelessDdl();
+                final LogMinerDmlEntry parsedEvent = parseTruncateEvent(event);
 
                 // Truncate events are wrapped in START/COMMIT markers
                 getOffsetContext().getCommitScn().recordCommit(event);
@@ -818,7 +533,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                                 getClock()));
             }
         }
-        catch (SQLException | InterruptedException e) {
+        catch (SQLException e) {
             LOGGER.warn("Failed to process truncate event", e);
             getMetrics().incrementWarningCount();
         }
@@ -829,161 +544,13 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         }
     }
 
-    private Table getTableForDataEvent(LogMinerEventRow event) throws SQLException, InterruptedException {
-        final TableId tableId = getTableIdForDataEvent(event);
-        if (tableId != null) {
-            final Table table = getSchema().tableFor(tableId);
-            if (table != null) {
-                return table;
-            }
-            if (tableFilter.isIncluded(tableId)) {
-                return dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(tableId);
-            }
-        }
-        return null;
-    }
-
-    private TableId getTableIdForDataEvent(LogMinerEventRow event) throws SQLException {
-        final TableId tableId = event.getTableId();
-        if (tableId != null && isUsingHybridStrategy()) {
-            if (tableId.table().startsWith("BIN$")) {
-                // Object was dropped but has not been purged.
-                try (OracleConnection connection = new OracleConnection(getConfig().getJdbcConfig())) {
-                    return connection.prepareQueryAndMap("SELECT OWNER, ORIGINAL_NAME FROM DBA_RECYCLEBIN WHERE OBJECT_NAME=?",
-                            ps -> ps.setString(1, tableId.table()),
-                            rs -> {
-                                if (rs.next()) {
-                                    return new TableId(tableId.catalog(), rs.getString(1), rs.getString(2));
-                                }
-                                return tableId;
-                            });
-                }
-            }
-            else if (tableId.table().equalsIgnoreCase("UNKNOWN")) {
-                // Object has been dropped and purged.
-                final TableId resolvedTableId = getSchema().getTableIdByObjectId(event.getObjectId(), event.getDataObjectId());
-                if (resolvedTableId != null) {
-                    return resolvedTableId;
-                }
-                throw new DebeziumException("Failed to resolve UNKNOWN table name by object id lookup");
-            }
-        }
-        return tableId;
-    }
-
-    private Table dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(TableId tableId) throws SQLException, InterruptedException {
-        LOGGER.warn("Obtaining schema for table {}, which should already be loaded.", tableId);
-        // Given that the current connection is used for processing the event data, a separate connection is needed
-        try (OracleConnection connection = new OracleConnection(getConfig().getJdbcConfig(), false)) {
-            connection.setAutoCommit(false);
-            if (isUsingPluggableDatabase()) {
-                connection.setSessionToPdb(getConfig().getPdbName());
-            }
-
-            getBatchMetrics().tableMetadataQueryObserved();
-            final String tableDdl = connection.getTableMetadataDdl(tableId);
-
-            final Long objectId = connection.getTableObjectId(tableId);
-            final Long dataObjectId = connection.getTableDataObjectId(tableId);
-
-            getEventDispatcher().dispatchSchemaChangeEvent(
-                    getPartition(),
-                    getOffsetContext(),
-                    tableId,
-                    new OracleSchemaChangeEventEmitter(
-                            getConfig(),
-                            getPartition(),
-                            getOffsetContext(),
-                            tableId,
-                            tableId.catalog(),
-                            tableId.schema(),
-                            objectId,
-                            dataObjectId,
-                            tableDdl,
-                            getSchema(),
-                            Instant.now(),
-                            getMetrics(),
-                            null));
-
-            return getSchema().tableFor(tableId);
-        }
-        catch (OracleConnection.NonRelationalTableException e) {
-            LOGGER.warn("Table {} is not a relational table and will be skipped.", tableId);
-            getMetrics().incrementWarningCount();
-            return null;
-        }
-    }
-
-    private void notifyEventProcessingFailure(LogMinerEventRow event) {
-        switch (getConfig().getEventProcessingFailureHandlingMode()) {
-            case FAIL -> {
-                final String message = String.format(
-                        "Oracle LogMiner is unable to re-construct the SQL for '%s' event with SCN %s",
-                        event.getEventType(),
-                        event.getScn());
-
-                Loggings.logErrorAndTraceRecord(LOGGER, event, message);
-                throw new DebeziumException(message);
-            }
-            case WARN -> Loggings.logWarningAndTraceRecord(
-                    LOGGER,
-                    event,
-                    "An {} event with SCN {} cannot be parsed. This event will be ignored and skipped.",
-                    event.getEventType(),
-                    event.getScn());
-            default -> Loggings.logDebugAndTraceRecord(
-                    LOGGER,
-                    event,
-                    "An {} event with SCN {} cannot be parsed. This event will be ignored and skipped.",
-                    event.getEventType(),
-                    event.getScn());
-        }
-    }
-
-    private LogMinerDmlEntry parseDmlStatement(LogMinerEventRow event, Table table) {
-        final Instant parseStartTime = Instant.now();
-        try {
-            final LogMinerDmlParser parser;
-            if (event.hasErrorStatus() && !Strings.isNullOrBlank(event.getInfo()) && isUsingHybridStrategy()) {
-                parser = reconstructColumnDmlParser;
-            }
-            else {
-                parser = dmlParser;
-            }
-
-            final LogMinerDmlEntry parsedEvent = parser.parse(event.getRedoSql(), table);
-
-            if (parsedEvent.getOldValues().length == 0) {
-                switch (parsedEvent.getEventType()) {
-                    case UPDATE, DELETE -> {
-                        Loggings.logWarningAndTraceRecord(
-                                LOGGER,
-                                event,
-                                "The DML event in transaction {} at SCN {} contained no before state",
-                                event.getTransactionId(),
-                                event.getScn());
-                        getMetrics().incrementWarningCount();
-                    }
-                }
-            }
-
-            return parsedEvent;
-        }
-        catch (DmlParserException e) {
-            throw new DmlParserException(String.format(
-                    "DML statement couldn't be parsed. Please open a Jira issue with the statement '%s'.",
-                    event.getRedoSql()),
-                    e);
-        }
-        finally {
-            getMetrics().setLastParseTimeDuration(Duration.between(parseStartTime, Instant.now()));
-        }
-    }
-
-    private boolean isTableKnown(TableId tableId) {
-        return !tableId.table().equalsIgnoreCase("UNKNOWN");
-    }
-
+    /**
+     * Handles the dispatch of events added to the {@link #accumulator}.
+     *
+     * @param event the event to be dispatched, never {@code null}
+     * @param eventsProcessed the number of events dispatched thus far
+     * @throws InterruptedException if the thread is interrupted
+     */
     protected void dispatchEvent(LogMinerEvent event, long eventsProcessed) throws InterruptedException {
         if (event instanceof TruncateEvent truncateEvent) {
             final int databaseOffsetSeconds = databaseOffset.getTotalSeconds();
@@ -1050,44 +617,14 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         getOffsetContext().setRedoSql(null);
     }
 
+    /**
+     * Handles dispatching any queue schema changes.
+     *
+     * @throws InterruptedException if the thread is interrupted
+     */
     private void dispatchSchemaChanges() throws InterruptedException {
         for (LogMinerEventRow event : ddlQueue) {
-            final TableId tableId = event.getTableId();
-
-            // This is called from within the scope of handleCommitEvent, so the commit details
-            // should have already been set, so only need to set event specifics.
-            getOffsetContext().setRedoThread(event.getThread());
-            getOffsetContext().setRsId(event.getRsId());
-            getOffsetContext().setRowId("");
-            getOffsetContext().setTransactionSequence(event.getTransactionSequence());
-
-            getEventDispatcher().dispatchSchemaChangeEvent(
-                    getPartition(),
-                    getOffsetContext(),
-                    tableId,
-                    new OracleSchemaChangeEventEmitter(
-                            getConfig(),
-                            getPartition(),
-                            getOffsetContext(),
-                            tableId,
-                            tableId.catalog(),
-                            tableId.schema(),
-                            event.getObjectId(),
-                            // ALTER TABLE does not populate the data object id, pass object id on purpose
-                            event.getObjectId(),
-                            event.getRedoSql(),
-                            getSchema(),
-                            event.getChangeTime(),
-                            getMetrics(),
-                            () -> handleTruncateEvent(event)));
-
-            if (isUsingHybridStrategy()) {
-                // Remove table from the column-based parser cache
-                // It will be refreshed on the next DML event that requires special parsing
-                reconstructColumnDmlParser.removeTableFromCache(tableId);
-            }
-
-            getBatchMetrics().schemaChangeObserved();
+            dispatchSchemaChangeEventInternal(event);
         }
         ddlQueue.clear();
     }

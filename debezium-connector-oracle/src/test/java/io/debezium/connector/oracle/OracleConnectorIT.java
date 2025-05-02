@@ -4136,7 +4136,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             connection.execute("ALTER TABLE dbz5147 drop column data2");
             connection.execute("INSERT INTO dbz5147 values (3, 'test3')");
 
-            final LogInterceptor interceptor = TestHelper.getEventProcessorLogInterceptor();
+            final LogInterceptor interceptor = TestHelper.getAbstractEventProcessorLogInterceptor();
 
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
@@ -4192,7 +4192,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             connection.execute("ALTER TABLE dbz5147 drop column data2");
             connection.execute("INSERT INTO dbz5147 values (3, 'test3')");
 
-            final LogInterceptor interceptor = TestHelper.getEventProcessorLogInterceptor();
+            final LogInterceptor interceptor = TestHelper.getAbstractEventProcessorLogInterceptor();
 
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
@@ -4482,7 +4482,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
 
             int waitTime = TestHelper.defaultMessageConsumerPollTimeout() * 2;
 
-            final LogInterceptor streamInterceptor = TestHelper.getEventProcessorLogInterceptor();
+            final LogInterceptor streamInterceptor = TestHelper.getAbstractEventProcessorLogInterceptor();
 
             start(OracleConnector.class, config);
             assertConnectorIsRunning();

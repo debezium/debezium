@@ -8,6 +8,7 @@ package io.debezium.connector.oracle.logminer.events;
 import java.time.Instant;
 
 import io.debezium.connector.oracle.Scn;
+import io.debezium.connector.oracle.logminer.parser.LobWriteParser;
 import io.debezium.relational.TableId;
 
 /**
@@ -20,6 +21,10 @@ public class LobWriteEvent extends LogMinerEvent {
     private final String data;
     private final int offset;
     private final int length;
+
+    public LobWriteEvent(LogMinerEventRow row, LobWriteParser.LobWrite parsedEvent) {
+        this(row, parsedEvent.data(), parsedEvent.offset(), parsedEvent.length());
+    }
 
     public LobWriteEvent(LogMinerEventRow row, String data, int offset, int length) {
         super(row);
