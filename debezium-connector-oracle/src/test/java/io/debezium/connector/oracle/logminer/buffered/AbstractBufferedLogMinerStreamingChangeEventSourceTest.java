@@ -44,6 +44,7 @@ import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
+import io.debezium.connector.oracle.logminer.OffsetActivityMonitor;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -117,25 +118,6 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
     protected abstract Configuration.Builder getConfig();
 
-    protected BufferedStreamingChangeEventSource getChangeEventSource(Configuration config) throws InterruptedException {
-        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
-        assertThat(connectorConfig.validateAndRecord(OracleConnectorConfig.ALL_FIELDS, LOGGER::error)).isTrue();
-
-        final BufferedLogMinerStreamingChangeEventSource source = new BufferedLogMinerStreamingChangeEventSource(
-                connectorConfig,
-                connection,
-                dispatcher,
-                null,
-                Clock.SYSTEM,
-                schema,
-                connectorConfig.getJdbcConfig(),
-                metrics);
-
-        source.init(offsetContext);
-
-        return new BufferedStreamingChangeEventSource(source, context);
-    }
-
     protected boolean isTransactionAbandonmentSupported() {
         return true;
     }
@@ -143,7 +125,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     @Test
     public void testCacheIsEmpty() throws Exception {
         try (var source = getChangeEventSource(getConfig().build())) {
-            assertThat(source.getDelegate().getTransactionCache().isEmpty()).isTrue();
+            assertThat(source.getTransactionCache().isEmpty()).isTrue();
         }
     }
 
@@ -363,10 +345,10 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             final PreparedStatement ps = Mockito.mock(PreparedStatement.class);
             Mockito.when(ps.executeQuery()).thenReturn(rs);
 
-            final BufferedLogMinerStreamingChangeEventSource mock = Mockito.spy(source.getDelegate());
+            final BufferedLogMinerStreamingChangeEventSource mock = Mockito.spy(source);
             Mockito.doReturn(ps).when(mock).createQueryStatement();
 
-            final Scn nextStartScn = mock.process(context, Scn.valueOf(100), Scn.valueOf(200));
+            final Scn nextStartScn = mock.process(Scn.valueOf(100), Scn.valueOf(200));
             assertThat(nextStartScn).isEqualTo(Scn.valueOf(100));
         }
     }
@@ -390,12 +372,12 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             final PreparedStatement ps = Mockito.mock(PreparedStatement.class);
             Mockito.when(ps.executeQuery()).thenReturn(rs);
 
-            final BufferedLogMinerStreamingChangeEventSource mock = Mockito.spy(source.getDelegate());
+            final BufferedStreamingChangeEventSource mock = Mockito.spy(source);
             Mockito.doReturn(ps).when(mock).createQueryStatement();
 
             Mockito.doReturn("CREATE TABLE DEBEZIUM.ABC (ID primary key(9,0), data varchar2(50))")
-                    .when(mock)
-                    .getTableMetadataDdl(Mockito.any(OracleConnection.class), Mockito.any(TableId.class));
+                    .when(connection)
+                    .getTableMetadataDdl(Mockito.any(TableId.class));
 
             final Table table = Table.editor()
                     .tableId(TableId.parse(TestHelper.getDatabaseName() + ".DEBEZIUM.ABC"))
@@ -405,9 +387,9 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
             Mockito.doReturn(table)
                     .when(mock)
-                    .dispatchSchemaChangeEventAndGetTableForNewCapturedTable(Mockito.any(TableId.class));
+                    .dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(Mockito.any(TableId.class));
 
-            final Scn nextStartScn = mock.process(context, Scn.valueOf(100), Scn.valueOf(200));
+            final Scn nextStartScn = mock.process(Scn.valueOf(100), Scn.valueOf(200));
             assertThat(nextStartScn).isEqualTo(Scn.valueOf(101));
         }
     }
@@ -681,36 +663,59 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
         return row;
     }
 
-    protected static class BufferedStreamingChangeEventSource implements AutoCloseable {
+    protected BufferedStreamingChangeEventSource getChangeEventSource(Configuration config) throws InterruptedException {
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+        assertThat(connectorConfig.validateAndRecord(OracleConnectorConfig.ALL_FIELDS, LOGGER::error)).isTrue();
 
-        private final BufferedLogMinerStreamingChangeEventSource delegate;
+        final BufferedStreamingChangeEventSource source = new BufferedStreamingChangeEventSource(
+                connectorConfig,
+                connection,
+                dispatcher,
+                schema,
+                metrics,
+                context,
+                offsetContext);
+
+        source.init(offsetContext);
+
+        return source;
+    }
+
+    // Helper class that permits exposing some protected methods for mocking
+    protected static class BufferedStreamingChangeEventSource extends BufferedLogMinerStreamingChangeEventSource {
+
         private final ChangeEventSourceContext context;
+        private final OffsetActivityMonitor offsetActivityMonitor;
 
-        public BufferedStreamingChangeEventSource(BufferedLogMinerStreamingChangeEventSource source,
-                                                  ChangeEventSourceContext context) {
-            this.delegate = source;
+        public BufferedStreamingChangeEventSource(
+                                                  OracleConnectorConfig connectorConfig,
+                                                  OracleConnection connection,
+                                                  EventDispatcher<OraclePartition, TableId> dispatcher,
+                                                  OracleDatabaseSchema schema,
+                                                  LogMinerStreamingChangeEventSourceMetrics metrics,
+                                                  ChangeEventSourceContext context,
+                                                  OracleOffsetContext offsetContext) {
+            super(connectorConfig, connection, dispatcher, null, Clock.SYSTEM, schema, connectorConfig.getJdbcConfig(), metrics);
             this.context = context;
+            this.offsetActivityMonitor = new OffsetActivityMonitor(25, offsetContext, metrics);
         }
 
         @Override
-        public void close() throws Exception {
-            delegate.close();
+        protected ChangeEventSourceContext getContext() {
+            // Necessary for mock purposes only
+            return context;
         }
 
-        public BufferedLogMinerStreamingChangeEventSource getDelegate() {
-            return delegate;
+        @Override
+        protected OffsetActivityMonitor getOffsetActivityMonitor() {
+            // Necessary for mock purposes only
+            return offsetActivityMonitor;
         }
 
-        public void processEvent(LogMinerEventRow event) throws SQLException, InterruptedException {
-            delegate.processEvent(event, context);
-        }
-
-        public void abandonTransactions(Duration retention) throws InterruptedException {
-            delegate.abandonTransactions(retention);
-        }
-
-        public LogMinerTransactionCache<? extends Transaction> getTransactionCache() {
-            return delegate.getTransactionCache();
+        @Override
+        public Table dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(TableId tableId) throws SQLException, InterruptedException {
+            // Necessasry for mock purposes only
+            return super.dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(tableId);
         }
     }
 }

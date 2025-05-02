@@ -57,6 +57,8 @@ public class EmbeddedInfinispanCacheProvider extends AbstractCacheProvider<Infin
         this.transactionCache = createTransactionCache(connectorConfig);
         this.processedTransactionsCache = createProcessedTransactionsCache(connectorConfig);
         this.schemaChangesCache = createSchemaChangesCache(connectorConfig);
+
+        displayCacheStatistics();
     }
 
     @Override

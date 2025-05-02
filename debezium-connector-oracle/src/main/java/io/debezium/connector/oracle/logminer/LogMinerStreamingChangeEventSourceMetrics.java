@@ -977,8 +977,8 @@ public class LogMinerStreamingChangeEventSourceMetrics
             return dataChangeCount > 0 || commitCount > 0 || rollbackCount > 0;
         }
 
-        public boolean hasProcessedRows() {
-            return processedRows > 0;
+        public boolean hasJdbcRows() {
+            return jdbcRows > 0;
         }
 
         public void reset() {
