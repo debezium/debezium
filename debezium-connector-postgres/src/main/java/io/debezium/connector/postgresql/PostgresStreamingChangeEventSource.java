@@ -121,6 +121,13 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     @Override
+    public void close() {
+        if (connection != null) {
+            connection.close();
+        }
+    }
+
+    @Override
     public void execute(ChangeEventSourceContext context, PostgresPartition partition, PostgresOffsetContext offsetContext)
             throws InterruptedException {
 
