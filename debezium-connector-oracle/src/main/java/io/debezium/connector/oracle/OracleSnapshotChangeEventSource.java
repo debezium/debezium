@@ -283,8 +283,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                                                               RelationalSnapshotContext<OraclePartition, OracleOffsetContext> snapshotContext,
                                                               EventDispatcher.SnapshotReceiver<OraclePartition> snapshotReceiver, Table table,
                                                               boolean firstTable, boolean lastTable, int tableOrder, int tableCount,
-                                                              String selectStatement, OptionalLong rowCount, Queue<JdbcConnection> connectionPool,
-                                                              Queue<OracleOffsetContext> offsets) {
+                                                              String selectStatement, OptionalLong rowCount, Set<TableId> rowCountKeySet,
+                                                              Queue<JdbcConnection> connectionPool, Queue<OracleOffsetContext> offsets) {
         return () -> {
             JdbcConnection connection = connectionPool.poll();
             OracleOffsetContext offset = offsets.poll();
@@ -293,7 +293,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                 for (int i = 0; i <= maxRetries; i++) {
                     try {
                         doCreateDataEventsForTable(sourceContext, snapshotContext, offset, snapshotReceiver, table, firstTable,
-                                lastTable, tableOrder, tableCount, selectStatement, rowCount, connection);
+                                lastTable, tableOrder, tableCount, selectStatement, rowCount, rowCountKeySet, connection);
                         break;
                     }
                     catch (SQLException e) {
