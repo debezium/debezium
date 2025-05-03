@@ -13,4 +13,6 @@ public interface Debezium {
     Signaler signaler();
 
     Map<String, String> configuration();
+
+    DebeziumManifest manifest();
 }

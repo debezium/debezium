@@ -28,7 +28,7 @@ public class DebeziumRunner {
     }
 
     public void shutdown() throws RuntimeException {
-        LOGGER.info("Shutting down Debezium Engine");
+        LOGGER.info("Shutting down Debezium Engine...");
         try {
             engine.close();
         }
