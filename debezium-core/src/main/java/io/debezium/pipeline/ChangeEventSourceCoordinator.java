@@ -311,18 +311,26 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     }
 
     protected void streamEvents(ChangeEventSourceContext context, P partition, O offsetContext) throws InterruptedException {
-        initStreamEvents(partition, offsetContext);
-        getSignalProcessor(previousOffsets).ifPresent(signalProcessor -> registerSignalActionsAndStartProcessor(signalProcessor,
-                eventDispatcher, this, connectorConfig));
+        try {
+            initStreamEvents(partition, offsetContext);
+            getSignalProcessor(previousOffsets).ifPresent(signalProcessor -> registerSignalActionsAndStartProcessor(signalProcessor,
+                    eventDispatcher, this, connectorConfig));
 
-        if (snapshotterService != null && !snapshotterService.getSnapshotter().shouldStream()) {
-            LOGGER.info("Streaming is disabled for snapshot mode {}", snapshotterService.getSnapshotter().name());
-            return;
+            if (snapshotterService != null && !snapshotterService.getSnapshotter().shouldStream()) {
+                LOGGER.info("Streaming is disabled for snapshot mode {}", snapshotterService.getSnapshotter().name());
+                return;
+            }
+
+            LOGGER.info("Starting streaming");
+            streamingSource.execute(context, partition, offsetContext);
+            LOGGER.info("Finished streaming");
         }
-
-        LOGGER.info("Starting streaming");
-        streamingSource.execute(context, partition, offsetContext);
-        LOGGER.info("Finished streaming");
+        finally {
+            if (streamingSource != null) {
+                // Close streaming source
+                streamingSource.close();
+            }
+        }
     }
 
     protected void initStreamEvents(P partition, O offsetContext) throws InterruptedException {
