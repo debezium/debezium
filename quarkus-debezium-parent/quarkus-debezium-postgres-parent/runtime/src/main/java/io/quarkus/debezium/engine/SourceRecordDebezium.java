@@ -27,9 +27,12 @@ public class SourceRecordDebezium extends RunnableDebezium {
 
     private final DebeziumEngineConfiguration debeziumEngineConfiguration;
     private final DebeziumEngine<?> engine;
+    private final ManifestHandler manifestHandler;
 
-    public SourceRecordDebezium(DebeziumEngineConfiguration debeziumEngineConfiguration) {
+    public SourceRecordDebezium(DebeziumEngineConfiguration debeziumEngineConfiguration,
+                                ManifestHandler manifestHandler) {
         this.debeziumEngineConfiguration = debeziumEngineConfiguration;
+        this.manifestHandler = manifestHandler;
 
         this.engine = DebeziumEngine.create(ChangeEventFormat.of(Connect.class))
                 .using(Configuration.empty()
@@ -37,6 +40,8 @@ public class SourceRecordDebezium extends RunnableDebezium {
                         .edit()
                         .with(Configuration.from(debeziumEngineConfiguration.configuration()))
                         .build().asProperties())
+                .using(this.manifestHandler.connectorCallback())
+                .using(this.manifestHandler.completionCallback())
                 .notifying(event -> LOGGER.info("**EXPERIMENTAL** {}", event.record().value().toString()))
                 .build();
     }
@@ -51,6 +56,11 @@ public class SourceRecordDebezium extends RunnableDebezium {
         return debeziumEngineConfiguration.configuration();
     }
 
+    @Override
+    public DebeziumManifest manifest() {
+        return manifestHandler.get();
+    }
+
     protected void run() {
         this.engine.run();
     }
@@ -58,4 +68,5 @@ public class SourceRecordDebezium extends RunnableDebezium {
     protected void close() throws IOException {
         this.engine.close();
     }
+
 }

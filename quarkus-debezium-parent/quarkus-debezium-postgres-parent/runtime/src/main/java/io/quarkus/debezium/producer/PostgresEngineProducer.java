@@ -11,19 +11,20 @@ import jakarta.inject.Singleton;
 
 import io.quarkus.debezium.configuration.DebeziumEngineConfiguration;
 import io.quarkus.debezium.engine.Debezium;
+import io.quarkus.debezium.engine.DebeziumManifest.Connector;
 import io.quarkus.debezium.engine.SourceRecordDebezium;
 
 @ApplicationScoped
 public class PostgresEngineProducer {
 
     public static final String CONNECTOR_CLASS = "connector.class";
-    public static final String POSTGRES_CONNECTOR = "io.debezium.connector.postgresql.PostgresConnector";
+    public static final Connector POSTGRES = new Connector("io.debezium.connector.postgresql.PostgresConnector");
 
     @Produces
     @Singleton
     public Debezium engine(DebeziumEngineConfiguration debeziumEngineConfiguration) {
-        debeziumEngineConfiguration.configuration().put(CONNECTOR_CLASS, POSTGRES_CONNECTOR);
+        debeziumEngineConfiguration.configuration().put(CONNECTOR_CLASS, POSTGRES.name());
 
-        return new SourceRecordDebezium(debeziumEngineConfiguration);
+        return new SourceRecordDebezium(debeziumEngineConfiguration, new DefaultManifestHandler(POSTGRES));
     }
 }
