@@ -221,7 +221,8 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         final Queue<CollectionId> collectionsToCopy = new ConcurrentLinkedQueue<>(collections);
 
         LOGGER.info("Creating snapshot worker pool with {} worker thread(s)", numThreads);
-        final ExecutorService executorService = Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.getServerName(), "snapshot-main",
+        final ExecutorService executorService = Threads.newFixedThreadPool(connectorConfig.connectorName(), MongoDbConnector.class, taskContext.getServerName(),
+                "snapshot-main",
                 connectorConfig.getSnapshotMaxThreads());
 
         final AtomicBoolean aborted = new AtomicBoolean(false);

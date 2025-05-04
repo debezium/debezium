@@ -150,7 +150,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
             // Start keep alive thread to prevent connection timeout during time-consuming operations the DB side.
             ReplicationStream stream = this.replicationStream.get();
-            stream.startKeepAlive(Threads.newSingleThreadExecutor(PostgresConnector.class, connectorConfig.getLogicalName(), KEEP_ALIVE_THREAD_NAME));
+            stream.startKeepAlive(
+                    Threads.newSingleThreadExecutor(connectorConfig.connectorName(), PostgresConnector.class, connectorConfig.getLogicalName(), KEEP_ALIVE_THREAD_NAME));
 
             // If we need to do a pre-snapshot streaming catch up, we should allow the snapshot transaction to persist
             // but normally we want to start streaming without any open transactions.
@@ -175,7 +176,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 replicationConnection.reconnect();
                 replicationStream.set(replicationConnection.startStreaming(walPosition.getLastEventStoredLsn(), walPosition));
                 stream = this.replicationStream.get();
-                stream.startKeepAlive(Threads.newSingleThreadExecutor(PostgresConnector.class, connectorConfig.getLogicalName(), KEEP_ALIVE_THREAD_NAME));
+                stream.startKeepAlive(Threads.newSingleThreadExecutor(connectorConfig.connectorName(), PostgresConnector.class, connectorConfig.getLogicalName(),
+                        KEEP_ALIVE_THREAD_NAME));
             }
             processMessages(context, partition, this.effectiveOffset, stream);
         }

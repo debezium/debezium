@@ -109,8 +109,10 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         this.changeEventSourceFactory = changeEventSourceFactory;
         this.changeEventSourceMetricsFactory = changeEventSourceMetricsFactory;
         this.snapshotterService = snapshotterService;
-        this.executor = Threads.newSingleThreadExecutor(connectorType, connectorConfig.getLogicalName(), "change-event-source-coordinator");
-        this.blockingSnapshotExecutor = Threads.newSingleThreadExecutor(connectorType, connectorConfig.getLogicalName(), "blocking-snapshot");
+        this.executor = Threads.newSingleThreadExecutor(connectorConfig.connectorName(), connectorType, connectorConfig.getLogicalName(),
+                "change-event-source-coordinator");
+        this.blockingSnapshotExecutor = Threads.newSingleThreadExecutor(connectorConfig.connectorName(), connectorType, connectorConfig.getLogicalName(),
+                "blocking-snapshot");
         this.eventDispatcher = eventDispatcher;
         this.schema = schema;
         this.signalProcessor = signalProcessor;
