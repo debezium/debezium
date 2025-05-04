@@ -1090,7 +1090,7 @@ public abstract class CommonConnectorConfig {
     public static final Field CONNECTION_VALIDATION_TIMEOUT_MS = Field.create("connection.validation.timeout.ms")
             .withDisplayName("Connection validation timeout (ms)")
             .withType(Type.LONG)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 7))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 13))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(DEFAULT_CONNECTION_VALIDATION_TIMEOUT_MS)
