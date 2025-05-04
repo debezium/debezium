@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -27,6 +28,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
+import io.debezium.util.ConnectionValidationUtil;
 
 /**
  * The main connector class used to instantiate configuration and execution classes
@@ -120,33 +122,44 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
         final SqlServerConnectorConfig sqlServerConfig = new SqlServerConnectorConfig(config);
         final ConfigValue hostnameValue = configValues.get(RelationalDatabaseConnectorConfig.HOSTNAME.name());
         final ConfigValue userValue = configValues.get(RelationalDatabaseConnectorConfig.USER.name());
+        long timeoutMs = sqlServerConfig.getConnectionValidationTimeoutMs();
         // Try to connect to the database ...
-        try (SqlServerConnection connection = connect(sqlServerConfig)) {
-            connection.execute("SELECT @@VERSION");
-            LOGGER.debug("Successfully tested connection for {} with user '{}'", connection.connectionString(),
-                    connection.username());
-            LOGGER.info("Checking if user has access to CDC table");
-            if (sqlServerConfig.getSnapshotMode() != SqlServerConnectorConfig.SnapshotMode.INITIAL_ONLY) {
-                final List<String> noAccessDatabaseNames = new ArrayList<>();
-                for (String databaseName : sqlServerConfig.getDatabaseNames()) {
-                    if (!connection.checkIfConnectedUserHasAccessToCDCTable(databaseName)) {
-                        noAccessDatabaseNames.add(databaseName);
+        try {
+            ConnectionValidationUtil.runWithTimeout(SqlServerConnector.class, () -> {
+                try (SqlServerConnection connection = connect(sqlServerConfig)) {
+                    connection.execute("SELECT @@VERSION");
+                    LOGGER.debug("Successfully tested connection for {} with user '{}'", connection.connectionString(),
+                            connection.username());
+                    LOGGER.info("Checking if user has access to CDC table");
+                    if (sqlServerConfig.getSnapshotMode() != SqlServerConnectorConfig.SnapshotMode.INITIAL_ONLY) {
+                        final List<String> noAccessDatabaseNames = new ArrayList<>();
+                        for (String databaseName : sqlServerConfig.getDatabaseNames()) {
+                            if (!connection.checkIfConnectedUserHasAccessToCDCTable(databaseName)) {
+                                noAccessDatabaseNames.add(databaseName);
+                            }
+                        }
+                        if (!noAccessDatabaseNames.isEmpty()) {
+                            String errorMessage = String.format(
+                                    "User %s does not have access to CDC schema in the following databases: %s. This user can only be used in initial_only snapshot mode",
+                                    config.getString(RelationalDatabaseConnectorConfig.USER), String.join(", ", noAccessDatabaseNames));
+                            LOGGER.error(errorMessage);
+                            userValue.addErrorMessage(errorMessage);
+                        }
                     }
                 }
-                if (!noAccessDatabaseNames.isEmpty()) {
-                    String errorMessage = String.format(
-                            "User %s does not have access to CDC schema in the following databases: %s. This user can only be used in initial_only snapshot mode",
-                            config.getString(RelationalDatabaseConnectorConfig.USER), String.join(", ", noAccessDatabaseNames));
-                    LOGGER.error(errorMessage);
-                    userValue.addErrorMessage(errorMessage);
+                catch (Exception e) {
+                    LOGGER.error("Failed testing connection for {} with user '{}'", config.withMaskedPasswords(),
+                            userValue, e);
+                    hostnameValue.addErrorMessage("Unable to connect. Check this and other connection properties. Error: "
+                            + e.getMessage());
                 }
-            }
+            }, timeoutMs, sqlServerConfig.getLogicalName());
+        }
+        catch (TimeoutException e) {
+            hostnameValue.addErrorMessage("Connection validation timed out after " + timeoutMs + " ms");
         }
         catch (Exception e) {
-            LOGGER.error("Failed testing connection for {} with user '{}'", config.withMaskedPasswords(),
-                    userValue, e);
-            hostnameValue.addErrorMessage("Unable to connect. Check this and other connection properties. Error: "
-                    + e.getMessage());
+            hostnameValue.addErrorMessage("Error during connection validation: " + e.getMessage());
         }
     }
 
