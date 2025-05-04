@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -27,6 +28,7 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ServerInfo;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
+import io.debezium.util.ConnectionValidationUtil;
 
 /**
  * A Kafka Connect source connector that creates tasks which use Postgresql streaming replication off a logical replication slot
@@ -90,20 +92,31 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
 
         final PostgresConnectorConfig postgresConfig = new PostgresConnectorConfig(config);
         final ConfigValue hostnameValue = configValues.get(RelationalDatabaseConnectorConfig.HOSTNAME.name());
+        long timeoutMs = postgresConfig.getConnectionValidationTimeoutMs();
         // Try to connect to the database ...
-        try (PostgresConnection connection = new PostgresConnection(postgresConfig.getJdbcConfig(), PostgresConnection.CONNECTION_VALIDATE_CONNECTION)) {
-            try {
-                // Prepare connection without initial statement execution
-                connection.connection(false);
-                testConnection(connection);
-                checkReadOnlyMode(connection, postgresConfig);
-                checkLoginReplicationRoles(connection);
-            }
-            catch (SQLException e) {
-                LOGGER.error("Failed testing connection for {} with user '{}'", connection.connectionString(),
-                        connection.username(), e);
-                hostnameValue.addErrorMessage("Error while validating connector config: " + e.getMessage());
-            }
+        try {
+            ConnectionValidationUtil.runWithTimeout(PostgresConnector.class, () -> {
+                try (PostgresConnection connection = new PostgresConnection(postgresConfig.getJdbcConfig(), PostgresConnection.CONNECTION_VALIDATE_CONNECTION)) {
+                    try {
+                        // Prepare connection without initial statement execution
+                        connection.connection(false);
+                        testConnection(connection);
+                        checkReadOnlyMode(connection, postgresConfig);
+                        checkLoginReplicationRoles(connection);
+                    }
+                    catch (SQLException e) {
+                        LOGGER.error("Failed testing connection for {} with user '{}'", connection.connectionString(),
+                                connection.username(), e);
+                        hostnameValue.addErrorMessage("Error while validating connector config: " + e.getMessage());
+                    }
+                }
+            }, timeoutMs, postgresConfig.getLogicalName());
+        }
+        catch (TimeoutException e) {
+            hostnameValue.addErrorMessage("Connection validation timed out after " + timeoutMs + " ms");
+        }
+        catch (Exception e) {
+            hostnameValue.addErrorMessage("Error during connection validation: " + e.getMessage());
         }
     }
 
