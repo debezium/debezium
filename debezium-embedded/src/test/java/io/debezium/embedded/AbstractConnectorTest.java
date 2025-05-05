@@ -63,7 +63,6 @@ import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.slf4j.Logger;
@@ -74,7 +73,6 @@ import io.debezium.config.Instantiator;
 import io.debezium.data.VerifyRecord;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.function.BooleanConsumer;
-import io.debezium.junit.RequiresAssemblyProfileTestRule;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.TestLogger;
 import io.debezium.pipeline.txmetadata.TransactionStatus;
@@ -96,14 +94,8 @@ import io.debezium.util.Testing;
  */
 public abstract class AbstractConnectorTest implements Testing {
 
-    @ClassRule
-    public static TestRule requiresAssemblyProfileClassRule = new RequiresAssemblyProfileTestRule();
-
     @Rule
     public TestRule skipTestRule = new SkipTestRule();
-
-    @Rule
-    public TestRule requiresAssemblyProfileRule = new RequiresAssemblyProfileTestRule();
 
     protected static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("file-connector-offsets.txt").toAbsolutePath();
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
