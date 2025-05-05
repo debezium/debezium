@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.Test;
 
-public class ConnectionValidationUtilTest {
+public class ThreadsTest {
 
     @Test
     public void shouldCompleteSuccessfullyWithinTimeout() throws Exception {
@@ -28,8 +28,8 @@ public class ConnectionValidationUtilTest {
             }
         };
 
-        ConnectionValidationUtil.runWithTimeout(
-                ConnectionValidationUtilTest.class,
+        Threads.runWithTimeout(
+                ThreadsTest.class,
                 validationTask,
                 1000,
                 "test-connector");
@@ -48,8 +48,8 @@ public class ConnectionValidationUtilTest {
             }
         };
 
-        assertThrows(TimeoutException.class, () -> ConnectionValidationUtil.runWithTimeout(
-                ConnectionValidationUtilTest.class,
+        assertThrows(TimeoutException.class, () -> Threads.runWithTimeout(
+                ThreadsTest.class,
                 validationTask,
                 500,
                 "test-connector"));
@@ -61,8 +61,8 @@ public class ConnectionValidationUtilTest {
             throw new RuntimeException("Test exception");
         };
 
-        Exception exception = assertThrows(Exception.class, () -> ConnectionValidationUtil.runWithTimeout(
-                ConnectionValidationUtilTest.class,
+        Exception exception = assertThrows(Exception.class, () -> Threads.runWithTimeout(
+                ThreadsTest.class,
                 validationTask,
                 1000,
                 "test-connector"));
@@ -78,8 +78,8 @@ public class ConnectionValidationUtilTest {
             throw new RuntimeException("Should be interrupted");
         };
 
-        assertThrows(Exception.class, () -> ConnectionValidationUtil.runWithTimeout(
-                ConnectionValidationUtilTest.class,
+        assertThrows(Exception.class, () -> Threads.runWithTimeout(
+                ThreadsTest.class,
                 validationTask,
                 1000,
                 "test-connector"));

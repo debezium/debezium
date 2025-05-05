@@ -26,7 +26,7 @@ import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalTableFilters;
 import io.debezium.relational.TableId;
-import io.debezium.util.ConnectionValidationUtil;
+import io.debezium.util.Threads;
 
 /**
  * Abstract base class for binlog-based connectors.
@@ -64,7 +64,7 @@ public abstract class BinlogConnector<T extends BinlogConnectorConfig> extends R
         long timeoutMs = connectorConfig.getConnectionValidationTimeoutMs();
 
         try {
-            ConnectionValidationUtil.runWithTimeout(this.getClass(), () -> {
+            Threads.runWithTimeout(this.getClass(), () -> {
                 try (BinlogConnectorConnection connection = createConnection(config, connectorConfig)) {
                     try {
                         connection.connect();
