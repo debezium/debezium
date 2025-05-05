@@ -180,6 +180,22 @@ CREATE TABLE `test_table\\`(id INT(11) NOT NULL, PRIMARY KEY (`id`)) ENGINE = IN
 CREATE TABLE `\\test_table`(id INT(11) NOT NULL, PRIMARY KEY (`id`)) ENGINE = INNODB;
 CREATE TABLE `\\test\\_table\\`(id INT(11) NOT NULL, PRIMARY KEY (`id`)) ENGINE = INNODB;
 
+CREATE TABLE `product_labels_relation` (
+  `id_label` int(11) NOT NULL,
+  `id_product` int(11) NOT NULL,
+  `generated` tinyint(4) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id_label`,`id_product`),
+  KEY `id_product` (`id_product`),
+  CONSTRAINT `product_labels_relation_ibfk_1` FOREIGN KEY (`id_label`) REFERENCES `labels` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `product_labels_relation_ibfk_2` FOREIGN KEY (`id_product`) REFERENCES `products` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci `PAGE_COMPRESSED`= `ON`; // string literal
+
+CREATE TABLE `products_labels` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `description` text NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci `PAGE_COMPRESSED`= ON; // boolean literal
 #end
 #begin
 -- Rename table
