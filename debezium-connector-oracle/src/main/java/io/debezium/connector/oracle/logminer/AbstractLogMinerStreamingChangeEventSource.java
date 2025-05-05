@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle.logminer;
 
 import java.math.BigInteger;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.DecimalFormat;
@@ -89,6 +90,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
     private static final int MINING_START_RETRIES = 5;
     private static final int MAXIMUM_NAME_LENGTH = 30;
+    private static final int MAX_ITERATIONS_BEFORE_OFFSET_STALE = 25;
     private static final Long SMALL_REDO_LOG_WARNING = 524_288_000L;
 
     private final OracleConnectorConfig connectorConfig;
@@ -169,7 +171,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             this.effectiveOffset = offsetContext;
             this.partition = partition;
             this.context = context;
-            this.offsetActivityMonitor = new OffsetActivityMonitor(25, getOffsetContext(), getMetrics());
+            this.offsetActivityMonitor = new OffsetActivityMonitor(MAX_ITERATIONS_BEFORE_OFFSET_STALE, getOffsetContext(), getMetrics());
 
             // perform various pre-streaming initialization steps
             prepareJdbcConnection(false);
@@ -372,6 +374,44 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     }
 
     /**
+     * Executes the prepared statement's query and processes the result set.
+     *
+     * @param statement the prepared statement to execute, should not be {@code null}
+     * @throws SQLException if a database error occurs
+     * @throws InterruptedException if the thread is interrupted
+     */
+    protected void executeAndProcessQuery(PreparedStatement statement) throws SQLException, InterruptedException {
+        final Instant queryStartTime = Instant.now();
+        try (ResultSet resultSet = statement.executeQuery()) {
+            getMetrics().setLastDurationOfFetchQuery(Duration.between(queryStartTime, Instant.now()));
+
+            final Instant startProcessTime = Instant.now();
+            final String catalogName = getConfig().getCatalogName();
+
+            while (getContext().isRunning() && hasNextWithMetricsUpdate(resultSet)) {
+                getBatchMetrics().rowObserved();
+
+                final LogMinerEventRow event = LogMinerEventRow.fromResultSet(resultSet, catalogName);
+                processEvent(event);
+            }
+
+            getBatchMetrics().updateStreamingMetrics();
+
+            if (getBatchMetrics().hasProcessedAnyTransactions()) {
+                getOffsetActivityMonitor().checkForStaleOffsets();
+            }
+
+            LOGGER.debug("{}.", getBatchMetrics());
+            LOGGER.debug("Processed in {} ms. Lag {}. Active Transactions: {}. Sleep: {}. Offsets: {}",
+                    Duration.between(startProcessTime, Instant.now()),
+                    getMetrics().getLagFromSourceInMilliseconds(),
+                    getMetrics().getNumberOfActiveTransactions(),
+                    getMetrics().getSleepTimeInMilliseconds(),
+                    getOffsetContext());
+        }
+    }
+
+    /**
      * Execute any steps that should occur before dispatching a data change event.
      *
      * @param event the event, should not be {@code null}
@@ -392,6 +432,72 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     }
 
     /**
+     * Checks whether the event has previously been processed.
+     *
+     * @param event the event, should be {@code null}
+     * @return true if the event has previously been processed, false otherwise
+     */
+    protected boolean hasEventBeenProcessed(LogMinerEventRow event) {
+        return false;
+    }
+
+    /**
+     * Check whether the specified event should be skipped.
+     *
+     * @param event the event, should not be {@code null}
+     * @return true if the event should be skipped, false otherwise
+     */
+    protected boolean isEventSkipped(LogMinerEventRow event) {
+        return false;
+    }
+
+    /**
+     * Process a specific event.
+     *
+     * @param event the event, should not be {@code null}
+     * @throws SQLException if a database exception occurs
+     * @throws InterruptedException if the thread is interrupted
+     */
+    protected void processEvent(LogMinerEventRow event) throws SQLException, InterruptedException {
+        if (!hasEventBeenProcessed(event)) {
+            if (!isEventSkipped(event)) {
+                preProcessEvent(event);
+
+                switch (event.getEventType()) {
+                    case MISSING_SCN -> handleMissingScnEvent(event);
+                    case START -> handleStartEvent(event);
+                    case COMMIT -> handleCommitEvent(event);
+                    case ROLLBACK -> handleRollbackEvent(event);
+                    case DDL -> handleSchemaChangeEvent(event);
+                    case INSERT, UPDATE, DELETE -> handleDataChangeEvent(event);
+                    case REPLICATION_MARKER -> handleReplicationMarkerEvent(event);
+                    case UNSUPPORTED -> handleUnsupportedEvent(event);
+                    case SELECT_LOB_LOCATOR -> handleSelectLobLocatorEvent(event);
+                    case LOB_WRITE -> handleLobWriteEvent(event);
+                    case LOB_ERASE -> handleLobEraseEvent(event);
+                    case XML_BEGIN -> handleXmlBeginEvent(event);
+                    case XML_WRITE -> handleXmlWriteEvent(event);
+                    case XML_END -> handleXmlEndEvent(event);
+                    case EXTENDED_STRING_BEGIN -> handleExtendedStringBeginEvent(event);
+                    case EXTENDED_STRING_WRITE -> handleExtendedStringWriteEvent(event);
+                    case EXTENDED_STRING_END -> handleExtendedStringEndEvent(event);
+                    default -> Loggings.logDebugAndTraceRecord(LOGGER, event, "Skipped event {}", event.getEventType());
+                }
+            }
+        }
+    }
+
+    /**
+     * Provides a hook for an implementation to perform common processing behavior for an event
+     * before the event is dispatched to its operation-specific handler.
+     *
+     * @param event the event, should not be {@code null}
+     */
+    protected void preProcessEvent(LogMinerEventRow event) {
+        getBatchMetrics().rowProcessed();
+    }
+
+    /**
      * Handles processing {@code MISSING_SCN} operation events.
      *
      * @param event the event, should not be {@code null}
@@ -399,6 +505,46 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     protected void handleMissingScnEvent(LogMinerEventRow event) {
         Loggings.logWarningAndTraceRecord(LOGGER, event, "Event with `MISSING_SCN` operation found with SCN {}", event.getScn());
     }
+
+    /**
+     * Handles processing {@code START} operation events.
+     *
+     * @param event the event, should not be {@code null}
+     * @throws InterruptedException if the thread is interrupted
+     */
+    protected abstract void handleStartEvent(LogMinerEventRow event) throws InterruptedException;
+
+    /**
+     * Handles processing {@code COMMIT} operation events.
+     *
+     * @param event the event, should not be {@code null}
+     * @throws InterruptedException if the thread is interrupted
+     */
+    protected abstract void handleCommitEvent(LogMinerEventRow event) throws InterruptedException;
+
+    /**
+     * Handles processing {@code ROLLBACK} operation events.
+     *
+     * @param event the event, should not be {@code null}
+     * @throws InterruptedException if the thread is interrupted
+     */
+    protected abstract void handleRollbackEvent(LogMinerEventRow event) throws InterruptedException;
+
+    /**
+     * Handles processing {@code DDL} operation events.
+     *
+     * @param event the event, should not be {@code null}
+     * @throws InterruptedException if the thread is interrupted
+     */
+    protected abstract void handleSchemaChangeEvent(LogMinerEventRow event) throws InterruptedException;
+
+    /**
+     * Handles processing {@code REPLICATION_MARKER} operation events.
+     *
+     * @param event the event, should not be {@code null}
+     * @throws InterruptedException if the thread is interrupted
+     */
+    protected abstract void handleReplicationMarkerEvent(LogMinerEventRow event) throws InterruptedException;
 
     /**
      * Handles processing {@code UNSUPPORTED} operation events.
