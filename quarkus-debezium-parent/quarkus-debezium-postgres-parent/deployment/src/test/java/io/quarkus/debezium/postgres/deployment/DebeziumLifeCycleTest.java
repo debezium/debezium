@@ -4,7 +4,7 @@
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 
-package io.quarkus.debezium.postgres.lifecycle;
+package io.quarkus.debezium.postgres.deployment;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.given;
@@ -22,15 +22,12 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.quarkus.debezium.engine.Debezium;
 import io.quarkus.debezium.engine.DebeziumManifest;
-import io.quarkus.debezium.engine.DebeziumManifest.Connector;
-import io.quarkus.debezium.engine.DebeziumManifest.Status;
-import io.quarkus.debezium.engine.DebeziumManifest.Status.State;
 import io.quarkus.runtime.Application;
 import io.quarkus.test.QuarkusUnitTest;
 import io.quarkus.test.common.QuarkusTestResource;
 
 @QuarkusTestResource(DatabaseTestResource.class)
-class DebeziumLifeCycleIT {
+public class DebeziumLifeCycleTest {
 
     @Inject
     Debezium debezium;
@@ -59,15 +56,14 @@ class DebeziumLifeCycleIT {
         given().await()
                 .atMost(10, TimeUnit.SECONDS)
                 .untilAsserted(() -> Assertions.assertThat(debezium.manifest())
-                        .isEqualTo(new DebeziumManifest(new Connector("io.debezium.connector.postgresql.PostgresConnector"),
-                                new Status(State.POLLING))));
+                        .isEqualTo(new DebeziumManifest(new DebeziumManifest.Connector("io.debezium.connector.postgresql.PostgresConnector"),
+                                new DebeziumManifest.Status(DebeziumManifest.Status.State.POLLING))));
 
         Application.currentApplication().close();
 
         given().await()
                 .atMost(30, TimeUnit.SECONDS)
                 .untilAsserted(() -> Assertions.assertThat(debezium.manifest().status())
-                        .isEqualTo(new Status(State.STOPPED)));
+                        .isEqualTo(new DebeziumManifest.Status(DebeziumManifest.Status.State.STOPPED)));
     }
-
 }
