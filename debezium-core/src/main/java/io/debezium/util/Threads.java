@@ -7,11 +7,14 @@ package io.debezium.util;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.LongSupplier;
@@ -309,5 +312,34 @@ public class Threads {
 
     public static ScheduledExecutorService newSingleThreadScheduledExecutor(Class<?> component, String componentId, String name, boolean daemon) {
         return Executors.newSingleThreadScheduledExecutor(threadFactory(component, componentId, name, false, daemon));
+    }
+
+    /**
+     * Runs a validation task with a timeout using a single-threaded executor.
+     *
+     * @param connectorClass the class of the connector
+     * @param validationTask the task to run for validation
+     * @param timeoutMs the timeout in milliseconds
+     * @param connectorName the name of the connector
+     * @throws Exception if the validation fails or times out
+     */
+    public static void runWithTimeout(Class<?> connectorClass, Runnable validationTask, long timeoutMs, String connectorName) throws Exception {
+        ExecutorService executor = newSingleThreadExecutor(connectorClass, connectorName, "connection-validation");
+        Future<?> future = executor.submit(validationTask);
+        try {
+            future.get(timeoutMs, TimeUnit.MILLISECONDS);
+        }
+        catch (TimeoutException e) {
+            LOGGER.error("Connection validation timed out after {} ms", timeoutMs);
+            future.cancel(true);
+            throw e;
+        }
+        catch (ExecutionException e) {
+            LOGGER.error("Connection validation failed", e);
+            throw (e.getCause() != null) ? new Exception(e.getCause()) : e;
+        }
+        finally {
+            executor.shutdownNow();
+        }
     }
 }

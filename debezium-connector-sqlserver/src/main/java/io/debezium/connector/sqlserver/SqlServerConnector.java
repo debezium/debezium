@@ -28,7 +28,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
-import io.debezium.util.ConnectionValidationUtil;
+import io.debezium.util.Threads;
 
 /**
  * The main connector class used to instantiate configuration and execution classes
@@ -125,7 +125,7 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
         long timeoutMs = sqlServerConfig.getConnectionValidationTimeoutMs();
         // Try to connect to the database ...
         try {
-            ConnectionValidationUtil.runWithTimeout(SqlServerConnector.class, () -> {
+            Threads.runWithTimeout(SqlServerConnector.class, () -> {
                 try (SqlServerConnection connection = connect(sqlServerConfig)) {
                     connection.execute("SELECT @@VERSION");
                     LOGGER.debug("Successfully tested connection for {} with user '{}'", connection.connectionString(),

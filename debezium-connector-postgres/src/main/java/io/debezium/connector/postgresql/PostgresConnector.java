@@ -28,7 +28,7 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ServerInfo;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
-import io.debezium.util.ConnectionValidationUtil;
+import io.debezium.util.Threads;
 
 /**
  * A Kafka Connect source connector that creates tasks which use Postgresql streaming replication off a logical replication slot
@@ -95,7 +95,7 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
         long timeoutMs = postgresConfig.getConnectionValidationTimeoutMs();
         // Try to connect to the database ...
         try {
-            ConnectionValidationUtil.runWithTimeout(PostgresConnector.class, () -> {
+            Threads.runWithTimeout(PostgresConnector.class, () -> {
                 try (PostgresConnection connection = new PostgresConnection(postgresConfig.getJdbcConfig(), PostgresConnection.CONNECTION_VALIDATE_CONNECTION)) {
                     try {
                         // Prepare connection without initial statement execution

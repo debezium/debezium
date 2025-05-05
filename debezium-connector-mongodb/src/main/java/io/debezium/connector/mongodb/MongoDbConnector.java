@@ -27,7 +27,7 @@ import io.debezium.connector.common.BaseSourceConnector;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnections;
-import io.debezium.util.ConnectionValidationUtil;
+import io.debezium.util.Threads;
 
 /**
  * A Kafka Connect source connector that creates tasks that read the MongoDB change stream and generate the corresponding
@@ -128,7 +128,7 @@ public class MongoDbConnector extends BaseSourceConnector {
         long timeoutMs = connectorConfig.getConnectionValidationTimeoutMs();
 
         try {
-            ConnectionValidationUtil.runWithTimeout(MongoDbConnector.class, () -> {
+            Threads.runWithTimeout(MongoDbConnector.class, () -> {
                 try {
                     // Check base connection by accessing first database name
                     try (MongoClient client = connectionContext.getMongoClient()) {
