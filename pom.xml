@@ -210,7 +210,6 @@
         <module>debezium-quarkus-outbox-reactive</module>
         <module>debezium-scripting</module>
         <module>debezium-testing</module>
-        <module>debezium-connect-rest-extension</module>
         <module>debezium-schema-generator</module>
         <module>debezium-storage</module>
         <module>debezium-interceptor</module>
