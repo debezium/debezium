@@ -24,8 +24,8 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
-import io.debezium.util.ConnectionValidationUtil;
 import io.debezium.util.Strings;
+import io.debezium.util.Threads;
 
 public class OracleConnector extends RelationalBaseSourceConnector {
 
@@ -80,7 +80,7 @@ public class OracleConnector extends RelationalBaseSourceConnector {
         long timeoutMs = connectorConfig.getConnectionValidationTimeoutMs();
 
         try {
-            ConnectionValidationUtil.runWithTimeout(OracleConnector.class, () -> {
+            Threads.runWithTimeout(OracleConnector.class, () -> {
                 try (OracleConnection connection = new OracleConnection(connectorConfig.getJdbcConfig())) {
                     LOGGER.debug("Successfully tested connection for {} with user '{}'", OracleConnection.connectionString(connectorConfig.getJdbcConfig()),
                             connection.username());
