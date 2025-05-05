@@ -3,7 +3,8 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.quarkus.debezium.postgres.lifecycle;
+
+package io.quarkus.debezium.postgres.deployment;
 
 import java.time.Duration;
 import java.util.Map;
@@ -15,7 +16,6 @@ import org.testcontainers.utility.DockerImageName;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 
 public class DatabaseTestResource implements QuarkusTestResourceLifecycleManager {
-
     private static final String POSTGRES_IMAGE = "quay.io/debezium/postgres:15";
 
     private static final DockerImageName POSTGRES_DOCKER_IMAGE_NAME = DockerImageName.parse(POSTGRES_IMAGE)

@@ -12,13 +12,12 @@
 
     <artifactId>quarkus-debezium-integration-test</artifactId>
 
-
     <dependencies>
+
         <dependency>
             <groupId>io.quarkus</groupId>
-                <artifactId>quarkus-debezium-postgres-deployment</artifactId>
+            <artifactId>quarkus-debezium-postgres-deployment</artifactId>
         </dependency>
-
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
@@ -28,6 +27,14 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-junit5-internal</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
         </dependency>
     </dependencies>
 
@@ -42,9 +49,6 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.2</version>
                 <configuration>
-                    <includes>
-                        <include>**/EngineProcessorTest.java</include>
-                    </includes>
                     <systemPropertyVariables>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <maven.home>${maven.home}</maven.home>
