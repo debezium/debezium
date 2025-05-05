@@ -24,10 +24,8 @@ import io.quarkus.debezium.engine.Debezium;
 import io.quarkus.debezium.engine.DebeziumManifest;
 import io.quarkus.runtime.Application;
 import io.quarkus.test.QuarkusUnitTest;
-import io.quarkus.test.common.QuarkusTestResource;
 
-@QuarkusTestResource(value = DatabaseTestResource.class, restrictToAnnotatedClass = true)
-public class DebeziumLifeCycleTest {
+public class DebeziumDevModeLifeCycleTest {
 
     @Inject
     Debezium debezium;
@@ -41,7 +39,6 @@ public class DebeziumLifeCycleTest {
             .overrideConfigKey("quarkus.debezium.configuration.table.include.list", "inventory.products")
             .overrideConfigKey("quarkus.debezium.configuration.plugin.name", "pgoutput")
             .overrideConfigKey("quarkus.debezium.configuration.snapshot.mode", "never")
-            // .overrideConfigKey("quarkus.datasource.devservices.enabled", "false")
             .setLogRecordPredicate(record -> record.getLoggerName().equals("io.quarkus.debezium.engine.DebeziumRunner"))
             .assertLogRecords((records) -> {
                 assertThat(records.getFirst().getMessage()).isEqualTo("Starting Debezium Engine...");
@@ -49,8 +46,8 @@ public class DebeziumLifeCycleTest {
             });
 
     @Test
-    @DisplayName("debezium should be integrated in the quarkus lifecycle")
-    void shouldDebeziumBeIntegratedInTheQuarkusLifeCycle() {
+    @DisplayName("debezium should be integrated in the quarkus dev lifecycle")
+    void shouldDebeziumBeIntegratedInTheQuarkusDevLifeCycle() {
         Assertions.assertThat(debezium.configuration().get("connector.class"))
                 .isEqualTo("io.debezium.connector.postgresql.PostgresConnector");
 
