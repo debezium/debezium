@@ -601,6 +601,7 @@ ODBC                        : 'ODBC';
 OFFLINE                     : 'OFFLINE';
 OFFSET                      : 'OFFSET';
 OF                          : 'OF';
+OFF                         : 'OFF';
 OJ                          : 'OJ';
 OLD_PASSWORD                : 'OLD_PASSWORD';
 ONE                         : 'ONE';
