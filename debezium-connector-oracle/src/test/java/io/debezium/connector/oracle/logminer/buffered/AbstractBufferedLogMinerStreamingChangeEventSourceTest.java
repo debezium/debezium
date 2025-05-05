@@ -714,8 +714,14 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
 
         @Override
         public Table dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(TableId tableId) throws SQLException, InterruptedException {
-            // Necessasry for mock purposes only
+            // Necessary for mock purposes only
             return super.dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(tableId);
+        }
+
+        @Override
+        public void processEvent(LogMinerEventRow event) throws SQLException, InterruptedException {
+            // Necessary for mock purposes only
+            super.processEvent(event);
         }
     }
 }

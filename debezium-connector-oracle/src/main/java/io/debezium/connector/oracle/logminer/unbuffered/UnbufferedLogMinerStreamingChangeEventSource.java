@@ -68,6 +68,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
 
     private boolean skipCurrentTransaction = false;
     private ZoneOffset databaseOffset;
+    private Scn lastCommitScn = Scn.NULL;
 
     public UnbufferedLogMinerStreamingChangeEventSource(OracleConnectorConfig connectorConfig,
                                                         OracleConnection jdbcConnection,
@@ -240,101 +241,40 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             statement.setFetchDirection(ResultSet.FETCH_FORWARD);
             statement.setString(1, minCommitScn.toString());
 
-            final Instant queryStartTime = Instant.now();
-            try (ResultSet resultSet = statement.executeQuery()) {
-                getMetrics().setLastDurationOfFetchQuery(Duration.between(queryStartTime, Instant.now()));
+            lastCommitScn = minCommitScn;
 
-                final Instant startProcessTime = Instant.now();
-                final String catalogName = getConfig().getCatalogName();
+            executeAndProcessQuery(statement);
 
-                Scn newMinCommitScn = minCommitScn;
-                while (getContext().isRunning() && hasNextWithMetricsUpdate(resultSet)) {
-                    getBatchMetrics().rowObserved();
-
-                    final LogMinerEventRow event = LogMinerEventRow.fromResultSet(resultSet, catalogName);
-                    processEvent(event);
-
-                    if (EventType.COMMIT.equals(event.getEventType())) {
-                        newMinCommitScn = event.getCommitScn();
-                        skipCurrentTransaction = false;
-                    }
-                }
-
-                getBatchMetrics().updateStreamingMetrics();
-
-                if (getBatchMetrics().hasProcessedAnyTransactions()) {
-                    getOffsetActivityMonitor().checkForStaleOffsets();
-                }
-
-                LOGGER.debug("{}.", getBatchMetrics());
-                LOGGER.debug(
-                        "Processed in {} ms. Lag: {}. Query Min Commit SCN: {}, New Min Commit SCN: {}, Offset SCN: {}, Offset Commit SCN: {}, Sleep: {}",
-                        Duration.between(startProcessTime, Instant.now()),
-                        getMetrics().getLagFromSourceInMilliseconds(),
-                        minCommitScn,
-                        newMinCommitScn,
-                        getOffsetContext().getScn(),
-                        getOffsetContext().getCommitScn(),
-                        getMetrics().getSleepTimeInMilliseconds());
-
-                return newMinCommitScn;
+            if (!minCommitScn.equals(lastCommitScn)) {
+                LOGGER.debug("Adjusting Min Commit SCN from {} to {}.", minCommitScn, lastCommitScn);
             }
+
+            return lastCommitScn;
         }
     }
 
-    /**
-     * Process a specific event.
-     *
-     * @param event the event, should not be {@code null}
-     * @throws SQLException if a database exception occurs
-     * @throws InterruptedException if the thread is interrupted
-     */
-    private void processEvent(LogMinerEventRow event) throws SQLException, InterruptedException {
-        if (!hasEventBeenProcessed(event)) {
-            if (!isEventSkipped(event)) {
-                getBatchMetrics().rowProcessed();
+    @Override
+    protected void processEvent(LogMinerEventRow event) throws SQLException, InterruptedException {
+        super.processEvent(event);
 
-                switch (event.getEventType()) {
-                    case MISSING_SCN -> handleMissingScnEvent(event);
-                    case START -> handleStartEvent(event);
-                    case COMMIT -> handleCommitEvent(event);
-                    case ROLLBACK -> handleRollbackEvent(event);
-                    case DDL -> handleSchemaChangeEvent(event);
-                    case INSERT, UPDATE, DELETE -> handleDataChangeEvent(event);
-                    case REPLICATION_MARKER -> handleReplicationMarkerEvent(event);
-                    case UNSUPPORTED -> handleUnsupportedEvent(event);
-                    case SELECT_LOB_LOCATOR -> handleSelectLobLocatorEvent(event);
-                    case LOB_WRITE -> handleLobWriteEvent(event);
-                    case LOB_ERASE -> handleLobEraseEvent(event);
-                    case XML_BEGIN -> handleXmlBeginEvent(event);
-                    case XML_WRITE -> handleXmlWriteEvent(event);
-                    case XML_END -> handleXmlEndEvent(event);
-                    case EXTENDED_STRING_BEGIN -> handleExtendedStringBeginEvent(event);
-                    case EXTENDED_STRING_WRITE -> handleExtendedStringWriteEvent(event);
-                    case EXTENDED_STRING_END -> handleExtendedStringEndEvent(event);
-                    default -> Loggings.logDebugAndTraceRecord(LOGGER, event, "Skipped event {}", event.getEventType());
-                }
-            }
+        // Regardless of whether events are processed, we should always update the lastCommitScn
+        if (EventType.COMMIT.equals(event.getEventType())) {
+            lastCommitScn = event.getCommitScn();
+
+            // If the current transaction was marked skipped, reset it.
+            // It's safe to do this for all commits because this implementation does not overlap
+            // transactions, they're emitted in commit chronological order.
+            skipCurrentTransaction = false;
         }
     }
 
-    /**
-     * Checks whether the event should be skipped.
-     *
-     * @param event the event, should not be {@code null}
-     * @return true if the event is skipped, false otherwise
-     */
-    private boolean isEventSkipped(LogMinerEventRow event) {
+    @Override
+    protected boolean isEventSkipped(LogMinerEventRow event) {
         return skipCurrentTransaction || isEventIncludedInSnapshot(event) || isNonSchemaChangeEventSkipped(event);
     }
 
-    /**
-     * Checks whether the event has previously been processed.
-     *
-     * @param event the event, should not be {@code null}
-     * @return true if the event has previously been processed, false otherwise
-     */
-    private boolean hasEventBeenProcessed(LogMinerEventRow event) {
+    @Override
+    protected boolean hasEventBeenProcessed(LogMinerEventRow event) {
         // DDL events and their corresponding START events do not have a COMMIT_SCN value.
         // In such cases, we default to the event's SCN instead.
         final Scn scn = event.getCommitScn().isNull() ? event.getScn() : event.getCommitScn();
@@ -351,12 +291,8 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         return false;
     }
 
-    /**
-     * Handles processing {@code START} operation events.
-     *
-     * @param event the event, should never be {@code null}
-     */
-    private void handleStartEvent(LogMinerEventRow event) {
+    @Override
+    protected void handleStartEvent(LogMinerEventRow event) {
         skipCurrentTransaction = false;
 
         if (!event.getCommitScn().isNull()) {
@@ -424,13 +360,8 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         getOffsetContext().setTransactionSequence(null);
     }
 
-    /**
-     * Handles processing {@code COMMIT} operation events.
-     *
-     * @param event the event, should never be {@code null}
-     * @throws InterruptedException if the thread is interrupted
-     */
-    private void handleCommitEvent(LogMinerEventRow event) throws InterruptedException {
+    @Override
+    protected void handleCommitEvent(LogMinerEventRow event) throws InterruptedException {
         Loggings.logDebugAndTraceRecord(
                 LOGGER,
                 event,
@@ -454,21 +385,13 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         getBatchMetrics().commitObserved();
     }
 
-    /**
-     * Handles processing {@code ROLLBACK} operation events.
-     *
-     * @param event the event, should not be {@code null}
-     */
-    private void handleRollbackEvent(LogMinerEventRow event) {
+    @Override
+    protected void handleRollbackEvent(LogMinerEventRow event) {
         throw new DebeziumException("Rollback event with SCN " + event.getScn() + " found, but should not be in this mode");
     }
 
-    /**
-     * Handles processing {@code DDL} operation events.
-     *
-     * @param event the event, should not be {@code null}
-     */
-    private void handleSchemaChangeEvent(LogMinerEventRow event) {
+    @Override
+    protected void handleSchemaChangeEvent(LogMinerEventRow event) {
         if (isSchemaChangeEventSkipped(event)) {
             return;
         }
@@ -485,12 +408,8 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         }
     }
 
-    /**
-     * Handles processing {@code REPLICATION_MARKER} operation events.
-     *
-     * @param event the event, should not be {@code null}
-     */
-    private void handleReplicationMarkerEvent(LogMinerEventRow event) {
+    @Override
+    protected void handleReplicationMarkerEvent(LogMinerEventRow event) {
         // Normally we would do something with this; however this can be safely ignored.
         LOGGER.trace("Skipped GoldenGate replication marker event: {}", Loggings.maybeRedactSensitiveData(event));
     }
