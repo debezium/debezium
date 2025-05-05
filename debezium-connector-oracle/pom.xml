@@ -516,11 +516,6 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
                         <version>${version.failsafe.plugin}</version>
-                        <configuration>
-                            <systemPropertyVariables>
-                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
-                            </systemPropertyVariables>
-                        </configuration>
                     </plugin>
                 </plugins>
             </build>
@@ -543,9 +538,6 @@
                             <testExcludes>
                                 <exclude>**/*IT</exclude>
                             </testExcludes>
-                            <testIncludes>
-                                <include>**/io/debezium/connector/oracle/rest/**</include>
-                            </testIncludes>
                         </configuration>
                     </plugin>
                     <plugin>
@@ -582,7 +574,6 @@
                         <version>${version.failsafe.plugin}</version>
                         <configuration>
                             <systemPropertyVariables>
-                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
                                 <database.username>${database.username}</database.username>
                                 <database.password>${database.password}</database.password>
                                 <database.dbname>${database.dbname}</database.dbname>
