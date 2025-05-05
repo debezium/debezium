@@ -3050,6 +3050,7 @@ keywordsCanBeId
     | OFFLINE
     | OFFSET
     | OF
+    | OFF
     | OJ
     | OLD_PASSWORD
     | ONE
