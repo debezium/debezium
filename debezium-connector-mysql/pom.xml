@@ -726,7 +726,6 @@
                                 <database.protocol>${mysql.database.protocol}</database.protocol>
                                 <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
                                 <skipLongRunningTests>false</skipLongRunningTests>
-                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
                             </systemPropertyVariables>
                             <runOrder>${runOrder}</runOrder>
                         </configuration>
@@ -1016,7 +1015,6 @@
                                 <database.protocol>${mysql.database.protocol}</database.protocol>
                                 <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
                                 <skipLongRunningTests>false</skipLongRunningTests>
-                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
                             </systemPropertyVariables>
                             <runOrder>${runOrder}</runOrder>
                         </configuration>
@@ -1096,7 +1094,6 @@
                                 <database.protocol>${mysql.database.protocol}</database.protocol>
                                 <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
                                 <skipLongRunningTests>false</skipLongRunningTests>
-                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
                             </systemPropertyVariables>
                             <runOrder>${runOrder}</runOrder>
                         </configuration>
@@ -1174,7 +1171,6 @@
                                 <database.protocol>${mysql.database.protocol}</database.protocol>
                                 <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
                                 <skipLongRunningTests>false</skipLongRunningTests>
-                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
                             </systemPropertyVariables>
                             <runOrder>${runOrder}</runOrder>
                         </configuration>
@@ -1252,7 +1248,6 @@
                                 <database.protocol>${mysql.database.protocol}</database.protocol>
                                 <database.jdbc.driver>${mysql.database.jdbc.driver}</database.jdbc.driver>
                                 <skipLongRunningTests>false</skipLongRunningTests>
-                                <isAssemblyProfileActive>true</isAssemblyProfileActive>
                                 <database.ssl.truststore>${project.basedir}/src/test/resources/ssl/truststore</database.ssl.truststore>
                                 <database.ssl.truststore.password>debezium</database.ssl.truststore.password>
                                 <database.ssl.keystore>${project.basedir}/src/test/resources/ssl/keystore</database.ssl.keystore>
