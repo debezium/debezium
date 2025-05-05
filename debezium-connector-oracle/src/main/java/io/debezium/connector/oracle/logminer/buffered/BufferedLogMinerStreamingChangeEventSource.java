@@ -228,35 +228,11 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             statement.setString(1, startScn.toString());
             statement.setString(2, endScn.toString());
 
-            final Instant queryStart = Instant.now();
-            try (ResultSet resultSet = statement.executeQuery()) {
-                getMetrics().setLastDurationOfFetchQuery(Duration.between(queryStart, Instant.now()));
+            executeAndProcessQuery(statement);
 
-                final Instant startProcessTime = Instant.now();
-                while (getContext().isRunning() && hasNextWithMetricsUpdate(resultSet)) {
-                    getBatchMetrics().rowObserved();
-                    processEvent(LogMinerEventRow.fromResultSet(resultSet, getConfig().getCatalogName()));
-                }
+            logActiveTransactions();
 
-                getBatchMetrics().updateStreamingMetrics();
-
-                if (getBatchMetrics().hasProcessedAnyTransactions()) {
-                    getOffsetActivityMonitor().checkForStaleOffsets();
-                }
-
-                LOGGER.debug("{}.", getBatchMetrics());
-                LOGGER.debug("Processed in {} ms. Lag: {}. Offset SCN: {}, Offset Commit SCN: {}, Active Transactions: {}, Sleep: {}",
-                        Duration.between(startProcessTime, Instant.now()),
-                        getMetrics().getLagFromSourceInMilliseconds(),
-                        getOffsetContext().getScn(),
-                        getOffsetContext().getCommitScn(),
-                        getMetrics().getNumberOfActiveTransactions(),
-                        getMetrics().getSleepTimeInMilliseconds());
-
-                logActiveTransactions();
-
-                return calculateNewStartScn(startScn, endScn, getOffsetContext().getCommitScn().getMaxCommittedScn());
-            }
+            return calculateNewStartScn(startScn, endScn, getOffsetContext().getCommitScn().getMaxCommittedScn());
         }
     }
 
@@ -298,55 +274,18 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         return statement;
     }
 
-    /**
-     * Process a specific event.
-     *
-     * @param event the event, should not be {@code null}
-     * @throws SQLException if a database exception occurs
-     * @throws InterruptedException if the thread is interrupted
-     */
-    @VisibleForTesting
-    protected void processEvent(LogMinerEventRow event) throws SQLException, InterruptedException {
-        if (!hasEventBeenProcessed(event)) {
-            if (!isEventSkipped(event)) {
-                if (!EventType.MISSING_SCN.equals(event.getEventType())) {
-                    lastProcessedScn = event.getScn();
-                    lastProcessedScnChangeTime = event.getChangeTime();
-                }
+    @Override
+    protected void preProcessEvent(LogMinerEventRow event) {
+        super.preProcessEvent(event);
 
-                getBatchMetrics().rowProcessed();
-
-                switch (event.getEventType()) {
-                    case MISSING_SCN -> handleMissingScnEvent(event);
-                    case START -> handleStartEvent(event);
-                    case COMMIT -> handleCommitEvent(event);
-                    case ROLLBACK -> handleRollbackEvent(event);
-                    case DDL -> handleSchemaChangeEvent(event);
-                    case INSERT, UPDATE, DELETE -> handleDataChangeEvent(event);
-                    case REPLICATION_MARKER -> handleReplicationMarkerEvent(event);
-                    case UNSUPPORTED -> handleUnsupportedEvent(event);
-                    case SELECT_LOB_LOCATOR -> handleSelectLobLocatorEvent(event);
-                    case LOB_WRITE -> handleLobWriteEvent(event);
-                    case LOB_ERASE -> handleLobEraseEvent(event);
-                    case XML_BEGIN -> handleXmlBeginEvent(event);
-                    case XML_WRITE -> handleXmlWriteEvent(event);
-                    case XML_END -> handleXmlEndEvent(event);
-                    case EXTENDED_STRING_BEGIN -> handleExtendedStringBeginEvent(event);
-                    case EXTENDED_STRING_WRITE -> handleExtendedStringWriteEvent(event);
-                    case EXTENDED_STRING_END -> handleExtendedStringEndEvent(event);
-                    default -> Loggings.logDebugAndTraceRecord(LOGGER, event, "Skipped event {}", event.getEventType());
-                }
-            }
+        if (!EventType.MISSING_SCN.equals(event.getEventType())) {
+            lastProcessedScn = event.getScn();
+            lastProcessedScnChangeTime = event.getChangeTime();
         }
     }
 
-    /**
-     * Checks whether the event should be skipped.
-     *
-     * @param event the event, should not be {@code null}
-     * @return true if the event is skipped, false otherwise
-     */
-    private boolean isEventSkipped(LogMinerEventRow event) {
+    @Override
+    protected boolean isEventSkipped(LogMinerEventRow event) {
         // Check whether the row has a table reference and if so, is the reference included by the filter.
         // If the reference isn't included, the row will be skipped entirely.
         if (event.getTableId() != null) {
@@ -371,12 +310,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         return false;
     }
 
-    /**
-     * Handles processing {@code START} operation events.
-     *
-     * @param event the event, should never be {@code null}
-     */
-    private void handleStartEvent(LogMinerEventRow event) {
+    @Override
+    protected void handleStartEvent(LogMinerEventRow event) {
         final String transactionId = event.getTransactionId();
         if (!isRecentlyProcessed(transactionId)) {
             final Transaction transaction = getTransactionCache().getTransaction(transactionId);
@@ -391,13 +326,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         }
     }
 
-    /**
-     * Handles processing {@code COMMIT} operation events.
-     *
-     * @param row the event, should never be {@code null}
-     * @throws InterruptedException if the thread is interrupted
-     */
-    private void handleCommitEvent(LogMinerEventRow row) throws InterruptedException {
+    @Override
+    protected void handleCommitEvent(LogMinerEventRow row) throws InterruptedException {
         final String transactionId = row.getTransactionId();
         if (isRecentlyProcessed(transactionId)) {
             LOGGER.debug("\tTransaction is already committed, skipped.");
@@ -569,12 +499,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         getMetrics().setLastCommitDuration(Duration.between(start, Instant.now()));
     }
 
-    /**
-     * Handles processing {@code ROLLBACK} operation events.
-     *
-     * @param event the event, should not be {@code null}
-     */
-    private void handleRollbackEvent(LogMinerEventRow event) {
+    @Override
+    protected void handleRollbackEvent(LogMinerEventRow event) {
         final String transactionId = event.getTransactionId();
         if (getTransactionCache().containsTransaction(transactionId)) {
             LOGGER.debug("Transaction {} was rolled back.", transactionId);
@@ -594,13 +520,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         getBatchMetrics().rollbackObserved();
     }
 
-    /**
-     * Handles processing {@code DDL} operation events.
-     *
-     * @param event the event, should not be {@code null}
-     * @throws InterruptedException if the thread is interrupted
-     */
-    private void handleSchemaChangeEvent(LogMinerEventRow event) throws InterruptedException {
+    @Override
+    protected void handleSchemaChangeEvent(LogMinerEventRow event) throws InterruptedException {
         if (isSchemaChangeEventSkipped(event)) {
             return;
         }
@@ -660,12 +581,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         return true;
     }
 
-    /**
-     * Handles processing {@code REPLICATION_MARKER} operation events.
-     *
-     * @param event the event, should never be {@code null}
-     */
-    private void handleReplicationMarkerEvent(LogMinerEventRow event) {
+    @Override
+    protected void handleReplicationMarkerEvent(LogMinerEventRow event) {
         // GoldenGate creates replication markers in the redo logs periodically and these entries can lead to
         // the construction of a transaction in the buffer that never has a COMMIT or ROLLBACK. When this is
         // done by Oracle, we should automatically discard the transaction from the buffer to avoid the low
@@ -856,13 +773,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         getTransactionCache().removeTransactionEvents(transaction);
     }
 
-    /**
-     * Checks whether the given event has previously been processed.
-     *
-     * @param event the event, should not be {@code null}
-     * @return true if the event has been processed before, false otherwise
-     */
-    private boolean hasEventBeenProcessed(LogMinerEventRow event) {
+    @Override
+    protected boolean hasEventBeenProcessed(LogMinerEventRow event) {
         final String transactionId = event.getTransactionId();
         if (isRecentlyProcessed(transactionId)) {
             LOGGER.debug("Transaction {} has been seen by connector, skipped.", transactionId);
