@@ -362,18 +362,6 @@ jobs:
         with:
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
 
-  build_rest_extension:
-    name: "REST Extension"
-    needs: [ check_style, file_changes ]
-    runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.rest-extension-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
-    steps:
-      - name: Checkout Action
-        uses: actions/checkout@v4
-      - uses: ./.github/actions/build-debezium-rest-extension
-        with:
-          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
-
   build_schema_generator:
     name: "Schema Generator"
     needs: [ check_style, file_changes ]
