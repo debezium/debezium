@@ -391,6 +391,11 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                 blockingSnapshotExecutor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
             }
 
+            if (streamingSource != null) {
+                // Close streaming source
+                streamingSource.close();
+            }
+
             Optional<SignalProcessor<P, O>> processor = getSignalProcessor(previousOffsets);
             if (processor.isPresent()) {
                 processor.get().stop();
