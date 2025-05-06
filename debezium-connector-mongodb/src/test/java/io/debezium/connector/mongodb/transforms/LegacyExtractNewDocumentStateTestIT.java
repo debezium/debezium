@@ -24,7 +24,6 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
@@ -36,6 +35,7 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ChangeStreamPreAndPostImagesOptions;
 import com.mongodb.client.model.CreateCollectionOptions;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.Module;
@@ -1562,8 +1562,9 @@ public class LegacyExtractNewDocumentStateTestIT extends AbstractExtractNewDocum
 
         final SourceRecord insertRecord = records.recordsForTopic(this.topicName()).get(0);
         final SourceRecord transformedInsert = transformation.apply(insertRecord);
+        Struct value = (Struct) transformedInsert.value();
 
-        assertThat(transformedInsert.valueSchema().field("empty_array")).isNull();
+        assertThat(value.get("empty_array")).isNull();
         VerifyRecord.isValid(transformedInsert);
     }
 
@@ -1638,7 +1639,7 @@ public class LegacyExtractNewDocumentStateTestIT extends AbstractExtractNewDocum
 
     }
 
-    @Test(expected = DataException.class)
+    @Test(expected = DebeziumException.class)
     @FixFor("DBZ-2316")
     public void testShouldThrowExceptionWithElementsDifferingStructures() throws Exception {
         waitForStreamingRunning();
