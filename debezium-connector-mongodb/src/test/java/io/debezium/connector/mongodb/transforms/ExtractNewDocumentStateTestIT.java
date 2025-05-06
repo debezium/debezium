@@ -71,23 +71,25 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
     public void shouldTransformNestedDocuments() throws InterruptedException {
         transformation.configure(Collect.hashMapOf(ARRAY_ENCODING, "array"));
 
-        Document document = Document.parse("{\n" +
-                " \"deployInfo\": {\n" +
-                "    \"id\": 1,\n" +
-                "    \"project\": \"my-project\",\n" +
-                "    \"technology\": \"mysqldb\",\n" +
-                "    \"platformType\": \"kubernetes\",\n" +
-                "    \"platforms\": [],\n" +
-                "    \"status\": true,\n" +
-                "    \"properties\": {\n" +
-                "      \"url\": \"http://hk3cvdv00813.oocl.com:8080/\",\n" +
-                "      \"gitHash\": \"3b211ff4b75d43cef054764c7e1cacd7c7d94c96\",\n" +
-                "      \"sensitiveScanResult\": null\n" +
-                "    },\n" +
-                "    \"startTime\": \"2024-08-13T06:56:12.582Z\",\n" +
-                "    \"endTime\": \"2024-08-13T06:56:25.844Z\",\n" +
-                "  }\n" +
-                "}");
+        Document document = Document.parse("""
+                {
+                  "deployInfo": {
+                    "id": 1,
+                    "project": "my-project",
+                    "technology": "mysqldb",
+                    "platformType": "kubernetes",
+                    "platforms": [],
+                    "status": true,
+                    "properties": {
+                      "url": "http://hk3cvdv00813.oocl.com:8080/",
+                      "gitHash": "3b211ff4b75d43cef054764c7e1cacd7c7d94c96",
+                      "sensitiveScanResult": null
+                    },
+                    "startTime": {"$date":"2024-08-13T06:56:12.582Z"},
+                    "endTime": {"$date":"2024-08-13T06:56:25.844Z"}
+                  }
+                }
+                """);
 
         try (var client = connect()) {
             client.getDatabase(DB_NAME).getCollection(this.getCollectionName())
