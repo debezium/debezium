@@ -170,6 +170,15 @@ jobs:
             debezium-ddl-parser/src/main/java/io/debezium/antlr/**
             debezium-ddl-parser/src/test/resources/mysql/examples/**
 
+      - name: Get modified files (MariaDB DDL parser)
+        id: changed-files-mariadb-ddl-parser
+        uses: tj-actions/changed-files@v46.0.5
+        with:
+          files: |
+            debezium-ddl-parser/src/main/antlr4/io/debezium/ddl/parser/mariadb/**
+            debezium-ddl-parser/src/main/java/io/debezium/antlr/**
+            debezium-ddl-parser/src/test/resources/mariadb/examples/**
+
       - name: Get modified files (Oracle DDL parser)
         id: changed-files-oracle-ddl-parser
         uses: tj-actions/changed-files@v46.0.3
