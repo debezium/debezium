@@ -78,9 +78,6 @@
                                 <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                                 <maven.home>${maven.home}</maven.home>
                             </systemPropertyVariables>
-                            <environmentVariables>
-                                <QUARKUS_CONFIG_LOCATIONS>./src/test/resources/application-native-it.properties</QUARKUS_CONFIG_LOCATIONS>
-                            </environmentVariables>
                         </configuration>
                     </execution>
                 </executions>
@@ -95,6 +92,40 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>io.fabric8</groupId>
+                <artifactId>docker-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>start-postgres</id>
+                        <phase>pre-integration-test</phase>
+                        <goals><goal>start</goal></goals>
+                    </execution>
+                    <execution>
+                        <id>stop-postgres</id>
+                        <phase>post-integration-test</phase>
+                        <goals><goal>stop</goal></goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <images>
+                        <image>
+                            <name>quay.io/debezium/postgres:15</name>
+                            <alias>postgres</alias>
+                            <run>
+                                <ports>
+                                    <port>5432:5432</port>
+                                </ports>
+                                <env>
+                                    <POSTGRES_USER>native</POSTGRES_USER>
+                                    <POSTGRES_PASSWORD>native</POSTGRES_PASSWORD>
+                                    <POSTGRES_DB>native</POSTGRES_DB>
+                                </env>
+                            </run>
+                        </image>
+                    </images>
+                </configuration>
             </plugin>
         </plugins>
     </build>
