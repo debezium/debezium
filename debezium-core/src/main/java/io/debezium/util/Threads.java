@@ -315,27 +315,28 @@ public class Threads {
     }
 
     /**
-     * Runs a validation task with a timeout using a single-threaded executor.
+     * Runs an operation with a timeout using a single-threaded executor.
      *
-     * @param connectorClass the class of the connector
-     * @param validationTask the task to run for validation
+     * @param componentClass the class of the component using this method
+     * @param operation the operation to run
      * @param timeoutMs the timeout in milliseconds
-     * @param connectorName the name of the connector
-     * @throws Exception if the validation fails or times out
+     * @param componentName the name of the component
+     * @param operationName the name of the operation being executed with timeout
+     * @throws Exception if the operation fails or times out
      */
-    public static void runWithTimeout(Class<?> connectorClass, Runnable validationTask, long timeoutMs, String connectorName) throws Exception {
-        ExecutorService executor = newSingleThreadExecutor(connectorClass, connectorName, "connection-validation");
-        Future<?> future = executor.submit(validationTask);
+    public static void runWithTimeout(Class<?> componentClass, Runnable operation, long timeoutMs, String componentName, String operationName) throws Exception {
+        ExecutorService executor = newSingleThreadExecutor(componentClass, componentName, operationName);
+        Future<?> future = executor.submit(operation);
         try {
             future.get(timeoutMs, TimeUnit.MILLISECONDS);
         }
         catch (TimeoutException e) {
-            LOGGER.error("Connection validation timed out after {} ms", timeoutMs);
+            LOGGER.error("Operation {} timed out after {} ms", operationName, timeoutMs);
             future.cancel(true);
             throw e;
         }
         catch (ExecutionException e) {
-            LOGGER.error("Connection validation failed", e);
+            LOGGER.error("Operation {} failed", operationName, e);
             throw (e.getCause() != null) ? new Exception(e.getCause()) : e;
         }
         finally {

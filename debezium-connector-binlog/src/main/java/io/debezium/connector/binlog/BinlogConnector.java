@@ -81,7 +81,7 @@ public abstract class BinlogConnector<T extends BinlogConnectorConfig> extends R
                 catch (SQLException e) {
                     LOGGER.error("Unexpected error shutting down the database connection", e);
                 }
-            }, timeoutMs, connectorConfig.getLogicalName());
+            }, timeoutMs, connectorConfig.getLogicalName(), "connection-validation");
         }
         catch (TimeoutException e) {
             hostnameValue.addErrorMessage("Connection validation timed out after " + timeoutMs + " ms");
