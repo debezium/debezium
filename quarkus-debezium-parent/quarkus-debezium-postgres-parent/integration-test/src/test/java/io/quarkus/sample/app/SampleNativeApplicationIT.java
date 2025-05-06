@@ -6,8 +6,27 @@
 
 package io.quarkus.sample.app;
 
+import static io.restassured.RestAssured.get;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
+
+import org.junit.jupiter.api.Test;
+
+import io.quarkus.debezium.engine.DebeziumManifest;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 
 @QuarkusIntegrationTest
-public class SampleNativeApplicationIT extends SampleApplicationTest {
+public class SampleNativeApplicationIT {
+
+    @Test
+    void smokeTest() {
+        await().untilAsserted(() -> assertThat(
+                get("/api/debezium/manifest")
+                        .then()
+                        .statusCode(200)
+                        .extract().body().as(DebeziumManifest.class))
+                .isEqualTo(new DebeziumManifest(
+                        new DebeziumManifest.Connector("io.debezium.connector.postgresql.PostgresConnector"),
+                        new DebeziumManifest.Status(DebeziumManifest.Status.State.POLLING))));
+    }
 }
