@@ -33,7 +33,7 @@ import io.debezium.doc.FixFor;
 public class MongoArrayConverterTest {
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoArrayConverterTest.class);
 
-    private static final String HETEROGENOUS_ARRAY = lines(
+    private static final String HETEROGENEOUS_ARRAY = lines(
             "{",
             "    \"_id\": 1,",
             "    \"a2\": [",
@@ -48,7 +48,7 @@ public class MongoArrayConverterTest {
             "    \"f\": []",
             "}");
 
-    private static final String HETEROGENOUS_DOCUMENT_IN_ARRAY = lines(
+    private static final String HETEROGENEOUS_DOCUMENT_IN_ARRAY = lines(
             "{",
             "    \"_id\": 1,",
             "    \"a1\": [",
@@ -91,49 +91,51 @@ public class MongoArrayConverterTest {
             "  ]",
             "}");
 
-    private static final String NESTED_DOCUMENT = lines("{\n" +
-            "  \"pipeline\": [\n" +
-            "    {\n" +
-            "      \"stageId\": 1,\n" +
-            "      \"componentList\": [\n" +
-            "        {\n" +
-            "          \"componentId\": 1,\n" +
-            "          \"action\": \"deploy\"\n" +
-            "        }\n" +
-            "      ]\n" +
-            "    }\n" +
-            "  ]\n" +
+    private static final String NESTED_DOCUMENT = lines(
+            "{",
+            "  \"pipeline\": [",
+            "    {",
+            "      \"stageId\": 1,",
+            "      \"componentList\": [",
+            "        {",
+            "          \"componentId\": 1,",
+            "          \"action\": \"deploy\"",
+            "        }",
+            "      ]",
+            "    }",
+            "  ]",
             "}");
 
-    private static final String NESTED_SUB_DOCUMENT = lines("{\n" +
-            "  \"pipeline\": [\n" +
-            "    {\n" +
-            "      \"stageId\": 1,\n" +
-            "      \"componentList\": [\n" +
-            "        {\n" +
-            "          \"componentId\": 1,\n" +
-            "          \"action\": \"deploy\"\n" +
-            "        },\n" +
-            "        {\n" +
-            "          \"componentId\": 2,\n" +
-            "          \"action\": \"deploy\"\n" +
-            "        }\n" +
-            "      ]\n" +
-            "    },\n" +
-            "    {\n" +
-            "      \"stageId\": 2,\n" +
-            "      \"componentList\": [\n" +
-            "        {\n" +
-            "          \"componentId\": 3,\n" +
-            "          \"action\": \"deploy\"\n" +
-            "        },\n" +
-            "        {\n" +
-            "          \"componentId\": 4,\n" +
-            "          \"action\": \"deploy\"\n" +
-            "        }\n" +
-            "      ]\n" +
-            "    }\n" +
-            "  ]\n" +
+    private static final String NESTED_SUB_DOCUMENT = lines(
+            "{",
+            "  \"pipeline\": [",
+            "    {",
+            "      \"stageId\": 1,",
+            "      \"componentList\": [",
+            "        {",
+            "          \"componentId\": 1,",
+            "          \"action\": \"deploy\"",
+            "        },",
+            "        {",
+            "          \"componentId\": 2,",
+            "          \"action\": \"deploy\"",
+            "        }",
+            "      ]",
+            "    }",
+            "    {",
+            "      \"stageId\": 2,",
+            "      \"componentList\": [",
+            "        {",
+            "          \"componentId\": 3,",
+            "          \"action\": \"deploy\"",
+            "        },",
+            "        {",
+            "          \"componentId\": 4,",
+            "          \"action\": \"deploy\"",
+            "        }",
+            "      ]",
+            "    }",
+            "  ]",
             "}");
 
     private SchemaBuilder builder;
@@ -146,7 +148,7 @@ public class MongoArrayConverterTest {
     @Test(expected = DebeziumException.class)
     public void shouldDetectHeterogenousArray() throws Exception {
         final MongoDataConverter converter = new MongoDataConverter(ArrayEncoding.ARRAY);
-        final BsonDocument val = BsonDocument.parse(HETEROGENOUS_ARRAY);
+        final BsonDocument val = BsonDocument.parse(HETEROGENEOUS_ARRAY);
         Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
         converter.buildSchema(entry, builder);
     }
@@ -154,7 +156,7 @@ public class MongoArrayConverterTest {
     @Test(expected = DebeziumException.class)
     public void shouldDetectHeterogenousDocumentInArray() throws Exception {
         final MongoDataConverter converter = new MongoDataConverter(ArrayEncoding.ARRAY);
-        final BsonDocument val = BsonDocument.parse(HETEROGENOUS_DOCUMENT_IN_ARRAY);
+        final BsonDocument val = BsonDocument.parse(HETEROGENEOUS_DOCUMENT_IN_ARRAY);
         Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
         converter.buildSchema(entry, builder);
     }
@@ -302,9 +304,9 @@ public class MongoArrayConverterTest {
     }
 
     @Test
-    public void shouldCreateSchemaForHeterogenousArray() {
+    public void shouldCreateSchemaForHeterogeneousArray() {
         final MongoDataConverter converter = new MongoDataConverter(ArrayEncoding.DOCUMENT);
-        final BsonDocument val = BsonDocument.parse(HETEROGENOUS_ARRAY);
+        final BsonDocument val = BsonDocument.parse(HETEROGENEOUS_ARRAY);
 
         Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
         converter.buildSchema(entry, builder);
@@ -323,9 +325,9 @@ public class MongoArrayConverterTest {
     }
 
     @Test
-    public void shouldCreateStructForHeterogenousArray() {
+    public void shouldCreateStructForHeterogeneousArray() {
         final MongoDataConverter converter = new MongoDataConverter(ArrayEncoding.DOCUMENT);
-        final BsonDocument val = BsonDocument.parse(HETEROGENOUS_ARRAY);
+        final BsonDocument val = BsonDocument.parse(HETEROGENEOUS_ARRAY);
         Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
         converter.buildSchema(entry, builder);
 
@@ -345,7 +347,7 @@ public class MongoArrayConverterTest {
     @Test
     public void shouldCreateSchemaForHeterogenousDocumentInArray() {
         final MongoDataConverter converter = new MongoDataConverter(ArrayEncoding.DOCUMENT);
-        final BsonDocument val = BsonDocument.parse(HETEROGENOUS_DOCUMENT_IN_ARRAY);
+        final BsonDocument val = BsonDocument.parse(HETEROGENEOUS_DOCUMENT_IN_ARRAY);
         Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
         converter.buildSchema(entry, builder);
 
@@ -367,9 +369,9 @@ public class MongoArrayConverterTest {
     }
 
     @Test
-    public void shouldCreateStructForHeterogenousDocumentInArray() {
+    public void shouldCreateStructForHeterogeneousDocumentInArray() {
         final MongoDataConverter converter = new MongoDataConverter(ArrayEncoding.DOCUMENT);
-        final BsonDocument val = BsonDocument.parse(HETEROGENOUS_DOCUMENT_IN_ARRAY);
+        final BsonDocument val = BsonDocument.parse(HETEROGENEOUS_DOCUMENT_IN_ARRAY);
         Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
         converter.buildSchema(entry, builder);
         final Schema finalSchema = builder.build();
@@ -451,7 +453,19 @@ public class MongoArrayConverterTest {
             converter.buildStruct(bsonValueEntry, finalSchema, struct);
         }
 
-        final String expectedStruct = "Struct{pipeline=Struct{_0=Struct{stageId=1,componentList=Struct{_0=Struct{componentId=1,action=deploy}}}}}";
+        final String expectedStruct = "Struct{" +
+                "pipeline=Struct{" +
+                "_0=Struct{" +
+                "stageId=1," +
+                "componentList=Struct{" +
+                "_0=Struct{" +
+                "componentId=1," +
+                "action=deploy" +
+                "}" +
+                "}" +
+                "}" +
+                "}" +
+                "}";
         assertThat(struct.toString()).isEqualTo(expectedStruct);
     }
 
@@ -468,8 +482,25 @@ public class MongoArrayConverterTest {
             converter.buildStruct(bsonValueEntry, finalSchema, struct);
         }
 
-        assertThat(struct.toString()).isEqualTo(
-                "Struct{pipeline=[Struct{stageId=1,componentList=[Struct{componentId=1,action=deploy}, Struct{componentId=2,action=deploy}]}, Struct{stageId=2,componentList=[Struct{componentId=3,action=deploy}, Struct{componentId=4,action=deploy}]}]}");
+        String expectedStruct = "Struct{" +
+                "pipeline=[" +
+                "Struct{stageId=1," +
+                "componentList=[" +
+                "Struct{componentId=1,action=deploy}," +
+                "Struct{componentId=2,action=deploy}" +
+                "]" +
+                "}," +
+                "Struct{" +
+                "stageId=2," +
+                "componentList=[" +
+                "Struct{componentId=3,action=deploy}," +
+                "Struct{componentId=4,action=deploy}" +
+                "]" +
+                "}" +
+                "]" +
+                "}";
+
+        assertThat(struct.toString().replaceAll("\\s+", "")).isEqualTo(expectedStruct);
     }
 
     @Test
@@ -485,7 +516,25 @@ public class MongoArrayConverterTest {
             converter.buildStruct(bsonValueEntry, finalSchema, struct);
         }
 
-        assertThat(struct.toString()).isEqualTo(
-                "Struct{pipeline=Struct{_0=Struct{stageId=1,componentList=Struct{_0=Struct{componentId=1,action=deploy},_1=Struct{componentId=2,action=deploy}}},_1=Struct{stageId=2,componentList=Struct{_0=Struct{componentId=3,action=deploy},_1=Struct{componentId=4,action=deploy}}}}}");
+        String expectedStruct = "Struct{" +
+                "pipeline=Struct{" +
+                "_0=Struct{" +
+                "stageId=1," +
+                "componentList=Struct{" +
+                "_0=Struct{componentId=1,action=deploy}," +
+                "_1=Struct{componentId=2,action=deploy}" +
+                "}" +
+                "}," +
+                "_1=Struct{" +
+                "stageId=2," +
+                "componentList=Struct{" +
+                "_0=Struct{componentId=3,action=deploy}," +
+                "_1=Struct{componentId=4,action=deploy}" +
+                "}" +
+                "}" +
+                "}" +
+                "}";
+
+        assertThat(struct.toString().replaceAll("\\s+", "")).isEqualTo(expectedStruct);
     }
 }
