@@ -5,9 +5,11 @@
  */
 package io.quarkus.debezium.postgres.deployment;
 
+import static io.quarkus.debezium.postgres.deployment.ClassesInConfigurationHandler.PREDICATE;
+import static io.quarkus.debezium.postgres.deployment.ClassesInConfigurationHandler.TRANSFORM;
+
 import org.apache.kafka.common.security.authenticator.SaslClientAuthenticator;
 import org.apache.kafka.connect.json.JsonConverter;
-import org.apache.kafka.connect.transforms.predicates.TopicNameMatches;
 
 import io.debezium.connector.postgresql.PostgresConnector;
 import io.debezium.connector.postgresql.PostgresConnectorTask;
@@ -42,7 +44,6 @@ import io.debezium.snapshot.mode.SchemaOnlyRecoverySnapshotter;
 import io.debezium.snapshot.mode.SchemaOnlySnapshotter;
 import io.debezium.snapshot.mode.WhenNeededSnapshotter;
 import io.debezium.snapshot.spi.SnapshotLock;
-import io.debezium.transforms.ExtractNewRecordState;
 import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
 import io.quarkus.arc.processor.DotNames;
 import io.quarkus.datasource.deployment.spi.DevServicesDatasourceResultBuildItem;
@@ -114,6 +115,18 @@ public class EngineProcessor {
     void registerClassesThatAreLoadedThroughReflection(BuildProducer<ReflectiveClassBuildItem> reflectiveClasses,
                                                        DebeziumEngineConfiguration debeziumEngineConfiguration) {
 
+        TRANSFORM.extract(debeziumEngineConfiguration.configuration())
+                .forEach(transform -> reflectiveClasses.produce(ReflectiveClassBuildItem
+                        .builder(transform)
+                        .reason(getClass().getName())
+                        .build()));
+
+        PREDICATE.extract(debeziumEngineConfiguration.configuration())
+                .forEach(predicate -> reflectiveClasses.produce(ReflectiveClassBuildItem
+                        .builder(predicate)
+                        .reason(getClass().getName())
+                        .build()));
+
         reflectiveClasses.produce(ReflectiveClassBuildItem.builder(
                 DebeziumEngine.BuilderFactory.class,
                 ConvertingEngineBuilderFactory.class,
@@ -150,10 +163,8 @@ public class EngineProcessor {
                 JmxSignalChannel.class,
                 InProcessSignalChannel.class,
                 StandardActionProvider.class,
-                TopicNameMatches.class,
                 OffsetCommitPolicy.class,
-                OffsetCommitPolicy.PeriodicCommitOffsetPolicy.class,
-                ExtractNewRecordState.class).reason(getClass().getName())
+                OffsetCommitPolicy.PeriodicCommitOffsetPolicy.class).reason(getClass().getName())
                 .build());
     }
 
