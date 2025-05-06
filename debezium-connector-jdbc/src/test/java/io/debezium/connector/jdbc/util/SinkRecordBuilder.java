@@ -203,11 +203,11 @@ public class SinkRecordBuilder {
             Objects.requireNonNull(sourceSchema, "A source schema must be provided.");
 
             final Struct key = populateStructForKey();
-            final Struct before = populateStructFromMap(new Struct(recordSchema), beforeValues);
             final Struct after = populateStructFromMap(new Struct(recordSchema), afterValues);
-            final Struct source = populateStructFromMap(new Struct(sourceSchema), sourceValues);
 
             if (!flat) {
+                final Struct before = populateStructFromMap(new Struct(recordSchema), beforeValues);
+                final Struct source = populateStructFromMap(new Struct(sourceSchema), sourceValues);
                 final Envelope envelope = createEnvelope();
                 final Struct payload = envelope.update(before, after, source, Instant.now());
                 return new KafkaDebeziumSinkRecord(new SinkRecord(topicName, partition, keySchema, key, envelope.schema(), payload, offset), cloudEventsSchemaName);
@@ -222,10 +222,10 @@ public class SinkRecordBuilder {
             Objects.requireNonNull(sourceSchema, "A source schema must be provided.");
 
             final Struct key = populateStructForKey();
-            final Struct before = populateStructFromMap(new Struct(recordSchema), beforeValues);
-            final Struct source = populateStructFromMap(new Struct(sourceSchema), sourceValues);
 
             if (!flat) {
+                final Struct before = populateStructFromMap(new Struct(recordSchema), beforeValues);
+                final Struct source = populateStructFromMap(new Struct(sourceSchema), sourceValues);
                 final Envelope envelope = createEnvelope();
                 final Struct payload = envelope.delete(before, source, Instant.now());
                 return new KafkaDebeziumSinkRecord(new SinkRecord(topicName, partition, keySchema, key, envelope.schema(), payload, offset),
