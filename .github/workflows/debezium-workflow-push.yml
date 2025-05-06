@@ -181,7 +181,7 @@ jobs:
   # Approx 2m
   build_schema_generator:
     name: "Schema Generator"
-    needs: [ check_style, build_rest_extension ]
+    needs: [ check_style ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
