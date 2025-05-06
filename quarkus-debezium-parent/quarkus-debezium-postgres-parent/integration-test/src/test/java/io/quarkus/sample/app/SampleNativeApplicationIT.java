@@ -9,5 +9,5 @@ package io.quarkus.sample.app;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 
 @QuarkusIntegrationTest
-public class SampleApplicationIT extends SampleApplicationTest {
+public class SampleNativeApplicationIT extends SampleApplicationTest {
 }
