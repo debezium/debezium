@@ -203,6 +203,25 @@
                 </executions>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables combine.children="append">
+                        <java.io.tmpdir>${project.build.directory}</java.io.tmpdir>
+                        <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
+                        <failFlakyTests>${failFlakyTests}</failFlakyTests>
+                        <dbz.test.data.dir>${project.build.directory}/data</dbz.test.data.dir>
+                    </systemPropertyVariables>
+                    <argLine>-Djava.awt.headless=true ${debug.argline} ${modules.argline}</argLine>
+                    <!--runOrder>alphabetical</runOrder-->
+                    <useFile>false</useFile>
+                    <enableAssertions>true</enableAssertions>
+                    <forkCount>${forkCount}</forkCount>
+                    <reuseForks>${reuseForks}</reuseForks>
+                    <useSystemClassLoader>${useSystemClassLoader}</useSystemClassLoader>
+                </configuration>
+            </plugin>
+            <plugin>
                 <!-- Serves as support for configuring Revapi -->
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
