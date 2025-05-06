@@ -36,11 +36,6 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -74,6 +69,7 @@ import io.debezium.util.BoundedConcurrentHashMap.EvictionListener;
 import io.debezium.util.Collect;
 import io.debezium.util.ColumnUtils;
 import io.debezium.util.Strings;
+import io.debezium.util.Threads;
 
 /**
  * A utility that simplifies using a JDBC connection and executing transactions composed of multiple statements.
@@ -976,31 +972,31 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     private void doClose() throws SQLException {
-        ExecutorService executor = Executors.newSingleThreadExecutor();
-        // attempting to close the connection gracefully
-        Future<Object> futureClose = executor.submit(() -> {
-            conn.close();
-            LOGGER.info("Connection gracefully closed");
-            return null;
-        });
         try {
-            futureClose.get(WAIT_FOR_CLOSE_SECONDS, TimeUnit.SECONDS);
-        }
-        catch (ExecutionException e) {
-            if (e.getCause() instanceof SQLException) {
-                throw (SQLException) e.getCause();
-            }
-            else if (e.getCause() instanceof RuntimeException) {
-                throw (RuntimeException) e.getCause();
-            }
-            throw new DebeziumException(e.getCause());
+            Threads.runWithTimeout(JdbcConnection.class, () -> {
+                try {
+                    conn.close();
+                    LOGGER.info("Connection gracefully closed");
+                }
+                catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            }, WAIT_FOR_CLOSE_SECONDS * 1000L, JdbcConnection.class.getSimpleName(), "jdbc-connection-close");
         }
         catch (TimeoutException | InterruptedException e) {
             LOGGER.warn("Failed to close database connection by calling close(), attempting abort()");
             conn.abort(Runnable::run);
         }
-        finally {
-            executor.shutdownNow();
+        catch (Exception e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof RuntimeException) {
+                Throwable rootCause = cause.getCause();
+                if (rootCause instanceof SQLException) {
+                    throw (SQLException) rootCause;
+                }
+                throw (RuntimeException) cause;
+            }
+            throw new DebeziumException(cause);
         }
     }
 
