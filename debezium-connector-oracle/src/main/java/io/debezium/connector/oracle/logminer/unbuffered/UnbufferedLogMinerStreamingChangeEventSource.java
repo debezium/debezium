@@ -117,7 +117,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             // except once per iteration.
             databaseOffset = getMetrics().getDatabaseOffset();
 
-            minLogScn = resumePositionProvider.computeResumePositionFromLogs(minLogScn, minCommitScn, getCurrentLogFiles());
+            minLogScn = computeResumeScnAndUpdateOffsets(minLogScn, minCommitScn);
 
             getMetrics().setOffsetScn(minLogScn);
 
@@ -212,6 +212,27 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             }
             dispatchSchemaChanges();
         }
+    }
+
+    /**
+     * Recomputes the resume position, optionally updating the offsets if the resume position
+     * changes from its prior value.
+     *
+     * @param resumeScn the current resume system change number, should not be {@code null}
+     * @param commitScn the current commit system change number, should not be {@code null}
+     * @return the next iteration's resume system change number, never {@code null}
+     * @throws SQLException if a database exception occurs
+     */
+    private Scn computeResumeScnAndUpdateOffsets(Scn resumeScn, Scn commitScn) throws SQLException {
+        final Scn computedResumeScn = resumePositionProvider.computeResumePositionFromLogs(
+                resumeScn, commitScn, getCurrentLogFiles());
+
+        if (!computedResumeScn.equals(resumeScn)) {
+            LOGGER.debug("Advancing offset low-watermark scn to {}", computedResumeScn);
+            getOffsetContext().setScn(computedResumeScn);
+        }
+
+        return computedResumeScn;
     }
 
     private PreparedStatement createQueryStatement() throws SQLException {
