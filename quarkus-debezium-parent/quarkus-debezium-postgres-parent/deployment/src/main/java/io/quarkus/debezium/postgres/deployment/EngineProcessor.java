@@ -17,7 +17,6 @@ import io.debezium.connector.postgresql.PostgresSourceInfoStructMaker;
 import io.debezium.connector.postgresql.snapshot.lock.NoSnapshotLock;
 import io.debezium.connector.postgresql.snapshot.lock.SharedSnapshotLock;
 import io.debezium.connector.postgresql.snapshot.query.SelectAllSnapshotQuery;
-import io.debezium.embedded.ConvertingEngineBuilderFactory;
 import io.debezium.embedded.async.ConvertingAsyncEngineBuilderFactory;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.spi.OffsetCommitPolicy;
@@ -129,7 +128,6 @@ public class EngineProcessor {
 
         reflectiveClasses.produce(ReflectiveClassBuildItem.builder(
                 DebeziumEngine.BuilderFactory.class,
-                ConvertingEngineBuilderFactory.class,
                 ConvertingAsyncEngineBuilderFactory.class,
                 SaslClientAuthenticator.class,
                 JsonConverter.class,
