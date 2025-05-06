@@ -153,7 +153,7 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
                     hostnameValue.addErrorMessage("Unable to connect. Check this and other connection properties. Error: "
                             + e.getMessage());
                 }
-            }, timeoutMs, sqlServerConfig.getLogicalName());
+            }, timeoutMs, sqlServerConfig.getLogicalName(), "connection-validation");
         }
         catch (TimeoutException e) {
             hostnameValue.addErrorMessage("Connection validation timed out after " + timeoutMs + " ms");

@@ -8,6 +8,7 @@ package io.debezium.util;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.sql.SQLException;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -18,7 +19,7 @@ public class ThreadsTest {
     @Test
     public void shouldCompleteSuccessfullyWithinTimeout() throws Exception {
         AtomicBoolean taskCompleted = new AtomicBoolean(false);
-        Runnable validationTask = () -> {
+        Runnable operation = () -> {
             try {
                 Thread.sleep(100);
                 taskCompleted.set(true);
@@ -30,16 +31,17 @@ public class ThreadsTest {
 
         Threads.runWithTimeout(
                 ThreadsTest.class,
-                validationTask,
+                operation,
                 1000,
-                "test-connector");
+                "test-connector",
+                "test-operation");
 
         assertTrue(taskCompleted.get());
     }
 
     @Test
-    public void shouldTimeoutWhenTaskTakesTooLong() {
-        Runnable validationTask = () -> {
+    public void shouldTimeoutWhenOperationTakesTooLong() {
+        Runnable operation = () -> {
             try {
                 Thread.sleep(2000);
             }
@@ -50,38 +52,61 @@ public class ThreadsTest {
 
         assertThrows(TimeoutException.class, () -> Threads.runWithTimeout(
                 ThreadsTest.class,
-                validationTask,
+                operation,
                 500,
-                "test-connector"));
+                "test-connector",
+                "test-operation"));
     }
 
     @Test
-    public void shouldPropagateTaskException() {
-        Runnable validationTask = () -> {
+    public void shouldPropagateOperationException() {
+        Runnable operation = () -> {
             throw new RuntimeException("Test exception");
         };
 
         Exception exception = assertThrows(Exception.class, () -> Threads.runWithTimeout(
                 ThreadsTest.class,
-                validationTask,
+                operation,
                 1000,
-                "test-connector"));
+                "test-connector",
+                "test-operation"));
 
         assertTrue(exception.getCause() instanceof RuntimeException);
         assertTrue(exception.getCause().getMessage().contains("Test exception"));
     }
 
     @Test
+    public void shouldPropagateWrappedOperationException() {
+        Runnable operation = () -> {
+            SQLException se = new SQLException("Test exception");
+            throw new RuntimeException(se);
+        };
+
+        Exception exception = assertThrows(Exception.class, () -> Threads.runWithTimeout(
+                ThreadsTest.class,
+                operation,
+                1000,
+                "test-connector",
+                "test-operation"));
+
+        assertTrue(exception instanceof Exception);
+        assertTrue(exception.getCause() instanceof RuntimeException);
+        assertTrue(exception.getCause().getCause() instanceof SQLException);
+        assertTrue(exception.getCause().getCause().getMessage().contains("Test exception"));
+    }
+
+    @Test
     public void shouldHandleInterruptedException() {
-        Runnable validationTask = () -> {
+        Runnable operation = () -> {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Should be interrupted");
         };
 
         assertThrows(Exception.class, () -> Threads.runWithTimeout(
                 ThreadsTest.class,
-                validationTask,
+                operation,
                 1000,
-                "test-connector"));
+                "test-connector",
+                "test-operation"));
     }
 }
