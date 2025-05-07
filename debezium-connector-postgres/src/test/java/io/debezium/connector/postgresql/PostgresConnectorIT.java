@@ -2737,7 +2737,8 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         final Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SHOULD_FLUSH_LSN_IN_SOURCE_DB, "false")
                 .with(PostgresConnectorConfig.SLOT_NAME, ReplicationConnection.Builder.DEFAULT_SLOT_NAME)
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, "false");
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, "false")
+                .with(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS, 10_000);
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
