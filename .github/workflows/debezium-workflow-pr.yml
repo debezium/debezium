@@ -42,6 +42,7 @@ jobs:
       mariadb-ddl-parser-changed: ${{ steps.changed-files-mariadb-ddl-parser.outputs.any_changed }}
       documentation-only-changed: ${{ steps.changed-files-documentation.outputs.only_changed }}
       storage-only-changed: ${{ steps.changed-files-storage.outputs.only_changed }}
+      extensions-changed: ${{} steps.changed-files-storage.outputs.any_changed }
     steps:
       - name: Checkout Action
         uses: actions/checkout@v4
@@ -194,6 +195,13 @@ jobs:
         with:
           files: |
             debezium-storage/**
+
+      - name: Get modified files (Quarkus Extensions)
+        id: changed-files-extensions
+        uses: tj-actions/changed-files@v46.0.5
+        with:
+          files: |
+            quarkus-debezium-parent/**
 
   # Approx 1m
   build_cache:
