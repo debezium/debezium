@@ -186,7 +186,11 @@ public class FieldNameTransformation<R extends ConnectRecord<R>> implements Tran
                 }
 
                 Struct struct = new Struct(schema.build());
-                newValues.forEach(struct::put);
+                newValues.forEach((k, v) -> {
+                    if (v != null) {
+                        struct.put(k, v);
+                    }
+                });
 
                 return new TransformedSchemaValue(struct.schema(), struct);
             }
@@ -203,15 +207,17 @@ public class FieldNameTransformation<R extends ConnectRecord<R>> implements Tran
      * @return the transformed schema and value
      */
     private TransformedSchemaValue transform(Schema originalSchema, Struct originalValue) {
+        if (originalValue == null) {
+            return new TransformedSchemaValue(originalSchema, originalValue);
+        }
+
         final SchemaBuilder schema = SchemaBuilder.struct();
         copySchemaProperties(originalSchema, schema);
 
         originalSchema.fields().forEach(field -> schema.field(transformFieldName(field.name()), copySchema(field.schema())));
 
         Struct value = new Struct(schema.build());
-        if (originalValue != null) {
-            originalSchema.fields().forEach(field -> value.put(transformFieldName(field.name()), originalValue.get(field)));
-        }
+        originalSchema.fields().forEach(field -> value.put(transformFieldName(field.name()), originalValue.get(field)));
 
         return new TransformedSchemaValue(value.schema(), value);
     }
