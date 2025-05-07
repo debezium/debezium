@@ -1609,8 +1609,8 @@ public abstract class CommonConnectorConfig {
         return isAdvancedMetricsEnabled;
     }
 
-    public long getConnectionValidationTimeoutMs() {
-        return config.getLong(CONNECTION_VALIDATION_TIMEOUT_MS);
+    public Duration getConnectionValidationTimeout() {
+        return Duration.ofMillis(config.getLong(CONNECTION_VALIDATION_TIMEOUT_MS));
     }
 
     public EnumeratedValue snapshotQueryMode() {

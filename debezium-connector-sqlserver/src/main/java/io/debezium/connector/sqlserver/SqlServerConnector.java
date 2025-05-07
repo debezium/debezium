@@ -9,6 +9,7 @@ import static io.debezium.config.CommonConnectorConfig.TASK_ID;
 import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.DATABASE_NAMES;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -122,7 +123,7 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
         final SqlServerConnectorConfig sqlServerConfig = new SqlServerConnectorConfig(config);
         final ConfigValue hostnameValue = configValues.get(RelationalDatabaseConnectorConfig.HOSTNAME.name());
         final ConfigValue userValue = configValues.get(RelationalDatabaseConnectorConfig.USER.name());
-        long timeoutMs = sqlServerConfig.getConnectionValidationTimeoutMs();
+        Duration timeout = sqlServerConfig.getConnectionValidationTimeout();
         // Try to connect to the database ...
         try {
             Threads.runWithTimeout(SqlServerConnector.class, () -> {
@@ -153,10 +154,10 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
                     hostnameValue.addErrorMessage("Unable to connect. Check this and other connection properties. Error: "
                             + e.getMessage());
                 }
-            }, timeoutMs, sqlServerConfig.getLogicalName(), "connection-validation");
+            }, timeout, sqlServerConfig.getLogicalName(), "connection-validation");
         }
         catch (TimeoutException e) {
-            hostnameValue.addErrorMessage("Connection validation timed out after " + timeoutMs + " ms");
+            hostnameValue.addErrorMessage("Connection validation timed out after " + timeout.toMillis() + " ms");
         }
         catch (Exception e) {
             hostnameValue.addErrorMessage("Error during connection validation: " + e.getMessage());
