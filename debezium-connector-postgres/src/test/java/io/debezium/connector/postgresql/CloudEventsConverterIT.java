@@ -18,13 +18,16 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.transforms.HeaderFrom;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
 import io.debezium.connector.postgresql.transforms.DecodeLogicalDecodingMessageContent;
 import io.debezium.converters.AbstractCloudEventsConverterTest;
@@ -59,6 +62,9 @@ public class CloudEventsConverterIT extends AbstractCloudEventsConverterTest<Pos
             ");";
 
     private static final String INSERT_STMT = "INSERT INTO s1.a (aa) VALUES (1);";
+
+    @Rule
+    public final TestRule skipName = new SkipTestDependingOnDecoderPluginNameRule();
 
     @Before
     @Override
