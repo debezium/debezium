@@ -41,7 +41,6 @@ public class DebeziumLifeCycleTest {
             .overrideConfigKey("quarkus.debezium.configuration.table.include.list", "inventory.products")
             .overrideConfigKey("quarkus.debezium.configuration.plugin.name", "pgoutput")
             .overrideConfigKey("quarkus.debezium.configuration.snapshot.mode", "never")
-            // .overrideConfigKey("quarkus.datasource.devservices.enabled", "false")
             .setLogRecordPredicate(record -> record.getLoggerName().equals("io.quarkus.debezium.engine.DebeziumRunner"))
             .assertLogRecords((records) -> {
                 assertThat(records.getFirst().getMessage()).isEqualTo("Starting Debezium Engine...");
