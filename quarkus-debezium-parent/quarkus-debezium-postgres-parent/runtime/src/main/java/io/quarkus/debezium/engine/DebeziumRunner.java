@@ -27,7 +27,7 @@ public class DebeziumRunner {
         executorService.execute(engine::run);
     }
 
-    public void shutdown() throws RuntimeException {
+    public void shutdown() {
         LOGGER.info("Shutting down Debezium Engine...");
         try {
             engine.close();
@@ -35,6 +35,8 @@ public class DebeziumRunner {
         catch (IOException e) {
             throw new RuntimeException("Impossible to shutdown Debezium Engine ", e);
         }
-        executorService.shutdown();
+        finally {
+            executorService.shutdown();
+        }
     }
 }
