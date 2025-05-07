@@ -170,30 +170,26 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                             StringBuilder historyDataBuilder = new StringBuilder();
                             boolean isNotFirst = false;
                             while (rs.next()) {
-                                // warning: No continuity check - nice to have
-                                int recordInsertSeq = rs.getInt("history_data_seq");
+
+                                int insertSeq = rs.getInt("history_data_seq");
                                 String historyDataSpc = rs.getString("history_data");
-                                // Reduce if else execution
+
                                 if (isNotFirst) {
-                                    // must be ordered by ts asc !!!
-                                    // check if the prev record is the completed json
-                                    if (recordInsertSeq == 0) {
+                                    if (insertSeq == 0) {
                                         try {
                                             records.accept(new HistoryRecord(reader.read(historyDataBuilder.toString())));
                                         } catch (IOException e) {
                                             throw new DebeziumException(e);
                                         }
-                                        // clear
                                         historyDataBuilder.setLength(0);
                                     }
                                     historyDataBuilder.append(historyDataSpc);
                                 } else {
-                                    // first record
                                     historyDataBuilder.append(historyDataSpc);
                                     isNotFirst = true;
                                 }
                             }
-                            // the last record  - must not be empty
+
                             if (!historyDataBuilder.isEmpty()) {
                                 try {
                                     records.accept(new HistoryRecord(reader.read(historyDataBuilder.toString())));
