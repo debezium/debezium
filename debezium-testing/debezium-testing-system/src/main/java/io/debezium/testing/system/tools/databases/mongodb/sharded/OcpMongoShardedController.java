@@ -79,8 +79,7 @@ public class OcpMongoShardedController implements MongoDatabaseController {
 
     @Override
     public void reload() {
-        mongo.stop();
-        mongo.waitForStopped();
+        // do nothing
     }
 
     @Override
