@@ -167,7 +167,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                         try (
                                 Statement stmt = conn.createStatement();
                                 ResultSet rs = stmt.executeQuery(config.getTableSelect())) {
-                            StringBuilder historyDataBuilder = new StringBuilder();
+                            StringBuilder historyDataStrBuilder = new StringBuilder();
                             boolean isNotFirst = false;
                             while (rs.next()) {
 
@@ -177,22 +177,22 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                                 if (isNotFirst) {
                                     if (insertSeq == 0) {
                                         try {
-                                            records.accept(new HistoryRecord(reader.read(historyDataBuilder.toString())));
+                                            records.accept(new HistoryRecord(reader.read(historyDataStrBuilder.toString())));
                                         } catch (IOException e) {
                                             throw new DebeziumException(e);
                                         }
-                                        historyDataBuilder.setLength(0);
+                                        historyDataStrBuilder.setLength(0);
                                     }
-                                    historyDataBuilder.append(historyDataSpc);
+                                    historyDataStrBuilder.append(historyDataSpc);
                                 } else {
-                                    historyDataBuilder.append(historyDataSpc);
+                                    historyDataStrBuilder.append(historyDataSpc);
                                     isNotFirst = true;
                                 }
                             }
 
-                            if (!historyDataBuilder.isEmpty()) {
+                            if (!historyDataStrBuilder.isEmpty()) {
                                 try {
-                                    records.accept(new HistoryRecord(reader.read(historyDataBuilder.toString())));
+                                    records.accept(new HistoryRecord(reader.read(historyDataStrBuilder.toString())));
                                 } catch (IOException e) {
                                     throw new DebeziumException(e);
                                 }
