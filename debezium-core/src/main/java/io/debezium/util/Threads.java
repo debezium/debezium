@@ -248,8 +248,8 @@ public class Threads {
      * @param daemon - true if the thread should be a daemon thread
      * @return the thread factory setting the correct name
      */
-    public static ThreadFactory threadFactory(Class<?> component, String componentId, String name, boolean indexed, boolean daemon) {
-        return threadFactory(component, componentId, name, indexed, daemon, null);
+    public static ThreadFactory threadFactory(String connectorName, Class<?> component, String componentId, String name, boolean indexed, boolean daemon) {
+        return threadFactory(connectorName, component, componentId, name, indexed, daemon, null);
     }
 
     /**
@@ -264,10 +264,10 @@ public class Threads {
      * @param callback - a callback called on every thread created
      * @return the thread factory setting the correct name
      */
-    public static ThreadFactory threadFactory(Class<?> component, String componentId, String name, boolean indexed, boolean daemon,
+    public static ThreadFactory threadFactory(String connectorName, Class<?> component, String componentId, String name, boolean indexed, boolean daemon,
                                               Consumer<Thread> callback) {
         if (LOGGER.isInfoEnabled()) {
-            LOGGER.info("Requested thread factory for component {}, id = {} named = {}", component.getSimpleName(), componentId, name);
+            LOGGER.info("Requested thread factory for component {}, id = {}, name = {}, logicalName = {}", component.getSimpleName(), componentId, connectorName, name);
         }
 
         return new ThreadFactory() {
@@ -277,6 +277,8 @@ public class Threads {
             public Thread newThread(Runnable r) {
                 StringBuilder threadName = new StringBuilder(DEBEZIUM_THREAD_NAME_PREFIX)
                         .append(component.getSimpleName().toLowerCase())
+                        .append('-')
+                        .append(connectorName)
                         .append('-')
                         .append(componentId)
                         .append('-')
@@ -295,19 +297,20 @@ public class Threads {
         };
     }
 
-    public static ExecutorService newSingleThreadExecutor(Class<?> component, String componentId, String name, boolean daemon) {
-        return Executors.newSingleThreadExecutor(threadFactory(component, componentId, name, false, daemon));
+    public static ExecutorService newSingleThreadExecutor(String connectorName, Class<?> component, String componentId, String logicalName, boolean daemon) {
+        return Executors.newSingleThreadExecutor(threadFactory(connectorName, component, componentId, logicalName, false, daemon));
     }
 
-    public static ExecutorService newFixedThreadPool(Class<?> component, String componentId, String name, int threadCount) {
-        return Executors.newFixedThreadPool(threadCount, threadFactory(component, componentId, name, true, false));
+    public static ExecutorService newFixedThreadPool(String connectorName, Class<?> component, String componentId, String logicalName, int threadCount) {
+        return Executors.newFixedThreadPool(threadCount, threadFactory(connectorName, component, componentId, logicalName, true, false));
     }
 
-    public static ExecutorService newSingleThreadExecutor(Class<?> component, String componentId, String name) {
-        return newSingleThreadExecutor(component, componentId, name, false);
+    public static ExecutorService newSingleThreadExecutor(String connectorName, Class<?> component, String componentId, String logicalName) {
+        return newSingleThreadExecutor(connectorName, component, componentId, logicalName, false);
     }
 
-    public static ScheduledExecutorService newSingleThreadScheduledExecutor(Class<?> component, String componentId, String name, boolean daemon) {
-        return Executors.newSingleThreadScheduledExecutor(threadFactory(component, componentId, name, false, daemon));
+    public static ScheduledExecutorService newSingleThreadScheduledExecutor(String connectorName, Class<?> component, String componentId, String logicalName,
+                                                                            boolean daemon) {
+        return Executors.newSingleThreadScheduledExecutor(threadFactory(connectorName, component, componentId, logicalName, false, daemon));
     }
 }
