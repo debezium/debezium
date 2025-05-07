@@ -25,6 +25,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.RetriableException;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -468,7 +469,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     protected abstract void doStop();
 
     @Override
-    public void commitRecord(SourceRecord record) throws InterruptedException {
+    public void commitRecord(SourceRecord record, RecordMetadata metadata) throws InterruptedException {
         LOGGER.trace("Committing record {}", maybeRedactSensitiveData(record));
 
         Map<String, ?> currentOffset = record.sourceOffset();
