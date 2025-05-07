@@ -6,6 +6,7 @@
 package io.debezium.connector.binlog;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -61,7 +62,7 @@ public abstract class BinlogConnector<T extends BinlogConnectorConfig> extends R
     protected void validateConnection(Map<String, ConfigValue> configValues, Configuration config) {
         ConfigValue hostnameValue = configValues.get(RelationalDatabaseConnectorConfig.HOSTNAME.name());
         final T connectorConfig = createConnectorConfig(config);
-        long timeoutMs = connectorConfig.getConnectionValidationTimeoutMs();
+        Duration timeout = connectorConfig.getConnectionValidationTimeout();
 
         try {
             Threads.runWithTimeout(this.getClass(), () -> {
@@ -81,10 +82,10 @@ public abstract class BinlogConnector<T extends BinlogConnectorConfig> extends R
                 catch (SQLException e) {
                     LOGGER.error("Unexpected error shutting down the database connection", e);
                 }
-            }, timeoutMs, connectorConfig.getLogicalName(), "connection-validation");
+            }, timeout, connectorConfig.getLogicalName(), "connection-validation");
         }
         catch (TimeoutException e) {
-            hostnameValue.addErrorMessage("Connection validation timed out after " + timeoutMs + " ms");
+            hostnameValue.addErrorMessage("Connection validation timed out after " + timeout.toMillis() + " ms");
         }
         catch (Exception e) {
             hostnameValue.addErrorMessage("Error during connection validation: " + e.getMessage());

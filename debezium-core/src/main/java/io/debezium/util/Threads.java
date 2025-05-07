@@ -319,19 +319,19 @@ public class Threads {
      *
      * @param componentClass the class of the component using this method
      * @param operation the operation to run
-     * @param timeoutMs the timeout in milliseconds
+     * @param timeout the timeout duration
      * @param componentName the name of the component
      * @param operationName the name of the operation being executed with timeout
      * @throws Exception if the operation fails or times out
      */
-    public static void runWithTimeout(Class<?> componentClass, Runnable operation, long timeoutMs, String componentName, String operationName) throws Exception {
+    public static void runWithTimeout(Class<?> componentClass, Runnable operation, Duration timeout, String componentName, String operationName) throws Exception {
         ExecutorService executor = newSingleThreadExecutor(componentClass, componentName, operationName);
         Future<?> future = executor.submit(operation);
         try {
-            future.get(timeoutMs, TimeUnit.MILLISECONDS);
+            future.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
         }
         catch (TimeoutException e) {
-            LOGGER.error("Operation {} timed out after {} ms", operationName, timeoutMs);
+            LOGGER.error("Operation {} timed out after {} ms", operationName, timeout.toMillis());
             future.cancel(true);
             throw e;
         }
