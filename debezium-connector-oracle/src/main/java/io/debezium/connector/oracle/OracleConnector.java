@@ -6,10 +6,12 @@
 package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigDef;
@@ -24,6 +26,7 @@ import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
 import io.debezium.util.Strings;
+import io.debezium.util.Threads;
 
 public class OracleConnector extends RelationalBaseSourceConnector {
 
@@ -75,13 +78,25 @@ public class OracleConnector extends RelationalBaseSourceConnector {
         final ConfigValue userValue = configValues.get(RelationalDatabaseConnectorConfig.USER.name());
 
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
-        try (OracleConnection connection = new OracleConnection(connectorConfig.getJdbcConfig())) {
-            LOGGER.debug("Successfully tested connection for {} with user '{}'", OracleConnection.connectionString(connectorConfig.getJdbcConfig()),
-                    connection.username());
+        Duration timeout = connectorConfig.getConnectionValidationTimeout();
+
+        try {
+            Threads.runWithTimeout(OracleConnector.class, () -> {
+                try (OracleConnection connection = new OracleConnection(connectorConfig.getJdbcConfig())) {
+                    LOGGER.debug("Successfully tested connection for {} with user '{}'", OracleConnection.connectionString(connectorConfig.getJdbcConfig()),
+                            connection.username());
+                }
+                catch (SQLException | RuntimeException e) {
+                    LOGGER.error("Failed testing connection for {} with user '{}'", config.withMaskedPasswords(), userValue, e);
+                    hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
+                }
+            }, timeout, connectorConfig.getLogicalName(), "connection-validation");
         }
-        catch (SQLException | RuntimeException e) {
-            LOGGER.error("Failed testing connection for {} with user '{}'", config.withMaskedPasswords(), userValue, e);
-            hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
+        catch (TimeoutException e) {
+            hostnameValue.addErrorMessage("Connection validation timed out after " + timeout.toMillis() + " ms");
+        }
+        catch (Exception e) {
+            hostnameValue.addErrorMessage("Error during connection validation: " + e.getMessage());
         }
     }
 

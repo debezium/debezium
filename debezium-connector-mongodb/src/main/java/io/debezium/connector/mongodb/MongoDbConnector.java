@@ -5,10 +5,12 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigDef;
@@ -26,6 +28,7 @@ import io.debezium.connector.common.BaseSourceConnector;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnections;
+import io.debezium.util.Threads;
 
 /**
  * A Kafka Connect source connector that creates tasks that read the MongoDB change stream and generate the corresponding
@@ -122,23 +125,35 @@ public class MongoDbConnector extends BaseSourceConnector {
         }
 
         MongoDbConnectionContext connectionContext = new MongoDbConnectionContext(config);
+        MongoDbConnectorConfig connectorConfig = new MongoDbConnectorConfig(config);
+        Duration timeout = connectorConfig.getConnectionValidationTimeout();
 
         try {
-            // Check base connection by accessing first database name
-            try (MongoClient client = connectionContext.getMongoClient()) {
-                client.listDatabaseNames().first(); // only when we try to fetch results a connection gets established
-            }
+            Threads.runWithTimeout(MongoDbConnector.class, () -> {
+                try {
+                    // Check base connection by accessing first database name
+                    try (MongoClient client = connectionContext.getMongoClient()) {
+                        client.listDatabaseNames().first(); // only when we try to fetch results a connection gets established
+                    }
 
-            // For RS clusters check that replica set name is present
-            // Java driver is smart enough to work without it but the specs says it should be set
-            if (!connectionContext.hasReplicaSetNameIfRequired()) {
-                var type = connectionContext.getClusterType();
-                LOGGER.warn("Replica set not specified in connection string for {} cluster.", type);
-                connectionStringValidation.addErrorMessage("Replica set not specified in connection string for " + type + " cluster.");
-            }
+                    // For RS clusters check that replica set name is present
+                    // Java driver is smart enough to work without it but the specs says it should be set
+                    if (!connectionContext.hasReplicaSetNameIfRequired()) {
+                        var type = connectionContext.getClusterType();
+                        LOGGER.warn("Replica set not specified in connection string for {} cluster.", type);
+                        connectionStringValidation.addErrorMessage("Replica set not specified in connection string for " + type + " cluster.");
+                    }
+                }
+                catch (MongoException e) {
+                    connectionStringValidation.addErrorMessage("Unable to connect: " + e.getMessage());
+                }
+            }, timeout, connectorConfig.getLogicalName(), "connection-validation");
         }
-        catch (MongoException e) {
-            connectionStringValidation.addErrorMessage("Unable to connect: " + e.getMessage());
+        catch (TimeoutException e) {
+            connectionStringValidation.addErrorMessage("Connection validation timed out after " + timeout.toMillis() + "ms");
+        }
+        catch (Exception e) {
+            connectionStringValidation.addErrorMessage("Error during connection validation: " + e.getMessage());
         }
     }
 
