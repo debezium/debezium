@@ -7,6 +7,7 @@ package io.debezium.connector.postgresql;
 
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 import java.util.Arrays;
 import java.util.List;
@@ -21,13 +22,16 @@ import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.doc.FixFor;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.signal.actions.AbstractSnapshotSignal;
 import io.debezium.pipeline.signal.actions.snapshotting.ExecuteSnapshot;
 import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
 import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
+import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotChangeEventSource;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.util.Strings;
 
@@ -206,6 +210,75 @@ public class ReadOnlyIncrementalSnapshotIT extends IncrementalSnapshotIT {
     @Override
     public void snapshotPartitionedTable() throws Exception {
         super.snapshotPartitionedTable();
+    }
+
+    @Test
+    @FixFor("DBZ-9016")
+    public void processingOfMessagesShouldHappenOnlyWhenSnapshotIsRunning() throws Exception {
+        // Testing.Print.enable();
+
+        LogInterceptor logInterceptor = new LogInterceptor(AbstractIncrementalSnapshotChangeEventSource.class);
+        populate4PkTable();
+        startConnector();
+
+        sendAdHocSnapshotSignal("s1.a4");
+
+        Thread.sleep(5000);
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(false);
+            for (int i = 0; i < ROW_COUNT; i++) {
+                final int id = i + ROW_COUNT + 1;
+                final int pk1 = id / 1000;
+                final int pk2 = (id / 100) % 10;
+                final int pk3 = (id / 10) % 10;
+                final int pk4 = id % 10;
+                connection.executeWithoutCommitting(String.format("INSERT INTO %s (pk1, pk2, pk3, pk4, aa) VALUES (%s, %s, %s, %s, %s)",
+                        "s1.a4",
+                        pk1,
+                        pk2,
+                        pk3,
+                        pk4,
+                        i + ROW_COUNT));
+            }
+            connection.commit();
+        }
+
+        final int expectedRecordCount = ROW_COUNT * 2;
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(
+                expectedRecordCount,
+                x -> true,
+                k -> k.getInt32("pk1") * 1_000 + k.getInt32("pk2") * 100 + k.getInt32("pk3") * 10 + k.getInt32("pk4"),
+                record -> ((Struct) record.value()).getStruct("after").getInt32(valueFieldName()),
+                "test_server.s1.a4",
+                null);
+        for (int i = 0; i < expectedRecordCount; i++) {
+            assertThat(dbChanges).contains(entry(i + 1, i));
+        }
+
+        try (JdbcConnection connection = databaseConnection()) {
+            connection.setAutoCommit(true);
+            for (int i = ROW_COUNT; i < ROW_COUNT * 2; i++) {
+                final int id = i + ROW_COUNT + 1;
+                final int pk1 = id / 1000;
+                final int pk2 = (id / 100) % 10;
+                final int pk3 = (id / 10) % 10;
+                final int pk4 = id % 10;
+                connection.execute(String.format("INSERT INTO %s (pk1, pk2, pk3, pk4, aa) VALUES (%s, %s, %s, %s, %s)",
+                        "s1.a4",
+                        pk1,
+                        pk2,
+                        pk3,
+                        pk4,
+                        i + ROW_COUNT));
+            }
+        }
+
+        for (int i = 0; i < ROW_COUNT; i++) {
+            assertThat(dbChanges).contains(entry(i + ROW_COUNT + 1, i + ROW_COUNT));
+        }
+
+        assertThat(logInterceptor.countOccurrences("Skipping read chunk because snapshot is not running")).isEqualTo(0L);
+
     }
 
     @Override
