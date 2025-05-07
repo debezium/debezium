@@ -7,6 +7,7 @@
 package io.debezium.connector.postgresql;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -92,7 +93,7 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
 
         final PostgresConnectorConfig postgresConfig = new PostgresConnectorConfig(config);
         final ConfigValue hostnameValue = configValues.get(RelationalDatabaseConnectorConfig.HOSTNAME.name());
-        long timeoutMs = postgresConfig.getConnectionValidationTimeoutMs();
+        Duration timeout = postgresConfig.getConnectionValidationTimeout();
         // Try to connect to the database ...
         try {
             Threads.runWithTimeout(PostgresConnector.class, () -> {
@@ -110,10 +111,10 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
                         hostnameValue.addErrorMessage("Error while validating connector config: " + e.getMessage());
                     }
                 }
-            }, timeoutMs, postgresConfig.getLogicalName(), "connection-validation");
+            }, timeout, postgresConfig.getLogicalName(), "connection-validation");
         }
         catch (TimeoutException e) {
-            hostnameValue.addErrorMessage("Connection validation timed out after " + timeoutMs + " ms");
+            hostnameValue.addErrorMessage("Connection validation timed out after " + timeout.toMillis() + " ms");
         }
         catch (Exception e) {
             hostnameValue.addErrorMessage("Error during connection validation: " + e.getMessage());

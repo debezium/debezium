@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -125,7 +126,7 @@ public class MongoDbConnector extends BaseSourceConnector {
 
         MongoDbConnectionContext connectionContext = new MongoDbConnectionContext(config);
         MongoDbConnectorConfig connectorConfig = new MongoDbConnectorConfig(config);
-        long timeoutMs = connectorConfig.getConnectionValidationTimeoutMs();
+        Duration timeout = connectorConfig.getConnectionValidationTimeout();
 
         try {
             Threads.runWithTimeout(MongoDbConnector.class, () -> {
@@ -146,10 +147,10 @@ public class MongoDbConnector extends BaseSourceConnector {
                 catch (MongoException e) {
                     connectionStringValidation.addErrorMessage("Unable to connect: " + e.getMessage());
                 }
-            }, timeoutMs, connectorConfig.getLogicalName(), "connection-validation");
+            }, timeout, connectorConfig.getLogicalName(), "connection-validation");
         }
         catch (TimeoutException e) {
-            connectionStringValidation.addErrorMessage("Connection validation timed out after " + timeoutMs + "ms");
+            connectionStringValidation.addErrorMessage("Connection validation timed out after " + timeout.toMillis() + "ms");
         }
         catch (Exception e) {
             connectionStringValidation.addErrorMessage("Error during connection validation: " + e.getMessage());

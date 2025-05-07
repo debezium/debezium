@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -77,7 +78,7 @@ public class OracleConnector extends RelationalBaseSourceConnector {
         final ConfigValue userValue = configValues.get(RelationalDatabaseConnectorConfig.USER.name());
 
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
-        long timeoutMs = connectorConfig.getConnectionValidationTimeoutMs();
+        Duration timeout = connectorConfig.getConnectionValidationTimeout();
 
         try {
             Threads.runWithTimeout(OracleConnector.class, () -> {
@@ -89,10 +90,10 @@ public class OracleConnector extends RelationalBaseSourceConnector {
                     LOGGER.error("Failed testing connection for {} with user '{}'", config.withMaskedPasswords(), userValue, e);
                     hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
                 }
-            }, timeoutMs, connectorConfig.getLogicalName(), "connection-validation");
+            }, timeout, connectorConfig.getLogicalName(), "connection-validation");
         }
         catch (TimeoutException e) {
-            hostnameValue.addErrorMessage("Connection validation timed out after " + timeoutMs + " ms");
+            hostnameValue.addErrorMessage("Connection validation timed out after " + timeout.toMillis() + " ms");
         }
         catch (Exception e) {
             hostnameValue.addErrorMessage("Error during connection validation: " + e.getMessage());

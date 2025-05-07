@@ -22,6 +22,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -981,7 +982,7 @@ public class JdbcConnection implements AutoCloseable {
                 catch (SQLException e) {
                     throw new RuntimeException(e);
                 }
-            }, WAIT_FOR_CLOSE_SECONDS * 1000L, JdbcConnection.class.getSimpleName(), "jdbc-connection-close");
+            }, Duration.ofSeconds(WAIT_FOR_CLOSE_SECONDS), JdbcConnection.class.getSimpleName(), "jdbc-connection-close");
         }
         catch (TimeoutException | InterruptedException e) {
             LOGGER.warn("Failed to close database connection by calling close(), attempting abort()");
