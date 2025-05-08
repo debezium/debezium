@@ -10,7 +10,10 @@ import static io.quarkus.debezium.postgres.deployment.ClassesInConfigurationHand
 
 import org.apache.kafka.common.security.authenticator.SaslClientAuthenticator;
 import org.apache.kafka.connect.json.JsonConverter;
+import org.apache.kafka.connect.source.SourceTask;
+import org.apache.kafka.connect.transforms.predicates.TopicNameMatches;
 
+import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.postgresql.PostgresConnector;
 import io.debezium.connector.postgresql.PostgresConnectorTask;
 import io.debezium.connector.postgresql.PostgresSourceInfoStructMaker;
@@ -43,6 +46,7 @@ import io.debezium.snapshot.mode.SchemaOnlyRecoverySnapshotter;
 import io.debezium.snapshot.mode.SchemaOnlySnapshotter;
 import io.debezium.snapshot.mode.WhenNeededSnapshotter;
 import io.debezium.snapshot.spi.SnapshotLock;
+import io.debezium.transforms.ExtractNewRecordState;
 import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
 import io.quarkus.arc.processor.DotNames;
 import io.quarkus.datasource.deployment.spi.DevServicesDatasourceResultBuildItem;
@@ -137,6 +141,7 @@ public class EngineProcessor {
                 SchemaTopicNamingStrategy.class,
                 OffsetCommitPolicy.class,
                 PostgresConnectorTask.class,
+                BaseSourceTask.class,
                 SinkNotificationChannel.class,
                 LogNotificationChannel.class,
                 JmxNotificationChannel.class,
@@ -152,6 +157,8 @@ public class EngineProcessor {
                 RecoverySnapshotter.class,
                 WhenNeededSnapshotter.class,
                 NeverSnapshotter.class,
+                ExtractNewRecordState.class,
+                TopicNameMatches.class,
                 SchemaOnlySnapshotter.class,
                 SchemaOnlyRecoverySnapshotter.class,
                 ConfigurationBasedSnapshotter.class,
@@ -162,19 +169,28 @@ public class EngineProcessor {
                 InProcessSignalChannel.class,
                 StandardActionProvider.class,
                 OffsetCommitPolicy.class,
-                OffsetCommitPolicy.PeriodicCommitOffsetPolicy.class).reason(getClass().getName())
+                SourceTask.class,
+                OffsetCommitPolicy.PeriodicCommitOffsetPolicy.class)
+                .reason(getClass().getName())
                 .build());
     }
 
-    @BuildStep
+    @BuildStep(onlyIf = NativeOrNativeSourcesBuild.class)
     NativeImageConfigBuildItem nativeImageConfiguration() {
         return NativeImageConfigBuildItem.builder()
                 .addRuntimeInitializedClass("org.apache.kafka.common.security.authenticator.SaslClientAuthenticator")
                 .build();
     }
 
-    @BuildStep
+    @BuildStep(onlyIf = NativeOrNativeSourcesBuild.class)
     void registerNativeImageResources(BuildProducer<NativeImageResourceBuildItem> resources) {
-        resources.produce(new NativeImageResourceBuildItem("META-INF/services/*"));
+        resources.produce(new NativeImageResourceBuildItem("META-INF/services/io.debezium.embedded.async.ConvertingAsyncEngineBuilderFactory"));
+        resources.produce(new NativeImageResourceBuildItem("META-INF/services/io.debezium.engine.DebeziumEngine$BuilderFactory"));
+        resources.produce(new NativeImageResourceBuildItem("META-INF/services/io.debezium.snapshot.spi.SnapshotLock"));
+        resources.produce(new NativeImageResourceBuildItem("META-INF/services/io.debezium.snapshot.spi.SnapshotQuery"));
+        resources.produce(new NativeImageResourceBuildItem("META-INF/services/io.debezium.spi.snapshot.Snapshotter"));
+        resources.produce(new NativeImageResourceBuildItem("META-INF/services/io.debezium.spi.snapshot.Snapshotter"));
+        resources.produce(new NativeImageResourceBuildItem("META-INF/services/org.apache.kafka.connect.source.SourceConnector"));
+        resources.produce(new NativeImageResourceBuildItem("META-INF/services/io.debezium.pipeline.signal.channels.SignalChannelReader"));
     }
 }
