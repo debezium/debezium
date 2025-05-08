@@ -3,16 +3,15 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.quarkus.debezium.producer;
+
+package io.quarkus.debezium.engine;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
 
 import io.quarkus.debezium.configuration.DebeziumEngineConfiguration;
-import io.quarkus.debezium.engine.Debezium;
 import io.quarkus.debezium.engine.DebeziumManifest.Connector;
-import io.quarkus.debezium.engine.SourceRecordDebezium;
 
 @ApplicationScoped
 public class PostgresEngineProducer {

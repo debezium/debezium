@@ -3,6 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
+
 package io.quarkus.debezium.engine;
 
 import java.io.IOException;
@@ -22,15 +23,15 @@ import io.debezium.engine.format.ChangeEventFormat;
 import io.quarkus.debezium.configuration.DebeziumEngineConfiguration;
 
 @ApplicationScoped
-public class SourceRecordDebezium extends RunnableDebezium {
+class SourceRecordDebezium extends RunnableDebezium {
     private final Logger LOGGER = LoggerFactory.getLogger(SourceRecordDebezium.class);
 
     private final DebeziumEngineConfiguration debeziumEngineConfiguration;
     private final DebeziumEngine<?> engine;
     private final ManifestHandler manifestHandler;
 
-    public SourceRecordDebezium(DebeziumEngineConfiguration debeziumEngineConfiguration,
-                                ManifestHandler manifestHandler) {
+    SourceRecordDebezium(DebeziumEngineConfiguration debeziumEngineConfiguration,
+                         ManifestHandler manifestHandler) {
         this.debeziumEngineConfiguration = debeziumEngineConfiguration;
         this.manifestHandler = manifestHandler;
 
