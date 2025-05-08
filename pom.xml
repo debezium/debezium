@@ -217,6 +217,7 @@
         <module>debezium-interceptor</module>
         <module>debezium-sink</module>
         <module>debezium-ai</module>
+        <module>quarkus-debezium-parent</module>
     </modules>
 
     <distributionManagement>
