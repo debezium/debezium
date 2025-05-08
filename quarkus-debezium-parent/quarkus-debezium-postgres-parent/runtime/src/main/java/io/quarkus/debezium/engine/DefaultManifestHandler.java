@@ -4,22 +4,20 @@
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 
-package io.quarkus.debezium.producer;
+package io.quarkus.debezium.engine;
 
 import java.util.concurrent.atomic.AtomicReference;
 
 import io.debezium.engine.DebeziumEngine.CompletionCallback;
 import io.debezium.engine.DebeziumEngine.ConnectorCallback;
-import io.quarkus.debezium.engine.DebeziumManifest;
 import io.quarkus.debezium.engine.DebeziumManifest.Connector;
 import io.quarkus.debezium.engine.DebeziumManifest.Status;
-import io.quarkus.debezium.engine.ManifestHandler;
 
 class DefaultManifestHandler implements ManifestHandler {
     private final AtomicReference<DebeziumManifest> manifest;
     private final Connector connector;
 
-    protected DefaultManifestHandler(Connector connector) {
+    DefaultManifestHandler(Connector connector) {
         this.connector = connector;
         this.manifest = new AtomicReference<>(new DebeziumManifest(this.connector,
                 new Status(Status.State.CREATING)));

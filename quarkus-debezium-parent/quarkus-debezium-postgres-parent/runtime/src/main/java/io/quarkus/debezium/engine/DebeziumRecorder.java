@@ -3,13 +3,12 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.quarkus.debezium.recorder;
+
+package io.quarkus.debezium.engine;
 
 import java.util.concurrent.ExecutorService;
 
 import io.quarkus.arc.Arc;
-import io.quarkus.debezium.engine.Debezium;
-import io.quarkus.debezium.engine.DebeziumRunner;
 import io.quarkus.runtime.ShutdownContext;
 import io.quarkus.runtime.annotations.Recorder;
 

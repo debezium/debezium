@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
+import io.debezium.common.annotation.Incubating;
 import io.debezium.engine.DebeziumEngine.Signaler;
 
 /**
@@ -16,6 +17,7 @@ import io.debezium.engine.DebeziumEngine.Signaler;
  * <p>
  * The Engine is submitted to an {@link Executor} or {@link ExecutorService} for execution by a single thread
  */
+@Incubating
 public interface Debezium {
 
     /**
