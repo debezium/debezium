@@ -251,7 +251,7 @@ public class OracleConnection extends JdbcConnection {
     protected String resolveCatalogName(String catalogName) {
         final String pdbName = OracleUtils.getObjectName(config().getString("pdb.name"));
         final String databaseName = OracleUtils.getObjectName(config().getString("dbname"));
-        return !Strings.isNullOrEmpty(pdbName) ? pdbName : databaseName;
+        return !OracleUtils.isObjectNameNullOrEmpty(pdbName) ? pdbName : databaseName;
     }
 
     @Override

@@ -23,12 +23,25 @@ public class OracleUtils {
      */
     public static String getObjectName(String objectName) {
         if (!Strings.isNullOrEmpty(objectName)) {
-            if (objectName.startsWith("\"") && objectName.endsWith("\"") && objectName.length() > 2) {
-                return objectName.substring(1, objectName.length() - 1);
+            if (!(objectName.startsWith("\"") && objectName.endsWith("\"") && objectName.length() > 2)) {
+                return objectName.toUpperCase();
             }
-            return objectName.toUpperCase();
         }
         return objectName;
+    }
+
+    /**
+     * Check whether the object name is really empty or null.
+     *
+     * @param objectName the object name
+     * @return true if the object name is empty or null, false otherwise
+     */
+    public static boolean isObjectNameNullOrEmpty(String objectName) {
+        if (Strings.isNullOrEmpty(objectName)) {
+            return true;
+        }
+
+        return objectName.startsWith("\"") && objectName.endsWith("\"") && objectName.length() <= 2;
     }
 
     private OracleUtils() {
