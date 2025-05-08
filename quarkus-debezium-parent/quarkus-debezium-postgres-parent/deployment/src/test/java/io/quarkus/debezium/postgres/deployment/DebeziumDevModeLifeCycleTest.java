@@ -33,12 +33,12 @@ public class DebeziumDevModeLifeCycleTest {
     @RegisterExtension
     static final QuarkusUnitTest application = new QuarkusUnitTest()
             .setArchiveProducer(() -> ShrinkWrap.create(JavaArchive.class))
-            .overrideConfigKey("quarkus.debezium.configuration.offset.storage", "org.apache.kafka.connect.storage.MemoryOffsetBackingStore")
-            .overrideConfigKey("quarkus.debezium.configuration.name", "test")
-            .overrideConfigKey("quarkus.debezium.configuration.topic.prefix", "dbserver1")
-            .overrideConfigKey("quarkus.debezium.configuration.table.include.list", "inventory.products")
-            .overrideConfigKey("quarkus.debezium.configuration.plugin.name", "pgoutput")
-            .overrideConfigKey("quarkus.debezium.configuration.snapshot.mode", "never")
+            .overrideConfigKey("quarkus.debezium.offset.storage", "org.apache.kafka.connect.storage.MemoryOffsetBackingStore")
+            .overrideConfigKey("quarkus.debezium.name", "test")
+            .overrideConfigKey("quarkus.debezium.topic.prefix", "dbserver1")
+            .overrideConfigKey("quarkus.debezium.table.include.list", "inventory.products")
+            .overrideConfigKey("quarkus.debezium.plugin.name", "pgoutput")
+            .overrideConfigKey("quarkus.debezium.snapshot.mode", "never")
             .setLogRecordPredicate(record -> record.getLoggerName().equals("io.quarkus.debezium.engine.DebeziumRunner"))
             .assertLogRecords((records) -> {
                 assertThat(records.getFirst().getMessage()).isEqualTo("Starting Debezium Engine...");

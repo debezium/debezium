@@ -37,11 +37,11 @@ public class DatabaseTestResource implements QuarkusTestResourceLifecycleManager
 
             return Map.of(
                     "quarkus.datasource.jdbc.url", postgresContainer.getJdbcUrl(),
-                    "quarkus.debezium.configuration.database.hostname", postgresContainer.getHost(),
-                    "quarkus.debezium.configuration.database.user", postgresContainer.getUsername(),
-                    "quarkus.debezium.configuration.database.password", postgresContainer.getPassword(),
-                    "quarkus.debezium.configuration.database.dbname", postgresContainer.getDatabaseName(),
-                    "quarkus.debezium.configuration.database.port", postgresContainer.getMappedPort(5432).toString());
+                    "quarkus.debezium.database.hostname", postgresContainer.getHost(),
+                    "quarkus.debezium.database.user", postgresContainer.getUsername(),
+                    "quarkus.debezium.database.password", postgresContainer.getPassword(),
+                    "quarkus.debezium.database.dbname", postgresContainer.getDatabaseName(),
+                    "quarkus.debezium.database.port", postgresContainer.getMappedPort(5432).toString());
         }
         catch (Exception e) {
             throw new RuntimeException(e);
