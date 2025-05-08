@@ -37,6 +37,9 @@ public abstract class RelationalBaseSourceConnector extends BaseSourceConnector 
             LOGGER.debug("The connection password is empty");
         }
 
+        results.values().stream()
+                .filter(configValue -> !configValue.errorMessages().isEmpty())
+                .forEach(configValue -> LOGGER.warn("ConfigValue '{}' has errors: {}", configValue.name(), configValue.errorMessages()));
         // Only if there are no config errors ...
         if (results.values().stream()
             .filter(
