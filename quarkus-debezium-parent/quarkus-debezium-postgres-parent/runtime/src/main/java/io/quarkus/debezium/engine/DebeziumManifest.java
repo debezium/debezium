@@ -6,6 +6,9 @@
 
 package io.quarkus.debezium.engine;
 
+import io.debezium.common.annotation.Incubating;
+
+@Incubating
 public record DebeziumManifest(
         Connector connector,
         Status status) {
