@@ -25,6 +25,7 @@ import io.debezium.util.Strings;
 public abstract class RelationalBaseSourceConnector extends BaseSourceConnector {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RelationalBaseSourceConnector.class);
+    private static final String SERVER_ID = "database.server.id";
 
     @Override
     public Config validate(Map<String, String> connectorConfigs) {
@@ -44,7 +45,8 @@ public abstract class RelationalBaseSourceConnector extends BaseSourceConnector 
         if (results.values().stream()
             .filter(
                 configValue -> !(configValue.name().equals(RelationalDatabaseConnectorConfig.TOPIC_PREFIX.name())
-                    || configValue.name().equals(AbstractTopicNamingStrategy.TOPIC_HEARTBEAT_PREFIX.name()))
+                    || configValue.name().equals(AbstractTopicNamingStrategy.TOPIC_HEARTBEAT_PREFIX.name())
+                    || configValue.name().equals(SERVER_ID))
             )
             .allMatch(configValue -> configValue.errorMessages().isEmpty())) {
             // ... validate the connection too
