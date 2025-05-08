@@ -14,10 +14,10 @@ public class QuarkusDatasource {
         URI uri = URI.create(properties.get("quarkus.datasource.jdbc.url").substring(5));
 
         return Map.of(
-                "quarkus.debezium.configuration.database.hostname", uri.getHost(),
-                "quarkus.debezium.configuration.database.user", properties.get("quarkus.datasource.username"),
-                "quarkus.debezium.configuration.database.password", properties.get("quarkus.datasource.password"),
-                "quarkus.debezium.configuration.database.dbname", uri.getPath().substring(1),
-                "quarkus.debezium.configuration.database.port", String.valueOf(uri.getPort()));
+                "quarkus.debezium.database.hostname", uri.getHost(),
+                "quarkus.debezium.database.user", properties.get("quarkus.datasource.username"),
+                "quarkus.debezium.database.password", properties.get("quarkus.datasource.password"),
+                "quarkus.debezium.database.dbname", uri.getPath().substring(1),
+                "quarkus.debezium.database.port", String.valueOf(uri.getPort()));
     }
 }
