@@ -12,6 +12,8 @@ import java.util.concurrent.ExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.runtime.Debezium;
+
 class DebeziumRunner {
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumRunner.class);
 

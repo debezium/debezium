@@ -4,7 +4,7 @@
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 
-package io.quarkus.debezium.postgres.deployment;
+package io.quarkus.debezium.deployment;
 
 import java.util.Arrays;
 import java.util.Collections;

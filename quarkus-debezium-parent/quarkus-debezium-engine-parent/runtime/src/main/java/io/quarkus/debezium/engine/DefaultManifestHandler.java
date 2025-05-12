@@ -10,24 +10,23 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import io.debezium.engine.DebeziumEngine.CompletionCallback;
 import io.debezium.engine.DebeziumEngine.ConnectorCallback;
-import io.quarkus.debezium.engine.DebeziumManifest.Connector;
-import io.quarkus.debezium.engine.DebeziumManifest.Status;
+import io.debezium.runtime.DebeziumManifest;
 
 class DefaultManifestHandler implements ManifestHandler {
     private final AtomicReference<DebeziumManifest> manifest;
-    private final Connector connector;
+    private final DebeziumManifest.Connector connector;
 
-    DefaultManifestHandler(Connector connector) {
+    DefaultManifestHandler(DebeziumManifest.Connector connector) {
         this.connector = connector;
         this.manifest = new AtomicReference<>(new DebeziumManifest(this.connector,
-                new Status(Status.State.CREATING)));
+                new DebeziumManifest.Status(DebeziumManifest.Status.State.CREATING)));
     }
 
     @Override
     public ConnectorCallback connectorCallback() {
         return new ConnectorCallback() {
             public void pollingStarted() {
-                manifest.set(new DebeziumManifest(connector, new Status(Status.State.POLLING)));
+                manifest.set(new DebeziumManifest(connector, new DebeziumManifest.Status(DebeziumManifest.Status.State.POLLING)));
             }
         };
     }
@@ -35,7 +34,7 @@ class DefaultManifestHandler implements ManifestHandler {
     @Override
     public CompletionCallback completionCallback() {
         return (success, message, error) -> manifest.set(new DebeziumManifest(connector,
-                new Status(Status.State.STOPPED)));
+                new DebeziumManifest.Status(DebeziumManifest.Status.State.STOPPED)));
     }
 
     @Override
