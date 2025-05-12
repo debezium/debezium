@@ -7,6 +7,7 @@
 package io.quarkus.debezium.engine;
 
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.runtime.DebeziumManifest;
 
 public interface ManifestHandler {
     DebeziumEngine.ConnectorCallback connectorCallback();

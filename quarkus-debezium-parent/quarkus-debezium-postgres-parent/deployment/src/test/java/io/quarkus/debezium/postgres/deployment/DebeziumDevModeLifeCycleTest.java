@@ -20,8 +20,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import io.quarkus.debezium.engine.Debezium;
-import io.quarkus.debezium.engine.DebeziumManifest;
+import io.debezium.runtime.Debezium;
+import io.debezium.runtime.DebeziumManifest;
 import io.quarkus.runtime.Application;
 import io.quarkus.test.QuarkusUnitTest;
 
