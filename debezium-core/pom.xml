@@ -56,6 +56,12 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- OpenLineage Integration -->
+        <dependency>
+            <groupId>io.openlineage</groupId>
+            <artifactId>openlineage-java</artifactId>
+        </dependency>
+
         <!-- Testing -->
         <dependency>
             <groupId>ch.qos.logback</groupId>
