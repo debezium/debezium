@@ -8,6 +8,7 @@ package io.quarkus.debezium.engine;
 
 import java.util.concurrent.ExecutorService;
 
+import io.debezium.runtime.Debezium;
 import io.quarkus.arc.Arc;
 import io.quarkus.runtime.ShutdownContext;
 import io.quarkus.runtime.annotations.Recorder;

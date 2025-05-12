@@ -8,6 +8,8 @@ package io.quarkus.debezium.engine;
 
 import java.io.IOException;
 
+import io.debezium.runtime.Debezium;
+
 abstract class RunnableDebezium implements Debezium {
     protected abstract void run();
 

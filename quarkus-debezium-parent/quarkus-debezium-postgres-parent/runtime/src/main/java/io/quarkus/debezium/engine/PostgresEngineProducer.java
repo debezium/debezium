@@ -10,11 +10,13 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
 
-import io.quarkus.debezium.configuration.DebeziumEngineConfiguration;
-import io.quarkus.debezium.engine.DebeziumManifest.Connector;
+import io.debezium.runtime.ConnectorProducer;
+import io.debezium.runtime.Debezium;
+import io.debezium.runtime.DebeziumManifest.Connector;
+import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
 
 @ApplicationScoped
-public class PostgresEngineProducer {
+public class PostgresEngineProducer implements ConnectorProducer {
 
     public static final String CONNECTOR_CLASS = "connector.class";
     public static final Connector POSTGRES = new Connector("io.debezium.connector.postgresql.PostgresConnector");

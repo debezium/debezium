@@ -10,8 +10,8 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 
-import io.quarkus.debezium.engine.Debezium;
-import io.quarkus.debezium.engine.DebeziumManifest;
+import io.debezium.runtime.Debezium;
+import io.debezium.runtime.DebeziumManifest;
 
 @Path("/api/debezium")
 public class DebeziumEndpoint {

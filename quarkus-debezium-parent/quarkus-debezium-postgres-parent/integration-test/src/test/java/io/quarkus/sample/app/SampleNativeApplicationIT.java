@@ -12,7 +12,7 @@ import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 import org.junit.jupiter.api.Test;
 
-import io.quarkus.debezium.engine.DebeziumManifest;
+import io.debezium.runtime.DebeziumManifest;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 
 @QuarkusIntegrationTest
