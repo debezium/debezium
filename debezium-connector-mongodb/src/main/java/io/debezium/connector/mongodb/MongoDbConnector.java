@@ -76,8 +76,19 @@ public class MongoDbConnector extends BaseSourceConnector {
             LOGGER.error("Configuring a maximum of {} tasks with no connector configuration available", maxTasks);
             return Collections.emptyList();
         }
-        LOGGER.debug("Configuring MongoDB connector task");
-        return List.of(config.asMap());
+        if (!config.getBoolean(MongoDbConnectorConfig.MONGODB_MULTI_TASK_ENABLED)) {
+            LOGGER.debug("Configuring MongoDB connector task");
+            return List.of(config.asMap());
+        }
+
+        List<Map<String, String>> taskConfigs = new ArrayList<>(maxTasks);
+        for (int taskId = 0; taskId < maxTasks; taskId++) {
+            taskConfigs.add(config.edit()
+                    .with(MongoDbConnectorConfig.TASK_ID, taskId)
+                    .build()
+                    .asMap());
+        }
+        return taskConfigs;
     }
 
     @Override
