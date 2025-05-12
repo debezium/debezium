@@ -7,8 +7,11 @@ package io.debezium.connector.common;
 
 import static io.debezium.util.Loggings.maybeRedactSensitiveData;
 
+import java.net.URI;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.HashMap;
@@ -19,6 +22,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
@@ -34,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.Module;
 import io.debezium.annotation.SingleThreadAccess;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.CommonConnectorConfig;
@@ -60,6 +65,10 @@ import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
 import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
+import io.openlineage.client.Clients;
+import io.openlineage.client.OpenLineage;
+import io.openlineage.client.OpenLineageClient;
+import io.openlineage.client.utils.UUIDUtils;
 
 /**
  * Base class for Debezium's CDC {@link SourceTask} implementations. Provides functionality common to all connectors,
@@ -74,6 +83,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     private static final Duration MAX_POLL_PERIOD_IN_MILLIS = Duration.ofMillis(TimeUnit.HOURS.toMillis(1));
     private Configuration config;
     private List<SignalChannelReader> signalChannels;
+    private OpenLineageClient openLineageClient;
 
     protected void validateSchemaHistory(CommonConnectorConfig config, LogPositionValidator logPositionValidator, Offsets<P, O> previousOffsets,
                                          DatabaseSchema schema,
@@ -257,17 +267,96 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
             try {
                 this.coordinator = start(config);
+                // TODO: here should be fired a start event
                 setTaskState(State.RUNNING);
+
+                if (config.getBoolean("openlineage.integration.enabled", false)) {
+                    openLineageClient = Clients.newClient(() -> List.of(
+                            Path.of(config.getString("openlineage.integration.config.path", "."))));
+
+                    String namespace = config.getString(CommonConnectorConfig.TOPIC_PREFIX);
+                    String jobName = config.getString(CommonConnectorConfig.TOPIC_PREFIX);
+                    Configuration openlineageConfig = config.subset("openlineage.integration", false);
+
+                    URI producer = URI.create("https://github.com/debezium/debezium");
+                    OpenLineage ol = new OpenLineage(producer);
+
+                    List<OpenLineage.TagsJobFacetFields> tags = openlineageConfig.getList("openlineage.integration.tags", ",", s -> s)
+                            .stream().map(pair -> pair.split("=")) // Split into key-value array
+                            .map(pair -> ol.newTagsJobFacetFields(pair[0].trim(), pair[1].trim(), "CONFIG"))
+                            .toList();
+
+                    List<OpenLineage.OwnershipJobFacetOwners> owners = openlineageConfig.getList("openlineage.integration.owners", ",", s -> s)
+                            .stream().map(pair -> pair.split("=")) // Split into key-value array
+                            .map(pair -> ol.newOwnershipJobFacetOwners(pair[0].trim(), pair[1].trim()))
+                            .toList();
+
+                    // job facets
+                    OpenLineage.JobFacets jobFacets = ol.newJobFacetsBuilder()
+                            // TODO put a default value
+                            .documentation(ol.newDocumentationJobFacet(openlineageConfig.getString("openlineage.integration.job.description", "")))
+                            .ownership(ol.newOwnershipJobFacet(owners))
+                            .tags(ol.newTagsJobFacet(tags))
+                            .jobType(ol.newJobTypeJobFacet("STREAMING", "DEBEZIUM", "TASK"))
+                            .build();
+
+                    // job
+                    OpenLineage.Job job = ol.newJobBuilder()
+                            .namespace(namespace)
+                            .name(jobName)
+                            .facets(jobFacets)
+                            .build();
+
+                    OpenLineage.RunFacets runFacets = ol.newRunFacetsBuilder()
+                            // TODO it will be good if the name could be debezium-connector, debezium-engine, debezium-server
+                            .processing_engine(ol.newProcessingEngineRunFacet(Module.version(), "Debezium", getPackageVersion(OpenLineageClient.class)))
+                            .nominalTime(
+                                    ol.newNominalTimeRunFacetBuilder()
+                                            .nominalStartTime(ZonedDateTime.now())
+                                            .nominalEndTime(ZonedDateTime.now())
+                                            .build())
+                            // TODO try to use also the .errorMessage()
+
+                            // TODO Custom facet for debezium configurations
+                            // .put("debezium_config", new MyRunFacet(job.getFacets().getJobType().get_producer(), Map.of("table.include.list", "inventory.products")))
+                            .build();
+                    UUID runId = UUIDUtils.generateNewUUID();
+                    // a run is composed of run id, and run facets
+                    OpenLineage.Run run = ol.newRunBuilder()
+                            .runId(runId)
+                            .facets(runFacets)
+                            .build();
+
+                    OpenLineage.RunEvent startEvent = ol.newRunEventBuilder()
+                            .eventType(OpenLineage.RunEvent.EventType.START)
+                            .eventTime(ZonedDateTime.now())
+                            .run(run)
+                            .job(job)
+                            .build();
+
+                    openLineageClient.emit(startEvent);
+                }
+
             }
             catch (RetriableException e) {
                 LOGGER.warn("Failed to start connector, will re-attempt during polling.", e);
                 restartDelay = ElapsedTimeStrategy.constant(Clock.system(), retriableRestartWait);
+                // TODO: here should be fired a fail event
                 setTaskState(State.RESTARTING);
             }
         }
         finally {
             stateLock.unlock();
         }
+    }
+
+    public static String getPackageVersion(Class<?> clazz) {
+        Package pkg = clazz.getPackage();
+        if (pkg != null) {
+            String version = pkg.getImplementationVersion();
+            return version != null ? version : "Version not found";
+        }
+        return "Version not found";
     }
 
     /**
@@ -322,6 +411,9 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
             final List<SourceRecord> records = doPoll();
             logStatistics(records);
+
+            // TODO: maybe this can be the point to send a run event with a different id
+            // Should be done async to avoid performance issues
 
             resetErrorHandlerRetriesIfNeeded(records);
 
@@ -476,6 +568,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
             else {
                 setTaskState(State.STOPPED);
+
+                // TODO: here should be fired a completed event
             }
         }
         finally {
