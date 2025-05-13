@@ -26,8 +26,9 @@
 
     <modules>
         <module>debezium-ai-embeddings</module>
-        <module>debezium-ai-embeddings-voyage-ai</module>
+        <module>debezium-ai-embeddings-hugging-face</module>
         <module>debezium-ai-embeddings-minilm</module>
         <module>debezium-ai-embeddings-ollama</module>
+        <module>debezium-ai-embeddings-voyage-ai</module>
     </modules>
 </project>
