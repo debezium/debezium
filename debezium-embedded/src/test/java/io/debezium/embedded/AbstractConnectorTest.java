@@ -41,7 +41,6 @@ import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
-import io.debezium.junit.RequiresAssemblyProfileTestRule;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.data.Field;
@@ -75,6 +74,7 @@ import io.debezium.config.Instantiator;
 import io.debezium.data.VerifyRecord;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.function.BooleanConsumer;
+import io.debezium.junit.RequiresAssemblyProfileTestRule;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.TestLogger;
 import io.debezium.pipeline.txmetadata.TransactionStatus;
