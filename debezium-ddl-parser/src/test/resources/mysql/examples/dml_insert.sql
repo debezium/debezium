@@ -56,3 +56,30 @@ INSERT INTO tbl (.tbl.a) SELECT * FROM another_table;
 ---https://dev.mysql.com/doc/refman/8.0/en/insert.html
 INSERT INTO t1 (a,b,c) VALUES (1,2,3),(4,5,6) AS new ON DUPLICATE KEY UPDATE c = new.a+new.b; 
 #end
+#begin
+INSERT IGNORE INTO provider_email_address
+  (
+    org_id,
+    provider_id,
+    email_address_id,
+    is_selected,is_communication_allowed,
+    is_refunded,
+    refunded_time,
+    is_system_credentials_used
+  )
+  SELECT
+    u.org_id,
+    char_to_binary(jt.provider_id),
+    pea.id,
+    tbe.is_selected,
+    IFNULL(tbe.is_communication_allowed, TRUE),
+    tbe.is_refunded,
+    IF(tbe.is_refunded, UTC_TIMESTAMP(6), null),
+    tbe.is_system_credentials_used
+  FROM temp_bulk_emails tbe
+  JOIN person_email_address pea ON pea.email_address = tbe.email_address
+  JOIN user u ON u.id = tbe.binary_user_id
+  JOIN JSON_TABLE(tbe.providers, '$[*]'
+  COLUMNS (provider_id VARCHAR(255) PATH '$')) jt ON 1 = 1
+  WHERE tbe.providers IS NOT NULL;
+#endif
