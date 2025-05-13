@@ -7,6 +7,7 @@ package io.debezium.connector.mongodb.sink;
 
 import static io.debezium.connector.mongodb.TestHelper.cleanDatabase;
 
+import io.debezium.junit.RequiresAssemblyProfile;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -20,6 +21,7 @@ import io.debezium.testing.testcontainers.MongoDbShardedCluster;
 import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
 import io.debezium.testing.testcontainers.util.DockerUtils;
 
+@RequiresAssemblyProfile
 public class SinkConnectorShardedClusterIT extends AbstractShardedMongoConnectorIT implements SinkConnectorIT {
 
     protected static MongoDbDeployment mongo;

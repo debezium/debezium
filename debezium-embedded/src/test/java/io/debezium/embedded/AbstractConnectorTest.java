@@ -41,6 +41,7 @@ import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
+import io.debezium.junit.RequiresAssemblyProfileTestRule;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.data.Field;
@@ -63,6 +64,7 @@ import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.rules.TestRule;
 import org.slf4j.Logger;
@@ -94,8 +96,14 @@ import io.debezium.util.Testing;
  */
 public abstract class AbstractConnectorTest implements Testing {
 
+    @ClassRule
+    public static TestRule requiresAssemblyProfileClassRule = new RequiresAssemblyProfileTestRule();
+
     @Rule
     public TestRule skipTestRule = new SkipTestRule();
+
+    @Rule
+    public TestRule requiresAssemblyProfileRule = new RequiresAssemblyProfileTestRule();
 
     protected static final Path OFFSET_STORE_PATH = Testing.Files.createTestingPath("file-connector-offsets.txt").toAbsolutePath();
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
