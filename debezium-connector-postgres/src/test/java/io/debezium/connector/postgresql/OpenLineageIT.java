@@ -8,7 +8,6 @@ package io.debezium.connector.postgresql;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-import java.net.URI;
 import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
@@ -21,6 +20,7 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.openlineage.DebeziumConfigFacet;
 import io.debezium.openlineage.DebeziumTestTransport;
 import io.openlineage.client.OpenLineage;
 import io.openlineage.client.transports.TransportBuilder;
@@ -70,7 +70,47 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
         assertThat(startEvent.getRun().getFacets().getProcessing_engine().getVersion()).matches("^\\d+\\.\\d+\\.\\d+(\\.Final|-SNAPSHOT)$");
         assertThat(startEvent.getRun().getFacets().getProcessing_engine().getOpenlineageAdapterVersion()).matches("^\\d+\\.\\d+\\.\\d+$");
 
-        assertThat(startEvent.getProducer()).isEqualTo(URI.create("https://github.com/debezium/debezium"));
+        DebeziumConfigFacet debeziumConfigFacet = (DebeziumConfigFacet) startEvent.getRun().getFacets().getAdditionalProperties().get("debezium_config");
+
+        assertThat(debeziumConfigFacet.getConfigs()).contains(
+                entry("connector.class", "io.debezium.connector.postgresql.PostgresConnector"),
+                entry("database.dbname", "postgres"),
+                entry("database.hostname", "localhost"),
+                entry("database.password", "postgres"),
+                entry("database.port", "5432"),
+                entry("database.sslmode", "disable"),
+                entry("database.topic.prefix", "dbserver1"),
+                entry("database.user", "postgres"),
+                entry("errors.max.retries", "-1"),
+                entry("errors.retry.delay.initial.ms", "300"),
+                entry("errors.retry.delay.max.ms", "10000"),
+                entry("internal.task.management.timeout.ms", "180000"),
+                entry("key.converter", "org.apache.kafka.connect.json.JsonConverter"),
+                entry("name", "testing-connector"),
+                entry("offset.flush.interval.ms", "0"),
+                entry("offset.flush.timeout.ms", "5000"),
+                entry("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore"),
+                entry("offset.storage.file.filename", "/home/mvitale/Projects/debezium/debezium-connector-postgres/target/data/file-connector-offsets.txt"),
+                entry("openlineage.integration.config.path",
+                        "/home/mvitale/Projects/debezium/debezium-connector-postgres/target/test-classes/openlineage/openlineage.yml"),
+                entry("openlineage.integration.enabled", "true"),
+                entry("openlineage.integration.job.description", "This connector does cdc for products"),
+                entry("openlineage.integration.owners", "Mario=maintainer,John Doe=Data scientist"),
+                entry("openlineage.integration.tags", "env=prod,team=cdc"),
+                entry("plugin.name", "decoderbufs"),
+                entry("record.processing.order", "ORDERED"),
+                entry("record.processing.shutdown.timeout.ms", "1000"),
+                entry("record.processing.threads", ""),
+                entry("record.processing.with.serial.consumer", "false"),
+                entry("slot.drop.on.stop", "false"),
+                entry("slot.max.retries", "2"),
+                entry("slot.retry.delay.ms", "2000"),
+                entry("snapshot.mode", "initial"),
+                entry("status.update.interval.ms", "100"),
+                entry("topic.prefix", "test_server"),
+                entry("value.converter", "org.apache.kafka.connect.json.JsonConverter"));
+
+        assertThat(startEvent.getProducer().toString()).startsWith("https://github.com/debezium/debezium/");
 
         Map<String, String> tags = startEvent.getJob().getFacets().getTags().getTags()
                 .stream()
