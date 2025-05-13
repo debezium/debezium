@@ -119,7 +119,12 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 if (upsertBufferToFlush != null && !upsertBufferToFlush.isEmpty()) {
                     // When a delete event arrives, update buffer must be flushed to avoid losing the delete
                     // for the same record after its update.
-                    flushBufferWithRetries(collectionId, upsertBufferToFlush);
+                    if (config.isUseReductionBuffer()) {
+                        upsertBufferToFlush.remove(record);
+                    }
+                    else {
+                        flushBufferWithRetries(collectionId, upsertBufferToFlush);
+                    }
                 }
 
                 flushBufferRecordsWithRetries(collectionId, getRecordsToFlush(deleteBufferByTable, collectionId, record));
@@ -129,7 +134,12 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                 if (deleteBufferToFlush != null && !deleteBufferToFlush.isEmpty()) {
                     // When an insert arrives, delete buffer must be flushed to avoid losing an insert for the same record after its deletion.
                     // this because at the end we will always flush inserts before deletes.
-                    flushBufferWithRetries(collectionId, deleteBufferToFlush);
+                    if (config.isUseReductionBuffer()) {
+                        deleteBufferToFlush.remove(record);
+                    }
+                    else {
+                        flushBufferWithRetries(collectionId, deleteBufferToFlush);
+                    }
                 }
 
                 flushBufferRecordsWithRetries(collectionId, getRecordsToFlush(upsertBufferByTable, collectionId, record));

@@ -41,4 +41,10 @@ public interface Buffer {
      * @return the table descriptor
      */
     TableDescriptor getTableDescriptor();
+
+    /**
+     * to remove a {@link JdbcSinkRecord} from the internal buffer and
+     * @param record the Debezium sink record
+     */
+    void remove(JdbcSinkRecord record);
 }
