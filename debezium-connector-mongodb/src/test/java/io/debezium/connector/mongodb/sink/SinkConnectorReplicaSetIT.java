@@ -15,10 +15,12 @@ import org.junit.Test;
 
 import io.debezium.connector.mongodb.AbstractMongoConnectorIT;
 import io.debezium.connector.mongodb.sink.junit.NetworkIsolatedMongoDbDatabaseProvider;
+import io.debezium.junit.RequiresAssemblyProfile;
 import io.debezium.testing.testcontainers.MongoDbDeployment;
 import io.debezium.testing.testcontainers.testhelper.TestInfrastructureHelper;
 import io.debezium.testing.testcontainers.util.DockerUtils;
 
+@RequiresAssemblyProfile
 public class SinkConnectorReplicaSetIT extends AbstractMongoConnectorIT implements SinkConnectorIT {
 
     protected static MongoDbDeployment mongo;
