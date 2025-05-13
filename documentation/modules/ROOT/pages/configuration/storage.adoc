@@ -619,7 +619,7 @@ If a data packet is not transferred with the specified interval, {prodname} clos
 
 |[[schema-history-internal-redis-retry-max-attempts]]<<schema-history-internal-redis-retry-max-attempts, `schema.history.internal.storage.redis.retry.max.attempts`>>
 |10
-Specifies the maximum number of times that {prodname} retries the connection to Redis after connection attempts fail.
+|Specifies the maximum number of times that {prodname} retries the connection to Redis after connection attempts fail.
 
 |[[schema-history-internal-redis-wait-enabled]]<<schema-history-internal-redis-wait-enabled,`schema.history.internal.storage.redis.wait.enabled`>>
 |false
