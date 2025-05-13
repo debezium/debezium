@@ -247,6 +247,6 @@ The SMT processes only those changes that originate in one of the schemas in the
 |[[timescaledb-property-target-topic-prefix]]<<timescaledb-property-target-topic-prefix, `+target.topic.prefix+`>>
 |`timescaledb`
 |The namespace (prefix) of topics to which TimescaleDB events are routed.
-The SMT routes messages into topics named `_<prefix>_._<schema>_._<hypertable|aggregate>_`.
+The SMT routes messages into topics named `+_<prefix>_._<schema>_._<hypertable\|aggregate>_+`.
 
 |===
