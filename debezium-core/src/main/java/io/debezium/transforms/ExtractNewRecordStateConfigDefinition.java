@@ -20,7 +20,8 @@ public class ExtractNewRecordStateConfigDefinition {
         DROP("drop"),
         TOMBSTONE("tombstone"),
         REWRITE("rewrite"),
-        REWRITE_WITH_TOMBSTONE("rewrite-with-tombstone");
+        REWRITE_WITH_TOMBSTONE("rewrite-with-tombstone"),
+        REWRITE_DELETES("rewrite-deletes");
 
         private final String value;
 
@@ -78,7 +79,8 @@ public class ExtractNewRecordStateConfigDefinition {
                     + "drop - Remove the delete event and tombstone from the stream."
                     + "tombstone (default) - For each delete event, leave only a tombstone in the stream."
                     + "rewrite - Remove tombstone from the record, and add a `__deleted` field with the value `true`."
-                    + "rewrite-with-tombstone - Retain tombstone in record and add a `__deleted` field with the value `true`.");
+                    + "rewrite-with-tombstone - Retain tombstone in record and add a `__deleted` field with the value `true`."
+                    + "rewrite-deletes - Convert delete events to tombstone events and drop tombstone events.");
 
     public static final Field ROUTE_BY_FIELD = Field.create("route.by.field")
             .withDisplayName("Route by field name")
