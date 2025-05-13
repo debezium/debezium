@@ -18,6 +18,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.transforms.ExtractField;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.bson.BsonDocument;
+import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
@@ -38,6 +39,7 @@ import io.debezium.transforms.outbox.EventRouterDelegate;
  * Debezium MongoDB Outbox Event Router SMT
  *
  * @author Sungho Hwang
+ * @author Anisha Mohanty
  */
 @Incubating
 public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
@@ -154,6 +156,7 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
     private Schema buildNewAfterSchema(String schemaName, BsonDocument afterBsonDocument) {
         SchemaBuilder afterSchemaBuilder = SchemaBuilder.struct().name(schemaName);
 
+        Map<String, Map<Object, BsonType>> afterSchemaMap = converter.parseBsonDocument(afterBsonDocument);
         for (Map.Entry<String, BsonValue> entry : afterBsonDocument.entrySet()) {
             String entryKey = entry.getKey();
 
@@ -165,11 +168,9 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
                     && entry.getValue() instanceof BsonDocument) {
                 afterSchemaBuilder.field(fieldPayload, Schema.OPTIONAL_STRING_SCHEMA);
             }
-            else {
-                converter.addFieldSchema(entry, afterSchemaBuilder);
-            }
         }
 
+        converter.buildSchema(afterSchemaMap, afterSchemaBuilder);
         return afterSchemaBuilder.build();
     }
 
@@ -196,7 +197,7 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
                 afterStruct.put(fieldPayload, entry.getValue().asDocument().toJson(jsonWriterSettings));
             }
             else {
-                converter.convertRecord(entry, afterSchema, afterStruct);
+                converter.buildStruct(entry, afterSchema, afterStruct);
             }
         }
 
