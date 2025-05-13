@@ -988,4 +988,22 @@ public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
             assertThat(((Struct) unwrapped.value()).getString("name")).isEqualTo("default_str");
         }
     }
+
+    @Test
+    public void testDeleteRewriteToTombstoneAndDropActualTombstone() {
+        try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
+            final Map<String, String> props = new HashMap<>();
+            props.put(HANDLE_TOMBSTONE_DELETES, "rewrite-deletes");
+            transform.configure(props);
+
+            final SourceRecord deleteRecord = createDeleteRecord();
+            final SourceRecord tombstoneRecord = createTombstoneRecord();
+
+            final SourceRecord unwrappedDeleteRecord = transform.apply(deleteRecord);
+            final SourceRecord unwrappedTombstoneRecord = transform.apply(tombstoneRecord);
+
+            assertThat(unwrappedDeleteRecord.value()).isNull();
+            assertThat(unwrappedTombstoneRecord).isNull();
+        }
+    }
 }
