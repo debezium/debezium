@@ -983,6 +983,7 @@ tableSourceItem
     | sequenceFunctionName '(' expression ')' (AS? alias = uid)?                              # sequenceTableItem
     | (selectStatement | '(' parenthesisSubquery = selectStatement ')') AS? alias = uid       # subqueryTableItem
     | '(' tableSources ')'                                                                    # tableSourcesItem
+    | jsonTable                                                                               # atomJsonTable
     ;
 
 indexHint
