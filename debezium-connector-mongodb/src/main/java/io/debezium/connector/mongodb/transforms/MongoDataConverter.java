@@ -222,6 +222,10 @@ public class MongoDataConverter {
      * @param builder the SchemaBuilder to build the schema
      */
     public void schema(String key, Entry<Object, BsonType> entry, SchemaBuilder builder) {
+        if (builder.field(key) != null) {
+            return;
+        }
+
         Object obj = entry.getKey();
         BsonType type = entry.getValue();
         switch (type) {
