@@ -154,8 +154,8 @@
 
   <repositories>
     <repository>
-      <id>sonatype-snapshots</id>
-      <url>https://s01.oss.sonatype.org/content/repositories/snapshots/</url>
+      <id>central-snapshots</id>
+      <url>${publish.snapshot.url}</url>
       <snapshots>
         <updatePolicy>always</updatePolicy>
       </snapshots>
