@@ -9,7 +9,6 @@ import static io.debezium.util.Loggings.maybeRedactSensitiveData;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,7 +34,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
-import io.debezium.Module;
 import io.debezium.annotation.SingleThreadAccess;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.CommonConnectorConfig;
@@ -43,11 +41,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
 import io.debezium.function.LogPositionValidator;
-import io.debezium.openlineage.DebeziumConfigFacet;
-import io.debezium.openlineage.OpenLineageContext;
-import io.debezium.openlineage.OpenLineageEventEmitter;
-import io.debezium.openlineage.OpenLineageJobCreator;
-import io.debezium.openlineage.OpenLineageJobIdentifier;
+import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.notification.channels.NotificationChannel;
 import io.debezium.pipeline.signal.channels.SignalChannelReader;
@@ -67,8 +61,6 @@ import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
 import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
-import io.openlineage.client.OpenLineage;
-import io.openlineage.client.OpenLineageClient;
 
 /**
  * Base class for Debezium's CDC {@link SourceTask} implementations. Provides functionality common to all connectors,
@@ -83,7 +75,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     private static final Duration MAX_POLL_PERIOD_IN_MILLIS = Duration.ofMillis(TimeUnit.HOURS.toMillis(1));
     private Configuration config;
     private List<SignalChannelReader> signalChannels;
-    private OpenLineageEventEmitter openLineageEventEmitter;
 
     protected void validateSchemaHistory(CommonConnectorConfig config, LogPositionValidator logPositionValidator, Offsets<P, O> previousOffsets,
                                          DatabaseSchema schema,
@@ -250,6 +241,10 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         try {
             setTaskState(State.INITIAL);
             config = Configuration.from(props);
+
+            DebeziumOpenLineageEmitter.init(config);
+            DebeziumOpenLineageEmitter.emit(State.INITIAL);
+
             retriableRestartWait = config.getDuration(CommonConnectorConfig.RETRIABLE_RESTART_WAIT, ChronoUnit.MILLIS);
             // need to reset the delay or you only get one delayed restart
             restartDelay = null;
@@ -267,42 +262,9 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
             try {
                 this.coordinator = start(config);
-                // TODO: here should be fired a start event
                 setTaskState(State.RUNNING);
 
-                openLineageEventEmitter = new OpenLineageEventEmitter(config);
-                if (openLineageEventEmitter.isEnabled()) {
-
-                    OpenLineageContext openLineageContext = new OpenLineageContext(
-                            new OpenLineage(openLineageEventEmitter.getProducer()),
-                            config.subset("openlineage.integration", false),
-                            new OpenLineageJobIdentifier(config.getString(CommonConnectorConfig.TOPIC_PREFIX), config.getString(CommonConnectorConfig.TOPIC_PREFIX)));
-
-                    // job
-                    OpenLineage.Job job = new OpenLineageJobCreator(openLineageContext).create();
-
-                    OpenLineage.RunFacets runFacets = openLineageContext.getOpenLineage().newRunFacetsBuilder()
-                            // TODO it will be good if the name could be debezium-connector, debezium-engine, debezium-server
-                            .processing_engine(openLineageContext.getOpenLineage().newProcessingEngineRunFacet(Module.version(), "Debezium",
-                                    getPackageVersion(OpenLineageClient.class)))
-                            .nominalTime(
-                                    openLineageContext.getOpenLineage().newNominalTimeRunFacetBuilder()
-                                            .nominalStartTime(ZonedDateTime.now())
-                                            .nominalEndTime(ZonedDateTime.now())
-                                            .build())
-                            // TODO try to use also the .errorMessage()
-                            .put("debezium_config", new DebeziumConfigFacet(openLineageEventEmitter.getProducer(), config.asMap()))
-                            .build();
-
-                    OpenLineage.RunEvent startEvent = openLineageContext.getOpenLineage().newRunEventBuilder()
-                            .eventType(OpenLineage.RunEvent.EventType.START)
-                            .eventTime(ZonedDateTime.now())
-                            .run(openLineageContext.getOpenLineage().newRun(openLineageContext.getRunUuid(), runFacets))
-                            .job(job)
-                            .build();
-
-                    openLineageEventEmitter.emit(startEvent);
-                }
+                DebeziumOpenLineageEmitter.emit(State.RUNNING);
 
             }
             catch (RetriableException e) {
@@ -315,15 +277,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         finally {
             stateLock.unlock();
         }
-    }
-
-    public static String getPackageVersion(Class<?> clazz) {
-        Package pkg = clazz.getPackage();
-        if (pkg != null) {
-            String version = pkg.getImplementationVersion();
-            return version != null ? version : "Version not found";
-        }
-        return "Version not found";
     }
 
     /**
@@ -535,8 +488,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
             else {
                 setTaskState(State.STOPPED);
-
-                // TODO: here should be fired a completed event
+                DebeziumOpenLineageEmitter.emit(State.STOPPED);
             }
         }
         finally {
