@@ -9,21 +9,17 @@ package io.quarkus.debezium.engine;
 import java.util.concurrent.ExecutorService;
 
 import io.debezium.runtime.Debezium;
-import io.quarkus.arc.Arc;
+import io.quarkus.arc.runtime.BeanContainer;
 import io.quarkus.runtime.ShutdownContext;
 import io.quarkus.runtime.annotations.Recorder;
 
 @Recorder
 public class DebeziumRecorder {
 
-    public void startEngine(ExecutorService executorService, ShutdownContext context) {
-        try (var instance = Arc.container().instance(Debezium.class)) {
-            Debezium debezium = instance.get();
+    public void startEngine(ExecutorService executorService, ShutdownContext context, BeanContainer container) {
+        DebeziumRunner runner = new DebeziumRunner(executorService, container.beanInstance(Debezium.class));
 
-            DebeziumRunner runner = new DebeziumRunner(executorService, debezium);
-            runner.start();
-
-            context.addShutdownTask(runner::shutdown);
-        }
+        runner.start();
+        context.addShutdownTask(runner::shutdown);
     }
 }
