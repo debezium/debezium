@@ -24,11 +24,11 @@ import io.debezium.connector.oracle.logminer.parser.LogMinerDmlEntryImpl;
  * The underlying protocol buffer record consists of the following structure:
  * <pre>
  *     message LogMinerDmlEntryImpl {
- *         required int32 operation = 1;
+ *         int32 operation = 1;
  *         string newValues = 2;
  *         string oldValues = 3;
- *         required string name = 4;
- *         required string owner = 5;
+ *         string name = 4;
+ *         string owner = 5;
  *     }
  * </pre>
  *
@@ -72,7 +72,7 @@ public class LogMinerDmlEntryImplAdapter {
      * @param entry the entry instance, must not be {@code null}
      * @return the operation code, never {@code null}
      */
-    @ProtoField(number = 1, required = true)
+    @ProtoField(number = 1, defaultValue = "0")
     public int getOperation(LogMinerDmlEntryImpl entry) {
         return entry.getEventType().getValue();
     }
@@ -109,7 +109,7 @@ public class LogMinerDmlEntryImplAdapter {
      * @param entry the entry instance, must not be {@code null}
      * @return the table name
      */
-    @ProtoField(number = 4, required = true)
+    @ProtoField(number = 4)
     public String getName(LogMinerDmlEntryImpl entry) {
         return entry.getObjectName();
     }
@@ -120,7 +120,7 @@ public class LogMinerDmlEntryImplAdapter {
      * @param entry the entry instance, must not be {@code null}
      * @return the tablespace name
      */
-    @ProtoField(number = 5, required = true)
+    @ProtoField(number = 5)
     public String getOwner(LogMinerDmlEntryImpl entry) {
         return entry.getObjectOwner();
     }

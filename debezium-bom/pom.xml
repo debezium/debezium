@@ -500,11 +500,18 @@
                 <version>${version.infinispan}</version>
             </dependency>
             <dependency>
+                <groupId>org.infinispan</groupId>
+                <artifactId>infinispan-component-annotations</artifactId>
+                <version>${version.infinispan}</version>
+                <scope>provided</scope>
+            </dependency>
+            <dependency>
                 <groupId>org.infinispan.protostream</groupId>
                 <artifactId>protostream-processor</artifactId>
                 <version>${version.infinispan.protostream}</version>
                 <scope>provided</scope>
             </dependency>
+
 
             <!--Storages -->
             <!-- Redis Storage -->

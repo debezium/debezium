@@ -6,7 +6,7 @@
 package io.debezium.connector.oracle.logminer.buffered.infinispan.marshalling;
 
 import org.infinispan.protostream.SerializationContextInitializer;
-import org.infinispan.protostream.annotations.AutoProtoSchemaBuilder;
+import org.infinispan.protostream.annotations.ProtoSchema;
 
 /**
  * An interface that is used by the ProtoStream framework to designate the adapters and path
@@ -15,6 +15,6 @@ import org.infinispan.protostream.annotations.AutoProtoSchemaBuilder;
  *
  * @author Chris Cranford
  */
-@AutoProtoSchemaBuilder(includeClasses = { TransactionAdapter.class }, schemaFilePath = "/")
+@ProtoSchema(includeClasses = { TransactionAdapter.class }, schemaFilePath = "/")
 public interface TransactionMarshaller extends SerializationContextInitializer {
 }
