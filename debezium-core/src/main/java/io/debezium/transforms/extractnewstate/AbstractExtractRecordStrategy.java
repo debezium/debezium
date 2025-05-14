@@ -10,7 +10,6 @@ import static io.debezium.transforms.ExtractNewRecordStateConfigDefinition.DELET
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.transforms.ExtractField;
 import org.apache.kafka.connect.transforms.InsertField;
-import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +27,6 @@ public abstract class AbstractExtractRecordStrategy<R extends ConnectRecord<R>> 
     protected ExtractField<R> beforeDelegate;
     protected InsertField<R> removedDelegate;
     protected InsertField<R> updatedDelegate;
-    protected Transformation<R> tombstoneDelegate;
     // for mongodb
     protected ExtractField<R> updateDescriptionDelegate;
 
@@ -37,7 +35,6 @@ public abstract class AbstractExtractRecordStrategy<R extends ConnectRecord<R>> 
         beforeDelegate = ConnectRecordUtil.extractBeforeDelegate();
         removedDelegate = ConnectRecordUtil.insertStaticValueDelegate(DELETED_FIELD, "true", replaceNullWithDefault);
         updatedDelegate = ConnectRecordUtil.insertStaticValueDelegate(DELETED_FIELD, "false", replaceNullWithDefault);
-        tombstoneDelegate = ConnectRecordUtil.convertToTombstoneDelegate();
         updateDescriptionDelegate = ConnectRecordUtil.extractUpdateDescriptionDelegate();
     }
 

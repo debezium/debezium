@@ -15,7 +15,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -24,7 +23,6 @@ import org.apache.kafka.connect.transforms.ExtractField;
 import org.apache.kafka.connect.transforms.Flatten;
 import org.apache.kafka.connect.transforms.InsertField;
 import org.apache.kafka.connect.transforms.ReplaceField;
-import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,41 +77,6 @@ public class ConnectRecordUtil {
         delegateConfig.put("replace.null.with.default", replaceNullWithDefault ? "true" : "false");
         insertDelegate.configure(delegateConfig);
         return insertDelegate;
-    }
-
-    /**
-     * Returns a Transformation that sets the record's value and schema to null.
-     */
-    public static <R extends ConnectRecord<R>> Transformation<R> convertToTombstoneDelegate() {
-        return new Transformation<R>() {
-            @Override
-            public R apply(R record) {
-                LOGGER.info("Applying transformation to convert to tombstone");
-                return record.newRecord(
-                        record.topic(),
-                        record.kafkaPartition(),
-                        record.keySchema(),
-                        record.key(),
-                        null,
-                        null,
-                        record.timestamp());
-            }
-
-            @Override
-            public ConfigDef config() {
-                return new ConfigDef();
-            }
-
-            @Override
-            public void configure(Map<String, ?> configs) {
-                // No configuration required
-            }
-
-            @Override
-            public void close() {
-                // No cleanup required
-            }
-        };
     }
 
     public static <R extends ConnectRecord<R>> ReplaceField<R> dropFieldFromValueDelegate(String field) {
