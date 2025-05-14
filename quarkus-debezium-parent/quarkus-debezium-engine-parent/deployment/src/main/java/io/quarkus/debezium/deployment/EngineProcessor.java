@@ -47,6 +47,7 @@ import io.debezium.snapshot.spi.SnapshotLock;
 import io.debezium.transforms.ExtractNewRecordState;
 import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
 import io.quarkus.arc.processor.DotNames;
+import io.quarkus.debezium.deployment.items.DebeziumConnectorBuildItem;
 import io.quarkus.debezium.engine.DebeziumRecorder;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
