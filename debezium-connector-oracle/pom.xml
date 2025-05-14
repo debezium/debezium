@@ -530,9 +530,6 @@
                             <testExcludes>
                                 <exclude>**/*IT</exclude>
                             </testExcludes>
-                            <testIncludes>
-                                <include>**/io/debezium/connector/oracle/rest/**</include>
-                            </testIncludes>
                         </configuration>
                     </plugin>
                     <plugin>

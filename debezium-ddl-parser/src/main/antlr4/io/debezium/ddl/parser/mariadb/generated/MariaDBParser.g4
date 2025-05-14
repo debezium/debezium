@@ -535,16 +535,16 @@ tableOption
     | AUTO_INCREMENT '='? decimalLiteral                            # tableOptionAutoIncrement
     | AVG_ROW_LENGTH '='? decimalLiteral                            # tableOptionAverage
     | DEFAULT? charSet '='? (charsetName | DEFAULT)                 # tableOptionCharset
-    | (CHECKSUM | PAGE_CHECKSUM) '='? boolValue = ('0' | '1')       # tableOptionChecksum
+    | (CHECKSUM | PAGE_CHECKSUM) '='? booleanValue                  # tableOptionChecksum
     | DEFAULT? COLLATE '='? collationName                           # tableOptionCollate
     | COMMENT '='? STRING_LITERAL                                   # tableOptionComment
     | COMPRESSION '='? (STRING_LITERAL | ID)                        # tableOptionCompression
     | CONNECTION '='? STRING_LITERAL                                # tableOptionConnection
     | (DATA | INDEX) DIRECTORY '='? STRING_LITERAL                  # tableOptionDataDirectory
-    | DELAY_KEY_WRITE '='? boolValue = ('0' | '1')                  # tableOptionDelay
+    | DELAY_KEY_WRITE '='? booleanValue                             # tableOptionDelay
     | ENCRYPTION '='? STRING_LITERAL                                # tableOptionEncryption
     | encryptedLiteral '='? (YES | NO)                              # tableOptionEncrypted
-    | (PAGE_COMPRESSED | STRING_LITERAL) '='? ('0' | '1')           # tableOptionPageCompressed
+    | (PAGE_COMPRESSED | STRING_LITERAL) '='? booleanValue          # tableOptionPageCompressed
     | (PAGE_COMPRESSION_LEVEL | STRING_LITERAL) '='? decimalLiteral # tableOptionPageCompressionLevel
     | ENCRYPTION_KEY_ID '='? decimalLiteral                         # tableOptionEncryptionKeyId
     | INDEX DIRECTORY '='? STRING_LITERAL                           # tableOptionIndexDirectory
@@ -565,8 +565,8 @@ tableOption
     )                                                             # tableOptionRowFormat
     | START TRANSACTION                                           # tableOptionStartTransaction
     | SECONDARY_ENGINE_ATTRIBUTE '='? STRING_LITERAL              # tableOptionSecondaryEngineAttribute
-    | STATS_AUTO_RECALC '='? extBoolValue = (DEFAULT | '0' | '1') # tableOptionRecalculation
-    | STATS_PERSISTENT '='? extBoolValue = (DEFAULT | '0' | '1')  # tableOptionPersistent
+    | STATS_AUTO_RECALC '='? (DEFAULT | booleanValue)             # tableOptionRecalculation
+    | STATS_PERSISTENT '='? (DEFAULT | booleanValue)              # tableOptionPersistent
     | STATS_SAMPLE_PAGES '='? (DEFAULT | decimalLiteral)          # tableOptionSamplePage
     | TABLESPACE uid tablespaceStorage?                           # tableOptionTablespace
     | TABLE_TYPE '=' tableType                                    # tableOptionTableType
@@ -2246,6 +2246,15 @@ booleanLiteral
     | FALSE
     ;
 
+booleanValue
+    : '0'
+    | '1'
+    | ON
+    | OFF
+    | STRING_LITERAL
+    ;
+
+
 hexadecimalLiteral
     : STRING_CHARSET_NAME? HEXADECIMAL_LITERAL
     ;
@@ -3041,6 +3050,7 @@ keywordsCanBeId
     | OFFLINE
     | OFFSET
     | OF
+    | OFF
     | OJ
     | OLD_PASSWORD
     | ONE

@@ -180,6 +180,48 @@ CREATE TABLE `test_table\\`(id INT(11) NOT NULL, PRIMARY KEY (`id`)) ENGINE = IN
 CREATE TABLE `\\test_table`(id INT(11) NOT NULL, PRIMARY KEY (`id`)) ENGINE = INNODB;
 CREATE TABLE `\\test\\_table\\`(id INT(11) NOT NULL, PRIMARY KEY (`id`)) ENGINE = INNODB;
 
+-- Using string literal `PAGE_COMPRESSED` as `ON`
+CREATE TABLE `product_labels_relation` (
+  `id_label` int(11) NOT NULL,
+  `id_product` int(11) NOT NULL,
+  `generated` tinyint(4) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id_label`,`id_product`),
+  KEY `id_product` (`id_product`),
+  CONSTRAINT `product_labels_relation_ibfk_1` FOREIGN KEY (`id_label`) REFERENCES `labels` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `product_labels_relation_ibfk_2` FOREIGN KEY (`id_product`) REFERENCES `products` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci `PAGE_COMPRESSED`= `ON`;
+
+-- Using boolean literal `PAGE_COMPRESSED`as ON
+CREATE TABLE `products_labels` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `description` text NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci `PAGE_COMPRESSED`= ON;
+
+-- Using boolean literal `PAGE_COMPRESSED` as OFF
+CREATE TABLE `products_labels` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `description` text NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci `PAGE_COMPRESSED`= OFF;
+
+-- Using `PAGE_COMPRESSED` as 1
+CREATE TABLE `products_labels` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `description` text NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci `PAGE_COMPRESSED`= 1;
+
+-- Using `PAGE_COMPRESSED` as 0
+CREATE TABLE `products_labels` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `description` text NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci `PAGE_COMPRESSED`= 0;
 #end
 #begin
 -- Rename table
