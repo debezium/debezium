@@ -76,6 +76,8 @@ public abstract class BinlogCloudEventsConverterIT<C extends SourceConnector>
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Override

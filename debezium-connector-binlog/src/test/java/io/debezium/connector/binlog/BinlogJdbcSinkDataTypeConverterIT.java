@@ -52,6 +52,8 @@ public abstract class BinlogJdbcSinkDataTypeConverterIT<C extends SourceConnecto
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

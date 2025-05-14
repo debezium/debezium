@@ -54,6 +54,8 @@ public abstract class BinlogFixedLengthBinaryColumnIT<C extends SourceConnector>
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

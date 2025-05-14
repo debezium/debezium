@@ -63,6 +63,8 @@ public abstract class BinlogReaderBufferIT<C extends SourceConnector> extends Ab
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

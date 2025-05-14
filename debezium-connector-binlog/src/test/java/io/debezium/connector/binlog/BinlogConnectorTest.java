@@ -29,4 +29,6 @@ public interface BinlogConnectorTest<C extends SourceConnector> {
         throw new UnsupportedOperationException("not support operation for the datasource");
     }
 
+    void dropAllDatabases();
+
 }

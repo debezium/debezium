@@ -52,6 +52,8 @@ public abstract class BinlogDateTimeInKeyIT<C extends SourceConnector> extends A
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

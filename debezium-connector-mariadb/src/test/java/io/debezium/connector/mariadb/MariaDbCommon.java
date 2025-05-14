@@ -47,4 +47,9 @@ public interface MariaDbCommon extends BinlogConnectorTest<MariaDbConnector> {
     default boolean isMariaDb() {
         return true;
     }
+
+    @Override
+    default void dropAllDatabases() {
+        MariaDbTestConnection.dropAllDatabases();
+    }
 }

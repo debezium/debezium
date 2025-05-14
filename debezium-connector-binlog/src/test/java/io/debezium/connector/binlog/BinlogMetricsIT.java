@@ -18,7 +18,6 @@ import org.junit.Before;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotMode;
-import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.pipeline.AbstractMetricsTest;
@@ -28,7 +27,7 @@ import io.debezium.storage.file.history.FileSchemaHistory;
 /**
  * @author Chris Cranford
  */
-public abstract class BinlogMetricsIT<C extends SourceConnector> extends AbstractMetricsTest<C> {
+public abstract class BinlogMetricsIT<C extends SourceConnector> extends AbstractMetricsTest<C> implements BinlogConnectorTest<C> {
 
     private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-metrics.txt").toAbsolutePath();
     private static final String SERVER_NAME = "myserver";
@@ -36,10 +35,6 @@ public abstract class BinlogMetricsIT<C extends SourceConnector> extends Abstrac
 
     private static final String INSERT1 = "INSERT INTO simple (val) VALUES (25);";
     private static final String INSERT2 = "INSERT INTO simple (val) VALUES (50);";
-
-    protected abstract String getConnectorName();
-
-    protected abstract BinlogTestConnection getTestDatabaseConnection(String databaseName);
 
     @Override
     protected String connector() {
@@ -106,6 +101,8 @@ public abstract class BinlogMetricsIT<C extends SourceConnector> extends Abstrac
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     protected ObjectName getSnapshotMetricsObjectName() throws MalformedObjectNameException {

@@ -50,6 +50,8 @@ public abstract class BinlogSchemaNameAdjustmentModeIT<C extends SourceConnector
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

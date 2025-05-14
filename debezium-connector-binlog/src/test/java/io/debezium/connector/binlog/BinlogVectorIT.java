@@ -57,6 +57,8 @@ public abstract class BinlogVectorIT<C extends SourceConnector> extends Abstract
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     /*

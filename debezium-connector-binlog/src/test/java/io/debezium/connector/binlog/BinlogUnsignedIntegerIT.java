@@ -58,6 +58,8 @@ public abstract class BinlogUnsignedIntegerIT<C extends SourceConnector> extends
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

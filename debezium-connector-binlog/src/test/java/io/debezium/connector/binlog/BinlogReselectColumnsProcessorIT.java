@@ -52,6 +52,8 @@ public abstract class BinlogReselectColumnsProcessorIT<C extends SourceConnector
             connection.close();
         }
         Files.delete(SCHEMA_HISTORY_PATH);
+
+        dropAllDatabases();
     }
 
     @Override

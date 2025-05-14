@@ -50,6 +50,8 @@ public abstract class BinlogRestartIT<C extends SourceConnector> extends Abstrac
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

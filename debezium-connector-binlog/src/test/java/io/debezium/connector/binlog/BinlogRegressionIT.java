@@ -85,6 +85,8 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

@@ -14,6 +14,7 @@ import java.sql.Types;
 import java.util.List;
 
 import org.apache.kafka.connect.source.SourceConnector;
+import org.junit.After;
 import org.junit.Test;
 
 import io.debezium.connector.binlog.util.BinlogTestConnection;
@@ -29,6 +30,11 @@ import io.debezium.relational.Tables;
  */
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, patch = 5, reason = "MySQL 5.5 does not support CURRENT_TIMESTAMP on DATETIME and only a single column can specify default CURRENT_TIMESTAMP, lifted in MySQL 5.6.5")
 public abstract class BinlogMetadataIT<C extends SourceConnector> extends AbstractBinlogConnectorIT<C> {
+
+    @After
+    public void afterEach() {
+        dropAllDatabases();
+    }
 
     /**
      * Loads the {@link Tables} definition by reading JDBC metadata. Note that some characteristics, such as whether columns

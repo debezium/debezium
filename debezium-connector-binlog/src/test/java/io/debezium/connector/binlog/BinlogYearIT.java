@@ -53,6 +53,8 @@ public abstract class BinlogYearIT<C extends SourceConnector> extends AbstractBi
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

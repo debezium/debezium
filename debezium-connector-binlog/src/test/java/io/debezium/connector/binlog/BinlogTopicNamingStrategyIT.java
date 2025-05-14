@@ -62,6 +62,8 @@ public abstract class BinlogTopicNamingStrategyIT<C extends SourceConnector> ext
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

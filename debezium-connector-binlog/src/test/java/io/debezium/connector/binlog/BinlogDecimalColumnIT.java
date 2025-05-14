@@ -56,6 +56,8 @@ public abstract class BinlogDecimalColumnIT<C extends SourceConnector> extends A
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

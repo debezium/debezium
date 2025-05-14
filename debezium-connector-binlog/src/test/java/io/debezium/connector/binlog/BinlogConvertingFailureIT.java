@@ -62,6 +62,8 @@ public abstract class BinlogConvertingFailureIT<C extends SourceConnector> exten
         finally {
             Files.delete(DB_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

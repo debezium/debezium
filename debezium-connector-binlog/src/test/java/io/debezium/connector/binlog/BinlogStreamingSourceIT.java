@@ -101,6 +101,8 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     protected int consumeAtLeast(int minNumber) throws InterruptedException {

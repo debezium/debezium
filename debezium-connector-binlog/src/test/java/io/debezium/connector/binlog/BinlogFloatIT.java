@@ -57,6 +57,8 @@ public abstract class BinlogFloatIT<C extends SourceConnector> extends AbstractB
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

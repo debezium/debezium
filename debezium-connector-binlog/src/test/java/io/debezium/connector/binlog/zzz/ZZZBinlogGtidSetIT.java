@@ -80,6 +80,8 @@ public abstract class ZZZBinlogGtidSetIT<C extends SourceConnector> extends Abst
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     private boolean isGtidModeEnabled() throws SQLException {

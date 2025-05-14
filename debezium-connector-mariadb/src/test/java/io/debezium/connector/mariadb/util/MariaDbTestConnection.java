@@ -6,6 +6,9 @@
 package io.debezium.connector.mariadb.util;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import io.debezium.connector.binlog.util.BinlogTestConnection;
@@ -118,6 +121,27 @@ public class MariaDbTestConnection extends BinlogTestConnection {
 
     public static MariaDbTestConnection forTestReplicaDatabase(String databaseName) {
         return new MariaDbTestConnection(getReplicaJdbcConfig(databaseName).build());
+    }
+
+    /**
+     * Drops all user-created databases
+     */
+    public static void dropAllDatabases() {
+        try (JdbcConnection connection = forTestDatabase("mysql", Collections.emptyMap())) {
+            final List<String> statements = connection.queryAndMap("SELECT CONCAT('DROP DATABASE `', schema_name, '`;') " +
+                    "from information_schema.schemata where schema_name not in " +
+                    "('mysql','information_schema','performance_schema','sys','testing','emptydb');", rs -> {
+                final List<String> ddl = new ArrayList<>();
+                while (rs.next()) {
+                    ddl.add(rs.getString(1));
+                }
+                return ddl;
+            });
+            connection.execute(statements.toArray(new String[0]));
+        }
+        catch (SQLException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
 }
