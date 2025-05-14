@@ -54,7 +54,7 @@ public abstract class AbstractType implements Type {
             case FLOAT64:
                 return Double.toString((double) value);
             case STRING:
-                return "'" + value + "'";
+                return "'" + ((String) value).replaceAll("(?<!')'(?!')", "''") + "'";
             case BOOLEAN:
                 return dialect.getFormattedBoolean((boolean) value);
         }
