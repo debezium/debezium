@@ -28,7 +28,7 @@ import io.debezium.relational.TableId;
  * <pre>
  *      message XmlBeginEvent {
  *          // structure of the super type, DmlEventAdapter
- *          required string columnName = 8;
+ *          string columnName = 8;
  *      }
  * </pre>
  *
@@ -63,7 +63,7 @@ public class XmlBeginEventAdapter extends DmlEventAdapter {
      * @param event the event instance, must not be {@code null}
      * @return the column name
      */
-    @ProtoField(number = 8, required = true)
+    @ProtoField(number = 8)
     public String getColumnName(XmlBeginEvent event) {
         return event.getColumnName();
     }

@@ -28,8 +28,8 @@ import io.debezium.relational.TableId;
  * <pre>
  *     message SelectLobLocatorEvent {
  *         // structure of the super type, DmlEventAdapter
- *         required string columnName = 8;
- *         required boolean binary = 9;
+ *         string columnName = 8;
+ *         boolean binary = 9;
  *     }
  * </pre>
  *
@@ -65,7 +65,7 @@ public class SelectLobLocatorEventAdapter extends DmlEventAdapter {
      * @param event the event instance, must not be {@code null}
      * @return the column name
      */
-    @ProtoField(number = 8, required = true)
+    @ProtoField(number = 8)
     public String getColumnName(SelectLobLocatorEvent event) {
         return event.getColumnName();
     }
@@ -76,7 +76,7 @@ public class SelectLobLocatorEventAdapter extends DmlEventAdapter {
      * @param event the event instance, must not be {@code null}
      * @return the binary data flag
      */
-    @ProtoField(number = 9, required = true)
+    @ProtoField(number = 9)
     public Boolean getBinary(SelectLobLocatorEvent event) {
         return event.isBinary();
     }

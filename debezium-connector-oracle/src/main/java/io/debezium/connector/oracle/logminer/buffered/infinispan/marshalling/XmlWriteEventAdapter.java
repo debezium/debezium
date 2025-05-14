@@ -59,7 +59,7 @@ public class XmlWriteEventAdapter extends LogMinerEventAdapter {
      * @param event the event instance, must not be {@code null}
      * @return the length, never {@code null}
      */
-    @ProtoField(number = 8, required = true)
+    @ProtoField(number = 8)
     public Integer getLength(XmlWriteEvent event) {
         return event.getLength();
     }

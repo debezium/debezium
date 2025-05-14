@@ -50,7 +50,7 @@ public class TransactionAdapter {
      * @param transaction the transaction instance, must not be {@code null}
      * @return the transaction identifier, never {@code null}
      */
-    @ProtoField(number = 1, required = true)
+    @ProtoField(number = 1)
     public String getTransactionId(InfinispanTransaction transaction) {
         return transaction.getTransactionId();
     }
@@ -61,7 +61,7 @@ public class TransactionAdapter {
      * @param transaction the transaction instance, must not be {@code null}
      * @return the starting system change number, never {@code null}
      */
-    @ProtoField(number = 2, required = true)
+    @ProtoField(number = 2)
     public String getScn(InfinispanTransaction transaction) {
         // We intentionally serialize the Scn class as a string to the protocol buffer datastore
         // and so the factory method also accepts a string parameter and converts the value to a
@@ -75,7 +75,7 @@ public class TransactionAdapter {
      * @param transaction the transaction instance, must not be {@code null}
      * @return the starting time of the transaction, never {@code null}
      */
-    @ProtoField(number = 3, required = true)
+    @ProtoField(number = 3)
     public String getChangeTime(InfinispanTransaction transaction) {
         return transaction.getChangeTime().toString();
     }
