@@ -46,6 +46,7 @@ import io.debezium.snapshot.mode.WhenNeededSnapshotter;
 import io.debezium.snapshot.spi.SnapshotLock;
 import io.debezium.transforms.ExtractNewRecordState;
 import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
+import io.quarkus.arc.deployment.BeanDiscoveryFinishedBuildItem;
 import io.quarkus.arc.processor.DotNames;
 import io.quarkus.debezium.deployment.items.DebeziumConnectorBuildItem;
 import io.quarkus.debezium.engine.DebeziumRecorder;
@@ -53,7 +54,6 @@ import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.ExecutionTime;
 import io.quarkus.deployment.annotations.Record;
-import io.quarkus.deployment.builditem.ApplicationStartBuildItem;
 import io.quarkus.deployment.builditem.ExecutorBuildItem;
 import io.quarkus.deployment.builditem.ShutdownContextBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.NativeImageConfigBuildItem;
@@ -78,11 +78,11 @@ public class EngineProcessor {
 
     @BuildStep
     @Record(ExecutionTime.RUNTIME_INIT)
-    void startEngine(ApplicationStartBuildItem ignore,
+    void startEngine(
+                     BeanDiscoveryFinishedBuildItem ignore,
                      DebeziumRecorder recorder,
                      ExecutorBuildItem executorBuildItem,
                      ShutdownContextBuildItem shutdownContextBuildItem) {
-
         recorder.startEngine(executorBuildItem.getExecutorProxy(), shutdownContextBuildItem);
     }
 
