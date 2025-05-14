@@ -131,12 +131,12 @@ public class MariaDbTestConnection extends BinlogTestConnection {
             final List<String> statements = connection.queryAndMap("SELECT CONCAT('DROP DATABASE `', schema_name, '`;') " +
                     "from information_schema.schemata where schema_name not in " +
                     "('mysql','information_schema','performance_schema','sys','testing','emptydb');", rs -> {
-                final List<String> ddl = new ArrayList<>();
-                while (rs.next()) {
-                    ddl.add(rs.getString(1));
-                }
-                return ddl;
-            });
+                        final List<String> ddl = new ArrayList<>();
+                        while (rs.next()) {
+                            ddl.add(rs.getString(1));
+                        }
+                        return ddl;
+                    });
             connection.execute(statements.toArray(new String[0]));
         }
         catch (SQLException e) {
