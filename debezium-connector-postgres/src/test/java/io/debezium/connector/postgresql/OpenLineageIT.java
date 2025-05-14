@@ -56,11 +56,83 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
 
-        assertThat(debeziumTestTransport.getRunEvents().size()).isEqualTo(1);
-        assertThat(debeziumTestTransport.getJobEvents().size()).isEqualTo(0);
-        assertThat(debeziumTestTransport.getDatasetEvents().size()).isEqualTo(0);
+        Optional<OpenLineage.RunEvent> runEvent = debeziumTestTransport.getRunEvents().stream()
+                .filter(e -> e.getEventType() == OpenLineage.RunEvent.EventType.START)
+                .findFirst();
 
-        OpenLineage.RunEvent startEvent = debeziumTestTransport.getRunEvents().get(0);
+        assertThat(runEvent).isPresent();
+
+        assertEventContainsExpectedData(runEvent.get());
+
+    }
+
+    @Test
+    public void shouldProduceOpenLineageRunningEvent() throws Exception {
+        // TestHelper.execute(SETUP_TABLES_STMT);
+
+        DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with("openlineage.integration.enabled", true)
+                .with("openlineage.integration.config.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
+                .with("openlineage.integration.job.description", "This connector does cdc for products")
+                .with("openlineage.integration.tags", "env=prod,team=cdc")
+                .with("openlineage.integration.owners", "Mario=maintainer,John Doe=Data scientist");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        Optional<OpenLineage.RunEvent> runEvent = debeziumTestTransport.getRunEvents().stream()
+                .filter(e -> e.getEventType() == OpenLineage.RunEvent.EventType.RUNNING)
+                .findFirst();
+
+        assertThat(runEvent).isPresent();
+
+        assertEventContainsExpectedData(runEvent.get());
+
+    }
+
+    @Test
+    public void shouldProduceOpenLineageCompleteEvent() throws Exception {
+        // TestHelper.execute(SETUP_TABLES_STMT);
+
+        DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with("openlineage.integration.enabled", true)
+                .with("openlineage.integration.config.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
+                .with("openlineage.integration.job.description", "This connector does cdc for products")
+                .with("openlineage.integration.tags", "env=prod,team=cdc")
+                .with("openlineage.integration.owners", "Mario=maintainer,John Doe=Data scientist");
+
+        start(PostgresConnector.class, configBuilder.build());
+        assertConnectorIsRunning();
+
+        stopConnector(b -> {
+            Optional<OpenLineage.RunEvent> runEvent = debeziumTestTransport.getRunEvents().stream()
+                    .filter(e -> e.getEventType() == OpenLineage.RunEvent.EventType.COMPLETE)
+                    .findFirst();
+
+            assertThat(runEvent).isPresent();
+
+            assertEventContainsExpectedData(runEvent.get());
+        });
+
+    }
+
+    private static DebeziumTestTransport getDebeziumTestTransport() {
+        ServiceLoader<TransportBuilder> loader = ServiceLoader.load(TransportBuilder.class);
+        Optional<TransportBuilder> optionalBuilder = StreamSupport.stream(loader.spliterator(), false)
+                .filter(b -> b.getType().equals("debezium"))
+                .findFirst();
+
+        return (DebeziumTestTransport) optionalBuilder.orElseThrow(
+                () -> new IllegalArgumentException("Failed to find TransportBuilder")).build(null);
+    }
+
+    private static void assertEventContainsExpectedData(OpenLineage.RunEvent startEvent) {
 
         assertThat(startEvent.getJob().getNamespace()).isEqualTo("test_server");
         assertThat(startEvent.getJob().getName()).isEqualTo("test_server");
@@ -127,16 +199,5 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                         OpenLineage.OwnershipJobFacetOwners::getType));
 
         assertThat(ownership).contains(entry("Mario", "maintainer"), entry("John Doe", "Data scientist"));
-
-    }
-
-    private static DebeziumTestTransport getDebeziumTestTransport() {
-        ServiceLoader<TransportBuilder> loader = ServiceLoader.load(TransportBuilder.class);
-        Optional<TransportBuilder> optionalBuilder = StreamSupport.stream(loader.spliterator(), false)
-                .filter(b -> b.getType().equals("debezium"))
-                .findFirst();
-
-        return (DebeziumTestTransport) optionalBuilder.orElseThrow(
-                () -> new IllegalArgumentException("Failed to find TransportBuilder")).build(null);
     }
 }
