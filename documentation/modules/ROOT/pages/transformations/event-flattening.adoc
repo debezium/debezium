@@ -272,6 +272,8 @@ This setting provides another way to indicate that the record has been deleted.
 
 `rewrite-with-tombstone`:: The SMT behaves as it does when you select the `rewrite` option, except that it also retains `TOMBSTONE` records.
 
+`rewrite-deletes`:: The SMT removes the `TOMBSTONE` records from the stream and converts `DELETE` records into `TOMBSTONE` records.
+
 |[[extract-new-record-state-route-by-field]]xref:extract-new-record-state-route-by-field[`route.by.field`]
 |
 |To use row data to determine the topic to route the record to, set this option to an `after` field attribute. The SMT routes the record to the topic whose name matches the value of the specified `after` field attribute. For a `DELETE` operation, set this option to a `before` field attribute. +
