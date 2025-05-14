@@ -61,12 +61,12 @@ public class DefaultDeleteHandlingStrategy<R extends ConnectRecord<R>> extends A
             case REWRITE_DELETES:
                 LOGGER.trace("Delete message {} requested to be converted to tombstone", maybeRedactSensitiveData(record.key()));
                 return record.newRecord(record.topic(),
-                                        record.kafkaPartition(),
-                                        record.keySchema(),
-                                        record.key(),
-                                        null, // value schema is null for tombstone
-                                        null, // value is null for tombstone
-                                        record.timestamp());
+                        record.kafkaPartition(),
+                        record.keySchema(),
+                        record.key(),
+                        null, // value schema is null for tombstone
+                        null, // value is null for tombstone
+                        record.timestamp());
             case REWRITE:
             case REWRITE_WITH_TOMBSTONE:
                 LOGGER.trace("Delete message {} requested to be rewritten", maybeRedactSensitiveData(record.key()));
