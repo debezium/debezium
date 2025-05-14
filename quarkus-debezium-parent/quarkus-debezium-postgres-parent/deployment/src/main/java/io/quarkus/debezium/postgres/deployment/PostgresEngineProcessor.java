@@ -12,7 +12,7 @@ import io.debezium.connector.postgresql.snapshot.lock.NoSnapshotLock;
 import io.debezium.connector.postgresql.snapshot.lock.SharedSnapshotLock;
 import io.debezium.connector.postgresql.snapshot.query.SelectAllSnapshotQuery;
 import io.quarkus.datasource.deployment.spi.DevServicesDatasourceResultBuildItem;
-import io.quarkus.debezium.deployment.DebeziumConnectorBuildItem;
+import io.quarkus.debezium.deployment.items.DebeziumConnectorBuildItem;
 import io.quarkus.debezium.engine.PostgresEngineProducer;
 import io.quarkus.deployment.IsNormal;
 import io.quarkus.deployment.annotations.BuildProducer;
