@@ -12,7 +12,7 @@ import io.quarkus.builder.item.MultiBuildItem;
 /**
  * BuildItem for Debezium engine creation
  * Combines Engine name with producer
- *
+ * <p>
  * Connectors are expected to return this build item to instrument how create the engine.
  */
 public final class DebeziumConnectorBuildItem extends MultiBuildItem {
