@@ -11,7 +11,7 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 
 import io.debezium.runtime.Debezium;
-import io.debezium.runtime.DebeziumManifest;
+import io.debezium.runtime.DebeziumStatus;
 
 @Path("/api/debezium")
 public class DebeziumEndpoint {
@@ -20,8 +20,8 @@ public class DebeziumEndpoint {
     private Debezium debezium;
 
     @GET
-    @Path("manifest")
-    public DebeziumManifest getManifest() {
-        return debezium.manifest();
+    @Path("status")
+    public DebeziumStatus getState() {
+        return debezium.status();
     }
 }

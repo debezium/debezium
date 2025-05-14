@@ -6,6 +6,7 @@
 
 package io.quarkus.debezium.postgres.deployment;
 
+import static io.quarkus.debezium.engine.PostgresEngineProducer.POSTGRES;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.given;
 
@@ -13,7 +14,6 @@ import java.util.concurrent.TimeUnit;
 
 import jakarta.inject.Inject;
 
-import org.assertj.core.api.Assertions;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
 import org.junit.jupiter.api.DisplayName;
@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.debezium.runtime.Debezium;
-import io.debezium.runtime.DebeziumManifest;
+import io.debezium.runtime.DebeziumStatus;
 import io.quarkus.runtime.Application;
 import io.quarkus.test.QuarkusUnitTest;
 
@@ -48,20 +48,21 @@ public class DebeziumDevModeLifeCycleTest {
     @Test
     @DisplayName("debezium should be integrated in the quarkus dev lifecycle")
     void shouldDebeziumBeIntegratedInTheQuarkusDevLifeCycle() {
-        Assertions.assertThat(debezium.configuration().get("connector.class"))
+        assertThat(debezium.configuration().get("connector.class"))
                 .isEqualTo("io.debezium.connector.postgresql.PostgresConnector");
 
         given().await()
                 .atMost(10, TimeUnit.SECONDS)
-                .untilAsserted(() -> Assertions.assertThat(debezium.manifest())
-                        .isEqualTo(new DebeziumManifest(new DebeziumManifest.Connector("io.debezium.connector.postgresql.PostgresConnector"),
-                                new DebeziumManifest.Status(DebeziumManifest.Status.State.POLLING))));
+                .untilAsserted(() -> assertThat(debezium.status())
+                        .isEqualTo(new DebeziumStatus(DebeziumStatus.State.POLLING)));
+
+        assertThat(debezium.connector()).isEqualTo(POSTGRES);
 
         Application.currentApplication().close();
 
         given().await()
                 .atMost(30, TimeUnit.SECONDS)
-                .untilAsserted(() -> Assertions.assertThat(debezium.manifest().status())
-                        .isEqualTo(new DebeziumManifest.Status(DebeziumManifest.Status.State.STOPPED)));
+                .untilAsserted(() -> assertThat(debezium.status())
+                        .isEqualTo(new DebeziumStatus(DebeziumStatus.State.STOPPED)));
     }
 }

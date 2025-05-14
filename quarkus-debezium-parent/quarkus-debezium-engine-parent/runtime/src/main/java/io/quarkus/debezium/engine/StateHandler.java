@@ -7,12 +7,12 @@
 package io.quarkus.debezium.engine;
 
 import io.debezium.engine.DebeziumEngine;
-import io.debezium.runtime.DebeziumManifest;
+import io.debezium.runtime.DebeziumStatus;
 
-public interface ManifestHandler {
+public interface StateHandler {
     DebeziumEngine.ConnectorCallback connectorCallback();
 
     DebeziumEngine.CompletionCallback completionCallback();
 
-    DebeziumManifest get();
+    DebeziumStatus get();
 }

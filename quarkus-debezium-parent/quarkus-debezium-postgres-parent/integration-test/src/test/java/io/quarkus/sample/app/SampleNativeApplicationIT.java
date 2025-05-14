@@ -12,7 +12,7 @@ import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 import org.junit.jupiter.api.Test;
 
-import io.debezium.runtime.DebeziumManifest;
+import io.debezium.runtime.DebeziumStatus;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 
 @QuarkusIntegrationTest
@@ -21,12 +21,10 @@ public class SampleNativeApplicationIT {
     @Test
     void smokeTest() {
         await().untilAsserted(() -> assertThat(
-                get("/api/debezium/manifest")
+                get("/api/debezium/status")
                         .then()
                         .statusCode(200)
-                        .extract().body().as(DebeziumManifest.class))
-                .isEqualTo(new DebeziumManifest(
-                        new DebeziumManifest.Connector("io.debezium.connector.postgresql.PostgresConnector"),
-                        new DebeziumManifest.Status(DebeziumManifest.Status.State.POLLING))));
+                        .extract().body().as(DebeziumStatus.class))
+                .isEqualTo(new DebeziumStatus(DebeziumStatus.State.POLLING)));
     }
 }
