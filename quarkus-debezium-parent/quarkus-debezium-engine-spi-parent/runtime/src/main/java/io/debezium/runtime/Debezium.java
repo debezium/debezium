@@ -34,5 +34,10 @@ public interface Debezium {
     /**
      * @return engine's status information
      */
-    DebeziumManifest manifest();
+    DebeziumStatus status();
+
+    /**
+     * @return engine's connector
+     */
+    Connector connector();
 }

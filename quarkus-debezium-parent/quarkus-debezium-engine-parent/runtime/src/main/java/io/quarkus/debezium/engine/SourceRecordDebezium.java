@@ -20,7 +20,8 @@ import io.debezium.embedded.Connect;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.Signaler;
 import io.debezium.engine.format.ChangeEventFormat;
-import io.debezium.runtime.DebeziumManifest;
+import io.debezium.runtime.Connector;
+import io.debezium.runtime.DebeziumStatus;
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
 
 @ApplicationScoped
@@ -29,12 +30,13 @@ class SourceRecordDebezium extends RunnableDebezium {
 
     private final DebeziumEngineConfiguration debeziumEngineConfiguration;
     private final DebeziumEngine<?> engine;
-    private final ManifestHandler manifestHandler;
+    private final Connector connector;
+    private final StateHandler stateHandler;
 
     SourceRecordDebezium(DebeziumEngineConfiguration debeziumEngineConfiguration,
-                         ManifestHandler manifestHandler) {
+                         StateHandler stateHandler, Connector connector) {
         this.debeziumEngineConfiguration = debeziumEngineConfiguration;
-        this.manifestHandler = manifestHandler;
+        this.stateHandler = stateHandler;
 
         this.engine = DebeziumEngine.create(ChangeEventFormat.of(Connect.class))
                 .using(Configuration.empty()
@@ -42,10 +44,11 @@ class SourceRecordDebezium extends RunnableDebezium {
                         .edit()
                         .with(Configuration.from(debeziumEngineConfiguration.configuration()))
                         .build().asProperties())
-                .using(this.manifestHandler.connectorCallback())
-                .using(this.manifestHandler.completionCallback())
+                .using(this.stateHandler.connectorCallback())
+                .using(this.stateHandler.completionCallback())
                 .notifying(event -> LOGGER.info("**EXPERIMENTAL** {}", event.record().value().toString()))
                 .build();
+        this.connector = connector;
     }
 
     @Override
@@ -59,8 +62,13 @@ class SourceRecordDebezium extends RunnableDebezium {
     }
 
     @Override
-    public DebeziumManifest manifest() {
-        return manifestHandler.get();
+    public DebeziumStatus status() {
+        return stateHandler.get();
+    }
+
+    @Override
+    public Connector connector() {
+        return connector;
     }
 
     protected void run() {

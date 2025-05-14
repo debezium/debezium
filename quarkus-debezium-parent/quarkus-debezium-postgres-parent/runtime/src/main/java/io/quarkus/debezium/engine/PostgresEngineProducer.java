@@ -10,9 +10,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
 
+import io.debezium.runtime.Connector;
 import io.debezium.runtime.ConnectorProducer;
 import io.debezium.runtime.Debezium;
-import io.debezium.runtime.DebeziumManifest.Connector;
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
 
 @ApplicationScoped
@@ -26,6 +26,6 @@ public class PostgresEngineProducer implements ConnectorProducer {
     public Debezium engine(DebeziumEngineConfiguration debeziumEngineConfiguration) {
         debeziumEngineConfiguration.configuration().put(CONNECTOR_CLASS, POSTGRES.name());
 
-        return new SourceRecordDebezium(debeziumEngineConfiguration, new DefaultManifestHandler(POSTGRES));
+        return new SourceRecordDebezium(debeziumEngineConfiguration, new DefaultStateHandler(), POSTGRES);
     }
 }

@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.debezium.runtime.Debezium;
-import io.debezium.runtime.DebeziumManifest;
+import io.debezium.runtime.DebeziumStatus;
 import io.quarkus.runtime.Application;
 import io.quarkus.test.QuarkusUnitTest;
 import io.quarkus.test.common.QuarkusTestResource;
@@ -55,15 +55,14 @@ public class DebeziumLifeCycleTest {
 
         given().await()
                 .atMost(10, TimeUnit.SECONDS)
-                .untilAsserted(() -> Assertions.assertThat(debezium.manifest())
-                        .isEqualTo(new DebeziumManifest(new DebeziumManifest.Connector("io.debezium.connector.postgresql.PostgresConnector"),
-                                new DebeziumManifest.Status(DebeziumManifest.Status.State.POLLING))));
+                .untilAsserted(() -> Assertions.assertThat(debezium.status())
+                        .isEqualTo(new DebeziumStatus(DebeziumStatus.State.POLLING)));
 
         Application.currentApplication().close();
 
         given().await()
                 .atMost(30, TimeUnit.SECONDS)
-                .untilAsserted(() -> Assertions.assertThat(debezium.manifest().status())
-                        .isEqualTo(new DebeziumManifest.Status(DebeziumManifest.Status.State.STOPPED)));
+                .untilAsserted(() -> Assertions.assertThat(debezium.status())
+                        .isEqualTo(new DebeziumStatus(DebeziumStatus.State.STOPPED)));
     }
 }
