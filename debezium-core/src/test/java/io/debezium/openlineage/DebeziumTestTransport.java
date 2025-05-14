@@ -23,19 +23,16 @@ public class DebeziumTestTransport extends Transport {
 
     @Override
     public void emit(@NonNull RunEvent runEvent) {
-        System.out.println("ADDED RUN EVENT");
         runEvents.add(runEvent);
     }
 
     @Override
     public void emit(@NonNull DatasetEvent datasetEvent) {
-        System.out.println("ADDED DATASET EVENT");
         datasetEvents.add(datasetEvent);
     }
 
     @Override
     public void emit(@NonNull JobEvent jobEvent) {
-        System.out.println("ADDED JOB EVENT");
         jobEvents.add(jobEvent);
     }
 

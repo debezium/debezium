@@ -8,6 +8,8 @@ import io.openlineage.client.OpenLineage;
 
 public class DebeziumConfigFacet implements OpenLineage.RunFacet {
 
+    public static final String FACET_KEY_NAME = "debezium_config";
+
     private final Map<String, Object> configs = new HashMap<>();
     private final URI producer;
 

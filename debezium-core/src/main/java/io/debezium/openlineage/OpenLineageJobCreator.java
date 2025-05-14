@@ -11,9 +11,13 @@ import io.openlineage.client.OpenLineage;
 
 public class OpenLineageJobCreator {
 
-    public static final String PROCESSING_TYPE = "STREAMING";
-    public static final String INTEGRATION = "DEBEZIUM";
-    public static final String JOB_TYPE = "TASK";
+    private static final String PROCESSING_TYPE = "STREAMING";
+    private static final String INTEGRATION = "DEBEZIUM";
+    private static final String JOB_TYPE = "TASK";
+    private static final String KEY_VALUE_SEPARATOR = "=";
+    private static final String TAGS_SOURCE = "CONFIG";
+    private static final String LIST_SEPARATOR = ",";
+
     private final OpenLineageContext context;
 
     public OpenLineageJobCreator(OpenLineageContext context) {
@@ -23,13 +27,13 @@ public class OpenLineageJobCreator {
     public OpenLineage.Job create() {
 
         // TODO Move configurations to CommonConnectorConfig
-        List<OpenLineage.TagsJobFacetFields> tags = context.getConfiguration().getList("openlineage.integration.tags", ",", s -> s)
-                .stream().map(pair -> pair.split("=")) // Split into key-value array
-                .map(pair -> context.getOpenLineage().newTagsJobFacetFields(pair[0].trim(), pair[1].trim(), "CONFIG"))
+        List<OpenLineage.TagsJobFacetFields> tags = context.getConfiguration().getList("openlineage.integration.tags", LIST_SEPARATOR, s -> s)
+                .stream().map(pair -> pair.split(KEY_VALUE_SEPARATOR))
+                .map(pair -> context.getOpenLineage().newTagsJobFacetFields(pair[0].trim(), pair[1].trim(), TAGS_SOURCE))
                 .toList();
 
-        List<OpenLineage.OwnershipJobFacetOwners> owners = context.getConfiguration().getList("openlineage.integration.owners", ",", s -> s)
-                .stream().map(pair -> pair.split("=")) // Split into key-value array
+        List<OpenLineage.OwnershipJobFacetOwners> owners = context.getConfiguration().getList("openlineage.integration.owners", LIST_SEPARATOR, s -> s)
+                .stream().map(pair -> pair.split(KEY_VALUE_SEPARATOR))
                 .map(pair -> context.getOpenLineage().newOwnershipJobFacetOwners(pair[0].trim(), pair[1].trim()))
                 .toList();
 
