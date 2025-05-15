@@ -495,6 +495,14 @@ jobs:
   ## Please define callable workflows here in alphabetical item name order.
   ########################################################################################
 
+  apicurio_checks:
+    name: "Apicurio checks"
+    needs: [ check_style, file_changes ]
+    if: ${{ needs.file_changes.outputs.documentation-only-changed == 'false' }}
+    uses: ./.github/workflows/apicurio-check-workflow.yml
+    with:
+      maven-cache-key: maven-debezium-test-build
+
   build_server:
     name: "Debezium Server"
     needs: [ check_style, file_changes ]
