@@ -173,6 +173,11 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
     }
 
     @Override
+    protected String connectorName() {
+        return Module.name();
+    }
+
+    @Override
     public List<SourceRecord> doPoll() throws InterruptedException {
         final List<DataChangeEvent> records = queue.poll();
 

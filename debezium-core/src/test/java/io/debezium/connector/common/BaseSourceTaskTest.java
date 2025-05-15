@@ -187,6 +187,11 @@ public class BaseSourceTaskTest {
         }
 
         @Override
+        protected String connectorName() {
+            return "";
+        }
+
+        @Override
         protected List<SourceRecord> doPoll() {
             return records;
         }

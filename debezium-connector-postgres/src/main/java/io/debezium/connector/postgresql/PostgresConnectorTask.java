@@ -252,6 +252,11 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         }
     }
 
+    @Override
+    protected String connectorName() {
+        return Module.name();
+    }
+
     private SlotCreationResult tryToCreateSlot(Snapshotter snapshotter, PostgresConnectorConfig connectorConfig, SlotState slotInfo) {
 
         SlotCreationResult slotCreatedInfo = null;
