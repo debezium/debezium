@@ -1,0 +1,12 @@
+---
+name: "Postgres Debezium Quarkus Extension"
+description: "Debezium engine Quarkus extension for Postgres"
+metadata:
+  keywords:
+  - "debezium"
+  - "cdc"
+  guide: "not_available"
+  categories:
+  - "integration"
+  - "cdc"
+  status: "experimental"
