@@ -178,6 +178,31 @@ jobs:
         with:
           maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
 
+  build_extensions:
+    name: "Debezium Quarkus Extensions"
+    needs: [ check_style, build_postgresql ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-quarkus-extensions
+        with:
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+
+  # Approx 5m
+  build_rest_extension:
+    name: "REST Extension"
+    needs: [ check_style, build_outbox ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-debezium-rest-extension
+        with:
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+
   # Approx 2m
   build_schema_generator:
     name: "Schema Generator"
