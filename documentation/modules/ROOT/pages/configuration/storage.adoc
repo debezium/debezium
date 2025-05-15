@@ -525,6 +525,10 @@ INSERT INTO %s(id, history_data, history_data_seq, record_insert_ts, record_inse
 |false
 |Specifies whether {prodname} uses SSL when communicating with Redis to store offset data.
 
+|[[offset-storage-redis-hostname-verification-enabled]]<<offset-storage-redis-hostname-verification-enabled,`offset.storage.redis.ssl.hostname.verification.enabled`>>
+|false
+|Specifies whether {prodname} has hostname verification enabled when communicating with Redis to store offset data.
+
 |[[offset-storage-redis-connection-timeout-ms]]<<offset-storage-redis-connection-timeout-ms, `offset.storage.redis.connection.timeout.ms`>>
 |2000
 |Specifies the time, in milliseconds, that {prodname} waits to establish a connection to Redis before the connection times out.
@@ -599,6 +603,10 @@ If a data packet is not transferred with the specified interval, {prodname} clos
 |[[schema-history-internal-redis-ssl-enabled]]<<schema-history-internal-redis-ssl-enabled,`schema.history.internal.storage.redis.ssl.enabled`>>
 |false
 |Specifies whether {prodname} uses SSL when communicating with Redis to store schema history data.
+
+|[[schema-history-internal-redis-hostname-verification-enabled]]<<schema-history-internal-redis-hostname-verification-enabled,`schema.history.internal.storage.redis.ssl.hostname.verification.enabled`>>
+|false
+|Specifies whether {prodname} has hostname verification enabled when communicating with Redis to store schema history data.
 
 |[[schema-history-internal-redis-connection-timeout-ms]]<<schema-history-internal-redis-connection-timeout-ms, `schema.history.internal.storage.redis.connection.timeout.ms`>>
 |2000

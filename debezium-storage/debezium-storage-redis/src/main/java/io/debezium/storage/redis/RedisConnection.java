@@ -7,6 +7,8 @@ package io.debezium.storage.redis;
 
 import java.util.regex.Pattern;
 
+import javax.net.ssl.SSLParameters;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,13 +34,14 @@ public class RedisConnection {
     public static final String DEBEZIUM_SCHEMA_HISTORY = "debezium:schema_history";
     private static final String HOST_PORT_ERROR = "Invalid host:port format in '<...>.redis.address' property.";
 
-    private String address;
-    private int dbIndex;
-    private String user;
-    private String password;
-    private int connectionTimeout;
-    private int socketTimeout;
-    private boolean sslEnabled;
+    private final String address;
+    private final int dbIndex;
+    private final String user;
+    private final String password;
+    private final int connectionTimeout;
+    private final int socketTimeout;
+    private final boolean sslEnabled;
+    private final boolean hostnameVerificationEnabled;
 
     /**
      *
@@ -50,6 +53,20 @@ public class RedisConnection {
      * @param sslEnabled
      */
     public RedisConnection(String address, int dbIndex, String user, String password, int connectionTimeout, int socketTimeout, boolean sslEnabled) {
+        this(address, dbIndex, user, password, connectionTimeout, socketTimeout, sslEnabled, false);
+    }
+
+    /**
+     *
+     * @param address
+     * @param user
+     * @param password
+     * @param connectionTimeout
+     * @param socketTimeout
+     * @param sslEnabled
+     */
+    public RedisConnection(String address, int dbIndex, String user, String password, int connectionTimeout, int socketTimeout, boolean sslEnabled,
+                           boolean hostnameVerificationEnabled) {
         validateHostPort(address);
 
         this.address = address;
@@ -59,6 +76,7 @@ public class RedisConnection {
         this.connectionTimeout = connectionTimeout;
         this.socketTimeout = socketTimeout;
         this.sslEnabled = sslEnabled;
+        this.hostnameVerificationEnabled = hostnameVerificationEnabled;
     }
 
     /**
@@ -92,6 +110,13 @@ public class RedisConnection {
 
             if (!Strings.isNullOrEmpty(this.password)) {
                 configBuilder = configBuilder.password(this.password);
+            }
+
+            if (hostnameVerificationEnabled) {
+                // Enforce strict hostname verification to prevent man-in-the-middle attacks.
+                var sslParameters = new SSLParameters();
+                sslParameters.setEndpointIdentificationAlgorithm("HTTPS");
+                configBuilder.sslParameters(sslParameters);
             }
 
             client = new Jedis(address, configBuilder.build());
