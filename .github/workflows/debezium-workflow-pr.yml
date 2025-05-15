@@ -42,7 +42,6 @@ jobs:
       mariadb-ddl-parser-changed: ${{ steps.changed-files-mariadb-ddl-parser.outputs.any_changed }}
       documentation-only-changed: ${{ steps.changed-files-documentation.outputs.only_changed }}
       storage-only-changed: ${{ steps.changed-files-storage.outputs.only_changed }}
-      extensions-changed: ${{ steps.changed-files-storage.outputs.any_changed }}
     steps:
       - name: Checkout Action
         uses: actions/checkout@v4
@@ -195,13 +194,6 @@ jobs:
         with:
           files: |
             debezium-storage/**
-
-      - name: Get modified files (Quarkus Extensions)
-        id: changed-files-extensions
-        uses: tj-actions/changed-files@v46.0.5
-        with:
-          files: |
-            quarkus-debezium-parent/**
 
   # Approx 1m
   build_cache:
@@ -502,18 +494,6 @@ jobs:
   ## NON-CONNECTORS
   ## Please define callable workflows here in alphabetical item name order.
   ########################################################################################
-
-  build_extensions:
-    name: "Debezium Quarkus Extensions"
-    needs: [ check_style, file_changes ]
-    runs-on: ubuntu-latest
-    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.extensions-changed == 'true' }}
-    steps:
-      - name: Checkout Action
-        uses: actions/checkout@v4
-      - uses: ./.github/actions/build-quarkus-extensions
-        with:
-          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
 
   build_server:
     name: "Debezium Server"
