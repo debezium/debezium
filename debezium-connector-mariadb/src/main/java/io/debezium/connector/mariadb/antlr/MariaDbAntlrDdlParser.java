@@ -123,6 +123,9 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
                 new DataTypeResolver.DataTypeEntry(Types.CHAR, MariaDBParser.CHARACTER),
                 new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MariaDBParser.CHARACTER, MariaDBParser.VARYING)));
 
+        dataTypeResolverBuilder.registerDataTypes(MariaDBParser.UuidDataTypeContext.class.getCanonicalName(), Arrays.asList(
+                new DataTypeResolver.DataTypeEntry(Types.VARCHAR, MariaDBParser.UUID)));
+
         dataTypeResolverBuilder.registerDataTypes(MariaDBParser.NationalStringDataTypeContext.class.getCanonicalName(), Arrays.asList(
                 new DataTypeResolver.DataTypeEntry(Types.NVARCHAR, MariaDBParser.NATIONAL, MariaDBParser.VARCHAR).setSuffixTokens(MariaDBParser.BINARY),
                 new DataTypeResolver.DataTypeEntry(Types.NCHAR, MariaDBParser.NATIONAL, MariaDBParser.CHARACTER).setSuffixTokens(MariaDBParser.BINARY),

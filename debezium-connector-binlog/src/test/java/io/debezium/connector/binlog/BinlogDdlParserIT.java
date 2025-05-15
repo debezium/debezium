@@ -23,6 +23,7 @@ import io.debezium.connector.binlog.junit.SkipWhenDatabaseIs;
 import io.debezium.connector.binlog.util.BinlogTestConnection;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
+import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.relational.history.MemorySchemaHistory;
 
@@ -31,7 +32,6 @@ import io.debezium.relational.history.MemorySchemaHistory;
  *
  * @author Chris Cranford
  */
-@SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "Visible columns not supported")
 public abstract class BinlogDdlParserIT<C extends SourceConnector> extends AbstractBinlogConnectorIT<C> {
 
     private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-ddl-parser.txt").toAbsolutePath();
@@ -66,6 +66,7 @@ public abstract class BinlogDdlParserIT<C extends SourceConnector> extends Abstr
     }
 
     @Test
+    @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "Visible columns not supported")
     public void parseTableWithVisibleColumns() throws Exception {
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
@@ -95,6 +96,7 @@ public abstract class BinlogDdlParserIT<C extends SourceConnector> extends Abstr
     }
 
     @Test
+    @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "Visible columns not supported")
     public void parseTableWithInVisibleColumns() throws Exception {
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
@@ -124,6 +126,7 @@ public abstract class BinlogDdlParserIT<C extends SourceConnector> extends Abstr
     }
 
     @Test
+    @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MARIADB, reason = "Syntax is unsupported")
     public void parseTableCreatedWithTableStatement() throws Exception {
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
             try (JdbcConnection connection = db.connect()) {
@@ -149,6 +152,33 @@ public abstract class BinlogDdlParserIT<C extends SourceConnector> extends Abstr
                                 "  `ID` bigint NOT NULL DEFAULT '0',\n" +
                                 "  `NAME` varchar(100) NOT NULL\n" +
                                 ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci"));
+        assertThat(statementFound).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-9027")
+    @SkipWhenDatabaseIs(value = SkipWhenDatabaseIs.Type.MYSQL)
+    public void parseTableCreatedWithUuidType() throws Exception {
+        try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            try (JdbcConnection connection = db.connect()) {
+                connection.execute("CREATE TABLE `certificate_info` (" +
+                        "`id` BIGINT(20) AUTO_INCREMENT," +
+                        "`document_uuid` UUID NOT NULL," +
+                        "PRIMARY KEY (`id`));");
+            }
+        }
+
+        start(getConnectorClass(), defaultConfig().build());
+
+        SourceRecords records = consumeRecordsByTopic(6);
+        boolean statementFound = records.ddlRecordsForDatabase(DATABASE.getDatabaseName())
+                .stream()
+                .anyMatch(s -> ((Struct) s.value())
+                        .getString("ddl").equals("CREATE TABLE `certificate_info` (\n" +
+                                "  `id` bigint(20) NOT NULL AUTO_INCREMENT,\n" +
+                                "  `document_uuid` uuid NOT NULL,\n" +
+                                "  PRIMARY KEY (`id`)\n" +
+                                ") ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci"));
         assertThat(statementFound).isTrue();
     }
 }
