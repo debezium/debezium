@@ -47,4 +47,10 @@ public class DebeziumTestTransport extends Transport {
     public List<JobEvent> getJobEvents() {
         return jobEvents;
     }
+
+    public void clear() {
+        runEvents.clear();
+        datasetEvents.clear();
+        jobEvents.clear();
+    }
 }
