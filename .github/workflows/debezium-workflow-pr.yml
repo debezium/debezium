@@ -498,7 +498,7 @@ jobs:
   apicurio_checks:
     name: "Apicurio checks"
     needs: [ check_style, file_changes ]
-    if: ${{ needs.file_changes.outputs.documentation-only-changed == 'false' }}
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mongodb-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.postgresql-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' }}
     uses: ./.github/workflows/apicurio-check-workflow.yml
     with:
       maven-cache-key: maven-debezium-test-build
