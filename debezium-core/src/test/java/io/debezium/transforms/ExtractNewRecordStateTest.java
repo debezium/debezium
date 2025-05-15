@@ -993,7 +993,7 @@ public class ExtractNewRecordStateTest extends AbstractExtractStateTest {
     public void testDeleteRewriteToTombstoneAndDropActualTombstone() {
         try (ExtractNewRecordState<SourceRecord> transform = new ExtractNewRecordState<>()) {
             final Map<String, String> props = new HashMap<>();
-            props.put(HANDLE_TOMBSTONE_DELETES, "rewrite-deletes");
+            props.put(HANDLE_TOMBSTONE_DELETES, "delete-to-tombstone");
             transform.configure(props);
 
             final SourceRecord deleteRecord = createDeleteRecord();
