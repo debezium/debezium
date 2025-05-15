@@ -239,6 +239,11 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
         return coordinator;
     }
 
+    @Override
+    protected String connectorName() {
+        return Module.name();
+    }
+
     private MySqlValueConverters getValueConverters(MySqlConnectorConfig configuration) {
         return new MySqlValueConverters(
                 configuration.getDecimalMode(),

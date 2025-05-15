@@ -239,7 +239,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             setTaskState(State.INITIAL);
             config = Configuration.from(props);
 
-            DebeziumOpenLineageEmitter.init(config);
+            DebeziumOpenLineageEmitter.init(config, connectorName());
             DebeziumOpenLineageEmitter.emit(State.INITIAL);
 
             retriableRestartWait = config.getDuration(CommonConnectorConfig.RETRIABLE_RESTART_WAIT, ChronoUnit.MILLIS);
@@ -316,6 +316,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
      *            {@link CommonConnectorConfig} and work with typed access to configuration properties that way
      */
     protected abstract ChangeEventSourceCoordinator<P, O> start(Configuration config);
+
+    protected abstract String connectorName();
 
     @Override
     public final List<SourceRecord> poll() throws InterruptedException {

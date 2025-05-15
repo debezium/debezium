@@ -262,6 +262,11 @@ public class BaseSourceTaskSnapshotModesValidationTest {
         }
 
         @Override
+        protected String connectorName() {
+            return "";
+        }
+
+        @Override
         protected List<SourceRecord> doPoll() {
             return records;
         }
