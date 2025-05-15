@@ -168,6 +168,41 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
 
     }
 
+    @Test
+    public void shouldProduceOpenLineageInputDatasetUponDDLEvent() throws Exception {
+
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with("openlineage.integration.enabled", true)
+                .with("openlineage.integration.config.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
+                .with("openlineage.integration.job.description", "This connector does cdc for products")
+                .with("openlineage.integration.tags", "env=prod,team=cdc")
+                .with("openlineage.integration.owners", "Mario=maintainer,John Doe=Data scientist");
+
+        start(PostgresConnector.class, configBuilder.build());
+
+        waitForSnapshotToBeCompleted("postgres", TestHelper.TEST_SERVER);
+
+        TestHelper.execute("ALTER TABLE s1.a ADD COLUMN bb VARCHAR(255);");
+        TestHelper.execute("INSERT INTO s1.a (aa, bb) VALUES (2, 'test');");
+
+        waitForAvailableRecords();
+
+        List<OpenLineage.RunEvent> runningEvents = debeziumTestTransport.getRunEvents().stream()
+                .filter(e -> e.getEventType() == OpenLineage.RunEvent.EventType.RUNNING)
+                .toList();
+
+        assertThat(runningEvents).hasSize(7);
+
+        assertCorrectInputDataset(runningEvents.get(1).getInputs(), "s1.a", List.of("pk;serial", "aa;int4"));
+        assertCorrectInputDataset(runningEvents.get(2).getInputs(), "s2.a", List.of("pk;serial", "aa;int4"));
+        assertCorrectInputDataset(runningEvents.get(5).getInputs(), "s1.a", List.of("pk;serial", "aa;int4", "bb;varchar"));
+    }
+
     private static void assertCorrectInputDataset(List<OpenLineage.InputDataset> inputs, String expectedTableName, List<String> expectedFields) {
         assertThat(inputs).hasSize(1);
         assertThat(inputs.get(0).getName()).isEqualTo(expectedTableName);
