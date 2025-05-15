@@ -43,6 +43,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
     @Before
     public void before() {
         initializeConnectorTestFramework();
+        getDebeziumTestTransport().clear();
     }
 
     @After
@@ -158,7 +159,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                 .filter(e -> e.getEventType() == OpenLineage.RunEvent.EventType.RUNNING)
                 .toList();
 
-        assertThat(runningEvents).hasSize(3);
+        assertThat(runningEvents).hasSize(5);
 
         assertEventContainsExpectedData(runningEvents.get(0));
         assertEventContainsExpectedData(runningEvents.get(1));
