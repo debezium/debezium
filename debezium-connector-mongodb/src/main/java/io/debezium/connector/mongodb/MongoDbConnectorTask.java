@@ -171,6 +171,11 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         }
     }
 
+    @Override
+    protected String connectorName() {
+        return Module.name();
+    }
+
     private Offsets<MongoDbPartition, MongoDbOffsetContext> getPreviousOffsets(MongoDbConnectorConfig connectorConfig) {
         var partitionProvider = new MongoDbPartition.Provider(connectorConfig);
         var offsetLoader = new MongoDbOffsetContext.Loader(connectorConfig);
