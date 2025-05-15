@@ -21,7 +21,7 @@ public class ExtractNewRecordStateConfigDefinition {
         TOMBSTONE("tombstone"),
         REWRITE("rewrite"),
         REWRITE_WITH_TOMBSTONE("rewrite-with-tombstone"),
-        REWRITE_DELETES("rewrite-deletes");
+        DELETE_TO_TOMBSTONE("delete-to-tombstone");
 
         private final String value;
 
