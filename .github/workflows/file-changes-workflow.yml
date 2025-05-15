@@ -37,6 +37,8 @@ on:
         value: ${{ jobs.file_changes.outputs.documentation-only-changed }}
       storage-only-changed:
         value: ${{ jobs.file_changes.outputs.storage-only-changed }}
+      extensions-changed:
+        value: ${{ jobs.file_changes.outputs.extensions-changed }}
 
 jobs:
   # This job is responsible for inspecting the changes in the repository and setting specific output variables
@@ -62,6 +64,7 @@ jobs:
       mariadb-ddl-parser-changed: ${{ steps.changed-files-mariadb-ddl-parser.outputs.any_changed }}
       documentation-only-changed: ${{ steps.changed-files-documentation.outputs.only_changed }}
       storage-only-changed: ${{ steps.changed-files-storage.outputs.only_changed }}
+      extensions-changed: ${{ steps.changed-files-extensions.outputs.any_changed }}
 
     steps:
       - name: Checkout Action
@@ -152,6 +155,20 @@ jobs:
             debezium-quarkus-outbox/**
             debezium-quarkus-outbox-common/**
             debezium-quarkus-outbox-reactive/**
+
+      - name: Get modified files (Debezium Quarkus Extensions)
+        id: changed-files-extensions
+        uses: tj-actions/changed-files@v46.0.5
+        with:
+          files: |
+            quarkus-debezium-parent/**
+
+      - name: Get modified files (REST Extension)
+        id: changed-files-rest-extension
+        uses: tj-actions/changed-files@v46.0.5
+        with:
+          files: |
+            debezium-connect-rest-extension/**
 
       - name: Get modified files (Schema Generator)
         id: changed-files-schema-generator

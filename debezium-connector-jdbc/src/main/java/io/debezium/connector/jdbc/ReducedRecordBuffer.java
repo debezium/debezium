@@ -98,4 +98,19 @@ public class ReducedRecordBuffer implements Buffer {
     public TableDescriptor getTableDescriptor() {
         return tableDescriptor;
     }
+
+    @Override
+    public void remove(JdbcSinkRecord record) {
+        if (records.isEmpty()) {
+            return;
+        }
+
+        Struct keyStruct = record.getKeyStruct(connectorConfig.getPrimaryKeyMode(), connectorConfig.getPrimaryKeyFields());
+        if (keyStruct != null) {
+            records.remove(keyStruct);
+        }
+        else {
+            throw new ConnectException("No struct-based primary key defined for record key/value, reduction buffer require struct based primary key");
+        }
+    }
 }

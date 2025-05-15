@@ -16,6 +16,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -96,7 +97,41 @@ class ReducedRecordBufferTest extends AbstractRecordBufferTest {
                 .toList();
 
         assertThat(batches.size()).isEqualTo(2);
+    }
 
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @DisplayName("When 4 sink records {0,1,2,3} arrives then 2 of them {0,2}" +
+            " removed final flush will have {1,3,4,5,6} since buffer size is 5")
+    void correctlyBufferOnRemoving(SinkRecordFactory factory) {
+        JdbcSinkConnectorConfig config = getJdbcConnectorConfig();
+
+        ReducedRecordBuffer reducedRecordBuffer = new ReducedRecordBuffer(config);
+
+        List<JdbcKafkaSinkRecord> records = IntStream.range(0, 7)
+                .mapToObj(i -> createRecordPkFieldId(factory, (byte) i, config))
+                .toList();
+
+        IntStream.range(0, 4)
+                .forEach(i -> reducedRecordBuffer.add(records.get(i)));
+
+        reducedRecordBuffer.remove(records.get(0));
+        reducedRecordBuffer.remove(records.get(2));
+
+        List<List<JdbcSinkRecord>> batches = IntStream.range(4, records.size())
+                .mapToObj(i -> reducedRecordBuffer.add(records.get(i)))
+                .filter(not(List::isEmpty))
+                .toList();
+        assertThat(batches.size()).isEqualTo(1);
+        List<JdbcSinkRecord> batch = batches.get(0);
+        batch.sort(Comparator.comparing(
+                record -> (byte) ((Struct) record.key()).get("id")));
+        assertThat(batch.size()).isEqualTo(5);
+        assertThat(batch.get(0)).isEqualTo(records.get(1));
+        assertThat(batch.get(1)).isEqualTo(records.get(3));
+        assertThat(batch.get(2)).isEqualTo(records.get(4));
+        assertThat(batch.get(3)).isEqualTo(records.get(5));
+        assertThat(batch.get(4)).isEqualTo(records.get(6));
     }
 
     @ParameterizedTest
@@ -193,7 +228,7 @@ class ReducedRecordBufferTest extends AbstractRecordBufferTest {
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
     @DisplayName("When primary key mode is none then reduced buffer should raise exception")
-    void raiseExceptionWithoutPrimaryKey(SinkRecordFactory factory) {
+    void raiseExceptionWithoutPrimaryKeyOnAdding(SinkRecordFactory factory) {
         JdbcSinkConnectorConfig config = getJdbcConnectorConfig(PrimaryKeyMode.NONE, null);
 
         ReducedRecordBuffer reducedRecordBuffer = new ReducedRecordBuffer(config);
