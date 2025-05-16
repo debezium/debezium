@@ -1,0 +1,62 @@
+name: Apicurio PR check workflow
+on:
+  workflow_call:
+    inputs:
+      maven-cache-key:
+        description: "The cache key to use to restore/save build caches."
+        required: true
+        type: string
+
+jobs:
+  mysql-apicurio:
+    name: MySQL - Apicurio
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        server-version: [ "9.1" ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: MySQL ${{ matrix.server-version }} - Apicurio
+        uses: ./.github/actions/build-debezium-mysql
+        with:
+          maven-cache-key: ${{ inputs.maven-cache-key }}-${{ hashFiles('**/pom.xml') }}
+          version-mysql-server: ${{ matrix.server-version }}
+          profile: mysql-ci,apicurio
+
+  postgresql-apicurio:
+    name: PostgreSQL - Apicurio
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        server-version: [ "17"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: PostgreSQL ${{ matrix.server-version }} - Apicurio
+        uses: ./.github/actions/build-debezium-postgres
+        with:
+          maven-cache-key: ${{ inputs.maven-cache-key }}-${{ hashFiles('**/pom.xml') }}
+          profile: apicurio,postgres-${{ matrix.server-version }},pgoutput-decoder
+
+  mongodb-apicurio:
+    name: MongoDB - Apicurio
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        server-version: [ "8.0" ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: MongoDB ${{ matrix.server-version }} - Apicurio
+        uses: ./.github/actions/build-debezium-mongodb
+        with:
+          maven-cache-key: ${{ inputs.maven-cache-key }}-${{ hashFiles('**/pom.xml') }}
+          version-mongo-server: ${{ matrix.server-version }}
+          profile: apicurio
