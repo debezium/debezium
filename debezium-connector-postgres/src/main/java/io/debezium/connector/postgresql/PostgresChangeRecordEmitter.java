@@ -365,7 +365,7 @@ public class PostgresChangeRecordEmitter extends RelationalChangeRecordEmitter<P
         while (itPkCandidates.hasNext()) {
             final String candidateName = itPkCandidates.next();
             if (!combinedTable.hasUniqueValues() && combinedTable.columnWithName(candidateName) == null) {
-                LOGGER.error("Potentional inconsistency in key for message {}", columns);
+                LOGGER.error("Potentional inconsistency in key for candidate {}", candidateName);
                 itPkCandidates.remove();
             }
         }

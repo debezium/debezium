@@ -71,7 +71,7 @@ public class TimescaleDb<R extends ConnectRecord<R>> implements Transformation<R
 
         final var source = ((Struct) record.value()).getStruct(Envelope.FieldName.SOURCE);
         if (source == null) {
-            LOGGER.debug("Incoming record has an empty source info block {}", record);
+            LOGGER.debug("Incoming record has an empty source info block.");
             return record;
         }
 

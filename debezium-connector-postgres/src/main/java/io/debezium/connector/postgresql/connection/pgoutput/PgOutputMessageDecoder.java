@@ -187,7 +187,6 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
             final int lastPos = content.length - 1;
             content[lastPos - 1] = SPACE;
             content[lastPos] = SPACE;
-            LOGGER.trace("Message arrived from database {}", HexConverter.convertToHexString(content));
         }
 
         final MessageType messageType = MessageType.forType((char) buffer.get());

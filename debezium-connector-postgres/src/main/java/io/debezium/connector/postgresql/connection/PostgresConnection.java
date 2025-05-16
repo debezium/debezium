@@ -760,7 +760,7 @@ public class PostgresConnection extends JdbcConnection {
                 default:
                     Object x = rs.getObject(columnIndex);
                     if (x != null) {
-                        LOGGER.trace("rs getobject returns class: {}; rs getObject value is: {}", x.getClass(), x);
+                        LOGGER.trace("rs getobject returns class: {}; rs columnIndex is: {}", x.getClass(), columnIndex);
                     }
                     return x;
             }

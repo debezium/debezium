@@ -786,7 +786,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
 
     private Object convertHstoreToJsonString(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, "{}", (r) -> {
-            logger.trace("in ANON: value from data object: *** {} ***", data);
+            logger.trace("in ANON: value from data object: *** {} ***", column.name());
             logger.trace("in ANON: object type is: *** {} ***", data.getClass());
             if (data instanceof String) {
                 r.deliver(changePlainStringRepresentationToJsonStringRepresentation(((String) data)));
@@ -804,13 +804,12 @@ public class PostgresValueConverter extends JdbcValueConverters {
     }
 
     private String changePlainStringRepresentationToJsonStringRepresentation(String text) {
-        logger.trace("text value is: {}", text);
         try {
             Map<String, String> map = HStoreConverter.fromString(text);
             return convertMapToJsonStringRepresentation(map);
         }
         catch (Exception e) {
-            throw new RuntimeException("Couldn't serialize hstore value into JSON: " + text, e);
+            throw new RuntimeException("Couldn't serialize hstore value into JSON", e);
         }
     }
 
@@ -826,7 +825,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             return writer.getBuffer().toString();
         }
         catch (Exception e) {
-            throw new RuntimeException("Couldn't serialize hstore value into JSON: " + map, e);
+            throw new RuntimeException("Couldn't serialize hstore value into JSON", e);
         }
     }
 
