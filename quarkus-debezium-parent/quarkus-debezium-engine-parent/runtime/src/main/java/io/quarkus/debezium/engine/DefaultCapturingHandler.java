@@ -6,25 +6,23 @@
 
 package io.quarkus.debezium.engine;
 
-import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.engine.RecordChangeEvent;
 
 public class DefaultCapturingHandler implements DebeziumCapturingHandler {
     private final CapturingInvokerRegistry registry;
+    private final FullyQualifiedTableNameResolver resolver;
 
-    public DefaultCapturingHandler(CapturingInvokerRegistry registry) {
+    public DefaultCapturingHandler(CapturingInvokerRegistry registry, FullyQualifiedTableNameResolver resolver) {
         this.registry = registry;
+        this.resolver = resolver;
     }
 
     @Override
     public void accept(RecordChangeEvent<SourceRecord> event) {
-        SourceRecord record = event.record();
-        Struct payload = (Struct) record.value();
-        String table = ((Struct) payload.get("source")).getString("table");
 
-        CapturingInvoker invoker = registry.get(table);
+        CapturingInvoker invoker = registry.get(resolver.resolve(event));
 
         invoker.capture(event);
     }
