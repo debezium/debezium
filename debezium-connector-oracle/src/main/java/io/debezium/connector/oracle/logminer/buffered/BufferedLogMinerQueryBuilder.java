@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.oracle.logminer.buffered;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -104,7 +105,7 @@ public class BufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder {
 
         // Handle all operations except DDL changes
         final InClause operationInClause = InClause.builder().withField("OPERATION_CODE");
-        operationInClause.withValues(connectorConfig.isLobEnabled() ? OPERATION_CODES_LOB : OPERATION_CODES_NO_LOB);
+        operationInClause.withValues(getOperationCodesList());
         predicate.append("(").append(operationInClause.build());
 
         // Handle DDL operations
@@ -119,4 +120,21 @@ public class BufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder {
         return " OR (OPERATION_CODE = 5 AND INFO NOT LIKE 'INTERNAL DDL%')";
     }
 
+    private List<Integer> getOperationCodesList() {
+        if (connectorConfig.isLobEnabled()) {
+            return OPERATION_CODES_LOB;
+        }
+
+        if (connectorConfig.isLegacyLogMinerHeapTransactionStartBehaviorEnabled()) {
+            // The legacy behavior skipped START events as a performance optimization to avoid adding
+            // extra objects to the transaction cache. Without these, the username and client id
+            // filter options and source information block fields won't work in some corner cases if
+            // the transaction start is in a prior archive log.
+            final List<Integer> operationCodes = new ArrayList<>(OPERATION_CODES_NO_LOB);
+            operationCodes.removeIf(operationCode -> operationCode == 6);
+            return operationCodes;
+        }
+
+        return OPERATION_CODES_NO_LOB;
+    }
 }

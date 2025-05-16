@@ -701,6 +701,17 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     public static final Field SIGNAL_DATA_COLLECTION = CommonConnectorConfig.SIGNAL_DATA_COLLECTION
             .withValidation(OracleConnectorConfig::validateSignalDataCollection);
 
+    public static final Field LOG_MINING_BUFFER_MEMORY_LEGACY_TRANSACTION_START = Field.createInternal("log.mining.buffer.memory.legacy.transaction.start")
+            .withDisplayName("Use legacy transaction start behavior")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(false)
+            .withValidation(OracleConnectorConfig::validateIncludeTransactionStartEvents)
+            .withDescription("Controls whether transaction start events are buffered when using the heap/memory buffer type. " +
+                    "true: transaction start events are not buffered; " +
+                    "false: (the default) transaction start events are buffered");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -783,7 +794,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_SQL_RELAXED_QUOTE_DETECTION,
                     LOG_MINING_CLIENTID_INCLUDE_LIST,
                     LOG_MINING_CLIENTID_EXCLUDE_LIST,
-                    LOG_MINING_RESUME_POSITION_INTERVAL_MS)
+                    LOG_MINING_RESUME_POSITION_INTERVAL_MS,
+                    LOG_MINING_BUFFER_MEMORY_LEGACY_TRANSACTION_START)
             .events(SOURCE_INFO_STRUCT_MAKER,
                     SIGNAL_DATA_COLLECTION)
             .create();
@@ -2043,6 +2055,18 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         return resumePositionUpdateInterval;
     }
 
+    /**
+     * Whether legacy LogMiner heap transaction start event non-buffering is enabled
+     */
+    public boolean isLegacyLogMinerHeapTransactionStartBehaviorEnabled() {
+        if (LogMiningBufferType.MEMORY.equals(getLogMiningBufferType())) {
+            // This only applies when using the heap buffer type
+            // Other buffer types always included the transaction start events regardless
+            return getConfig().getBoolean(LOG_MINING_BUFFER_MEMORY_LEGACY_TRANSACTION_START);
+        }
+        return false;
+    }
+
     @Override
     public String getConnectorName() {
         return Module.name();
@@ -2274,6 +2298,18 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                 problems.accept(SIGNAL_DATA_COLLECTION, signalDataCollection,
                         "Please specify the signal data collection as '<database>.<schema>.<table>'.");
                 return 1;
+            }
+        }
+        return 0;
+    }
+
+    public static int validateIncludeTransactionStartEvents(Configuration config, Field field, ValidationOutput problems) {
+        final boolean includeTransactionStarts = config.getBoolean(LOG_MINING_BUFFER_MEMORY_LEGACY_TRANSACTION_START);
+        if (includeTransactionStarts && isBufferedLogMiner(config)) {
+            final LogMiningBufferType bufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
+            if (!LogMiningBufferType.MEMORY.equals(bufferType)) {
+                LOGGER.warn("'{}' only applies to buffered LogMiner with buffer type 'memory', setting will be ignored.",
+                        LOG_MINING_BUFFER_MEMORY_LEGACY_TRANSACTION_START.name());
             }
         }
         return 0;
