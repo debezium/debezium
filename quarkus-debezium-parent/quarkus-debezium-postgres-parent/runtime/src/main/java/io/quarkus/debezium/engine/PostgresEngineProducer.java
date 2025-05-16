@@ -15,6 +15,7 @@ import io.debezium.runtime.Connector;
 import io.debezium.runtime.ConnectorProducer;
 import io.debezium.runtime.Debezium;
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
+import io.quarkus.debezium.engine.capture.DebeziumCapturingHandler;
 
 @ApplicationScoped
 public class PostgresEngineProducer implements ConnectorProducer {
