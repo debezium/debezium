@@ -64,6 +64,7 @@ public class RedisConnection {
      * @param connectionTimeout
      * @param socketTimeout
      * @param sslEnabled
+     * @param hostnameVerificationEnabled
      */
     public RedisConnection(String address, int dbIndex, String user, String password, int connectionTimeout, int socketTimeout, boolean sslEnabled,
                            boolean hostnameVerificationEnabled) {
