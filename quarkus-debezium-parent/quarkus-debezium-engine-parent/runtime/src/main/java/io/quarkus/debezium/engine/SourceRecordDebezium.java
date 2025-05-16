@@ -34,7 +34,9 @@ class SourceRecordDebezium extends RunnableDebezium {
     private final StateHandler stateHandler;
 
     SourceRecordDebezium(DebeziumEngineConfiguration debeziumEngineConfiguration,
-                         StateHandler stateHandler, Connector connector) {
+                         StateHandler stateHandler,
+                         Connector connector,
+                         DebeziumCapturingHandler debeziumCapturingHandler) {
         this.debeziumEngineConfiguration = debeziumEngineConfiguration;
         this.stateHandler = stateHandler;
 
@@ -46,7 +48,7 @@ class SourceRecordDebezium extends RunnableDebezium {
                         .build().asProperties())
                 .using(this.stateHandler.connectorCallback())
                 .using(this.stateHandler.completionCallback())
-                .notifying(event -> LOGGER.info("**EXPERIMENTAL** {}", event.record().value().toString()))
+                .notifying(debeziumCapturingHandler)
                 .build();
         this.connector = connector;
     }

@@ -28,6 +28,7 @@ public class DatabaseTestResource implements QuarkusTestResourceLifecycleManager
             .withDatabaseName("postgres")
             .withEnv("POSTGRES_INITDB_ARGS", "-E UTF8")
             .withEnv("LANG", "en_US.utf8")
+            .withInitScript("init.sql")
             .withStartupTimeout(Duration.ofSeconds(30));
 
     @Override
@@ -36,6 +37,9 @@ public class DatabaseTestResource implements QuarkusTestResourceLifecycleManager
             postgresContainer.start();
 
             return Map.of(
+                    "quarkus.datasource.db-kind", "postgresql",
+                    "quarkus.datasource.username", postgresContainer.getUsername(),
+                    "quarkus.datasource.password", postgresContainer.getPassword(),
                     "quarkus.datasource.jdbc.url", postgresContainer.getJdbcUrl(),
                     "quarkus.debezium.database.hostname", postgresContainer.getHost(),
                     "quarkus.debezium.database.user", postgresContainer.getUsername(),
