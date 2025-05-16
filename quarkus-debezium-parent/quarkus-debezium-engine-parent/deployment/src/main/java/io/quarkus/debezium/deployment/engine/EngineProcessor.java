@@ -4,12 +4,17 @@
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 
-package io.quarkus.debezium.deployment;
+package io.quarkus.debezium.deployment.engine;
 
-import static io.quarkus.debezium.deployment.ClassesInConfigurationHandler.PREDICATE;
-import static io.quarkus.debezium.deployment.ClassesInConfigurationHandler.TRANSFORM;
+import static io.quarkus.debezium.deployment.engine.ClassesInConfigurationHandler.PREDICATE;
+import static io.quarkus.debezium.deployment.engine.ClassesInConfigurationHandler.TRANSFORM;
+import static io.quarkus.deployment.annotations.ExecutionTime.RUNTIME_INIT;
 
+import java.util.Collection;
 import java.util.List;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.invoke.Invoker;
 
 import org.apache.kafka.common.security.authenticator.SaslClientAuthenticator;
 import org.apache.kafka.connect.json.JsonConverter;
@@ -47,19 +52,31 @@ import io.debezium.snapshot.spi.SnapshotLock;
 import io.debezium.transforms.ExtractNewRecordState;
 import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
 import io.quarkus.arc.deployment.BeanContainerBuildItem;
+import io.quarkus.arc.deployment.BeanDiscoveryFinishedBuildItem;
+import io.quarkus.arc.deployment.SyntheticBeanBuildItem;
+import io.quarkus.arc.processor.BeanInfo;
 import io.quarkus.arc.processor.DotNames;
+import io.quarkus.debezium.deployment.dotnames.DebeziumDotNames;
 import io.quarkus.debezium.deployment.items.DebeziumConnectorBuildItem;
+import io.quarkus.debezium.deployment.items.DebeziumGeneratedInvokerBuildItem;
+import io.quarkus.debezium.deployment.items.DebeziumMediatorBuildItem;
+import io.quarkus.debezium.engine.CapturingHandlerProducer;
+import io.quarkus.debezium.engine.CapturingInvoker;
 import io.quarkus.debezium.engine.DebeziumRecorder;
+import io.quarkus.debezium.engine.DynamicCapturingInvokerSupplier;
+import io.quarkus.deployment.GeneratedClassGizmoAdaptor;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.ExecutionTime;
 import io.quarkus.deployment.annotations.Record;
 import io.quarkus.deployment.builditem.ExecutorBuildItem;
+import io.quarkus.deployment.builditem.GeneratedClassBuildItem;
 import io.quarkus.deployment.builditem.ShutdownContextBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.NativeImageConfigBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.NativeImageResourceBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
 import io.quarkus.deployment.pkg.steps.NativeOrNativeSourcesBuild;
+import io.quarkus.deployment.recording.RecorderContext;
 
 public class EngineProcessor {
 
@@ -74,6 +91,48 @@ public class EngineProcessor {
                                 .setDefaultScope(DotNames.APPLICATION_SCOPED)
                                 .build()));
 
+        additionalBeanProducer.produce(AdditionalBeanBuildItem
+                .builder()
+                .addBeanClasses(CapturingHandlerProducer.class)
+                .setUnremovable()
+                .setDefaultScope(DotNames.APPLICATION_SCOPED)
+                .build());
+    }
+
+    @BuildStep
+    public void generateInvokers(
+                                 List<DebeziumMediatorBuildItem> mediatorBuildItems,
+                                 BuildProducer<GeneratedClassBuildItem> generatedClassBuildItemBuildProducer,
+                                 BuildProducer<DebeziumGeneratedInvokerBuildItem> debeziumGeneratedInvokerBuildItemBuildProducer) {
+        GeneratedClassGizmoAdaptor generatedClassGizmoAdaptor = new GeneratedClassGizmoAdaptor(generatedClassBuildItemBuildProducer, true);
+
+        mediatorBuildItems.forEach(item -> {
+            MyData myData = InvokerGenerator.generate(item.getMethodInfo(), generatedClassGizmoAdaptor, item.getBean());
+
+            debeziumGeneratedInvokerBuildItemBuildProducer.produce(new DebeziumGeneratedInvokerBuildItem(myData.generatedClassName(),
+                    myData.delegate()));
+        });
+    }
+
+    @BuildStep
+    @Record(RUNTIME_INIT)
+    public void injectInvokers(
+                               DynamicCapturingInvokerSupplier dynamicCapturingInvokerSupplier,
+                               RecorderContext recorderContext,
+                               List<DebeziumGeneratedInvokerBuildItem> debeziumGeneratedInvokerBuildItems,
+                               BuildProducer<SyntheticBeanBuildItem> syntheticBeanBuildItemBuildProducer) {
+        debeziumGeneratedInvokerBuildItems.forEach(item -> {
+            syntheticBeanBuildItemBuildProducer.produce(
+                    SyntheticBeanBuildItem.configure(CapturingInvoker.class)
+                            .setRuntimeInit()
+                            .scope(ApplicationScoped.class)
+                            .unremovable()
+                            .supplier(dynamicCapturingInvokerSupplier.createInvoker(
+                                    recorderContext.classProxy(item.getDelegate().getImplClazz().name().toString()),
+                                    (Class<? extends Invoker>) recorderContext.classProxy(item.getGeneratedClassName())))
+                            .name("invoker" + item.getDelegate().getImplClazz().name())
+                            .done());
+        });
     }
 
     @BuildStep
@@ -82,8 +141,9 @@ public class EngineProcessor {
                      DebeziumRecorder recorder,
                      ExecutorBuildItem executorBuildItem,
                      ShutdownContextBuildItem shutdownContextBuildItem) {
-
-        recorder.startEngine(executorBuildItem.getExecutorProxy(), shutdownContextBuildItem, beanContainerBuildItem.getValue());
+        recorder.startEngine(executorBuildItem.getExecutorProxy(),
+                shutdownContextBuildItem,
+                beanContainerBuildItem.getValue());
     }
 
     @BuildStep(onlyIf = NativeOrNativeSourcesBuild.class)
@@ -158,5 +218,36 @@ public class EngineProcessor {
                 OffsetCommitPolicy.PeriodicCommitOffsetPolicy.class)
                 .reason(getClass().getName())
                 .build());
+    }
+
+    @BuildStep
+    public void extractMediators(BuildProducer<DebeziumMediatorBuildItem> mediatorBuildItemBuildProducer,
+                                 BeanDiscoveryFinishedBuildItem beanDiscoveryFinished) {
+        var items = beanDiscoveryFinished
+                .beanStream()
+                .classBeans()
+                .stream()
+                .filter(this::filterAnnotation)
+                .flatMap(beanInfo -> beanInfo
+                        .getTarget()
+                        .map(target -> target.asClass().methods())
+                        .stream()
+                        .flatMap(Collection::stream)
+                        .filter(DebeziumDotNames.CapturingAnnotation::filter)
+                        .map(methodInfo -> new DebeziumMediatorBuildItem(beanInfo, methodInfo)))
+                .toList();
+
+        for (DebeziumMediatorBuildItem item : items) {
+            mediatorBuildItemBuildProducer.produce(item);
+        }
+
+    }
+
+    private Boolean filterAnnotation(BeanInfo info) {
+        return info.getTarget()
+                .map(annotation -> annotation.asClass().methods()
+                        .stream()
+                        .anyMatch(DebeziumDotNames.CapturingAnnotation::filter))
+                .orElse(false);
     }
 }
