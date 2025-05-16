@@ -12,10 +12,12 @@ import io.quarkus.builder.item.MultiBuildItem;
 public final class DebeziumGeneratedInvokerBuildItem extends MultiBuildItem {
     private final String generatedClassName;
     private final BeanInfo mediator;
+    private final String qualifier;
 
-    public DebeziumGeneratedInvokerBuildItem(String generatedClassName, BeanInfo mediator) {
+    public DebeziumGeneratedInvokerBuildItem(String generatedClassName, BeanInfo mediator, String qualifier) {
         this.generatedClassName = generatedClassName;
         this.mediator = mediator;
+        this.qualifier = qualifier;
     }
 
     public String getGeneratedClassName() {
@@ -24,5 +26,9 @@ public final class DebeziumGeneratedInvokerBuildItem extends MultiBuildItem {
 
     public BeanInfo getMediator() {
         return mediator;
+    }
+
+    public String getQualifier() {
+        return qualifier;
     }
 }
