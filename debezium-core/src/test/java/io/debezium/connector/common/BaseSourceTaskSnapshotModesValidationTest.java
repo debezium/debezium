@@ -29,6 +29,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.function.LogPositionValidator;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
@@ -269,6 +270,11 @@ public class BaseSourceTaskSnapshotModesValidationTest {
         @Override
         protected List<SourceRecord> doPoll() {
             return records;
+        }
+
+        @Override
+        protected ErrorHandler getErrorHandler() {
+            return null;
         }
 
         @Override

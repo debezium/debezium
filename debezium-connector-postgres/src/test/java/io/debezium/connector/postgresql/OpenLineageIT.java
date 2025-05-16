@@ -12,13 +12,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.openlineage.DebeziumConfigFacet;
@@ -204,6 +208,52 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
         assertCorrectInputDataset(runningEvents.get(5).getInputs(), "s1.a", List.of("pk;serial", "aa;int4", "bb;varchar"));
     }
 
+    @Test
+    public void shouldProduceOpenLineageFailEvent() throws Exception {
+        // TestHelper.execute(SETUP_TABLES_STMT);
+
+        DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, "s1.a")
+                .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE.name() + ".s1.a", "this is intentionally a wrong statement")
+                .with(CommonConnectorConfig.MAX_RETRIES_ON_ERROR, 1)
+                .with(CommonConnectorConfig.RETRIABLE_RESTART_WAIT, 1000)
+                .with("openlineage.integration.enabled", true)
+                .with("openlineage.integration.config.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
+                .with("openlineage.integration.job.description", "This connector does cdc for products")
+                .with("openlineage.integration.tags", "env=prod,team=cdc")
+                .with("openlineage.integration.owners", "Mario=maintainer,John Doe=Data scientist");
+
+        AtomicReference<List<OpenLineage.RunEvent>> result = new AtomicReference<>(null);
+        start(PostgresConnector.class, configBuilder.build(), (success, message, error) -> {
+            result.set(debeziumTestTransport.getRunEvents());
+        });
+
+        Awaitility.await().atMost(20, TimeUnit.SECONDS).untilAsserted(() -> {
+            List<OpenLineage.RunEvent> events = result.get();
+
+            assertThat(events)
+                    .as("Wait for result to be set")
+                    .isNotNull();
+
+            Optional<OpenLineage.RunEvent> runEvent = events.stream()
+                    .filter(e -> e.getEventType() == OpenLineage.RunEvent.EventType.FAIL)
+                    .findFirst();
+
+            assertThat(runEvent)
+                    .as("Expect at least one FAIL event")
+                    .isPresent();
+
+            assertThat(runEvent.get().getRun().getFacets().getErrorMessage()).isNotNull();
+            assertThat(runEvent.get().getRun().getFacets().getErrorMessage().getMessage())
+                    .isEqualTo("java.util.concurrent.ExecutionException: org.apache.kafka.connect.errors.ConnectException: Snapshotting of table s1.a failed");
+            assertThat(runEvent.get().getRun().getFacets().getErrorMessage().getStackTrace()).contains("Caused by: org.postgresql.util.PSQLException:");
+
+        });
+    }
+
     private static void assertCorrectInputDataset(List<OpenLineage.InputDataset> inputs, String expectedTableName, List<String> expectedFields) {
         assertThat(inputs).hasSize(1);
         assertThat(inputs.get(0).getName()).isEqualTo(expectedTableName);
@@ -226,7 +276,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
     private static void assertEventContainsExpectedData(OpenLineage.RunEvent startEvent) {
 
         assertThat(startEvent.getJob().getNamespace()).isEqualTo("test_server");
-        assertThat(startEvent.getJob().getName()).isEqualTo("test_server");
+        assertThat(startEvent.getJob().getName()).isEqualTo("testing-connector");
         assertThat(startEvent.getJob().getFacets().getDocumentation().getDescription()).isEqualTo("This connector does cdc for products");
 
         assertThat(startEvent.getRun().getFacets().getProcessing_engine().getName()).isEqualTo("Debezium");

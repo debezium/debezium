@@ -340,6 +340,11 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
     }
 
     @Override
+    protected ErrorHandler getErrorHandler() {
+        return errorHandler;
+    }
+
+    @Override
     protected void doStop() {
         // The replication connection is regularly closed at the end of streaming phase
         // in case of error it can happen that the connector is terminated before the stremaing

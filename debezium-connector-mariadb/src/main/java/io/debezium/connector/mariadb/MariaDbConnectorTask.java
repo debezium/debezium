@@ -291,6 +291,11 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
         return records.stream().map(DataChangeEvent::getRecord).collect(Collectors.toList());
     }
 
+    @Override
+    protected ErrorHandler getErrorHandler() {
+        return errorHandler;
+    }
+
     private MariaDbValueConverters getValueConverters(MariaDbConnectorConfig connectorConfig) {
         return new MariaDbValueConverters(
                 connectorConfig.getDecimalMode(),
