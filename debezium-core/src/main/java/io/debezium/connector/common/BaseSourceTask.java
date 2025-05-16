@@ -42,6 +42,7 @@ import io.debezium.config.Field;
 import io.debezium.function.LogPositionValidator;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.notification.channels.NotificationChannel;
 import io.debezium.pipeline.signal.channels.SignalChannelReader;
 import io.debezium.pipeline.signal.channels.process.SignalChannelWriter;
@@ -267,7 +268,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             catch (RetriableException e) {
                 LOGGER.warn("Failed to start connector, will re-attempt during polling.", e);
                 restartDelay = ElapsedTimeStrategy.constant(Clock.system(), retriableRestartWait);
-                // TODO: here should be fired a fail event
                 setTaskState(State.RESTARTING);
             }
         }
@@ -400,6 +400,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
      */
     protected abstract List<SourceRecord> doPoll() throws InterruptedException;
 
+    protected abstract ErrorHandler getErrorHandler();
+
     /**
      * Starts this connector in case it has been stopped after a retriable error,
      * and the backoff period has passed.
@@ -414,6 +416,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                 result = true;
             }
             else if (currentState == State.RESTARTING) {
+                DebeziumOpenLineageEmitter.emit(State.RESTARTING, getErrorHandler().getProducerThrowable());
                 // we're in restart mode... check if it's time to restart
                 if (restartDelay.hasElapsed()) {
                     LOGGER.info("Attempting to restart task.");

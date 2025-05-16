@@ -18,7 +18,6 @@ import io.openlineage.client.Clients;
 import io.openlineage.client.OpenLineage;
 import io.openlineage.client.OpenLineageClient;
 import io.openlineage.client.OpenLineageClientException;
-import io.openlineage.client.transports.NoopTransport;
 
 public class OpenLineageEventEmitter {
 
@@ -27,27 +26,23 @@ public class OpenLineageEventEmitter {
     private static final String OPEN_LINEAGE_PRODUCER_URI_FORMAT = "https://github.com/debezium/debezium/%s";
 
     private final OpenLineageClient openLineageClient;
-    private final boolean isEnabled;
 
     public OpenLineageEventEmitter(Configuration config) {
 
+        // TODO Move configs to CommonConnectorConfig
         if (config.getBoolean("openlineage.integration.enabled", false)) {
             openLineageClient = Clients.newClient(() -> List.of(
                     Path.of(config.getString("openlineage.integration.config.path", "."))));
-            this.isEnabled = true;
         }
         else {
-            openLineageClient = OpenLineageClient.builder()
-                    .transport(new NoopTransport())
-                    .build();
-            this.isEnabled = false;
+            openLineageClient = null;
         }
+
         LOGGER.debug("OpenLineage client v{} configured", getClientVersion());
     }
 
     public OpenLineageEventEmitter(OpenLineageClient client) {
         this.openLineageClient = client;
-        this.isEnabled = true;
     }
 
     public void emit(OpenLineage.RunEvent event) {
@@ -60,7 +55,7 @@ public class OpenLineageEventEmitter {
     }
 
     public boolean isEnabled() {
-        return isEnabled;
+        return openLineageClient != null;
     }
 
     public String getClientVersion() {

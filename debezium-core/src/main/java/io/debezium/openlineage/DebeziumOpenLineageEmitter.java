@@ -5,6 +5,8 @@
  */
 package io.debezium.openlineage;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.time.ZonedDateTime;
 import java.util.List;
 
@@ -16,10 +18,11 @@ import io.debezium.relational.Table;
 import io.openlineage.client.OpenLineage;
 import io.openlineage.client.OpenLineage.RunEvent.EventType;
 
-public class DebeziumOpenLineageEmitter {
+public class DebeziumOpenLineageEmitter  {
 
     private static final String INPUT_DATASET_NAMESPACE_FORMAT = "%s://%s:%s";
     private static final String CONNECTOR_NAME = "name";
+    private static final String JAVA = "Java";
 
     private static OpenLineageContext openLineageContext;
     private static String connectorName;
@@ -41,10 +44,20 @@ public class DebeziumOpenLineageEmitter {
 
     public static void emit(BaseSourceTask.State state) {
 
-        emit(state, null);
+        emit(state, null, null);
+    }
+
+    public static void emit(BaseSourceTask.State state, Throwable t) {
+
+        emit(state, null, t);
     }
 
     public static void emit(BaseSourceTask.State state, Table event) {
+
+        emit(state, event, null);
+    }
+
+    public static void emit(BaseSourceTask.State state, Table event, Throwable t) {
 
         if (emitter.isEnabled()) {
 
@@ -52,7 +65,7 @@ public class DebeziumOpenLineageEmitter {
 
             List<OpenLineage.InputDataset> inputs = getInputDatasets(event);
 
-            OpenLineage.RunFacets runFacets = openLineageContext.getOpenLineage().newRunFacetsBuilder()
+            OpenLineage.RunFacetsBuilder runFacetsBuilder = openLineageContext.getOpenLineage().newRunFacetsBuilder()
                     // TODO it will be good if the name could be debezium-connector, debezium-engine, debezium-server
                     .processing_engine(openLineageContext.getOpenLineage()
                             .newProcessingEngineRunFacet(
@@ -64,14 +77,19 @@ public class DebeziumOpenLineageEmitter {
                                     .nominalStartTime(ZonedDateTime.now())
                                     .nominalEndTime(ZonedDateTime.now())
                                     .build())
-                    // TODO try to use also the .errorMessage()
-                    .put(DebeziumConfigFacet.FACET_KEY_NAME, new DebeziumConfigFacet(emitter.getProducer(), config.asMap()))
-                    .build();
+                    .put(DebeziumConfigFacet.FACET_KEY_NAME, new DebeziumConfigFacet(emitter.getProducer(), config.asMap()));
+
+            if (t != null) {
+                StringWriter sw = new StringWriter();
+                t.printStackTrace(new PrintWriter(sw));
+                runFacetsBuilder.errorMessage(openLineageContext.getOpenLineage()
+                        .newErrorMessageRunFacet(t.getMessage(), JAVA, sw.toString()));
+            }
 
             OpenLineage.RunEvent startEvent = openLineageContext.getOpenLineage().newRunEventBuilder()
                     .eventType(getEventType(state))
                     .eventTime(ZonedDateTime.now())
-                    .run(openLineageContext.getOpenLineage().newRun(openLineageContext.getRunUuid(), runFacets))
+                    .run(openLineageContext.getOpenLineage().newRun(openLineageContext.getRunUuid(), runFacetsBuilder.build()))
                     .inputs(inputs)
                     .job(job)
                     .build();
@@ -111,6 +129,7 @@ public class DebeziumOpenLineageEmitter {
                                         .schema(openLineageContext.getOpenLineage().newSchemaDatasetFacetBuilder()
                                                 .fields(datasetFields)
                                                 .build())
+
                                         .datasetType(openLineageContext.getOpenLineage().newDatasetTypeDatasetFacet("TABLE", ""))
                                         .build())
                         .build());
