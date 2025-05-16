@@ -17,11 +17,14 @@ import io.quarkus.runtime.annotations.Recorder;
 @Recorder
 public class DynamicCapturingInvokerSupplier {
 
-    public Supplier<CapturingInvoker> createInvoker(Class<?> delegateClazz, Class<? extends Invoker> invokerClazz) {
+    public static final String BASE_NAME = "invoker";
+
+    public Supplier<CapturingInvoker> createInvoker(Class<?> mediatorClazz, Class<? extends Invoker> invokerClazz) {
         try {
-            Object delegate = Arc.container().instance(delegateClazz).get();
-            CapturingInvoker instance = (CapturingInvoker) invokerClazz.getDeclaredConstructor(Object.class)
-                    .newInstance(delegate);
+            Object mediator = Arc.container().instance(mediatorClazz).get();
+            CapturingInvoker instance = (CapturingInvoker) invokerClazz
+                    .getDeclaredConstructor(Object.class)
+                    .newInstance(mediator);
 
             return () -> instance;
 
