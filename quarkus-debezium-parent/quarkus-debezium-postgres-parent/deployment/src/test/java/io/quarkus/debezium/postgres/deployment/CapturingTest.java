@@ -35,7 +35,7 @@ public class CapturingTest {
     private static final Logger logger = LoggerFactory.getLogger(CapturingTest.class);
 
     @Inject
-    Capture capture;
+    CaptureProductsHandler handler;
 
     @Inject
     Debezium debezium;
@@ -43,7 +43,7 @@ public class CapturingTest {
     @RegisterExtension
     static final QuarkusUnitTest config = new QuarkusUnitTest()
             .withApplicationRoot((jar) -> jar
-                    .addClasses(Capture.class))
+                    .addClasses(CaptureProductsHandler.class))
             .overrideConfigKey("quarkus.debezium.offset.storage", "org.apache.kafka.connect.storage.MemoryOffsetBackingStore")
             .overrideConfigKey("quarkus.debezium.name", "test")
             .overrideConfigKey("quarkus.debezium.topic.prefix", "dbserver1")
@@ -55,7 +55,7 @@ public class CapturingTest {
             .assertLogRecords((records) -> assertThat(records.getFirst().getMessage()).isEqualTo("here to stay!"));
 
     @Test
-    @DisplayName("should invoke the capture method annotated with product")
+    @DisplayName("should invoke the capture method annotated with product qualifier")
     void shouldInvokeTheCaptureAnnotation() {
         Assertions.assertThat(debezium.configuration().get("connector.class"))
                 .isEqualTo("io.debezium.connector.postgresql.PostgresConnector");
@@ -67,14 +67,14 @@ public class CapturingTest {
 
         given().await()
                 .atMost(10, TimeUnit.SECONDS)
-                .untilAsserted(() -> Assertions.assertThat(capture.isInvoked()).isTrue());
+                .untilAsserted(() -> Assertions.assertThat(handler.isInvoked()).isTrue());
     }
 
     @ApplicationScoped
-    static class Capture {
+    static class CaptureProductsHandler {
         private final AtomicBoolean invoked = new AtomicBoolean(false);
 
-        @Capturing("product")
+        @Capturing("public.product")
         public void capture(RecordChangeEvent<SourceRecord> event) {
             logger.info("here to stay!");
             invoked.set(true);
