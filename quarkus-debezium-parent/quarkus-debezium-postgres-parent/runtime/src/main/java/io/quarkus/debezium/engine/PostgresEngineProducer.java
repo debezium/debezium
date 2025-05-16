@@ -8,12 +8,14 @@ package io.quarkus.debezium.engine;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
 import io.debezium.runtime.Connector;
 import io.debezium.runtime.ConnectorProducer;
 import io.debezium.runtime.Debezium;
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
+import io.quarkus.debezium.engine.capture.DebeziumCapturingHandler;
 
 @ApplicationScoped
 public class PostgresEngineProducer implements ConnectorProducer {
@@ -21,11 +23,17 @@ public class PostgresEngineProducer implements ConnectorProducer {
     public static final String CONNECTOR_CLASS = "connector.class";
     public static final Connector POSTGRES = new Connector("io.debezium.connector.postgresql.PostgresConnector");
 
+    @Inject
+    private DebeziumCapturingHandler debeziumCapturingHandler;
+
     @Produces
     @Singleton
     public Debezium engine(DebeziumEngineConfiguration debeziumEngineConfiguration) {
         debeziumEngineConfiguration.configuration().put(CONNECTOR_CLASS, POSTGRES.name());
 
-        return new SourceRecordDebezium(debeziumEngineConfiguration, new DefaultStateHandler(), POSTGRES);
+        return new SourceRecordDebezium(debeziumEngineConfiguration,
+                new DefaultStateHandler(),
+                POSTGRES,
+                debeziumCapturingHandler);
     }
 }

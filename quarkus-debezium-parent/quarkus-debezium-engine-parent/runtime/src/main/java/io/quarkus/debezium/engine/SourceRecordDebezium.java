@@ -12,9 +12,6 @@ import java.util.function.Function;
 
 import jakarta.enterprise.context.ApplicationScoped;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.config.Configuration;
 import io.debezium.embedded.Connect;
 import io.debezium.engine.DebeziumEngine;
@@ -23,10 +20,10 @@ import io.debezium.engine.format.ChangeEventFormat;
 import io.debezium.runtime.Connector;
 import io.debezium.runtime.DebeziumStatus;
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
+import io.quarkus.debezium.engine.capture.DebeziumCapturingHandler;
 
 @ApplicationScoped
 class SourceRecordDebezium extends RunnableDebezium {
-    private final Logger LOGGER = LoggerFactory.getLogger(SourceRecordDebezium.class);
 
     private final DebeziumEngineConfiguration debeziumEngineConfiguration;
     private final DebeziumEngine<?> engine;
@@ -34,7 +31,9 @@ class SourceRecordDebezium extends RunnableDebezium {
     private final StateHandler stateHandler;
 
     SourceRecordDebezium(DebeziumEngineConfiguration debeziumEngineConfiguration,
-                         StateHandler stateHandler, Connector connector) {
+                         StateHandler stateHandler,
+                         Connector connector,
+                         DebeziumCapturingHandler debeziumCapturingHandler) {
         this.debeziumEngineConfiguration = debeziumEngineConfiguration;
         this.stateHandler = stateHandler;
 
@@ -46,7 +45,7 @@ class SourceRecordDebezium extends RunnableDebezium {
                         .build().asProperties())
                 .using(this.stateHandler.connectorCallback())
                 .using(this.stateHandler.completionCallback())
-                .notifying(event -> LOGGER.info("**EXPERIMENTAL** {}", event.record().value().toString()))
+                .notifying(debeziumCapturingHandler)
                 .build();
         this.connector = connector;
     }
