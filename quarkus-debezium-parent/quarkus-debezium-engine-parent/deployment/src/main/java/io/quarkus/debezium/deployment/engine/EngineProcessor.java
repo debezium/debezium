@@ -6,6 +6,7 @@
 
 package io.quarkus.debezium.deployment.engine;
 
+import static io.quarkus.debezium.deployment.dotnames.DebeziumDotNames.CapturingDotName.CAPTURING;
 import static io.quarkus.debezium.deployment.engine.ClassesInConfigurationHandler.PREDICATE;
 import static io.quarkus.debezium.deployment.engine.ClassesInConfigurationHandler.TRANSFORM;
 import static io.quarkus.deployment.annotations.ExecutionTime.RUNTIME_INIT;
@@ -54,6 +55,8 @@ import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
 import io.quarkus.arc.deployment.BeanContainerBuildItem;
 import io.quarkus.arc.deployment.BeanDiscoveryFinishedBuildItem;
 import io.quarkus.arc.deployment.SyntheticBeanBuildItem;
+import io.quarkus.arc.deployment.UnremovableBeanBuildItem;
+import io.quarkus.arc.deployment.UnremovableBeanBuildItem.BeanClassAnnotationExclusion;
 import io.quarkus.arc.processor.DotNames;
 import io.quarkus.debezium.deployment.dotnames.DebeziumDotNames;
 import io.quarkus.debezium.deployment.items.DebeziumConnectorBuildItem;
@@ -63,6 +66,8 @@ import io.quarkus.debezium.engine.CapturingHandlerProducer;
 import io.quarkus.debezium.engine.CapturingInvoker;
 import io.quarkus.debezium.engine.DebeziumRecorder;
 import io.quarkus.debezium.engine.DynamicCapturingInvokerSupplier;
+import io.quarkus.debezium.engine.FullyQualifiedTableNameResolver;
+import io.quarkus.debezium.engine.QualifiedTableNameResolverRecorder;
 import io.quarkus.deployment.GeneratedClassGizmoAdaptor;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
@@ -80,7 +85,10 @@ import io.quarkus.deployment.recording.RecorderContext;
 public class EngineProcessor {
 
     @BuildStep
-    void engine(BuildProducer<AdditionalBeanBuildItem> additionalBeanProducer, List<DebeziumConnectorBuildItem> debeziumConnectorBuildItems) {
+    @Record(ExecutionTime.STATIC_INIT)
+    void engine(BuildProducer<AdditionalBeanBuildItem> additionalBeanProducer,
+                BuildProducer<SyntheticBeanBuildItem> syntheticBeanBuildItemBuildProducer,
+                List<DebeziumConnectorBuildItem> debeziumConnectorBuildItems, QualifiedTableNameResolverRecorder recorder) {
         debeziumConnectorBuildItems
                 .forEach(item -> additionalBeanProducer
                         .produce(AdditionalBeanBuildItem
@@ -96,6 +104,15 @@ public class EngineProcessor {
                 .setUnremovable()
                 .setDefaultScope(DotNames.APPLICATION_SCOPED)
                 .build());
+
+        syntheticBeanBuildItemBuildProducer.produce(
+                SyntheticBeanBuildItem.configure(FullyQualifiedTableNameResolver.class)
+                        .setRuntimeInit()
+                        .scope(ApplicationScoped.class)
+                        .alternative(true)
+                        .priority(1)
+                        .supplier(recorder.get())
+                        .done());
     }
 
     @BuildStep
@@ -183,8 +200,7 @@ public class EngineProcessor {
     }
 
     @BuildStep
-    public void generateInvokers(
-                                 List<DebeziumMediatorBuildItem> mediatorBuildItems,
+    public void generateInvokers(List<DebeziumMediatorBuildItem> mediatorBuildItems,
                                  BuildProducer<GeneratedClassBuildItem> generatedClassBuildItemBuildProducer,
                                  BuildProducer<DebeziumGeneratedInvokerBuildItem> debeziumGeneratedInvokerBuildItemBuildProducer) {
         InvokerGenerator invokerGenerator = new InvokerGenerator(new GeneratedClassGizmoAdaptor(generatedClassBuildItemBuildProducer,
@@ -193,7 +209,8 @@ public class EngineProcessor {
         mediatorBuildItems.forEach(item -> {
             InvokerMetaData metadata = invokerGenerator.generate(item.getMethodInfo(),
                     item.getBean());
-            debeziumGeneratedInvokerBuildItemBuildProducer.produce(new DebeziumGeneratedInvokerBuildItem(metadata.invokerClassName(), metadata.mediator()));
+            debeziumGeneratedInvokerBuildItemBuildProducer.produce(new DebeziumGeneratedInvokerBuildItem(metadata.invokerClassName(),
+                    metadata.mediator(), metadata.qualifier()));
         });
     }
 
@@ -212,7 +229,7 @@ public class EngineProcessor {
                         .supplier(dynamicCapturingInvokerSupplier.createInvoker(
                                 recorderContext.classProxy(item.getMediator().getImplClazz().name().toString()),
                                 (Class<? extends Invoker>) recorderContext.classProxy(item.getGeneratedClassName())))
-                        .name(DynamicCapturingInvokerSupplier.BASE_NAME + item.getMediator().getImplClazz().name())
+                        .named(DynamicCapturingInvokerSupplier.BASE_NAME + item.getMediator().getImplClazz().name() + item.getQualifier())
                         .done()));
     }
 
@@ -232,5 +249,10 @@ public class EngineProcessor {
                         .filter(DebeziumDotNames.CapturingDotName::filter)
                         .map(methodInfo -> new DebeziumMediatorBuildItem(beanInfo, methodInfo)))
                 .forEach(mediatorBuildItemBuildProducer::produce);
+    }
+
+    @BuildStep
+    public List<UnremovableBeanBuildItem> removalExclusion() {
+        return List.of(new UnremovableBeanBuildItem(new BeanClassAnnotationExclusion(CAPTURING)));
     }
 }
