@@ -6,8 +6,11 @@
 
 package io.quarkus.debezium.deployment.engine;
 
+import static io.debezium.runtime.Capturing.EVERYTHING_QUALIFIER;
+
 import java.lang.reflect.Modifier;
 
+import org.jboss.jandex.AnnotationValue;
 import org.jboss.jandex.MethodInfo;
 
 import io.debezium.engine.RecordChangeEvent;
@@ -89,14 +92,21 @@ public class InvokerGenerator {
                 capture.invokeVirtualMethod(methodDescriptor, delegate, event);
                 capture.returnVoid();
             }
-            Object qualifier = methodInfo
+            MethodCreator getFullyQualifiedTableName = invoker.getMethodCreator("getFullyQualifiedTableName", String.class);
+
+            AnnotationValue qualifier = methodInfo
                     .annotation(DebeziumDotNames.CapturingDotName.CAPTURING)
-                    .value().value();
+                    .value();
 
-            MethodCreator getTable = invoker.getMethodCreator("getFullyQualifiedTableName", String.class);
-            getTable.returnValue(getTable.load(String.valueOf(qualifier)));
+            if (qualifier != null) {
+                getFullyQualifiedTableName.returnValue(getFullyQualifiedTableName.load(String.valueOf(qualifier.value())));
 
-            return new InvokerMetaData(name.replace('/', '.'), beanInfo);
+                return new InvokerMetaData(name.replace('/', '.'), beanInfo, String.valueOf(qualifier.value()));
+            }
+
+            getFullyQualifiedTableName.returnValue(getFullyQualifiedTableName.load(EVERYTHING_QUALIFIER));
+
+            return new InvokerMetaData(name.replace('/', '.'), beanInfo, EVERYTHING_QUALIFIER);
         }
     }
 

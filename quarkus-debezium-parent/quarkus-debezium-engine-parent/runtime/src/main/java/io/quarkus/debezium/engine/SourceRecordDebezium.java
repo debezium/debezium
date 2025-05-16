@@ -12,9 +12,6 @@ import java.util.function.Function;
 
 import jakarta.enterprise.context.ApplicationScoped;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.config.Configuration;
 import io.debezium.embedded.Connect;
 import io.debezium.engine.DebeziumEngine;
@@ -26,7 +23,6 @@ import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
 
 @ApplicationScoped
 class SourceRecordDebezium extends RunnableDebezium {
-    private final Logger LOGGER = LoggerFactory.getLogger(SourceRecordDebezium.class);
 
     private final DebeziumEngineConfiguration debeziumEngineConfiguration;
     private final DebeziumEngine<?> engine;

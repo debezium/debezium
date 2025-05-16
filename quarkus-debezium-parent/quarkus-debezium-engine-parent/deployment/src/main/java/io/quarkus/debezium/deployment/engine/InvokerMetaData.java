@@ -8,5 +8,5 @@ package io.quarkus.debezium.deployment.engine;
 
 import io.quarkus.arc.processor.BeanInfo;
 
-public record InvokerMetaData(String invokerClassName, BeanInfo mediator) {
+public record InvokerMetaData(String invokerClassName, BeanInfo mediator, String qualifier) {
 }

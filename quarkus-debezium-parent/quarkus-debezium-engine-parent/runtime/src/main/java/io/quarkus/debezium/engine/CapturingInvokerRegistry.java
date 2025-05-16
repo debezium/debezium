@@ -6,6 +6,8 @@
 
 package io.quarkus.debezium.engine;
 
+import static io.debezium.runtime.Capturing.EVERYTHING_QUALIFIER;
+
 import java.util.Map;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -17,14 +19,14 @@ import io.debezium.engine.RecordChangeEvent;
 public class CapturingInvokerRegistry {
     private static final Logger logger = LoggerFactory.getLogger(CapturingInvokerRegistry.class);
 
-    Map<String, CapturingInvoker> invokers;
+    private final Map<String, CapturingInvoker> invokers;
 
     public CapturingInvokerRegistry(Map<String, CapturingInvoker> invokers) {
         this.invokers = invokers;
     }
 
-    public CapturingInvoker get(String table) {
-        return invokers.getOrDefault(table, noOpInvoker(table));
+    public CapturingInvoker get(String qualifier) {
+        return invokers.getOrDefault(qualifier, invokers.getOrDefault(EVERYTHING_QUALIFIER, noOpInvoker(qualifier)));
     }
 
     private CapturingInvoker noOpInvoker(String table) {

@@ -21,10 +21,8 @@ public class DefaultCapturingHandler implements DebeziumCapturingHandler {
 
     @Override
     public void accept(RecordChangeEvent<SourceRecord> event) {
-
-        CapturingInvoker invoker = registry.get(resolver.resolve(event));
-
-        invoker.capture(event);
+        registry.get(resolver.resolve(event))
+                .capture(event);
     }
 
 }
