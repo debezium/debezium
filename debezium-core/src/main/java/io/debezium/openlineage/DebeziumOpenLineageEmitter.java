@@ -18,7 +18,9 @@ import io.openlineage.client.OpenLineage.RunEvent.EventType;
 
 public class DebeziumOpenLineageEmitter {
 
-    public static final String INPUT_DATASET_NAMESPACE_FORMAT = "%s://%s:%s";
+    private static final String INPUT_DATASET_NAMESPACE_FORMAT = "%s://%s:%s";
+    private static final String CONNECTOR_NAME = "name";
+
     private static OpenLineageContext openLineageContext;
     private static String connectorName;
     private static OpenLineageEventEmitter emitter;
@@ -32,8 +34,9 @@ public class DebeziumOpenLineageEmitter {
         openLineageContext = new OpenLineageContext(
                 new OpenLineage(emitter.getProducer()),
                 configuration.subset("openlineage.integration", false),
+                // TODO check is namespace should be configurable
                 new OpenLineageJobIdentifier(configuration.getString(CommonConnectorConfig.TOPIC_PREFIX),
-                        configuration.getString(CommonConnectorConfig.TOPIC_PREFIX)));
+                        configuration.getString(CONNECTOR_NAME)));
     }
 
     public static void emit(BaseSourceTask.State state) {
@@ -53,7 +56,8 @@ public class DebeziumOpenLineageEmitter {
                     // TODO it will be good if the name could be debezium-connector, debezium-engine, debezium-server
                     .processing_engine(openLineageContext.getOpenLineage()
                             .newProcessingEngineRunFacet(
-                                    ProcessingEngineMetadata.debezium().version(), ProcessingEngineMetadata.debezium().name(),
+                                    ProcessingEngineMetadata.debezium().version(),
+                                    ProcessingEngineMetadata.debezium().name(),
                                     ProcessingEngineMetadata.debezium().openlineageAdapterVersion()))
                     .nominalTime(
                             openLineageContext.getOpenLineage().newNominalTimeRunFacetBuilder()
@@ -108,7 +112,6 @@ public class DebeziumOpenLineageEmitter {
                                                 .fields(datasetFields)
                                                 .build())
                                         .datasetType(openLineageContext.getOpenLineage().newDatasetTypeDatasetFacet("TABLE", ""))
-                                        .version(openLineageContext.getOpenLineage().newDatasetVersionDatasetFacet("input-version"))
                                         .build())
                         .build());
     }
