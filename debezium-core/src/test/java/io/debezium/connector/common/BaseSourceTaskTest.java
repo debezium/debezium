@@ -32,6 +32,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 
@@ -194,6 +195,11 @@ public class BaseSourceTaskTest {
         @Override
         protected List<SourceRecord> doPoll() {
             return records;
+        }
+
+        @Override
+        protected ErrorHandler getErrorHandler() {
+            return null;
         }
 
         @Override

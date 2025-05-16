@@ -225,6 +225,11 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
     }
 
     @Override
+    protected ErrorHandler getErrorHandler() {
+        return errorHandler;
+    }
+
+    @Override
     public void doStop() {
         try {
             if (jdbcConnection != null) {

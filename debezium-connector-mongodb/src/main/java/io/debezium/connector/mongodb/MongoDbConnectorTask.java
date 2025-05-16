@@ -246,6 +246,11 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
     }
 
     @Override
+    protected ErrorHandler getErrorHandler() {
+        return errorHandler;
+    }
+
+    @Override
     public void doStop() {
         PreviousContext previousLogContext = this.taskContext.configureLoggingContext(taskName);
         try {
