@@ -262,6 +262,11 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
     }
 
     @Override
+    protected ErrorHandler getErrorHandler() {
+        return errorHandler;
+    }
+
+    @Override
     protected void doStop() {
         try {
             if (connection != null) {
