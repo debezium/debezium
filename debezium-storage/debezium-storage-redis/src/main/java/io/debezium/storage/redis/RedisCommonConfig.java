@@ -44,6 +44,11 @@ public class RedisCommonConfig {
             .withDescription("Use SSL for Redis connection")
             .withDefault(DEFAULT_SSL_ENABLED);
 
+    private static final boolean DEFAULT_HOSTNAME_VERIFICATION = false;
+    private static final Field PROP_SSL_HOSTNAME_VERIFICATION_ENABLED = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "ssl.hostname.verification.enabled")
+            .withDescription("Enable hostname verification")
+            .withDefault(DEFAULT_HOSTNAME_VERIFICATION);
+
     private static final Integer DEFAULT_CONNECTION_TIMEOUT = 2000;
     private static final Field PROP_CONNECTION_TIMEOUT = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "connection.timeout.ms")
             .withDescription("Connection timeout (in ms)")
@@ -95,6 +100,7 @@ public class RedisCommonConfig {
     private String user;
     private String password;
     private boolean sslEnabled;
+    private boolean hostnameVerificationEnabled;
 
     private Integer initialRetryDelay;
     private Integer maxRetryDelay;
@@ -120,8 +126,9 @@ public class RedisCommonConfig {
     }
 
     protected List<Field> getAllConfigurationFields() {
-        return Collect.arrayListOf(PROP_ADDRESS, PROP_DB_INDEX, PROP_USER, PROP_PASSWORD, PROP_SSL_ENABLED, PROP_CONNECTION_TIMEOUT, PROP_SOCKET_TIMEOUT,
-                PROP_RETRY_INITIAL_DELAY, PROP_RETRY_MAX_DELAY, PROP_WAIT_ENABLED, PROP_WAIT_TIMEOUT, PROP_WAIT_RETRY_ENABLED, PROP_WAIT_RETRY_DELAY);
+        return Collect.arrayListOf(PROP_ADDRESS, PROP_DB_INDEX, PROP_USER, PROP_PASSWORD, PROP_SSL_ENABLED, PROP_SSL_HOSTNAME_VERIFICATION_ENABLED,
+                PROP_CONNECTION_TIMEOUT, PROP_SOCKET_TIMEOUT, PROP_RETRY_INITIAL_DELAY, PROP_RETRY_MAX_DELAY, PROP_WAIT_ENABLED, PROP_WAIT_TIMEOUT,
+                PROP_WAIT_RETRY_ENABLED, PROP_WAIT_RETRY_DELAY);
     }
 
     protected void init(Configuration config) {
@@ -130,6 +137,7 @@ public class RedisCommonConfig {
         user = config.getString(PROP_USER);
         password = config.getString(PROP_PASSWORD);
         sslEnabled = config.getBoolean(PROP_SSL_ENABLED);
+        hostnameVerificationEnabled = config.getBoolean(PROP_SSL_HOSTNAME_VERIFICATION_ENABLED);
 
         initialRetryDelay = config.getInteger(PROP_RETRY_INITIAL_DELAY);
         maxRetryDelay = config.getInteger(PROP_RETRY_MAX_DELAY);
@@ -166,6 +174,10 @@ public class RedisCommonConfig {
 
     public boolean isSslEnabled() {
         return sslEnabled;
+    }
+
+    public boolean isHostnameVerificationEnabled() {
+        return hostnameVerificationEnabled;
     }
 
     public Integer getInitialRetryDelay() {
