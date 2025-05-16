@@ -35,7 +35,7 @@ public class CapturingInvokerRegistry {
             }
 
             @Override
-            public String getTable() {
+            public String getFullyQualifiedTableName() {
                 return table;
             }
         };

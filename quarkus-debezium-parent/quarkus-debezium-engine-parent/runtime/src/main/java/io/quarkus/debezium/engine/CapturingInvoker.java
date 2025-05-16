@@ -13,5 +13,5 @@ import io.debezium.engine.RecordChangeEvent;
 public interface CapturingInvoker {
     void capture(RecordChangeEvent<SourceRecord> event);
 
-    String getTable();
+    String getFullyQualifiedTableName();
 }
