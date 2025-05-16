@@ -108,7 +108,7 @@
         <version.jackson>2.16.2</version.jackson>
         <version.jackson.databind>2.16.2</version.jackson.databind>
         <version.org.slf4j>1.7.36</version.org.slf4j>
-        <version.netty>4.1.119.Final</version.netty>
+        <version.netty>4.1.118.Final</version.netty>
         <version.zstd-jni>1.5.6-6</version.zstd-jni>
 
         <!-- Scala version used to build Kafka -->
@@ -119,7 +119,7 @@
 
         <!-- ANTLR -->
         <!-- Align with Antlr runtime version pulled in via Quarkus -->
-        <version.antlr>4.13.0</version.antlr>
+        <version.antlr>4.10.1</version.antlr>
         <version.antlr4test.plugin>1.18</version.antlr4test.plugin>
 
         <!-- Quarkus -->
@@ -129,10 +129,10 @@
         <!-- Version used in Debezium Server, Operator, etc., usually a LTS version -->
         <!-- Must be aligned with Apicurio version below -->
         <!-- Debezium Server Pravega must use the same Netty version as the one used by Quarkus -->
-        <quarkus.version.runtime>3.20.1</quarkus.version.runtime>
+        <quarkus.version.runtime>3.15.4</quarkus.version.runtime>
 
         <!-- Apicurio -->
-        <version.apicurio>2.6.8.Final</version.apicurio>
+        <version.apicurio>2.6.2.Final</version.apicurio>
 
         <!-- Database drivers, should align with databases -->
         <version.postgresql.driver>42.6.1</version.postgresql.driver>
@@ -223,6 +223,7 @@
         <module>debezium-interceptor</module>
         <module>debezium-sink</module>
         <module>debezium-ai</module>
+        <module>quarkus-debezium-parent</module>
     </modules>
 
     <distributionManagement>
