@@ -17,7 +17,7 @@ import io.debezium.engine.RecordChangeEvent;
 import io.quarkus.arc.processor.BeanInfo;
 import io.quarkus.arc.processor.DotNames;
 import io.quarkus.debezium.deployment.dotnames.DebeziumDotNames;
-import io.quarkus.debezium.engine.CapturingInvoker;
+import io.quarkus.debezium.engine.capture.CapturingInvoker;
 import io.quarkus.gizmo.ClassCreator;
 import io.quarkus.gizmo.ClassOutput;
 import io.quarkus.gizmo.FieldDescriptor;

@@ -20,6 +20,7 @@ import io.debezium.engine.format.ChangeEventFormat;
 import io.debezium.runtime.Connector;
 import io.debezium.runtime.DebeziumStatus;
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
+import io.quarkus.debezium.engine.capture.DebeziumCapturingHandler;
 
 @ApplicationScoped
 class SourceRecordDebezium extends RunnableDebezium {
