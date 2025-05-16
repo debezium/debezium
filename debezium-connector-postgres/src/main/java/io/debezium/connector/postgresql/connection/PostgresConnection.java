@@ -784,6 +784,10 @@ public class PostgresConnection extends JdbcConnection {
     @Override
     protected boolean isTableUniqueIndexIncluded(String indexName, String columnName) {
         if (columnName != null) {
+            if (columnName.length() > 16348) {
+                throw new RuntimeException(
+                    "Unique index exceeded allowed size");
+            }
             return !FUNCTION_DEFAULT_PATTERN.matcher(columnName).matches()
                     && !EXPRESSION_DEFAULT_PATTERN.matcher(columnName).matches();
         }
