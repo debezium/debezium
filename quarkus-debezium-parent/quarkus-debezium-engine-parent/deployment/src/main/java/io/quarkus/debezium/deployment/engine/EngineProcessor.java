@@ -54,7 +54,6 @@ import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
 import io.quarkus.arc.deployment.BeanContainerBuildItem;
 import io.quarkus.arc.deployment.BeanDiscoveryFinishedBuildItem;
 import io.quarkus.arc.deployment.SyntheticBeanBuildItem;
-import io.quarkus.arc.processor.BeanInfo;
 import io.quarkus.arc.processor.DotNames;
 import io.quarkus.debezium.deployment.dotnames.DebeziumDotNames;
 import io.quarkus.debezium.deployment.items.DebeziumConnectorBuildItem;
@@ -100,50 +99,13 @@ public class EngineProcessor {
     }
 
     @BuildStep
-    public void generateInvokers(
-                                 List<DebeziumMediatorBuildItem> mediatorBuildItems,
-                                 BuildProducer<GeneratedClassBuildItem> generatedClassBuildItemBuildProducer,
-                                 BuildProducer<DebeziumGeneratedInvokerBuildItem> debeziumGeneratedInvokerBuildItemBuildProducer) {
-        GeneratedClassGizmoAdaptor generatedClassGizmoAdaptor = new GeneratedClassGizmoAdaptor(generatedClassBuildItemBuildProducer, true);
-
-        mediatorBuildItems.forEach(item -> {
-            MyData myData = InvokerGenerator.generate(item.getMethodInfo(), generatedClassGizmoAdaptor, item.getBean());
-
-            debeziumGeneratedInvokerBuildItemBuildProducer.produce(new DebeziumGeneratedInvokerBuildItem(myData.generatedClassName(),
-                    myData.delegate()));
-        });
-    }
-
-    @BuildStep
-    @Record(RUNTIME_INIT)
-    public void injectInvokers(
-                               DynamicCapturingInvokerSupplier dynamicCapturingInvokerSupplier,
-                               RecorderContext recorderContext,
-                               List<DebeziumGeneratedInvokerBuildItem> debeziumGeneratedInvokerBuildItems,
-                               BuildProducer<SyntheticBeanBuildItem> syntheticBeanBuildItemBuildProducer) {
-        debeziumGeneratedInvokerBuildItems.forEach(item -> {
-            syntheticBeanBuildItemBuildProducer.produce(
-                    SyntheticBeanBuildItem.configure(CapturingInvoker.class)
-                            .setRuntimeInit()
-                            .scope(ApplicationScoped.class)
-                            .unremovable()
-                            .supplier(dynamicCapturingInvokerSupplier.createInvoker(
-                                    recorderContext.classProxy(item.getDelegate().getImplClazz().name().toString()),
-                                    (Class<? extends Invoker>) recorderContext.classProxy(item.getGeneratedClassName())))
-                            .name("invoker" + item.getDelegate().getImplClazz().name())
-                            .done());
-        });
-    }
-
-    @BuildStep
     @Record(ExecutionTime.RUNTIME_INIT)
     void startEngine(BeanContainerBuildItem beanContainerBuildItem,
                      DebeziumRecorder recorder,
                      ExecutorBuildItem executorBuildItem,
                      ShutdownContextBuildItem shutdownContextBuildItem) {
-        recorder.startEngine(executorBuildItem.getExecutorProxy(),
-                shutdownContextBuildItem,
-                beanContainerBuildItem.getValue());
+
+        recorder.startEngine(executorBuildItem.getExecutorProxy(), shutdownContextBuildItem, beanContainerBuildItem.getValue());
     }
 
     @BuildStep(onlyIf = NativeOrNativeSourcesBuild.class)
@@ -221,33 +183,54 @@ public class EngineProcessor {
     }
 
     @BuildStep
+    public void generateInvokers(
+                                 List<DebeziumMediatorBuildItem> mediatorBuildItems,
+                                 BuildProducer<GeneratedClassBuildItem> generatedClassBuildItemBuildProducer,
+                                 BuildProducer<DebeziumGeneratedInvokerBuildItem> debeziumGeneratedInvokerBuildItemBuildProducer) {
+        InvokerGenerator invokerGenerator = new InvokerGenerator(new GeneratedClassGizmoAdaptor(generatedClassBuildItemBuildProducer,
+                true));
+
+        mediatorBuildItems.forEach(item -> {
+            InvokerMetaData metadata = invokerGenerator.generate(item.getMethodInfo(),
+                    item.getBean());
+            debeziumGeneratedInvokerBuildItemBuildProducer.produce(new DebeziumGeneratedInvokerBuildItem(metadata.invokerClassName(), metadata.mediator()));
+        });
+    }
+
+    @BuildStep
+    @Record(RUNTIME_INIT)
+    public void injectInvokers(
+                               DynamicCapturingInvokerSupplier dynamicCapturingInvokerSupplier,
+                               RecorderContext recorderContext,
+                               List<DebeziumGeneratedInvokerBuildItem> debeziumGeneratedInvokerBuildItems,
+                               BuildProducer<SyntheticBeanBuildItem> syntheticBeanBuildItemBuildProducer) {
+        debeziumGeneratedInvokerBuildItems.forEach(item -> syntheticBeanBuildItemBuildProducer.produce(
+                SyntheticBeanBuildItem.configure(CapturingInvoker.class)
+                        .setRuntimeInit()
+                        .scope(ApplicationScoped.class)
+                        .unremovable()
+                        .supplier(dynamicCapturingInvokerSupplier.createInvoker(
+                                recorderContext.classProxy(item.getMediator().getImplClazz().name().toString()),
+                                (Class<? extends Invoker>) recorderContext.classProxy(item.getGeneratedClassName())))
+                        .name(DynamicCapturingInvokerSupplier.BASE_NAME + item.getMediator().getImplClazz().name())
+                        .done()));
+    }
+
+    @BuildStep
     public void extractMediators(BuildProducer<DebeziumMediatorBuildItem> mediatorBuildItemBuildProducer,
                                  BeanDiscoveryFinishedBuildItem beanDiscoveryFinished) {
-        var items = beanDiscoveryFinished
+        beanDiscoveryFinished
                 .beanStream()
                 .classBeans()
                 .stream()
-                .filter(this::filterAnnotation)
+                .filter(DebeziumDotNames.CapturingDotName::filter)
                 .flatMap(beanInfo -> beanInfo
                         .getTarget()
                         .map(target -> target.asClass().methods())
                         .stream()
                         .flatMap(Collection::stream)
-                        .filter(DebeziumDotNames.CapturingAnnotation::filter)
+                        .filter(DebeziumDotNames.CapturingDotName::filter)
                         .map(methodInfo -> new DebeziumMediatorBuildItem(beanInfo, methodInfo)))
-                .toList();
-
-        for (DebeziumMediatorBuildItem item : items) {
-            mediatorBuildItemBuildProducer.produce(item);
-        }
-
-    }
-
-    private Boolean filterAnnotation(BeanInfo info) {
-        return info.getTarget()
-                .map(annotation -> annotation.asClass().methods()
-                        .stream()
-                        .anyMatch(DebeziumDotNames.CapturingAnnotation::filter))
-                .orElse(false);
+                .forEach(mediatorBuildItemBuildProducer::produce);
     }
 }

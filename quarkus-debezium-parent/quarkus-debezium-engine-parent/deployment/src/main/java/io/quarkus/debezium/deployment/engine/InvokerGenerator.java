@@ -13,6 +13,7 @@ import org.jboss.jandex.MethodInfo;
 import io.debezium.engine.RecordChangeEvent;
 import io.quarkus.arc.processor.BeanInfo;
 import io.quarkus.arc.processor.DotNames;
+import io.quarkus.debezium.deployment.dotnames.DebeziumDotNames;
 import io.quarkus.debezium.engine.CapturingInvoker;
 import io.quarkus.gizmo.ClassCreator;
 import io.quarkus.gizmo.ClassOutput;
@@ -24,18 +25,44 @@ import io.quarkus.runtime.util.HashUtil;
 
 public class InvokerGenerator {
 
-    public static MyData generate(MethodInfo methodInfo, ClassOutput classOutput, BeanInfo beanInfo) {
-        String name = generateName(beanInfo, methodInfo);
+    private final ClassOutput output;
+
+    public InvokerGenerator(ClassOutput classOutput) {
+        this.output = classOutput;
+    }
+
+    /**
+     * it generates concreate classes based on the CapturingInvoker interface using gizmo:
+     * <p>
+     * public class GeneratedCapturingInvoker {
+     *     private final Object beanInstance;
+     *
+     *     void capture(RecordChangeEvent<SourceRecord> event) {
+     *         beanInstance.method(event);
+     *     }
+     *
+     *     String getFullyQualifiedTableName() {
+     *       return "tableQualifier";
+     *     }
+     * }
+     *
+     * @param methodInfo
+     * @param beanInfo
+     * @return
+     */
+    public InvokerMetaData generate(MethodInfo methodInfo, BeanInfo beanInfo) {
+        String name = generateClassName(beanInfo, methodInfo);
 
         try (ClassCreator invoker = ClassCreator.builder()
-                .classOutput(classOutput)
+                .classOutput(this.output)
                 .className(name)
                 .interfaces(CapturingInvoker.class)
                 .build()) {
 
-            String beanInstanceType = methodInfo.declaringClass().name().toString();
-
-            FieldDescriptor beanInstanceField = invoker.getFieldCreator("beanInstance", beanInstanceType)
+            FieldDescriptor beanInstanceField = invoker.getFieldCreator("beanInstance", methodInfo
+                    .declaringClass()
+                    .name()
+                    .toString())
                     .setModifiers(Modifier.PRIVATE)
                     .getFieldDescriptor();
 
@@ -62,16 +89,18 @@ public class InvokerGenerator {
                 capture.invokeVirtualMethod(methodDescriptor, delegate, event);
                 capture.returnVoid();
             }
-            ;
+            Object qualifier = methodInfo
+                    .annotation(DebeziumDotNames.CapturingDotName.CAPTURING)
+                    .value().value();
 
-            MethodCreator getTable = invoker.getMethodCreator("getTable", String.class);
-            getTable.returnValue(getTable.load("my_table"));
+            MethodCreator getTable = invoker.getMethodCreator("getFullyQualifiedTableName", String.class);
+            getTable.returnValue(getTable.load(String.valueOf(qualifier)));
 
-            return new MyData(name.replace('/', '.'), beanInfo);
+            return new InvokerMetaData(name.replace('/', '.'), beanInfo);
         }
     }
 
-    public static String generateName(BeanInfo bean, MethodInfo methodInfo) {
+    private String generateClassName(BeanInfo bean, MethodInfo methodInfo) {
         return DotNames.internalPackageNameWithTrailingSlash(bean.getImplClazz().name())
                 + DotNames.simpleName(bean.getImplClazz().name())
                 + "_DebeziumInvoker" + "_"
