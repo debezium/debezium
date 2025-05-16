@@ -24,7 +24,7 @@ public class CapturingHandlerProducer {
     public DefaultCapturingHandler produce() {
         CapturingInvokerRegistry capturingInvokerRegistry = new CapturingInvokerRegistry(invokers
                 .stream()
-                .collect(Collectors.toMap(CapturingInvoker::getTable, Function.identity())));
+                .collect(Collectors.toMap(CapturingInvoker::getFullyQualifiedTableName, Function.identity())));
 
         return new DefaultCapturingHandler(capturingInvokerRegistry);
     }
