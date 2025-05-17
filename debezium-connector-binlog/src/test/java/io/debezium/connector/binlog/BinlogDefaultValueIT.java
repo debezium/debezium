@@ -88,6 +88,8 @@ public abstract class BinlogDefaultValueIT<C extends SourceConnector> extends Ab
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

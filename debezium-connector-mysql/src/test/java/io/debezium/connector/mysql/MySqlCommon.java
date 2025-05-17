@@ -47,4 +47,9 @@ public interface MySqlCommon extends BinlogConnectorTest<MySqlConnector> {
     default boolean isMariaDb() {
         return false;
     }
+
+    @Override
+    default void dropAllDatabases() {
+        MySqlTestConnection.dropAllDatabases();
+    }
 }

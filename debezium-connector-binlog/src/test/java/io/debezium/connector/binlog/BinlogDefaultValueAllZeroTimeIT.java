@@ -49,6 +49,8 @@ public abstract class BinlogDefaultValueAllZeroTimeIT<C extends SourceConnector>
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

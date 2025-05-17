@@ -25,6 +25,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -59,6 +60,11 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
     public void before() throws SQLException {
         super.before();
         kafka.createTopic(getSignalsTopic(), 1, 1);
+    }
+
+    @After
+    public void after() {
+        dropAllDatabases();
     }
 
     @BeforeClass

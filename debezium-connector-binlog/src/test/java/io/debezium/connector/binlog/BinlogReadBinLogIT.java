@@ -115,6 +115,8 @@ public abstract class BinlogReadBinLogIT<C extends SourceConnector> extends Abst
                 conn = null;
             }
         }
+
+        dropAllDatabases();
     }
 
     protected void startClient() throws IOException, TimeoutException, SQLException {

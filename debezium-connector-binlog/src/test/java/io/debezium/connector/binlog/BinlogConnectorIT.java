@@ -102,6 +102,8 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     protected UniqueDatabase getDatabase() {

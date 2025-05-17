@@ -51,6 +51,8 @@ public abstract class BinlogCustomSnapshotterIT<C extends SourceConnector> exten
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

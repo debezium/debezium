@@ -66,6 +66,8 @@ public abstract class BinlogTransactionMetadataIT<C extends SourceConnector> ext
         finally {
             Testing.Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

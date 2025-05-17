@@ -72,6 +72,8 @@ public abstract class BinlogIncrementalSnapshotIT<C extends SourceConnector>
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Override

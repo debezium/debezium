@@ -52,6 +52,8 @@ public abstract class BinlogMultiTableStatementIT<C extends SourceConnector> ext
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

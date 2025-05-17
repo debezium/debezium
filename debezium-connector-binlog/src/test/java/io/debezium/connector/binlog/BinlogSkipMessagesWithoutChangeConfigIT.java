@@ -56,6 +56,8 @@ public abstract class BinlogSkipMessagesWithoutChangeConfigIT<C extends SourceCo
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

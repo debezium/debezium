@@ -11,6 +11,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import org.apache.kafka.connect.source.SourceConnector;
+import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -24,6 +25,11 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
  */
 @SkipWhenDatabaseVersion(check = LESS_THAN, major = 5, minor = 6, patch = 5, reason = "MySQL 5.5 does not support CURRENT_TIMESTAMP on DATETIME and only a single column can specify default CURRENT_TIMESTAMP, lifted in MySQL 5.6.5")
 public abstract class BinlogConnectionIT<C extends SourceConnector> extends AbstractBinlogConnectorIT<C> {
+
+    @After
+    public void afterEach() {
+        dropAllDatabases();
+    }
 
     @Ignore
     @Test

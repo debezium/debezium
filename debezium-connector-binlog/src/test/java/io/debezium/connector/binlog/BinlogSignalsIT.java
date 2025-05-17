@@ -84,6 +84,8 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     protected Configuration.Builder config() {

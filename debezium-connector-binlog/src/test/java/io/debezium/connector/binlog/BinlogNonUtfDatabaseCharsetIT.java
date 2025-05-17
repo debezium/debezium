@@ -51,6 +51,8 @@ public abstract class BinlogNonUtfDatabaseCharsetIT<C extends SourceConnector> e
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

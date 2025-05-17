@@ -59,6 +59,8 @@ public abstract class BinlogSourceTypeInSchemaIT<C extends SourceConnector> exte
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

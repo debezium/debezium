@@ -47,6 +47,8 @@ public abstract class BinlogNotificationsIT<C extends SourceConnector> extends A
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     protected List<String> collections() {

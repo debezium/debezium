@@ -66,6 +66,8 @@ public abstract class BinlogGeometryIT<C extends SourceConnector> extends Abstra
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

@@ -59,6 +59,8 @@ public abstract class BinlogDecimalIT<C extends SourceConnector> extends Abstrac
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

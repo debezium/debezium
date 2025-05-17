@@ -56,6 +56,8 @@ public abstract class BinlogDdlParserIT<C extends SourceConnector> extends Abstr
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     protected Configuration.Builder defaultConfig() {

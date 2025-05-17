@@ -58,6 +58,8 @@ public abstract class BinlogEnumColumnIT<C extends SourceConnector> extends Abst
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test

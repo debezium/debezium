@@ -83,6 +83,8 @@ public abstract class BinlogTransactionPayloadIT<C extends SourceConnector> exte
         finally {
             Files.delete(SCHEMA_HISTORY_PATH);
         }
+
+        dropAllDatabases();
     }
 
     @Test
