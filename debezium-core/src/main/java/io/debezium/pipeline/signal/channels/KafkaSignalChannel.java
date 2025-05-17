@@ -24,6 +24,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
@@ -92,6 +93,12 @@ public class KafkaSignalChannel implements SignalChannelReader {
             .withDescription("Consumer group id for the signal topic")
             .withDefault("kafka-signal");
 
+    private static final Field.Set ALL_FIELDS = Field.setOf(
+            SIGNAL_TOPIC,
+            BOOTSTRAP_SERVERS,
+            SIGNAL_POLL_TIMEOUT_MS,
+            GROUP_ID);
+
     private Optional<SignalRecord> processSignal(ConsumerRecord<String, String> record) {
 
         if (!connectorName.equals(record.key())) {
@@ -141,12 +148,16 @@ public class KafkaSignalChannel implements SignalChannelReader {
 
     @Override
     public void init(CommonConnectorConfig connectorConfig) {
-
         this.connectorName = connectorConfig.getLogicalName();
         Configuration signalConfig = connectorConfig.getConfig().subset(CONFIGURATION_FIELD_PREFIX_STRING, false)
                 .edit()
                 .withDefault(KafkaSignalChannel.SIGNAL_TOPIC, connectorName + "-signal")
                 .build();
+
+        if (!signalConfig.validateAndRecord(ALL_FIELDS, LOGGER::error)) {
+            throw new DebeziumException("Signal channel " + CHANNEL_NAME + " configuration is invalid. See logs for details.");
+        }
+
         this.topicName = signalConfig.getString(SIGNAL_TOPIC);
         this.pollTimeoutMs = Duration.ofMillis(signalConfig.getInteger(SIGNAL_POLL_TIMEOUT_MS));
         Configuration consumerConfig = buildKafkaConfiguration(signalConfig);
