@@ -66,7 +66,7 @@ public class TypeRegistry {
     private static final String CATEGORY_ARRAY = "A";
     private static final String CATEGORY_ENUM = "E";
 
-    private static final String SQL_ENUM_VALUES = "SELECT t.enumtypid as id, array_agg(t.enumlabel) as values "
+    private static final String SQL_ENUM_VALUES = "SELECT t.enumtypid as id, array_agg(t.enumlabel order by t.enumsortorder) as values "
             + "FROM pg_catalog.pg_enum t GROUP BY id";
 
     private static final String SQL_TYPES = "SELECT t.oid AS oid, t.typname AS name, t.typelem AS element, t.typbasetype AS parentoid, t.typtypmod as modifiers, t.typcategory as category, e.values as enum_values "
