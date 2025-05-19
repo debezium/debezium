@@ -80,7 +80,7 @@ public class ExtractNewRecordStateConfigDefinition {
                     + "tombstone (default) - For each delete event, leave only a tombstone in the stream."
                     + "rewrite - Remove tombstone from the record, and add a `__deleted` field with the value `true`."
                     + "rewrite-with-tombstone - Retain tombstone in record and add a `__deleted` field with the value `true`."
-                    + "rewrite-deletes - Convert delete events to tombstone events and drop tombstone events.");
+                    + "delete-to-tombstone - Convert delete events to tombstone events and drop tombstone events.");
 
     public static final Field ROUTE_BY_FIELD = Field.create("route.by.field")
             .withDisplayName("Route by field name")
