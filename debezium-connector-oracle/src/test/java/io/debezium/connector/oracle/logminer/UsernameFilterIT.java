@@ -269,7 +269,7 @@ public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
 
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
-            final LogInterceptor logInterceptor = TestHelper.getEventProcessorLogInterceptor();
+            final LogInterceptor logInterceptor = TestHelper.getAbstractEventProcessorLogInterceptor();
 
             connection.execute("INSERT INTO dbz8884 (id,data) values (1,'abc')");
 
