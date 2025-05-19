@@ -106,7 +106,7 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
     public boolean skipSchemaChangeEvent(SchemaChangeEvent event) {
         if (storeOnlyCapturedDatabases() && !Strings.isNullOrEmpty(event.getDatabase())
                 && !connectorConfig.getTableFilters().databaseFilter().test(event.getDatabase())) {
-            LOGGER.debug("Skipping schema event as it belongs to a non-captured database: '{}'", event);
+            LOGGER.trace("Skipping schema event as it belongs to a non-captured database: '{}'", event);
             return true;
         }
         return false;
@@ -135,7 +135,7 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         // - or DDLs for captured objects
         if (!storeOnlyCapturedTables() || isGlobalSetVariableStatement(schemaChange.getDdl(), schemaChange.getDatabase())
                 || schemaChange.getTables().stream().map(Table::id).anyMatch(filters.dataCollectionFilter()::isIncluded)) {
-            LOGGER.debug("Recorded DDL statements for database '{}': {}", schemaChange.getDatabase(), schemaChange.getDdl());
+            LOGGER.trace("Recorded DDL statements for database '{}': {}", schemaChange.getDatabase(), schemaChange.getDdl());
             record(schemaChange, schemaChange.getTableChanges());
         }
     }
@@ -239,7 +239,7 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
      * @return list of parsed schema changes
      */
     public List<SchemaChangeEvent> parseSnapshotDdl(P partition, String ddlStatements, String databaseName, O offset, Instant sourceTime) {
-        LOGGER.debug("Processing snapshot DDL '{}' for database '{}'", ddlStatements, databaseName);
+        LOGGER.trace("Processing snapshot DDL '{}' for database '{}'", ddlStatements, databaseName);
         return parseDdl(partition, ddlStatements, databaseName, offset, sourceTime, true);
     }
 
@@ -254,7 +254,7 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
      * @return list of parsed schema changes
      */
     public List<SchemaChangeEvent> parseStreamingDdl(P partition, String ddlStatements, String databaseName, O offset, Instant sourceTime) {
-        LOGGER.debug("Processing streaming DDL '{}' for database '{}'", ddlStatements, databaseName);
+        LOGGER.trace("Processing streaming DDL '{}' for database '{}'", ddlStatements, databaseName);
         return parseDdl(partition, ddlStatements, databaseName, offset, sourceTime, false);
     }
 
@@ -312,7 +312,8 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         }
         catch (ParsingException | MultipleParsingExceptions e) {
             if (skipUnparseableDdlStatements()) {
-                LOGGER.warn("Ignoring unparseable DDL statement '{}'", ddlStatements, e);
+                LOGGER.warn("Ignoring unparseable DDL statements: {}", e.getMessage());
+                LOGGER.trace("DDL statement: '{}'", ddlStatements, e);
             }
             else {
                 throw e;
@@ -387,7 +388,7 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
             }
         }
         else {
-            LOGGER.debug("Changes for DDL '{}' were filtered and not recorded in database schema history", ddlStatements);
+            LOGGER.trace("Changes for DDL '{}' were filtered and not recorded in database schema history", ddlStatements);
         }
         return schemaChangeEvents;
     }

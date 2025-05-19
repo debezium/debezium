@@ -902,7 +902,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
     public static Duration stringToDuration(String timeString) {
         final Matcher matcher = TIME_FIELD_PATTERN.matcher(timeString);
         if (!matcher.matches()) {
-            throw new DebeziumException("Unexpected format for TIME column: " + timeString);
+            throw new DebeziumException("Unexpected format for TIME column");
         }
 
         final boolean isNegative = !timeString.isBlank() && timeString.charAt(0) == '-';
@@ -946,7 +946,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
     public static LocalDate stringToLocalDate(String dateString, Column column, Table table) {
         final Matcher matcher = DATE_FIELD_PATTERN.matcher(dateString);
         if (!matcher.matches()) {
-            throw new RuntimeException("Unexpected format for DATE column: " + dateString);
+            throw new RuntimeException("Unexpected format for DATE column");
         }
 
         final int year = Integer.parseInt(matcher.group(1));
@@ -954,8 +954,8 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
         final int day = Integer.parseInt(matcher.group(3));
 
         if (month == 0 || day == 0) {
-            INVALID_VALUE_LOGGER.warn("Invalid value '{}' stored in column '{}' of table '{}' converted to empty value",
-                    dateString, column.name(), table.id());
+            INVALID_VALUE_LOGGER.warn("Invalid value stored in column '{}' of table '{}' converted to empty value",
+                    column.name(), table.id());
             return null;
         }
         return LocalDate.of(year, month, day);
@@ -973,7 +973,7 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
     public static boolean containsZeroValuesInDatePart(String timestampString, Column column, Table table) {
         final Matcher matcher = TIMESTAMP_FIELD_PATTERN.matcher(timestampString);
         if (!matcher.matches()) {
-            throw new RuntimeException("Unexpected format for DATE column: " + timestampString);
+            throw new RuntimeException("Unexpected format for DATE column");
         }
 
         final int year = Integer.parseInt(matcher.group(1));
@@ -981,8 +981,8 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
         final int day = Integer.parseInt(matcher.group(3));
 
         if (month == 0 || day == 0) {
-            INVALID_VALUE_LOGGER.warn("Invalid value '{}' stored in column '{}' of table '{}' converted to empty value",
-                    timestampString, column.name(), table.id());
+            INVALID_VALUE_LOGGER.warn("Invalid value stored in column '{}' of table '{}' converted to empty value",
+                    column.name(), table.id());
             return true;
         }
         return false;

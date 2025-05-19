@@ -419,7 +419,7 @@ public abstract class BinlogDefaultValueConverter implements DefaultValueConvert
             }
         }
         if (!parsedDate) {
-            throw new java.lang.IllegalArgumentException("Cannot parse the date from " + s);
+            throw new IllegalArgumentException("Cannot parse the date - invalid format");
         }
 
         // Get the time. Hour, minute, second and colons are all optional

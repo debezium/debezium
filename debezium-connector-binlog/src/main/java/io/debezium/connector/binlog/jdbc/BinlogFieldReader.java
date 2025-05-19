@@ -136,7 +136,7 @@ public abstract class BinlogFieldReader {
      */
     protected void logInvalidValue(ResultSet rs, int columnIndex, Object value) throws SQLException {
         final String columnName = rs.getMetaData().getColumnName(columnIndex);
-        LOGGER.trace("Column '{}', detected an invalid value of '{}'.", columnName, value);
+        LOGGER.trace("Column '{}', detected an invalid value.", columnName);
     }
 
     protected boolean hasValueConverter(Column column, TableId tableId) {

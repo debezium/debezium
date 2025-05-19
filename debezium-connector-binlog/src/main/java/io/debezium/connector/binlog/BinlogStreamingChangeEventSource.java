@@ -530,7 +530,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         long eventTs = event.getHeader().getTimestamp();
 
         if (eventTs == 0) {
-            LOGGER.trace("Received unexpected event with 0 timestamp: {}", event);
+            LOGGER.trace("Received unexpected event with 0 timestamp: {}", (EventHeader) event.getHeader());
             return;
         }
 
@@ -544,7 +544,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     protected abstract void setEventTimestamp(Event event, long eventTs);
 
     protected void ignoreEvent(O offsetContext, Event event) {
-        LOGGER.trace("Ignoring event due to missing handler: {}", event);
+        LOGGER.trace("Ignoring event due to missing handler: {}", (EventHeader) event.getHeader());
     }
 
     protected void handleEvent(P partition, O offsetContext, ChangeEventSourceContext context, Event event) {
@@ -713,7 +713,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     protected void handleQueryEvent(P partition, O offsetContext, Event event) throws InterruptedException {
         Instant eventTime = Conversions.toInstantFromMillis(eventTimestamp.toEpochMilli());
         QueryEventData command = unwrapData(event);
-        LOGGER.debug("Received query command: {}", event);
+        LOGGER.trace("Received query command: {}", (EventHeader) event.getHeader());
         String sql = command.getSql().trim();
         if (sql.equalsIgnoreCase("BEGIN")) {
             handleTransactionBegin(partition, offsetContext, event, command.getThreadId());
@@ -731,11 +731,12 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             return;
         }
         if (schema.ddlFilter().test(sql)) {
-            LOGGER.debug("DDL '{}' was filtered out of processing", sql);
+            LOGGER.trace("DDL '{}' was filtered out of processing", sql);
             return;
         }
         if (upperCasedStatementBegin.equals("INSERT ") || upperCasedStatementBegin.equals("UPDATE ") || upperCasedStatementBegin.equals("DELETE ")) {
-            LOGGER.warn("Received DML '" + sql + "' for processing, binlog probably contains events generated with statement or mixed based replication format");
+            LOGGER.warn("Received DML of type {}, binlog probably contains events generated with statement or mixed based replication format",
+                    upperCasedStatementBegin.trim());
             return;
         }
         if (sql.equalsIgnoreCase("ROLLBACK")) {
@@ -800,7 +801,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         String tableName = metadata.getTable();
         TableId tableId = new TableId(databaseName, null, tableName);
         if (schema.assignTableNumber(tableNumber, tableId)) {
-            LOGGER.debug("Received update table metadata event: {}", event);
+            LOGGER.trace("Received update table metadata event: {}", event);
         }
         else {
             informAboutUnknownTableIfRequired(partition, offsetContext, event, tableId);
@@ -1000,7 +1001,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 LOGGER.error(
                         "Encountered change event '{}' at offset {} for table {} whose schema isn't known to this connector. One possible cause is an incomplete database schema history topic. Take a new snapshot in this case.{}"
                                 + "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
-                        event, offsetContext.getOffset(), tableId, System.lineSeparator(), eventHeader.getPosition(),
+                        eventHeader, offsetContext.getOffset(), tableId, System.lineSeparator(), eventHeader.getPosition(),
                         eventHeader.getNextPosition(), offsetContext.getSource().binlogFilename());
                 throw new DebeziumException("Encountered change event for table " + tableId
                         + " whose schema isn't known to this connector");
@@ -1010,7 +1011,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                         "Encountered change event '{}' at offset {} for table {} whose schema isn't known to this connector. One possible cause is an incomplete database schema history topic. Take a new snapshot in this case.{}"
                                 + "The event will be ignored.{}"
                                 + "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
-                        event, offsetContext.getOffset(), tableId, System.lineSeparator(), System.lineSeparator(),
+                        eventHeader, offsetContext.getOffset(), tableId, System.lineSeparator(), System.lineSeparator(),
                         eventHeader.getPosition(), eventHeader.getNextPosition(), offsetContext.getSource().binlogFilename());
             }
             else {
@@ -1018,7 +1019,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                         "Encountered change event '{}' at offset {} for table {} whose schema isn't known to this connector. One possible cause is an incomplete database schema history topic. Take a new snapshot in this case.{}"
                                 + "The event will be ignored.{}"
                                 + "Use the mysqlbinlog tool to view the problematic event: mysqlbinlog --start-position={} --stop-position={} --verbose {}",
-                        event, offsetContext.getOffset(), tableId, System.lineSeparator(), System.lineSeparator(),
+                        eventHeader, offsetContext.getOffset(), tableId, System.lineSeparator(), System.lineSeparator(),
                         eventHeader.getPosition(), eventHeader.getNextPosition(), offsetContext.getSource().binlogFilename());
             }
         }
@@ -1089,11 +1090,11 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             throws InterruptedException {
         if (skipEvent) {
             // We can skip this because we should already be at least this far ...
-            LOGGER.info("Skipping previously processed row event: {}", event);
+            LOGGER.info("Skipping previously processed row event: {}", (EventHeader) event.getHeader());
             return;
         }
         if (ignoreDmlEventByGtidSource) {
-            LOGGER.debug("Skipping DML event because this GTID source is filtered: {}", event);
+            LOGGER.debug("Skipping DML event because this GTID source is filtered: {}", (EventHeader) event.getHeader());
             return;
         }
         final T data = unwrapData(event);
@@ -1126,7 +1127,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             }
             else {
                 // All rows were previously processed ...
-                LOGGER.debug("Skipping previously processed {} event: {}", changeType, event);
+                LOGGER.debug("Skipping previously processed {} event: {}", changeType, event.getHeader());
             }
         }
         else {
@@ -1149,7 +1150,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     }
 
     protected void logEvent(O offsetContext, Event event) {
-        LOGGER.trace("Received event: {}", event);
+        LOGGER.trace("Received event: {}", (EventHeader) event.getHeader());
     }
 
     private void logStreamingSourceState(Level severity) {

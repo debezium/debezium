@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.shyiko.mysql.binlog.event.Event;
+import com.github.shyiko.mysql.binlog.event.EventHeader;
 import com.github.shyiko.mysql.binlog.event.EventType;
 import com.github.shyiko.mysql.binlog.event.MariadbGtidEventData;
 import com.github.shyiko.mysql.binlog.event.QueryEventData;
@@ -92,7 +93,7 @@ public class EventBuffer<T extends BinlogStreamingChangeEventSource<P, O>, P ext
 
         if (event.getHeader().getEventType() == EventType.QUERY) {
             QueryEventData command = streamingChangeEventSource.unwrapData(event);
-            LOGGER.debug("Received query command: {}", event);
+            LOGGER.trace("Received query command: {}", (EventHeader) event.getHeader());
             String sql = command.getSql().trim();
             if (sql.equalsIgnoreCase("BEGIN")) {
                 beginTransaction(partition, offsetContext, event);

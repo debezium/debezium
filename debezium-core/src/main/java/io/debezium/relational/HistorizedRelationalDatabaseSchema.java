@@ -150,7 +150,7 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
     public boolean skipSchemaChangeEvent(SchemaChangeEvent event) {
         if (storeOnlyCapturedDatabases() && !Strings.isNullOrEmpty(event.getSchema())
                 && !historizedConnectorConfig.getTableFilters().schemaFilter().test(event.getSchema())) {
-            LOGGER.debug("Skipping schema event as it belongs to a non-captured schema: '{}'", event);
+            LOGGER.trace("Skipping schema event as it belongs to a non-captured schema: '{}'", event);
             return true;
         }
         return false;
