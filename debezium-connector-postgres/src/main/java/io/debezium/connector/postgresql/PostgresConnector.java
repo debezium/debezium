@@ -183,11 +183,11 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
     private static int checkPostgresVersionForPgoutputSupport(PostgresConnection connection, PostgresConnectorConfig postgresConfig) throws SQLException {
         // check for DB version and LogicalDecoder compatibility
         final Version dbVersion = ServerVersion.from(
-            connection.queryAndMap(
-                "SHOW server_version",
-                connection.singleResultMapper(
-                    rs -> rs.getString("server_version"),
-                    "Could not fetch db version")));
+                connection.queryAndMap(
+                        "SHOW server_version",
+                        connection.singleResultMapper(
+                                rs -> rs.getString("server_version"),
+                                "Could not fetch db version")));
         return dbVersion.getVersionNum();
     }
 

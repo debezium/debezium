@@ -1342,7 +1342,8 @@ public abstract class AbstractConnectorTest implements Testing {
                     Object attribute = mbeanServer.getAttribute(getSnapshotMetricsObjectName(connector, server, props), "SnapshotCompleted");
                     if (attribute instanceof Long) {
                         return (Long) attribute == 1L;
-                    } else {
+                    }
+                    else {
                         return (Boolean) attribute;
                     }
                 });
@@ -1361,7 +1362,8 @@ public abstract class AbstractConnectorTest implements Testing {
                     Object attribute = mbeanServer.getAttribute(getSnapshotMetricsObjectName(connector, server, task, database, props), "SnapshotCompleted");
                     if (attribute instanceof Long) {
                         return (Long) attribute == 1L;
-                    } else {
+                    }
+                    else {
                         return (Boolean) attribute;
                     }
                 });
@@ -1379,7 +1381,8 @@ public abstract class AbstractConnectorTest implements Testing {
                     Object attribute = mbeanServer.getAttribute(getSnapshotMetricsObjectName(connector, server, task, database), event);
                     if (attribute instanceof Long) {
                         return (Long) attribute == 1L;
-                    } else {
+                    }
+                    else {
                         return (Boolean) attribute;
                     }
                 });

@@ -248,12 +248,12 @@ public class EventRouterDelegate<R extends ConnectRecord<R>> {
         if (matcher.matches()) {
             final String topic = matcher.replaceFirst(routTopicReplacement);
             return newRecord.newRecord(topic,
-                newRecord.kafkaPartition(),
-                newRecord.keySchema(),
-                newRecord.key(),
-                newRecord.valueSchema(),
-                newRecord.value(),
-                newRecord.timestamp());
+                    newRecord.kafkaPartition(),
+                    newRecord.keySchema(),
+                    newRecord.key(),
+                    newRecord.valueSchema(),
+                    newRecord.value(),
+                    newRecord.timestamp());
         }
 
         return newRecord;

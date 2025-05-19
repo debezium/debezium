@@ -465,7 +465,8 @@ public class TestHelper {
                     Object attribute = mbeanServer.getAttribute(objectName, "SnapshotCompleted");
                     if (attribute instanceof Long) {
                         return (Long) attribute == 1L;
-                    } else {
+                    }
+                    else {
                         return (Boolean) attribute;
                     }
                 }

@@ -60,9 +60,11 @@ public class SchemaHistoryMetrics extends Metrics implements SchemaHistoryListen
     public long getStatus() {
         if (status == SchemaHistoryStatus.STOPPED) {
             return 0;
-        } else if (status == SchemaHistoryStatus.RECOVERING) {
+        }
+        else if (status == SchemaHistoryStatus.RECOVERING) {
             return 1;
-        } else {
+        }
+        else {
             return 2;
         }
     }

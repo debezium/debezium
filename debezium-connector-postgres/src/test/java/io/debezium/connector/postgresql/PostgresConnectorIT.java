@@ -181,8 +181,8 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     public void shouldCaptureErrorForInvalidPgoutputDecoder() {
         assumeTrue(ServerVersion.v10.getVersionNum() > TestHelper.getServerVersion().getVersionNum());
         Configuration config = TestHelper.defaultConfig()
-            .with(PostgresConnectorConfig.PLUGIN_NAME, "pgoutput")
-            .build();
+                .with(PostgresConnectorConfig.PLUGIN_NAME, "pgoutput")
+                .build();
         Config validatedConfig = new PostgresConnector().validate(config.asMap());
 
         assertConfigurationErrors(validatedConfig, PostgresConnectorConfig.HOSTNAME, 1);
@@ -2100,10 +2100,11 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
                     // Required due to DBZ-3158, creates empty transaction
                     TestHelper.create().execute("vacuum full").close();
                     Object attribute = ManagementFactory.getPlatformMBeanServer()
-                        .getAttribute(getSnapshotMetricsObjectName("postgres", TestHelper.TEST_SERVER), "SnapshotCompleted");
+                            .getAttribute(getSnapshotMetricsObjectName("postgres", TestHelper.TEST_SERVER), "SnapshotCompleted");
                     if (attribute instanceof Long) {
                         return (Long) attribute == 1L;
-                    } else {
+                    }
+                    else {
                         return (Boolean) attribute;
                     }
                 });
@@ -3652,8 +3653,8 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         TestHelper.dropPublication("cdc");
 
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
-            .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
-            .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.NO_TABLES.getValue());
+                .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.NO_TABLES.getValue());
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();

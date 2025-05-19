@@ -8,7 +8,6 @@ package io.debezium.connector.common;
 import java.util.ArrayList;
 import java.util.Map;
 
-import io.debezium.schema.AbstractTopicNamingStrategy;
 import org.apache.kafka.common.config.Config;
 import org.apache.kafka.common.config.ConfigValue;
 import org.slf4j.Logger;
@@ -16,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.schema.AbstractTopicNamingStrategy;
 import io.debezium.util.Strings;
 
 /**
@@ -43,12 +43,11 @@ public abstract class RelationalBaseSourceConnector extends BaseSourceConnector 
                 .forEach(configValue -> LOGGER.warn("ConfigValue '{}' has errors: {}", configValue.name(), configValue.errorMessages()));
         // Only if there are no config errors ...
         if (results.values().stream()
-            .filter(
-                configValue -> !(configValue.name().equals(RelationalDatabaseConnectorConfig.TOPIC_PREFIX.name())
-                    || configValue.name().equals(AbstractTopicNamingStrategy.TOPIC_HEARTBEAT_PREFIX.name())
-                    || configValue.name().equals(SERVER_ID))
-            )
-            .allMatch(configValue -> configValue.errorMessages().isEmpty())) {
+                .filter(
+                        configValue -> !(configValue.name().equals(RelationalDatabaseConnectorConfig.TOPIC_PREFIX.name())
+                                || configValue.name().equals(AbstractTopicNamingStrategy.TOPIC_HEARTBEAT_PREFIX.name())
+                                || configValue.name().equals(SERVER_ID)))
+                .allMatch(configValue -> configValue.errorMessages().isEmpty())) {
             // ... validate the connection too
             validateConnection(results, config);
         }

@@ -352,9 +352,9 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
     static AuthenticationException sanitizeAuthenticationException(AuthenticationException e) {
         String sanitizedError = e.getMessage()
-            .replaceAll("[^\\P{Cc}\t\r\n]", "");
+                .replaceAll("[^\\P{Cc}\t\r\n]", "");
         AuthenticationException sanitized = new AuthenticationException(sanitizedError,
-            e.getErrorCode(), e.getSqlState());
+                e.getErrorCode(), e.getSqlState());
         sanitized.setStackTrace(e.getStackTrace());
         return sanitized;
     }

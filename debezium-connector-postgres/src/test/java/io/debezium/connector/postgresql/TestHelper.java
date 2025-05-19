@@ -292,11 +292,11 @@ public final class TestHelper {
         final PostgresConnectorConfig config = new PostgresConnectorConfig(defaultConfig().build());
         try (PostgresConnection connection = new PostgresConnection(config.getJdbcConfig(), getPostgresValueConverterBuilder(config), CONNECTION_TEST)) {
             return ServerVersion.from(
-                connection.queryAndMap(
-                    "SHOW server_version",
-                    connection.singleResultMapper(
-                        rs -> rs.getString("server_version"),
-                        "Could not fetch db version")));
+                    connection.queryAndMap(
+                            "SHOW server_version",
+                            connection.singleResultMapper(
+                                    rs -> rs.getString("server_version"),
+                                    "Could not fetch db version")));
         }
         catch (SQLException e) {
             e.printStackTrace();
