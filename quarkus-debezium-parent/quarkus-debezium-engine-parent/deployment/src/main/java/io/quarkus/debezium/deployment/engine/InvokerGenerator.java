@@ -35,7 +35,7 @@ public class InvokerGenerator {
     }
 
     /**
-     * it generates concreate classes based on the CapturingInvoker interface using gizmo:
+     * it generates concrete classes based on the CapturingInvoker interface using gizmo:
      * <p>
      * public class GeneratedCapturingInvoker {
      *     private final Object beanInstance;
