@@ -88,6 +88,16 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
 
     private List<AdditionalCondition> getAdditionalConditions(Document data, SnapshotType type) {
 
+        // This was added back to maintain backward compatibility. Should be removed in the next
+        // CCloud debezium upgrade.
+        Optional<String> oldAdditionalConditionField = getAdditionalCondition(data);
+        if (oldAdditionalConditionField.isPresent() && type.equals(SnapshotType.INCREMENTAL)) {
+            return List.of(AdditionalCondition.AdditionalConditionBuilder.builder()
+                    .dataCollection(Pattern.compile(MATCH_ALL_PATTERN, Pattern.CASE_INSENSITIVE))
+                    .filter(oldAdditionalConditionField.orElse(""))
+                    .build());
+        }
+        
         return Optional.ofNullable(data.getArray(FIELD_ADDITIONAL_CONDITIONS)).orElse(Array.create()).streamValues()
                 .map(this::buildAdditionalCondition)
                 .collect(Collectors.toList());
@@ -115,6 +125,12 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
                 .collect(Collectors.toList());
     }
 
+    @Deprecated
+    public static Optional<String> getAdditionalCondition(Document data) {
+        String additionalCondition = data.getString(FIELD_ADDITIONAL_CONDITION);
+        return Strings.isNullOrBlank(additionalCondition) ? Optional.empty() : Optional.of(additionalCondition);
+    }
+    
     public static Optional<String> getSurrogateKey(Document data) {
         String surrogateKey = data.getString(FIELD_SURROGATE_KEY);
         return Strings.isNullOrBlank(surrogateKey) ? Optional.empty() : Optional.of(surrogateKey);
