@@ -202,6 +202,7 @@ public class EngineProcessor {
     @BuildStep
     public void generateInvokers(List<DebeziumMediatorBuildItem> mediatorBuildItems,
                                  BuildProducer<GeneratedClassBuildItem> generatedClassBuildItemBuildProducer,
+                                 BuildProducer<ReflectiveClassBuildItem> reflectiveClassBuildItemBuildProducer,
                                  BuildProducer<DebeziumGeneratedInvokerBuildItem> debeziumGeneratedInvokerBuildItemBuildProducer) {
         InvokerGenerator invokerGenerator = new InvokerGenerator(new GeneratedClassGizmoAdaptor(generatedClassBuildItemBuildProducer,
                 true));
@@ -211,6 +212,7 @@ public class EngineProcessor {
                     item.getBean());
             debeziumGeneratedInvokerBuildItemBuildProducer.produce(new DebeziumGeneratedInvokerBuildItem(metadata.invokerClassName(),
                     metadata.mediator(), metadata.qualifier()));
+            reflectiveClassBuildItemBuildProducer.produce(ReflectiveClassBuildItem.builder(metadata.invokerClassName()).build());
         });
     }
 
