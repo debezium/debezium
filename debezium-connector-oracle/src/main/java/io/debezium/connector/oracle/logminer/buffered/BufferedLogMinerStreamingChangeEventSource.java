@@ -794,40 +794,11 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
      * mode.
      *
      * @param transaction the transaction, should not be {@code null}
-     * @return true if the transaction should be skipped and not disaptched, false otherwise
+     * @return true if the transaction should be skipped and not dispatched, false otherwise
      */
     private boolean isTransactionSkippedAtCommit(Transaction transaction) {
         // todo: can this be moved to earlier in the processing loop to avoid buffering?
-        if (transaction != null) {
-            // Check whether transaction should be skipped by LogMiner USERNAME field
-            if (!Strings.isNullOrBlank(transaction.getUserName())) {
-                if (getConfig().getLogMiningUsernameExcludes().contains(transaction.getUserName())) {
-                    LOGGER.debug("Skipped transaction with excluded username {}", transaction.getUserName());
-                    return true;
-                }
-                else if (!getConfig().getLogMiningUsernameIncludes().isEmpty()) {
-                    if (!getConfig().getLogMiningUsernameIncludes().contains(transaction.getUserName())) {
-                        LOGGER.debug("Skipped transaction with username {}", transaction.getUserName());
-                        return true;
-                    }
-                }
-            }
-
-            // Check whether transaction should be skipped by LogMiner CLIENT_ID field
-            if (!Strings.isNullOrBlank(transaction.getClientId())) {
-                if (getConfig().getLogMiningClientIdExcludes().contains(transaction.getClientId())) {
-                    LOGGER.debug("Skipped transaction with excluded client id {}", transaction.getClientId());
-                    return true;
-                }
-                else if (!getConfig().getLogMiningClientIdIncludes().isEmpty()) {
-                    if (!getConfig().getLogMiningClientIdIncludes().contains(transaction.getClientId())) {
-                        LOGGER.debug("Skipped transaction with client id {}", transaction.getClientId());
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
+        return transaction != null && (isUserNameSkipped(transaction.getUserName()) || isClientIdSkipped(transaction.getClientId()));
     }
 
     /**

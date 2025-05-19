@@ -19,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -1516,6 +1517,50 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             }
         }
         return true;
+    }
+
+    /**
+     * Check whether an event with the given username should be skipped.
+     *
+     * @param userName the username, can be {@code null} or {@code empty}
+     * @return true to skip, false otherwise
+     */
+    protected boolean isUserNameSkipped(String userName) {
+        if (!Strings.isNullOrEmpty(userName)) {
+            final Set<String> userNameExcludes = connectorConfig.getLogMiningUsernameExcludes();
+            final Set<String> userNameIncludes = connectorConfig.getLogMiningUsernameIncludes();
+            if (userNameExcludes.contains(userName)) {
+                LOGGER.debug("Skipped transaction with excluded username {}", userName);
+                return true;
+            }
+            else if (!userNameIncludes.isEmpty() && !userNameIncludes.contains(userName)) {
+                LOGGER.debug("Skipped transaction with username {}", userName);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Check whether an event with the given client identifier should be skipped.
+     *
+     * @param clientId the client identifier, can be {@code null} or {@code empty}
+     * @return true to skip, false otherwise
+     */
+    protected boolean isClientIdSkipped(String clientId) {
+        if (!Strings.isNullOrEmpty(clientId)) {
+            final Set<String> clientIdExcludes = connectorConfig.getLogMiningClientIdExcludes();
+            final Set<String> clientIdIncludes = connectorConfig.getLogMiningClientIdIncludes();
+            if (clientIdExcludes.contains(clientId)) {
+                LOGGER.debug("Skipped transaction with excluded client id {}", clientId);
+                return true;
+            }
+            else if (!clientIdIncludes.isEmpty() && !clientIdIncludes.contains(clientId)) {
+                LOGGER.debug("Skipped transaction with client id {}", clientId);
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
