@@ -326,36 +326,10 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             }
         }
 
-        // Check whether transaction should be skipped by USERNAME field
-        if (!Strings.isNullOrBlank(event.getUserName())) {
-            if (getConfig().getLogMiningUsernameExcludes().contains(event.getUserName())) {
-                LOGGER.debug("Skipped transaction with excluded username {}", event.getUserName());
-                skipCurrentTransaction = true;
-                return;
-            }
-            else if (!getConfig().getLogMiningUsernameIncludes().isEmpty()) {
-                if (!getConfig().getLogMiningUsernameIncludes().contains(event.getUserName())) {
-                    LOGGER.debug("Skipped transaction with username {}", event.getUserName());
-                    skipCurrentTransaction = true;
-                    return;
-                }
-            }
-        }
-
-        // Check whether transaction should be skipped by CLIENTID field
-        if (!Strings.isNullOrBlank(event.getClientId())) {
-            if (getConfig().getLogMiningClientIdExcludes().contains(event.getClientId())) {
-                LOGGER.debug("Skipped transaction with excluded client id {}", event.getClientId());
-                skipCurrentTransaction = true;
-                return;
-            }
-            else if (!getConfig().getLogMiningClientIdIncludes().isEmpty()) {
-                if (!getConfig().getLogMiningClientIdIncludes().contains(event.getClientId())) {
-                    LOGGER.debug("Skipped transaction with client id {}", event.getClientId());
-                    skipCurrentTransaction = true;
-                    return;
-                }
-            }
+        // Check whether transaction should be skipped by USERNAME or CLIENT_ID field
+        if (isUserNameSkipped(event.getUserName()) || isClientIdSkipped(event.getClientId())) {
+            skipCurrentTransaction = true;
+            return;
         }
 
         Loggings.logDebugAndTraceRecord(
