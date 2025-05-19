@@ -11,15 +11,12 @@ import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.engine.RecordChangeEvent;
 
-class DefaultQualifiedTableNameResolver implements FullyQualifiedTableNameResolver {
+class DefaultFullyQualifiedTableNameResolver implements FullyQualifiedTableNameResolver {
 
     @Override
     public String resolve(RecordChangeEvent<SourceRecord> event) {
-        SourceRecord record = event.record();
-        Struct payload = (Struct) record.value();
-        String table = ((Struct) payload.get("source")).getString("table");
-        String schema = ((Struct) payload.get("source")).getString("schema");
+        Struct source = ((Struct) event.record().value()).getStruct("source");
 
-        return schema + "." + table;
+        return source.getString("schema") + "." + source.getString("table");
     }
 }
