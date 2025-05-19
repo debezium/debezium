@@ -14,6 +14,6 @@ import io.quarkus.runtime.annotations.Recorder;
 public class QualifiedTableNameResolverRecorder {
 
     public Supplier<FullyQualifiedTableNameResolver> get() {
-        return DefaultQualifiedTableNameResolver::new;
+        return DefaultFullyQualifiedTableNameResolver::new;
     }
 }
