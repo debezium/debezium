@@ -58,7 +58,8 @@
         <version.kubernetes.client>6.13.4</version.kubernetes.client>
 
         <!-- Debezium AI -->
-        <version.langchain4j>1.0.0-beta2</version.langchain4j>
+        <version.langchain4j>1.0.1</version.langchain4j>
+        <version.langchain4j.unstable>1.0.1-beta6</version.langchain4j.unstable>
 
         <!-- Testing -->
         <version.junit>4.13.1</version.junit>
@@ -575,22 +576,22 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
-                <version>${version.langchain4j}</version>
+                <version>${version.langchain4j.unstable}</version>
             </dependency>
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-hugging-face</artifactId>
-                <version>${version.langchain4j}</version>
+                <version>${version.langchain4j.unstable}</version>
             </dependency>
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-ollama</artifactId>
-                <version>${version.langchain4j}</version>
+                <version>${version.langchain4j.unstable}</version>
             </dependency>
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-voyage-ai</artifactId>
-                <version>${version.langchain4j}</version>
+                <version>${version.langchain4j.unstable}</version>
             </dependency>
 
             <!-- Testing utilities -->
