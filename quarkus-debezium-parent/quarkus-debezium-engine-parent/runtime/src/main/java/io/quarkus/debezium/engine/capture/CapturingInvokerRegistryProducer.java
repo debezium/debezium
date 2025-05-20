@@ -6,10 +6,6 @@
 
 package io.quarkus.debezium.engine.capture;
 
-/**
- * It should return an Invoker<T> based on the value of T
- * @param <T> the event
- */
-public interface CapturingInvokerRegistry<T> {
-    CapturingInvoker<T> get(T identifier);
+interface CapturingInvokerRegistryProducer<T> {
+    CapturingInvokerRegistry<T> produce();
 }

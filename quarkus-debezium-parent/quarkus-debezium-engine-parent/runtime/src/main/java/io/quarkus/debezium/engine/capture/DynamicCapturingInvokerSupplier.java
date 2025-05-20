@@ -9,8 +9,6 @@ package io.quarkus.debezium.engine.capture;
 import java.lang.reflect.InvocationTargetException;
 import java.util.function.Supplier;
 
-import jakarta.enterprise.invoke.Invoker;
-
 import io.quarkus.arc.Arc;
 import io.quarkus.runtime.annotations.Recorder;
 
@@ -19,10 +17,10 @@ public class DynamicCapturingInvokerSupplier {
 
     public static final String BASE_NAME = "invoker";
 
-    public Supplier<CapturingInvoker> createInvoker(Class<?> mediatorClazz, Class<? extends Invoker> invokerClazz) {
+    public Supplier<CapturingInvoker> createInvoker(Class<?> mediatorClazz, Class<? extends CapturingInvoker> invokerClazz) {
         try {
             Object mediator = Arc.container().instance(mediatorClazz).get();
-            CapturingInvoker instance = (CapturingInvoker) invokerClazz
+            CapturingInvoker instance = invokerClazz
                     .getDeclaredConstructor(Object.class)
                     .newInstance(mediator);
 

@@ -35,13 +35,7 @@ public class CapturingTest {
     private static final Logger logger = LoggerFactory.getLogger(CapturingTest.class);
 
     @Inject
-    CaptureProductsHandler productsHandler;
-
-    @Inject
-    MultipleCaptureHandler multipleCaptureHandler;
-
-    @Inject
-    GeneralCaptureHandler generalCaptureHandler;
+    CaptureProductsHandler captureProductsHandler;
 
     @Inject
     Debezium debezium;
@@ -57,117 +51,34 @@ public class CapturingTest {
     @RegisterExtension
     static final QuarkusUnitTest setup = new QuarkusUnitTest()
             .withApplicationRoot((jar) -> jar
-                    .addClasses(CaptureProductsHandler.class, MultipleCaptureHandler.class, GeneralCaptureHandler.class))
+                    .addClasses(CaptureProductsHandler.class))
             .overrideConfigKey("quarkus.debezium.offset.storage", "org.apache.kafka.connect.storage.MemoryOffsetBackingStore")
             .overrideConfigKey("quarkus.debezium.name", "test")
             .overrideConfigKey("quarkus.debezium.topic.prefix", "dbserver1")
             .overrideConfigKey("quarkus.debezium.plugin.name", "pgoutput")
             .overrideConfigKey("quarkus.debezium.snapshot.mode", "initial")
-            .overrideConfigKey("quarkus.hibernate-orm.database.generation", "drop-and-create")
-            .setLogRecordPredicate(record -> record.getLoggerName().equals("io.quarkus.debezium.postgres.deployment.CapturingTest"))
-            .assertLogRecords((records) -> {
-                assertThat(records.getFirst().getMessage()).isEqualTo("should be not removed even if it's not injected in any bean");
-            });
+            .overrideConfigKey("quarkus.hibernate-orm.database.generation", "drop-and-create");
 
     @Test
-    @DisplayName("should invoke the capture method annotated with product qualifier")
-    void shouldInvokeTheCaptureAnnotation() {
+    @DisplayName("should invoke the default capture")
+    void shouldInvokeDefaultCapture() {
         given().await()
                 .atMost(10, TimeUnit.SECONDS)
-                .untilAsserted(() -> assertThat(productsHandler.isInvoked()).isTrue());
-    }
+                .untilAsserted(() -> assertThat(captureProductsHandler.isInvoked()).isTrue());
 
-    @Test
-    @DisplayName("should invoke multiple capture methods annotated")
-    void shouldInvokeProductAndOrders() {
-        given().await()
-                .atMost(10, TimeUnit.SECONDS)
-                .untilAsserted(() -> assertThat(multipleCaptureHandler.isUsersInvoked()).isTrue());
-
-        given().await()
-                .atMost(10, TimeUnit.SECONDS)
-                .untilAsserted(() -> assertThat(multipleCaptureHandler.isOrdersInvoked()).isTrue());
-    }
-
-    @Test
-    @DisplayName("should invoke the default capture and never a capture with wrong qualifier")
-    void shouldInvokeDefaultCaptureAndNeverWhenWrongQualifier() {
-        given().await()
-                .atMost(10, TimeUnit.SECONDS)
-                .untilAsserted(() -> assertThat(generalCaptureHandler.isDefaultInvoked()).isTrue());
-
-        given().await()
-                .atMost(10, TimeUnit.SECONDS)
-                .untilAsserted(() -> assertThat(generalCaptureHandler.isNoExistInvoked()).isFalse());
     }
 
     @ApplicationScoped
     static class CaptureProductsHandler {
         private final AtomicBoolean invoked = new AtomicBoolean(false);
 
-        @Capturing("public.products")
+        @Capturing()
         public void capture(RecordChangeEvent<SourceRecord> event) {
             invoked.set(true);
         }
 
         public boolean isInvoked() {
             return invoked.getAndSet(false);
-        }
-    }
-
-    @ApplicationScoped
-    static class NoInjectHandler {
-        @Capturing("public.injected")
-        public void captureOrders(RecordChangeEvent<SourceRecord> event) {
-            logger.info("should be not removed even if it's not injected in any bean");
-        }
-    }
-
-    @ApplicationScoped
-    static class MultipleCaptureHandler {
-        private final AtomicBoolean invokedOrders = new AtomicBoolean(false);
-        private final AtomicBoolean invokedUsers = new AtomicBoolean(false);
-
-        @Capturing("public.orders")
-        public void captureOrders(RecordChangeEvent<SourceRecord> event) {
-            invokedOrders.set(true);
-        }
-
-        @Capturing("public.users")
-        public void captureUsers(RecordChangeEvent<SourceRecord> event) {
-            invokedUsers.set(true);
-        }
-
-        public boolean isOrdersInvoked() {
-            return invokedOrders.getAndSet(false);
-        }
-
-        public boolean isUsersInvoked() {
-            return invokedUsers.getAndSet(false);
-        }
-    }
-
-    @ApplicationScoped
-    static class GeneralCaptureHandler {
-        private final AtomicBoolean qualifierNotExists = new AtomicBoolean(false);
-        private final AtomicBoolean defaultQualifier = new AtomicBoolean(false);
-
-        @Capturing("public.not_exists")
-        public void noExist(RecordChangeEvent<SourceRecord> event) {
-            qualifierNotExists.set(true);
-        }
-
-        @Capturing()
-        public void defaultQualifier(RecordChangeEvent<SourceRecord> event) {
-            defaultQualifier.set(true);
-        }
-
-        public boolean isNoExistInvoked() {
-            return qualifierNotExists.getAndSet(false);
-        }
-
-        public boolean isDefaultInvoked() {
-            return defaultQualifier.getAndSet(false);
         }
     }
 
