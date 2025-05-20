@@ -124,7 +124,19 @@ public abstract class AbstractFileBasedSchemaHistory extends AbstractSchemaHisto
 
     @Override
     protected void recoverRecords(Consumer<HistoryRecord> records) {
-        lock.write(() -> getRecords().forEach(records));
+        lock.write(() -> {
+            for (HistoryRecord record : getRecords()) {
+                records.accept(record);
+                try {
+                    LOGGER.info("Sleeping for {} ms to emulate CPU-intensive environment", config.getLong(SCHEMA_HISTORY_RECOVERY_DELAY_MS));
+                    Thread.sleep(config.getLong(SCHEMA_HISTORY_RECOVERY_DELAY_MS));
+                }
+                catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted while recovering records", e);
+                }
+            }
+        });
     }
 
     @Override

@@ -3440,12 +3440,12 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
 
         @Override
-        public void recover(Offsets<?, ?> offsets, Tables schema, DdlParser ddlParser) {
+        public void recover(Offsets<?, ?> offsets, Tables schema, DdlParser ddlParser) throws InterruptedException {
             delegate.recover(offsets, schema, ddlParser);
         }
 
         @Override
-        public void recover(Map<Map<String, ?>, Map<String, ?>> offsets, Tables schema, DdlParser ddlParser) {
+        public void recover(Map<Map<String, ?>, Map<String, ?>> offsets, Tables schema, DdlParser ddlParser) throws InterruptedException {
             delegate.recover(offsets, schema, ddlParser);
         }
 
