@@ -54,6 +54,7 @@
         <!-- Order in which Maven Failsafe plugin runs integration tests, the default is in alphabetical order -->
         <runOrder>alphabetical</runOrder>
 
+        <version.openlineage>1.31.0</version.openlineage>
     </properties>
 
     <dependencyManagement>
