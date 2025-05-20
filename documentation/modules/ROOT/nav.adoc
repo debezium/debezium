@@ -57,6 +57,8 @@
 ** xref:integrations/cloudevents.adoc[CloudEvents]
 ** xref:integrations/tracing.adoc[OpenTelemetry]
 ** xref:integrations/testcontainers.adoc[Integration Testing with Testcontainers]
+* Debezium AI
+** xref:ai/embeddings.adoc[Embeddings Transformation]
 * Standalone Debezium
 ** xref:operations/debezium-server.adoc[Debezium Server]
 ** xref:operations/debezium-platform.adoc[Debezium Management Platform]

@@ -1,0 +1,187 @@
+:page-aliases: ai/embeddings.adoc
+// Category: debezium-using
+// Type: assembly
+// ModuleID: embeddings-transformation
+// Title: Embeddings Transformation
+[id="embeddings-transformation"]
+= Embeddings Transformation
+ifdef::community[]
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+endif::community[]
+
+In large language models, or in natural language processing in general, one of the important tasks is conversion of the text to the numerical representation.
+One way how to do that is so-called text embeddings.
+It's a process of conversion of a text to a high-dimensional numerical vector.
+Representing text as a vector allows to do semantic similarity search and other advanced operations.
+
+{prodname} offers build-in feature which transforms specified field into embedding and add this text embedding into the record.
+Embedding inference is done by the selected model served by configured provider.
+{prodname} offers several embeddings model providers.
+
+Technically it's implemented as a  link:{link-kafka-docs}/#connect_transforms[single message transformation] (SMT) and under the hood it uses link:https://docs.langchain4j.dev/[langchain4j] framework to interact with embeddings providers.
+
+== Behavior
+
+Embeddings transformation takes specified record field and passes it to the configured embedding model for inference, i.e. creating an embedding from the text contained in this field.
+Resulting embedding is appended to the record.
+The source field is still part of the record.
+
+The source field has to be a string field.
+Embedding field is a vector of float numbers.
+The size of the vector depends on the selected model.
+
+Both source and embedding field specification supports nested structures, e.g. `after.product_description_embedding`.
+
+== Configuration
+
+To create embeddings transformation, add SMT configuration to your connector configuration:
+
+[source]
+----
+transforms=ai,
+transforms.ai.type=io.debezium.ai.embeddings.FieldToEmbedding
+----
+
+You have to specify at least field which content will be used as an input for the embedding and the destination field where the embedding will be placed:
+
+[source]
+----
+ai.embeddings.field.source=after.product,
+ai.embeddings.field.embedding=after.product_embedding,
+----
+
+Finally, you have to include selected model prvier jar file into the connector class path and configure the provider.
+E.g. for Ollama provider you need to add `debezium-ai-embeddings-ollama-$VERSION.jar` into your connector class path and configure Ollama URL and model name:
+
+[source]
+----
+ai.embeddings.ollama.url=http://localhost:11434,
+ai.embeddings.ollama.model.name=all-minilm
+----
+
+Overall configuration for Ollama provider can look like this:
+
+[source]
+----
+transforms=ai,
+transforms.ai.type=io.debezium.ai.embeddings.FieldToEmbedding
+ai.embeddings.field.source=after.product,
+ai.embeddings.field.embedding=after.product_embedding,
+ai.embeddings.ollama.url=http://localhost:11434,
+ai.embeddings.ollama.model.name=all-minilm
+----
+
+=== General configuration options
+
+.Descriptions of embedding SMT configuration options
+[cols="30%a,25%a,45%a",subs="+attributes",options="header"]
+|===
+|Option
+|Default
+|Description
+
+|[[embeddings-source-filed]]xref:embeddings-source-filed[`embeddings.field.source`]
+|
+|Record field which should be used as an input for the embeddings.
+Has to be a string field.
+|[[embeddings-embedding-field]]xref:embeddings-embedding-field[`embeddings.field.embedding`]
+|
+|Name of the new record field which will container text embedding.
+|===
+
+== Model provider configuration
+
+=== Hugging Face
+
+Embeddings provided by models available via link:https://huggingface.co//[Hugging Face].
+
+.Huggins Face embeddings configuration options
+[cols="30%a,25%a,45%a",subs="+attributes",options="header"]
+|===
+|Option
+|Default
+|Description
+
+|[[embeddings-huggingface-access-token]]xref:embeddings-huggingface-access-token[`embeddings.huggingface.access.token`]
+|
+|Hugging Face access token.
+|[[embeddings-huggingface-model-name]]xref:embeddings-huggingface-model-name[`embeddings.huggingface.model.name`]
+|
+|Name of the embedding model.
+List of available models can be obtained e.g. via REST API, for Hugging Face inference provider via `https://huggingface.co/api/models?inference_provider=hf-inference`.
+|[[embeddings-huggingface-baseurl]]xref:embeddings-huggingface-baseurl[`embeddings.huggingface.baseUrl`]
+|https://api-inference.huggingface.co/
+|Base Hugging Face inference API URL.
+|[[embeddings-huggingface-operation-timeout-ms]]xref:embeddings-huggingface-operation-timeout-ms[`embeddings.huggingface.operation.timeout.ms`]
+|15,000 (15 seconds)
+|Maximum amount of time in milliseconds to wait for the embeddings reply.
+|===
+
+[NOTE]
+====
+Hugging Face link:https://huggingface.co/blog/inference-providers[started to provide embedding inference] also via link:https://huggingface.co/docs/inference-providers/en/index[external providers].
+However, external providers don't seem to be supported by langchain4j framework yet.
+Until it's supported by langchain4j, the only available inference provider is Hugging Face provider.
+====
+
+
+=== Ollama
+
+Supports any models provided by link:https://ollama.com/[Ollama] server.
+
+.Ollama embeddings configuration options
+[cols="30%a,25%a,45%a",subs="+attributes",options="header"]
+|===
+|Option
+|Default
+|Description
+
+|[[embeddings-ollama-url]]xref:embeddings-ollama-url[`embeddings.ollama.url`]
+|
+|URL of the Ollama server, including port number, e.g. `http://localhost:11434`.
+|[[embeddings-ollama-model-name]]xref:embeddings-ollama-model-name[`embeddings.ollama.model.name`]
+|
+|Name of the embedding model.
+|[[embeddings-ollama-operation-timeout-ms]]xref:embeddings-ollama-operation-timeout-ms[`embeddings.ollama.operation.timeout.ms`]
+|15,000 (15 seconds)
+|Maximum amount of time in milliseconds to wait for the embeddings reply.
+|===
+
+=== ONNX MiniLM
+
+Provides link:https://docs.langchain4j.dev/integrations/embedding-models/in-process[ONNX in-process] `all-minilm-l6-v2` model, which is included directly in the jar file.
+No other configuration besides the general one is needed.
+
+As no other infrastructure or remote requests are needed in this case, this model is suitable especially for prototyping and testing.
+
+=== Voyage AI
+
+Embeddings provided by link:https://www.voyageai.com/[Voyage AI] models.
+
+.Voyage AI embeddings configuration options
+[cols="30%a,25%a,45%a",subs="+attributes",options="header"]
+|===
+|Option
+|Default
+|Description
+
+|[[embeddings-voyageai-access-token]]xref:embeddings-voyageai-access-token[`embeddings.voyageai.access.token`]
+|
+|Voyage AI access token.
+|[[embeddings-voyageai-model-name]]xref:embeddings-voyageai-model-name[`embeddings.voyageai.model.name`]
+|
+|Name of the embedding model.
+List of the Voyage AI models can be found in Voyage AI link:https://docs.voyageai.com/docs/embeddings[Text Embeddings documentation].
+|[[embeddings-voyageai-baseurl]]xref:embeddings-voyageai-baseurl[`embeddings.voyageai.baseUrl`]
+|https://api.voyageai.com/v1/
+|Base Voyage AI API server.
+|[[embeddings-voyageai-operation-timeout-ms]]xref:embeddings-voyageai-operation-timeout-ms[`embeddings.voyageai.operation.timeout.ms`]
+|15,000 (15 seconds)
+|Maximum amount of time in milliseconds to wait for the embeddings reply.
+|===
