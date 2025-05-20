@@ -34,18 +34,18 @@ public class VoyageAiModelFactory<R extends ConnectRecord<R>> implements Embeddi
     public static final String VOYAGE_AI_PREFIX = EMBEDDINGS_PREFIX + "voyageai.";
 
     private static final Field VOYAGE_AI_BASE_URL = Field.create(VOYAGE_AI_PREFIX + "baseUrl")
-            .withDisplayName("Hugging Face base URL.")
+            .withDisplayName("Voyage AI base URL.")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
-            .withDescription("Base URL for Hugging Face client. If not provided, default Hugging Face client URL will be used.");
+            .withDescription("Base URL for Voyage AI client. If not provided, default Voyage AI client URL will be used.");
 
     private static final Field VOYAGE_AI_ACCESS_TOKEN = Field.create(VOYAGE_AI_PREFIX + "access.token")
-            .withDisplayName("Hugging Face API access token.")
+            .withDisplayName("Voyage AI API access token.")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
-            .withDescription("Access token for Hugging Face API.")
+            .withDescription("Access token for Voyage AI API.")
             .required();
 
     private static final Field MODEL_NAME = Field.create(VOYAGE_AI_PREFIX + "model.name")
@@ -53,7 +53,7 @@ public class VoyageAiModelFactory<R extends ConnectRecord<R>> implements Embeddi
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
-            .withDescription("Name of the Hugging Face model which should be used.")
+            .withDescription("Name of the Voyage AI model which should be used.")
             .required();
 
     private static final Field OPERATION_TIMEOUT = Field.create(VOYAGE_AI_PREFIX + "operation.timeout.ms")
@@ -62,7 +62,7 @@ public class VoyageAiModelFactory<R extends ConnectRecord<R>> implements Embeddi
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.MEDIUM)
             .withDefault(DEFAULT_OPERATION_TIMEOUT)
-            .withDescription("Milliseconds to wait for Hugging Face calculations to finish (defaults to %s).".formatted(DEFAULT_OPERATION_TIMEOUT));
+            .withDescription("Milliseconds to wait for Voyage AI calculations to finish (defaults to %s).".formatted(DEFAULT_OPERATION_TIMEOUT));
 
     public static final Field.Set ALL_FIELDS = Field.setOf(VOYAGE_AI_BASE_URL, VOYAGE_AI_ACCESS_TOKEN, MODEL_NAME, OPERATION_TIMEOUT);
 
