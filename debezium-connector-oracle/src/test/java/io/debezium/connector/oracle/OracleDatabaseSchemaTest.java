@@ -12,8 +12,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
+import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -35,6 +37,7 @@ public class OracleDatabaseSchemaTest {
 
     @Before
     public void before() throws Exception {
+        DebeziumOpenLineageEmitter.init(Configuration.empty(), "oracle");
         this.connection = Mockito.mock(OracleConnection.class);
         Mockito.when(this.connection.getNationalCharacterSet()).thenReturn(CharacterSet.make(CharacterSet.UTF8_CHARSET));
         this.schema = createOracleDatabaseSchema();

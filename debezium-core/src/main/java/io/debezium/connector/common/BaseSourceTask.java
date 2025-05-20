@@ -334,9 +334,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             final List<SourceRecord> records = doPoll();
             logStatistics(records);
 
-            // TODO: maybe this can be the point to send a run event with a different id
-            // Should be done async to avoid performance issues
-
             resetErrorHandlerRetriesIfNeeded(records);
 
             return records;

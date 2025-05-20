@@ -60,6 +60,9 @@
         <!-- Debezium AI -->
         <version.langchain4j>1.0.1</version.langchain4j>
 
+        <!-- Open Lineage -->
+        <version.openlineage>1.31.0</version.openlineage>
+
         <!-- Testing -->
         <version.junit>4.13.1</version.junit>
         <version.junit5>5.9.1</version.junit5>
@@ -76,7 +79,6 @@
         <version.cassandra.unit>3.5.0.1</version.cassandra.unit>
         <version.logback>1.2.13</version.logback>
         <version.rest-assured>5.5.2</version.rest-assured>
-        <version.openlineage>1.31.0</version.openlineage>
     </properties>
 
     <dependencyManagement>
@@ -106,6 +108,19 @@
             <dependency>
                 <groupId>com.fasterxml.jackson.datatype</groupId>
                 <artifactId>jackson-datatype-jsr310</artifactId>
+                <version>${version.jackson}</version>
+                <optional>true</optional>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-datatype-jdk8</artifactId>
+                <version>${version.jackson}</version>
+                <optional>true</optional>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
                 <version>${version.jackson}</version>
                 <optional>true</optional>
             </dependency>
@@ -353,6 +368,13 @@
                 <groupId>io.opentelemetry</groupId>
                 <artifactId>opentelemetry-api</artifactId>
                 <version>${version.opentelemetry}</version>
+            </dependency>
+
+            <!-- OpenLineage Integration -->
+            <dependency>
+                <groupId>io.openlineage</groupId>
+                <artifactId>openlineage-java</artifactId>
+                <version>${version.openlineage}</version>
             </dependency>
 
             <!-- Kafka runtime libs -->
@@ -877,11 +899,6 @@
                 <version>${project.version}</version>
             </dependency>
 
-            <dependency>
-                <groupId>io.openlineage</groupId>
-                <artifactId>openlineage-java</artifactId>
-                <version>${version.openlineage}</version>
-            </dependency>
 
             <!-- Debezium test artifacts -->
             <dependency>
