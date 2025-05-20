@@ -199,7 +199,7 @@ public class BaseSourceTaskTest {
 
         @Override
         protected ErrorHandler getErrorHandler() {
-            return null;
+            return new ErrorHandler(null, null, null, null);
         }
 
         @Override

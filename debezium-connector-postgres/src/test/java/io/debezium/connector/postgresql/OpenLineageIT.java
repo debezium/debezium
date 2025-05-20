@@ -303,9 +303,6 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                 entry("offset.flush.interval.ms", "0"),
                 entry("offset.flush.timeout.ms", "5000"),
                 entry("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore"),
-                entry("offset.storage.file.filename", "/home/mvitale/Projects/debezium/debezium-connector-postgres/target/data/file-connector-offsets.txt"),
-                entry("openlineage.integration.config.path",
-                        "/home/mvitale/Projects/debezium/debezium-connector-postgres/target/test-classes/openlineage/openlineage.yml"),
                 entry("openlineage.integration.enabled", "true"),
                 entry("openlineage.integration.job.description", "This connector does cdc for products"),
                 entry("openlineage.integration.owners", "Mario=maintainer,John Doe=Data scientist"),
@@ -321,9 +318,9 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                 entry("snapshot.mode", "initial"),
                 entry("status.update.interval.ms", "100"),
                 entry("topic.prefix", "test_server"),
-                entry("value.converter", "org.apache.kafka.connect.json.JsonConverter"));
-
-        assertThat(startEvent.getProducer().toString()).startsWith("https://github.com/debezium/debezium/");
+                entry("value.converter", "org.apache.kafka.connect.json.JsonConverter"))
+                .hasEntrySatisfying("openlineage.integration.config.path", value -> assertThat((String) value).contains("openlineage.yml"))
+                .hasEntrySatisfying("offset.storage.file.filename", value -> assertThat((String) value).contains("file-connector-offsets.txt"));
 
         Map<String, String> tags = startEvent.getJob().getFacets().getTags().getTags()
                 .stream()
@@ -331,6 +328,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                         OpenLineage.TagsJobFacetFields::getKey,
                         OpenLineage.TagsJobFacetFields::getValue));
 
+        assertThat(startEvent.getProducer().toString()).startsWith("https://github.com/debezium/debezium/");
         assertThat(tags).contains(entry("env", "prod"), entry("team", "cdc"));
 
         Map<String, String> ownership = startEvent.getJob().getFacets().getOwnership().getOwners()
