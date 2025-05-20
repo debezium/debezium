@@ -17,12 +17,4 @@ import io.debezium.common.annotation.Incubating;
 @Retention(RetentionPolicy.RUNTIME)
 @Incubating()
 public @interface Capturing {
-
-    String EVERYTHING_QUALIFIER = "*";
-
-    /**
-     *
-     * @return the Fully qualified table names: https://debezium.io/documentation/reference/3.1/configuration/signalling.html#debezium-signaling-enabling-source-signaling-channel
-     */
-    String value() default EVERYTHING_QUALIFIER;
 }

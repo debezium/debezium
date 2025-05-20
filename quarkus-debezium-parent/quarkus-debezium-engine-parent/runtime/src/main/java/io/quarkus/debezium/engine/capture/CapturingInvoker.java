@@ -6,9 +6,6 @@
 
 package io.quarkus.debezium.engine.capture;
 
-import org.apache.kafka.connect.source.SourceRecord;
-
-import io.debezium.engine.RecordChangeEvent;
 import io.debezium.runtime.Capturing;
 
 /**
@@ -16,17 +13,10 @@ import io.debezium.runtime.Capturing;
  * Invoker assigned to any annotated class with method {@link Capturing}
  *
  */
-public interface CapturingInvoker {
+public interface CapturingInvoker<T> {
 
     /**
-     * The event that is captured by Debezium
-     * @param event
+     * @param event event captured by Debezium
      */
-    void capture(RecordChangeEvent<SourceRecord> event);
-
-    /**
-     * Return the assigned fully qualified table name
-     * @return String
-     */
-    String getFullyQualifiedTableName();
+    void capture(T event);
 }

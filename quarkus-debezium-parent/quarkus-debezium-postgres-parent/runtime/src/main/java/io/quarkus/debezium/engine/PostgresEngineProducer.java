@@ -11,11 +11,14 @@ import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
+import org.apache.kafka.connect.source.SourceRecord;
+
+import io.debezium.engine.RecordChangeEvent;
 import io.debezium.runtime.Connector;
 import io.debezium.runtime.ConnectorProducer;
 import io.debezium.runtime.Debezium;
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
-import io.quarkus.debezium.engine.capture.DebeziumCapturingHandler;
+import io.quarkus.debezium.engine.capture.CapturingInvokerRegistry;
 
 @ApplicationScoped
 public class PostgresEngineProducer implements ConnectorProducer {
@@ -24,7 +27,7 @@ public class PostgresEngineProducer implements ConnectorProducer {
     public static final Connector POSTGRES = new Connector("io.debezium.connector.postgresql.PostgresConnector");
 
     @Inject
-    private DebeziumCapturingHandler debeziumCapturingHandler;
+    private CapturingInvokerRegistry<RecordChangeEvent<SourceRecord>> registry;
 
     @Produces
     @Singleton
@@ -34,6 +37,6 @@ public class PostgresEngineProducer implements ConnectorProducer {
         return new SourceRecordDebezium(debeziumEngineConfiguration,
                 new DefaultStateHandler(),
                 POSTGRES,
-                debeziumCapturingHandler);
+                registry);
     }
 }

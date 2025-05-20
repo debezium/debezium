@@ -15,16 +15,17 @@ import java.util.Collection;
 import java.util.List;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.invoke.Invoker;
 
 import org.apache.kafka.common.security.authenticator.SaslClientAuthenticator;
 import org.apache.kafka.connect.json.JsonConverter;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 import org.apache.kafka.connect.transforms.predicates.TopicNameMatches;
 
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.embedded.async.ConvertingAsyncEngineBuilderFactory;
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.RecordChangeEvent;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 import io.debezium.pipeline.notification.channels.LogNotificationChannel;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
@@ -63,10 +64,8 @@ import io.quarkus.debezium.deployment.items.DebeziumConnectorBuildItem;
 import io.quarkus.debezium.deployment.items.DebeziumGeneratedInvokerBuildItem;
 import io.quarkus.debezium.deployment.items.DebeziumMediatorBuildItem;
 import io.quarkus.debezium.engine.DebeziumRecorder;
-import io.quarkus.debezium.engine.FullyQualifiedTableNameResolver;
-import io.quarkus.debezium.engine.QualifiedTableNameResolverRecorder;
-import io.quarkus.debezium.engine.capture.CapturingHandlerProducer;
 import io.quarkus.debezium.engine.capture.CapturingInvoker;
+import io.quarkus.debezium.engine.capture.CapturingSourceRecordInvokerRegistryProducer;
 import io.quarkus.debezium.engine.capture.DynamicCapturingInvokerSupplier;
 import io.quarkus.deployment.GeneratedClassGizmoAdaptor;
 import io.quarkus.deployment.annotations.BuildProducer;
@@ -85,10 +84,8 @@ import io.quarkus.deployment.recording.RecorderContext;
 public class EngineProcessor {
 
     @BuildStep
-    @Record(ExecutionTime.STATIC_INIT)
     void engine(BuildProducer<AdditionalBeanBuildItem> additionalBeanProducer,
-                BuildProducer<SyntheticBeanBuildItem> syntheticBeanBuildItemBuildProducer,
-                List<DebeziumConnectorBuildItem> debeziumConnectorBuildItems, QualifiedTableNameResolverRecorder recorder) {
+                List<DebeziumConnectorBuildItem> debeziumConnectorBuildItems) {
         debeziumConnectorBuildItems
                 .forEach(item -> additionalBeanProducer
                         .produce(AdditionalBeanBuildItem
@@ -100,19 +97,10 @@ public class EngineProcessor {
 
         additionalBeanProducer.produce(AdditionalBeanBuildItem
                 .builder()
-                .addBeanClasses(CapturingHandlerProducer.class)
-                .setUnremovable()
+                .addBeanClasses(CapturingSourceRecordInvokerRegistryProducer.class)
                 .setDefaultScope(DotNames.APPLICATION_SCOPED)
+                .setUnremovable()
                 .build());
-
-        syntheticBeanBuildItemBuildProducer.produce(
-                SyntheticBeanBuildItem.configure(FullyQualifiedTableNameResolver.class)
-                        .setRuntimeInit()
-                        .scope(ApplicationScoped.class)
-                        .alternative(true)
-                        .priority(1)
-                        .supplier(recorder.get())
-                        .done());
     }
 
     @BuildStep
@@ -211,7 +199,7 @@ public class EngineProcessor {
             InvokerMetaData metadata = invokerGenerator.generate(item.getMethodInfo(),
                     item.getBean());
             debeziumGeneratedInvokerBuildItemBuildProducer.produce(new DebeziumGeneratedInvokerBuildItem(metadata.invokerClassName(),
-                    metadata.mediator(), metadata.qualifier()));
+                    metadata.mediator(), metadata.getShortIdentifier()));
             reflectiveClassBuildItemBuildProducer.produce(ReflectiveClassBuildItem.builder(metadata.invokerClassName()).build());
         });
     }
@@ -230,8 +218,8 @@ public class EngineProcessor {
                         .unremovable()
                         .supplier(dynamicCapturingInvokerSupplier.createInvoker(
                                 recorderContext.classProxy(item.getMediator().getImplClazz().name().toString()),
-                                (Class<? extends Invoker>) recorderContext.classProxy(item.getGeneratedClassName())))
-                        .named(DynamicCapturingInvokerSupplier.BASE_NAME + item.getMediator().getImplClazz().name() + item.getQualifier())
+                                (Class<? extends CapturingInvoker<RecordChangeEvent<SourceRecord>>>) recorderContext.classProxy(item.getGeneratedClassName())))
+                        .named(DynamicCapturingInvokerSupplier.BASE_NAME + item.getMediator().getImplClazz().name() + item.getId())
                         .done()));
     }
 

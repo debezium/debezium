@@ -6,7 +6,13 @@
 
 package io.quarkus.debezium.deployment.engine;
 
+import java.util.UUID;
+
 import io.quarkus.arc.processor.BeanInfo;
 
-public record InvokerMetaData(String invokerClassName, BeanInfo mediator, String qualifier) {
+public record InvokerMetaData(UUID id, String invokerClassName, BeanInfo mediator) {
+
+    public String getShortIdentifier() {
+        return id.toString().split("-")[0].replaceAll("\\D", "");
+    }
 }

@@ -6,18 +6,15 @@
 
 package io.quarkus.debezium.deployment.engine;
 
-import static io.debezium.runtime.Capturing.EVERYTHING_QUALIFIER;
-
 import java.lang.reflect.Modifier;
+import java.util.UUID;
 
-import org.jboss.jandex.AnnotationValue;
 import org.jboss.jandex.MethodInfo;
 
 import io.debezium.engine.RecordChangeEvent;
 import io.quarkus.arc.processor.BeanInfo;
 import io.quarkus.arc.processor.DotNames;
-import io.quarkus.debezium.deployment.dotnames.DebeziumDotNames;
-import io.quarkus.debezium.engine.capture.CapturingInvoker;
+import io.quarkus.debezium.engine.capture.CapturingSourceRecordInvoker;
 import io.quarkus.gizmo.ClassCreator;
 import io.quarkus.gizmo.ClassOutput;
 import io.quarkus.gizmo.FieldDescriptor;
@@ -44,9 +41,6 @@ public class InvokerGenerator {
      *         beanInstance.method(event);
      *     }
      *
-     *     String getFullyQualifiedTableName() {
-     *       return "tableQualifier";
-     *     }
      * }
      *
      * @param methodInfo
@@ -59,7 +53,7 @@ public class InvokerGenerator {
         try (ClassCreator invoker = ClassCreator.builder()
                 .classOutput(this.output)
                 .className(name)
-                .interfaces(CapturingInvoker.class)
+                .interfaces(CapturingSourceRecordInvoker.class)
                 .build()) {
 
             FieldDescriptor beanInstanceField = invoker.getFieldCreator("beanInstance", methodInfo
@@ -92,21 +86,8 @@ public class InvokerGenerator {
                 capture.invokeVirtualMethod(methodDescriptor, delegate, event);
                 capture.returnVoid();
             }
-            MethodCreator getFullyQualifiedTableName = invoker.getMethodCreator("getFullyQualifiedTableName", String.class);
 
-            AnnotationValue qualifier = methodInfo
-                    .annotation(DebeziumDotNames.CapturingDotName.CAPTURING)
-                    .value();
-
-            if (qualifier != null) {
-                getFullyQualifiedTableName.returnValue(getFullyQualifiedTableName.load(String.valueOf(qualifier.value())));
-
-                return new InvokerMetaData(name.replace('/', '.'), beanInfo, String.valueOf(qualifier.value()));
-            }
-
-            getFullyQualifiedTableName.returnValue(getFullyQualifiedTableName.load(EVERYTHING_QUALIFIER));
-
-            return new InvokerMetaData(name.replace('/', '.'), beanInfo, EVERYTHING_QUALIFIER);
+            return new InvokerMetaData(UUID.randomUUID(), name.replace('/', '.'), beanInfo);
         }
     }
 
