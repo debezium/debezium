@@ -86,10 +86,10 @@ public class VoyageAiModelFactory<R extends ConnectRecord<R>> implements Embeddi
 
     @Override
     public void validateConfiguration() {
-        if (accessToken == null || accessToken.isBlank()) {
+        if (Strings.isNullOrBlank(accessToken)) {
             throw new ConfigException(format("'%s' must be set to non-empty value.", VOYAGE_AI_ACCESS_TOKEN));
         }
-        if (modelName.isBlank() || modelName.isBlank()) {
+        if (Strings.isNullOrBlank(modelName)) {
             throw new ConfigException(format("'%s' must be set to non-empty value.", MODEL_NAME));
         }
     }

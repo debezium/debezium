@@ -16,6 +16,7 @@ import org.apache.kafka.connect.connector.ConnectRecord;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.util.Strings;
 
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
@@ -75,10 +76,10 @@ public class OllamaModelFactory<R extends ConnectRecord<R>> implements Embedding
 
     @Override
     public void validateConfiguration() {
-        if (baseUrl == null || baseUrl.isBlank()) {
+        if (Strings.isNullOrBlank(baseUrl)) {
             throw new ConfigException(format("'%s' must be set to non-empty value.", OLLAMA_BASE_URL));
         }
-        if (modelName.isBlank() || modelName.isBlank()) {
+        if (Strings.isNullOrBlank(modelName)) {
             throw new ConfigException(format("'%s' must be set to non-empty value.", MODEL_NAME));
         }
     }
