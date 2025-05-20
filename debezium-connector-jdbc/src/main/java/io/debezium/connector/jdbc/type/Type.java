@@ -5,13 +5,9 @@
  */
 package io.debezium.connector.jdbc.type;
 
-import java.util.List;
-
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.sink.SinkConnectorConfig;
 
 /**
@@ -22,7 +18,8 @@ import io.debezium.sink.SinkConnectorConfig;
  *
  * @author Chris Cranford
  */
-public interface Type {
+public interface Type extends io.debezium.sink.type.Type {
+
     /**
      * Allows a type to perform initialization/configuration tasks based on user configs.
      *
@@ -32,53 +29,11 @@ public interface Type {
     void configure(SinkConnectorConfig config, DatabaseDialect dialect);
 
     /**
-     * Returns the names that this type will be mapped as.
-     *
-     * <p>For example, when creating a custom mapping for {@code io.debezium.data.Bits}, a type
-     * could be registered using the {@code LOGICAL_NAME} of the schema if the type is to be
-     * used when a schema name is identified; otherwise it could be registered as the raw column
-     * type when column type propagation is enabled.
-     */
-    String[] getRegistrationKeys();
-
-    /**
      * Return the SQL type name for this type.
      *
-     * @param dialect dialect instance, never {@code null}
      * @param schema field schema, never {@code null}
-     * @param key whether the type resolution is for a key field
-     *
+     * @param isKey  whether the type resolution is for a key field
      * @return the resolved type to be used in DDL statements
      */
-    String getTypeName(DatabaseDialect dialect, Schema schema, boolean key);
-
-    /**
-     * Return the SQL string to be used in DML statements for binding this type to SQL.
-     *
-     * @param column column descriptor in the table relational model, never {@code null}
-     * @param schema field schema, never {@code null}
-     * @param value value to be bound, may be {@code null}
-     * @return query parameter argument binding SQL fragment
-     */
-    String getQueryBinding(ColumnDescriptor column, Schema schema, Object value);
-
-    /**
-     * Resolve the default value clause value.
-     *
-     * @param dialect dialect instance, never {@code null}
-     * @param schema field schema, never {@code null}
-     * @param value the default value, should not be {@code null}
-     * @return the formatted default value for the SQL statement as a string
-     */
-    String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value);
-
-    /**
-     * Binds the value to the query.
-     *
-     * @param index  parameter index to bind
-     * @param schema field schema, never {@code null}
-     * @param value  value to be bound, may be {@code null}
-     * @return the list of {@link ValueBindDescriptor}
-     */
-    List<ValueBindDescriptor> bind(int index, Schema schema, Object value);
+    String getTypeName(Schema schema, boolean isKey);
 }

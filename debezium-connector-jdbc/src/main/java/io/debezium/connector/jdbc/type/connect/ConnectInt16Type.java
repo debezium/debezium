@@ -9,7 +9,6 @@ import java.sql.Types;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.Type;
 
 /**
@@ -27,8 +26,8 @@ public class ConnectInt16Type extends AbstractConnectSchemaType {
     }
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
-        return dialect.getTypeName(Types.SMALLINT);
+    public String getTypeName(Schema schema, boolean isKey) {
+        return getDialect().getJdbcTypeName(Types.SMALLINT);
     }
 
 }

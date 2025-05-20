@@ -7,11 +7,10 @@ package io.debezium.connector.jdbc.dialect.mysql;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.data.Json;
+import io.debezium.sink.column.ColumnDescriptor;
 
 /**
  * An implementation of {@link Type} for {@link Json} types.
@@ -33,13 +32,13 @@ class JsonType extends AbstractType {
     }
 
     @Override
-    public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
+    public String getDefaultValueBinding(Schema schema, Object value) {
         // No default value is permitted
         return null;
     }
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
+    public String getTypeName(Schema schema, boolean isKey) {
         return "json";
     }
 

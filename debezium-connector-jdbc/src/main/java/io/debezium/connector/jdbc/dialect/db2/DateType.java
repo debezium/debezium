@@ -10,11 +10,10 @@ import java.util.List;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 
-import io.debezium.connector.jdbc.ValueBindDescriptor;
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractDateType;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.connector.jdbc.util.DateTimeUtils;
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.time.Date;
 
 /**
@@ -32,8 +31,8 @@ public class DateType extends AbstractDateType {
     }
 
     @Override
-    public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
-        return dialect.getFormattedDate(DateTimeUtils.toLocalDateOfEpochDays(((Number) value).longValue()));
+    public String getDefaultValueBinding(Schema schema, Object value) {
+        return getDialect().getFormattedDate(DateTimeUtils.toLocalDateOfEpochDays(((Number) value).longValue()));
     }
 
     @Override

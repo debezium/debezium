@@ -12,9 +12,9 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.DebeziumException;
-import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.data.vector.DoubleVector;
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
  * Abstract base class for double-based vector field types.

@@ -11,7 +11,6 @@ import org.apache.kafka.connect.errors.ConnectException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.Type;
 
 /**
@@ -31,7 +30,7 @@ public abstract class AbstractConnectMapType extends AbstractConnectSchemaType {
     }
 
     @Override
-    public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
+    public String getDefaultValueBinding(Schema schema, Object value) {
         // No default value is permitted
         return null;
     }

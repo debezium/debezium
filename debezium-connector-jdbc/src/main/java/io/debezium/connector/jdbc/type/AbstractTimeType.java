@@ -21,20 +21,20 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 public abstract class AbstractTimeType extends AbstractTemporalType {
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
+    public String getTypeName(Schema schema, boolean isKey) {
         // NOTE:
         // The MySQL connector does not use the __debezium.source.column.scale parameter to pass
         // the time column's precision but instead uses the __debezium.source.column.length key
         // which differs from all other connector implementations.
         //
         final int precision = getTimePrecision(schema);
-
+        DatabaseDialect dialect = getDialect();
         // We use TIMESTAMP here even for source TIME types as Oracle will use DATE types for
         // such columns, and it only supports second-based precision.
         if (precision > 0 && precision <= dialect.getDefaultTimestampPrecision()) {
-            return dialect.getTypeName(Types.TIME, Size.precision(precision));
+            return dialect.getJdbcTypeName(Types.TIME, Size.precision(precision));
         }
-        return dialect.getTypeName(Types.TIME);
+        return dialect.getJdbcTypeName(Types.TIME);
     }
 
     protected int getTimePrecision(Schema schema) {

@@ -7,7 +7,6 @@ package io.debezium.connector.jdbc.dialect.mysql;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.time.Year;
@@ -27,8 +26,8 @@ class YearType extends AbstractType {
     }
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
-        if (dialect.getVersion().isAfter(8, 0, 19)) {
+    public String getTypeName(Schema schema, boolean isKey) {
+        if (getDialect().getVersion().isAfter(8, 0, 19)) {
             // MySQL 8.0.19 deprecated YEAR(4); should use YEAR instead.
             return "year";
         }

@@ -15,10 +15,10 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.hibernate.engine.jdbc.Size;
 
-import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractTimeType;
 import io.debezium.connector.jdbc.type.Type;
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.time.ZonedTime;
 
 /**
@@ -36,30 +36,30 @@ public class ZonedTimeType extends AbstractTimeType {
     }
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
+    public String getTypeName(Schema schema, boolean isKey) {
         // NOTE:
         // The MySQL connector does not use the __debezium.source.column.scale parameter to pass
         // the time column's precision but instead uses the __debezium.source.column.length key
         // which differs from all other connector implementations.
         //
         final int precision = getTimePrecision(schema);
-
+        DatabaseDialect dialect = getDialect();
         // We use TIMESTAMP here even for source TIME types as Oracle will use DATE types for
         // such columns, and it only supports second-based precision. By using TIMESTAMP, the
         // precision best aligns with the potential of up to 6.
         if (precision > 0) {
-            return dialect.getTypeName(getJdbcType(), Size.precision(precision));
+            return dialect.getJdbcTypeName(getJdbcType(), Size.precision(precision));
         }
 
         // We use the max dialect precision here as nanosecond precision is only permissible by specific
         // dialects and this handles situations of rounding values to the nearest precision of the value is
         // sourced from a source with a higher dialect.
-        return dialect.getTypeName(getJdbcType(), Size.precision(dialect.getMaxTimePrecision()));
+        return dialect.getJdbcTypeName(getJdbcType(), Size.precision(dialect.getMaxTimePrecision()));
     }
 
     @Override
-    public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
-        return dialect.getFormattedTimeWithTimeZone((String) value);
+    public String getDefaultValueBinding(Schema schema, Object value) {
+        return getDialect().getFormattedTimeWithTimeZone((String) value);
     }
 
     @Override

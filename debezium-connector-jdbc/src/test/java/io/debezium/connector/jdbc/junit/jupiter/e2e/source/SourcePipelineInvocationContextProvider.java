@@ -231,14 +231,14 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
             }
             final List<TemporalPrecisionMode> result = new ArrayList<>();
             for (TemporalPrecisionMode temporalPrecisionMode : TemporalPrecisionMode.values()) {
+                if (TemporalPrecisionMode.ADAPTIVE == temporalPrecisionMode && SourceType.MYSQL == sourceType) {
+                    // MySQL explicitly prohibits the use of adaptive so we only allow the other two in the matrix.
+                    continue;
+                }
                 if (includeList.length > 0 && Arrays.stream(includeList).noneMatch(p -> p == temporalPrecisionMode)) {
                     continue;
                 }
                 else if (excludeList.length > 0 && Arrays.stream(excludeList).anyMatch(p -> p == temporalPrecisionMode)) {
-                    continue;
-                }
-                if (TemporalPrecisionMode.ADAPTIVE == temporalPrecisionMode && SourceType.MYSQL == sourceType) {
-                    // MySQL explicitly prohibits the use of adaptive so we only allow the other two in the matrix.
                     continue;
                 }
                 result.add(temporalPrecisionMode);

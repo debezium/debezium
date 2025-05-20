@@ -31,7 +31,7 @@ final class MongoSinkRecordProcessor {
         MongoProcessedSinkRecordData previous = null;
 
         for (SinkRecord kafkaSinkRecord : records) {
-            DebeziumSinkRecord record = new KafkaDebeziumSinkRecord(kafkaSinkRecord);
+            DebeziumSinkRecord record = new KafkaDebeziumSinkRecord(kafkaSinkRecord, sinkConfig.cloudEventsSchemaNamePattern());
             MongoProcessedSinkRecordData processedData = new MongoProcessedSinkRecordData(record, sinkConfig);
 
             if (processedData.getException() != null) {

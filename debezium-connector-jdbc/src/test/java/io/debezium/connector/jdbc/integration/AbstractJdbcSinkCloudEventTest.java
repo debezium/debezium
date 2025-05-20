@@ -7,7 +7,6 @@ package io.debezium.connector.jdbc.integration;
 
 import static org.fest.assertions.Assertions.assertThat;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -24,7 +23,6 @@ import io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode;
 import io.debezium.connector.jdbc.junit.TestHelper;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
-import io.debezium.connector.jdbc.transforms.ConvertCloudEventToSaveableForm;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.converters.spi.SerializerType;
 import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
@@ -33,22 +31,17 @@ import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
  * Common converted CloudEvent saving tests.
  *
  * @author Roman Kudryashov
+ * @author rk3rn3r
  */
-public abstract class AbstractJdbcSinkSaveConvertedCloudEventTest extends AbstractJdbcSinkTest {
+public abstract class AbstractJdbcSinkCloudEventTest extends AbstractJdbcSinkTest {
 
-    public AbstractJdbcSinkSaveConvertedCloudEventTest(Sink sink) {
+    public AbstractJdbcSinkCloudEventTest(Sink sink) {
         super(sink);
     }
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
-    public void testSaveConvertedCloudEventRecordFromJson(SinkRecordFactory factory) {
-        final ConvertCloudEventToSaveableForm transform = new ConvertCloudEventToSaveableForm();
-        final Map<String, String> config = new HashMap<>();
-        config.put("fields.mapping", "id,source:created_by,data:payload");
-        config.put("serializer.type", "json");
-        transform.configure(config);
-
+    public void testCloudEventRecordFromJson(SinkRecordFactory factory) {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
@@ -59,8 +52,9 @@ public abstract class AbstractJdbcSinkSaveConvertedCloudEventTest extends Abstra
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final KafkaDebeziumSinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("json"), null);
-        final KafkaDebeziumSinkRecord convertedRecord = new KafkaDebeziumSinkRecord(transform.apply(cloudEventRecord.getOriginalKafkaRecord()));
+        final KafkaDebeziumSinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("json"));
+        final KafkaDebeziumSinkRecord convertedRecord = new KafkaDebeziumSinkRecord(cloudEventRecord.getOriginalKafkaRecord(),
+                new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
         consume(convertedRecord);
 
         final String destinationTableName = destinationTableName(convertedRecord);
@@ -68,24 +62,16 @@ public abstract class AbstractJdbcSinkSaveConvertedCloudEventTest extends Abstra
         final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(3);
 
-        getSink().assertColumnType(tableAssert, "id", ValueType.TEXT);
-        getSink().assertColumnType(tableAssert, "created_by", ValueType.TEXT, "test_ce_source");
-        getSink().assertColumnType(tableAssert, "payload", ValueType.TEXT);
+        getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
+        getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "Jane Doe");
+        getSink().assertColumnType(tableAssert, "nick_name_", ValueType.TEXT, "John Doe$");
 
         assertHasPrimaryKeyColumns(destinationTableName, "id");
-
-        transform.close();
     }
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
-    public void testSaveConvertedCloudEventRecordFromAvro(SinkRecordFactory factory) {
-        final ConvertCloudEventToSaveableForm transform = new ConvertCloudEventToSaveableForm();
-        final Map<String, String> config = new HashMap<>();
-        config.put("fields.mapping", "id,source:created_by,data:payload");
-        config.put("serializer.type", "avro");
-        transform.configure(config);
-
+    public void testCloudEventRecordFromAvro(SinkRecordFactory factory) {
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
@@ -96,8 +82,9 @@ public abstract class AbstractJdbcSinkSaveConvertedCloudEventTest extends Abstra
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final KafkaDebeziumSinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("avro"), null);
-        final KafkaDebeziumSinkRecord convertedRecord = new KafkaDebeziumSinkRecord(transform.apply(cloudEventRecord.getOriginalKafkaRecord()));
+        final KafkaDebeziumSinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("avro"));
+        final KafkaDebeziumSinkRecord convertedRecord = new KafkaDebeziumSinkRecord(cloudEventRecord.getOriginalKafkaRecord(),
+                new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
         consume(convertedRecord);
 
         final String destinationTableName = destinationTableName(convertedRecord);
@@ -105,37 +92,32 @@ public abstract class AbstractJdbcSinkSaveConvertedCloudEventTest extends Abstra
         final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(3);
 
-        getSink().assertColumnType(tableAssert, "id", ValueType.TEXT);
-        getSink().assertColumnType(tableAssert, "created_by", ValueType.TEXT, "test_ce_source");
-        getSink().assertColumnType(tableAssert, "payload", ValueType.TEXT);
+        getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
+        getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "Jane Doe");
+        getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT, "John Doe$");
 
         assertHasPrimaryKeyColumns(destinationTableName, "id");
-
-        transform.close();
     }
 
     @ParameterizedTest
     @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
-    public void testSaveConvertedCloudEventRecordFromAvroWithCloudEventsSchemaCustomName(SinkRecordFactory factory) {
-        final ConvertCloudEventToSaveableForm transform = new ConvertCloudEventToSaveableForm();
-        final Map<String, String> config = new HashMap<>();
-        config.put("fields.mapping", "id,source:created_by,data:payload");
-        config.put("serializer.type", "avro");
-        config.put("schema.cloudevents.name", "TestCESchemaCustomName");
-        transform.configure(config);
-
+    public void testCloudEventRecordFromAvroWithCloudEventsSchemaCustomName(SinkRecordFactory factory) {
+        final String cloudEventsSchemaName = "TestCESchemaCustomName";
+        final String cloudEventsSchemaNamePattern = ".*" + cloudEventsSchemaName + ".*";
         final Map<String, String> properties = getDefaultSinkConfig();
         properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_VALUE.getValue());
         properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id");
+        properties.put(JdbcSinkConnectorConfig.CLOUDEVENTS_SCHEMA_NAME_PATTERN, cloudEventsSchemaNamePattern);
         startSinkConnector(properties);
         assertSinkConnectorIsRunning();
 
         final String tableName = randomTableName();
         final String topicName = topicName("server1", "schema", tableName);
 
-        final KafkaDebeziumSinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("avro"), "TestCESchemaCustomName");
-        final KafkaDebeziumSinkRecord convertedRecord = new KafkaDebeziumSinkRecord(transform.apply(cloudEventRecord.getOriginalKafkaRecord()));
+        final KafkaDebeziumSinkRecord cloudEventRecord = factory.cloudEventRecord(topicName, SerializerType.withName("avro"), cloudEventsSchemaName);
+        final KafkaDebeziumSinkRecord convertedRecord = new KafkaDebeziumSinkRecord(cloudEventRecord.getOriginalKafkaRecord(),
+                new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
         consume(convertedRecord);
 
         final String destinationTableName = destinationTableName(convertedRecord);
@@ -143,13 +125,11 @@ public abstract class AbstractJdbcSinkSaveConvertedCloudEventTest extends Abstra
         final TableAssert tableAssert = TestHelper.assertTable(assertDbConnection(), destinationTableName);
         tableAssert.exists().hasNumberOfRows(1).hasNumberOfColumns(3);
 
-        getSink().assertColumnType(tableAssert, "id", ValueType.TEXT);
-        getSink().assertColumnType(tableAssert, "created_by", ValueType.TEXT, "test_ce_source");
-        getSink().assertColumnType(tableAssert, "payload", ValueType.TEXT);
+        getSink().assertColumnType(tableAssert, "id", ValueType.NUMBER, (byte) 1);
+        getSink().assertColumnType(tableAssert, "name", ValueType.TEXT, "Jane Doe");
+        getSink().assertColumnType(tableAssert, "nick_name$", ValueType.TEXT, "John Doe$");
 
         assertHasPrimaryKeyColumns(destinationTableName, "id");
-
-        transform.close();
     }
 
     protected void assertHasPrimaryKeyColumns(String tableName, String... columnNames) {

@@ -9,8 +9,6 @@ import java.sql.Types;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-
 /**
  * An abstract base class for all temporal date implementations of {@link Type}.
  *
@@ -18,7 +16,7 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialect;
  */
 public abstract class AbstractDateType extends AbstractTemporalType {
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
-        return dialect.getTypeName(Types.DATE);
+    public String getTypeName(Schema schema, boolean isKey) {
+        return getDialect().getJdbcTypeName(Types.DATE);
     }
 }
