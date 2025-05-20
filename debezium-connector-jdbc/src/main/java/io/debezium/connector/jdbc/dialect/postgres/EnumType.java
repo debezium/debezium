@@ -9,7 +9,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.connector.jdbc.type.connect.ConnectStringType;
@@ -32,9 +31,9 @@ class EnumType extends AbstractType {
     }
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
+    public String getTypeName(Schema schema, boolean isKey) {
         LOGGER.warn("Cannot create enum types automatically, please create the table by hand. Using STRING fallback.");
-        return ConnectStringType.INSTANCE.getTypeName(dialect, schema, key);
+        return ConnectStringType.INSTANCE.getTypeName(schema, isKey);
     }
 
 }

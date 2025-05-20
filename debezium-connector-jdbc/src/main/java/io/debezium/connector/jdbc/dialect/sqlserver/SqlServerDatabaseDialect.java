@@ -131,7 +131,7 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
         builder.append("MERGE INTO ");
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" WITH (HOLDLOCK) AS TARGET USING (SELECT ");
-        builder.appendLists(", ", record.keyFieldNames(), record.getNonKeyFieldNames(),
+        builder.appendLists(", ", record.keyFieldNames(), record.nonKeyFieldNames(),
                 (name) -> columnNameFromField(name, columnQueryBindingFromField(name, table, record) + " AS ", record));
         builder.append(") AS INCOMING ON (");
         builder.appendList(" AND ", record.keyFieldNames(), (name) -> {
@@ -140,18 +140,18 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
         });
         builder.append(")");
 
-        if (!record.getNonKeyFieldNames().isEmpty()) {
+        if (!record.nonKeyFieldNames().isEmpty()) {
             builder.append(" WHEN MATCHED THEN UPDATE SET ");
-            builder.appendList(",", record.getNonKeyFieldNames(), (name) -> {
+            builder.appendList(",", record.nonKeyFieldNames(), (name) -> {
                 final String columnName = columnNameFromField(name, record);
                 return columnName + "=INCOMING." + columnName;
             });
         }
 
         builder.append(" WHEN NOT MATCHED THEN INSERT (");
-        builder.appendLists(", ", record.getNonKeyFieldNames(), record.keyFieldNames(), (name) -> columnNameFromField(name, record));
+        builder.appendLists(", ", record.nonKeyFieldNames(), record.keyFieldNames(), (name) -> columnNameFromField(name, record));
         builder.append(") VALUES (");
-        builder.appendLists(",", record.getNonKeyFieldNames(), record.keyFieldNames(), (name) -> columnNameFromField(name, "INCOMING.", record));
+        builder.appendLists(",", record.nonKeyFieldNames(), record.keyFieldNames(), (name) -> columnNameFromField(name, "INCOMING.", record));
         builder.append(")");
         builder.append(";"); // SQL server requires this to be terminated this way.
 

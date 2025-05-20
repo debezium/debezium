@@ -13,7 +13,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.data.EnumSet;
@@ -35,7 +34,7 @@ class SetType extends AbstractType {
     }
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
+    public String getTypeName(Schema schema, boolean isKey) {
         // Debezium passes parameter called "allowed" which contains the value-set for the SET.
         final Optional<String> allowedValues = getSchemaParameter(schema, "allowed");
         if (allowedValues.isPresent()) {

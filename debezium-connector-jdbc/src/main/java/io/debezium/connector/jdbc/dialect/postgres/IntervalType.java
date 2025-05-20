@@ -9,11 +9,10 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.ValueBindDescriptor;
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.connector.jdbc.type.Type;
+import io.debezium.sink.column.ColumnDescriptor;
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.time.MicroDuration;
 
 /**
@@ -36,12 +35,12 @@ class IntervalType extends AbstractType {
     }
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
+    public String getTypeName(Schema schema, boolean isKey) {
         return "interval";
     }
 
     @Override
-    public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
+    public String getDefaultValueBinding(Schema schema, Object value) {
         if (value instanceof Long) {
             final double doubleValue = ((Long) value).doubleValue() / 1_000_000d;
             return String.format("'%d seconds'", (long) doubleValue);

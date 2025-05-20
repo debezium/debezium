@@ -7,10 +7,9 @@ package io.debezium.connector.jdbc.dialect.postgres;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.connector.jdbc.type.Type;
+import io.debezium.sink.column.ColumnDescriptor;
 
 /**
  * An implementation of {@link Type} for {@code CITEXT} column types.
@@ -32,7 +31,7 @@ class CaseInsensitiveTextType extends AbstractType {
     }
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
+    public String getTypeName(Schema schema, boolean isKey) {
         return "citext";
     }
 

@@ -21,12 +21,13 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 public abstract class AbstractTimestampType extends AbstractTemporalType {
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
+    public String getTypeName(Schema schema, boolean isKey) {
         final int precision = getTimePrecision(schema);
+        DatabaseDialect dialect = getDialect();
         if (precision > 0 && precision <= dialect.getMaxTimestampPrecision()) {
-            return dialect.getTypeName(getJdbcType(), Size.precision(precision));
+            return dialect.getJdbcTypeName(getJdbcType(), Size.precision(precision));
         }
-        return dialect.getTypeName(getJdbcType());
+        return dialect.getJdbcTypeName(getJdbcType());
     }
 
     protected int getTimePrecision(Schema schema) {

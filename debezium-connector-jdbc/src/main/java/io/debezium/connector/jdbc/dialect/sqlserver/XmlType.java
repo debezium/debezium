@@ -7,11 +7,10 @@ package io.debezium.connector.jdbc.dialect.sqlserver;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.data.Xml;
+import io.debezium.sink.column.ColumnDescriptor;
 
 /**
  * An implementation of {@link Type} for {@code XML} data types.
@@ -33,7 +32,7 @@ class XmlType extends AbstractType {
     }
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
+    public String getTypeName(Schema schema, boolean isKey) {
         return "xml";
     }
 

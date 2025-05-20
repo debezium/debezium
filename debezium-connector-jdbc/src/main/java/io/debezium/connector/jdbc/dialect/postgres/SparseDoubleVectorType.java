@@ -9,10 +9,9 @@ import java.util.Optional;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.connector.jdbc.type.debezium.AbstractSparseDoubleVectorType;
+import io.debezium.sink.column.ColumnDescriptor;
 
 /**
  * An implementation {@link AbstractType} for PGVector's {@code sparsevec} data type, based on
@@ -36,7 +35,7 @@ public class SparseDoubleVectorType extends AbstractSparseDoubleVectorType {
     public static SparseDoubleVectorType INSTANCE = new SparseDoubleVectorType();
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
+    public String getTypeName(Schema schema, boolean isKey) {
         final Optional<String> size = getSourceColumnSize(schema);
         return size.map(s -> String.format("sparsevec(%s)", s)).orElse("sparsevec");
     }

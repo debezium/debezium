@@ -242,7 +242,8 @@ public abstract class AbstractJdbcSinkPrimaryKeyModeTest extends AbstractJdbcSin
                 createRecord.offset());
         kafkaSinkRecord.headers().addInt("id1", 1);
         kafkaSinkRecord.headers().addInt("id2", 10);
-        KafkaDebeziumSinkRecord kafkaSinkRecordWithHeader = new KafkaDebeziumSinkRecord(kafkaSinkRecord);
+        KafkaDebeziumSinkRecord kafkaSinkRecordWithHeader = new KafkaDebeziumSinkRecord(kafkaSinkRecord,
+                new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
         consume(kafkaSinkRecordWithHeader);
 
         final String destinationTableName = destinationTableName(kafkaSinkRecordWithHeader);

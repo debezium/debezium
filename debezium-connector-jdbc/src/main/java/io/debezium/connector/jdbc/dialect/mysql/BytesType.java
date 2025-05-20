@@ -25,8 +25,9 @@ class BytesType extends AbstractBytesType {
     public static final BytesType INSTANCE = new BytesType();
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
+    public String getTypeName(Schema schema, boolean isKey) {
         final Optional<String> columnType = getSourceColumnType(schema);
+        DatabaseDialect dialect = getDialect();
         if (columnType.isPresent()) {
             if ("TINYBLOB".equalsIgnoreCase(columnType.get())) {
                 return "tinyblob";
@@ -42,14 +43,14 @@ class BytesType extends AbstractBytesType {
             }
             final int columnSize = Integer.parseInt(getSourceColumnSize(schema).orElse("0"));
             if (columnSize > 0) {
-                return dialect.getTypeName(Types.VARBINARY, Size.length(columnSize));
+                return dialect.getJdbcTypeName(Types.VARBINARY, Size.length(columnSize));
             }
         }
-        return dialect.getTypeName(Types.VARBINARY);
+        return dialect.getJdbcTypeName(Types.VARBINARY);
     }
 
     @Override
-    public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
+    public String getDefaultValueBinding(Schema schema, Object value) {
         // No default values permitted
         return null;
     }

@@ -25,19 +25,20 @@ class BytesType extends AbstractBytesType {
     public static final BytesType INSTANCE = new BytesType();
 
     @Override
-    public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
-        return String.format(dialect.getByteArrayFormat(), ByteArrayUtils.getByteArrayAsHex(value));
+    public String getDefaultValueBinding(Schema schema, Object value) {
+        return String.format(getDialect().getByteArrayFormat(), ByteArrayUtils.getByteArrayAsHex(value));
     }
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
+    public String getTypeName(Schema schema, boolean isKey) {
         final int columnSize = Integer.parseInt(getSourceColumnSize(schema).orElse("0"));
+        DatabaseDialect dialect = getDialect();
         if (columnSize > 0) {
-            return dialect.getTypeName(Types.VARBINARY, Size.length(columnSize));
+            return dialect.getJdbcTypeName(Types.VARBINARY, Size.length(columnSize));
         }
-        else if (key) {
-            return dialect.getTypeName(Types.VARBINARY, Size.length(dialect.getMaxVarbinaryLength()));
+        else if (isKey) {
+            return dialect.getJdbcTypeName(Types.VARBINARY, Size.length(dialect.getMaxVarbinaryLength()));
         }
-        return dialect.getTypeName(Types.VARBINARY);
+        return dialect.getJdbcTypeName(Types.VARBINARY);
     }
 }

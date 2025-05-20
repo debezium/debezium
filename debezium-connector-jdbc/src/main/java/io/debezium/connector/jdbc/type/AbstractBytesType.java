@@ -10,7 +10,7 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.ValueBindDescriptor;
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
  * An abstract {@link Type} implementation for {@code BYTES} column types.

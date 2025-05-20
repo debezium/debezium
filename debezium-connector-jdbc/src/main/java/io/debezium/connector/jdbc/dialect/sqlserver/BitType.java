@@ -13,13 +13,13 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.hibernate.engine.jdbc.Size;
 
-import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.connector.jdbc.util.ByteArrayUtils;
 import io.debezium.data.Bits;
+import io.debezium.sink.column.ColumnDescriptor;
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
  * An implementation of {@link Type} for {@link Bits} types.
@@ -45,20 +45,21 @@ class BitType extends AbstractType {
     }
 
     @Override
-    public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
-        return String.format(dialect.getByteArrayFormat(), ByteArrayUtils.getByteArrayAsHex(value));
+    public String getDefaultValueBinding(Schema schema, Object value) {
+        return String.format(getDialect().getByteArrayFormat(), ByteArrayUtils.getByteArrayAsHex(value));
     }
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
+    public String getTypeName(Schema schema, boolean isKey) {
+        DatabaseDialect dialect = getDialect();
         if (Bits.LOGICAL_NAME.equals(schema.name())) {
             final int bitSize = Integer.parseInt(schema.parameters().get(Bits.LENGTH_FIELD));
             if (bitSize == 1) {
-                return dialect.getTypeName(Types.BIT);
+                return dialect.getJdbcTypeName(Types.BIT);
             }
-            return dialect.getTypeName(Types.VARBINARY, Size.length(bitSize));
+            return dialect.getJdbcTypeName(Types.VARBINARY, Size.length(bitSize));
         }
-        return dialect.getTypeName(Types.VARBINARY);
+        return dialect.getJdbcTypeName(Types.VARBINARY);
     }
 
     @Override

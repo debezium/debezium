@@ -456,6 +456,10 @@ public interface SinkRecordFactory {
                 .build();
     }
 
+    default KafkaDebeziumSinkRecord cloudEventRecord(String topicName, SerializerType serializerType) {
+        return cloudEventRecord(topicName, serializerType, null);
+    }
+
     default KafkaDebeziumSinkRecord cloudEventRecord(String topicName, SerializerType serializerType, String cloudEventsSchemaName) {
         final KafkaDebeziumSinkRecord baseRecord = updateRecord(topicName);
         return SinkRecordBuilder.cloudEvent()

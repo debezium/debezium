@@ -11,10 +11,10 @@ import java.util.List;
 import org.apache.kafka.connect.data.Schema;
 import org.hibernate.engine.jdbc.Size;
 
-import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.connector.jdbc.util.ByteArrayUtils;
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
  * An implementation of {@link Type} that supports {@code BYTES} connect schema types.
@@ -31,20 +31,21 @@ public class ConnectBytesType extends AbstractConnectSchemaType {
     }
 
     @Override
-    public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
-        return String.format(dialect.getByteArrayFormat(), ByteArrayUtils.getByteArrayAsHex(value));
+    public String getDefaultValueBinding(Schema schema, Object value) {
+        return String.format(getDialect().getByteArrayFormat(), ByteArrayUtils.getByteArrayAsHex(value));
     }
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
+    public String getTypeName(Schema schema, boolean isKey) {
         final int columnSize = Integer.parseInt(getSourceColumnSize(schema).orElse("0"));
+        DatabaseDialect dialect = getDialect();
         if (columnSize > 0) {
-            return dialect.getTypeName(Types.VARBINARY, Size.length(columnSize));
+            return dialect.getJdbcTypeName(Types.VARBINARY, Size.length(columnSize));
         }
-        else if (key) {
-            return dialect.getTypeName(Types.VARBINARY, Size.length(dialect.getMaxVarbinaryLength()));
+        else if (isKey) {
+            return dialect.getJdbcTypeName(Types.VARBINARY, Size.length(dialect.getMaxVarbinaryLength()));
         }
-        return dialect.getTypeName(Types.VARBINARY);
+        return dialect.getJdbcTypeName(Types.VARBINARY);
     }
 
     @Override

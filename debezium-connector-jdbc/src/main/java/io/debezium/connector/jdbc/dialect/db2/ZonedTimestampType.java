@@ -9,9 +9,9 @@ import java.sql.Timestamp;
 import java.time.ZonedDateTime;
 import java.util.List;
 
-import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.connector.jdbc.type.debezium.DebeziumZonedTimestampType;
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.time.ZonedTimestamp;
 
 /**

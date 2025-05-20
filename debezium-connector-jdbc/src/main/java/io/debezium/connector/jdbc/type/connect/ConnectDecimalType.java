@@ -34,7 +34,8 @@ public class ConnectDecimalType extends AbstractType {
     }
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
+    public String getTypeName(Schema schema, boolean isKey) {
+        DatabaseDialect dialect = getDialect();
         int scale = Integer.parseInt(getSchemaParameter(schema, "scale").orElse("0"));
         if (scale < 0 && !dialect.isNegativeScaleAllowed()) {
             // Oracle submits negative scale values where the bound value will be rounded based on the scale.
@@ -49,16 +50,16 @@ public class ConnectDecimalType extends AbstractType {
             // Some dialects may have a smaller precision than what's provided by the source.
             // In such cases, we apply the dialect's upper-bounds.
             precision = Math.min(precision, dialect.getDefaultDecimalPrecision());
-            return dialect.getTypeName(Types.DECIMAL, Size.precision(precision, scale));
+            return dialect.getJdbcTypeName(Types.DECIMAL, Size.precision(precision, scale));
         }
         else if (scale != 0) {
-            return dialect.getTypeName(Types.DECIMAL, Size.precision(dialect.getDefaultDecimalPrecision(), scale));
+            return dialect.getJdbcTypeName(Types.DECIMAL, Size.precision(dialect.getDefaultDecimalPrecision(), scale));
         }
-        return dialect.getTypeName(Types.DECIMAL);
+        return dialect.getJdbcTypeName(Types.DECIMAL);
     }
 
     @Override
-    public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
+    public String getDefaultValueBinding(Schema schema, Object value) {
         if (value instanceof Number) {
             return value.toString();
         }

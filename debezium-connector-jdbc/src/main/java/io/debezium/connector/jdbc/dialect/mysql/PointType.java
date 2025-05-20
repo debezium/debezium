@@ -7,7 +7,6 @@ package io.debezium.connector.jdbc.dialect.mysql;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.data.geometry.Point;
 
@@ -21,7 +20,7 @@ public class PointType extends GeometryType {
     }
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
+    public String getTypeName(Schema schema, boolean isKey) {
         return "point";
     }
 }

@@ -13,11 +13,11 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 
-import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.relational.ColumnDescriptor;
-import io.debezium.connector.jdbc.util.SchemaUtils;
 import io.debezium.sink.SinkConnectorConfig;
+import io.debezium.sink.column.ColumnDescriptor;
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
+import io.debezium.util.SchemaUtils;
 
 /**
  * An abstract implementation of {@link Type}, which all types should extend.
@@ -39,7 +39,7 @@ public abstract class AbstractType implements Type {
     }
 
     @Override
-    public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
+    public String getDefaultValueBinding(Schema schema, Object value) {
         switch (schema.type()) {
             case INT8:
                 return Byte.toString((byte) value);
@@ -56,7 +56,7 @@ public abstract class AbstractType implements Type {
             case STRING:
                 return "'" + ((String) value).replaceAll("(?<!')'(?!')", "''") + "'";
             case BOOLEAN:
-                return dialect.getFormattedBoolean((boolean) value);
+                return getDialect().getFormattedBoolean((boolean) value);
         }
         throw new IllegalArgumentException(String.format(
                 "No default value resolution for schema type %s with name %s and type %s", schema.type(), schema.name(),

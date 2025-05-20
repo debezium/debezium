@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.connector.jdbc.util.DateTimeUtils;
 import io.debezium.time.MicroTimestamp;
@@ -30,8 +29,8 @@ public class NanoTimestampType extends AbstractDebeziumTimestampType {
     }
 
     @Override
-    public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
-        return dialect.getFormattedDateTimeWithNanos(DateTimeUtils.toZonedDateTimeFromInstantEpochNanos((long) value));
+    public String getDefaultValueBinding(Schema schema, Object value) {
+        return getDialect().getFormattedDateTimeWithNanos(DateTimeUtils.toZonedDateTimeFromInstantEpochNanos((long) value));
     }
 
     @Override

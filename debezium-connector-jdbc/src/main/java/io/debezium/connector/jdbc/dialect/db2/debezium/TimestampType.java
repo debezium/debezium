@@ -11,7 +11,6 @@ import java.time.ZoneOffset;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.time.Timestamp;
 
@@ -30,8 +29,8 @@ public class TimestampType extends AbstractDebeziumTimestampType {
     }
 
     @Override
-    public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
-        return dialect.getFormattedDateTime(Instant.ofEpochMilli((long) value).atZone(ZoneOffset.UTC));
+    public String getDefaultValueBinding(Schema schema, Object value) {
+        return getDialect().getFormattedDateTime(Instant.ofEpochMilli((long) value).atZone(ZoneOffset.UTC));
     }
 
     @Override

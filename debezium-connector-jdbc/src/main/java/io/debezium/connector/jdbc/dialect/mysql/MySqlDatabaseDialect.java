@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import org.apache.kafka.connect.data.Schema;
 import org.hibernate.PessimisticLockException;
 import org.hibernate.SessionFactory;
 import org.hibernate.StatelessSession;
@@ -31,6 +32,7 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
+import io.debezium.sink.field.FieldDescriptor;
 import io.debezium.time.ZonedTimestamp;
 import io.debezium.util.Strings;
 
@@ -169,14 +171,14 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
         builder.append("INSERT INTO ");
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" (");
-        builder.appendLists(", ", record.keyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnNameFromField(name, record));
+        builder.appendLists(", ", record.keyFieldNames(), record.nonKeyFieldNames(), (name) -> columnNameFromField(name, record));
         builder.append(") VALUES (");
-        builder.appendLists(", ", record.keyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
+        builder.appendLists(", ", record.keyFieldNames(), record.nonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
         builder.append(") ");
 
-        final List<String> updateColumnNames = record.getNonKeyFieldNames().isEmpty()
+        final Set<String> updateColumnNames = record.nonKeyFieldNames().isEmpty()
                 ? record.keyFieldNames()
-                : record.getNonKeyFieldNames();
+                : record.nonKeyFieldNames();
 
         if (getDatabaseVersion().isSameOrAfter(8, 0, 20)) {
             // MySQL 8.0.20 deprecated the use of "VALUES()" in exchange for table aliases
@@ -207,8 +209,9 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
-    protected void addColumnDefaultValue(JdbcSinkRecord.FieldDescriptor field, StringBuilder columnSpec) {
-        final String fieldType = field.getTypeName();
+    protected void addColumnDefaultValue(FieldDescriptor field, StringBuilder columnSpec) {
+        Schema fieldSchema = field.getSchema();
+        final String fieldType = getSchemaType(fieldSchema).getTypeName(fieldSchema, field.isKey());
         if (!Strings.isNullOrBlank(fieldType)) {
             if (NO_DEFAULT_VALUE_TYPES.contains(fieldType.toLowerCase())) {
                 return;
