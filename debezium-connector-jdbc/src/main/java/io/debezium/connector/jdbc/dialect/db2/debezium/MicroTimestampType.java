@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.connector.jdbc.util.DateTimeUtils;
 import io.debezium.time.MicroTimestamp;
@@ -29,8 +28,8 @@ public class MicroTimestampType extends AbstractDebeziumTimestampType {
     }
 
     @Override
-    public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
-        return dialect.getFormattedDateTime(DateTimeUtils.toZonedDateTimeFromInstantEpochMicros((long) value));
+    public String getDefaultValueBinding(Schema schema, Object value) {
+        return getDialect().getFormattedDateTime(DateTimeUtils.toZonedDateTimeFromInstantEpochMicros((long) value));
     }
 
     @Override

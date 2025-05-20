@@ -10,7 +10,6 @@ import static java.util.function.Predicate.not;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -19,7 +18,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -56,7 +54,7 @@ class ReducedRecordBufferTest extends AbstractRecordBufferTest {
     void setUp() {
         dialect = mock(DatabaseDialect.class);
         Type type = mock(Type.class);
-        when(type.getTypeName(eq(dialect), any(), anyBoolean())).thenReturn("");
+        when(type.getTypeName(any(), anyBoolean())).thenReturn("");
         when(dialect.getSchemaType(any())).thenReturn(type);
     }
 
@@ -267,6 +265,7 @@ class ReducedRecordBufferTest extends AbstractRecordBufferTest {
                             config.getPrimaryKeyMode(),
                             config.getPrimaryKeyFields(),
                             config.getFieldFilter(),
+                            config.cloudEventsSchemaNamePattern(),
                             dialect);
                 })
                 .collect(Collectors.toList());
@@ -279,7 +278,7 @@ class ReducedRecordBufferTest extends AbstractRecordBufferTest {
         assertThat(batches.get(0).size()).isEqualTo(5);
 
         batches.get(0).forEach(record -> {
-            Struct keyStruct = record.getKeyStruct(PrimaryKeyMode.RECORD_VALUE, Set.of("value_id"));
+            Struct keyStruct = record.filteredKey();
             assertThat(keyStruct).isNotNull();
             assertThat(keyStruct.schema().fields()).hasSize(1);
             assertThat(keyStruct.schema().field("value_id")).isNotNull();

@@ -7,7 +7,6 @@ package io.debezium.connector.jdbc.dialect.oracle;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractBytesType;
 import io.debezium.connector.jdbc.type.Type;
 
@@ -21,7 +20,7 @@ class BytesType extends AbstractBytesType {
     public static final BytesType INSTANCE = new BytesType();
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
+    public String getTypeName(Schema schema, boolean isKey) {
         // Hibernate will elect to use RAW(n) when column propagation is enabled, and we ideally do not want
         // to use that data type since RAW has been deprecated by Oracle. This explicitly always forces any
         // BYTES data type to be written as a BLOB.
@@ -29,7 +28,7 @@ class BytesType extends AbstractBytesType {
     }
 
     @Override
-    public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
+    public String getDefaultValueBinding(Schema schema, Object value) {
         // Cannot bind default value to BLOB columns
         return null;
     }

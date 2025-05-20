@@ -145,12 +145,12 @@ public interface SinkConnectorConfig {
 
     String PRIMARY_KEY_MODE = "primary.key.mode";
     Field PRIMARY_KEY_MODE_FIELD = Field.create(PRIMARY_KEY_MODE)
-            .withDisplayName("The primary key mode")
+            .withDisplayName("Primary key mode")
             .withEnum(PrimaryKeyMode.class, PrimaryKeyMode.NONE)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 4))
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
-            .withDescription("The primary key mode");
+            .withDescription("The primary key mode.");
 
     String DEFAULT_TIME_ZONE = "UTC";
     String USE_TIME_ZONE = "use.time.zone";
@@ -176,6 +176,16 @@ public interface SinkConnectorConfig {
             .withDescription("Specifies how many records to attempt to batch together into the destination table, when possible. " +
                     "You can also configure the connector’s underlying consumer’s max.poll.records using consumer.override.max.poll.records in the connector configuration.");
 
+    String CLOUDEVENTS_SCHEMA_NAME_PATTERN = "cloud.events.schema.name.pattern";
+    Field CLOUDEVENTS_SCHEMA_NAME_PATTERN_FIELD = Field.create(CLOUDEVENTS_SCHEMA_NAME_PATTERN)
+            .withDisplayName("CloudEvents messages schema name pattern")
+            .withType(ConfigDef.Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 8))
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDefault(".*CloudEvents\\.Envelope$")
+            .withDescription("Regular expression pattern to identify CloudEvents messages by this schema name pattern.");
+
     String getCollectionNameFormat();
 
     PrimaryKeyMode getPrimaryKeyMode();
@@ -191,5 +201,7 @@ public interface SinkConnectorConfig {
     CollectionNamingStrategy getCollectionNamingStrategy();
 
     FieldNameFilter getFieldFilter();
+
+    String cloudEventsSchemaNamePattern();
 
 }

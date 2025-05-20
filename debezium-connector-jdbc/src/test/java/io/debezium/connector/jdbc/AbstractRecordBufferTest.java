@@ -22,6 +22,7 @@ class AbstractRecordBufferTest {
                 config.getPrimaryKeyMode(),
                 config.getPrimaryKeyFields(),
                 config.getFieldFilter(),
+                config.cloudEventsSchemaNamePattern(),
                 dialect);
     }
 

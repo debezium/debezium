@@ -14,11 +14,10 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Timestamp;
 import org.apache.kafka.connect.errors.ConnectException;
 
-import io.debezium.connector.jdbc.ValueBindDescriptor;
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractTimestampType;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.connector.jdbc.util.DateTimeUtils;
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
  * An implementation of {@link Type} for {@link Date} values.
@@ -35,8 +34,8 @@ public class ConnectTimestampType extends AbstractTimestampType {
     }
 
     @Override
-    public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
-        return dialect.getFormattedTimestamp(DateTimeUtils.toZonedDateTimeFromDate((java.util.Date) value, ZoneOffset.UTC));
+    public String getDefaultValueBinding(Schema schema, Object value) {
+        return getDialect().getFormattedTimestamp(DateTimeUtils.toZonedDateTimeFromDate((java.util.Date) value, ZoneOffset.UTC));
     }
 
     @Override

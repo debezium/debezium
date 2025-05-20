@@ -89,6 +89,7 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
     private final int batchSize;
     private final boolean truncateEnabled;
     private final boolean deleteEnabled;
+    private final String cloudEventsSchemaNamePattern;
 
     public MongoDbSinkConnectorConfig(Configuration config) {
         this.config = config;
@@ -105,6 +106,7 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
         this.truncateEnabled = config.getBoolean(SinkConnectorConfig.TRUNCATE_ENABLED_FIELD);
         this.deleteEnabled = config.getBoolean(DELETE_ENABLED_FIELD);
         this.batchSize = config.getInteger(BATCH_SIZE_FIELD);
+        this.cloudEventsSchemaNamePattern = config.getString(CLOUDEVENTS_SCHEMA_NAME_PATTERN_FIELD);
     }
 
     public void validate() {
@@ -135,6 +137,7 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
         return CONFIG_DEFINITION.configDef();
     }
 
+    @Override
     public int getBatchSize() {
         return batchSize;
     }
@@ -169,6 +172,7 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
         return sinkDatabaseName;
     }
 
+    @Override
     public String getCollectionNameFormat() {
         return collectionNameFormat;
     }
@@ -178,10 +182,12 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
         return null;
     }
 
+    @Override
     public boolean isTruncateEnabled() {
         return truncateEnabled;
     }
 
+    @Override
     public boolean isDeleteEnabled() {
         return deleteEnabled;
     }
@@ -189,6 +195,11 @@ public class MongoDbSinkConnectorConfig implements SharedMongoDbConnectorConfig,
     @Override
     public String useTimeZone() {
         return "UTC";
+    }
+
+    @Override
+    public String cloudEventsSchemaNamePattern() {
+        return cloudEventsSchemaNamePattern;
     }
 
 }

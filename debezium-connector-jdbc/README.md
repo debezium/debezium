@@ -110,9 +110,9 @@ There are three types of types in the test suite:
 
 * Unit tests
 * Sink-based integration tests
-* End to end matrix-based Integration tests
+* End-to-end matrix-based integration tests
 
-By default all unit tests are executed as a part of the build.
+By default, all unit tests are executed as a part of the build.
 The sink-based integration tests are only executed for MySQL, PostgreSQL, and SQL Server by default, while none of the end-to-end matrix-based tests are executed.
 
 In order to execute the sink-based integration tests for Oracle and DB2, the `-Dtest.tags` argument must be provided to include these in the build.
@@ -124,7 +124,7 @@ In order to run all sink-based integration tests for all databases, a short-cut 
 
     $ ./mvnw clean install -Dtest.tags=it
 
-Similarly, in order to enable specific end to end tests, the `-Dtest.tags` argument can also be supplied with the necessary tags for each sink database type:
+Similarly, in order to enable specific end-to-end tests, the `-Dtest.tags` argument can also be supplied with the necessary tags for each sink database type:
 
     $ ./mvnw clean install -Dtest.tags=e2e-mysql,e2e-postgresql,e2e-sqlserver,e2e-oracle,e2e-db2
 

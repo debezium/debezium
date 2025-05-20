@@ -130,13 +130,13 @@ public class CloudEventsConverter implements Converter, Versioned {
             }
         }
 
-        Map<String, CloudEventsProvider> tmp = new HashMap<>();
+        Map<String, CloudEventsProvider> foundProviders = new HashMap<>();
 
         for (CloudEventsProvider provider : ServiceLoader.load(CloudEventsProvider.class)) {
-            tmp.put(provider.getName(), provider);
+            foundProviders.put(provider.getName(), provider);
         }
 
-        PROVIDERS = Collections.unmodifiableMap(tmp);
+        PROVIDERS = Collections.unmodifiableMap(foundProviders);
     }
 
     private SerializerType ceSerializerType = withName(CloudEventsConverterConfig.CLOUDEVENTS_SERIALIZER_TYPE_DEFAULT);
@@ -145,7 +145,7 @@ public class CloudEventsConverter implements Converter, Versioned {
     private final JsonConverter jsonCloudEventsConverter = new JsonConverter();
     private JsonConverterConfig jsonCloudEventsConverterConfig = null;
 
-    private JsonConverter jsonHeaderConverter = new JsonConverter();
+    private final JsonConverter jsonHeaderConverter = new JsonConverter();
 
     private final JsonConverter jsonDataConverter = new JsonConverter();
 

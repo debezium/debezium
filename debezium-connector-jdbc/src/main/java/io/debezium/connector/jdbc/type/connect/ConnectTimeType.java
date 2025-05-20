@@ -15,12 +15,11 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Time;
 import org.apache.kafka.connect.errors.ConnectException;
 
-import io.debezium.connector.jdbc.ValueBindDescriptor;
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.AbstractTimeType;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.connector.jdbc.util.DateTimeUtils;
+import io.debezium.sink.column.ColumnDescriptor;
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
  * An implementation of {@link Type} for {@link org.apache.kafka.connect.data.Date} values.
@@ -42,8 +41,8 @@ public class ConnectTimeType extends AbstractTimeType {
     }
 
     @Override
-    public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
-        return dialect.getFormattedTime(DateTimeUtils.toZonedDateTimeFromDate((Date) value, getDatabaseTimeZone()));
+    public String getDefaultValueBinding(Schema schema, Object value) {
+        return getDialect().getFormattedTime(DateTimeUtils.toZonedDateTimeFromDate((Date) value, getDatabaseTimeZone()));
     }
 
     @Override

@@ -5,15 +5,14 @@
  */
 package io.debezium.connector.jdbc.dialect.postgres;
 
-import java.util.Arrays;
 import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.connector.jdbc.type.Type;
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
  * An implementation of {@link Type} for {@code ARRAY} column types.
@@ -31,19 +30,19 @@ public class ArrayType extends AbstractType {
     }
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
-        return getElementTypeName(dialect, schema, key) + "[]";
+    public String getTypeName(Schema schema, boolean isKey) {
+        return getElementTypeName(getDialect(), schema, isKey) + "[]";
     }
 
-    private String getElementTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
+    private String getElementTypeName(DatabaseDialect dialect, Schema schema, boolean isKey) {
         Type elementType = dialect.getSchemaType(schema.valueSchema());
-        return elementType.getTypeName(dialect, schema.valueSchema(), key);
+        return elementType.getTypeName(schema.valueSchema(), isKey);
     }
 
     @Override
     public List<ValueBindDescriptor> bind(int index, Schema schema, Object value) {
         if (value == null) {
-            return Arrays.asList(new ValueBindDescriptor(index, null));
+            return List.of(new ValueBindDescriptor(index, null));
         }
         return List.of(new ValueBindDescriptor(index, value, java.sql.Types.ARRAY, getElementTypeName(this.getDialect(), schema, false)));
     }

@@ -14,11 +14,10 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 
-import io.debezium.connector.jdbc.ValueBindDescriptor;
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.connector.jdbc.type.Type;
 import io.debezium.data.VariableScaleDecimal;
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
  * An implementation of {@link Type} for {@link VariableScaleDecimal} values.
@@ -35,11 +34,11 @@ public class VariableScaleDecimalType extends AbstractType {
     }
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
+    public String getTypeName(Schema schema, boolean isKey) {
         // The data passed by VariableScaleDecimal data types does not provide adequate information to
         // resolve the precision and scale for the data type, so instead we're going to default to the
         // maximum double-based data types for the dialect, using DOUBLE.
-        return dialect.getTypeName(Types.DOUBLE);
+        return getDialect().getJdbcTypeName(Types.DOUBLE);
     }
 
     @Override

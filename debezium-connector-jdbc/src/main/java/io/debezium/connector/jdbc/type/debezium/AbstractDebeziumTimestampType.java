@@ -11,8 +11,8 @@ import java.util.List;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 
-import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.type.AbstractTimestampType;
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
  * An abstract Debezium timestamp-type implementation of {@link AbstractTimestampType}.

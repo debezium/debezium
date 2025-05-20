@@ -10,10 +10,9 @@ import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.ValueBindDescriptor;
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.Type;
+import io.debezium.sink.column.ColumnDescriptor;
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
  * An implementation of {@link Type} for {@code MAP} schema types that are mapped to the
@@ -31,13 +30,13 @@ public class ConnectMapToConnectStringType extends AbstractConnectMapType {
     }
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
-        return ConnectStringType.INSTANCE.getTypeName(dialect, schema, key);
+    public String getTypeName(Schema schema, boolean isKey) {
+        return ConnectStringType.INSTANCE.getTypeName(schema, isKey);
     }
 
     @Override
-    public String getDefaultValueBinding(DatabaseDialect dialect, Schema schema, Object value) {
-        return ConnectStringType.INSTANCE.getDefaultValueBinding(dialect, schema, value);
+    public String getDefaultValueBinding(Schema schema, Object value) {
+        return ConnectStringType.INSTANCE.getDefaultValueBinding(schema, value);
     }
 
     @Override
