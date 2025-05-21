@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.openlineage;
+package io.debezium.openlineage.facets;
 
 import java.net.URI;
 import java.util.HashMap;
@@ -30,8 +30,7 @@ public class DebeziumConfigFacet implements OpenLineage.RunFacet {
 
     @Override
     public URI get_schemaURL() {
-        // TODO define the schema
-        return URI.create("https://raw.githubusercontent.com/OpenLineage/OpenLineage/main/spec/OpenLineage.json#/definitions/RunFacet");
+        return URI.create("https://github.com/debezium/debezium/tree/main/debezium-core/src/main/java/io/debezium/openlineage/facets/spec/DebeziumRunFacet.json");
     }
 
     public void setConfigs(Map<String, Object> configurations) {
