@@ -5,7 +5,6 @@
  */
 package io.debezium.ai.embeddings;
 
-import static io.debezium.ai.embeddings.FieldToEmbedding.EMBEDDINGS_PREFIX;
 import static java.lang.String.format;
 
 import java.time.Duration;
@@ -31,7 +30,7 @@ public class VoyageAiModelFactory<R extends ConnectRecord<R>> implements Embeddi
 
     private static final int DEFAULT_OPERATION_TIMEOUT = 15_000;
 
-    public static final String VOYAGE_AI_PREFIX = EMBEDDINGS_PREFIX + "voyageai.";
+    public static final String VOYAGE_AI_PREFIX = "voyageai.";
 
     private static final Field VOYAGE_AI_BASE_URL = Field.create(VOYAGE_AI_PREFIX + "baseUrl")
             .withDisplayName("Voyage AI base URL.")

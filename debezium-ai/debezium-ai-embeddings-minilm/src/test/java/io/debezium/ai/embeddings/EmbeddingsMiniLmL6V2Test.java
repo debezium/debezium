@@ -24,8 +24,8 @@ public class EmbeddingsMiniLmL6V2Test {
     public void testMiniLmEmbeddings() {
         FieldToEmbedding<SourceRecord> embeddingSmt = new FieldToEmbedding();
         embeddingSmt.configure(Map.of(
-                "embeddings.field.source", "after.product",
-                "embeddings.field.embedding", "after.prod_embedding"));
+                "field.source", "after.product",
+                "field.embedding", "after.prod_embedding"));
         SourceRecord transformedRecord = embeddingSmt.apply(FieldToEmbeddingTest.SOURCE_RECORD);
 
         Struct payloadStruct = (Struct) transformedRecord.value();
