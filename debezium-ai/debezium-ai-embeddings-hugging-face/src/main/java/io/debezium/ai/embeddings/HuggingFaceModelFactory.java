@@ -5,7 +5,6 @@
  */
 package io.debezium.ai.embeddings;
 
-import static io.debezium.ai.embeddings.FieldToEmbedding.EMBEDDINGS_PREFIX;
 import static java.lang.String.format;
 
 import java.time.Duration;
@@ -31,7 +30,7 @@ public class HuggingFaceModelFactory<R extends ConnectRecord<R>> implements Embe
 
     private static final int DEFAULT_OPERATION_TIMEOUT = 15_000;
 
-    public static final String HUGGING_FACE_PREFIX = EMBEDDINGS_PREFIX + "huggingface.";
+    public static final String HUGGING_FACE_PREFIX = "huggingface.";
 
     private static final Field HUGGING_FACE_BASE_URL = Field.create(HUGGING_FACE_PREFIX + "baseUrl")
             .withDisplayName("Hugging Face base URL.")

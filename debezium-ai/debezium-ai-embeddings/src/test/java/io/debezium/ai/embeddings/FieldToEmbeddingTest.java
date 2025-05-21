@@ -52,8 +52,8 @@ public class FieldToEmbeddingTest {
     public void testNonNestedFieldIsEmbeddedNonNested() {
         FieldToEmbedding<SourceRecord> embeddingSmt = new FieldToEmbedding();
         embeddingSmt.configure(Map.of(
-                "embeddings.field.source", "op",
-                "embeddings.field.embedding", "op_embedding"));
+                "field.source", "op",
+                "field.embedding", "op_embedding"));
         SourceRecord transformedRecord = embeddingSmt.apply(SOURCE_RECORD);
 
         Struct payloadStruct = (Struct) transformedRecord.value();
@@ -65,8 +65,8 @@ public class FieldToEmbeddingTest {
     public void testNestedFieldIsEmbeddedNested() {
         FieldToEmbedding<SourceRecord> embeddingSmt = new FieldToEmbedding();
         embeddingSmt.configure(Map.of(
-                "embeddings.field.source", "after.product",
-                "embeddings.field.embedding", "after.prod_embedding"));
+                "field.source", "after.product",
+                "field.embedding", "after.prod_embedding"));
         SourceRecord transformedRecord = embeddingSmt.apply(SOURCE_RECORD);
 
         Struct payloadStruct = (Struct) transformedRecord.value();
@@ -78,8 +78,8 @@ public class FieldToEmbeddingTest {
     public void testNestedFieldIsWithSameName() {
         FieldToEmbedding<SourceRecord> embeddingSmt = new FieldToEmbedding();
         embeddingSmt.configure(Map.of(
-                "embeddings.field.source", "after.product",
-                "embeddings.field.embedding", "after.product_embedding"));
+                "field.source", "after.product",
+                "field.embedding", "after.product_embedding"));
         SourceRecord transformedRecord = embeddingSmt.apply(SOURCE_RECORD);
 
         Struct payloadStruct = (Struct) transformedRecord.value();
@@ -90,7 +90,7 @@ public class FieldToEmbeddingTest {
     @Test
     public void testNoEmbeddingsConfProvided() {
         FieldToEmbedding<SourceRecord> embeddingSmt = new FieldToEmbedding();
-        embeddingSmt.configure(Map.of("embeddings.field.source", "after.product"));
+        embeddingSmt.configure(Map.of("field.source", "after.product"));
         SourceRecord transformedRecord = embeddingSmt.apply(SOURCE_RECORD);
 
         List<Float> payloadStruct = (List<Float>) transformedRecord.value();

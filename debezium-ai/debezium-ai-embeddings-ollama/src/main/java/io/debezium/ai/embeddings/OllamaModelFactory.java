@@ -5,7 +5,6 @@
  */
 package io.debezium.ai.embeddings;
 
-import static io.debezium.ai.embeddings.FieldToEmbedding.EMBEDDINGS_PREFIX;
 import static java.lang.String.format;
 
 import java.time.Duration;
@@ -30,7 +29,7 @@ public class OllamaModelFactory<R extends ConnectRecord<R>> implements Embedding
 
     private static final int DEFAULT_OPERATION_TIMEOUT = 15_000;
 
-    public static final String OLLAMA_PREFIX = EMBEDDINGS_PREFIX + "ollama.";
+    public static final String OLLAMA_PREFIX = "ollama.";
 
     private static final Field OLLAMA_BASE_URL = Field.create(OLLAMA_PREFIX + "url")
             .withDisplayName("Ollama server URL.")
