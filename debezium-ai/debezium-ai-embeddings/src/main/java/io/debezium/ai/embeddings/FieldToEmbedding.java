@@ -51,13 +51,16 @@ public class FieldToEmbedding<R extends ConnectRecord<R>> implements Transformat
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FieldToEmbedding.class);
 
+    public static final String LEGACY_EMBEDDINGS_PREFIX = "embeddings.";
+
     private static final Field TEXT_FIELD = Field.create("field.source")
             .withDisplayName("Name of the record field from which embeddings should be created.")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
             .required()
-            .withDescription("Name of the field of the record which content will be used as an input for embeddings. Supports also nested fields.");
+            .withDescription("Name of the field of the record which content will be used as an input for embeddings. Supports also nested fields.")
+            .withDeprecatedAliases(LEGACY_EMBEDDINGS_PREFIX + "field.source");
 
     private static final Field EMBEDDGINS_FIELD = Field.create("field.embedding")
             .withDisplayName("Name of the field which would contain the embeddings of the input field.")
@@ -65,7 +68,14 @@ public class FieldToEmbedding<R extends ConnectRecord<R>> implements Transformat
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
             .withDescription(
-                    "Name of the field which which will be appended to the record and which would contain the embeddings of the content `filed.source` field. Supports also nested fields.");
+                    "Name of the field which which will be appended to the record and which would contain the embeddings of the content `filed.source` field. Supports also nested fields.")
+            .withValidation((config, field, output) -> {
+                if (config.getString(field, "").isEmpty()) {
+                    LOGGER.info("{} not set, record value will contain only embeddings.", field.name());
+                }
+                return 0;
+            })
+            .withDeprecatedAliases(LEGACY_EMBEDDINGS_PREFIX + "field.embedding");
 
     private static final Schema EMBEDDING_SCHEMA = FloatVector.schema();
     private static final EmbeddingsModelFactory MODEL_FACTORY = EmbeddingsModelFactoryLoader.getModelFactory();
