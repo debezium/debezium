@@ -7,7 +7,6 @@ package io.debezium.openlineage;
 
 import java.util.concurrent.atomic.AtomicReference;
 
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.relational.Table;
@@ -47,19 +46,20 @@ public class DebeziumOpenLineageEmitter {
      */
     public static void init(Configuration configuration, String connName) {
 
-        if (isEnabled(configuration)) {
-            OpenLineageEventEmitter emitter = new OpenLineageEventEmitter(configuration);
+        DebeziumOpenLineageConfiguration debeziumOpenLineageConfiguration = DebeziumOpenLineageConfiguration.from(configuration);
+
+        if (debeziumOpenLineageConfiguration.enabled()) {
+            OpenLineageEventEmitter emitter = new OpenLineageEventEmitter(debeziumOpenLineageConfiguration);
 
             if (contextRef.get() == null) {
                 OpenLineageContext ctx = new OpenLineageContext(
                         new OpenLineage(emitter.getProducer()),
-                        configuration.subset("openlineage.integration", false),
-                        // TODO check if namespace should be configurable
-                        new OpenLineageJobIdentifier(
-                                configuration.getString(CommonConnectorConfig.TOPIC_PREFIX),
+                        debeziumOpenLineageConfiguration,
+                        new OpenLineageJobIdentifier(debeziumOpenLineageConfiguration.job().namespace(),
                                 configuration.getString(CONNECTOR_NAME_PROPERTY)));
                 contextRef.compareAndSet(null, ctx);
             }
+
             lineageEmitter = new OpenLineageEmitter(connName, configuration, contextRef.get(), emitter);
         }
         else {
@@ -71,10 +71,6 @@ public class DebeziumOpenLineageEmitter {
         if (lineageEmitter == null) {
             throw new IllegalStateException("DebeziumOpenLineageEmitter not initialized. Call init() first.");
         }
-    }
-
-    private static boolean isEnabled(Configuration configuration) {
-        return configuration.getBoolean("openlineage.integration.enabled", false);
     }
 
     /**
