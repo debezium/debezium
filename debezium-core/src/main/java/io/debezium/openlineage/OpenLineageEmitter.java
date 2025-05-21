@@ -14,6 +14,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.openlineage.facets.DebeziumConfigFacet;
 import io.debezium.relational.Table;
 import io.openlineage.client.OpenLineage;
 
