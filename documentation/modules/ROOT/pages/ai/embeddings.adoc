@@ -33,8 +33,10 @@ Resulting embedding is appended to the record.
 The source field is still part of the record.
 
 The source field has to be a string field.
-Embedding field is a vector of float numbers.
+Embedding field is a vector of float 32-bits numbers.
 The size of the vector depends on the selected model.
+{prodname} provides link:https://github.com/debezium/debezium/blob/main/debezium-core/src/main/java/io/debezium/data/vector/FloatVector.java[FloatVector] data type, which is used for internal representation of the embedding.
+The schema type of the embedding field in the record is `io.debezium.data.FloatVector`.
 
 Both source and embedding field specification supports nested structures, e.g. `after.product_description_embedding`.
 
@@ -52,7 +54,7 @@ You have to specify at least field which content will be used as an input for th
 
 [source]
 ----
-ai.embeddings.field.source=after.product,
+ai.embeddings.field.source=after.product
 ai.embeddings.field.embedding=after.product_embedding
 ----
 
@@ -93,6 +95,7 @@ Has to be a string field.
 |[[embeddings-embedding-field]]xref:embeddings-embedding-field[`embeddings.field.embedding`]
 |
 |Name of the new record field which will container text embedding.
+If no value is specified, record value will contain only embedding itself.
 |===
 
 == Model provider configuration
@@ -114,7 +117,8 @@ Embeddings provided by models available via link:https://huggingface.co//[Huggin
 |[[embeddings-huggingface-model-name]]xref:embeddings-huggingface-model-name[`embeddings.huggingface.model.name`]
 |
 |Name of the embedding model.
-List of available models can be obtained e.g. via REST API, for Hugging Face inference provider via `https://huggingface.co/api/models?inference_provider=hf-inference`.
+List of available models can be obtained e.g. via REST API.
+You need to specify the provider in the REST call, e.g. link:https://huggingface.co/api/models?inference_provider=hf-inference[Hugging Face inference provider].
 |[[embeddings-huggingface-baseurl]]xref:embeddings-huggingface-baseurl[`embeddings.huggingface.baseUrl`]
 |https://api-inference.huggingface.co/
 |Base Hugging Face inference API URL.
