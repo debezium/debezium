@@ -248,16 +248,13 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
 
                 SnapshottingTask snapshottingTask = snapshotSource.getBlockingSnapshottingTask(partition, (O) offsetContext, snapshotConfiguration);
                 try {
-                    SnapshotResult<O> snapshotResult = doSnapshot(snapshotSource, context, partition, (O) offsetContext, snapshottingTask);
-                    eventDispatcher.setEventListener(streamingMetrics);
-
-                    if (running && snapshotResult.isCompletedOrSkipped()) {
-                        resumeStreaming(partition);
-                    }
-
+                    doSnapshot(snapshotSource, context, partition, (O) offsetContext, snapshottingTask);
                 }
                 catch (Exception e) {
                     LOGGER.warn("Error while executing requested blocking snapshot.", e);
+                }
+                finally {
+                    eventDispatcher.setEventListener(streamingMetrics);
                     resumeStreaming(partition);
                 }
             }
