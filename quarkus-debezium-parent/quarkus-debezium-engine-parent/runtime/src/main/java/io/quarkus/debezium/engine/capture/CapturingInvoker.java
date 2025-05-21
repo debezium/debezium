@@ -16,7 +16,7 @@ import io.debezium.runtime.Capturing;
 public interface CapturingInvoker<T> {
 
     /**
-     * @param event event captured by Debezium
+     * @param event captured by Debezium
      */
     void capture(T event);
 }
