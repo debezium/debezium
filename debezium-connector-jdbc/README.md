@@ -116,6 +116,7 @@ By default, all unit tests are executed as a part of the build.
 The sink-based integration tests are only executed for MySQL, PostgreSQL, and SQL Server by default, while none of the end-to-end matrix-based tests are executed.
 
 In order to execute the sink-based integration tests for Oracle and DB2, the `-Dtest.tags` argument must be provided to include these in the build.
+
 In order to do this, add all the integration tests to be executed, as shown below for all databases:
 
     $ ./mvnw clean install -Dtest.tags=it-mysql,it-postgresql,it-sqlserver,it-oracle,it-db2
@@ -132,7 +133,16 @@ In order to run all end to end integration tests, a short-cut tag is provided as
 
     $ ./mvnw clean install -Dtest.tags=e2e
 
-In order to run all tests for all source/sink combinations:
+In order to run all tests for default source connectors (MySQL, PostgreSQL, SQL Server) with all sink connector combinations:
 
     $ ./mvnw clean install -Dtest.tags=all
 
+End-to-end tests are only run for MySQL, PostgreSQL, and SQL Server source connectors by default.
+
+In order to change this, the `-Dsource.connectors` argument can be supplied with the source connector types:
+
+    $ ./mvnw clean install -Dtest.tags=all -Dsource.connectors=mysql,postgresql,sqlserver,oracle
+
+In order to run all tests for all source connectors with all sink connector combinations there is a short-cut tag "all":
+
+    $ ./mvnw clean install -Dtest.tags=all -Dsource.connectors=all
