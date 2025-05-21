@@ -442,6 +442,9 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
             return List.of(SourceType.MYSQL, SourceType.POSTGRES, SourceType.SQLSERVER);
         }
         else {
+            if (sourceConnectors.equalsIgnoreCase("all")) {
+                return Arrays.stream(SourceType.values()).collect(Collectors.toList());
+            }
             return Arrays.stream(sourceConnectors.split(",")).map(SourceType::parse).collect(Collectors.toList());
         }
     }
