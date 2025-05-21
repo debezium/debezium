@@ -5,6 +5,7 @@
  */
 package io.debezium.ai.embeddings;
 
+import static io.debezium.ai.embeddings.FieldToEmbedding.LEGACY_EMBEDDINGS_PREFIX;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
@@ -22,10 +23,21 @@ import org.junit.Test;
 public class EmbeddingsMiniLmL6V2Test {
     @Test
     public void testMiniLmEmbeddings() {
-        FieldToEmbedding<SourceRecord> embeddingSmt = new FieldToEmbedding();
-        embeddingSmt.configure(Map.of(
+        assertEmbeddingsForConfig(Map.of(
                 "field.source", "after.product",
                 "field.embedding", "after.prod_embedding"));
+    }
+
+    @Test
+    public void testMiniLmEmbeddingsWithLegacyConfig() {
+        assertEmbeddingsForConfig(Map.of(
+                LEGACY_EMBEDDINGS_PREFIX + "field.source", "after.product",
+                LEGACY_EMBEDDINGS_PREFIX + "field.embedding", "after.prod_embedding"));
+    }
+
+    private void assertEmbeddingsForConfig(Map<String, ?> config) {
+        FieldToEmbedding<SourceRecord> embeddingSmt = new FieldToEmbedding();
+        embeddingSmt.configure(config);
         SourceRecord transformedRecord = embeddingSmt.apply(FieldToEmbeddingTest.SOURCE_RECORD);
 
         Struct payloadStruct = (Struct) transformedRecord.value();

@@ -5,6 +5,7 @@
  */
 package io.debezium.ai.embeddings;
 
+import static io.debezium.ai.embeddings.FieldToEmbedding.LEGACY_EMBEDDINGS_PREFIX;
 import static java.lang.String.format;
 
 import java.time.Duration;
@@ -30,6 +31,7 @@ public class OllamaModelFactory<R extends ConnectRecord<R>> implements Embedding
     private static final int DEFAULT_OPERATION_TIMEOUT = 15_000;
 
     public static final String OLLAMA_PREFIX = "ollama.";
+    public static final String LEGACY_OLLAMA_PREFIX = LEGACY_EMBEDDINGS_PREFIX + "ollama.";
 
     private static final Field OLLAMA_BASE_URL = Field.create(OLLAMA_PREFIX + "url")
             .withDisplayName("Ollama server URL.")
@@ -37,15 +39,17 @@ public class OllamaModelFactory<R extends ConnectRecord<R>> implements Embedding
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
             .withDescription("Base URL of Ollama server.")
-            .required();
+            .required()
+            .withDeprecatedAliases(LEGACY_OLLAMA_PREFIX + "url");
 
     private static final Field MODEL_NAME = Field.create(OLLAMA_PREFIX + "model.name")
             .withDisplayName("Model name.")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.HIGH)
+            .required()
             .withDescription("Name of the model which should be served by Ollama server.")
-            .required();
+            .withDeprecatedAliases(LEGACY_OLLAMA_PREFIX + "model.name");
 
     private static final Field OPERATION_TIMEOUT = Field.create(OLLAMA_PREFIX + "operation.timeout.ms")
             .withDisplayName("Operation timeout.")
@@ -53,7 +57,9 @@ public class OllamaModelFactory<R extends ConnectRecord<R>> implements Embedding
             .withWidth(ConfigDef.Width.SHORT)
             .withImportance(ConfigDef.Importance.MEDIUM)
             .withDefault(DEFAULT_OPERATION_TIMEOUT)
-            .withDescription("Milliseconds to wait for Ollama calculations to finish (defaults to %s).".formatted(DEFAULT_OPERATION_TIMEOUT));
+            .withDescription("Milliseconds to wait for Ollama calculations to finish (defaults to %s).".formatted(DEFAULT_OPERATION_TIMEOUT))
+            .withValidation(Field::isNonNegativeInteger)
+            .withDeprecatedAliases(LEGACY_OLLAMA_PREFIX + "operation.timeout.ms");
 
     public static final Field.Set ALL_FIELDS = Field.setOf(OLLAMA_BASE_URL, MODEL_NAME, OPERATION_TIMEOUT);
 

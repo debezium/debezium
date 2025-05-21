@@ -5,6 +5,7 @@
  */
 package io.debezium.ai.embeddings;
 
+import static io.debezium.ai.embeddings.FieldToEmbedding.LEGACY_EMBEDDINGS_PREFIX;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
@@ -48,20 +49,34 @@ public class EmbeddingsOllamaIT {
 
     @Test
     public void testOllamaEmbeddings() throws InterruptedException, IOException {
-        ollama.execInContainer("ollama", "pull", OLLAMA_TEST_MODEL);
-
-        embeddingSmt.configure(Map.of(
+        assertEmbeddingsForConfig(Map.of(
                 "field.source", "after.product",
                 "field.embedding", "after.prod_embedding",
                 "ollama.url", ollama.getEndpoint(),
-                "ollama.model.name", OLLAMA_TEST_MODEL));
+                "ollama.model.name", OLLAMA_TEST_MODEL,
+                "operation.timeout.ms", 20_000));
+    }
+
+    @Test
+    public void testOllamaEmbeddingsWithLegacyConfig() throws InterruptedException, IOException {
+        assertEmbeddingsForConfig(Map.of(
+                LEGACY_EMBEDDINGS_PREFIX + "field.source", "after.product",
+                LEGACY_EMBEDDINGS_PREFIX + "field.embedding", "after.prod_embedding",
+                LEGACY_EMBEDDINGS_PREFIX + "ollama.url", ollama.getEndpoint(),
+                LEGACY_EMBEDDINGS_PREFIX + "ollama.model.name", OLLAMA_TEST_MODEL,
+                LEGACY_EMBEDDINGS_PREFIX + "operation.timeout.ms", 20_000));
+    }
+
+    private void assertEmbeddingsForConfig(Map<String, ?> config) throws InterruptedException, IOException {
+        ollama.execInContainer("ollama", "pull", OLLAMA_TEST_MODEL);
+
+        embeddingSmt.configure(config);
         SourceRecord transformedRecord = embeddingSmt.apply(FieldToEmbeddingTest.SOURCE_RECORD);
 
         Struct payloadStruct = (Struct) transformedRecord.value();
         assertThat(payloadStruct.getStruct("after").getString("product")).contains("a product");
         List<Float> embeddings = payloadStruct.getStruct("after").getArray("prod_embedding");
         assertThat(embeddings.size()).isEqualTo(384);
-
         final Offset<Float> offset = Offset.offset(0.001f);
         assertThat(embeddings.get(0)).isCloseTo(-0.07157089f, offset);
         assertThat(embeddings.get(1)).isCloseTo(0.022460647f, offset);
