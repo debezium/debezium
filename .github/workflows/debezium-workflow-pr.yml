@@ -25,6 +25,7 @@ jobs:
     name: "Detect repository changes"
     runs-on: ubuntu-latest
     outputs:
+      ai-changed: ${{ steps.changed-files-ai.outputs.any_changed }}
       common-changed: ${{ steps.changed-files-common.outputs.any_changed }}
       mongodb-changed: ${{ steps.changed-files-mongodb.outputs.any_changed }}
       mariadb-changed: ${{ steps.changed-files-mariadb.outputs.any_changed }}
@@ -202,6 +203,13 @@ jobs:
         with:
           files: |
             quarkus-debezium-parent/**
+
+      - name: Get modified files (AI)
+              id: changed-files-ai
+              uses: tj-actions/changed-files@v46.0.5
+              with:
+                files: |
+                  debezium-ai/**
 
   # Approx 1m
   build_cache:
@@ -510,6 +518,18 @@ jobs:
     uses: ./.github/workflows/apicurio-check-workflow.yml
     with:
       maven-cache-key: maven-debezium-test-build
+
+  build_ai:
+      name: "Debezium AI module"
+      needs: [ check_style, file_changes ]
+      runs-on: ubuntu-latest
+      if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.ai-changed == 'true' }}
+      steps:
+        - name: Checkout Action
+          uses: actions/checkout@v4
+        - uses: ./.github/actions/build-debezium-ai
+          with:
+            maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
 
   build_extensions:
     name: "Debezium Quarkus Extensions"
