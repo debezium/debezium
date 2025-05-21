@@ -25,8 +25,8 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
-import io.debezium.openlineage.DebeziumConfigFacet;
 import io.debezium.openlineage.DebeziumTestTransport;
+import io.debezium.openlineage.facets.DebeziumConfigFacet;
 import io.openlineage.client.OpenLineage;
 import io.openlineage.client.transports.TransportBuilder;
 
@@ -66,10 +66,10 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with("openlineage.integration.enabled", true)
-                .with("openlineage.integration.config.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
+                .with("openlineage.integration.config.file.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
                 .with("openlineage.integration.job.description", "This connector does cdc for products")
-                .with("openlineage.integration.tags", "env=prod,team=cdc")
-                .with("openlineage.integration.owners", "Mario=maintainer,John Doe=Data scientist");
+                .with("openlineage.integration.job.tags", "env=prod,team=cdc")
+                .with("openlineage.integration.job.owners", "Mario=maintainer,John Doe=Data scientist");
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
@@ -93,10 +93,10 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with("openlineage.integration.enabled", true)
-                .with("openlineage.integration.config.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
+                .with("openlineage.integration.config.file.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
                 .with("openlineage.integration.job.description", "This connector does cdc for products")
-                .with("openlineage.integration.tags", "env=prod,team=cdc")
-                .with("openlineage.integration.owners", "Mario=maintainer,John Doe=Data scientist");
+                .with("openlineage.integration.job.tags", "env=prod,team=cdc")
+                .with("openlineage.integration.job.owners", "Mario=maintainer,John Doe=Data scientist");
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
@@ -120,10 +120,10 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with("openlineage.integration.enabled", true)
-                .with("openlineage.integration.config.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
+                .with("openlineage.integration.config.file.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
                 .with("openlineage.integration.job.description", "This connector does cdc for products")
-                .with("openlineage.integration.tags", "env=prod,team=cdc")
-                .with("openlineage.integration.owners", "Mario=maintainer,John Doe=Data scientist");
+                .with("openlineage.integration.job.tags", "env=prod,team=cdc")
+                .with("openlineage.integration.job.owners", "Mario=maintainer,John Doe=Data scientist");
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
@@ -150,10 +150,10 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with("openlineage.integration.enabled", true)
-                .with("openlineage.integration.config.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
+                .with("openlineage.integration.config.file.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
                 .with("openlineage.integration.job.description", "This connector does cdc for products")
-                .with("openlineage.integration.tags", "env=prod,team=cdc")
-                .with("openlineage.integration.owners", "Mario=maintainer,John Doe=Data scientist");
+                .with("openlineage.integration.job.tags", "env=prod,team=cdc")
+                .with("openlineage.integration.job.owners", "Mario=maintainer,John Doe=Data scientist");
 
         start(PostgresConnector.class, configBuilder.build());
 
@@ -183,10 +183,10 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with("openlineage.integration.enabled", true)
-                .with("openlineage.integration.config.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
+                .with("openlineage.integration.config.file.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
                 .with("openlineage.integration.job.description", "This connector does cdc for products")
-                .with("openlineage.integration.tags", "env=prod,team=cdc")
-                .with("openlineage.integration.owners", "Mario=maintainer,John Doe=Data scientist");
+                .with("openlineage.integration.job.tags", "env=prod,team=cdc")
+                .with("openlineage.integration.job.owners", "Mario=maintainer,John Doe=Data scientist");
 
         start(PostgresConnector.class, configBuilder.build());
 
@@ -221,10 +221,10 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                 .with(CommonConnectorConfig.MAX_RETRIES_ON_ERROR, 1)
                 .with(CommonConnectorConfig.RETRIABLE_RESTART_WAIT, 1000)
                 .with("openlineage.integration.enabled", true)
-                .with("openlineage.integration.config.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
+                .with("openlineage.integration.config.file.path", OpenLineageIT.class.getClassLoader().getResource("openlineage/openlineage.yml").getPath())
                 .with("openlineage.integration.job.description", "This connector does cdc for products")
-                .with("openlineage.integration.tags", "env=prod,team=cdc")
-                .with("openlineage.integration.owners", "Mario=maintainer,John Doe=Data scientist");
+                .with("openlineage.integration.job.tags", "env=prod,team=cdc")
+                .with("openlineage.integration.job.owners", "Mario=maintainer,John Doe=Data scientist");
 
         AtomicReference<List<OpenLineage.RunEvent>> result = new AtomicReference<>(null);
         start(PostgresConnector.class, configBuilder.build(), (success, message, error) -> {
@@ -305,8 +305,8 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                 entry("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore"),
                 entry("openlineage.integration.enabled", "true"),
                 entry("openlineage.integration.job.description", "This connector does cdc for products"),
-                entry("openlineage.integration.owners", "Mario=maintainer,John Doe=Data scientist"),
-                entry("openlineage.integration.tags", "env=prod,team=cdc"),
+                entry("openlineage.integration.job.owners", "Mario=maintainer,John Doe=Data scientist"),
+                entry("openlineage.integration.job.tags", "env=prod,team=cdc"),
                 entry("plugin.name", "decoderbufs"),
                 entry("record.processing.order", "ORDERED"),
                 entry("record.processing.shutdown.timeout.ms", "1000"),
@@ -319,7 +319,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                 entry("status.update.interval.ms", "100"),
                 entry("topic.prefix", "test_server"),
                 entry("value.converter", "org.apache.kafka.connect.json.JsonConverter"))
-                .hasEntrySatisfying("openlineage.integration.config.path", value -> assertThat((String) value).contains("openlineage.yml"))
+                .hasEntrySatisfying("openlineage.integration.config.file.path", value -> assertThat((String) value).contains("openlineage.yml"))
                 .hasEntrySatisfying("offset.storage.file.filename", value -> assertThat((String) value).contains("file-connector-offsets.txt"));
 
         Map<String, String> tags = startEvent.getJob().getFacets().getTags().getTags()
