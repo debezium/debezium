@@ -97,12 +97,7 @@ public class OpenLineageEmitter implements LineageEmitter {
                                 .build())
                 .put(DebeziumConfigFacet.FACET_KEY_NAME, new DebeziumConfigFacet(emitter.getProducer(), config.asMap()));
 
-        if (t != null) {
-            StringWriter sw = new StringWriter();
-            t.printStackTrace(new PrintWriter(sw));
-            runFacetsBuilder.errorMessage(openLineageContext.getOpenLineage()
-                    .newErrorMessageRunFacet(t.getMessage(), JAVA, sw.toString()));
-        }
+        addStackTrace(t, runFacetsBuilder);
 
         OpenLineage.RunEvent startEvent = openLineageContext.getOpenLineage().newRunEventBuilder()
                 .eventType(getEventType(state))
@@ -114,6 +109,15 @@ public class OpenLineageEmitter implements LineageEmitter {
 
         emitter.emit(startEvent);
 
+    }
+
+    private void addStackTrace(Throwable t, OpenLineage.RunFacetsBuilder runFacetsBuilder) {
+        if (t != null) {
+            StringWriter sw = new StringWriter();
+            t.printStackTrace(new PrintWriter(sw));
+            runFacetsBuilder.errorMessage(openLineageContext.getOpenLineage()
+                    .newErrorMessageRunFacet(t.getMessage(), JAVA, sw.toString()));
+        }
     }
 
     private List<OpenLineage.InputDataset> getInputDatasets(Table table) {
@@ -137,12 +141,9 @@ public class OpenLineageEmitter implements LineageEmitter {
 
         return List.of(
                 openLineageContext.getOpenLineage().newInputDatasetBuilder()
-                        // See https://openlineage.io/docs/spec/naming
                         .namespace(datasetNamespace)
                         .name(table.id().identifier())
                         .facets(
-                                // Maybe we can add just the https://openlineage.io/docs/spec/facets/dataset-facets/ownership
-                                // configurable via connector configuration
                                 openLineageContext.getOpenLineage().newDatasetFacetsBuilder()
                                         .schema(openLineageContext.getOpenLineage().newSchemaDatasetFacetBuilder()
                                                 .fields(datasetFields)
