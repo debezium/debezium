@@ -1,0 +1,23 @@
+name: "Build Debezium AI"
+description: "Builds the Debezium AI module"
+
+inputs:
+  maven-cache-key:
+    description: "The maven build cache key"
+    required: true
+  shell:
+    description: "The shell to use"
+    required: false
+    default: bash
+
+runs:
+  using: "composite"
+  steps:
+    - uses: ./.github/actions/maven-cache
+      with:
+        key: ${{ inputs.maven-cache-key }}
+
+    - name: Build Debezium AI module
+      shell: ${{ inputs.shell }}
+      run: >
+        ./mvnw clean install -B -pl :debezium-ai -am -amd
