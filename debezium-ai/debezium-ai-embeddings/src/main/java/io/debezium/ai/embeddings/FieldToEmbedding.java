@@ -51,9 +51,7 @@ public class FieldToEmbedding<R extends ConnectRecord<R>> implements Transformat
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FieldToEmbedding.class);
 
-    public static final String EMBEDDINGS_PREFIX = "embeddings.";
-
-    private static final Field TEXT_FIELD = Field.create(EMBEDDINGS_PREFIX + "field.source")
+    private static final Field TEXT_FIELD = Field.create("field.source")
             .withDisplayName("Name of the record field from which embeddings should be created.")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.SHORT)
@@ -61,7 +59,7 @@ public class FieldToEmbedding<R extends ConnectRecord<R>> implements Transformat
             .required()
             .withDescription("Name of the field of the record which content will be used as an input for embeddings. Supports also nested fields.");
 
-    private static final Field EMBEDDGINS_FIELD = Field.create(EMBEDDINGS_PREFIX + "field.embedding")
+    private static final Field EMBEDDGINS_FIELD = Field.create("field.embedding")
             .withDisplayName("Name of the field which would contain the embeddings of the input field.")
             .withType(ConfigDef.Type.STRING)
             .withWidth(ConfigDef.Width.SHORT)

@@ -51,10 +51,10 @@ public class EmbeddingsOllamaIT {
         ollama.execInContainer("ollama", "pull", OLLAMA_TEST_MODEL);
 
         embeddingSmt.configure(Map.of(
-                "embeddings.field.source", "after.product",
-                "embeddings.field.embedding", "after.prod_embedding",
-                "embeddings.ollama.url", ollama.getEndpoint(),
-                "embeddings.ollama.model.name", OLLAMA_TEST_MODEL));
+                "field.source", "after.product",
+                "field.embedding", "after.prod_embedding",
+                "ollama.url", ollama.getEndpoint(),
+                "ollama.model.name", OLLAMA_TEST_MODEL));
         SourceRecord transformedRecord = embeddingSmt.apply(FieldToEmbeddingTest.SOURCE_RECORD);
 
         Struct payloadStruct = (Struct) transformedRecord.value();

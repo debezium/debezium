@@ -28,10 +28,10 @@ public class Voyage3LiteIT {
     public void testMiniLmEmbeddings() {
         FieldToEmbedding<SourceRecord> embeddingSmt = new FieldToEmbedding();
         embeddingSmt.configure(Map.of(
-                "embeddings.field.source", "after.product",
-                "embeddings.field.embedding", "after.prod_embedding",
-                "embeddings.voyageai.access.token", System.getenv("VOYAGE_API_KEY"),
-                "embeddings.voyageai.model.name", VoyageAiEmbeddingModelName.VOYAGE_3_LITE));
+                "field.source", "after.product",
+                "field.embedding", "after.prod_embedding",
+                "voyageai.access.token", System.getenv("VOYAGE_API_KEY"),
+                "voyageai.model.name", VoyageAiEmbeddingModelName.VOYAGE_3_LITE));
         SourceRecord transformedRecord = embeddingSmt.apply(FieldToEmbeddingTest.SOURCE_RECORD);
 
         Struct payloadStruct = (Struct) transformedRecord.value();
