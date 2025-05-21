@@ -5,6 +5,7 @@
  */
 package io.debezium.ai.embeddings;
 
+import static io.debezium.ai.embeddings.FieldToEmbedding.LEGACY_EMBEDDINGS_PREFIX;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
@@ -47,13 +48,28 @@ public class EmbeddingsOllamaIT {
 
     @Test
     public void testOllamaEmbeddings() throws InterruptedException, IOException {
-        ollama.execInContainer("ollama", "pull", OLLAMA_TEST_MODEL);
-
-        embeddingSmt.configure(Map.of(
+        assertEmbeddingsForConfig(Map.of(
                 "field.source", "after.product",
                 "field.embedding", "after.prod_embedding",
                 "ollama.url", ollama.getEndpoint(),
-                "ollama.model.name", OLLAMA_TEST_MODEL));
+                "ollama.model.name", OLLAMA_TEST_MODEL,
+                "operation.timeout.ms", 20_000));
+    }
+
+    @Test
+    public void testOllamaEmbeddingsWithLegacyConfig() throws InterruptedException, IOException {
+        assertEmbeddingsForConfig(Map.of(
+                LEGACY_EMBEDDINGS_PREFIX + "field.source", "after.product",
+                LEGACY_EMBEDDINGS_PREFIX + "field.embedding", "after.prod_embedding",
+                LEGACY_EMBEDDINGS_PREFIX + "ollama.url", ollama.getEndpoint(),
+                LEGACY_EMBEDDINGS_PREFIX + "ollama.model.name", OLLAMA_TEST_MODEL,
+                LEGACY_EMBEDDINGS_PREFIX + "operation.timeout.ms", 20_000));
+    }
+
+    private void assertEmbeddingsForConfig(Map<String, ?> config) throws InterruptedException, IOException {
+        ollama.execInContainer("ollama", "pull", OLLAMA_TEST_MODEL);
+
+        embeddingSmt.configure(config);
         SourceRecord transformedRecord = embeddingSmt.apply(FieldToEmbeddingTest.SOURCE_RECORD);
 
         Struct payloadStruct = (Struct) transformedRecord.value();
@@ -62,5 +78,6 @@ public class EmbeddingsOllamaIT {
         assertThat(embeddings.size()).isEqualTo(384);
         assertThat(embeddings).startsWith(-0.07157089f, 0.022460647f, -0.02369636f, -0.0143798785f, 0.0048304256f, 0.020285256f, 0.20442571f, 0.057290666f, 0.054607023f,
                 -0.030602805f);
+
     }
 }
