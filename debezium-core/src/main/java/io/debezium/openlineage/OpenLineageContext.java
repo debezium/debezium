@@ -7,7 +7,6 @@ package io.debezium.openlineage;
 
 import java.util.UUID;
 
-import io.debezium.config.Configuration;
 import io.openlineage.client.OpenLineage;
 import io.openlineage.client.utils.UUIDUtils;
 
@@ -15,10 +14,10 @@ public class OpenLineageContext {
 
     private final UUID runUuid;
     private final OpenLineage openLineage;
-    private final Configuration configuration;
+    private final DebeziumOpenLineageConfiguration configuration;
     private final OpenLineageJobIdentifier jobIdentifier;
 
-    public OpenLineageContext(OpenLineage openLineage, Configuration configuration, OpenLineageJobIdentifier jobIdentifier) {
+    public OpenLineageContext(OpenLineage openLineage, DebeziumOpenLineageConfiguration configuration, OpenLineageJobIdentifier jobIdentifier) {
         this.openLineage = openLineage;
         this.configuration = configuration;
         this.jobIdentifier = jobIdentifier;
@@ -29,7 +28,7 @@ public class OpenLineageContext {
         return openLineage;
     }
 
-    public Configuration getConfiguration() {
+    public DebeziumOpenLineageConfiguration getConfiguration() {
         return configuration;
     }
 
