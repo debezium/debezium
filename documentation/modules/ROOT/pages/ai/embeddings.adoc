@@ -53,15 +53,15 @@ You have to specify at least field which content will be used as an input for th
 [source]
 ----
 ai.embeddings.field.source=after.product,
-ai.embeddings.field.embedding=after.product_embedding,
+ai.embeddings.field.embedding=after.product_embedding
 ----
 
-Finally, you have to include selected model prvier jar file into the connector class path and configure the provider.
+Finally, you have to include selected model provider jar file into the connector class path and configure the provider.
 E.g. for Ollama provider you need to add `debezium-ai-embeddings-ollama-$VERSION.jar` into your connector class path and configure Ollama URL and model name:
 
 [source]
 ----
-ai.embeddings.ollama.url=http://localhost:11434,
+ai.embeddings.ollama.url=http://localhost:11434
 ai.embeddings.ollama.model.name=all-minilm
 ----
 
@@ -71,9 +71,9 @@ Overall configuration for Ollama provider can look like this:
 ----
 transforms=ai,
 transforms.ai.type=io.debezium.ai.embeddings.FieldToEmbedding
-ai.embeddings.field.source=after.product,
-ai.embeddings.field.embedding=after.product_embedding,
-ai.embeddings.ollama.url=http://localhost:11434,
+ai.embeddings.field.source=after.product
+ai.embeddings.field.embedding=after.product_embedding
+ai.embeddings.ollama.url=http://localhost:11434
 ai.embeddings.ollama.model.name=all-minilm
 ----
 
@@ -86,7 +86,7 @@ ai.embeddings.ollama.model.name=all-minilm
 |Default
 |Description
 
-|[[embeddings-source-filed]]xref:embeddings-source-filed[`embeddings.field.source`]
+|[[embeddings-source-field]]xref:embeddings-source-field[`embeddings.field.source`]
 |
 |Record field which should be used as an input for the embeddings.
 Has to be a string field.
@@ -133,7 +133,7 @@ Until it's supported by langchain4j, the only available inference provider is Hu
 
 === Ollama
 
-Supports any models provided by link:https://ollama.com/[Ollama] server.
+Supports any model provided by link:https://ollama.com/[Ollama] server.
 
 .Ollama embeddings configuration options
 [cols="30%a,25%a,45%a",subs="+attributes",options="header"]
