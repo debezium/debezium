@@ -27,10 +27,10 @@ public class HuggingFaceMiniLmL6V2IT {
     public void testMiniLmEmbeddings() {
         FieldToEmbedding<SourceRecord> embeddingSmt = new FieldToEmbedding();
         embeddingSmt.configure(Map.of(
-                "embeddings.field.source", "after.product",
-                "embeddings.field.embedding", "after.prod_embedding",
-                "embeddings.huggingface.access.token", System.getenv("HF_API_KEY"),
-                "embeddings.huggingface.model.name", "sentence-transformers/all-MiniLM-L6-v2"));
+                "field.source", "after.product",
+                "field.embedding", "after.prod_embedding",
+                "huggingface.access.token", System.getenv("HF_API_KEY"),
+                "huggingface.model.name", "sentence-transformers/all-MiniLM-L6-v2"));
         SourceRecord transformedRecord = embeddingSmt.apply(FieldToEmbeddingTest.SOURCE_RECORD);
 
         Struct payloadStruct = (Struct) transformedRecord.value();
