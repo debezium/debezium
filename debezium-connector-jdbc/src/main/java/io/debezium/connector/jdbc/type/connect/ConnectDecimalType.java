@@ -15,10 +15,10 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractType;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 
 /**
- * An implementation of {@link Type} for {@link Decimal} values.
+ * An implementation of {@link JdbcType} for {@link Decimal} values.
  *
  * @author Chris Cranford
  */
@@ -41,7 +41,7 @@ public class ConnectDecimalType extends AbstractType {
             // Oracle submits negative scale values where the bound value will be rounded based on the scale.
             // This means when replicating to non-Oracle systems, negative scale values need to be omitted
             // from the types as they're not supported.
-            LOGGER.warn("Type {} detected with negative scale {}, using scale 0 instead.", schema.name(), scale);
+            LOGGER.warn("JdbcType {} detected with negative scale {}, using scale 0 instead.", schema.name(), scale);
             scale = 0;
         }
 

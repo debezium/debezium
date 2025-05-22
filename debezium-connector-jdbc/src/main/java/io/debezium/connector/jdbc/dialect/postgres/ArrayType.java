@@ -11,11 +11,11 @@ import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractType;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
- * An implementation of {@link Type} for {@code ARRAY} column types.
+ * An implementation of {@link JdbcType} for {@code ARRAY} column types.
  *
  * @author Bertrand Paquet
  */
@@ -35,8 +35,8 @@ public class ArrayType extends AbstractType {
     }
 
     private String getElementTypeName(DatabaseDialect dialect, Schema schema, boolean isKey) {
-        Type elementType = dialect.getSchemaType(schema.valueSchema());
-        return elementType.getTypeName(schema.valueSchema(), isKey);
+        JdbcType elementJdbcType = dialect.getSchemaType(schema.valueSchema());
+        return elementJdbcType.getTypeName(schema.valueSchema(), isKey);
     }
 
     @Override

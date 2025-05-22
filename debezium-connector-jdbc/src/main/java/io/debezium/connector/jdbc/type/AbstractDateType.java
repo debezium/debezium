@@ -10,7 +10,7 @@ import java.sql.Types;
 import org.apache.kafka.connect.data.Schema;
 
 /**
- * An abstract base class for all temporal date implementations of {@link Type}.
+ * An abstract base class for all temporal date implementations of {@link JdbcType}.
  *
  * @author Chris Cranford
  */

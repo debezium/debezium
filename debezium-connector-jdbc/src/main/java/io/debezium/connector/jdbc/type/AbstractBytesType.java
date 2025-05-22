@@ -13,7 +13,7 @@ import org.apache.kafka.connect.data.Schema;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
- * An abstract {@link Type} implementation for {@code BYTES} column types.
+ * An abstract {@link JdbcType} implementation for {@code BYTES} column types.
  *
  * @author Chris Cranford
  */

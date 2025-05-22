@@ -12,11 +12,11 @@ import org.apache.kafka.connect.data.Schema;
 import org.hibernate.engine.jdbc.Size;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.util.Strings;
 
 /**
- * An implementation of {@link Type} that supports {@code STRING} connect schema types.
+ * An implementation of {@link JdbcType} that supports {@code STRING} connect schema types.
  *
  * @author Chris Cranford
  */

@@ -11,10 +11,10 @@ import org.apache.kafka.connect.errors.ConnectException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 
 /**
- * An implementation of {@link Type} for {@code MAP} schema types. This is created an abstract
+ * An implementation of {@link JdbcType} for {@code MAP} schema types. This is created an abstract
  * implementation as its expected that each dialect will create its own implementation as the
  * logic to handle map-based schema types differs by dialect.
  *

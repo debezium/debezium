@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct; // @TODO find a good replacement for Kafka Connect's Struct and Schema
+import org.apache.kafka.connect.data.Struct; // @TODO find a good replacement for Kafka Connect's Struct and Schema or extract to a separate library
 
 import io.debezium.annotation.Immutable;
 import io.debezium.schema.SchemaFactory;
@@ -52,5 +52,7 @@ public interface DebeziumSinkRecord {
     Struct getFilteredKey(SinkConnectorConfig.PrimaryKeyMode primaryKeyMode, Set<String> primaryKeyFields, FieldFilterFactory.FieldNameFilter fieldsFilter);
 
     Struct getFilteredPayload(FieldFilterFactory.FieldNameFilter fieldsFilter);
+
+    Map<String, FieldDescriptor> kafkaFields();
 
 }

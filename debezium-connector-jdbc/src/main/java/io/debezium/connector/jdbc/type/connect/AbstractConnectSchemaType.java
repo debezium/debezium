@@ -6,10 +6,10 @@
 package io.debezium.connector.jdbc.type.connect;
 
 import io.debezium.connector.jdbc.type.AbstractType;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 
 /**
- * An abstract implementation of {@link Type} that all Kafka Connect based schema types should be derived.
+ * An abstract implementation of {@link JdbcType} that all Kafka Connect based schema types should be derived.
  *
  * This abstract implementation is used as a marker object to designate types that are operating on the
  * raw {@link org.apache.kafka.connect.data.Schema.Type} values rather than custom schema types that are

@@ -51,8 +51,10 @@ public class JdbcKafkaSinkRecord extends KafkaDebeziumSinkRecord implements Jdbc
         this.fieldFilter = fieldFilter;
         this.dialect = dialect;
         if (PrimaryKeyMode.KAFKA.equals(primaryKeyMode)) {
-            allFields.forEach((name, field) -> jdbcFields.put(name, new JdbcFieldDescriptor(field, dialect.getSchemaType(field.getSchema()), true)));
-            keyFieldNames = new LinkedHashSet<>(allFields().keySet());
+            Map<String, FieldDescriptor> kafkaFields = kafkaFields();
+            kafkaFields.forEach((name, field) -> jdbcFields.put(name, new JdbcFieldDescriptor(field, dialect.getSchemaType(field.getSchema()), true)));
+            allFields.putAll(kafkaFields);
+            keyFieldNames = new LinkedHashSet<>(kafkaFields.keySet());
         }
     }
 

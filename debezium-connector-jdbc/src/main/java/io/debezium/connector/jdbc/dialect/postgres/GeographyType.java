@@ -7,12 +7,12 @@ package io.debezium.connector.jdbc.dialect.postgres;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.data.geometry.Geography;
 
 public class GeographyType extends GeometryType {
 
-    public static final Type INSTANCE = new GeographyType();
+    public static final JdbcType INSTANCE = new GeographyType();
 
     private static final String TYPE_NAME = "%s.geography";
 

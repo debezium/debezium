@@ -45,7 +45,7 @@ It's generally a good idea to add a new dialect implementation if a new sink dat
 ### Types
 
 Every field in a Kafka message is associated with a schema type, but this type information can also carry other metadata such as a name or even parameters that have been provided by the source connector.
-The JDBC sink connector utilizes a type system, which is based on the `io.debezium.connector.jdbc.type.Type` contract, in order to handle value binding, default value resolution, and other characteristic that could be type-specific.
+The JDBC sink connector utilizes a type system, which is based on the `io.debezium.connector.jdbc.type.JdbcType` contract, in order to handle value binding, default value resolution, and other characteristic that could be type-specific.
 
 There are effectively three different types of `Type` implementations:
 

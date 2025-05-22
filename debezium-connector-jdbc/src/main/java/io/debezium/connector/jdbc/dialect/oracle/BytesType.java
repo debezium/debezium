@@ -8,10 +8,10 @@ package io.debezium.connector.jdbc.dialect.oracle;
 import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.connector.jdbc.type.AbstractBytesType;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 
 /**
- * An implementation of {@link Type} for {@code BYTES} column types.
+ * An implementation of {@link JdbcType} for {@code BYTES} column types.
  *
  * @author Chris Cranford
  */

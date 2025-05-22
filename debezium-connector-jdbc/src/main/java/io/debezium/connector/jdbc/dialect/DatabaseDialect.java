@@ -18,7 +18,7 @@ import org.hibernate.engine.jdbc.Size;
 import io.debezium.connector.jdbc.JdbcSinkRecord;
 import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.metadata.CollectionId;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
@@ -183,7 +183,7 @@ public interface DatabaseDialect {
      * @param type the resolved field type, never {@code null}
      * @return the query binding SQL fragment
      */
-    String getQueryBindingWithValueCast(ColumnDescriptor column, Schema schema, Type type);
+    String getQueryBindingWithValueCast(ColumnDescriptor column, Schema schema, JdbcType type);
 
     /**
      * Gets the maximum length of a VARCHAR field in a primary key column.
@@ -340,7 +340,7 @@ public interface DatabaseDialect {
      * @param schema connect schema, never {@code null}
      * @return resolved type to use
      */
-    Type getSchemaType(Schema schema);
+    JdbcType getSchemaType(Schema schema);
 
     /**
      * Resolves a JDBC type to a given SQL type name.
