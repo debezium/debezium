@@ -361,6 +361,8 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         getOffsetContext().setUserName(event.getUserName());
         getOffsetContext().setTransactionId(event.getTransactionId());
         getOffsetContext().setTransactionSequence(null);
+
+        getMetrics().setActiveTransactionCount(1L);
     }
 
     @Override
@@ -389,6 +391,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
 
         getBatchMetrics().commitObserved();
 
+        getMetrics().setActiveTransactionCount(0L);
         updateCommitMetrics(event, Duration.between(commitStartTime, Instant.now()));
     }
 
