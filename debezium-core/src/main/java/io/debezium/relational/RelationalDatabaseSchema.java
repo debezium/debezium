@@ -5,6 +5,7 @@
  */
 package io.debezium.relational;
 
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -14,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.openlineage.DataCollectionMetadata;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.relational.Key.KeyMapper;
 import io.debezium.relational.Tables.ColumnNameFilter;
@@ -123,8 +125,17 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
         if (tableFilter.isIncluded(table.id())) {
             TableSchema schema = schemaBuilder.create(topicNamingStrategy, table, columnFilter, columnMappers, customKeysMapper);
             schemasByTableId.put(table.id(), schema);
-            DebeziumOpenLineageEmitter.emit(BaseSourceTask.State.RUNNING, table);
+            DebeziumOpenLineageEmitter.emit(BaseSourceTask.State.RUNNING, List.of(extractDatasetMetadata(table)));
         }
+    }
+
+    private DataCollectionMetadata extractDatasetMetadata(Table table) {
+
+        List<DataCollectionMetadata.FieldDefinition> fieldDefinitions = table.columns().stream()
+                .map(c -> new DataCollectionMetadata.FieldDefinition(c.name(), c.typeName(), c.comment()))
+                .toList();
+
+        return new DataCollectionMetadata(table.id(), fieldDefinitions);
     }
 
     protected void removeSchema(TableId id) {
