@@ -47,8 +47,8 @@ To configure a connector to use the embeddings transformation, add the following
 
 [source]
 ----
-transforms=ai,
-transforms.ai.type=io.debezium.ai.embeddings.FieldToEmbedding
+transforms=embeddings,
+transforms.embeddings.type=io.debezium.ai.embeddings.FieldToEmbedding
 ----
 
 You must specify at least one field to use as the input for the embedding.
@@ -58,8 +58,8 @@ However, it's recommended to specify the embedding destination field, for exampl
 
 [source]
 ----
-transforms.ai.embeddings.field.source=after.product
-transforms.ai.embeddings.field.embedding=after.product_embedding
+transforms.embeddings.field.source=after.product
+transforms.embeddings.field.embedding=after.product_embedding
 ----
 
 Finally, you must place the model provider jar file in the connector class path, and configure the provider.
@@ -67,20 +67,20 @@ For example, for the Ollama provider, add `debezium-ai-embeddings-ollama-$VERSIO
 
 [source]
 ----
-transforms.ai.embeddings.ollama.url=http://localhost:11434
-transforms.ai.embeddings.ollama.model.name=all-minilm
+transforms.embeddings.ollama.url=http://localhost:11434
+transforms.embeddings.ollama.model.name=all-minilm
 ----
 
 The following example shows what the full configuration for an Ollama provider might look like:
 
 [source]
 ----
-transforms=ai,
-transforms.ai.type=io.debezium.ai.embeddings.FieldToEmbedding
-transforms.ai.embeddings.field.source=after.product
-transforms.ai.embeddings.field.embedding=after.product_embedding
-transforms.ai.embeddings.ollama.url=http://localhost:11434
-transforms.ai.embeddings.ollama.model.name=all-minilm
+transforms=embeddings,
+transforms.embeddings.type=io.debezium.ai.embeddings.FieldToEmbedding
+transforms.embeddings.field.source=after.product
+transforms.embeddings.field.embedding=after.product_embedding
+transforms.embeddings.ollama.url=http://localhost:11434
+transforms.embeddings.ollama.model.name=all-minilm
 ----
 
 === General configuration options
