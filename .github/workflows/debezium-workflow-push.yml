@@ -427,13 +427,13 @@ jobs:
           path-server: server
 
   build_ai:
-      name: "Debezium AI module"
-      needs: [ check_style ]
-      runs-on: ubuntu-latest
-      steps:
-        - name: Checkout Action
-          uses: actions/checkout@v4
+    name: "Debezium AI module"
+    needs: [ check_style ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
 
-        - uses: ./.github/actions/build-debezium-ai
-          with:
-            maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+      - uses: ./.github/actions/build-debezium-ai
+        with:
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
