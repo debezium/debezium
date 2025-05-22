@@ -182,6 +182,7 @@
         <!-- Publishing -->
         <publish.snapshot.url>https://central.sonatype.com/repository/maven-snapshots/</publish.snapshot.url>
         <publish.auto>false</publish.auto>
+        <publish.skip>false</publish.skip>
         <publish.wait.until>published</publish.wait.until>
         <publish.wait.timeout>7200</publish.wait.timeout>
         <publish.poll.interval>30</publish.poll.interval>
@@ -330,6 +331,7 @@
                         <centralSnapshotsUrl>${publish.snapshot.url}</centralSnapshotsUrl>
                         <publishingServerId>${publish.repository.id}</publishingServerId>
                         <autoPublish>${publish.auto}</autoPublish>
+                        <skipPublishing>${publish.skip}</skipPublishing>
                         <waitUntil>${publish.wait.until}</waitUntil>
                         <waitMaxTime>${publish.wait.timeout}</waitMaxTime>
                         <waitPollingInterval>${publish.poll.interval}</waitPollingInterval>
