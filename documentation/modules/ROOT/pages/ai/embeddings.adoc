@@ -51,12 +51,15 @@ transforms=ai,
 transforms.ai.type=io.debezium.ai.embeddings.FieldToEmbedding
 ----
 
-You must specify at least one field to use as the input for the embedding, as well as a destination field where the embedding will be placed. For example:
+You must specify at least one field to use as the input for the embedding.
+Destination field where the embedding will be placed is not mandatory.
+If it's not specified, message value will contain only the embedding itself.
+However, it's recommended to specify the embedding destination field, for example:
 
 [source]
 ----
-ai.embeddings.field.source=after.product
-ai.embeddings.field.embedding=after.product_embedding
+transforms.ai.embeddings.field.source=after.product
+transforms.ai.embeddings.field.embedding=after.product_embedding
 ----
 
 Finally, you must place the model provider jar file in the connector class path, and configure the provider.
@@ -64,8 +67,8 @@ For example, for the Ollama provider, add `debezium-ai-embeddings-ollama-$VERSIO
 
 [source]
 ----
-ai.embeddings.ollama.url=http://localhost:11434
-ai.embeddings.ollama.model.name=all-minilm
+transforms.ai.embeddings.ollama.url=http://localhost:11434
+transforms.ai.embeddings.ollama.model.name=all-minilm
 ----
 
 The following example shows what the full configuration for an Ollama provider might look like:
@@ -74,10 +77,10 @@ The following example shows what the full configuration for an Ollama provider m
 ----
 transforms=ai,
 transforms.ai.type=io.debezium.ai.embeddings.FieldToEmbedding
-ai.embeddings.field.source=after.product
-ai.embeddings.field.embedding=after.product_embedding
-ai.embeddings.ollama.url=http://localhost:11434
-ai.embeddings.ollama.model.name=all-minilm
+transforms.ai.embeddings.field.source=after.product
+transforms.ai.embeddings.field.embedding=after.product_embedding
+transforms.ai.embeddings.ollama.url=http://localhost:11434
+transforms.ai.embeddings.ollama.model.name=all-minilm
 ----
 
 === General configuration options
@@ -130,7 +133,7 @@ Specify the provider in the REST call, for example, link:https://huggingface.co/
 
 [NOTE]
 ====
-Hugging Face supports several link:https://huggingface.co/blog/inference-providers[embedding inference providers] and link:https://huggingface.co/docs/inference-providers/en/index[external providers].
+Hugging Face started to support different link:https://huggingface.co/blog/inference-providers[embedding inference providers], including link:https://huggingface.co/docs/inference-providers/en/index[external providers].
 However, the LangChain4j framework does not yet support external providers.
 As a result, the only inference provider currently available for use with the {prodname} is the Hugging Face provider.
 ====
