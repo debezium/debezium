@@ -372,6 +372,8 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                 event.getTransactionId(),
                 event.getScn());
 
+        final Instant commitStartTime = Instant.now();
+
         // These are COMMIT specific attributes that must be recorded
         getOffsetContext().getCommitScn().recordCommit(event);
         getOffsetContext().setEventScn(event.getScn());
@@ -386,6 +388,8 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         getEventDispatcher().dispatchTransactionCommittedEvent(getPartition(), getOffsetContext(), event.getChangeTime());
 
         getBatchMetrics().commitObserved();
+
+        updateCommitMetrics(event, Duration.between(commitStartTime, Instant.now()));
     }
 
     @Override
