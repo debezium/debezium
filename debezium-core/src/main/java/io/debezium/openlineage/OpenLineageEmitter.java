@@ -10,12 +10,10 @@ import java.io.StringWriter;
 import java.time.ZonedDateTime;
 import java.util.List;
 
-import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.BaseSourceTask;
-import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.openlineage.dataset.DatasetNamespaceResolver;
 import io.debezium.openlineage.facets.DebeziumConfigFacet;
-import io.debezium.relational.Table;
 import io.openlineage.client.OpenLineage;
 
 /**
@@ -44,45 +42,48 @@ import io.openlineage.client.OpenLineage;
  */
 public class OpenLineageEmitter implements LineageEmitter {
 
-    private static final String INPUT_DATASET_NAMESPACE_FORMAT = "%s://%s:%s";
     private static final String JAVA = "Java";
+    public static final String DATASET_TYPE = "TABLE";
 
     private final OpenLineageContext openLineageContext;
     private final String connectorName;
     private final OpenLineageEventEmitter emitter;
     private final Configuration config;
+    private final DatasetNamespaceResolver datasetNamespaceResolver;
 
-    public OpenLineageEmitter(String connectorName, Configuration config, OpenLineageContext openLineageContext, OpenLineageEventEmitter emitter) {
+    public OpenLineageEmitter(String connectorName, Configuration config, OpenLineageContext openLineageContext, OpenLineageEventEmitter emitter,
+                              DatasetNamespaceResolver datasetNamespaceResolver) {
         this.openLineageContext = openLineageContext;
         this.connectorName = connectorName;
         this.emitter = emitter;
         this.config = config;
+        this.datasetNamespaceResolver = datasetNamespaceResolver;
     }
 
     @Override
     public void emit(BaseSourceTask.State state) {
 
-        emit(state, null, null);
+        emit(state, List.of(), null);
     }
 
     @Override
     public void emit(BaseSourceTask.State state, Throwable t) {
 
-        emit(state, null, t);
+        emit(state, List.of(), t);
     }
 
     @Override
-    public void emit(BaseSourceTask.State state, Table event) {
+    public void emit(BaseSourceTask.State state, List<DataCollectionMetadata> inputDatasetMetadata) {
 
-        emit(state, event, null);
+        emit(state, inputDatasetMetadata, null);
     }
 
     @Override
-    public void emit(BaseSourceTask.State state, Table event, Throwable t) {
+    public void emit(BaseSourceTask.State state, List<DataCollectionMetadata> inputDatasetMetadata, Throwable t) {
 
         OpenLineage.Job job = new OpenLineageJobCreator(openLineageContext).create();
 
-        List<OpenLineage.InputDataset> inputs = getInputDatasets(event);
+        List<OpenLineage.InputDataset> inputs = getInputDatasets(inputDatasetMetadata);
 
         OpenLineage.RunFacetsBuilder runFacetsBuilder = openLineageContext.getOpenLineage().newRunFacetsBuilder()
                 // TODO it will be good if the name could be debezium-connector, debezium-engine, debezium-server
@@ -121,45 +122,36 @@ public class OpenLineageEmitter implements LineageEmitter {
         }
     }
 
-    private List<OpenLineage.InputDataset> getInputDatasets(Table table) {
+    private List<OpenLineage.InputDataset> getInputDatasets(List<DataCollectionMetadata> inputDatasetMetadata) {
 
-        if (table == null) {
-            return List.of();
-        }
-        List<OpenLineage.SchemaDatasetFacetFields> datasetFields = table.columns().stream()
-                .map(c -> openLineageContext.getOpenLineage()
+        return inputDatasetMetadata.stream()
+                .map(this::mapToInputDataset)
+                .toList();
+
+    }
+
+    private OpenLineage.InputDataset mapToInputDataset(DataCollectionMetadata dataCollectionMetadata) {
+
+        List<OpenLineage.SchemaDatasetFacetFields> datasetFields = dataCollectionMetadata.fields().stream()
+                .map(datasetMetadata -> openLineageContext.getOpenLineage()
                         .newSchemaDatasetFacetFieldsBuilder()
-                        .name(c.name())
-                        .type(c.typeName())
-                        .description(c.comment())
+                        .name(datasetMetadata.name())
+                        .type(datasetMetadata.typeName())
+                        .description(datasetMetadata.description())
                         .build())
                 .toList();
 
-        String datasetNamespace = String.format(INPUT_DATASET_NAMESPACE_FORMAT,
-                extractNamespacePrefix(),
-                config.getString(CommonConnectorConfig.DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME),
-                config.getString(CommonConnectorConfig.DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT));
-
-        return List.of(
-                openLineageContext.getOpenLineage().newInputDatasetBuilder()
-                        .namespace(datasetNamespace)
-                        .name(table.id().identifier())
-                        .facets(
-                                openLineageContext.getOpenLineage().newDatasetFacetsBuilder()
-                                        .schema(openLineageContext.getOpenLineage().newSchemaDatasetFacetBuilder()
-                                                .fields(datasetFields)
-                                                .build())
-
-                                        .datasetType(openLineageContext.getOpenLineage().newDatasetTypeDatasetFacet("TABLE", ""))
+        return openLineageContext.getOpenLineage().newInputDatasetBuilder()
+                .namespace(datasetNamespaceResolver.resolve(config, connectorName))
+                .name(dataCollectionMetadata.id().identifier())
+                .facets(
+                        openLineageContext.getOpenLineage().newDatasetFacetsBuilder()
+                                .schema(openLineageContext.getOpenLineage().newSchemaDatasetFacetBuilder()
+                                        .fields(datasetFields)
                                         .build())
-                        .build());
-    }
-
-    private String extractNamespacePrefix() {
-        return switch (connectorName) {
-            case "postgresql" -> "postgres";
-            default -> connectorName;
-        };
+                                .datasetType(openLineageContext.getOpenLineage().newDatasetTypeDatasetFacet(DATASET_TYPE, ""))
+                                .build())
+                .build();
     }
 
     private static OpenLineage.RunEvent.EventType getEventType(BaseSourceTask.State state) {

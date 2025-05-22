@@ -38,8 +38,11 @@ import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
+import io.debezium.openlineage.DataCollectionMetadata;
+import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.EventDispatcher.SnapshotReceiver;
@@ -214,6 +217,9 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
         final List<CollectionId> collections = determineDataCollectionsToBeSnapshotted(allCollections, dataCollectionPattern)
                 .collect(Collectors.toList());
         snapshotProgressListener.monitoredDataCollectionsDetermined(snapshotContext.partition, collections);
+
+        List<DataCollectionMetadata> dataCollectionMetadata = collections.stream().map(collectionId -> new DataCollectionMetadata(collectionId, List.of())).toList();
+        DebeziumOpenLineageEmitter.emit(BaseSourceTask.State.RUNNING, dataCollectionMetadata);
 
         // Since multiple snapshot threads are to be used, create a thread pool and initiate the snapshot.
         // The current thread will wait until the snapshot threads either have completed or an error occurred.
