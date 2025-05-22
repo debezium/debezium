@@ -23,9 +23,6 @@ public class DatabaseTestResource implements QuarkusTestResourceLifecycleManager
 
     private static final PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(POSTGRES_DOCKER_IMAGE_NAME)
             .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*", 2))
-            .withUsername("postgres")
-            .withPassword("postgres")
-            .withDatabaseName("postgres")
             .withEnv("POSTGRES_INITDB_ARGS", "-E UTF8")
             .withEnv("LANG", "en_US.utf8")
             .withInitScript("init.sql")
