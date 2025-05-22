@@ -20,8 +20,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.debezium.engine.RecordChangeEvent;
 import io.debezium.runtime.Capturing;
@@ -32,7 +30,6 @@ import io.quarkus.test.common.QuarkusTestResource;
 
 @QuarkusTestResource(value = DatabaseTestResource.class, restrictToAnnotatedClass = true)
 public class CapturingTest {
-    private static final Logger logger = LoggerFactory.getLogger(CapturingTest.class);
 
     @Inject
     CaptureProductsHandler captureProductsHandler;

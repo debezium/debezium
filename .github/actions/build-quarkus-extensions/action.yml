@@ -19,7 +19,7 @@ runs:
   steps:
     - uses: ./.github/actions/setup-java
       with:
-        key: ${{ inputs.distribution }}
+        distribution: ${{ inputs.distribution }}
 
     - uses: ./.github/actions/maven-cache
       with:
@@ -28,5 +28,4 @@ runs:
     - name: Build Debezium Quarkus Extensions
       shell: ${{ inputs.shell }}
       run: >
-        ./mvnw clean install -B -pl :quarkus-debezium-parent -am -amd 
-        -Dnative
+        ./mvnw clean install -B -pl :quarkus-debezium-parent -am -amd -Dnative
