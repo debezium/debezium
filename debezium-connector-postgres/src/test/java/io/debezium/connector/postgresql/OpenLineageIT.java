@@ -307,7 +307,6 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                 entry("openlineage.integration.job.description", "This connector does cdc for products"),
                 entry("openlineage.integration.job.owners", "Mario=maintainer,John Doe=Data scientist"),
                 entry("openlineage.integration.job.tags", "env=prod,team=cdc"),
-                entry("plugin.name", "decoderbufs"),
                 entry("record.processing.order", "ORDERED"),
                 entry("record.processing.shutdown.timeout.ms", "1000"),
                 entry("record.processing.threads", ""),

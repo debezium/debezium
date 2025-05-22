@@ -5,8 +5,9 @@
  */
 package io.debezium.openlineage;
 
+import java.util.List;
+
 import io.debezium.connector.common.BaseSourceTask;
-import io.debezium.relational.Table;
 
 public interface LineageEmitter {
 
@@ -14,7 +15,7 @@ public interface LineageEmitter {
 
     void emit(BaseSourceTask.State state, Throwable t);
 
-    void emit(BaseSourceTask.State state, Table event);
+    void emit(BaseSourceTask.State state, List<DataCollectionMetadata> inputDatasetMetadata);
 
-    void emit(BaseSourceTask.State state, Table event, Throwable t);
+    void emit(BaseSourceTask.State state, List<DataCollectionMetadata> inputDatasetMetadata, Throwable t);
 }
