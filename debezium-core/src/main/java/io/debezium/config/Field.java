@@ -960,7 +960,7 @@ public final class Field {
             actualValidator = Field::deprecatedFieldWarning;
         }
         else {
-            actualValidator.and(Field::deprecatedFieldWarning);
+            actualValidator = validator.and(Field::deprecatedFieldWarning);
         }
         return new Field(name(), displayName(), type(), width(), description(), importance(), dependents(),
                 defaultValueGenerator, actualValidator, recommender, isRequired, group, allowedValues, aliases);
