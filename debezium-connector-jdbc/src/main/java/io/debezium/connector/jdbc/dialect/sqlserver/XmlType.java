@@ -8,12 +8,12 @@ package io.debezium.connector.jdbc.dialect.sqlserver;
 import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.connector.jdbc.type.AbstractType;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.data.Xml;
 import io.debezium.sink.column.ColumnDescriptor;
 
 /**
- * An implementation of {@link Type} for {@code XML} data types.
+ * An implementation of {@link JdbcType} for {@code XML} data types.
  *
  * @author Chris Cranford
  */

@@ -10,13 +10,13 @@ import java.util.List;
 import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.connector.jdbc.type.AbstractType;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.time.MicroDuration;
 
 /**
- * An implementation of {@link Type} for {@link MicroDuration} types.
+ * An implementation of {@link JdbcType} for {@link MicroDuration} types.
  *
  * @author Chris Cranford
  */

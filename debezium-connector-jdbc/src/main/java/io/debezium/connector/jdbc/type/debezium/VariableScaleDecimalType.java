@@ -15,12 +15,12 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.connector.jdbc.type.AbstractType;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.data.VariableScaleDecimal;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
- * An implementation of {@link Type} for {@link VariableScaleDecimal} values.
+ * An implementation of {@link JdbcType} for {@link VariableScaleDecimal} values.
  *
  * @author Chris Cranford
  */

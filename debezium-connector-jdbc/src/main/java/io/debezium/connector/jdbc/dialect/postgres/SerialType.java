@@ -8,10 +8,10 @@ package io.debezium.connector.jdbc.dialect.postgres;
 import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.connector.jdbc.type.AbstractType;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 
 /**
- * An implementation of {@link Type} for {@code SMALLSERIAL}, {@code SERIAL}, and {@code BIGSERIAL}
+ * An implementation of {@link JdbcType} for {@code SMALLSERIAL}, {@code SERIAL}, and {@code BIGSERIAL}
  * column types.
  *
  * @author Chris Cranford

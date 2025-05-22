@@ -20,11 +20,11 @@ import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.util.SchemaUtils;
 
 /**
- * An abstract implementation of {@link Type}, which all types should extend.
+ * An abstract implementation of {@link JdbcType}, which all types should extend.
  *
  * @author Chris Cranford
  */
-public abstract class AbstractType implements Type {
+public abstract class AbstractType implements JdbcType {
 
     private DatabaseDialect dialect;
 

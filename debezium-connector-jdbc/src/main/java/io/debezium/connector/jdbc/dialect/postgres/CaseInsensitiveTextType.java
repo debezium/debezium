@@ -8,11 +8,11 @@ package io.debezium.connector.jdbc.dialect.postgres;
 import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.connector.jdbc.type.AbstractType;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.sink.column.ColumnDescriptor;
 
 /**
- * An implementation of {@link Type} for {@code CITEXT} column types.
+ * An implementation of {@link JdbcType} for {@code CITEXT} column types.
  *
  * @author Chris Cranford
  */

@@ -7,12 +7,12 @@ package io.debezium.connector.jdbc.dialect.mysql;
 
 import java.sql.Types;
 
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.type.debezium.DebeziumZonedTimestampType;
 import io.debezium.time.ZonedTimestamp;
 
 /**
- * An implementation of {@link Type} for {@link ZonedTimestamp} values.
+ * An implementation of {@link JdbcType} for {@link ZonedTimestamp} values.
  *
  * @author Chris Cranford
  */

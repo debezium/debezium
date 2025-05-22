@@ -18,12 +18,12 @@ import org.hibernate.engine.jdbc.Size;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractTimeType;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.time.ZonedTime;
 
 /**
- * An implementation of {@link Type} for {@link ZonedTime} values.
+ * An implementation of {@link JdbcType} for {@link ZonedTime} values.
  *
  * @author Chris Cranford
  */

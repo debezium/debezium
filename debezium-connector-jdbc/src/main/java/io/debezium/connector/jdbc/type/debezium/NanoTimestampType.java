@@ -9,13 +9,13 @@ import java.time.LocalDateTime;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.util.DateTimeUtils;
 import io.debezium.time.MicroTimestamp;
 import io.debezium.time.NanoTimestamp;
 
 /**
- * An implementation of {@link Type} for {@link MicroTimestamp} values.
+ * An implementation of {@link JdbcType} for {@link MicroTimestamp} values.
  *
  * @author Chris Cranford
  */

@@ -15,14 +15,14 @@ import org.hibernate.engine.jdbc.Size;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractType;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.util.ByteArrayUtils;
 import io.debezium.data.Bits;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
- * An implementation of {@link Type} for {@link Bits} types.
+ * An implementation of {@link JdbcType} for {@link Bits} types.
  *
  * @author Chris Cranford
  */

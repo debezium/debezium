@@ -9,13 +9,13 @@ import java.sql.Timestamp;
 import java.time.ZonedDateTime;
 import java.util.List;
 
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.type.debezium.DebeziumZonedTimestampType;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.time.ZonedTimestamp;
 
 /**
- * An implementation of {@link Type} for {@link ZonedTimestamp} values.
+ * An implementation of {@link JdbcType} for {@link ZonedTimestamp} values.
  *
  * @author Chris Cranford
  */

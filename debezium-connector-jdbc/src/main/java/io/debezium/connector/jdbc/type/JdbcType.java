@@ -9,6 +9,7 @@ import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.sink.SinkConnectorConfig;
+import io.debezium.sink.type.Type;
 
 /**
  * A type represents a relational column type used for query abd parameter binding.
@@ -18,7 +19,7 @@ import io.debezium.sink.SinkConnectorConfig;
  *
  * @author Chris Cranford
  */
-public interface Type extends io.debezium.sink.type.Type {
+public interface JdbcType extends Type {
 
     /**
      * Allows a type to perform initialization/configuration tasks based on user configs.

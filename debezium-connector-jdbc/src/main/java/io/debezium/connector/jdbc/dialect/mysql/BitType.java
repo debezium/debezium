@@ -8,12 +8,12 @@ package io.debezium.connector.jdbc.dialect.mysql;
 import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.connector.jdbc.type.AbstractType;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.util.ByteArrayUtils;
 import io.debezium.data.Bits;
 
 /**
- * An implementation of {@link Type} for {@link Bits} types.
+ * An implementation of {@link JdbcType} for {@link Bits} types.
  *
  * @author Chris Cranford
  */

@@ -11,11 +11,11 @@ import java.time.ZoneOffset;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.time.Timestamp;
 
 /**
- * An implementation of {@link Type} for {@link Timestamp} values.
+ * An implementation of {@link JdbcType} for {@link Timestamp} values.
  *
  * @author Chris Cranford
  */

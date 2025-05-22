@@ -7,12 +7,12 @@ package io.debezium.connector.jdbc.dialect.mysql;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.data.geometry.Point;
 
 public class PointType extends GeometryType {
 
-    public static final Type INSTANCE = new PointType();
+    public static final JdbcType INSTANCE = new PointType();
 
     @Override
     public String[] getRegistrationKeys() {

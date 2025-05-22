@@ -19,6 +19,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.sink.SinkRecord;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
 import io.debezium.converters.spi.CloudEventsMaker;
 import io.debezium.data.Envelope;
@@ -28,7 +29,7 @@ import io.debezium.sink.filter.FieldFilterFactory;
 import io.debezium.util.Strings;
 
 @Immutable
-public class KafkaDebeziumSinkRecord extends Values implements DebeziumSinkRecord {
+public class KafkaDebeziumSinkRecord implements DebeziumSinkRecord {
 
     protected final String cloudEventsSchemaNamePattern;
     protected final SinkRecord originalKafkaRecord;
@@ -39,6 +40,7 @@ public class KafkaDebeziumSinkRecord extends Values implements DebeziumSinkRecor
     private Boolean isFlattened = null;
     private Boolean isDelete = null;
     private Optional<Object> cachedValue = null;
+    private final Map<String, FieldDescriptor> kafkaFields = new LinkedHashMap<>();
 
     protected final Map<String, FieldDescriptor> allFields = new LinkedHashMap<>();
 
@@ -89,6 +91,7 @@ public class KafkaDebeziumSinkRecord extends Values implements DebeziumSinkRecor
         return kafkaHeader;
     }
 
+    @Override
     public Map<String, FieldDescriptor> allFields() {
         return allFields;
     }
@@ -103,35 +106,6 @@ public class KafkaDebeziumSinkRecord extends Values implements DebeziumSinkRecor
         return originalKafkaRecord.keySchema();
     }
 
-    private static Schema inferSchemaFromMap(Map<?, ?> map) {
-        if (map.isEmpty()) {
-            return null;
-        }
-        boolean isMap = true;
-        Values.SchemaDetector keyDetector = new Values.SchemaDetector();
-        Values.SchemaDetector valueDetector = new Values.SchemaDetector();
-        for (Map.Entry<?, ?> entry : map.entrySet()) {
-            if (!keyDetector.canDetect(entry.getKey()) || !valueDetector.canDetect(entry.getValue())) {
-                isMap = false; // it is in fact a Struct based on a Map<?, ?> or Map<Object, Object>
-                break;
-            }
-        }
-        if (isMap) {
-            return SchemaBuilder.map(keyDetector.schema(), valueDetector.schema()).build();
-        }
-        var schemaBuilder = SchemaBuilder.struct();
-        for (Map.Entry<?, ?> entry : map.entrySet()) {
-            var newValueDetector = new Values.SchemaDetector();
-            if (null == entry.getValue()) {
-                schemaBuilder.field(entry.getKey().toString(), Schema.OPTIONAL_STRING_SCHEMA);
-            }
-            else if (newValueDetector.canDetect(entry.getValue())) {
-                schemaBuilder.field(entry.getKey().toString(), newValueDetector.schema());
-            }
-        }
-        return schemaBuilder.build();
-    }
-
     private static Struct buildStructFromMap(Map<?, ?> map, Schema schema) {
         Struct struct = new Struct(schema);
         schema.fields().forEach(field -> {
@@ -143,6 +117,40 @@ public class KafkaDebeziumSinkRecord extends Values implements DebeziumSinkRecor
         return struct;
     }
 
+    private static class KafkaValues extends Values {
+
+        public static Schema inferSchemaFromMap(Map<?, ?> map) {
+            if (map.isEmpty()) {
+                return null;
+            }
+            boolean isMap = true;
+            Values.SchemaDetector keyDetector = new Values.SchemaDetector();
+            Values.SchemaDetector valueDetector = new Values.SchemaDetector();
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                if (!keyDetector.canDetect(entry.getKey()) || !valueDetector.canDetect(entry.getValue())) {
+                    isMap = false; // it is in fact a Struct based on a Map<?, ?> or Map<Object, Object>
+                    break;
+                }
+            }
+            if (isMap) {
+                return SchemaBuilder.map(keyDetector.schema(), valueDetector.schema()).build();
+            }
+            var schemaBuilder = SchemaBuilder.struct();
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                var newValueDetector = new Values.SchemaDetector();
+                if (null == entry.getValue()) {
+                    schemaBuilder.field(entry.getKey().toString(), Schema.OPTIONAL_STRING_SCHEMA);
+                }
+                else if (newValueDetector.canDetect(entry.getValue())) {
+                    schemaBuilder.field(entry.getKey().toString(), newValueDetector.schema());
+                }
+            }
+            return schemaBuilder.build();
+        }
+
+    }
+
+    @Override
     public Object value() {
         if (null == cachedValue) {
             if (valueSchema() != null && valueSchema().name() != null && valueSchema().name().matches(cloudEventsSchemaNamePattern)) {
@@ -165,7 +173,7 @@ public class KafkaDebeziumSinkRecord extends Values implements DebeziumSinkRecor
                         }
                         else {
                             if (v instanceof Map<?, ?> m2) {
-                                schemaBuilder.field(k, inferSchemaFromMap(m2));
+                                schemaBuilder.field(k, KafkaValues.inferSchemaFromMap(m2));
                             }
                             else {
                                 schemaBuilder.field(k, Values.inferSchema(v));
@@ -210,6 +218,7 @@ public class KafkaDebeziumSinkRecord extends Values implements DebeziumSinkRecor
         return isDebeziumMessage;
     }
 
+    @Override
     public boolean isSchemaChange() {
         return originalKafkaRecord.valueSchema() != null
                 && !Strings.isNullOrEmpty(originalKafkaRecord.valueSchema().name())
@@ -267,10 +276,12 @@ public class KafkaDebeziumSinkRecord extends Values implements DebeziumSinkRecor
         return false;
     }
 
+    @Override
     public Struct getPayload() {
         return kafkaPayload;
     }
 
+    @Override
     public Struct getFilteredPayload(FieldFilterFactory.FieldNameFilter fieldsFilter) {
         return filterFields(getPayload(), topicName(), Set.of(), fieldsFilter);
     }
@@ -314,6 +325,9 @@ public class KafkaDebeziumSinkRecord extends Values implements DebeziumSinkRecor
     public Struct getFilteredKey(SinkConnectorConfig.PrimaryKeyMode primaryKeyMode, Set<String> allowedPrimaryKeyFields,
                                  FieldFilterFactory.FieldNameFilter fieldsFilter) {
         switch (primaryKeyMode) {
+            case NONE -> {
+                return null;
+            }
             case RECORD_KEY -> {
                 final Schema keySchema = keySchema();
                 if (keySchema == null) {
@@ -348,8 +362,8 @@ public class KafkaDebeziumSinkRecord extends Values implements DebeziumSinkRecor
             case KAFKA -> {
                 return kafkaCoordinates();
             }
+            default -> throw new DebeziumException("Unknown primary key mode: " + primaryKeyMode);
         }
-        return null;
     }
 
     public SinkRecord getOriginalKafkaRecord() {
@@ -373,11 +387,19 @@ public class KafkaDebeziumSinkRecord extends Values implements DebeziumSinkRecor
                 .put(CONNECT_PARTITION, originalKafkaRecord.kafkaPartition())
                 .put(CONNECT_OFFSET, originalKafkaRecord.kafkaOffset());
 
-        allFields.put(CONNECT_TOPIC, new FieldDescriptor(Schema.STRING_SCHEMA, CONNECT_TOPIC, true));
-        allFields.put(CONNECT_PARTITION, new FieldDescriptor(Schema.INT32_SCHEMA, CONNECT_PARTITION, true));
-        allFields.put(CONNECT_OFFSET, new FieldDescriptor(Schema.INT64_SCHEMA, CONNECT_OFFSET, true));
+        kafkaFields.put(CONNECT_TOPIC, new FieldDescriptor(Schema.STRING_SCHEMA, CONNECT_TOPIC, true));
+        kafkaFields.put(CONNECT_PARTITION, new FieldDescriptor(Schema.INT32_SCHEMA, CONNECT_PARTITION, true));
+        kafkaFields.put(CONNECT_OFFSET, new FieldDescriptor(Schema.INT64_SCHEMA, CONNECT_OFFSET, true));
 
         return kafkaCoordinatesStruct;
+    }
+
+    @Override
+    public Map<String, FieldDescriptor> kafkaFields() {
+        if (kafkaFields.isEmpty()) {
+            getKafkaCoordinates();
+        }
+        return kafkaFields;
     }
 
     private Struct keyAsStruct() {

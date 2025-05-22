@@ -14,7 +14,7 @@ import org.hibernate.engine.jdbc.Size;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 
 /**
- * An abstract temporal implementation of {@link Type} for {@code TIME} based columns.
+ * An abstract temporal implementation of {@link JdbcType} for {@code TIME} based columns.
  *
  * @author Chris Cranford
  */

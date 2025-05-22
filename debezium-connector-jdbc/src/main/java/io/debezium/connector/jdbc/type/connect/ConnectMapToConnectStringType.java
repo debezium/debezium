@@ -10,12 +10,12 @@ import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
- * An implementation of {@link Type} for {@code MAP} schema types that are mapped to the
+ * An implementation of {@link JdbcType} for {@code MAP} schema types that are mapped to the
  * dialect's connect string-based type.
  *
  * @author Chris Cranford

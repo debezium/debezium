@@ -8,7 +8,7 @@ package io.debezium.connector.jdbc.field;
 import java.util.List;
 
 import io.debezium.annotation.Immutable;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.field.FieldDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
@@ -22,25 +22,25 @@ import io.debezium.sink.valuebinding.ValueBindDescriptor;
 @Immutable
 public class JdbcFieldDescriptor extends FieldDescriptor {
 
-    private final Type type;
+    private final JdbcType jdbcType;
 
     // Lazily prepared
     private String queryBinding;
 
-    public JdbcFieldDescriptor(FieldDescriptor fieldDescriptor, Type type, boolean isKey) {
+    public JdbcFieldDescriptor(FieldDescriptor fieldDescriptor, JdbcType type, boolean isKey) {
         super(fieldDescriptor.getSchema(), fieldDescriptor.getName(), isKey);
-        this.type = type;
+        this.jdbcType = type;
     }
 
     public String getQueryBinding(ColumnDescriptor column, Object value) {
         if (queryBinding == null) {
-            queryBinding = type.getQueryBinding(column, schema, value);
+            queryBinding = jdbcType.getQueryBinding(column, schema, value);
         }
         return queryBinding;
     }
 
     public List<ValueBindDescriptor> bind(int startIndex, Object value) {
-        return type.bind(startIndex, schema, value);
+        return jdbcType.bind(startIndex, schema, value);
     }
 
     @Override
@@ -49,8 +49,8 @@ public class JdbcFieldDescriptor extends FieldDescriptor {
                 "schema=" + schema +
                 ", name='" + name + '\'' +
                 ", isKey='" + isKey + '\'' +
-                ", typeName='" + type.getTypeName(schema, isKey) + '\'' +
-                ", type=" + type +
+                ", typeName='" + jdbcType.getTypeName(schema, isKey) + '\'' +
+                ", jdbcType=" + jdbcType +
                 ", columnName='" + columnName + '\'' +
                 '}';
     }

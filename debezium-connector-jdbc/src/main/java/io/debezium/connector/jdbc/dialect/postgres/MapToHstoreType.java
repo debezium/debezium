@@ -10,13 +10,13 @@ import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.type.connect.AbstractConnectMapType;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
- * An implementation of {@link Type} for {@code MAP} schema types that get mapped to
+ * An implementation of {@link JdbcType} for {@code MAP} schema types that get mapped to
  * a PostgreSQL {@code HSTORE} column type.
  *
  * @author Chris Cranford
