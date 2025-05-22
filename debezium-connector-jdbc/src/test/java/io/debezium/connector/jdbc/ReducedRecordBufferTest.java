@@ -37,7 +37,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.sink.SinkConnectorConfig;
 import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
@@ -53,7 +53,7 @@ class ReducedRecordBufferTest extends AbstractRecordBufferTest {
     @BeforeEach
     void setUp() {
         dialect = mock(DatabaseDialect.class);
-        Type type = mock(Type.class);
+        JdbcType type = mock(JdbcType.class);
         when(type.getTypeName(any(), anyBoolean())).thenReturn("");
         when(dialect.getSchemaType(any())).thenReturn(type);
     }

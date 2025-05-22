@@ -13,10 +13,10 @@ import org.hibernate.engine.jdbc.Size;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractType;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 
 /**
- * An implementation of {@link Type} that provides compatibility with other dialect's numeric
+ * An implementation of {@link JdbcType} that provides compatibility with other dialect's numeric
  * types to Oracle's numeric type.
  *
  * @author Chris Cranford

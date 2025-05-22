@@ -13,14 +13,14 @@ import java.util.Optional;
 import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.connector.jdbc.type.AbstractType;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.data.Bits;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.util.Strings;
 
 /**
- * An implementation of {@link Type} for {@link Bits} types.
+ * An implementation of {@link JdbcType} for {@link Bits} types.
  *
  * @author Chris Cranford
  */

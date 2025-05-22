@@ -10,14 +10,14 @@ import org.apache.kafka.connect.data.Schema;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractGeoType;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.data.geometry.Geometry;
 import io.debezium.sink.SinkConnectorConfig;
 import io.debezium.sink.column.ColumnDescriptor;
 
 public class GeometryType extends AbstractGeoType {
 
-    public static final Type INSTANCE = new GeometryType();
+    public static final JdbcType INSTANCE = new GeometryType();
 
     static final String GEO_FROM_WKB_FUNCTION = "%s.ST_GeomFromWKB(?, ?)";
     private static final String TYPE_NAME = "%s.geometry";

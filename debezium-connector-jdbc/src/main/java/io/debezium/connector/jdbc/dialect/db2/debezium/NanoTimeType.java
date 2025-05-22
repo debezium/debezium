@@ -12,12 +12,12 @@ import org.apache.kafka.connect.data.Schema;
 import org.hibernate.engine.jdbc.Size;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.util.DateTimeUtils;
 import io.debezium.time.NanoTime;
 
 /**
- * An implementation of {@link Type} for {@link NanoTime} values.
+ * An implementation of {@link JdbcType} for {@link NanoTime} values.
  *
  * @author Chris Cranford
  */

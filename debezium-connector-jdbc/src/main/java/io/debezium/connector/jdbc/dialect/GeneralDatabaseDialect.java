@@ -51,7 +51,7 @@ import io.debezium.connector.jdbc.JdbcSinkRecord;
 import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
 import io.debezium.connector.jdbc.naming.ColumnNamingStrategy;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.type.connect.AbstractConnectSchemaType;
 import io.debezium.connector.jdbc.type.connect.ConnectBooleanType;
 import io.debezium.connector.jdbc.type.connect.ConnectBytesType;
@@ -101,7 +101,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     private final DdlTypeRegistry ddlTypeRegistry;
     private final IdentifierHelper identifierHelper;
     private final ColumnNamingStrategy columnNamingStrategy;
-    private final Map<String, Type> typeRegistry = new HashMap<>();
+    private final Map<String, JdbcType> typeRegistry = new HashMap<>();
     private final boolean jdbcTimeZone;
 
     public GeneralDatabaseDialect(JdbcSinkConnectorConfig config, SessionFactory sessionFactory) {
@@ -409,7 +409,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
-    public String getQueryBindingWithValueCast(ColumnDescriptor column, Schema schema, Type type) {
+    public String getQueryBindingWithValueCast(ColumnDescriptor column, Schema schema, JdbcType type) {
         return "?";
     }
 
@@ -446,9 +446,9 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
-    public Type getSchemaType(Schema schema) {
+    public JdbcType getSchemaType(Schema schema) {
         if (!Objects.isNull(schema.name())) {
-            final Type type = typeRegistry.get(schema.name());
+            final JdbcType type = typeRegistry.get(schema.name());
             if (!Objects.isNull(type)) {
                 LOGGER.trace("Schema '{}' resolved by name from registry to type '{}'", schema.name(), type);
                 return type;
@@ -457,7 +457,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         if (!Objects.isNull(schema.parameters())) {
             final String columnType = schema.parameters().get("__debezium.source.column.type");
             if (!Objects.isNull(columnType)) {
-                final Type type = typeRegistry.get(columnType);
+                final JdbcType type = typeRegistry.get(columnType);
                 // We explicitly test whether the returned type is an AbstractConnectSchemaType because there
                 // are use cases when column propagation is enabled and the source's column type may also map
                 // directly to a raw Kafka schema type, i.e. INT8 from PostgreSQL. This prevents accidentally
@@ -474,7 +474,7 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
             }
         }
 
-        final Type type = typeRegistry.get(schema.type().name());
+        final JdbcType type = typeRegistry.get(schema.type().name());
         if (!Objects.isNull(type)) {
             LOGGER.trace("Schema type '{}' resolved by name from registry to type '{}'", schema.type().name(), type);
             return type;
@@ -672,15 +672,15 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
         registerType(ConnectMapToConnectStringType.INSTANCE);
     }
 
-    protected void registerType(Type type) {
+    protected void registerType(JdbcType type) {
         type.configure(connectorConfig, this);
         for (String key : type.getRegistrationKeys()) {
-            final Type existing = typeRegistry.put(key, type);
+            final JdbcType existing = typeRegistry.put(key, type);
             if (existing != null) {
-                LOGGER.debug("Type replaced [{}]: {} -> {}", key, existing.getClass().getName(), type.getClass().getName());
+                LOGGER.debug("JdbcType replaced [{}]: {} -> {}", key, existing.getClass().getName(), type.getClass().getName());
             }
             else {
-                LOGGER.debug("Type registered [{}]: {}", key, type.getClass().getName());
+                LOGGER.debug("JdbcType registered [{}]: {}", key, type.getClass().getName());
             }
         }
     }

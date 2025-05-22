@@ -10,14 +10,14 @@ import java.util.List;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.type.debezium.DebeziumZonedTimestampType;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.time.ZonedTimestamp;
 
 /**
- * An implementation of {@link Type} for {@link ZonedTimestamp} values specific to PostgreSQL.
+ * An implementation of {@link JdbcType} for {@link ZonedTimestamp} values specific to PostgreSQL.
  *
  * @author Mario Fiore Vitale
  */

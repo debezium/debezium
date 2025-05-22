@@ -10,12 +10,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.jdbc.type.AbstractType;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.type.connect.ConnectStringType;
 import io.debezium.data.Enum;
 
 /**
- * An implementation of {@link Type} for {@link Enum} column types.
+ * An implementation of {@link JdbcType} for {@link Enum} column types.
  *
  * @author Chris Cranford
  */

@@ -7,12 +7,12 @@ package io.debezium.connector.jdbc.dialect.postgres;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.data.geometry.Point;
 import io.debezium.sink.column.ColumnDescriptor;
 
 /**
- * An implementation of {@link Type} for {@code io.debezium.data.geometry.Point} types.
+ * An implementation of {@link JdbcType} for {@code io.debezium.data.geometry.Point} types.
  *
  * @author Chris Cranford
  */

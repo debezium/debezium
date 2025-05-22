@@ -14,12 +14,12 @@ import java.util.List;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.errors.ConnectException;
 
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.time.ZonedTime;
 
 /**
- * An implementation of {@link Type} for {@link ZonedTime} values.
+ * An implementation of {@link JdbcType} for {@link ZonedTime} values.
  *
  * @author Chris Cranford
  */

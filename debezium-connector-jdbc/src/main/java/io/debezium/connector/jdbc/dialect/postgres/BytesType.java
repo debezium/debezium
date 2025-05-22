@@ -12,11 +12,11 @@ import org.hibernate.engine.jdbc.Size;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.type.AbstractBytesType;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.util.ByteArrayUtils;
 
 /**
- * An implementation of {@link Type} for {@code BYTES} column types.
+ * An implementation of {@link JdbcType} for {@code BYTES} column types.
  *
  * @author Bertrand Paquet
  */

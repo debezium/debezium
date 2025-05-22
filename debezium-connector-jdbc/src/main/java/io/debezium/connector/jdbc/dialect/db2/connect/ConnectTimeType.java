@@ -17,13 +17,13 @@ import org.apache.kafka.connect.data.Time;
 import org.apache.kafka.connect.errors.ConnectException;
 
 import io.debezium.connector.jdbc.type.AbstractTimeType;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.util.DateTimeUtils;
 import io.debezium.sink.column.ColumnDescriptor;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
- * An implementation of {@link Type} for {@link org.apache.kafka.connect.data.Date} values.
+ * An implementation of {@link JdbcType} for {@link org.apache.kafka.connect.data.Date} values.
  *
  * @author Chris Cranford
  */
