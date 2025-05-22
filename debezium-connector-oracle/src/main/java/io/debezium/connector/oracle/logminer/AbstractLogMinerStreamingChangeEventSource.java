@@ -1562,6 +1562,19 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     }
 
     /**
+     * Update common metrics on {@code COMMIT} events.
+     *
+     * @param event the event, should not be {@code null}
+     * @param commitDuration the duration of the commit operation, should not be {@code null}
+     */
+    protected void updateCommitMetrics(LogMinerEventRow event, Duration commitDuration) {
+        getMetrics().incrementCommittedTransactionCount();
+        getMetrics().setCommitScn(event.getScn());
+        getMetrics().setOffsetScn(getOffsetContext().getScn());
+        getMetrics().setLastCommitDuration(commitDuration);
+    }
+
+    /**
      * Check whether the event's table represents a dropped table that has been purged or is in the database's
      * object recycle-bin.
      *
