@@ -485,11 +485,10 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
         }
 
-        getMetrics().calculateLagFromSource(row.getChangeTime());
-
         if (transaction != null) {
             finalizeTransaction(transactionId, commitScn, false);
             cleanupAfterTransactionRemovedFromCache(transaction, false);
+            getMetrics().calculateLagFromSource(row.getChangeTime());
             getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
         }
 
