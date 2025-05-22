@@ -377,18 +377,18 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         // error handler is passed into the new error handler, propagating the retry count. This method
         // allows resetting that counter when a successful poll iteration step contains new records so that when a
         // future failure is thrown, the maximum retry count can be utilized.
-        if (containsMessages(records) && coordinator != null && coordinator.getErrorHandler().getRetries() > 0) {
+        if (containsChangeDataMessages(records) && coordinator != null && coordinator.getErrorHandler().getRetries() > 0) {
             coordinator.getErrorHandler().resetRetries();
         }
     }
 
-    private boolean containsMessages(List<SourceRecord> records) {
+    protected boolean containsChangeDataMessages(List<SourceRecord> records) {
         if (records == null || records.isEmpty()) {
             return false;
         }
 
         for (SourceRecord record : records) {
-            if (record.valueSchema() != null && record.valueSchema().field(Envelope.FieldName.AFTER) != null) {
+            if (record.valueSchema() != null && Envelope.isEnvelopeSchema(record.valueSchema())) {
                 return true;
             }
         }
