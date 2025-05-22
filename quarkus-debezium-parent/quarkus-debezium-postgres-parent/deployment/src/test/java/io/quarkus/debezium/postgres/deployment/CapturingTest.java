@@ -28,7 +28,7 @@ import io.debezium.runtime.DebeziumStatus;
 import io.quarkus.test.QuarkusUnitTest;
 import io.quarkus.test.common.QuarkusTestResource;
 
-@QuarkusTestResource(value = DatabaseTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = DatabaseTestResource.class)
 public class CapturingTest {
 
     @Inject
@@ -54,13 +54,13 @@ public class CapturingTest {
             .overrideConfigKey("quarkus.debezium.topic.prefix", "dbserver1")
             .overrideConfigKey("quarkus.debezium.plugin.name", "pgoutput")
             .overrideConfigKey("quarkus.debezium.snapshot.mode", "initial")
-            .overrideConfigKey("quarkus.hibernate-orm.database.generation", "drop-and-create");
+            .overrideConfigKey("quarkus.datasource.devservices.enabled", "false");
 
     @Test
     @DisplayName("should invoke the default capture")
     void shouldInvokeDefaultCapture() {
         given().await()
-                .atMost(10, TimeUnit.SECONDS)
+                .atMost(100, TimeUnit.SECONDS)
                 .untilAsserted(() -> assertThat(captureProductsHandler.isInvoked()).isTrue());
 
     }

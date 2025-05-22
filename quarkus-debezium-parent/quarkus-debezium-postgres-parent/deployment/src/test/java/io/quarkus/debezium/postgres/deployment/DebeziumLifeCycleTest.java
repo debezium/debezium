@@ -26,7 +26,7 @@ import io.quarkus.runtime.Application;
 import io.quarkus.test.QuarkusUnitTest;
 import io.quarkus.test.common.QuarkusTestResource;
 
-@QuarkusTestResource(value = DatabaseTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = DatabaseTestResource.class)
 public class DebeziumLifeCycleTest {
 
     @Inject
@@ -41,6 +41,7 @@ public class DebeziumLifeCycleTest {
             .overrideConfigKey("quarkus.debezium.table.include.list", "inventory.products")
             .overrideConfigKey("quarkus.debezium.plugin.name", "pgoutput")
             .overrideConfigKey("quarkus.debezium.snapshot.mode", "never")
+            .overrideConfigKey("quarkus.datasource.devservices.enabled", "false")
             .setLogRecordPredicate(record -> record.getLoggerName().equals("io.quarkus.debezium.engine.DebeziumRunner"))
             .assertLogRecords((records) -> {
                 assertThat(records.getFirst().getMessage()).isEqualTo("Starting Debezium Engine...");

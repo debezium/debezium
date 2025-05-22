@@ -25,6 +25,9 @@ public class DatabaseTestResource implements QuarkusTestResourceLifecycleManager
             .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*", 2))
             .withEnv("POSTGRES_INITDB_ARGS", "-E UTF8")
             .withEnv("LANG", "en_US.utf8")
+            .withUsername("postgres")
+            .withPassword("postgres")
+            .withDatabaseName("postgres")
             .withInitScript("init.sql")
             .withStartupTimeout(Duration.ofSeconds(30));
 
@@ -35,9 +38,6 @@ public class DatabaseTestResource implements QuarkusTestResourceLifecycleManager
 
             return Map.of(
                     "quarkus.datasource.db-kind", "postgresql",
-                    "quarkus.datasource.username", postgresContainer.getUsername(),
-                    "quarkus.datasource.password", postgresContainer.getPassword(),
-                    "quarkus.datasource.jdbc.url", postgresContainer.getJdbcUrl(),
                     "quarkus.debezium.database.hostname", postgresContainer.getHost(),
                     "quarkus.debezium.database.user", postgresContainer.getUsername(),
                     "quarkus.debezium.database.password", postgresContainer.getPassword(),
