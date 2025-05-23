@@ -323,6 +323,8 @@ public class JdbcConnection implements AutoCloseable {
     private final Operations initialOps;
     private final String openingQuoteCharacter;
     private final String closingQuoteCharacter;
+    private final String connectorName;
+    private final String connectorThreadNamePattern;
     private volatile Connection conn;
     private final int queryTimeout;
 
@@ -333,7 +335,7 @@ public class JdbcConnection implements AutoCloseable {
      * @param connectionFactory the connection factory; may not be null
      */
     public JdbcConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, String openingQuoteCharacter, String closingQuoteCharacter) {
-        this(config, connectionFactory, null, openingQuoteCharacter, closingQuoteCharacter);
+        this(config, connectionFactory, null, openingQuoteCharacter, closingQuoteCharacter, null, null);
     }
 
     /**
@@ -347,12 +349,14 @@ public class JdbcConnection implements AutoCloseable {
      * @param closingQuotingChar the closing quoting character
      */
     protected JdbcConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, Operations initialOperations,
-                             String openingQuotingChar, String closingQuotingChar) {
+                             String openingQuotingChar, String closingQuotingChar, String connectorName, String connectorThreadNamePattern) {
         this.config = config;
         this.factory = new ConnectionFactoryDecorator(connectionFactory);
         this.initialOps = initialOperations;
         this.openingQuoteCharacter = openingQuotingChar;
         this.closingQuoteCharacter = closingQuotingChar;
+        this.connectorName = connectorName;
+        this.connectorThreadNamePattern = connectorThreadNamePattern;
         this.conn = null;
         this.queryTimeout = (int) config.getQueryTimeout().toSeconds();
     }
@@ -982,7 +986,7 @@ public class JdbcConnection implements AutoCloseable {
                 catch (SQLException e) {
                     throw new RuntimeException(e);
                 }
-            }, Duration.ofSeconds(WAIT_FOR_CLOSE_SECONDS), JdbcConnection.class.getSimpleName(), "jdbc-connection-close");
+            }, Duration.ofSeconds(WAIT_FOR_CLOSE_SECONDS), JdbcConnection.class.getSimpleName(), "jdbc-connection-close", connectorName, connectorThreadNamePattern );
         }
         catch (TimeoutException | InterruptedException e) {
             LOGGER.warn("Failed to close database connection by calling close(), attempting abort()");
