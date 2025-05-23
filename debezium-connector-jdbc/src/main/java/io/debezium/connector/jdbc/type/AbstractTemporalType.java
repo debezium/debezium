@@ -15,7 +15,7 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.sink.SinkConnectorConfig;
 
 /**
- * An abstract base class for all temporal implementations of {@link Type}.
+ * An abstract base class for all temporal implementations of {@link JdbcType}.
  *
  * @author Chris Cranford
  */

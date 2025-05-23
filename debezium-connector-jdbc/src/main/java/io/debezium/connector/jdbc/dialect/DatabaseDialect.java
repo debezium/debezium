@@ -16,12 +16,12 @@ import org.hibernate.dialect.DatabaseVersion;
 import org.hibernate.engine.jdbc.Size;
 
 import io.debezium.connector.jdbc.JdbcSinkRecord;
-import io.debezium.connector.jdbc.JdbcSinkRecord.FieldDescriptor;
-import io.debezium.connector.jdbc.ValueBindDescriptor;
-import io.debezium.connector.jdbc.relational.ColumnDescriptor;
+import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.metadata.CollectionId;
+import io.debezium.sink.column.ColumnDescriptor;
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
  * Represents a dialect of SQL implemented by a particular RDBMS.
@@ -183,7 +183,7 @@ public interface DatabaseDialect {
      * @param type the resolved field type, never {@code null}
      * @return the query binding SQL fragment
      */
-    String getQueryBindingWithValueCast(ColumnDescriptor column, Schema schema, Type type);
+    String getQueryBindingWithValueCast(ColumnDescriptor column, Schema schema, JdbcType type);
 
     /**
      * Gets the maximum length of a VARCHAR field in a primary key column.
@@ -340,7 +340,7 @@ public interface DatabaseDialect {
      * @param schema connect schema, never {@code null}
      * @return resolved type to use
      */
-    Type getSchemaType(Schema schema);
+    JdbcType getSchemaType(Schema schema);
 
     /**
      * Resolves a JDBC type to a given SQL type name.
@@ -348,7 +348,7 @@ public interface DatabaseDialect {
      * @param jdbcType the JDBC type
      * @return the resolved type name
      */
-    String getTypeName(int jdbcType);
+    String getJdbcTypeName(int jdbcType);
 
     /**
      * Resolves a JDBC type with optional size parameters to a given SQL type name.
@@ -357,7 +357,7 @@ public interface DatabaseDialect {
      * @param size the optional size parameters, should not be {@code null}
      * @return the resolved type name
      */
-    String getTypeName(int jdbcType, Size size);
+    String getJdbcTypeName(int jdbcType, Size size);
 
     /**
      * +Infinity value for a timestamp.
@@ -381,7 +381,7 @@ public interface DatabaseDialect {
      * @param value      the value to be bound, may be {@code null}
      * @return the list of bounded values
      */
-    List<ValueBindDescriptor> bindValue(FieldDescriptor field, int startIndex, Object value);
+    List<ValueBindDescriptor> bindValue(JdbcFieldDescriptor field, int startIndex, Object value);
 
     /**
      * Set of retriable exceptions if flush fails.

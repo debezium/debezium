@@ -17,7 +17,6 @@ import org.hibernate.dialect.Dialect;
 
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.JdbcSinkRecord;
-import io.debezium.connector.jdbc.JdbcSinkRecord.FieldDescriptor;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
@@ -32,6 +31,7 @@ import io.debezium.connector.jdbc.dialect.db2.debezium.NanoTimestampType;
 import io.debezium.connector.jdbc.dialect.db2.debezium.TimeType;
 import io.debezium.connector.jdbc.dialect.db2.debezium.TimestampType;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
+import io.debezium.sink.field.FieldDescriptor;
 import io.debezium.time.ZonedTimestamp;
 
 /**
@@ -144,20 +144,20 @@ public class Db2DatabaseDialect extends GeneralDatabaseDialect {
         builder.append("merge into ");
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" using (values(");
-        builder.appendLists(record.keyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
+        builder.appendLists(record.keyFieldNames(), record.nonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
         builder.append(")) as DAT(");
-        builder.appendLists(record.keyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnNameFromField(name, record));
+        builder.appendLists(record.keyFieldNames(), record.nonKeyFieldNames(), (name) -> columnNameFromField(name, record));
         builder.append(") on ");
         builder.appendList(" AND ", record.keyFieldNames(), (name) -> getMergeDatClause(name, table, record));
-        if (!record.getNonKeyFieldNames().isEmpty()) {
+        if (!record.nonKeyFieldNames().isEmpty()) {
             builder.append(" WHEN MATCHED THEN UPDATE SET ");
-            builder.appendList(", ", record.getNonKeyFieldNames(), (name) -> getMergeDatClause(name, table, record));
+            builder.appendList(", ", record.nonKeyFieldNames(), (name) -> getMergeDatClause(name, table, record));
         }
 
         builder.append(" WHEN NOT MATCHED THEN INSERT(");
-        builder.appendLists(",", record.getNonKeyFieldNames(), record.keyFieldNames(), (name) -> columnNameFromField(name, record));
+        builder.appendLists(",", record.nonKeyFieldNames(), record.keyFieldNames(), (name) -> columnNameFromField(name, record));
         builder.append(") values (");
-        builder.appendLists(",", record.getNonKeyFieldNames(), record.keyFieldNames(), (name) -> "DAT." + columnNameFromField(name, record));
+        builder.appendLists(",", record.nonKeyFieldNames(), record.keyFieldNames(), (name) -> "DAT." + columnNameFromField(name, record));
         builder.append(")");
 
         return builder.build();

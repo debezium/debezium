@@ -7,15 +7,14 @@ package io.debezium.connector.jdbc.dialect.mysql;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.jdbc.dialect.DatabaseDialect;
-import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.type.AbstractGeoType;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.data.geometry.Geometry;
+import io.debezium.sink.column.ColumnDescriptor;
 
 public class GeometryType extends AbstractGeoType {
 
-    public static final Type INSTANCE = new GeometryType();
+    public static final JdbcType INSTANCE = new GeometryType();
 
     @Override
     public String getQueryBinding(ColumnDescriptor column, Schema schema, Object value) {
@@ -28,7 +27,7 @@ public class GeometryType extends AbstractGeoType {
     }
 
     @Override
-    public String getTypeName(DatabaseDialect dialect, Schema schema, boolean key) {
+    public String getTypeName(Schema schema, boolean isKey) {
         return "geometry";
     }
 }

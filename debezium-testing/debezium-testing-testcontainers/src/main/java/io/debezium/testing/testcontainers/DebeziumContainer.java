@@ -28,6 +28,7 @@ import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
+import org.testcontainers.images.PullPolicy;
 import org.testcontainers.utility.DockerImageName;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -90,7 +91,9 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
     }
 
     public static DebeziumContainer nightly() {
-        return new DebeziumContainer(String.format("%s:%s", DEBEZIUM_CONTAINER, DEBEZIUM_NIGHTLY_TAG));
+        return new DebeziumContainer(String.format("%s:%s", DEBEZIUM_CONTAINER, DEBEZIUM_NIGHTLY_TAG))
+                .withImagePullPolicy(PullPolicy.ageBased(Duration.ofDays(1)));
+        // nightly images should always be pulled when older than 1 day. that balances always pull vs using cache
     }
 
     private void defaultConfig() {
@@ -193,7 +196,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         executePOSTRequestSuccessfully(connector.toJson(), getConnectorsUri());
 
         // To avoid a 409 error code meanwhile connector is being configured.
-        // This is just a guard, probably in most of use cases you won't need that as preparation time of the test might be enough to configure connector.
+        // This is just a guard, probably in most use cases you won't need that as preparation time of the test might be enough to configure connector.
         Awaitility.await()
                 .atMost(waitTimeForRecords() * 5L, TimeUnit.SECONDS)
                 .until(() -> isConnectorConfigured(connector.getName()));

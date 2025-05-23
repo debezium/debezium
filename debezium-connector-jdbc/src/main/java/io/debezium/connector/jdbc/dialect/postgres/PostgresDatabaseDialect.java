@@ -25,10 +25,10 @@ import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.GeneralDatabaseDialect;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
-import io.debezium.connector.jdbc.relational.ColumnDescriptor;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.metadata.CollectionId;
+import io.debezium.sink.column.ColumnDescriptor;
 
 /**
  * A {@link DatabaseDialect} implementation for PostgreSQL.
@@ -102,17 +102,17 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
         builder.append("INSERT INTO ");
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" (");
-        builder.appendLists(",", record.keyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnNameFromField(name, record));
+        builder.appendLists(",", record.keyFieldNames(), record.nonKeyFieldNames(), (name) -> columnNameFromField(name, record));
         builder.append(") VALUES (");
-        builder.appendLists(",", record.keyFieldNames(), record.getNonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
+        builder.appendLists(",", record.keyFieldNames(), record.nonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
         builder.append(") ON CONFLICT (");
         builder.appendList(",", record.keyFieldNames(), (name) -> columnNameFromField(name, record));
-        if (record.getNonKeyFieldNames().isEmpty()) {
+        if (record.nonKeyFieldNames().isEmpty()) {
             builder.append(") DO NOTHING");
         }
         else {
             builder.append(") DO UPDATE SET ");
-            builder.appendList(",", record.getNonKeyFieldNames(), (name) -> {
+            builder.appendList(",", record.nonKeyFieldNames(), (name) -> {
                 final String columnNme = columnNameFromField(name, record);
                 return columnNme + "=EXCLUDED." + columnNme;
             });
@@ -121,7 +121,7 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
-    public String getQueryBindingWithValueCast(ColumnDescriptor column, Schema schema, Type type) {
+    public String getQueryBindingWithValueCast(ColumnDescriptor column, Schema schema, JdbcType type) {
         if (schema.type() == Schema.Type.STRING) {
             final String typeName = column.getTypeName().toLowerCase();
             if ("uuid".equals(typeName)) {

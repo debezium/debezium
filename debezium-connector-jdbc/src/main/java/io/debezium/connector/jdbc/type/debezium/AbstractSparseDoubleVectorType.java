@@ -12,9 +12,9 @@ import java.util.stream.Collectors;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 
-import io.debezium.connector.jdbc.ValueBindDescriptor;
 import io.debezium.connector.jdbc.type.AbstractType;
 import io.debezium.data.vector.SparseDoubleVector;
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
  * Abstract base class for Debezium's {@link SparseDoubleVector} logical semantic type.

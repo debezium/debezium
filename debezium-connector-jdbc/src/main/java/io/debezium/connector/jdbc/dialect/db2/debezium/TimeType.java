@@ -7,12 +7,12 @@ package io.debezium.connector.jdbc.dialect.db2.debezium;
 
 import java.time.LocalTime;
 
-import io.debezium.connector.jdbc.type.Type;
+import io.debezium.connector.jdbc.type.JdbcType;
 import io.debezium.connector.jdbc.util.DateTimeUtils;
 import io.debezium.time.Time;
 
 /**
- * An implementation of {@link Type} for {@link Time} values.
+ * An implementation of {@link JdbcType} for {@link Time} values.
  *
  * @author Chris Cranford
  */

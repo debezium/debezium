@@ -3184,7 +3184,8 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     }
 
     private String getSinkTable(SinkRecord record, Sink sink) {
-        final String sinkTableName = collectionNamingStrategy.resolveCollectionName(new KafkaDebeziumSinkRecord(record),
+        final String sinkTableName = collectionNamingStrategy.resolveCollectionName(
+                new KafkaDebeziumSinkRecord(record, getCurrentSinkConfig().cloudEventsSchemaNamePattern()),
                 getCurrentSinkConfig().getCollectionNameFormat());
         // When quoted identifiers is not enabled, PostgreSQL saves table names as lower-case
         return sink.getType().is(SinkType.POSTGRES) ? sinkTableName.toLowerCase() : sinkTableName;

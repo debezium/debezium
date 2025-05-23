@@ -16,6 +16,7 @@ import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.metadata.CollectionId;
+import io.debezium.sink.column.ColumnDescriptor;
 
 /**
  * Describes a relational table.

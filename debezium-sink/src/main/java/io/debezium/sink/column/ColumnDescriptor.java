@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.connector.jdbc.relational;
+package io.debezium.sink.column;
 
 import java.util.Objects;
 
@@ -13,6 +13,7 @@ import io.debezium.annotation.Immutable;
  * Describes a relational column in a relational table.
  *
  * @author Chris Cranford
+ * @author rk3rn3r
  */
 @Immutable
 public class ColumnDescriptor {

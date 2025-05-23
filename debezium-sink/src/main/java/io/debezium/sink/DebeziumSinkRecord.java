@@ -5,15 +5,16 @@
  */
 package io.debezium.sink;
 
-import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.Struct; // @TODO find a good replacement for Kafka Connect's Struct and Schema
+import org.apache.kafka.connect.data.Struct; // @TODO find a good replacement for Kafka Connect's Struct and Schema or extract to a separate library
 
 import io.debezium.annotation.Immutable;
 import io.debezium.schema.SchemaFactory;
-import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
+import io.debezium.sink.field.FieldDescriptor;
+import io.debezium.sink.filter.FieldFilterFactory;
 
 @Immutable
 public interface DebeziumSinkRecord {
@@ -46,8 +47,12 @@ public interface DebeziumSinkRecord {
 
     Struct getPayload();
 
-    List<String> keyFieldNames();
+    Map<String, FieldDescriptor> allFields();
 
-    Struct getKeyStruct(PrimaryKeyMode primaryKeyMode, Set<String> primaryKeyFields);
+    Struct getFilteredKey(SinkConnectorConfig.PrimaryKeyMode primaryKeyMode, Set<String> primaryKeyFields, FieldFilterFactory.FieldNameFilter fieldsFilter);
+
+    Struct getFilteredPayload(FieldFilterFactory.FieldNameFilter fieldsFilter);
+
+    Map<String, FieldDescriptor> kafkaFields();
 
 }

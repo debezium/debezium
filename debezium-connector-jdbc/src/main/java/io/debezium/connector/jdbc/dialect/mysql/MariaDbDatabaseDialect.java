@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.jdbc.dialect.mysql;
 
-import java.util.List;
+import java.util.Set;
 
 import org.hibernate.SessionFactory;
 import org.hibernate.dialect.Dialect;
@@ -60,14 +60,14 @@ public class MariaDbDatabaseDialect extends MySqlDatabaseDialect {
         builder.append("INSERT INTO ");
         builder.append(getQualifiedTableName(table.getId()));
         builder.append(" (");
-        builder.appendLists(", ", record.keyFieldNames(), record.getNonKeyFieldNames(), name -> columnNameFromField(name, record));
+        builder.appendLists(", ", record.keyFieldNames(), record.nonKeyFieldNames(), name -> columnNameFromField(name, record));
         builder.append(") VALUES (");
-        builder.appendLists(", ", record.keyFieldNames(), record.getNonKeyFieldNames(), name -> columnQueryBindingFromField(name, table, record));
+        builder.appendLists(", ", record.keyFieldNames(), record.nonKeyFieldNames(), name -> columnQueryBindingFromField(name, table, record));
         builder.append(") ");
 
-        final List<String> updateColumnNames = record.getNonKeyFieldNames().isEmpty()
+        final Set<String> updateColumnNames = record.nonKeyFieldNames().isEmpty()
                 ? record.keyFieldNames()
-                : record.getNonKeyFieldNames();
+                : record.nonKeyFieldNames();
 
         builder.append("ON DUPLICATE KEY UPDATE ");
         builder.appendList(",", updateColumnNames, name -> {

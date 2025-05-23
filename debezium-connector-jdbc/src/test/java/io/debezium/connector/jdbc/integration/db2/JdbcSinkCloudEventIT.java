@@ -8,7 +8,7 @@ package io.debezium.connector.jdbc.integration.db2;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import io.debezium.connector.jdbc.integration.AbstractJdbcSinkSaveConvertedCloudEventTest;
+import io.debezium.connector.jdbc.integration.AbstractJdbcSinkCloudEventTest;
 import io.debezium.connector.jdbc.junit.jupiter.Db2SinkDatabaseContextProvider;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 
@@ -21,9 +21,9 @@ import io.debezium.connector.jdbc.junit.jupiter.Sink;
 @Tag("it")
 @Tag("it-db2")
 @ExtendWith(Db2SinkDatabaseContextProvider.class)
-public class JdbcSinkSaveConvertedCloudEventIT extends AbstractJdbcSinkSaveConvertedCloudEventTest {
+public class JdbcSinkCloudEventIT extends AbstractJdbcSinkCloudEventTest {
 
-    public JdbcSinkSaveConvertedCloudEventIT(Sink sink) {
+    public JdbcSinkCloudEventIT(Sink sink) {
         super(sink);
     }
 
