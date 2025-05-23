@@ -97,7 +97,7 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
         // Try to connect to the database ...
         try {
             Threads.runWithTimeout(PostgresConnector.class, () -> {
-                try (PostgresConnection connection = new PostgresConnection(postgresConfig.getJdbcConfig(), PostgresConnection.CONNECTION_VALIDATE_CONNECTION)) {
+                try (PostgresConnection connection = new PostgresConnection(postgresConfig.getJdbcConfig(), PostgresConnection.CONNECTION_VALIDATE_CONNECTION, postgresConfig.getConnectorName(), postgresConfig.getConnectorThreadNamePattern(), postgresConfig.getTaskId())) {
                     try {
                         // Prepare connection without initial statement execution
                         connection.connection(false);
@@ -111,7 +111,8 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
                         hostnameValue.addErrorMessage("Error while validating connector config: " + e.getMessage());
                     }
                 }
-            }, timeout, postgresConfig.getLogicalName(), "connection-validation");
+            }, timeout, postgresConfig.getLogicalName(), "connection-validation", postgresConfig.connectorName(),
+             postgresConfig.getConnectorThreadNamePattern(), postgresConfig.getTaskId());
         }
         catch (TimeoutException e) {
             hostnameValue.addErrorMessage("Connection validation timed out after " + timeout.toMillis() + " ms");
@@ -184,7 +185,7 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
     @Override
     public List<TableId> getMatchingCollections(Configuration config) {
         PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config);
-        try (PostgresConnection connection = new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL)) {
+        try (PostgresConnection connection = new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL, connectorConfig.getLogicalName(), connectorConfig.getConnectorThreadNamePattern(), connectorConfig.getTaskId())) {
             return connection.readTableNames(connectorConfig.databaseName(), null, null, new String[]{ "TABLE" }).stream()
                     .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
                     .collect(Collectors.toList());

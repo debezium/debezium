@@ -147,7 +147,8 @@ public class MongoDbConnector extends BaseSourceConnector {
                 catch (MongoException e) {
                     connectionStringValidation.addErrorMessage("Unable to connect: " + e.getMessage());
                 }
-            }, timeout, connectorConfig.getLogicalName(), "connection-validation");
+            }, timeout, connectorConfig.getLogicalName(), "connection-validation", connectorConfig.connectorName(),
+             connectorConfig.getConnectorThreadNamePattern(), connectorConfig.getTaskId());
         }
         catch (TimeoutException e) {
             connectionStringValidation.addErrorMessage("Connection validation timed out after " + timeout.toMillis() + "ms");

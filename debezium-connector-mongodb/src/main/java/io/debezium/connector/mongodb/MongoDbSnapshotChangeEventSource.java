@@ -222,7 +222,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
 
         LOGGER.info("Creating snapshot worker pool with {} worker thread(s)", numThreads);
         final ExecutorService executorService = Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.getServerName(), "snapshot-main",
-                connectorConfig.getSnapshotMaxThreads());
+                connectorConfig.connectorName(), connectorConfig.getConnectorThreadNamePattern(), connectorConfig.getTaskId(), connectorConfig.getSnapshotMaxThreads());
 
         final AtomicBoolean aborted = new AtomicBoolean(false);
         final AtomicInteger threadCounter = new AtomicInteger(0);
