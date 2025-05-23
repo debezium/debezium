@@ -36,11 +36,11 @@ public interface HistorizedDatabaseSchema<I extends DataCollectionId> extends Da
 
     void applySchemaChange(SchemaChangeEvent schemaChange);
 
-    default void recover(Partition partition, OffsetContext offset) {
+    default void recover(Partition partition, OffsetContext offset) throws InterruptedException {
         recover(Offsets.of(partition, offset));
     }
 
-    void recover(Offsets<?, ?> offsets);
+    void recover(Offsets<?, ?> offsets) throws InterruptedException;
 
     void initializeStorage();
 
