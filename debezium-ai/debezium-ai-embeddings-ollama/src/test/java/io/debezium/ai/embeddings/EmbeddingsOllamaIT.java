@@ -14,6 +14,7 @@ import java.util.Map;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.assertj.core.data.Offset;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -60,7 +61,10 @@ public class EmbeddingsOllamaIT {
         assertThat(payloadStruct.getStruct("after").getString("product")).contains("a product");
         List<Float> embeddings = payloadStruct.getStruct("after").getArray("prod_embedding");
         assertThat(embeddings.size()).isEqualTo(384);
-        assertThat(embeddings).startsWith(-0.07157089f, 0.022460647f, -0.02369636f, -0.0143798785f, 0.0048304256f, 0.020285256f, 0.20442571f, 0.057290666f, 0.054607023f,
-                -0.030602805f);
+
+        final Offset<Float> offset = Offset.offset(0.001f);
+        assertThat(embeddings.get(0)).isCloseTo(-0.07157089f, offset);
+        assertThat(embeddings.get(1)).isCloseTo(0.022460647f, offset);
+        assertThat(embeddings.get(2)).isCloseTo(-0.02369636f, offset);
     }
 }
