@@ -132,7 +132,7 @@ public class PostgresConnection extends JdbcConnection {
         super(addDefaultSettings(config.getJdbcConfig(), connectionUsage),
                 FACTORY,
                 PostgresConnection::validateServerVersion,
-                "\"", "\"");
+                "\"", "\"", config.connectorName(), config.getConnectorThreadNamePattern());
 
         if (Objects.isNull(typeRegistry)) {
             this.typeRegistry = null;
