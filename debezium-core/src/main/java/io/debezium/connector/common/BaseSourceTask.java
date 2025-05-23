@@ -40,7 +40,9 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.function.LogPositionValidator;
+import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.notification.channels.NotificationChannel;
 import io.debezium.pipeline.signal.channels.SignalChannelReader;
 import io.debezium.pipeline.signal.channels.process.SignalChannelWriter;
@@ -237,6 +239,10 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         try {
             setTaskState(State.INITIAL);
             config = Configuration.from(props);
+
+            DebeziumOpenLineageEmitter.init(config, connectorName());
+            DebeziumOpenLineageEmitter.emit(State.INITIAL);
+
             retriableRestartWait = config.getDuration(CommonConnectorConfig.RETRIABLE_RESTART_WAIT, ChronoUnit.MILLIS);
             // need to reset the delay or you only get one delayed restart
             restartDelay = null;
@@ -255,6 +261,9 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             try {
                 this.coordinator = start(config);
                 setTaskState(State.RUNNING);
+
+                DebeziumOpenLineageEmitter.emit(State.RUNNING);
+
             }
             catch (RetriableException e) {
                 LOGGER.warn("Failed to start connector, will re-attempt during polling.", e);
@@ -307,6 +316,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
      *            {@link CommonConnectorConfig} and work with typed access to configuration properties that way
      */
     protected abstract ChangeEventSourceCoordinator<P, O> start(Configuration config);
+
+    protected abstract String connectorName();
 
     @Override
     public final List<SourceRecord> poll() throws InterruptedException {
@@ -386,6 +397,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
      */
     protected abstract List<SourceRecord> doPoll() throws InterruptedException;
 
+    protected abstract ErrorHandler getErrorHandler();
+
     /**
      * Starts this connector in case it has been stopped after a retriable error,
      * and the backoff period has passed.
@@ -400,6 +413,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                 result = true;
             }
             else if (currentState == State.RESTARTING) {
+                DebeziumOpenLineageEmitter.emit(State.RESTARTING, getErrorHandler().getProducerThrowable());
                 // we're in restart mode... check if it's time to restart
                 if (restartDelay.hasElapsed()) {
                     LOGGER.info("Attempting to restart task.");
@@ -459,6 +473,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
             else {
                 setTaskState(State.STOPPED);
+                DebeziumOpenLineageEmitter.emit(State.STOPPED);
             }
         }
         finally {

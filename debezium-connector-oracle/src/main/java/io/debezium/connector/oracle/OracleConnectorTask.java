@@ -181,6 +181,11 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         return coordinator;
     }
 
+    @Override
+    protected String connectorName() {
+        return Module.name();
+    }
+
     private void checkArchiveLogDestination(OracleConnection connection, String destinationName) {
         try {
 
@@ -217,6 +222,11 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         return records.stream()
                 .map(DataChangeEvent::getRecord)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    protected ErrorHandler getErrorHandler() {
+        return errorHandler;
     }
 
     @Override

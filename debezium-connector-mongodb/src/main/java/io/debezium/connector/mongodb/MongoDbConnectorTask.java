@@ -171,6 +171,11 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         }
     }
 
+    @Override
+    protected String connectorName() {
+        return Module.name();
+    }
+
     private Offsets<MongoDbPartition, MongoDbOffsetContext> getPreviousOffsets(MongoDbConnectorConfig connectorConfig) {
         var partitionProvider = new MongoDbPartition.Provider(connectorConfig);
         var offsetLoader = new MongoDbOffsetContext.Loader(connectorConfig);
@@ -238,6 +243,11 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
     public List<SourceRecord> doPoll() throws InterruptedException {
         List<DataChangeEvent> records = queue.poll();
         return records.stream().map(DataChangeEvent::getRecord).collect(Collectors.toList());
+    }
+
+    @Override
+    protected ErrorHandler getErrorHandler() {
+        return errorHandler;
     }
 
     @Override

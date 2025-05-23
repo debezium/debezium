@@ -256,6 +256,11 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
     }
 
     @Override
+    protected String connectorName() {
+        return Module.name();
+    }
+
+    @Override
     protected void doStop() {
         try {
             if (connection != null) {
@@ -284,6 +289,11 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
     protected List<SourceRecord> doPoll() throws InterruptedException {
         final List<DataChangeEvent> records = queue.poll();
         return records.stream().map(DataChangeEvent::getRecord).collect(Collectors.toList());
+    }
+
+    @Override
+    protected ErrorHandler getErrorHandler() {
+        return errorHandler;
     }
 
     private MariaDbValueConverters getValueConverters(MariaDbConnectorConfig connectorConfig) {
