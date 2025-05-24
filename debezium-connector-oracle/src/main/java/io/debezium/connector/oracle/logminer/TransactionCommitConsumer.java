@@ -114,6 +114,8 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         currentLobDetails.reset();
         currentExtendedStringDetails.reset();
         currentXmlDetails.reset();
+
+        totalEvents = 0;
     }
 
     @Override
