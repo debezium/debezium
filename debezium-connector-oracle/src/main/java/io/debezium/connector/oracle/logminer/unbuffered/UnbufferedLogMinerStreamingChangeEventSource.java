@@ -396,8 +396,20 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
     }
 
     @Override
-    protected void handleRollbackEvent(LogMinerEventRow event) {
-        throw new DebeziumException("Rollback event with SCN " + event.getScn() + " found, but should not be in this mode");
+    protected void handleRollbackEvent(LogMinerEventRow event) throws InterruptedException {
+        if (accumulator.getTotalEvents() == 0) {
+            // Check if the accumulator has no events, and silently ignore rollback transaction with a warning.
+            LOGGER.warn("A rollback transaction {} with SCN {} detected with no captured changes", event.getTransactionId(), event.getScn());
+            getMetrics().incrementWarningCount();
+
+            accumulator.close();
+            return;
+        }
+
+        throw new DebeziumException(String.format("Potential Oracle LogMiner Bug - " +
+                "Rollback transaction %s with SCN %s found emitted %d captured changes. " +
+                "A re-snapshot may be required. Please review your topics populated by this transaction.",
+                event.getTransactionId(), event.getScn().toString(), accumulator.getTotalEvents()));
     }
 
     @Override
