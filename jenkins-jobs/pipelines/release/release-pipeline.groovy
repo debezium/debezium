@@ -1,5 +1,6 @@
 import groovy.json.*
 import java.util.stream.*
+import java.net.URLEncoder
 
 import com.cloudbees.groovy.cps.NonCPS
 
@@ -41,6 +42,7 @@ else if (CHECK_BACKPORTS instanceof String) {
 
 GIT_CREDENTIALS_ID = 'debezium-github'
 JIRA_CREDENTIALS_ID = 'debezium-jira-pat'
+MAVEN_CENTRAL_CREDENTIALS_ID = 'debezium-maven-central'
 HOME_DIR = '/home/cloud-user'
 GPG_DIR = 'gpg'
 
@@ -104,7 +106,6 @@ DEBEZIUM_ADDITIONAL_REPOSITORIES.split().each { item ->
 
 IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/mysql-replication/master', 'examples/mysql-replication/replica', 'examples/mariadb', 'examples/postgres', 'examples/mongodb', 'kafka', 'server', 'zookeeper', 'operator', 'ui', 'platform-conductor', 'platform-stage']
 MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
-STAGING_REPO = 'https://s01.oss.sonatype.org/content/repositories'
 STAGING_REPO_ID = null
 ADDITIONAL_STAGING_REPO_ID = [:]
 LOCAL_MAVEN_REPO = "$HOME_DIR/.m2/repository"
@@ -232,6 +233,19 @@ def closeJiraRelease() {
     jiraUpdate(findVersion(JIRA_VERSION).self, JIRA_CLOSE_RELEASE, 'PUT')
 }
 
+@NonCPS
+def stagingConnectorURL(deploymentId) {
+    withCredentials([usernamePassword(credentialsId: MAVEN_CENTRAL_CREDENTIALS_ID, passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
+        return "https://${USERNAME}:${URLEncoder.encode(PASSWORD)}@central.sonatype.com/api/v1/publisher/deployment/$deploymentId/download/"
+    }
+def encoded = URLEncoder.encode(original, "UTF-8")
+    def url = "$JIRA_BASE_URL/$path"
+    if (params) {
+        url <<= '?' << params.collect {k, v -> "$k=${URLEncoder.encode(v, 'US-ASCII')}"}.join('&')
+    }
+    return url.toString().toURL()
+}
+
 def mvnRelease(repoDir, repoName, branchName, buildArgs = '', subDir = '.') {
     def repoId = null
     dir("$repoDir/$subDir") {
@@ -249,7 +263,7 @@ def mvnRelease(repoDir, repoName, branchName, buildArgs = '', subDir = '.') {
             usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
             def mvnlog = sh(script: "mvn release:perform -DstagingProgressTimeoutMinutes=30 -DlocalCheckout=$DRY_RUN -DconnectionUrl=scm:git:https://\${GIT_USERNAME}:\${GIT_PASSWORD}@${repoName} -Darguments=\"-s $HOME/.m2/settings-snapshots.xml -DstagingProgressTimeoutMinutes=30 -Dgpg.homedir=\$WORKSPACE/$GPG_DIR -Dgpg.passphrase=$GPG_PASSPHRASE -DskipTests -DskipITs $buildArgs\" $buildArgs", returnStdout: true).trim()
             echo mvnlog
-            def match = mvnlog =~ /Created staging repository with ID \"(iodebezium-.+)\"/
+            def match = mvnlog =~ /Uploaded bundle successfully, deployment name: .+, deploymentId: \"(.+)\"\\./
             if (!match[0]) {
                 error 'Could not find staging repository ID'
             }
@@ -512,11 +526,11 @@ node('release-node') {
             sums['SCRIPTING'] = sh(script: "md5sum -b $LOCAL_MAVEN_REPO/io/debezium/debezium-scripting/$RELEASE_VERSION/debezium-scripting-${RELEASE_VERSION}.tar.gz | awk '{print \$1}'", returnStdout: true).trim()
             dir("$IMAGES_DIR/connect/$IMAGE_TAG") {
                 echo "Modifying main Dockerfile"
-                def additionalRepoList = ADDITIONAL_REPOSITORIES.collect({ id, repo -> "${id.toUpperCase()}=$STAGING_REPO/${repo.mavenRepoId}" }).join(' ')
+                def additionalRepoList = ADDITIONAL_REPOSITORIES.collect({ id, repo -> "${id.toUpperCase()}=${stagingConnectorURL(repo.mavenRepoId)}" }).join(' ')
                 modifyFile('Dockerfile') {
                     def ret = it
                             .replaceFirst('DEBEZIUM_VERSION="\\S+"', "DEBEZIUM_VERSION=\"$RELEASE_VERSION\"")
-                            .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$STAGING_REPO/$STAGING_REPO_ID\"")
+                            .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"${stagingConnectorURL(STAGING_REPO_ID)}\"")
                             .replaceFirst('MAVEN_REPOS_ADDITIONAL="[^"]*"', "MAVEN_REPOS_ADDITIONAL=\"$additionalRepoList\"")
                     for (entry in sums) {
                         ret = ret.replaceFirst("${entry.key}_MD5=\\S+", "${entry.key}_MD5=${entry.value}")
@@ -542,7 +556,7 @@ node('release-node') {
                 }
                 modifyFile('Dockerfile') {
                     it
-                            .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$STAGING_REPO/$serverStagingRepoId\"")
+                            .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"${stagingConnectorURL(serverStagingRepoId)}\"")
                             .replaceAll('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$RELEASE_VERSION")
                             .replaceFirst('SERVER_MD5=\\S+', "SERVER_MD5=$serverSum")
                 }
@@ -561,7 +575,7 @@ node('release-node') {
                 }
                 modifyFile('Dockerfile') {
                     it
-                            .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$STAGING_REPO/$operatorStagingRepoId\"")
+                            .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"${stagingConnectorURL(operatorStagingRepoId)}\"")
                             .replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$RELEASE_VERSION")
                             .replaceFirst('OPERATOR_MD5=\\S+', "OPERATOR_MD5=$operatorSum")
                 }
@@ -581,7 +595,7 @@ node('release-node') {
                 }
                 modifyFile('Dockerfile') {
                     it
-                            .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"$STAGING_REPO/$conductorStagingRepoId\"")
+                            .replaceFirst('MAVEN_REPO_CENTRAL="[^"]*"', "MAVEN_REPO_CENTRAL=\"${stagingConnectorURL(conductorStagingRepoId)}\"")
                             .replaceFirst('DEBEZIUM_VERSION=\\S+', "DEBEZIUM_VERSION=$RELEASE_VERSION")
                             .replaceFirst('PLATFORM_CONDUCTOR_MD5=\\S+', "PLATFORM_CONDUCTOR_MD5=$platformSum")
                 }
