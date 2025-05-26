@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -283,8 +284,8 @@ public class BaseSourceTaskSnapshotModesValidationTest {
         }
 
         @Override
-        protected ErrorHandler getErrorHandler() {
-            return null;
+        protected Optional<ErrorHandler> getErrorHandler() {
+            return Optional.empty();
         }
 
         @Override
