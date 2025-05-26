@@ -39,7 +39,6 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
 
     protected final SchemaHistory schemaHistory;
     private final HistorizedRelationalDatabaseConnectorConfig historizedConnectorConfig;
-    protected boolean storageInitializationExecuted = false;
     private boolean recoveredTables;
 
     protected HistorizedRelationalDatabaseSchema(HistorizedRelationalDatabaseConnectorConfig config, TopicNamingStrategy<TableId> topicNamingStrategy,
@@ -90,7 +89,6 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
         if (!schemaHistory.storageExists()) {
             schemaHistory.initializeStorage();
         }
-        storageInitializationExecuted = true;
     }
 
     /**
@@ -143,10 +141,6 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
         return true;
     }
 
-    public boolean isStorageInitializationExecuted() {
-        return storageInitializationExecuted;
-    }
-
     public boolean skipSchemaChangeEvent(SchemaChangeEvent event) {
         if (storeOnlyCapturedDatabases() && !Strings.isNullOrEmpty(event.getSchema())
                 && !historizedConnectorConfig.getTableFilters().schemaFilter().test(event.getSchema())) {
@@ -156,10 +150,8 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
         return false;
     }
 
-    /**
-     * Return true if the database schema history entity exists
-     */
-    public boolean historyExists() {
-        return schemaHistory.exists();
+    @Override
+    public SchemaHistory getSchemaHistory() {
+        return schemaHistory;
     }
 }

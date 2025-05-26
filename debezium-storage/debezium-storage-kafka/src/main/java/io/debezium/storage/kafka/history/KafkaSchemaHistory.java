@@ -394,7 +394,7 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
         boolean exists = false;
         if (storageExists()) {
             try (KafkaConsumer<String, String> historyConsumer = new KafkaConsumer<>(consumerConfig.asProperties())) {
-                checkTopicSettings(topicName);
+                checkStorageSettings();
                 // check if the topic is empty
                 Set<TopicPartition> historyTopic = Collections.singleton(new TopicPartition(topicName, PARTITION));
 
@@ -410,7 +410,8 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
         return exists;
     }
 
-    private void checkTopicSettings(String topicName) {
+    @Override
+    public void checkStorageSettings() {
         if (checkTopicSettingsExecutor == null || checkTopicSettingsExecutor.isShutdown()) {
             return;
         }

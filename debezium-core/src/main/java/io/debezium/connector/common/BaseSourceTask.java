@@ -90,9 +90,15 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                     // would like to also verify redo log position exists, but it defaults to 0 which is technically valid
                     throw new DebeziumException("Could not find existing redo log information while attempting schema only recovery snapshot");
                 }
-                LOGGER.info("Connector started for the first time.");
+                LOGGER.info("Connector started with no previous offset for partition '{}'", partition);
                 if (schema.isHistorized()) {
-                    ((HistorizedDatabaseSchema) schema).initializeStorage();
+                    if (((HistorizedDatabaseSchema) schema).getSchemaHistory().storageExists()) {
+                        LOGGER.info("Database schema history storage was found. Connector will use the pre-existing storage. Checking settings for the same.");
+                        ((HistorizedDatabaseSchema) schema).getSchemaHistory().checkStorageSettings();
+                    }
+                    else {
+                        ((HistorizedDatabaseSchema) schema).initializeStorage();
+                    }
                 }
                 return;
             }
@@ -108,7 +114,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
             else {
 
-                if (schema.isHistorized() && !((HistorizedDatabaseSchema) schema).historyExists()) {
+                if (schema.isHistorized() && !((HistorizedDatabaseSchema) schema).getSchemaHistory().exists()) {
 
                     LOGGER.warn("Database schema history was not found but was expected");
 

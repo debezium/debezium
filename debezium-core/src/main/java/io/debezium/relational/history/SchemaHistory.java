@@ -219,4 +219,11 @@ public interface SchemaHistory {
      * Called to initialize permanent storage of the history.
      */
     void initializeStorage();
+
+    /**
+     * Validates that the underlying storage is configured as needed by the specific implementation.
+     */
+    default void checkStorageSettings() {
+        return;
+    }
 }
