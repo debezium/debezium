@@ -38,6 +38,8 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.ConfigValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.function.Predicates;
@@ -50,6 +52,7 @@ import io.debezium.util.Strings;
 @Immutable
 public final class Field {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(Field.class);
     public static final String INTERNAL_PREFIX = "internal.";
     private static final String EMPTY_STRING = "";
     private static final CharSequence SPACE = " ";
@@ -1454,7 +1457,7 @@ public final class Field {
         if (!field.deprecatedAliases().isEmpty()) {
             for (String alias : field.deprecatedAliases()) {
                 if (config.hasKey(alias)) {
-                    problems.accept(field, null, "Warning: Using deprecated config option \"" + alias + "\".");
+                    LOGGER.warn("Using deprecated config option \"{}\".", alias);
                 }
             }
         }
