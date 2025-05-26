@@ -142,7 +142,7 @@
         <version.sqlserver.driver>12.4.2.jre8</version.sqlserver.driver>
         <version.db2.driver>11.5.0.0</version.db2.driver>
         <version.informix.changestream.client>1.1.3</version.informix.changestream.client>
-        <version.informix.driver>4.50.11.2</version.informix.driver>
+        <version.informix.driver>15.0.0.1.1</version.informix.driver>
         <version.cassandra.driver>4.14.0</version.cassandra.driver>
         <version.mariadb.driver>3.5.3</version.mariadb.driver>
         <!-- These two should be aligned by major versions but minor could vary -->
