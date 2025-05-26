@@ -11,7 +11,6 @@ import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.DebeziumException;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.Key.KeyMapper;
 import io.debezium.relational.Tables.ColumnNameFilter;
@@ -53,7 +52,7 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
     }
 
     @Override
-    public void recover(Offsets<?, ?> offsets) {
+    public void recover(Offsets<?, ?> offsets) throws InterruptedException {
         final boolean hasNonNullOffsets = offsets.getOffsets()
                 .values()
                 .stream()
@@ -62,11 +61,6 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
         if (!hasNonNullOffsets) {
             // there is nothing to recover
             return;
-        }
-
-        if (!schemaHistory.exists()) {
-            String msg = "The db history topic or its content is fully or partially missing. Please check database schema history topic configuration and re-execute the snapshot.";
-            throw new DebeziumException(msg);
         }
 
         schemaHistory.recover(offsets, tables(), getDdlParser());

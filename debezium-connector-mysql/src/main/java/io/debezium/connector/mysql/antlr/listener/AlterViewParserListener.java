@@ -9,6 +9,8 @@ package io.debezium.connector.mysql.antlr.listener;
 import java.util.List;
 
 import org.antlr.v4.runtime.tree.ParseTreeListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.antlr.AntlrDdlParser;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
@@ -18,8 +20,6 @@ import io.debezium.relational.Column;
 import io.debezium.relational.TableEditor;
 import io.debezium.relational.TableId;
 import io.debezium.text.ParsingException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Parser listener that is parsing MySQL ALTER VIEW statements.

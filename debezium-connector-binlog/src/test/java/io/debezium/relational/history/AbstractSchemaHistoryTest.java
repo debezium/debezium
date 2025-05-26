@@ -87,14 +87,14 @@ public abstract class AbstractSchemaHistoryTest<C extends SourceConnector> {
         }
     }
 
-    protected Tables recover(long pos, int entry) {
+    protected Tables recover(long pos, int entry) throws InterruptedException {
         Tables result = new Tables();
         history.recover(source1, position("a.log", pos, entry), result, parser);
         return result;
     }
 
     @Test
-    public void shouldRecordChangesAndRecoverToVariousPoints() {
+    public void shouldRecordChangesAndRecoverToVariousPoints() throws InterruptedException {
         record(01, 0, "CREATE TABLE foo ( first VARCHAR(22) NOT NULL );", all, t3, t2, t1, t0);
         record(23, 1, "CREATE TABLE\nperson ( name VARCHAR(22) NOT NULL );", all, t3, t2, t1);
         record(30, 2, "CREATE TABLE address\n( street VARCHAR(22) NOT NULL );", all, t3, t2);

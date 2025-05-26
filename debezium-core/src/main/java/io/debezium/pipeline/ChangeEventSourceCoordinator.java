@@ -50,6 +50,7 @@ import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.pipeline.spi.SnapshotResult.SnapshotResultStatus;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.schema.HistorizedDatabaseSchema;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
@@ -138,6 +139,10 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
 
                     context = new ChangeEventSourceContextImpl();
                     LOGGER.info("Context created");
+
+                    if (schema.isHistorized()) {
+                        ((HistorizedDatabaseSchema<?>) schema).recover(previousOffsets);
+                    }
 
                     snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(snapshotMetrics, notificationService);
                     executeChangeEventSources(taskContext, snapshotSource, previousOffsets, previousLogContext, context);

@@ -205,7 +205,7 @@ public class PostgresDefaultValueConverter implements DefaultValueConverter {
     private static String extractDefault(String defaultValue, String generatedValuePlaceholder) {
         if (defaultValue.length() > 16348) {
             throw new RuntimeException(
-                "Default value exceeded allowed size");
+                    "Default value exceeded allowed size");
         }
         final Matcher functionMatcher = FUNCTION_DEFAULT_PATTERN.matcher(defaultValue);
         if (functionMatcher.find() || CURRENT_DATE_TIMES.contains(defaultValue.toLowerCase())) {

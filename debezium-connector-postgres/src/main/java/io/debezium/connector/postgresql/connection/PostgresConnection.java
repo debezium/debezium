@@ -786,7 +786,7 @@ public class PostgresConnection extends JdbcConnection {
         if (columnName != null) {
             if (columnName.length() > 16348) {
                 throw new RuntimeException(
-                    "Unique index exceeded allowed size");
+                        "Unique index exceeded allowed size");
             }
             return !FUNCTION_DEFAULT_PATTERN.matcher(columnName).matches()
                     && !EXPRESSION_DEFAULT_PATTERN.matcher(columnName).matches();

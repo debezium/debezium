@@ -97,7 +97,7 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
                     .filter(oldAdditionalConditionField.orElse(""))
                     .build());
         }
-        
+
         return Optional.ofNullable(data.getArray(FIELD_ADDITIONAL_CONDITIONS)).orElse(Array.create()).streamValues()
                 .map(this::buildAdditionalCondition)
                 .collect(Collectors.toList());
@@ -130,7 +130,7 @@ public class ExecuteSnapshot<P extends Partition> extends AbstractSnapshotSignal
         String additionalCondition = data.getString(FIELD_ADDITIONAL_CONDITION);
         return Strings.isNullOrBlank(additionalCondition) ? Optional.empty() : Optional.of(additionalCondition);
     }
-    
+
     public static Optional<String> getSurrogateKey(Document data) {
         String surrogateKey = data.getString(FIELD_SURROGATE_KEY);
         return Strings.isNullOrBlank(surrogateKey) ? Optional.empty() : Optional.of(surrogateKey);

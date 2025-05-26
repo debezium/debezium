@@ -50,7 +50,6 @@ import io.debezium.data.Envelope;
 import io.debezium.relational.ColumnEditor;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
-import io.debezium.util.HexConverter;
 import io.debezium.util.Strings;
 
 /**
