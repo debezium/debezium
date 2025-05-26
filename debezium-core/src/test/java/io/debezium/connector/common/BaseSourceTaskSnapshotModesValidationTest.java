@@ -32,6 +32,7 @@ import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.schema.HistorizedDatabaseSchema;
 import io.debezium.spi.snapshot.Snapshotter;
@@ -121,7 +122,8 @@ public class BaseSourceTaskSnapshotModesValidationTest {
 
         HistorizedDatabaseSchema databaseSchema = mock(HistorizedDatabaseSchema.class);
         when(databaseSchema.isHistorized()).thenReturn(true);
-
+        SchemaHistory schemaHistory = mock(SchemaHistory.class);
+        when(databaseSchema.getSchemaHistory()).thenReturn(schemaHistory);
         Snapshotter snapshotter = mock(Snapshotter.class);
 
         baseSourceTask.validateAndLoadSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter);
@@ -142,6 +144,8 @@ public class BaseSourceTaskSnapshotModesValidationTest {
         Offsets previousOffsets = Offsets.of(partition, offset);
         HistorizedDatabaseSchema databaseSchema = mock(HistorizedDatabaseSchema.class);
         when(databaseSchema.isHistorized()).thenReturn(true);
+        SchemaHistory schemaHistory = mock(SchemaHistory.class);
+        when(databaseSchema.getSchemaHistory()).thenReturn(schemaHistory);
         Snapshotter snapshotter = mock(Snapshotter.class);
         when(snapshotter.shouldSnapshotOnSchemaError()).thenReturn(true);
 
@@ -164,6 +168,8 @@ public class BaseSourceTaskSnapshotModesValidationTest {
         Offsets previousOffsets = Offsets.of(partition, offset);
         HistorizedDatabaseSchema databaseSchema = mock(HistorizedDatabaseSchema.class);
         when(databaseSchema.isHistorized()).thenReturn(true);
+        SchemaHistory schemaHistory = mock(SchemaHistory.class);
+        when(databaseSchema.getSchemaHistory()).thenReturn(schemaHistory);
         Snapshotter snapshotter = mock(Snapshotter.class);
         when(snapshotter.shouldSnapshotOnSchemaError()).thenReturn(false);
 
@@ -187,7 +193,9 @@ public class BaseSourceTaskSnapshotModesValidationTest {
         Offsets previousOffsets = Offsets.of(partition, offset);
         HistorizedDatabaseSchema databaseSchema = mock(HistorizedDatabaseSchema.class);
         when(databaseSchema.isHistorized()).thenReturn(true);
-        when(databaseSchema.historyExists()).thenReturn(true);
+        SchemaHistory schemaHistory = mock(SchemaHistory.class);
+        when(databaseSchema.getSchemaHistory()).thenReturn(schemaHistory);
+        when(schemaHistory.exists()).thenReturn(true);
         Snapshotter snapshotter = mock(Snapshotter.class);
 
         baseSourceTask.validateAndLoadSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter);
@@ -212,7 +220,9 @@ public class BaseSourceTaskSnapshotModesValidationTest {
         Offsets previousOffsets = Offsets.of(partition, offset);
         HistorizedDatabaseSchema databaseSchema = mock(HistorizedDatabaseSchema.class);
         when(databaseSchema.isHistorized()).thenReturn(true);
-        when(databaseSchema.historyExists()).thenReturn(true);
+        SchemaHistory schemaHistory = mock(SchemaHistory.class);
+        when(databaseSchema.getSchemaHistory()).thenReturn(schemaHistory);
+        when(schemaHistory.exists()).thenReturn(true);
         Snapshotter snapshotter = mock(Snapshotter.class);
 
         baseSourceTask.validateAndLoadSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter);
@@ -237,7 +247,9 @@ public class BaseSourceTaskSnapshotModesValidationTest {
         Offsets previousOffsets = Offsets.of(partition, offset);
         HistorizedDatabaseSchema databaseSchema = mock(HistorizedDatabaseSchema.class);
         when(databaseSchema.isHistorized()).thenReturn(true);
-        when(databaseSchema.historyExists()).thenReturn(true);
+        SchemaHistory schemaHistory = mock(SchemaHistory.class);
+        when(databaseSchema.getSchemaHistory()).thenReturn(schemaHistory);
+        when(databaseSchema.getSchemaHistory().exists()).thenReturn(true);
         Snapshotter snapshotter = mock(Snapshotter.class);
         when(snapshotter.shouldSnapshotOnDataError()).thenReturn(true);
 
