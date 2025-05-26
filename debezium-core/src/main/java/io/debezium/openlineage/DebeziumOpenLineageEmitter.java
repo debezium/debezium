@@ -6,12 +6,10 @@
 package io.debezium.openlineage;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.ServiceLoader;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.BaseSourceTask;
-import io.debezium.openlineage.dataset.DatasetNamespaceResolverFactory;
-import io.openlineage.client.OpenLineage;
 
 /**
  * A utility class for emitting OpenLineage events from Debezium connectors.
@@ -30,10 +28,8 @@ import io.openlineage.client.OpenLineage;
  */
 public class DebeziumOpenLineageEmitter {
 
-    private static final String CONNECTOR_NAME_PROPERTY = "name";
-
     private static LineageEmitter lineageEmitter;
-    private static final AtomicReference<OpenLineageContext> contextRef = new AtomicReference<>();
+    private static final ServiceLoader<LineageEmitterFactory> factory = ServiceLoader.load(LineageEmitterFactory.class);
 
     /**
      * Initializes the lineage emitter with the given configuration.
@@ -47,25 +43,19 @@ public class DebeziumOpenLineageEmitter {
      */
     public static void init(Configuration configuration, String connName) {
 
-        DebeziumOpenLineageConfiguration debeziumOpenLineageConfiguration = DebeziumOpenLineageConfiguration.from(configuration);
-
-        if (debeziumOpenLineageConfiguration.enabled()) {
-            OpenLineageEventEmitter emitter = new OpenLineageEventEmitter(debeziumOpenLineageConfiguration);
-
-            if (contextRef.get() == null) {
-                OpenLineageContext ctx = new OpenLineageContext(
-                        new OpenLineage(emitter.getProducer()),
-                        debeziumOpenLineageConfiguration,
-                        new OpenLineageJobIdentifier(debeziumOpenLineageConfiguration.job().namespace(),
-                                configuration.getString(CONNECTOR_NAME_PROPERTY)));
-                contextRef.compareAndSet(null, ctx);
-            }
-
-            lineageEmitter = new OpenLineageEmitter(connName, configuration, contextRef.get(), emitter, DatasetNamespaceResolverFactory.create(connName));
-        }
-        else {
-            lineageEmitter = new NoOpLineageEmitter();
-        }
+        /*
+         * Addresses native compilation issues with the Debezium Quarkus extension when OpenLineage
+         * dependencies are scoped as 'provided'. In native builds, Quarkus performs comprehensive
+         * classpath scanning and fails when referenced classes are unavailable at build time.
+         * ServiceLoader registration signals to Quarkus that the implementation will be available
+         * at runtime, allowing the native compilation to proceed successfully.
+         */
+        lineageEmitter = factory
+                .stream()
+                .findFirst()
+                .map(ServiceLoader.Provider::get)
+                .orElse((ignore, ignore2) -> new NoOpLineageEmitter())
+                .get(configuration, connName);
     }
 
     private static void checkInitialized() {
