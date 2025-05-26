@@ -20,6 +20,7 @@ import java.util.stream.StreamSupport;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.mongodb.client.MongoCollection;
@@ -36,6 +37,15 @@ import io.openlineage.client.OpenLineage;
 import io.openlineage.client.transports.TransportBuilder;
 
 public class OpenLineageIT extends AbstractMongoConnectorIT {
+
+    @Before
+    public void beforeEach() {
+        Debug.disable();
+        Print.disable();
+        stopConnector();
+        initializeConnectorTestFramework();
+        getDebeziumTestTransport().clear();
+    }
 
     @Test
     public void shouldProduceOpenLineageStartEvent() throws InterruptedException {
@@ -148,10 +158,63 @@ public class OpenLineageIT extends AbstractMongoConnectorIT {
 
     }
 
+    @Test
+    public void shouldProduceOpenLineageInputDatasetEvenWhenNoSnapstho() throws Exception {
+
+        DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
+
+        // Use the DB configuration to define the connector's configuration ...
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, "inc")
+                .with(MongoDbConnectorConfig.FILTERS_MATCH_MODE, LITERAL)
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, "never")
+                .with("openlineage.integration.enabled", true)
+                .with("openlineage.integration.config.file.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
+                .with("openlineage.integration.job.description", "This connector does cdc for products")
+                .with("openlineage.integration.job.tags", "env=prod,team=cdc")
+                .with("openlineage.integration.job.owners", "Mario=maintainer,John Doe=Data scientist")
+                .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Cleanup database
+        TestHelper.cleanDatabase(mongo, "inc");
+        TestHelper.cleanDatabase(mongo, "exc");
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+
+        waitForStreamingRunning("mongodb", "mongo");
+
+        // Before starting the connector, add data to the databases ...
+        storeDocuments("inc", "simpletons", "simple_objects.json");
+        storeDocuments("exc", "restaurants", "restaurants1.json");
+
+        SourceRecords records = consumeRecordsByTopic(6);
+
+        assertThat(records.recordsForTopic("mongo.inc.simpletons").size()).isEqualTo(6);
+        assertThat(records.recordsForTopic("mongo.exc.restaurants")).isNull();
+
+        List<OpenLineage.RunEvent> runningEvents = debeziumTestTransport.getRunEvents().stream()
+                .filter(e -> e.getEventType() == OpenLineage.RunEvent.EventType.RUNNING)
+                .toList();
+
+        assertThat(runningEvents).hasSize(2);
+
+        assertEventContainsExpectedData(runningEvents.get(0));
+        assertEventContainsExpectedData(runningEvents.get(1));
+
+        assertCorrectInputDataset(runningEvents.get(1).getInputs(), "inc.simpletons", List.of());
+
+    }
+
     private static void assertCorrectInputDataset(List<OpenLineage.InputDataset> inputs, String expectedTableName, List<String> expectedFields) {
         assertThat(inputs).hasSize(1);
         assertThat(inputs.get(0).getName()).isEqualTo(expectedTableName);
-        assertThat(inputs.get(0).getNamespace()).isEqualTo("mongodb://172.21.0.2:27017");
+        assertThat(inputs.get(0).getNamespace()).matches("mongodb://[\\d.]+:\\d+");
     }
 
     private static void assertEventContainsExpectedData(OpenLineage.RunEvent startEvent) {
