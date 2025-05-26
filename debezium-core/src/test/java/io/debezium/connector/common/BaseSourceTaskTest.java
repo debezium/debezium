@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.connect.data.Schema;
@@ -198,8 +199,8 @@ public class BaseSourceTaskTest {
         }
 
         @Override
-        protected ErrorHandler getErrorHandler() {
-            return new ErrorHandler(null, null, null, null);
+        protected Optional<ErrorHandler> getErrorHandler() {
+            return Optional.empty();
         }
 
         @Override
