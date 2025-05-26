@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.postgresql;
 
+import static io.debezium.connector.postgresql.TestHelper.decoderPlugin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
@@ -163,6 +164,11 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                 .filter(e -> e.getEventType() == OpenLineage.RunEvent.EventType.RUNNING)
                 .toList();
 
+        Awaitility.await()
+                .atMost(30, TimeUnit.SECONDS)
+                .pollInterval(1, TimeUnit.SECONDS)
+                .until(() -> runningEvents.size() == 5);
+
         assertThat(runningEvents).hasSize(5);
 
         assertEventContainsExpectedData(runningEvents.get(0));
@@ -190,7 +196,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
 
         start(PostgresConnector.class, configBuilder.build());
 
-        waitForSnapshotToBeCompleted("postgres", TestHelper.TEST_SERVER);
+        waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
 
         TestHelper.execute("ALTER TABLE s1.a ADD COLUMN bb VARCHAR(255);");
         TestHelper.execute("INSERT INTO s1.a (aa, bb) VALUES (2, 'test');");
@@ -201,11 +207,13 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                 .filter(e -> e.getEventType() == OpenLineage.RunEvent.EventType.RUNNING)
                 .toList();
 
-        assertThat(runningEvents).hasSize(7);
+        int expected = decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.PGOUTPUT ? 6 : 7;
+        assertThat(runningEvents).hasSize(expected);
 
+        String pkValue = decoderPlugin() == PostgresConnectorConfig.LogicalDecoder.PGOUTPUT ? "int4" : "serial";
         assertCorrectInputDataset(runningEvents.get(1).getInputs(), "s1.a", List.of("pk;serial", "aa;int4"));
         assertCorrectInputDataset(runningEvents.get(2).getInputs(), "s2.a", List.of("pk;serial", "aa;int4"));
-        assertCorrectInputDataset(runningEvents.get(5).getInputs(), "s1.a", List.of("pk;serial", "aa;int4", "bb;varchar"));
+        assertCorrectInputDataset(runningEvents.get(5).getInputs(), "s1.a", List.of("pk;" + pkValue, "aa;int4", "bb;varchar"));
     }
 
     @Test
