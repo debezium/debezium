@@ -12,6 +12,7 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.TableId;
+import io.debezium.relational.history.SchemaHistory;
 import io.debezium.spi.schema.DataCollectionId;
 
 /**
@@ -52,5 +53,5 @@ public interface HistorizedDatabaseSchema<I extends DataCollectionId> extends Da
 
     boolean storeOnlyCapturedDatabases();
 
-    boolean historyExists();
+    SchemaHistory getSchemaHistory();
 }
