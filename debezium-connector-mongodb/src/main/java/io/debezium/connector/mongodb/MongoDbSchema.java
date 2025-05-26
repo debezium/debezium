@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mongodb;
 
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -15,10 +16,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.mongodb.FieldSelector.FieldFilter;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.FieldName;
 import io.debezium.data.Json;
+import io.debezium.openlineage.DataCollectionMetadata;
+import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
 import io.debezium.schema.DataCollectionSchema;
 import io.debezium.schema.DatabaseSchema;
@@ -84,6 +88,8 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
                     .build();
 
             final Envelope envelope = Envelope.fromSchema(valueSchema);
+
+            DebeziumOpenLineageEmitter.emit(BaseSourceTask.State.RUNNING, List.of(new DataCollectionMetadata(collectionId, List.of())));
 
             return new MongoDbCollectionSchema(
                     id,

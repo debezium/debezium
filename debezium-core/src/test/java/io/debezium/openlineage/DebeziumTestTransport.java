@@ -13,8 +13,6 @@ import io.openlineage.client.OpenLineage.JobEvent;
 import io.openlineage.client.OpenLineage.RunEvent;
 import io.openlineage.client.transports.Transport;
 
-import lombok.NonNull;
-
 public class DebeziumTestTransport extends Transport {
 
     private final List<RunEvent> runEvents = new ArrayList<>();
@@ -22,17 +20,17 @@ public class DebeziumTestTransport extends Transport {
     private final List<JobEvent> jobEvents = new ArrayList<>();
 
     @Override
-    public void emit(@NonNull RunEvent runEvent) {
+    public void emit(RunEvent runEvent) {
         runEvents.add(runEvent);
     }
 
     @Override
-    public void emit(@NonNull DatasetEvent datasetEvent) {
+    public void emit(DatasetEvent datasetEvent) {
         datasetEvents.add(datasetEvent);
     }
 
     @Override
-    public void emit(@NonNull JobEvent jobEvent) {
+    public void emit(JobEvent jobEvent) {
         jobEvents.add(jobEvent);
     }
 
