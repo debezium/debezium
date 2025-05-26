@@ -414,7 +414,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
      */
     protected abstract List<SourceRecord> doPoll() throws InterruptedException;
 
-    protected abstract ErrorHandler getErrorHandler();
+    protected abstract Optional<ErrorHandler> getErrorHandler();
 
     /**
      * Starts this connector in case it has been stopped after a retriable error,
@@ -430,7 +430,11 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                 result = true;
             }
             else if (currentState == State.RESTARTING) {
-                DebeziumOpenLineageEmitter.emit(State.RESTARTING, getErrorHandler().getProducerThrowable());
+
+                getErrorHandler().ifPresentOrElse(
+                        handler -> DebeziumOpenLineageEmitter.emit(State.RESTARTING, handler.getProducerThrowable()),
+                        () -> DebeziumOpenLineageEmitter.emit(State.RESTARTING));
+
                 // we're in restart mode... check if it's time to restart
                 if (restartDelay.hasElapsed()) {
                     LOGGER.info("Attempting to restart task.");

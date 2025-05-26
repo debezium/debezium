@@ -10,6 +10,7 @@ import static io.debezium.connector.binlog.BinlogConnectorConfig.TOPIC_NAMING_ST
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -292,8 +293,8 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
     }
 
     @Override
-    protected ErrorHandler getErrorHandler() {
-        return errorHandler;
+    protected Optional<ErrorHandler> getErrorHandler() {
+        return Optional.of(errorHandler);
     }
 
     private MariaDbValueConverters getValueConverters(MariaDbConnectorConfig connectorConfig) {
