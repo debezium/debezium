@@ -2430,8 +2430,6 @@ Only `exclusive` mode guarantees full consistency; the initial snapshot and stre
 |Positive integer value that specifies the timeout behavior of a read call to the change stream client. +
 Specify one of the following values:
 
- +
-
 `<0`:: Do not timeout.
 
 `0`:: Return immediately if no data is available.
@@ -2442,11 +2440,15 @@ Specify one of the following values:
 |`0x100000`
 |Positive integer value that specifies the maximum size of each batch of records that the Informix Change Stream Client processes.
 
+|[[informix-property-cdc-stop-logging-on-close]]<<informix-property-cdc-stop-logging-on-close, `+cdc.stop.logging.on.close+`>>
+|`true`
+|Boolean value that specifies whether Informix should stop Full Row Logging of watched tables when streaming is closed.
+
 |[[informix-property-event-processing-failure-handling-mode]]<<informix-property-event-processing-failure-handling-mode, `+event.processing.failure.handling.mode+`>>
 |`fail`
 |Specifies how the connector handles exceptions during processing of events. +
 Specify one of the following values:
- +
+
 `fail`:: The connector logs the offset of the problematic event and stops processing.
 
 `warn`:: The connector logs the offset of the problematic event and continues processing with the next event.
