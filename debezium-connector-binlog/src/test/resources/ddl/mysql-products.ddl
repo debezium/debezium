@@ -24,14 +24,3 @@ CREATE TABLE connector_test.customers (
   last_name VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL UNIQUE KEY
 ) AUTO_INCREMENT=1001;
-
-# Create some veyr simple orders
-CREATE TABLE connector_test.orders (
-  order_number INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  order_date DATE NOT NULL,
-  purchaser INTEGER NOT NULL,
-  quantity INTEGER NOT NULL,
-  product_id INTEGER NOT NULL,
-  FOREIGN KEY order_customer (purchaser) REFERENCES customers(id),
-  FOREIGN KEY ordered_product (product_id) REFERENCES products(id)
-) AUTO_INCREMENT = 10001;

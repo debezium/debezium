@@ -21,11 +21,32 @@ import io.debezium.relational.history.AbstractSchemaHistory;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.topic.TopicNamingStrategy;
+import io.debezium.util.IoUtil;
 
 /**
  * @author Chris Cranford
  */
 public class DatabaseSchemaTest extends BinlogDatabaseSchemaTest<MariaDbConnectorConfig, MariaDbDatabaseSchema, MariaDbPartition, MariaDbOffsetContext> {
+
+    private static final String baseStatements = IoUtil.readClassPathResource("ddl/mysql-products.ddl");
+
+    public DatabaseSchemaTest() {
+        super(baseStatements + """
+                CREATE TABLE connector_test.orders (
+                  order_number INTEGER NOT NULL,
+                  order_date DATE NOT NULL,
+                  purchaser INTEGER NOT NULL,
+                  quantity INTEGER NOT NULL,
+                  product_id INTEGER NOT NULL,
+                  FOREIGN KEY order_customer (purchaser) REFERENCES customers(id),
+                  FOREIGN KEY ordered_product (product_id) REFERENCES products(id)
+                ) AUTO_INCREMENT = 10001;
+
+                ALTER TABLE connector_test.customers ADD PRIMARY KEY IF NOT EXISTS (id);
+                ALTER TABLE connector_test.orders ADD PRIMARY KEY IF NOT EXISTS (order_number);
+                """);
+    }
+
     @Override
     protected MariaDbConnectorConfig getConnectorConfig(Configuration config) {
         config = config.edit().with(AbstractSchemaHistory.INTERNAL_PREFER_DDL, true).build();
