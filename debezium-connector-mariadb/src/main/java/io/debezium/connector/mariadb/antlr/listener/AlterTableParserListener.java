@@ -359,4 +359,11 @@ public class AlterTableParserListener extends TableCommonParserListener {
         }
         super.enterTableOptionComment(ctx);
     }
+
+    @Override
+    public void enterAlterByNotExistingPrimaryKey(MariaDBParser.AlterByNotExistingPrimaryKeyContext ctx) {
+        parser.runIfNotNull(() -> tableEditor.setPrimaryKeyNames(parser.parseName(ctx.uid())), tableEditor);
+
+        super.enterAlterByNotExistingPrimaryKey(ctx);
+    }
 }
