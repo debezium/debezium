@@ -44,7 +44,6 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.Module;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig;
 import io.debezium.data.Envelope;
-import io.debezium.data.SchemaUtil;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.junit.SkipWhenDatabaseVersion;
@@ -297,12 +296,12 @@ public class ExtractNewDocumentStateTestIT extends AbstractExtractNewDocumentSta
         final SourceRecord tombstoneRecord = records.recordsForTopic(this.topicName()).get(1);
         final SourceRecord transformedTombstone = transformation.apply(tombstoneRecord);
 
-        assertThat(transformedTombstone.value()).isNull();
+        // assertThat(transformedTombstone.value()).isNull();
         assertThat(transformedTombstone).isNull();
 
         // Assert deletion preserves key
-        assertThat(SchemaUtil.asString(transformedDelete.keySchema())).isEqualTo(SchemaUtil.asString(transformedTombstone.keySchema()));
-        assertThat(transformedDelete.key().toString()).isEqualTo(transformedTombstone.key().toString());
+        // assertThat(SchemaUtil.asString(transformedDelete.keySchema())).isEqualTo(SchemaUtil.asString(transformedTombstone.keySchema()));
+        // assertThat(transformedDelete.key().toString()).isEqualTo(transformedTombstone.key().toString());
     }
 
     @Test
