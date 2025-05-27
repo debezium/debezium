@@ -32,6 +32,7 @@ public class DatabaseSchemaTest extends BinlogDatabaseSchemaTest<MariaDbConnecto
 
     public DatabaseSchemaTest() {
         super(baseStatements + """
+                # creating a table without primary key which is valid for MariaDB
                 CREATE TABLE connector_test.orders (
                   order_number INTEGER NOT NULL,
                   order_date DATE NOT NULL,
