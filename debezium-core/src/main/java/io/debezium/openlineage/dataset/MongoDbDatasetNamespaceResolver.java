@@ -7,11 +7,13 @@ package io.debezium.openlineage.dataset;
 
 import io.debezium.config.Configuration;
 
-public class MongoDbDatasetNamespaceResolver implements DatasetNamespaceResolver {
+public class MongoDbDatasetNamespaceResolver implements InputDatasetNamespaceResolver {
+
+    private static final String MONGODB_CONNECTION_STRING_PROPERTY = "mongodb.connection.string";
 
     @Override
     public String resolve(Configuration configuration, String connectorName) {
-        return removeConnectionStringOptions(configuration.getString("mongodb.connection.string"));
+        return removeConnectionStringOptions(configuration.getString(MONGODB_CONNECTION_STRING_PROPERTY));
     }
 
     private String removeConnectionStringOptions(String connectionString) {

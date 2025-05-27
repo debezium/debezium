@@ -5,9 +5,9 @@
  */
 package io.debezium.openlineage.dataset;
 
-public interface DatasetNamespaceResolverFactory {
+import io.debezium.config.Configuration;
 
-    InputDatasetNamespaceResolver createInput(String connectorName);
+public interface OutputDatasetNamespaceResolver {
 
-    OutputDatasetNamespaceResolver createOutput(String connectorName);
+    String resolve(Configuration configuration);
 }

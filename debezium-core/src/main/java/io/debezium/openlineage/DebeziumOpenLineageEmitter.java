@@ -10,6 +10,11 @@ import java.util.ServiceLoader;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.openlineage.dataset.DatasetMetadata;
+import io.debezium.openlineage.emitter.LineageEmitter;
+import io.debezium.openlineage.emitter.LineageEmitterFactory;
+import io.debezium.openlineage.emitter.NoOpLineageEmitter;
+import io.debezium.openlineage.emitter.OpenLineageEventEmitter;
 
 /**
  * A utility class for emitting OpenLineage events from Debezium connectors.
@@ -29,7 +34,7 @@ import io.debezium.connector.common.BaseSourceTask;
 public class DebeziumOpenLineageEmitter {
 
     private static LineageEmitter lineageEmitter;
-    private static final ServiceLoader<LineageEmitterFactory> factory = ServiceLoader.load(LineageEmitterFactory.class);
+    private static final ServiceLoader<LineageEmitterFactory> lineageEmitterFactory = ServiceLoader.load(LineageEmitterFactory.class);
 
     /**
      * Initializes the lineage emitter with the given configuration.
@@ -50,7 +55,7 @@ public class DebeziumOpenLineageEmitter {
          * ServiceLoader registration signals to Quarkus that the implementation will be available
          * at runtime, allowing the native compilation to proceed successfully.
          */
-        lineageEmitter = factory
+        lineageEmitter = lineageEmitterFactory
                 .stream()
                 .findFirst()
                 .map(ServiceLoader.Provider::get)
@@ -97,13 +102,13 @@ public class DebeziumOpenLineageEmitter {
      * This method is typically used for emitting input dataset lineage.
      *
      * @param state The current state of the source task
-     * @param inputDatasetMetadata A list of input dataset metadata containing metadata for lineage
+     * @param datasetMetadata A list of input dataset metadata containing metadata for lineage
      * @throws IllegalStateException If the emitter has not been initialized
      */
-    public static void emit(BaseSourceTask.State state, List<DataCollectionMetadata> inputDatasetMetadata) {
+    public static void emit(BaseSourceTask.State state, List<DatasetMetadata> datasetMetadata) {
 
         checkInitialized();
-        lineageEmitter.emit(state, inputDatasetMetadata, null);
+        lineageEmitter.emit(state, datasetMetadata);
     }
 
     /**
@@ -113,13 +118,13 @@ public class DebeziumOpenLineageEmitter {
      * metadata and any exception that occurred during processing.
      *
      * @param state The current state of the source task
-     * @param inputDatasetMetadata A list of input dataset metadata containing metadata for lineage
+     * @param datasetMetadata A list of input dataset metadata containing metadata for lineage
      * @param t The exception that occurred during processing, may be {@code null}
      * @throws IllegalStateException If the emitter has not been initialized
      */
-    public static void emit(BaseSourceTask.State state, List<DataCollectionMetadata> inputDatasetMetadata, Throwable t) {
+    public static void emit(BaseSourceTask.State state, List<DatasetMetadata> datasetMetadata, Throwable t) {
 
         checkInitialized();
-        lineageEmitter.emit(state, inputDatasetMetadata, t);
+        lineageEmitter.emit(state, datasetMetadata, t);
     }
 }
