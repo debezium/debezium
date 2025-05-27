@@ -123,17 +123,17 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
         // Manual Bean Registration
         beanRegistryJdbcConnection = connectionFactory.newConnection();
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, beanRegistryJdbcConnection);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverter);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
+        getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
+        getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
+        getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
+        getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, beanRegistryJdbcConnection);
+        getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverter);
+        getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
 
         // Service providers
-        registerServiceProviders(connectorConfig.getServiceRegistry());
+        registerServiceProviders();
 
-        final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
+        final SnapshotterService snapshotterService = getServiceRegistry().tryGetService(SnapshotterService.class);
         final Snapshotter snapshotter = snapshotterService.getSnapshotter();
 
         try {
@@ -213,7 +213,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                                 }
                             }),
                     schemaNameAdjuster,
-                    signalProcessor);
+                    signalProcessor, getServiceRegistry());
 
             NotificationService<PostgresPartition, PostgresOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                     connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
@@ -234,14 +234,14 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                             taskContext,
                             replicationConnection,
                             slotCreatedInfo,
-                            slotInfo),
+                            slotInfo, getBeanRegistry()),
                     new DefaultChangeEventSourceMetricsFactory<>(),
                     dispatcher,
                     schema,
                     snapshotterService,
                     slotInfo,
                     signalProcessor,
-                    notificationService);
+                    notificationService, getBeanRegistry(), getServiceRegistry());
 
             coordinator.start(taskContext, this.queue, metadataProvider);
 

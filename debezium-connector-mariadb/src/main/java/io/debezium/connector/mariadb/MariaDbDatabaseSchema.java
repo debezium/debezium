@@ -23,25 +23,29 @@ import io.debezium.spi.topic.TopicNamingStrategy;
  */
 public class MariaDbDatabaseSchema extends BinlogDatabaseSchema<MariaDbPartition, MariaDbOffsetContext, MariaDbValueConverters, MariaDbDefaultValueConverter> {
 
+    private BinlogCharsetRegistry charsetRegistry;
+
     public MariaDbDatabaseSchema(MariaDbConnectorConfig connectorConfig, MariaDbValueConverters valueConverter,
                                  TopicNamingStrategy<TableId> topicNamingStrategy, SchemaNameAdjuster schemaNameAdjuster,
-                                 boolean tableIdCaseInsensitive) {
+                                 boolean tableIdCaseInsensitive, BinlogCharsetRegistry charsetRegistry) {
         super(connectorConfig,
                 valueConverter,
                 new MariaDbDefaultValueConverter(valueConverter),
                 topicNamingStrategy,
                 schemaNameAdjuster,
                 tableIdCaseInsensitive);
+        this.charsetRegistry = charsetRegistry;
     }
 
     @Override
     protected DdlParser createDdlParser(BinlogConnectorConfig connectorConfig, MariaDbValueConverters valueConverter) {
+
         return new MariaDbAntlrDdlParser(
                 true,
                 false,
                 connectorConfig.isSchemaChangesHistoryEnabled(),
                 getTableFilter(),
-                connectorConfig.getServiceRegistry().getService(BinlogCharsetRegistry.class));
+                charsetRegistry);
     }
 
 }

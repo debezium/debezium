@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.bean.StandardBeanNames;
+import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigurationDefaults;
 import io.debezium.pipeline.notification.NotificationService;
@@ -54,12 +55,14 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
     private final SnapshotProgressListener<P> snapshotProgressListener;
 
     protected final NotificationService<P, O> notificationService;
+    private final BeanRegistry beanRegistry;
 
     public AbstractSnapshotChangeEventSource(CommonConnectorConfig connectorConfig, SnapshotProgressListener<P> snapshotProgressListener,
-                                             NotificationService<P, O> notificationService) {
+                                             NotificationService<P, O> notificationService, BeanRegistry beanRegistry) {
         this.connectorConfig = connectorConfig;
         this.snapshotProgressListener = snapshotProgressListener;
         this.notificationService = notificationService;
+        this.beanRegistry = beanRegistry;
     }
 
     protected Offsets<P, OffsetContext> getOffsets(SnapshotContext<P, O> ctx, O previousOffset, SnapshottingTask snapshottingTask) {
@@ -72,7 +75,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
         final SnapshotContext<P, O> ctx;
         try {
             ctx = prepare(partition, snapshottingTask.isOnDemand());
-            connectorConfig.getBeanRegistry().add(StandardBeanNames.SNAPSHOT_CONTEXT, ctx);
+            beanRegistry.add(StandardBeanNames.SNAPSHOT_CONTEXT, ctx);
         }
         catch (Exception e) {
             LOGGER.error("Failed to initialize snapshot context.", e);

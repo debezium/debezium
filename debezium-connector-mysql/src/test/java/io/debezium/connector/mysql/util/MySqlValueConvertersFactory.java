@@ -10,6 +10,7 @@ import java.time.temporal.TemporalAdjuster;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.BinlogValueConvertersFactory;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
+import io.debezium.connector.mysql.charset.MySqlCharsetRegistry;
 import io.debezium.connector.mysql.jdbc.MySqlValueConverters;
 
 /**
@@ -28,6 +29,6 @@ public class MySqlValueConvertersFactory implements BinlogValueConvertersFactory
                 connectorConfig.binaryHandlingMode(),
                 temporalAdjuster,
                 connectorConfig.getEventConvertingFailureHandlingMode(),
-                connectorConfig.getServiceRegistry());
+                new MySqlCharsetRegistry());
     }
 }

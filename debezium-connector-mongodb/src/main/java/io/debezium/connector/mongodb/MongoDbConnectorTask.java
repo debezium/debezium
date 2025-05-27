@@ -114,14 +114,14 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     previousOffsets);
 
             // Manually Register Beans
-            connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
-            connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
-            connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
+            getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
+            getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
+            getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
 
             // Service providers
-            registerServiceProviders(connectorConfig.getServiceRegistry());
+            registerServiceProviders();
 
-            final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
+            final SnapshotterService snapshotterService = getServiceRegistry().tryGetService(SnapshotterService.class);
 
             final EventDispatcher<MongoDbPartition, CollectionId> dispatcher = new EventDispatcher<>(
                     connectorConfig,
@@ -132,7 +132,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     DataChangeEvent::new,
                     metadataProvider,
                     schemaNameAdjuster,
-                    signalProcessor);
+                    signalProcessor, getServiceRegistry());
 
             validate(connectorConfig, taskContext.getConnection(dispatcher, previousOffsets.getTheOnlyPartition()), previousOffsets,
                     snapshotterService.getSnapshotter());
@@ -142,25 +142,26 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
             MongoDbChangeEventSourceMetricsFactory metricsFactory = new MongoDbChangeEventSourceMetricsFactory();
 
+            final MongoDbChangeEventSourceFactory mongoDbChangeEventSourceFactory = new MongoDbChangeEventSourceFactory(
+                    connectorConfig,
+                    errorHandler,
+                    dispatcher,
+                    clock,
+                    taskContext,
+                    schema,
+                    metricsFactory.getStreamingMetrics(taskContext, queue, metadataProvider),
+                    snapshotterService, getBeanRegistry());
             ChangeEventSourceCoordinator<MongoDbPartition, MongoDbOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                     previousOffsets,
                     errorHandler,
                     MongoDbConnector.class,
                     connectorConfig,
-                    new MongoDbChangeEventSourceFactory(
-                            connectorConfig,
-                            errorHandler,
-                            dispatcher,
-                            clock,
-                            taskContext,
-                            schema,
-                            metricsFactory.getStreamingMetrics(taskContext, queue, metadataProvider),
-                            snapshotterService),
+                    mongoDbChangeEventSourceFactory,
                     metricsFactory,
                     dispatcher,
                     schema,
                     signalProcessor,
-                    notificationService, snapshotterService);
+                    notificationService, snapshotterService, getBeanRegistry(), getServiceRegistry());
 
             coordinator.start(taskContext, this.queue, metadataProvider);
 

@@ -24,6 +24,7 @@ import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
@@ -56,8 +57,9 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, MainConnectionProvidingConnectionFactory<OracleConnection> connectionFactory,
                                            OracleDatabaseSchema schema, EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
                                            SnapshotProgressListener<OraclePartition> snapshotProgressListener,
-                                           NotificationService<OraclePartition, OracleOffsetContext> notificationService, SnapshotterService snapshotterService) {
-        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService, snapshotterService);
+                                           NotificationService<OraclePartition, OracleOffsetContext> notificationService, SnapshotterService snapshotterService,
+                                           BeanRegistry beanRegistry) {
+        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService, snapshotterService, beanRegistry);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = connectionFactory.mainConnection();
         this.databaseSchema = schema;

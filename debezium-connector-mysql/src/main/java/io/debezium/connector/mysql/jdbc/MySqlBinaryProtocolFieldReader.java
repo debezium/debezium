@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import com.mysql.cj.protocol.a.NativeConstants;
 
+import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
@@ -31,8 +32,8 @@ public class MySqlBinaryProtocolFieldReader extends AbstractFieldReader {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlBinaryProtocolFieldReader.class);
 
-    public MySqlBinaryProtocolFieldReader(MySqlConnectorConfig config) {
-        super(config);
+    public MySqlBinaryProtocolFieldReader(MySqlConnectorConfig config, BinlogCharsetRegistry binlogCharsetRegistry) {
+        super(config, binlogCharsetRegistry);
     }
 
     /**

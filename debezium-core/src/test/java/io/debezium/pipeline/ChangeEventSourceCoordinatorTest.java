@@ -38,7 +38,7 @@ public class ChangeEventSourceCoordinatorTest {
         connectorConfig = mock(CommonConnectorConfig.class);
         when(connectorConfig.getLogicalName()).thenReturn("DummyConnector");
         coordinator = new ChangeEventSourceCoordinator(null, null, SourceConnector.class, connectorConfig, null,
-                null, null, null, null, null, snapshotterService);
+                null, null, null, null, null, snapshotterService, null, null);
         context = mock(ChangeEventSource.ChangeEventSourceContext.class);
     }
 

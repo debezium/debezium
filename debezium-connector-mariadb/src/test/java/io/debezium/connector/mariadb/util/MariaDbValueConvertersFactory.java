@@ -10,6 +10,7 @@ import java.time.temporal.TemporalAdjuster;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.util.BinlogValueConvertersFactory;
 import io.debezium.connector.mariadb.MariaDbConnectorConfig;
+import io.debezium.connector.mariadb.charset.MariaDbCharsetRegistry;
 import io.debezium.connector.mariadb.jdbc.MariaDbValueConverters;
 
 /**
@@ -28,6 +29,6 @@ public class MariaDbValueConvertersFactory implements BinlogValueConvertersFacto
                 connectorConfig.binaryHandlingMode(),
                 temporalAdjuster,
                 connectorConfig.getEventConvertingFailureHandlingMode(),
-                connectorConfig.getServiceRegistry());
+                new MariaDbCharsetRegistry());
     }
 }

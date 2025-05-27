@@ -37,6 +37,7 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.changestream.ChangeStreamDocument;
 
 import io.debezium.DebeziumException;
+import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
@@ -79,8 +80,9 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
     public MongoDbSnapshotChangeEventSource(MongoDbConnectorConfig connectorConfig, MongoDbTaskContext taskContext,
                                             EventDispatcher<MongoDbPartition, CollectionId> dispatcher, Clock clock,
                                             SnapshotProgressListener<MongoDbPartition> snapshotProgressListener, ErrorHandler errorHandler,
-                                            NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService, SnapshotterService snapshotterService) {
-        super(connectorConfig, snapshotProgressListener, notificationService);
+                                            NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService, SnapshotterService snapshotterService,
+                                            BeanRegistry beanRegistry) {
+        super(connectorConfig, snapshotProgressListener, notificationService, beanRegistry);
         this.connectorConfig = connectorConfig;
         this.taskContext = taskContext;
         this.dispatcher = dispatcher;

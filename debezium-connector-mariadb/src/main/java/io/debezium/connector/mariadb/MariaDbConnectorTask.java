@@ -25,6 +25,8 @@ import io.debezium.connector.binlog.BinlogEventMetadataProvider;
 import io.debezium.connector.binlog.BinlogSourceTask;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.binlog.jdbc.BinlogFieldReader;
+import io.debezium.connector.mariadb.charset.MariaDbCharsetRegistry;
+import io.debezium.connector.mariadb.charset.MariaDbCharsetRegistryServiceProvider;
 import io.debezium.connector.mariadb.jdbc.MariaDbConnection;
 import io.debezium.connector.mariadb.jdbc.MariaDbConnectionConfiguration;
 import io.debezium.connector.mariadb.jdbc.MariaDbFieldReader;
@@ -82,7 +84,14 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
         final MariaDbConnectorConfig connectorConfig = new MariaDbConnectorConfig(configuration);
         final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(TOPIC_NAMING_STRATEGY);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
-        final MariaDbValueConverters valueConverters = getValueConverters(connectorConfig);
+        final MariaDbValueConverters valueConverters = new MariaDbValueConverters(
+                connectorConfig.getDecimalMode(),
+                connectorConfig.getTemporalPrecisionMode(),
+                connectorConfig.getBigIntUnsignedHandlingMode().asBigIntUnsignedMode(),
+                connectorConfig.binaryHandlingMode(),
+                connectorConfig.isTimeAdjustedEnabled() ? MariaDbValueConverters::adjustTemporal : x -> x,
+                connectorConfig.getEventConvertingFailureHandlingMode(),
+                new MariaDbCharsetRegistry());
 
         // DBZ-3238
         // Automatically set useCursorFetch to true when a snapshot fetch size other than the default is given.
@@ -95,7 +104,7 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
 
         final MainConnectionProvidingConnectionFactory<BinlogConnectorConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(() -> {
             final MariaDbConnectionConfiguration connectionConfig = new MariaDbConnectionConfiguration(config);
-            return new MariaDbConnection(connectionConfig, new MariaDbFieldReader(connectorConfig));
+            return new MariaDbConnection(connectionConfig, new MariaDbFieldReader(connectorConfig, new MariaDbCharsetRegistry()));
         });
 
         this.connection = connectionFactory.mainConnection();
@@ -105,21 +114,22 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                 new MariaDbOffsetContext.Loader(connectorConfig));
 
         final boolean tableIdCaseInsensitive = connection.isTableIdCaseSensitive();
-        this.schema = new MariaDbDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive);
+        this.schema = new MariaDbDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive,
+                new MariaDbCharsetRegistry());
 
         // Manual Bean Registration
         beanRegistryJdbcConnection = connectionFactory.newConnection();
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, beanRegistryJdbcConnection);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
+        getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
+        getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
+        getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
+        getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, beanRegistryJdbcConnection);
+        getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
+        getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
 
         // Service providers
-        registerServiceProviders(connectorConfig.getServiceRegistry());
+        registerServiceProviders();
 
-        final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
+        final SnapshotterService snapshotterService = getServiceRegistry().tryGetService(SnapshotterService.class);
         final Snapshotter snapshotter = snapshotterService.getSnapshotter();
 
         validateBinlogConfiguration(snapshotter, connection);
@@ -214,7 +224,7 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                                 getFieldReader(connectorConfig)),
                         new BinlogHeartbeatErrorHandler()),
                 schemaNameAdjuster,
-                signalProcessor);
+                signalProcessor, getServiceRegistry());
 
         final MariaDbStreamingChangeEventSourceMetrics streamingMetrics = new MariaDbStreamingChangeEventSourceMetrics(
                 taskContext,
@@ -227,28 +237,29 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                 SchemaFactory.get(),
                 dispatcher::enqueueNotification);
 
+        final MariaDbChangeEventSourceFactory mariaDbChangeEventSourceFactory = new MariaDbChangeEventSourceFactory(
+                connectorConfig,
+                connectionFactory,
+                errorHandler,
+                dispatcher,
+                clock,
+                schema,
+                taskContext,
+                streamingMetrics,
+                queue,
+                snapshotterService);
         ChangeEventSourceCoordinator<MariaDbPartition, MariaDbOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                 previousOffsets,
                 errorHandler,
                 MariaDbConnector.class,
                 connectorConfig,
-                new MariaDbChangeEventSourceFactory(
-                        connectorConfig,
-                        connectionFactory,
-                        errorHandler,
-                        dispatcher,
-                        clock,
-                        schema,
-                        taskContext,
-                        streamingMetrics,
-                        queue,
-                        snapshotterService),
+                mariaDbChangeEventSourceFactory,
                 new MariaDbChangeEventSourceMetricsFactory(streamingMetrics),
                 dispatcher,
                 schema,
                 signalProcessor,
                 notificationService,
-                snapshotterService);
+                snapshotterService, getBeanRegistry(), getServiceRegistry());
 
         coordinator.start(taskContext, this.queue, metadataProvider);
 
@@ -286,19 +297,13 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
         return records.stream().map(DataChangeEvent::getRecord).collect(Collectors.toList());
     }
 
-    private MariaDbValueConverters getValueConverters(MariaDbConnectorConfig connectorConfig) {
-        return new MariaDbValueConverters(
-                connectorConfig.getDecimalMode(),
-                connectorConfig.getTemporalPrecisionMode(),
-                connectorConfig.getBigIntUnsignedHandlingMode().asBigIntUnsignedMode(),
-                connectorConfig.binaryHandlingMode(),
-                connectorConfig.isTimeAdjustedEnabled() ? MariaDbValueConverters::adjustTemporal : x -> x,
-                connectorConfig.getEventConvertingFailureHandlingMode(),
-                connectorConfig.getServiceRegistry());
-    }
-
     private BinlogFieldReader getFieldReader(MariaDbConnectorConfig connectorConfig) {
-        return new MariaDbFieldReader(connectorConfig);
+        return new MariaDbFieldReader(connectorConfig, new MariaDbCharsetRegistry());
     }
 
+    @Override
+    protected void registerServiceProviders() {
+        getServiceRegistry().registerServiceProvider(new MariaDbCharsetRegistryServiceProvider());
+        super.registerServiceProviders();
+    }
 }

@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql.jdbc;
 
+import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogFieldReader;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.relational.Column;
@@ -24,8 +25,8 @@ import io.debezium.relational.Column;
  */
 public abstract class AbstractFieldReader extends BinlogFieldReader {
 
-    public AbstractFieldReader(MySqlConnectorConfig connectorConfig) {
-        super(connectorConfig);
+    public AbstractFieldReader(MySqlConnectorConfig connectorConfig, BinlogCharsetRegistry binlogCharsetRegistry) {
+        super(connectorConfig, binlogCharsetRegistry);
     }
 
     @Override

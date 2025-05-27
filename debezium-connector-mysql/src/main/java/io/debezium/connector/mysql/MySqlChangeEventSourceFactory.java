@@ -10,6 +10,7 @@ import java.util.function.Function;
 
 import org.apache.kafka.connect.source.SourceRecord;
 
+import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
@@ -47,11 +48,12 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
     private final ChangeEventQueue<DataChangeEvent> queue;
 
     private final SnapshotterService snapshotterService;
+    private final BeanRegistry beanRegistry;
 
     public MySqlChangeEventSourceFactory(MySqlConnectorConfig configuration, MainConnectionProvidingConnectionFactory<BinlogConnectorConnection> connectionFactory,
                                          ErrorHandler errorHandler, EventDispatcher<MySqlPartition, TableId> dispatcher, Clock clock, MySqlDatabaseSchema schema,
                                          MySqlTaskContext taskContext, MySqlStreamingChangeEventSourceMetrics streamingMetrics,
-                                         ChangeEventQueue<DataChangeEvent> queue, SnapshotterService snapshotterService) {
+                                         ChangeEventQueue<DataChangeEvent> queue, SnapshotterService snapshotterService, BeanRegistry beanRegistry) {
         this.configuration = configuration;
         this.connectionFactory = connectionFactory;
         this.errorHandler = errorHandler;
@@ -62,11 +64,13 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
         this.queue = queue;
         this.schema = schema;
         this.snapshotterService = snapshotterService;
+        this.beanRegistry = beanRegistry;
     }
 
     @Override
     public SnapshotChangeEventSource<MySqlPartition, MySqlOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<MySqlPartition> snapshotProgressListener,
-                                                                                                      NotificationService<MySqlPartition, MySqlOffsetContext> notificationService) {
+                                                                                                      NotificationService<MySqlPartition, MySqlOffsetContext> notificationService,
+                                                                                                      BeanRegistry beanRegistry) {
         return new MySqlSnapshotChangeEventSource(
                 configuration,
                 connectionFactory,
@@ -77,7 +81,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
                 this::modifyAndFlushLastRecord,
                 this::preSnapshot,
                 notificationService,
-                snapshotterService);
+                snapshotterService, this.beanRegistry);
     }
 
     private void preSnapshot() {

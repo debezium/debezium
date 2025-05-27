@@ -22,6 +22,8 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.binlog.BinlogEventMetadataProvider;
 import io.debezium.connector.binlog.BinlogSourceTask;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
+import io.debezium.connector.mysql.charset.MySqlCharsetRegistry;
+import io.debezium.connector.mysql.charset.MySqlCharsetRegistryServiceProvider;
 import io.debezium.connector.mysql.jdbc.MySqlConnection;
 import io.debezium.connector.mysql.jdbc.MySqlConnectionConfiguration;
 import io.debezium.connector.mysql.jdbc.MySqlFieldReaderResolver;
@@ -74,7 +76,14 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
         final MySqlConnectorConfig connectorConfig = new MySqlConnectorConfig(configuration);
         final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(MySqlConnectorConfig.TOPIC_NAMING_STRATEGY);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
-        final MySqlValueConverters valueConverters = getValueConverters(connectorConfig);
+        final MySqlValueConverters valueConverters = new MySqlValueConverters(
+                connectorConfig.getDecimalMode(),
+                connectorConfig.getTemporalPrecisionMode(),
+                connectorConfig.getBigIntUnsignedHandlingMode().asBigIntUnsignedMode(),
+                connectorConfig.binaryHandlingMode(),
+                connectorConfig.isTimeAdjustedEnabled() ? MySqlValueConverters::adjustTemporal : x -> x,
+                connectorConfig.getEventConvertingFailureHandlingMode(),
+                new MySqlCharsetRegistry());
 
         // DBZ-3238: automatically set "useCursorFetch" to true when a snapshot fetch size other than the default of -1 is given
         // By default do not load whole result sets into memory
@@ -96,21 +105,21 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                 new MySqlOffsetContext.Loader(connectorConfig));
 
         final boolean tableIdCaseInsensitive = connection.isTableIdCaseSensitive();
-        this.schema = new MySqlDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive);
+        this.schema = new MySqlDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive, getServiceRegistry());
 
         // Manual Bean Registration
         beanRegistryJdbcConnection = connectionFactory.newConnection();
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, beanRegistryJdbcConnection);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
+        getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
+        getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
+        getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
+        getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, beanRegistryJdbcConnection);
+        getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
+        getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
 
         // Service providers
-        registerServiceProviders(connectorConfig.getServiceRegistry());
+        registerServiceProviders();
 
-        final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
+        final SnapshotterService snapshotterService = getServiceRegistry().tryGetService(SnapshotterService.class);
         final Snapshotter snapshotter = snapshotterService.getSnapshotter();
 
         validateBinlogConfiguration(snapshotter, connection);
@@ -204,50 +213,40 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                                 MySqlFieldReaderResolver.resolve(connectorConfig)),
                         new BinlogHeartbeatErrorHandler()),
                 schemaNameAdjuster,
-                signalProcessor);
+                signalProcessor, getServiceRegistry());
 
         final MySqlStreamingChangeEventSourceMetrics streamingMetrics = new MySqlStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider);
 
         NotificationService<MySqlPartition, MySqlOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                 connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
 
+        final MySqlChangeEventSourceFactory mySqlChangeEventSourceFactory = new MySqlChangeEventSourceFactory(
+                connectorConfig,
+                connectionFactory,
+                errorHandler,
+                dispatcher,
+                clock,
+                schema,
+                taskContext,
+                streamingMetrics,
+                queue,
+                snapshotterService, getBeanRegistry());
         ChangeEventSourceCoordinator<MySqlPartition, MySqlOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                 previousOffsets,
                 errorHandler,
                 MySqlConnector.class,
                 connectorConfig,
-                new MySqlChangeEventSourceFactory(
-                        connectorConfig,
-                        connectionFactory,
-                        errorHandler,
-                        dispatcher,
-                        clock,
-                        schema,
-                        taskContext,
-                        streamingMetrics,
-                        queue,
-                        snapshotterService),
+                mySqlChangeEventSourceFactory,
                 new MySqlChangeEventSourceMetricsFactory(streamingMetrics),
                 dispatcher,
                 schema,
                 signalProcessor,
                 notificationService,
-                snapshotterService);
+                snapshotterService, getBeanRegistry(), getServiceRegistry());
 
         coordinator.start(taskContext, this.queue, metadataProvider);
 
         return coordinator;
-    }
-
-    private MySqlValueConverters getValueConverters(MySqlConnectorConfig configuration) {
-        return new MySqlValueConverters(
-                configuration.getDecimalMode(),
-                configuration.getTemporalPrecisionMode(),
-                configuration.getBigIntUnsignedHandlingMode().asBigIntUnsignedMode(),
-                configuration.binaryHandlingMode(),
-                configuration.isTimeAdjustedEnabled() ? MySqlValueConverters::adjustTemporal : x -> x,
-                configuration.getEventConvertingFailureHandlingMode(),
-                configuration.getServiceRegistry());
     }
 
     @Override
@@ -286,4 +285,10 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
         return MySqlConnectorConfig.ALL_FIELDS;
     }
 
+    @Override
+    protected void registerServiceProviders() {
+        super.registerServiceProviders();
+
+        getServiceRegistry().registerServiceProvider(new MySqlCharsetRegistryServiceProvider());
+    }
 }

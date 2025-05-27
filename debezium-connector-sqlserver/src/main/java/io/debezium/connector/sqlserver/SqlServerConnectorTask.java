@@ -94,17 +94,17 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 new SqlServerOffsetContext.Loader(connectorConfig));
 
         // Manual Bean Registration
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, metadataConnection);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, offsets);
+        getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
+        getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
+        getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
+        getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, metadataConnection);
+        getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
+        getBeanRegistry().add(StandardBeanNames.OFFSETS, offsets);
 
         // Service providers
-        registerServiceProviders(connectorConfig.getServiceRegistry());
+        registerServiceProviders();
 
-        final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
+        final SnapshotterService snapshotterService = getServiceRegistry().tryGetService(SnapshotterService.class);
 
         validateAndLoadSchemaHistory(connectorConfig, dataConnection::validateLogPosition, offsets, schema,
                 snapshotterService.getSnapshotter());
@@ -147,25 +147,27 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                             throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
                         }),
                 schemaNameAdjuster,
-                signalProcessor);
+                signalProcessor, getServiceRegistry());
 
         NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                 connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
 
+        final SqlServerChangeEventSourceFactory changeEventSourceFactory = new SqlServerChangeEventSourceFactory(connectorConfig, connectionFactory, metadataConnection,
+                errorHandler, dispatcher, clock, schema,
+                notificationService, snapshotterService, getBeanRegistry());
         ChangeEventSourceCoordinator<SqlServerPartition, SqlServerOffsetContext> coordinator = new SqlServerChangeEventSourceCoordinator(
                 offsets,
                 errorHandler,
                 SqlServerConnector.class,
                 connectorConfig,
-                new SqlServerChangeEventSourceFactory(connectorConfig, connectionFactory, metadataConnection, errorHandler, dispatcher, clock, schema,
-                        notificationService, snapshotterService),
+                changeEventSourceFactory,
                 new SqlServerMetricsFactory(offsets.getPartitions()),
                 dispatcher,
                 schema,
                 clock,
                 signalProcessor,
                 notificationService,
-                snapshotterService);
+                snapshotterService, getBeanRegistry(), getServiceRegistry());
 
         coordinator.start(taskContext, this.queue, metadataProvider);
 

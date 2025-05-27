@@ -38,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.jdbc.CancellableResultSet;
 import io.debezium.jdbc.JdbcConnection;
@@ -97,8 +98,8 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                                                MainConnectionProvidingConnectionFactory<? extends JdbcConnection> jdbcConnectionFactory,
                                                RelationalDatabaseSchema schema, EventDispatcher<P, TableId> dispatcher, Clock clock,
                                                SnapshotProgressListener<P> snapshotProgressListener, NotificationService<P, O> notificationService,
-                                               SnapshotterService snapshotterService) {
-        super(connectorConfig, snapshotProgressListener, notificationService);
+                                               SnapshotterService snapshotterService, BeanRegistry beanRegistry) {
+        super(connectorConfig, snapshotProgressListener, notificationService, beanRegistry);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = jdbcConnectionFactory.mainConnection();
         this.jdbcConnectionFactory = jdbcConnectionFactory;

@@ -33,8 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
-import io.debezium.bean.DefaultBeanRegistry;
-import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SourceInfoStructMaker;
@@ -52,8 +50,6 @@ import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.schema.SchemaTopicNamingStrategy;
-import io.debezium.service.DefaultServiceRegistry;
-import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.spi.converter.ConvertedField;
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.schema.DataCollectionId;
@@ -1183,13 +1179,7 @@ public abstract class CommonConnectorConfig {
     private final Map<String, String> customMetricTags;
     private WatermarkStrategy incrementalSnapshotWatermarkingStrategy;
 
-    // Intentionally protected so that subclasses can access internal contracts
-    protected final DefaultBeanRegistry beanRegistry;
-    protected final DefaultServiceRegistry serviceRegistry;
-
     protected CommonConnectorConfig(Configuration config, int defaultSnapshotFetchSize) {
-        this.beanRegistry = new DefaultBeanRegistry();
-        this.serviceRegistry = new DefaultServiceRegistry(config, beanRegistry);
         this.config = config;
         this.emitTombstoneOnDelete = config.getBoolean(CommonConnectorConfig.TOMBSTONES_ON_DELETE);
         this.maxQueueSize = config.getInteger(MAX_QUEUE_SIZE);
@@ -1279,14 +1269,6 @@ public abstract class CommonConnectorConfig {
     @Deprecated
     public Configuration getConfig() {
         return config;
-    }
-
-    public BeanRegistry getBeanRegistry() {
-        return beanRegistry;
-    }
-
-    public ServiceRegistry getServiceRegistry() {
-        return serviceRegistry;
     }
 
     public boolean isEmitTombstoneOnDelete() {

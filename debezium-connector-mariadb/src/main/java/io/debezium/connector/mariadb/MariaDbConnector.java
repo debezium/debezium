@@ -13,6 +13,7 @@ import org.apache.kafka.connect.connector.Task;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnector;
+import io.debezium.connector.mariadb.charset.MariaDbCharsetRegistry;
 import io.debezium.connector.mariadb.jdbc.MariaDbConnection;
 import io.debezium.connector.mariadb.jdbc.MariaDbConnectionConfiguration;
 import io.debezium.connector.mariadb.jdbc.MariaDbFieldReader;
@@ -50,7 +51,7 @@ public class MariaDbConnector extends BinlogConnector<MariaDbConnectorConfig> {
 
     @Override
     protected MariaDbConnection createConnection(Configuration config, MariaDbConnectorConfig connectorConfig) {
-        return new MariaDbConnection(new MariaDbConnectionConfiguration(config), new MariaDbFieldReader(connectorConfig));
+        return new MariaDbConnection(new MariaDbConnectionConfiguration(config), new MariaDbFieldReader(connectorConfig, new MariaDbCharsetRegistry()));
     }
 
     @Override

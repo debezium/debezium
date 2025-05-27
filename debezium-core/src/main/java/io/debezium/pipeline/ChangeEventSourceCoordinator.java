@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigurationDefaults;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
@@ -50,6 +51,7 @@ import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.pipeline.spi.SnapshotResult.SnapshotResultStatus;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
@@ -84,6 +86,8 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     protected final SignalProcessor<P, O> signalProcessor;
     protected final NotificationService<P, O> notificationService;
     protected final CommonConnectorConfig connectorConfig;
+    private final BeanRegistry beanRegistry;
+    private final ServiceRegistry serviceRegistry;
 
     private volatile boolean running;
     private volatile boolean paused;
@@ -103,7 +107,8 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                                         ChangeEventSourceFactory<P, O> changeEventSourceFactory,
                                         ChangeEventSourceMetricsFactory<P> changeEventSourceMetricsFactory, EventDispatcher<P, ?> eventDispatcher,
                                         DatabaseSchema<?> schema,
-                                        SignalProcessor<P, O> signalProcessor, NotificationService<P, O> notificationService, SnapshotterService snapshotterService) {
+                                        SignalProcessor<P, O> signalProcessor, NotificationService<P, O> notificationService, SnapshotterService snapshotterService,
+                                        BeanRegistry beanRegistry, ServiceRegistry serviceRegistry) {
         this.previousOffsets = previousOffsets;
         this.errorHandler = errorHandler;
         this.changeEventSourceFactory = changeEventSourceFactory;
@@ -116,6 +121,8 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
         this.signalProcessor = signalProcessor;
         this.notificationService = notificationService;
         this.connectorConfig = connectorConfig;
+        this.beanRegistry = beanRegistry;
+        this.serviceRegistry = serviceRegistry;
     }
 
     public synchronized void start(CdcSourceTaskContext taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
@@ -139,7 +146,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                     context = new ChangeEventSourceContextImpl();
                     LOGGER.info("Context created");
 
-                    snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(snapshotMetrics, notificationService);
+                    snapshotSource = changeEventSourceFactory.getSnapshotChangeEventSource(snapshotMetrics, notificationService, beanRegistry);
                     executeChangeEventSources(taskContext, snapshotSource, previousOffsets, previousLogContext, context);
                 }
                 catch (InterruptedException e) {
@@ -398,7 +405,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
             }
             eventDispatcher.close();
 
-            connectorConfig.getServiceRegistry().close();
+            serviceRegistry.close();
         }
         finally {
             snapshotMetrics.unregister();

@@ -7,6 +7,7 @@ package io.debezium.connector.mongodb;
 
 import java.util.Optional;
 
+import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.connector.mongodb.metrics.MongoDbStreamingChangeEventSourceMetrics;
 import io.debezium.connector.mongodb.snapshot.MongoDbIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.ErrorHandler;
@@ -38,11 +39,12 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
     private final MongoDbSchema schema;
     private final MongoDbStreamingChangeEventSourceMetrics streamingMetrics;
     private final SnapshotterService snapshotterService;
+    private final BeanRegistry beanRegistry;
 
     public MongoDbChangeEventSourceFactory(MongoDbConnectorConfig configuration, ErrorHandler errorHandler,
                                            EventDispatcher<MongoDbPartition, CollectionId> dispatcher, Clock clock,
                                            MongoDbTaskContext taskContext, MongoDbSchema schema,
-                                           MongoDbStreamingChangeEventSourceMetrics streamingMetrics, SnapshotterService snapshotterService) {
+                                           MongoDbStreamingChangeEventSourceMetrics streamingMetrics, SnapshotterService snapshotterService, BeanRegistry beanRegistry) {
         this.configuration = configuration;
         this.errorHandler = errorHandler;
         this.dispatcher = dispatcher;
@@ -51,11 +53,13 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
         this.schema = schema;
         this.streamingMetrics = streamingMetrics;
         this.snapshotterService = snapshotterService;
+        this.beanRegistry = beanRegistry;
     }
 
     @Override
     public SnapshotChangeEventSource<MongoDbPartition, MongoDbOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<MongoDbPartition> snapshotProgressListener,
-                                                                                                          NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService) {
+                                                                                                          NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService,
+                                                                                                          BeanRegistry beanRegistry) {
         return new MongoDbSnapshotChangeEventSource(
                 configuration,
                 taskContext,
@@ -64,7 +68,7 @@ public class MongoDbChangeEventSourceFactory implements ChangeEventSourceFactory
                 snapshotProgressListener,
                 errorHandler,
                 notificationService,
-                snapshotterService);
+                snapshotterService, this.beanRegistry);
     }
 
     @Override

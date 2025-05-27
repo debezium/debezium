@@ -7,6 +7,7 @@ package io.debezium.connector.postgresql;
 
 import java.util.Optional;
 
+import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
@@ -39,12 +40,13 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
     private final ReplicationConnection replicationConnection;
     private final SlotCreationResult slotCreatedInfo;
     private final SlotState startingSlotInfo;
+    private final BeanRegistry beanRegistry;
 
     public PostgresChangeEventSourceFactory(PostgresConnectorConfig configuration, SnapshotterService snapshotterService,
                                             MainConnectionProvidingConnectionFactory<PostgresConnection> connectionFactory,
                                             ErrorHandler errorHandler, PostgresEventDispatcher<TableId> dispatcher, Clock clock, PostgresSchema schema,
                                             PostgresTaskContext taskContext, ReplicationConnection replicationConnection, SlotCreationResult slotCreatedInfo,
-                                            SlotState startingSlotInfo) {
+                                            SlotState startingSlotInfo, BeanRegistry beanRegistry) {
         this.configuration = configuration;
         this.connectionFactory = connectionFactory;
         this.errorHandler = errorHandler;
@@ -56,11 +58,13 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
         this.replicationConnection = replicationConnection;
         this.slotCreatedInfo = slotCreatedInfo;
         this.startingSlotInfo = startingSlotInfo;
+        this.beanRegistry = beanRegistry;
     }
 
     @Override
     public SnapshotChangeEventSource<PostgresPartition, PostgresOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<PostgresPartition> snapshotProgressListener,
-                                                                                                            NotificationService<PostgresPartition, PostgresOffsetContext> notificationService) {
+                                                                                                            NotificationService<PostgresPartition, PostgresOffsetContext> notificationService,
+                                                                                                            BeanRegistry beanRegistry) {
         return new PostgresSnapshotChangeEventSource(
                 configuration,
                 snapshotterService,
@@ -71,7 +75,7 @@ public class PostgresChangeEventSourceFactory implements ChangeEventSourceFactor
                 snapshotProgressListener,
                 slotCreatedInfo,
                 startingSlotInfo,
-                notificationService);
+                notificationService, this.beanRegistry);
     }
 
     @Override

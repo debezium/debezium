@@ -88,17 +88,17 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         }
 
         // Manual Bean Registration
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, beanRegistryJdbcConnection);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
-        connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
+        getBeanRegistry().add(StandardBeanNames.CONFIGURATION, config);
+        getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
+        getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
+        getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, beanRegistryJdbcConnection);
+        getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
+        getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
 
         // Service providers
-        registerServiceProviders(connectorConfig.getServiceRegistry());
+        registerServiceProviders();
 
-        final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
+        final SnapshotterService snapshotterService = getServiceRegistry().tryGetService(SnapshotterService.class);
 
         validateRedoLogConfiguration(connectorConfig, snapshotterService);
 
@@ -156,7 +156,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                             throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
                         }),
                 schemaNameAdjuster,
-                signalProcessor);
+                signalProcessor, getServiceRegistry());
 
         final AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics = connectorConfig.getAdapter()
                 .getStreamingMetrics(taskContext, queue, metadataProvider, connectorConfig);
@@ -164,17 +164,27 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         NotificationService<OraclePartition, OracleOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                 connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
 
+        final OracleChangeEventSourceFactory oracleChangeEventSourceFactory = new OracleChangeEventSourceFactory(connectorConfig,
+                connectionFactory,
+                errorHandler,
+                dispatcher,
+                clock,
+                schema,
+                jdbcConfig,
+                taskContext,
+                streamingMetrics,
+                snapshotterService,
+                getBeanRegistry());
         ChangeEventSourceCoordinator<OraclePartition, OracleOffsetContext> coordinator = new ChangeEventSourceCoordinator<>(
                 previousOffsets,
                 errorHandler,
                 OracleConnector.class,
                 connectorConfig,
-                new OracleChangeEventSourceFactory(connectorConfig, connectionFactory, errorHandler, dispatcher, clock, schema, jdbcConfig, taskContext,
-                        streamingMetrics, snapshotterService),
+                oracleChangeEventSourceFactory,
                 new OracleChangeEventSourceMetricsFactory(streamingMetrics),
                 dispatcher,
                 schema, signalProcessor,
-                notificationService, snapshotterService);
+                notificationService, snapshotterService, getBeanRegistry(), getServiceRegistry());
 
         coordinator.start(taskContext, this.queue, metadataProvider);
 

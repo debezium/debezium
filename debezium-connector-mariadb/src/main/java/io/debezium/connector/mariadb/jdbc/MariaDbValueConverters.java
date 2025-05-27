@@ -16,13 +16,13 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import io.debezium.annotation.Immutable;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.CommonConnectorConfig.EventConvertingFailureHandlingMode;
+import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.binlog.jdbc.BinlogValueConverters;
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
 import io.debezium.data.Uuid;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.ValueConverter;
-import io.debezium.service.spi.ServiceRegistry;
 
 /**
  * MariaDB specific converter handlers for JDBC values.<p></p>
@@ -51,16 +51,15 @@ public class MariaDbValueConverters extends BinlogValueConverters {
      * @param binaryHandlingMode how binary columns should be treated
      * @param adjuster a temporal adjuster to make a database specific time before conversion
      * @param eventConvertingFailureHandlingMode how to handle conversion failures
-     * @param serviceRegistry the service registry, should not be {@code null}
+     * @param charsetRegistry
      */
     public MariaDbValueConverters(DecimalMode decimalMode,
                                   TemporalPrecisionMode temporalPrecisionMode,
                                   BigIntUnsignedMode bigIntUnsignedMode,
                                   BinaryHandlingMode binaryHandlingMode,
                                   TemporalAdjuster adjuster,
-                                  EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode,
-                                  ServiceRegistry serviceRegistry) {
-        super(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryHandlingMode, adjuster, eventConvertingFailureHandlingMode, serviceRegistry);
+                                  EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode, BinlogCharsetRegistry charsetRegistry) {
+        super(decimalMode, temporalPrecisionMode, bigIntUnsignedMode, binaryHandlingMode, adjuster, eventConvertingFailureHandlingMode, charsetRegistry);
     }
 
     @Override
