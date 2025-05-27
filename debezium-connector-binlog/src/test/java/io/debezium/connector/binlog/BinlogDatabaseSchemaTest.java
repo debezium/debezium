@@ -46,9 +46,14 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
             .withDbHistoryPath(TEST_FILE_PATH);
 
     private static final String SERVER_NAME = "testServer";
+    private final String ddlStatements;
 
     protected S schema;
     protected C connectorConfig;
+
+    protected BinlogDatabaseSchemaTest(String ddlStatements) {
+        this.ddlStatements = ddlStatements;
+    }
 
     @Before
     public void beforeEach() {
@@ -84,7 +89,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
         offset.setBinlogStartPoint("binlog.001", 400);
         schema.parseStreamingDdl(partition, "SET " + BinlogSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", null,
                 offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
-        schema.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1",
+        schema.parseStreamingDdl(partition, ddlStatements, "db1",
                 offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
         schema.close();
 
@@ -112,9 +117,9 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
         offset.setBinlogStartPoint("binlog.001", 400);
         schema.parseStreamingDdl(partition, "SET " + BinlogSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", null,
                 offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
-        schema.parseStreamingDdl(partition, "xxxCREATE TABLE mytable\n" + IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1",
+        schema.parseStreamingDdl(partition, "xxxCREATE TABLE mytable\n" + ddlStatements, "db1",
                 offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
-        schema.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1",
+        schema.parseStreamingDdl(partition, ddlStatements, "db1",
                 offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
         schema.close();
 
@@ -140,7 +145,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
         offset.setBinlogStartPoint("binlog.001", 400);
         schema.parseStreamingDdl(partition, "SET " + BinlogSystemVariables.CHARSET_NAME_SERVER + "=utf8mb4", null,
                 offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
-        schema.parseStreamingDdl(partition, "xxxCREATE TABLE mytable\n" + IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1",
+        schema.parseStreamingDdl(partition, "xxxCREATE TABLE mytable\n" + ddlStatements, "db1",
                 offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
     }
 
@@ -163,7 +168,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
                 offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
 
         offset.setBinlogStartPoint("binlog.001", 1000);
-        schema.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1",
+        schema.parseStreamingDdl(partition, ddlStatements, "db1",
                 offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
         schema.close();
 
@@ -197,7 +202,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
                 offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
 
         offset.setBinlogStartPoint("binlog.001", 1000);
-        schema.parseStreamingDdl(partition, IoUtil.readClassPathResource("ddl/mysql-products.ddl"), "db1",
+        schema.parseStreamingDdl(partition, ddlStatements, "db1",
                 offset, Instant.now()).forEach(x -> schema.applySchemaChange(x));
         schema.close();
 
