@@ -1775,7 +1775,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 sink,
                 "time(7)",
                 List.of("'14:15:16.456789012'"),
-                List.of(sink.getType().is(SinkType.DB2) ? "14:15:16Z" : "14:15:16.456789Z"),
+                List.of("14:15:16.456789Z"),
                 (record) -> assertColumn(sink, record, "data", getTextType()),
                 ResultSet::getString);
     }
