@@ -95,9 +95,6 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
         getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
 
-        // Service providers
-        registerServiceProviders();
-
         final SnapshotterService snapshotterService = getServiceRegistry().tryGetService(SnapshotterService.class);
 
         validateRedoLogConfiguration(connectorConfig, snapshotterService);

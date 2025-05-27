@@ -126,8 +126,7 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
         getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
         getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
 
-        // Service providers
-        registerServiceProviders();
+        getServiceRegistry().registerServiceProvider(new MariaDbCharsetRegistryServiceProvider());
 
         final SnapshotterService snapshotterService = getServiceRegistry().tryGetService(SnapshotterService.class);
         final Snapshotter snapshotter = snapshotterService.getSnapshotter();
@@ -301,9 +300,4 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
         return new MariaDbFieldReader(connectorConfig, new MariaDbCharsetRegistry());
     }
 
-    @Override
-    protected void registerServiceProviders() {
-        getServiceRegistry().registerServiceProvider(new MariaDbCharsetRegistryServiceProvider());
-        super.registerServiceProviders();
-    }
 }

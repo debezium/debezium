@@ -245,6 +245,10 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             config = Configuration.from(props);
             this.beanRegistry = new DefaultBeanRegistry();
             this.serviceRegistry = new DefaultServiceRegistry(config, beanRegistry);
+            serviceRegistry.registerServiceProvider(new PostProcessorRegistryServiceProvider());
+            serviceRegistry.registerServiceProvider(new SnapshotLockProvider());
+            serviceRegistry.registerServiceProvider(new SnapshotQueryProvider());
+            serviceRegistry.registerServiceProvider(new SnapshotterServiceProvider());
 
             retriableRestartWait = config.getDuration(CommonConnectorConfig.RETRIABLE_RESTART_WAIT, ChronoUnit.MILLIS);
             // need to reset the delay or you only get one delayed restart
@@ -588,13 +592,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
     public List<NotificationChannel> getNotificationChannels() {
         return notificationChannels;
-    }
-
-    protected void registerServiceProviders() {
-        serviceRegistry.registerServiceProvider(new PostProcessorRegistryServiceProvider());
-        serviceRegistry.registerServiceProvider(new SnapshotLockProvider());
-        serviceRegistry.registerServiceProvider(new SnapshotQueryProvider());
-        serviceRegistry.registerServiceProvider(new SnapshotterServiceProvider());
     }
 
     public BeanRegistry getBeanRegistry() {

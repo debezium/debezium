@@ -118,9 +118,6 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
             getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
             getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
 
-            // Service providers
-            registerServiceProviders();
-
             final SnapshotterService snapshotterService = getServiceRegistry().tryGetService(SnapshotterService.class);
 
             final EventDispatcher<MongoDbPartition, CollectionId> dispatcher = new EventDispatcher<>(

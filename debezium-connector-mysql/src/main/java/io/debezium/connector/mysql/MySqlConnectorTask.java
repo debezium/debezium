@@ -116,8 +116,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
         getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
         getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
 
-        // Service providers
-        registerServiceProviders();
+        getServiceRegistry().registerServiceProvider(new MySqlCharsetRegistryServiceProvider());
 
         final SnapshotterService snapshotterService = getServiceRegistry().tryGetService(SnapshotterService.class);
         final Snapshotter snapshotter = snapshotterService.getSnapshotter();
@@ -285,10 +284,4 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
         return MySqlConnectorConfig.ALL_FIELDS;
     }
 
-    @Override
-    protected void registerServiceProviders() {
-        super.registerServiceProviders();
-
-        getServiceRegistry().registerServiceProvider(new MySqlCharsetRegistryServiceProvider());
-    }
 }

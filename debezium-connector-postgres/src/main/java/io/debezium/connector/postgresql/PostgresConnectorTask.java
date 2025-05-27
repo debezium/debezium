@@ -130,9 +130,6 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverter);
         getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
 
-        // Service providers
-        registerServiceProviders();
-
         final SnapshotterService snapshotterService = getServiceRegistry().tryGetService(SnapshotterService.class);
         final Snapshotter snapshotter = snapshotterService.getSnapshotter();
 

@@ -101,9 +101,6 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
         getBeanRegistry().add(StandardBeanNames.OFFSETS, offsets);
 
-        // Service providers
-        registerServiceProviders();
-
         final SnapshotterService snapshotterService = getServiceRegistry().tryGetService(SnapshotterService.class);
 
         validateAndLoadSchemaHistory(connectorConfig, dataConnection::validateLogPosition, offsets, schema,
