@@ -82,7 +82,18 @@ public class JdbcConnection implements AutoCloseable {
 
     private static final int WAIT_FOR_CLOSE_SECONDS = 10;
     private static final char STATEMENT_DELIMITER = ';';
+
+    /**
+     * The special characters that need to be escaped as part of the pattern being passed to the JDBC's DatabaseMetaData methods.
+     */
+    private static final Set<Character> SPECIAL_CHARS = Set.of('%', '_', '[', ']', '\\');
+
+    /**
+     * The escape character used to escape special characters in the patterns being passed to the JDBC's
+     * DatabaseMetaData methods.
+     */
     private static final String ESCAPE_CHAR = "\\";
+
     private static final int STATEMENT_CACHE_CAPACITY = 10_000;
     private final static Logger LOGGER = LoggerFactory.getLogger(JdbcConnection.class);
     private static final int CONNECTION_VALID_CHECK_TIMEOUT_IN_SEC = 3;
@@ -1257,8 +1268,25 @@ public class JdbcConnection implements AutoCloseable {
         return catalogName;
     }
 
-    protected String escapeEscapeSequence(String str) {
-        return str.replace(ESCAPE_CHAR, ESCAPE_CHAR.concat(ESCAPE_CHAR));
+    /**
+     * Given a database object name, creates a pattern, escaping any special characters such that the pattern matches
+     * the name itself.
+     */
+    protected String createPatternFromName(String name) {
+        if (name == null) {
+            return null;
+        }
+
+        StringBuilder pattern = new StringBuilder();
+
+        for (char c : name.toCharArray()) {
+            if (SPECIAL_CHARS.contains(c)) {
+                pattern.append(ESCAPE_CHAR);
+            }
+            pattern.append(c);
+        }
+
+        return pattern.toString();
     }
 
     protected Map<TableId, List<Column>> getColumnsDetails(String databaseCatalog, String schemaNamePattern,
@@ -1266,10 +1294,8 @@ public class JdbcConnection implements AutoCloseable {
                                                            final Set<TableId> viewIds)
             throws SQLException {
         Map<TableId, List<Column>> columnsByTable = new HashMap<>();
-        if (tableName != null && tableName.contains(ESCAPE_CHAR)) {
-            tableName = escapeEscapeSequence(tableName);
-        }
-        try (ResultSet columnMetadata = metadata.getColumns(databaseCatalog, schemaNamePattern, tableName, null)) {
+        String tableNamePattern = createPatternFromName(tableName);
+        try (ResultSet columnMetadata = metadata.getColumns(databaseCatalog, schemaNamePattern, tableNamePattern, null)) {
             while (columnMetadata.next()) {
                 String catalogName = resolveCatalogName(columnMetadata.getString(1));
                 String schemaName = columnMetadata.getString(2);
