@@ -10,8 +10,6 @@ return { parametersContext ->
         )
         stringParam('POSTGRES_DECODER_REPOSITORY', 'github.com/debezium/postgres-decoderbufs.git', 'Repository from which PostgreSQL decoder plugin is built')
         stringParam('POSTGRES_DECODER_BRANCH', 'main', 'A branch from which Debezium images are built PostgreSQL decoder plugin is built')
-        stringParam('UI_REPOSITORY', 'github.com/debezium/debezium-ui.git', 'Repository from which Debezium UI is built')
-        stringParam('UI_BRANCH', 'main', 'A branch from which Debezium UI is built')
         booleanParam('IGNORE_SNAPSHOTS', false, 'When checked, snapshot dependencies are allowed to be released; otherwise build fails')
         stringParam('MAVEN_CENTRAL_SYNC_TIMEOUT', '12', 'Timeout in hours to wait for artifacts being published in the Maven Central')
         booleanParam('CHECK_BACKPORTS', false, 'When checked the back ports between the two provided versions will be compared')
