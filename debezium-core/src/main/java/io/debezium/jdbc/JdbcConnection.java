@@ -83,7 +83,29 @@ public class JdbcConnection implements AutoCloseable {
 
     private static final int WAIT_FOR_CLOSE_SECONDS = 10;
     private static final char STATEMENT_DELIMITER = ';';
-    private static final String ESCAPE_CHAR = "\\";
+
+    /**
+     * The escape character used to escape special characters in the patterns being passed to the JDBC's
+     * DatabaseMetaData methods.
+     */
+    private static final Character ESCAPE_CHAR = '\\';
+
+    /**
+     * The special characters that must be escaped when constructing patterns for JDBC {@link java.sql.DatabaseMetaData}
+     * methods such as {@code getColumns}, {@code getTables}, etc.
+     *
+     * <p>These characters require escaping due to their special meaning in SQL {@code LIKE} patterns:
+     *
+     * <ol>
+     *     <li>{@code %} and {@code _} are wildcard characters defined by the ANSI SQL standard.</li>
+     *     <li>{@code [} is used in SQL Server's extended pattern syntax to define character ranges or sets.</li>
+     *     <li>The escape character itself (denoted by {@code ESCAPE_CHAR}) must also be escaped.</li>
+     * </ol>
+     *
+     * @see <a href="https://learn.microsoft.com/en-us/sql/t-sql/language-elements/like-transact-sql#pattern">SQL Server LIKE pattern syntax</a>
+     */
+    private static final Set<Character> SPECIAL_CHARS = Set.of('%', '_', '[', ESCAPE_CHAR);
+
     private static final int STATEMENT_CACHE_CAPACITY = 10_000;
     private final static Logger LOGGER = LoggerFactory.getLogger(JdbcConnection.class);
     private static final int CONNECTION_VALID_CHECK_TIMEOUT_IN_SEC = 3;
@@ -1258,8 +1280,25 @@ public class JdbcConnection implements AutoCloseable {
         return catalogName;
     }
 
-    protected String escapeEscapeSequence(String str) {
-        return str.replace(ESCAPE_CHAR, ESCAPE_CHAR.concat(ESCAPE_CHAR));
+    /**
+     * Given a database object name, creates a pattern, escaping any special characters such that the pattern matches
+     * the name itself.
+     */
+    protected String createPatternFromName(String name) {
+        if (name == null) {
+            return null;
+        }
+
+        StringBuilder pattern = new StringBuilder();
+
+        for (char c : name.toCharArray()) {
+            if (SPECIAL_CHARS.contains(c)) {
+                pattern.append(ESCAPE_CHAR);
+            }
+            pattern.append(c);
+        }
+
+        return pattern.toString();
     }
 
     protected Map<TableId, List<Column>> getColumnsDetails(String databaseCatalog, String schemaNamePattern,
@@ -1267,10 +1306,8 @@ public class JdbcConnection implements AutoCloseable {
                                                            final Set<TableId> viewIds)
             throws SQLException {
         Map<TableId, List<Column>> columnsByTable = new HashMap<>();
-        if (tableName != null && tableName.contains(ESCAPE_CHAR)) {
-            tableName = escapeEscapeSequence(tableName);
-        }
-        try (ResultSet columnMetadata = metadata.getColumns(databaseCatalog, schemaNamePattern, tableName, null)) {
+        String tableNamePattern = createPatternFromName(tableName);
+        try (ResultSet columnMetadata = metadata.getColumns(databaseCatalog, schemaNamePattern, tableNamePattern, null)) {
             while (columnMetadata.next()) {
                 String catalogName = resolveCatalogName(columnMetadata.getString(1));
                 String schemaName = columnMetadata.getString(2);
