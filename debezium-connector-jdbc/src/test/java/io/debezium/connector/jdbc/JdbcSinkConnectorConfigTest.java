@@ -28,6 +28,7 @@ import io.debezium.connector.jdbc.naming.TableNamingStrategy;
 import io.debezium.connector.jdbc.naming.TemporaryBackwardCompatibleCollectionNamingStrategyProxy;
 import io.debezium.connector.jdbc.util.DebeziumSinkRecordFactory;
 import io.debezium.doc.FixFor;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
 import io.debezium.sink.naming.CollectionNamingStrategy;
 
@@ -161,10 +162,10 @@ public class JdbcSinkConnectorConfigTest {
     public void testDeprecatedDatabaseTimeZone() {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(Map.of(JdbcSinkConnectorConfig.DEPRECATED_DATABASE_TIME_ZONE, "CEST"));
         AtomicReference<String> errorMessage = new AtomicReference<>();
+        LogInterceptor logInterceptor = new LogInterceptor(Field.class.getName());
         assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.USE_TIME_ZONE_FIELD), errorMessage::set)).isTrue();
-        assertEquals(
-                "The 'use.time.zone' value is invalid: Warning: Using deprecated config option \"database.time_zone\".",
-                errorMessage.get());
+        assertThat(errorMessage.get()).isNull();
+        assertThat(logInterceptor.containsWarnMessage("Using deprecated config option \"database.time_zone\".")).isTrue();
         assertEquals("CEST", config.useTimeZone());
     }
 
@@ -176,13 +177,13 @@ public class JdbcSinkConnectorConfigTest {
         final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(properties);
 
         AtomicReference<String> errorMessage = new AtomicReference<>();
+        LogInterceptor logInterceptor = new LogInterceptor(Field.class.getName());
         assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.COLLECTION_NAMING_STRATEGY_FIELD), errorMessage::set)).isTrue();
-        assertEquals(
-                "The 'collection.naming.strategy' value is invalid: Warning: Using deprecated config option \"table.naming.strategy\".",
-                errorMessage.get());
+        assertThat(errorMessage.get()).isNull();
+        assertThat(logInterceptor.containsWarnMessage("Using deprecated config option \"table.naming.strategy\".")).isTrue();
         assertThat(config.validateAndRecord(List.of(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT_FIELD), errorMessage::set)).isTrue();
-        assertEquals("The 'collection.name.format' value is invalid: Warning: Using deprecated config option \"table.name.format\".",
-                errorMessage.get());
+        assertThat(errorMessage.get()).isNull();
+        assertThat(logInterceptor.containsWarnMessage("Using deprecated config option \"table.naming.strategy\".")).isTrue();
 
         // testing the proxy
         TemporaryBackwardCompatibleCollectionNamingStrategyProxy collectionNamingStrategyProxy = (TemporaryBackwardCompatibleCollectionNamingStrategyProxy) config
