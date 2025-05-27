@@ -16,6 +16,7 @@ import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.awaitility.Awaitility;
@@ -60,7 +61,6 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     public void shouldProduceOpenLineageStartEvent() throws Exception {
-        // TestHelper.execute(SETUP_TABLES_STMT);
 
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
@@ -87,7 +87,6 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     public void shouldProduceOpenLineageRunningEvent() throws Exception {
-        // TestHelper.execute(SETUP_TABLES_STMT);
 
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
@@ -114,7 +113,6 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     public void shouldProduceOpenLineageCompleteEvent() throws Exception {
-        // TestHelper.execute(SETUP_TABLES_STMT);
 
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
@@ -160,14 +158,14 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
 
         waitForSnapshotToBeCompleted("postgres", TestHelper.TEST_SERVER);
 
-        List<OpenLineage.RunEvent> runningEvents = debeziumTestTransport.getRunEvents().stream()
-                .filter(e -> e.getEventType() == OpenLineage.RunEvent.EventType.RUNNING)
-                .toList();
-
         Awaitility.await()
                 .atMost(30, TimeUnit.SECONDS)
                 .pollInterval(1, TimeUnit.SECONDS)
-                .until(() -> runningEvents.size() == 5);
+                .until(() -> debeziumTestTransport.getRunEvents().size() == 6);
+
+        List<OpenLineage.RunEvent> runningEvents = debeziumTestTransport.getRunEvents().stream()
+                .filter(e -> e.getEventType() == OpenLineage.RunEvent.EventType.RUNNING)
+                .toList();
 
         assertThat(runningEvents).hasSize(5);
 
@@ -217,8 +215,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldProduceOpenLineageFailEvent() throws Exception {
-        // TestHelper.execute(SETUP_TABLES_STMT);
+    public void shouldProduceOpenLineageFailEvent() {
 
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
@@ -262,13 +259,178 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
         });
     }
 
-    private static void assertCorrectInputDataset(List<OpenLineage.InputDataset> inputs, String expectedTableName, List<String> expectedFields) {
+    @Test
+    public void shouldProduceOpenLineageOutputDataset() throws Exception {
+
+        TestHelper.execute(SETUP_TABLES_STMT);
+
+        DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
+        Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL.getValue())
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
+                .with("schema.history.internal.kafka.bootstrap.servers", "test-kafka:9092")
+                .with("openlineage.integration.enabled", true)
+                .with("openlineage.integration.config.file.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
+                .with("openlineage.integration.job.description", "This connector does cdc for products")
+                .with("openlineage.integration.job.tags", "env=prod,team=cdc")
+                .with("openlineage.integration.job.owners", "Mario=maintainer,John Doe=Data scientist")
+                .with("transforms", "openlineage")
+                .with("transforms.openlineage.type", "io.debezium.transforms.openlineage.OpenLineage");
+
+        start(PostgresConnector.class, configBuilder.build());
+
+        waitForSnapshotToBeCompleted("postgres", TestHelper.TEST_SERVER);
+
+        waitForAvailableRecords();
+
+        Awaitility.await()
+                .atMost(30, TimeUnit.SECONDS)
+                .pollInterval(1, TimeUnit.SECONDS)
+                .until(() -> debeziumTestTransport.getRunEvents().size() == 8);
+
+        List<OpenLineage.RunEvent> runningEvents = debeziumTestTransport.getRunEvents().stream()
+                .filter(e -> e.getEventType() == OpenLineage.RunEvent.EventType.RUNNING)
+                .toList();
+
+        assertThat(runningEvents).hasSize(7);
+
+        assertCorrectOutputDataset(runningEvents.get(5).getOutputs(), "test_server.s1.a", List.of("before;STRUCT",
+                "before.pk;INT32",
+                "before.aa;INT32",
+                "after;STRUCT",
+                "after.pk;INT32",
+                "after.aa;INT32",
+                "source;STRUCT",
+                "source.version;STRING",
+                "source.connector;STRING",
+                "source.name;STRING",
+                "source.ts_ms;INT64",
+                "source.snapshot;STRING",
+                "source.db;STRING",
+                "source.sequence;STRING",
+                "source.ts_us;INT64",
+                "source.ts_ns;INT64",
+                "source.schema;STRING",
+                "source.table;STRING",
+                "source.txId;INT64",
+                "source.lsn;INT64",
+                "source.xmin;INT64",
+                "transaction;STRUCT",
+                "transaction.id;STRING",
+                "transaction.total_order;INT64",
+                "transaction.data_collection_order;INT64",
+                "op;STRING",
+                "ts_ms;INT64",
+                "ts_us;INT64",
+                "ts_ns;INT64"));
+        assertCorrectOutputDataset(runningEvents.get(6).getOutputs(), "test_server.s2.a", List.of("before;STRUCT",
+                "before.pk;INT32",
+                "before.aa;INT32",
+                "after;STRUCT",
+                "after.pk;INT32",
+                "after.aa;INT32",
+                "source;STRUCT",
+                "source.version;STRING",
+                "source.connector;STRING",
+                "source.name;STRING",
+                "source.ts_ms;INT64",
+                "source.snapshot;STRING",
+                "source.db;STRING",
+                "source.sequence;STRING",
+                "source.ts_us;INT64",
+                "source.ts_ns;INT64",
+                "source.schema;STRING",
+                "source.table;STRING",
+                "source.txId;INT64",
+                "source.lsn;INT64",
+                "source.xmin;INT64",
+                "transaction;STRUCT",
+                "transaction.id;STRING",
+                "transaction.total_order;INT64",
+                "transaction.data_collection_order;INT64",
+                "op;STRING",
+                "ts_ms;INT64",
+                "ts_us;INT64",
+                "ts_ns;INT64"));
+
+    }
+
+    private static void assertCorrectInputDataset(List<OpenLineage.InputDataset> inputs, String expectedName, List<String> expectedFields) {
         assertThat(inputs).hasSize(1);
-        assertThat(inputs.get(0).getName()).isEqualTo(expectedTableName);
+        assertThat(inputs.get(0).getName()).isEqualTo(expectedName);
         assertThat(inputs.get(0).getNamespace()).isEqualTo("postgres://localhost:5432");
         List<OpenLineage.SchemaDatasetFacetFields> tableFields = inputs.get(0).getFacets().getSchema().getFields();
         List<String> actualFields = tableFields.stream().map(f -> String.format("%s;%s", f.getName(), f.getType())).toList();
         assertThat(actualFields).containsAll(expectedFields);
+    }
+
+    private static void assertCorrectOutputDataset(List<OpenLineage.OutputDataset> outputs, String expectedName, List<String> expectedFields) {
+        assertThat(outputs).hasSize(1);
+        assertThat(outputs.get(0).getName()).isEqualTo(expectedName);
+        assertThat(outputs.get(0).getNamespace()).isEqualTo("kafka://test-kafka:9092");
+        List<OpenLineage.SchemaDatasetFacetFields> tableFields = outputs.get(0).getFacets().getSchema().getFields();
+        List<String> actualFields = flattenFields(tableFields);
+        assertThat(actualFields).containsAll(expectedFields);
+    }
+
+    private static List<String> flattenFields(List<OpenLineage.SchemaDatasetFacetFields> fields) {
+        return fields.stream()
+                .flatMap(field -> flattenField(field, ""))
+                .toList();
+    }
+
+    private static Stream<String> flattenField(OpenLineage.SchemaDatasetFacetFields field, String prefix) {
+        String currentFieldName = prefix.isEmpty() ? field.getName() : prefix + "." + field.getName();
+        String fieldInfo = String.format("%s;%s", currentFieldName, field.getType());
+
+        if (field.getFields() != null && !field.getFields().isEmpty()) {
+            return Stream.concat(
+                    Stream.of(fieldInfo),
+                    field.getFields().stream()
+                            .flatMap(nestedField -> flattenField(nestedField, currentFieldName)));
+        }
+
+        return Stream.of(fieldInfo);
+    }
+
+    // Alternative version that checks structure hierarchically instead of flattening
+    private static void assertCorrectOutputDatasetHierarchical(List<OpenLineage.OutputDataset> outputs, String expectedName, Map<String, Object> expectedStructure) {
+        assertThat(outputs).hasSize(1);
+        assertThat(outputs.get(0).getName()).isEqualTo(expectedName);
+        assertThat(outputs.get(0).getNamespace()).isEqualTo("kafka://test-kafka:9092");
+        List<OpenLineage.SchemaDatasetFacetFields> tableFields = outputs.get(0).getFacets().getSchema().getFields();
+        assertFieldStructure(tableFields, expectedStructure);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void assertFieldStructure(List<OpenLineage.SchemaDatasetFacetFields> actualFields, Map<String, Object> expectedStructure) {
+        for (Map.Entry<String, Object> expected : expectedStructure.entrySet()) {
+            String fieldName = expected.getKey();
+            Object fieldSpec = expected.getValue();
+
+            OpenLineage.SchemaDatasetFacetFields actualField = actualFields.stream()
+                    .filter(f -> f.getName().equals(fieldName))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Field not found: " + fieldName));
+
+            if (fieldSpec instanceof String) {
+                // Simple field: just check type
+                assertThat(actualField.getType()).isEqualTo(fieldSpec);
+                assertThat(actualField.getFields()).isNullOrEmpty();
+            }
+            else if (fieldSpec instanceof Map) {
+                // Nested field: check type and recurse
+                Map<String, Object> nestedSpec = (Map<String, Object>) fieldSpec;
+                String expectedType = (String) nestedSpec.get("type");
+                Map<String, Object> expectedNestedFields = (Map<String, Object>) nestedSpec.get("fields");
+
+                assertThat(actualField.getType()).isEqualTo(expectedType);
+                if (expectedNestedFields != null && !expectedNestedFields.isEmpty()) {
+                    assertThat(actualField.getFields()).isNotEmpty();
+                    assertFieldStructure(actualField.getFields(), expectedNestedFields);
+                }
+            }
+        }
     }
 
     private static DebeziumTestTransport getDebeziumTestTransport() {

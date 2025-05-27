@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.openlineage;
+package io.debezium.openlineage.emitter;
 
 import java.util.List;
 
@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.openlineage.dataset.DatasetMetadata;
 
 public class NoOpLineageEmitter implements LineageEmitter {
 
@@ -31,12 +32,12 @@ public class NoOpLineageEmitter implements LineageEmitter {
     }
 
     @Override
-    public void emit(BaseSourceTask.State state, List<DataCollectionMetadata> inputDatasetMetadata) {
-        LOGGER.debug("Emitting lineage event for {} for dataset {}", state.name(), inputDatasetMetadata);
+    public void emit(BaseSourceTask.State state, List<DatasetMetadata> datasetMetadata) {
+        LOGGER.debug("Emitting lineage event for {} for dataset {}", state.name(), datasetMetadata);
     }
 
     @Override
-    public void emit(BaseSourceTask.State state, List<DataCollectionMetadata> inputDatasetMetadata, Throwable t) {
-        LOGGER.debug("Emitting lineage event for {} for dataset {}", state.name(), inputDatasetMetadata, t);
+    public void emit(BaseSourceTask.State state, List<DatasetMetadata> datasetMetadata, Throwable t) {
+        LOGGER.debug("Emitting lineage event for {} for dataset {}", state.name(), datasetMetadata, t);
     }
 }

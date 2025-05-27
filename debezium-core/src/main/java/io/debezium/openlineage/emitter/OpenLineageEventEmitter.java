@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.debezium.openlineage;
+package io.debezium.openlineage.emitter;
 
 import java.net.URI;
 import java.nio.file.Path;
@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.Module;
+import io.debezium.openlineage.DebeziumOpenLineageConfiguration;
 import io.openlineage.client.Clients;
 import io.openlineage.client.OpenLineage;
 import io.openlineage.client.OpenLineageClient;
