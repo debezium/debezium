@@ -5,16 +5,24 @@
  */
 package io.debezium.openlineage;
 
+import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicReference;
 
 import io.debezium.config.Configuration;
 import io.debezium.openlineage.dataset.DatasetNamespaceResolverFactory;
+import io.debezium.openlineage.dataset.DefaultDatasetNamespaceResolverFactory;
+import io.debezium.openlineage.emitter.LineageEmitter;
+import io.debezium.openlineage.emitter.LineageEmitterFactory;
+import io.debezium.openlineage.emitter.NoOpLineageEmitter;
+import io.debezium.openlineage.emitter.OpenLineageEmitter;
+import io.debezium.openlineage.emitter.OpenLineageEventEmitter;
 import io.openlineage.client.OpenLineage;
 
 public class DebeziumLineageEmitterFactory implements LineageEmitterFactory {
 
     private static final String CONNECTOR_NAME_PROPERTY = "name";
     private static final AtomicReference<OpenLineageContext> contextRef = new AtomicReference<>();
+    private static final ServiceLoader<DatasetNamespaceResolverFactory> datasetNamespaceResolverFactory = ServiceLoader.load(DatasetNamespaceResolverFactory.class);
 
     @Override
     public LineageEmitter get(Configuration connectorConfig, String connName) {
@@ -32,7 +40,14 @@ public class DebeziumLineageEmitterFactory implements LineageEmitterFactory {
                 contextRef.compareAndSet(null, ctx);
             }
 
-            return new OpenLineageEmitter(connName, connectorConfig, contextRef.get(), emitter, DatasetNamespaceResolverFactory.create(connName));
+            DatasetNamespaceResolverFactory namespaceResolverFactory = datasetNamespaceResolverFactory
+                    .stream()
+                    .findFirst()
+                    .map(ServiceLoader.Provider::get)
+                    .orElse(new DefaultDatasetNamespaceResolverFactory());
+
+            return new OpenLineageEmitter(connName, connectorConfig, contextRef.get(), emitter, namespaceResolverFactory.createInput(connName),
+                    namespaceResolverFactory.createOutput(connName));
         }
 
         return new NoOpLineageEmitter();

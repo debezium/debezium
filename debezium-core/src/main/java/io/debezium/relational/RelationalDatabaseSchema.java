@@ -5,6 +5,8 @@
  */
 package io.debezium.relational;
 
+import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetType.INPUT;
+
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,8 +17,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.common.BaseSourceTask;
-import io.debezium.openlineage.DataCollectionMetadata;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
+import io.debezium.openlineage.dataset.DatasetMetadata;
 import io.debezium.relational.Key.KeyMapper;
 import io.debezium.relational.Tables.ColumnNameFilter;
 import io.debezium.relational.Tables.TableFilter;
@@ -129,13 +131,13 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
         }
     }
 
-    private DataCollectionMetadata extractDatasetMetadata(Table table) {
+    private DatasetMetadata extractDatasetMetadata(Table table) {
 
-        List<DataCollectionMetadata.FieldDefinition> fieldDefinitions = table.columns().stream()
-                .map(c -> new DataCollectionMetadata.FieldDefinition(c.name(), c.typeName(), c.comment()))
+        List<DatasetMetadata.FieldDefinition> fieldDefinitions = table.columns().stream()
+                .map(c -> new DatasetMetadata.FieldDefinition(c.name(), c.typeName(), c.comment()))
                 .toList();
 
-        return new DataCollectionMetadata(table.id(), fieldDefinitions);
+        return new DatasetMetadata(table.id().identifier(), INPUT, fieldDefinitions);
     }
 
     protected void removeSchema(TableId id) {

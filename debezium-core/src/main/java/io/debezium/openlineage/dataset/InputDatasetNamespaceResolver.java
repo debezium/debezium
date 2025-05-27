@@ -7,7 +7,7 @@ package io.debezium.openlineage.dataset;
 
 import io.debezium.config.Configuration;
 
-public interface DatasetNamespaceResolver {
+public interface InputDatasetNamespaceResolver {
 
     String INPUT_DATASET_NAMESPACE_FORMAT = "%s://%s:%s";
 

@@ -9,7 +9,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.JdbcConfiguration;
 
-public class DefaultDatasetNamespaceResolver implements DatasetNamespaceResolver {
+public class DefaultInputDatasetNamespaceResolver implements InputDatasetNamespaceResolver {
 
     @Override
     public String resolve(Configuration configuration, String connectorName) {
