@@ -740,7 +740,7 @@ alterSpecification
     | DROP COLUMN? ifExists? uid RESTRICT?                                # alterByDropColumn          // here ifExists is MariaDB-specific only
     | DROP (CONSTRAINT | CHECK) ifExists? uid                             # alterByDropConstraintCheck // here ifExists is MariaDB-specific only
     | DROP PRIMARY KEY                                                    # alterByDropPrimaryKey
-    | ADD PRIMARY KEY ifNotExists? '(' uid ')'                            # alterByNotExistingPrimaryKey
+    | ADD PRIMARY KEY ifNotExists? '(' uid ')'                            # alterByNotExistingPrimaryKey // MariaDB-specific only
     | DROP indexFormat = (INDEX | KEY) ifExists? uid                      # alterByDropIndex // here ifExists is MariaDB-specific only
     | RENAME indexFormat = (INDEX | KEY) uid TO uid                       # alterByRenameIndex
     | ALTER INDEX uid (VISIBLE | INVISIBLE)                               # alterByAlterIndexVisibility
