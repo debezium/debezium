@@ -529,6 +529,30 @@ INSERT INTO %s(id, history_data, history_data_seq, record_insert_ts, record_inse
 |false
 |Specifies whether {prodname} has hostname verification enabled when communicating with Redis to store offset data.
 
+|[[offset-storage-redis-truststore-path]]<<offset-storage-redis-truststore-path, `offset.storage.redis.ssl.truststore.path`>>
+|No default
+|The path to the trust store file used for SSL/TLS connections to Redis for offset storage. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[offset-storage-redis-truststore-password]]<<offset-storage-redis-truststore-password, `offset.storage.redis.ssl.truststore.password`>>
+|No default
+|The password for the trust store file used for SSL/TLS connections to Redis for offset storage. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[offset-storage-redis-truststore-type]]<<offset-storage-redis-truststore-type, `offset.storage.redis.ssl.truststore.type`>>
+|JKS
+|The type of the trust store file used for SSL/TLS connections to Redis for offset storage. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[offset-storage-redis-keystore-path]]<<offset-storage-redis-keystore-path, `offset.storage.redis.ssl.keystore.path`>>
+|No default
+|The path to the key store file used for SSL/TLS connections to Redis for offset storage. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[offset-storage-redis-keystore-password]]<<offset-storage-redis-keystore-password, `offset.storage.redis.ssl.keystore.password`>>
+|No default
+|The password for the key store file used for SSL/TLS connections to Redis for offset storage. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[offset-storage-redis-keystore-type]]<<offset-storage-redis-keystore-type, `offset.storage.redis.ssl.keystore.type`>>
+|JKS
+|The type of the key store file used for SSL/TLS connections to Redis for offset storage.
+
 |[[offset-storage-redis-connection-timeout-ms]]<<offset-storage-redis-connection-timeout-ms, `offset.storage.redis.connection.timeout.ms`>>
 |2000
 |Specifies the time, in milliseconds, that {prodname} waits to establish a connection to Redis before the connection times out.
@@ -607,6 +631,30 @@ If a data packet is not transferred with the specified interval, {prodname} clos
 |[[schema-history-internal-redis-hostname-verification-enabled]]<<schema-history-internal-redis-hostname-verification-enabled,`schema.history.internal.storage.redis.ssl.hostname.verification.enabled`>>
 |false
 |Specifies whether {prodname} has hostname verification enabled when communicating with Redis to store schema history data.
+
+|[[schema-history-internal-redis-truststore-path]]<<schema-history-internal-redis-truststore-path, `schema.history.internal.storage.redis.ssl.truststore.path`>>
+|No default
+|The path to the trust store file used for SSL/TLS connections to Redis to store schema history data.
+
+|[[schema-history-internal-redis-truststore-password]]<<schema-history-internal-redis-truststore-password, `schema.history.internal.storage.redis.ssl.truststore.password`>>
+|No default
+|The password for the trust store file used for SSL/TLS connections to Redis to store schema history data.
+
+|[[schema-history-internal-redis-truststore-type]]<<schema-history-internal-redis-truststore-type, `schema.history.internal.storage.redis.ssl.truststore.type`>>
+|JKS
+|The type of the trust store file used for SSL/TLS connections to Redis to store schema history data.
+
+|[[schema-history-internal-redis-keystore-path]]<<schema-history-internal-redis-keystore-path, `schema.history.internal.storage.redis.ssl.keystore.path`>>
+|No default
+|The path to the key store file used for SSL/TLS connections to Redis to store schema history data.
+
+|[[schema-history-internal-redis-keystore-password]]<<schema-history-internal-redis-keystore-password, `schema.history.internal.storage.redis.ssl.keystore.password`>>
+|No default
+|The password for the key store file used for SSL/TLS connections to Redis to store schema history data.
+
+|[[schema-history-internal-redis-keystore-type]]<<schema-history-internal-redis-keystore-type, `schema.history.internal.storage.redis.ssl.keystore.type`>>
+|JKS
+|The type of the key store file used for SSL/TLS connections to Redis to store schema history data.
 
 |[[schema-history-internal-redis-connection-timeout-ms]]<<schema-history-internal-redis-connection-timeout-ms, `schema.history.internal.storage.redis.connection.timeout.ms`>>
 |2000
