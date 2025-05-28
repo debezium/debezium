@@ -242,6 +242,30 @@ Available options
 |
 |(Optional)  If using Redis to store offsets, whether or not to enable hostname verification with Redis. If the `redis.address` configuration is not supplied, and the `redis.address` is taken from the Redis sink, will attempt to load the value from `debezium.sink.redis.ssl.hostname.verification.enabled`. Default is 'false'
 
+|[[debezium-source-offset-redis-ssl-truststore-path]]<<debezium-source-offset-redis-ssl-truststore-path, `debezium.source.offset.storage.redis.ssl.truststore.path`>>
+|
+|(Optional) If using Redis to store offsets with SSL enabled, the path to the trust store file. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[debezium-source-offset-redis-ssl-truststore-password]]<<debezium-source-offset-redis-ssl-truststore-password, `debezium.source.offset.storage.redis.ssl.truststore.password`>>
+|
+|(Optional) If using Redis to store offsets with SSL enabled, the password for the trust store file. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[debezium-source-offset-redis-ssl-truststore-type]]<<debezium-source-offset-redis-ssl-truststore-type, `debezium.source.offset.storage.redis.ssl.truststore.type`>>
+|`JKS`
+|(Optional) If using Redis to store offsets with SSL enabled, the type of the trust store file. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[debezium-source-offset-redis-ssl-keystore-path]]<<debezium-source-offset-redis-ssl-keystore-path, `debezium.source.offset.storage.redis.ssl.keystore.path`>>
+|
+|(Optional) If using Redis to store offsets with SSL enabled, the path to the key store file. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[debezium-source-offset-redis-ssl-keystore-password]]<<debezium-source-offset-redis-ssl-keystore-password, `debezium.source.offset.storage.redis.ssl.keystore.password`>>
+|
+|(Optional) If using Redis to store offsets with SSL enabled, the password for the key store file. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[debezium-source-offset-redis-ssl-keystore-type]]<<debezium-source-offset-redis-ssl-keystore-type, `debezium.source.offset.storage.redis.ssl.keystore.type`>>
+|`JKS`
+|(Optional) If using Redis to store offsets with SSL enabled, the type of the key store file. If set, Redis connections will use this property over other configuration or system properties.
+
 |[[debezium-source-offset-redis-key]]<<debezium-source-offset-redis-key, `debezium.source.offset.storage.redis.key`>>
 |
 |(Optional)  If using Redis to store offsets, define the hash key in redis. If the `redis.key` configuration is not supplied, and the default value is `metadata:debezium:offsets`
@@ -298,6 +322,30 @@ There are also other options available
 |[[debezium-source-database-history-redis-hostname-verification-enabled]]<<debezium-source-database-history-redis-hostname-verification-enabled, `debezium.source.schema.history.internal.redis.ssl.hostname.verification.enabled`>>
 |
 |Enable hostname verification if using `RedisSchemaHistory`.
+
+|[[debezium-source-database-history-redis-ssl-truststore-path]]<<debezium-source-database-history-redis-ssl-truststore-path, `debezium.source.schema.history.internal.redis.ssl.truststore.path`>>
+|
+|(Optional) If using Redis to store schema history with SSL enabled, the path to the trust store file. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[debezium-source-database-history-redis-ssl-truststore-password]]<<debezium-source-database-history-redis-ssl-truststore-password, `debezium.source.schema.history.internal.redis.ssl.truststore.password`>>
+|
+|(Optional) If using Redis to store schema history with SSL enabled, the password for the trust store file. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[debezium-source-database-history-redis-ssl-truststore-type]]<<debezium-source-database-history-redis-ssl-truststore-type, `debezium.source.schema.history.internal.redis.ssl.truststore.type`>>
+|`JKS`
+|(Optional) If using Redis to store schema history with SSL enabled, the type of the trust store file. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[debezium-source-database-history-redis-ssl-keystore-path]]<<debezium-source-database-history-redis-ssl-keystore-path, `debezium.source.schema.history.internal.redis.ssl.keystore.path`>>
+|
+|(Optional) If using Redis to store schema history with SSL enabled, the path to the key store file. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[debezium-source-database-history-redis-ssl-keystore-password]]<<debezium-source-database-history-redis-ssl-keystore-password, `debezium.source.schema.history.internal.redis.ssl.keystore.password`>>
+|
+|(Optional) If using Redis to store schema history with SSL enabled, the password for the key store file. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[debezium-source-database-history-redis-ssl-keystore-type]]<<debezium-source-database-history-redis-ssl-keystore-type, `debezium.source.schema.history.internal.redis.ssl.keystore.type`>>
+|`JKS`
+|(Optional) If using Redis to store schema history with SSL enabled, the type of the key store file. If set, Redis connections will use this property over other configuration or system properties.
 
 |[[debezium-source-database-history-redis-key]]<<debezium-source-database-history-redis-key, `debezium.source.schema.history.internal.redis.key`>>
 |
@@ -1085,6 +1133,30 @@ The Stream is a data type which models a _log data structure_ in a more abstract
 |[[redis-hostname-verification-enabled]]<<redis-hostname-verification-enabled, `debezium.sink.redis.ssl.hostname.verification.enabled`>>
 |`false`
 |(Optional) A Boolean value that specifies whether connections to Redis should verify the hostname of the server.
+
+|[[redis-ssl-truststore-path]]<<redis-ssl-truststore-path, `debezium.sink.redis.ssl.truststore.path`>>
+|
+|(Optional) If using Redis sink with SSL enabled, the path to the trust store file. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[redis-ssl-truststore-password]]<<redis-ssl-truststore-password, `debezium.sink.redis.ssl.truststore.password`>>
+|
+|(Optional) If using Redis sink with SSL enabled, the password for the trust store file. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[redis-ssl-truststore-type]]<<redis-ssl-truststore-type, `debezium.sink.redis.ssl.truststore.type`>>
+|`JKS`
+|(Optional) If using Redis sink with SSL enabled, the type of the trust store file. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[redis-ssl-keystore-path]]<<redis-ssl-keystore-path, `debezium.sink.redis.ssl.keystore.path`>>
+|
+|(Optional) If using Redis sink with SSL enabled, the path to the key store file. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[redis-ssl-keystore-password]]<<redis-ssl-keystore-password, `debezium.sink.redis.ssl.keystore.password`>>
+|
+|(Optional) If using Redis sink with SSL enabled, the password for the key store file. If set, Redis connections will use this property over other configuration or system properties.
+
+|[[redis-ssl-keystore-type]]<<redis-ssl-keystore-type, `debezium.sink.redis.ssl.keystore.type`>>
+|`JKS`
+|(Optional) If using Redis sink with SSL enabled, the type of the key store file. If set, Redis connections will use this property over other configuration or system properties.
 
 |[[redis-null-key]]<<redis-null-key, `debezium.sink.redis.null.key`>>
 |`default`
