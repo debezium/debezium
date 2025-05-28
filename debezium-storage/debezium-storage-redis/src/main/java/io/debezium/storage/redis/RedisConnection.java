@@ -119,6 +119,30 @@ public class RedisConnection {
     }
 
     /**
+     * Creates a new RedisConnection instance from the provided RedisCommonConfig.
+     *
+     * @param config the RedisCommonConfig containing connection parameters
+     * @return a new RedisConnection instance
+     */
+    public static RedisConnection getInstance(RedisCommonConfig config) {
+        return new RedisConnection(
+                config.getAddress(),
+                config.getDbIndex(),
+                config.getUser(),
+                config.getPassword(),
+                config.getConnectionTimeout(),
+                config.getSocketTimeout(),
+                config.isSslEnabled(),
+                config.isHostnameVerificationEnabled(),
+                config.getTruststorePath(),
+                config.getTruststorePassword(),
+                config.getTruststoreType(),
+                config.getKeystorePath(),
+                config.getKeystorePassword(),
+                config.getKeystoreType());
+    }
+
+    /**
      *
      * @param clientName
      * @param waitEnabled
