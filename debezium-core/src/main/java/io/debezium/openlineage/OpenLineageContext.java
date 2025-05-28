@@ -5,6 +5,7 @@
  */
 package io.debezium.openlineage;
 
+import java.util.Objects;
 import java.util.UUID;
 
 import io.openlineage.client.OpenLineage;
@@ -38,5 +39,29 @@ public class OpenLineageContext {
 
     public OpenLineageJobIdentifier getJobIdentifier() {
         return jobIdentifier;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        OpenLineageContext that = (OpenLineageContext) o;
+        return Objects.equals(runUuid, that.runUuid);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(runUuid);
+    }
+
+    @Override
+    public String toString() {
+        return "OpenLineageContext{" +
+                "runUuid=" + runUuid +
+                ", openLineage=" + openLineage +
+                ", configuration=" + configuration +
+                ", jobIdentifier=" + jobIdentifier +
+                '}';
     }
 }

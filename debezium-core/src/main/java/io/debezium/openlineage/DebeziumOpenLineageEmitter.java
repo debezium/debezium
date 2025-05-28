@@ -8,6 +8,9 @@ package io.debezium.openlineage;
 import java.util.List;
 import java.util.ServiceLoader;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.openlineage.dataset.DatasetMetadata;
@@ -33,6 +36,7 @@ import io.debezium.openlineage.emitter.OpenLineageEventEmitter;
  */
 public class DebeziumOpenLineageEmitter {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumOpenLineageEmitter.class);
     private static LineageEmitter lineageEmitter;
     private static final ServiceLoader<LineageEmitterFactory> lineageEmitterFactory = ServiceLoader.load(LineageEmitterFactory.class);
 
@@ -48,6 +52,7 @@ public class DebeziumOpenLineageEmitter {
      */
     public static void init(Configuration configuration, String connName) {
 
+        LOGGER.debug("Calling init for connector {} and config {}", connName, configuration);
         /*
          * Addresses native compilation issues with the Debezium Quarkus extension when OpenLineage
          * dependencies are scoped as 'provided'. In native builds, Quarkus performs comprehensive
@@ -61,6 +66,8 @@ public class DebeziumOpenLineageEmitter {
                 .map(ServiceLoader.Provider::get)
                 .orElse((ignore, ignore2) -> new NoOpLineageEmitter())
                 .get(configuration, connName);
+
+        LOGGER.debug("Emitter instance {}", lineageEmitter);
     }
 
     private static void checkInitialized() {

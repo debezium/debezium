@@ -7,10 +7,13 @@ package io.debezium.openlineage.dataset;
 
 public class DefaultDatasetNamespaceResolverFactory implements DatasetNamespaceResolverFactory {
 
+    private static final String MONGODB = "mongodb";
+    private static final String POSTGRESQL = "postgresql";
+
     public InputDatasetNamespaceResolver createInput(String connectorName) {
         return switch (connectorName) {
-            case "mongodb" -> new MongoDbDatasetNamespaceResolver();
-            case "postgresql" -> new PostgresDatasetNamespaceResolver();
+            case MONGODB -> new MongoDbDatasetNamespaceResolver();
+            case POSTGRESQL -> new PostgresDatasetNamespaceResolver();
             default -> new DefaultInputDatasetNamespaceResolver();
         };
     }

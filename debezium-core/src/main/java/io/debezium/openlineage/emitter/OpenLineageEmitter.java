@@ -13,6 +13,7 @@ import java.io.StringWriter;
 import java.time.ZonedDateTime;
 import java.util.List;
 
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.openlineage.OpenLineageContext;
@@ -228,5 +229,10 @@ public class OpenLineageEmitter implements LineageEmitter {
             case RESTARTING -> OpenLineage.RunEvent.EventType.FAIL;
             case STOPPED -> OpenLineage.RunEvent.EventType.COMPLETE;
         };
+    }
+
+    @VisibleForTesting
+    public OpenLineageContext getContext() {
+        return openLineageContext;
     }
 }

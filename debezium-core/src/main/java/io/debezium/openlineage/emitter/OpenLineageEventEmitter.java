@@ -8,6 +8,9 @@ package io.debezium.openlineage.emitter;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +20,6 @@ import io.debezium.openlineage.DebeziumOpenLineageConfiguration;
 import io.openlineage.client.Clients;
 import io.openlineage.client.OpenLineage;
 import io.openlineage.client.OpenLineageClient;
-import io.openlineage.client.OpenLineageClientException;
 
 public class OpenLineageEventEmitter {
 
@@ -29,6 +31,7 @@ public class OpenLineageEventEmitter {
     private static final String MAIN_BRANCH_NAME = "main";
     private static final String VERSION_FORMAT = "v%s";
 
+    private final ExecutorService emitterExecutor = Executors.newSingleThreadExecutor();
     private final OpenLineageClient openLineageClient;
 
     public OpenLineageEventEmitter(DebeziumOpenLineageConfiguration config) {
@@ -49,12 +52,20 @@ public class OpenLineageEventEmitter {
     }
 
     public void emit(OpenLineage.RunEvent event) {
-        try {
-            openLineageClient.emit(event);
-        }
-        catch (OpenLineageClientException exception) {
-            LOGGER.error("Failed to emit OpenLineage event: ", exception);
-        }
+
+        CompletableFuture.supplyAsync(() -> {
+            try {
+                openLineageClient.emit(event);
+            }
+            catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+            return null;
+        }, emitterExecutor)
+                .exceptionally(throwable -> {
+                    LOGGER.error("Failed to emit OpenLineage event: ", throwable);
+                    return null;
+                });
     }
 
     public boolean isEnabled() {
