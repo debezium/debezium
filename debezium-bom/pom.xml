@@ -43,7 +43,7 @@
         <!-- Storages -->
 
         <!-- Redis -->
-        <version.jedis>4.1.1</version.jedis>
+        <version.jedis>6.0.0</version.jedis>
 
         <!-- S3 -->
         <version.s3>2.26.30</version.s3>
