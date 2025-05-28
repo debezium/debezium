@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>io.quarkus</groupId>
+        <groupId>io.debezium.quarkus</groupId>
         <artifactId>quarkus-debezium-postgres-parent</artifactId>
         <version>3.2.0-SNAPSHOT</version>
     </parent>
@@ -23,19 +23,20 @@
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-debezium-postgres</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
             <artifactId>quarkus-jackson-deployment</artifactId>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-jdbc-postgresql-deployment</artifactId>
         </dependency>
+
         <dependency>
-            <groupId>io.quarkus</groupId>
+            <groupId>${project.groupId}</groupId>
             <artifactId>quarkus-debezium-engine-deployment</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>quarkus-debezium-postgres</artifactId>
         </dependency>
 
         <dependency>
