@@ -297,8 +297,14 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
         }
     }
 
+    private void checkForInterruption() throws InterruptedException {
+        if (Thread.currentThread().isInterrupted()) {
+            throw new InterruptedException("Thread was interrupted during schema history recovery");
+        }
+    }
+
     @Override
-    protected void recoverRecords(Consumer<HistoryRecord> records) {
+    protected void recoverRecords(Consumer<HistoryRecord> records) throws InterruptedException {
         try (KafkaConsumer<String, String> historyConsumer = new KafkaConsumer<>(consumerConfig.asProperties())) {
             // Subscribe to the only partition for this topic, and seek to the beginning of that partition ...
             LOGGER.debug("Subscribing to database schema history topic '{}'", topicName);
@@ -319,10 +325,12 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
                             "The database schema history couldn't be recovered. Consider to increase the value for " + RECOVERY_POLL_INTERVAL_MS.name());
                 }
 
+                checkForInterruption();
                 ConsumerRecords<String, String> recoveredRecords = historyConsumer.poll(this.pollInterval);
                 int numRecordsProcessed = 0;
 
                 for (ConsumerRecord<String, String> record : recoveredRecords) {
+                    checkForInterruption();
                     try {
                         if (lastProcessedOffset < record.offset()) {
                             if (record.value() == null) {
@@ -366,6 +374,10 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
             } while (lastProcessedOffset < endOffset - 1);
             // Check if the end offset has changed during the recovery process
             getEndOffsetOfDbHistoryTopic(endOffset, historyConsumer);
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw e;
         }
     }
 
