@@ -36,7 +36,7 @@ import io.debezium.util.Loggings;
  * @author Randall Hauch
  */
 @ThreadSafe
-public final class FileSchemaHistory extends AbstractFileBasedSchemaHistory {
+public class FileSchemaHistory extends AbstractFileBasedSchemaHistory {
     private static final Logger LOGGER = LoggerFactory.getLogger(FileSchemaHistory.class);
 
     public static final Field FILE_PATH = Field.create(SchemaHistory.CONFIGURATION_FIELD_PREFIX_STRING + "file.filename")

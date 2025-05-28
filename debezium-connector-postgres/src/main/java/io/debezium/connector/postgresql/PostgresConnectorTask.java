@@ -145,7 +145,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     beanRegistryJdbcConnection.username(), e);
         }
 
-        validateAndLoadSchemaHistory(connectorConfig, jdbcConnection::validateLogPosition, previousOffsets, schema, snapshotter);
+        validateSchemaHistory(connectorConfig, jdbcConnection::validateLogPosition, previousOffsets, schema, snapshotter);
 
         LoggingContext.PreviousContext previousContext = taskContext.configureLoggingContext(CONTEXT_NAME);
 
