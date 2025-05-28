@@ -12,8 +12,11 @@
             "type" : "object",
             "properties" : {
                 "configs" : {
-                    "description" : "Map of Debezium configuration properties",
-                    "type" : "object",
+                    "description" : "List of Debezium configuration properties",
+                    "type" : "array",
+                    "items" : {
+                        "type" : "string"
+                    },
                     "additionalProperties" : {
                         "type" : [
                             "string",
