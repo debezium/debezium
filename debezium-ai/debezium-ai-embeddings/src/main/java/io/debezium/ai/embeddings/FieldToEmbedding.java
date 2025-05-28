@@ -69,12 +69,6 @@ public class FieldToEmbedding<R extends ConnectRecord<R>> implements Transformat
             .withImportance(ConfigDef.Importance.HIGH)
             .withDescription(
                     "Name of the field which which will be appended to the record and which would contain the embeddings of the content `filed.source` field. Supports also nested fields.")
-            .withValidation((config, field, output) -> {
-                if (config.getString(field, "").isEmpty()) {
-                    LOGGER.info("{} not set, record value will contain only embeddings.", field.name());
-                }
-                return 0;
-            })
             .withDeprecatedAliases(LEGACY_EMBEDDINGS_PREFIX + "field.embedding");
 
     private static final Schema EMBEDDING_SCHEMA = FloatVector.schema();
