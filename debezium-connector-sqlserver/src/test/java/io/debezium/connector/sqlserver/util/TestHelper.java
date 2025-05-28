@@ -6,6 +6,8 @@
 
 package io.debezium.connector.sqlserver.util;
 
+import static java.sql.Types.NCHAR;
+
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
 import java.sql.ResultSet;
@@ -64,19 +66,18 @@ public class TestHelper {
     private static final String TEST_TASK_ID = "0";
     private static final String STATEMENTS_PLACEHOLDER = "#";
     private static final String DATABASE_NAME_PLACEHOLDER = "#db";
-    private static final String SCHEMA_PLACEHOLDER = "%";
 
-    private static final String ENABLE_DB_CDC = "IF EXISTS(select 1 from sys.databases where name='#' AND is_cdc_enabled=0)\n"
+    private static final String ENABLE_DB_CDC = "IF EXISTS(select 1 from sys.databases where name = ? AND is_cdc_enabled=0)\n"
             + "EXEC sys.sp_cdc_enable_db";
-    private static final String DISABLE_DB_CDC = "IF EXISTS(select 1 from sys.databases where name='#' AND is_cdc_enabled=1)\n"
+    private static final String DISABLE_DB_CDC = "IF EXISTS(select 1 from sys.databases where name = ? AND is_cdc_enabled=1)\n"
             + "EXEC sys.sp_cdc_disable_db";
-    private static final String ENABLE_TABLE_CDC = "IF EXISTS(select 1 from #db.sys.tables where name = '#' AND is_tracked_by_cdc=0)\n"
-            + "EXEC #db.sys.sp_cdc_enable_table @source_schema = N'%', @source_name = N'#', @role_name = NULL, @supports_net_changes = 0";
-    private static final String IS_CDC_ENABLED = "SELECT COUNT(1) FROM sys.databases WHERE name = '#' AND is_cdc_enabled=1";
-    private static final String IS_CDC_TABLE_ENABLED = "SELECT COUNT(*) FROM sys.tables tb WHERE tb.is_tracked_by_cdc = 1 AND tb.name='#'";
-    private static final String ENABLE_TABLE_CDC_WITH_CUSTOM_CAPTURE = "EXEC sys.sp_cdc_enable_table @source_schema = N'dbo', @source_name = N'%s', @capture_instance = N'%s', @role_name = NULL, @supports_net_changes = 0, @captured_column_list = %s";
-    private static final String DISABLE_TABLE_CDC = "EXEC sys.sp_cdc_disable_table @source_schema = N'dbo', @source_name = N'#', @capture_instance = 'all'";
-    private static final String ADJUST_CDC_POLLING_INTERVAL = "EXEC sys.sp_cdc_change_job @job_type = 'capture', @pollinginterval = #";
+    private static final String ENABLE_TABLE_CDC = "IF EXISTS(select 1 from #db.sys.tables where name = ? AND is_tracked_by_cdc=0)\n"
+            + "EXEC #db.sys.sp_cdc_enable_table @source_schema = ?, @source_name = ?, @role_name = NULL, @supports_net_changes = 0";
+    private static final String IS_CDC_ENABLED = "SELECT COUNT(1) FROM sys.databases WHERE name = ? AND is_cdc_enabled=1";
+    private static final String IS_CDC_TABLE_ENABLED = "SELECT COUNT(*) FROM sys.tables tb WHERE tb.is_tracked_by_cdc = 1 AND tb.name = ?";
+    private static final String ENABLE_TABLE_CDC_WITH_CUSTOM_CAPTURE = "EXEC sys.sp_cdc_enable_table @source_schema = N'dbo', @source_name = ?, @capture_instance = ?, @role_name = NULL, @supports_net_changes = 0, @captured_column_list = ?";
+    private static final String DISABLE_TABLE_CDC = "EXEC sys.sp_cdc_disable_table @source_schema = N'dbo', @source_name = ?, @capture_instance = 'all'";
+    private static final String ADJUST_CDC_POLLING_INTERVAL = "EXEC sys.sp_cdc_change_job @job_type = 'capture', @pollinginterval = ?";
     private static final String CDC_WRAPPERS_DML;
 
     /**
@@ -299,13 +300,15 @@ public class TestHelper {
     public static void enableDbCdc(SqlServerConnection connection, String name) throws SQLException {
         try {
             Objects.requireNonNull(name);
-            connection.execute(ENABLE_DB_CDC.replace(STATEMENTS_PLACEHOLDER, name));
+
+            executeAndCommit(connection, ENABLE_DB_CDC, preparer -> {
+                preparer.setString(1, name);
+            });
 
             // make sure the test database has cdc-enabled before proceeding; throwing exception if it fails
-            Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> {
-                final String sql = IS_CDC_ENABLED.replace(STATEMENTS_PLACEHOLDER, name);
-                return connection.queryAndMap(sql, connection.singleResultMapper(rs -> rs.getLong(1), "")) == 1L;
-            });
+            Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> connection.prepareQueryAndMap(IS_CDC_ENABLED, preparer -> {
+                preparer.setString(1, name);
+            }, connection.singleResultMapper(rs -> rs.getLong(1), "")) == 1L);
         }
         catch (SQLException e) {
             LOGGER.error("Failed to enable CDC on database " + name);
@@ -323,7 +326,10 @@ public class TestHelper {
      */
     protected static void disableDbCdc(SqlServerConnection connection, String name) throws SQLException {
         Objects.requireNonNull(name);
-        connection.execute(DISABLE_DB_CDC.replace(STATEMENTS_PLACEHOLDER, name));
+
+        executeAndCommit(connection, DISABLE_DB_CDC, preparer -> {
+            preparer.setString(1, name);
+        });
     }
 
     /**
@@ -339,12 +345,20 @@ public class TestHelper {
     public static void enableTableCdc(SqlServerConnection connection, TableId tableId) throws SQLException {
         Objects.requireNonNull(tableId.schema());
         Objects.requireNonNull(tableId.table());
-        String enableCdcForTableStmt = replaceDatabaseNamePlaceholder(connection, ENABLE_TABLE_CDC, tableId.catalog())
-                .replace(STATEMENTS_PLACEHOLDER, tableId.table())
-                .replace(SCHEMA_PLACEHOLDER, tableId.schema());
+
+        String enableCdcForTableStmt = replaceDatabaseNamePlaceholder(connection, ENABLE_TABLE_CDC, tableId.catalog());
+        executeAndCommit(connection, enableCdcForTableStmt, preparer -> {
+            preparer.setString(1, tableId.table());
+            preparer.setString(2, tableId.schema());
+            preparer.setString(3, tableId.table());
+        });
+
+        String cursorName = tableId.table().concat("hfunctions");
         String generateWrapperFunctionsStmts = replaceDatabaseNamePlaceholder(connection, CDC_WRAPPERS_DML, tableId.catalog())
-                .replace(STATEMENTS_PLACEHOLDER, tableId.table());
-        connection.execute(enableCdcForTableStmt, generateWrapperFunctionsStmts);
+                .replace(STATEMENTS_PLACEHOLDER, connection.quoteIdentifier(cursorName));
+        executeAndCommit(connection, generateWrapperFunctionsStmts, preparer -> {
+            preparer.setString(1, tableId.table());
+        });
     }
 
     private static String replaceDatabaseNamePlaceholder(SqlServerConnection connection, String sql, String databaseName) {
@@ -377,9 +391,11 @@ public class TestHelper {
      */
     public static boolean isCdcEnabled(SqlServerConnection connection, String name) throws SQLException {
         Objects.requireNonNull(name);
-        String tableEnabledStmt = IS_CDC_TABLE_ENABLED.replace(STATEMENTS_PLACEHOLDER, name);
-        return connection.queryAndMap(
-                tableEnabledStmt,
+        return connection.prepareQueryAndMap(
+                IS_CDC_TABLE_ENABLED,
+                preparer -> {
+                    preparer.setString(1, name);
+                },
                 connection.singleResultMapper(rs -> rs.getInt(1) > 0, "Cannot get CDC status of the table"));
     }
 
@@ -399,8 +415,12 @@ public class TestHelper {
     public static void enableTableCdc(SqlServerConnection connection, String tableName, String captureName) throws SQLException {
         Objects.requireNonNull(tableName);
         Objects.requireNonNull(captureName);
-        String enableCdcForTableStmt = String.format(ENABLE_TABLE_CDC_WITH_CUSTOM_CAPTURE, tableName, captureName, "NULL");
-        connection.execute(enableCdcForTableStmt);
+
+        executeAndCommit(connection, ENABLE_TABLE_CDC_WITH_CUSTOM_CAPTURE, preparer -> {
+            preparer.setString(1, tableName);
+            preparer.setString(2, captureName);
+            preparer.setNull(3, NCHAR);
+        });
     }
 
     /**
@@ -421,9 +441,12 @@ public class TestHelper {
         Objects.requireNonNull(tableName);
         Objects.requireNonNull(captureName);
         Objects.requireNonNull(captureColumnList);
-        String captureColumnListParam = String.format("N'%s'", Strings.join(",", captureColumnList));
-        String enableCdcForTableStmt = String.format(ENABLE_TABLE_CDC_WITH_CUSTOM_CAPTURE, tableName, captureName, captureColumnListParam);
-        connection.execute(enableCdcForTableStmt);
+
+        executeAndCommit(connection, ENABLE_TABLE_CDC_WITH_CUSTOM_CAPTURE, preparer -> {
+            preparer.setString(1, tableName);
+            preparer.setString(2, captureName);
+            preparer.setString(3, Strings.join(",", captureColumnList));
+        });
     }
 
     /**
@@ -435,8 +458,10 @@ public class TestHelper {
      */
     public static void disableTableCdc(JdbcConnection connection, String name) throws SQLException {
         Objects.requireNonNull(name);
-        String disableCdcForTableStmt = DISABLE_TABLE_CDC.replace(STATEMENTS_PLACEHOLDER, name);
-        connection.execute(disableCdcForTableStmt);
+
+        executeAndCommit(connection, DISABLE_TABLE_CDC, preparer -> {
+            preparer.setString(1, name);
+        });
     }
 
     /**
@@ -450,8 +475,14 @@ public class TestHelper {
      * @throws SQLException if anything unexpected fails
      */
     public static void adjustCdcPollingInterval(JdbcConnection connection, int interval) throws SQLException {
-        String adjustCdcPollingIntervalStmt = ADJUST_CDC_POLLING_INTERVAL.replace(STATEMENTS_PLACEHOLDER, Integer.toString(interval));
-        connection.execute(adjustCdcPollingIntervalStmt);
+        executeAndCommit(connection, ADJUST_CDC_POLLING_INTERVAL, preparer -> {
+            preparer.setInt(1, interval);
+        });
+    }
+
+    static void executeAndCommit(JdbcConnection connection, String stmt, JdbcConnection.StatementPreparer preparer) throws SQLException {
+        connection.prepareUpdate(stmt, preparer);
+        connection.commit();
     }
 
     public static void waitForSnapshotToBeCompleted() {
