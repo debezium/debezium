@@ -8,6 +8,9 @@ package io.debezium.openlineage;
 import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.config.Configuration;
 import io.debezium.openlineage.dataset.DatasetNamespaceResolverFactory;
 import io.debezium.openlineage.dataset.DefaultDatasetNamespaceResolverFactory;
@@ -20,9 +23,10 @@ import io.openlineage.client.OpenLineage;
 
 public class DebeziumLineageEmitterFactory implements LineageEmitterFactory {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumLineageEmitterFactory.class);
     private static final String CONNECTOR_NAME_PROPERTY = "name";
-    private static final AtomicReference<OpenLineageContext> contextRef = new AtomicReference<>();
     private static final ServiceLoader<DatasetNamespaceResolverFactory> datasetNamespaceResolverFactory = ServiceLoader.load(DatasetNamespaceResolverFactory.class);
+    private final AtomicReference<OpenLineageContext> contextRef = new AtomicReference<>();
 
     @Override
     public LineageEmitter get(Configuration connectorConfig, String connName) {
@@ -33,6 +37,7 @@ public class DebeziumLineageEmitterFactory implements LineageEmitterFactory {
             OpenLineageEventEmitter emitter = new OpenLineageEventEmitter(debeziumOpenLineageConfiguration);
 
             if (contextRef.get() == null) {
+                LOGGER.debug("OpenLineageContext was null, getting instance");
                 OpenLineageContext ctx = new OpenLineageContext(
                         new OpenLineage(emitter.getProducer()),
                         debeziumOpenLineageConfiguration,
@@ -46,6 +51,7 @@ public class DebeziumLineageEmitterFactory implements LineageEmitterFactory {
                     .map(ServiceLoader.Provider::get)
                     .orElse(new DefaultDatasetNamespaceResolverFactory());
 
+            LOGGER.debug("OpenLineageContext {}", contextRef.get());
             return new OpenLineageEmitter(connName, connectorConfig, contextRef.get(), emitter, namespaceResolverFactory.createInput(connName),
                     namespaceResolverFactory.createOutput(connName));
         }
