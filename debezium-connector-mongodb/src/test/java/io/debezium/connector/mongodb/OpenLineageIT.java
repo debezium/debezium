@@ -230,31 +230,31 @@ public class OpenLineageIT extends AbstractMongoConnectorIT {
         DebeziumConfigFacet debeziumConfigFacet = (DebeziumConfigFacet) startEvent.getRun().getFacets().getAdditionalProperties().get("debezium_config");
 
         assertThat(debeziumConfigFacet.getConfigs()).contains(
-                entry("connector.class", "io.debezium.connector.mongodb.MongoDbConnector"),
-                entry("database.include.list", "inc"),
-                entry("filters.match.mode", "literal"),
-                entry("errors.max.retries", "-1"),
-                entry("errors.retry.delay.initial.ms", "300"),
-                entry("errors.retry.delay.max.ms", "10000"),
-                entry("internal.task.management.timeout.ms", "180000"),
-                entry("key.converter", "org.apache.kafka.connect.json.JsonConverter"),
-                entry("name", "testing-connector"),
-                entry("offset.flush.interval.ms", "0"),
-                entry("offset.flush.timeout.ms", "5000"),
-                entry("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore"),
-                entry("openlineage.integration.enabled", "true"),
-                entry("openlineage.integration.job.description", "This connector does cdc for products"),
-                entry("openlineage.integration.job.owners", "Mario=maintainer,John Doe=Data scientist"),
-                entry("openlineage.integration.job.tags", "env=prod,team=cdc"),
-                entry("record.processing.order", "ORDERED"),
-                entry("record.processing.shutdown.timeout.ms", "1000"),
-                entry("record.processing.threads", ""),
-                entry("record.processing.with.serial.consumer", "false"),
-                entry("topic.prefix", "mongo"),
-                entry("value.converter", "org.apache.kafka.connect.json.JsonConverter"))
-                .hasEntrySatisfying("mongodb.connection.string", value -> assertThat((String) value).contains("mongodb://"))
-                .hasEntrySatisfying("openlineage.integration.config.file.path", value -> assertThat((String) value).contains("openlineage.yml"))
-                .hasEntrySatisfying("offset.storage.file.filename", value -> assertThat((String) value).contains("file-connector-offsets.txt"));
+                "connector.class=io.debezium.connector.mongodb.MongoDbConnector",
+                "database.include.list=inc",
+                "filters.match.mode=literal",
+                "errors.max.retries=-1",
+                "errors.retry.delay.initial.ms=300",
+                "errors.retry.delay.max.ms=10000",
+                "internal.task.management.timeout.ms=180000",
+                "key.converter=org.apache.kafka.connect.json.JsonConverter",
+                "name=testing-connector",
+                "offset.flush.interval.ms=0",
+                "offset.flush.timeout.ms=5000",
+                "offset.storage=org.apache.kafka.connect.storage.FileOffsetBackingStore",
+                "openlineage.integration.enabled=true",
+                "openlineage.integration.job.description=This connector does cdc for products",
+                "openlineage.integration.job.owners=Mario=maintainer,John Doe=Data scientist",
+                "openlineage.integration.job.tags=env=prod,team=cdc",
+                "record.processing.order=ORDERED",
+                "record.processing.shutdown.timeout.ms=1000",
+                "record.processing.threads=",
+                "record.processing.with.serial.consumer=false",
+                "topic.prefix=mongo",
+                "value.converter=org.apache.kafka.connect.json.JsonConverter")
+                .anyMatch(config -> config.startsWith("mongodb.connection.string=") && config.contains("mongodb://"))
+                .anyMatch(config -> config.startsWith("openlineage.integration.config.file.path=") && config.contains("openlineage.yml"))
+                .anyMatch(config -> config.startsWith("offset.storage.file.filename=") && config.contains("file-connector-offsets.txt"));
 
         Map<String, String> tags = startEvent.getJob().getFacets().getTags().getTags()
                 .stream()
