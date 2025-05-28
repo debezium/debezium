@@ -1,0 +1,329 @@
+// Category: debezium-using
+// Type: assembly
+// ModuleID: open-lineage-integration
+// Title: OpenLineage Integration
+[id="open-linegage-integration"]
+= OpenLineage Integration
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+Debezium provides built-in integration with OpenLineage to automatically track data lineage for Change Data Capture (CDC) operations. This integration enables comprehensive visibility into data flow and transformations across your data infrastructure.
+
+== About Data Lineage and OpenLineage
+
+Data lineage tracks the flow of data through various systems, transformations, and processes, providing visibility into data origins, movements, and dependencies. Understanding data lineage is crucial for:
+
+* *Data governance and compliance*
+* *Impact analysis* when making changes
+* *Debugging data quality issues*
+* *Understanding data dependencies*
+
+https://openlineage.io/[OpenLineage] is an open standard for data lineage that provides a unified way to collect and track lineage metadata across different data systems. It defines a common model for describing datasets, jobs, and runs, making it easier to build comprehensive lineage graphs across heterogeneous data infrastructures.
+
+For complete information about OpenLineage, visit the https://openlineage.io/[official OpenLineage website] and https://openlineage.io/docs/[documentation].
+
+== How Debezium OpenLineage Integration Works
+
+The Debezium OpenLineage integration maps Debezium components to the OpenLineage data model as follows:
+
+=== OpenLineage Job Mapping
+
+The Debezium connector is mapped to an OpenLineage *Job*, which includes:
+
+* Name will be the connector name
+* Namespace will be `topic.prefix` if not specified with `openlineage.integration.job.namespace`
+* Debezium version information
+* Complete connector configuration
+* Job metadata (description, tags, owners)
+
+=== Dataset Mapping
+
+*Input Datasets* are automatically created for every database table that Debezium is configured to capture changes from:
+
+* Each monitored table becomes an input dataset
+* Schema information is captured including column names and types
+* Dataset schemas are updated dynamically when DDL changes occur
+
+*Output Datasets* represent the resulting Kafka topics (when using the OpenLineage transform):
+
+* Each Kafka topic produced by the connector becomes an output dataset
+* Complete CDC event structure is captured including metadata fields
+* Topic naming follows the connector's topic prefix configuration
+
+=== Run Events
+
+Since Debezium operates as a streaming job, the integration emits different types of run events:
+
+* *START*: When the connector initializes
+* *RUNNING*: Emitted periodically during normal streaming operations and when processing individual tables
+* *COMPLETE*: When the connector shuts down gracefully
+* *FAIL*: When the connector encounters errors
+
+The periodic RUNNING events ensure continuous lineage tracking for the long-running streaming nature of CDC operations.
+
+== Required Dependencies
+
+The OpenLineage integration requires additional JAR files that are not bundled with Debezium connectors. You must download and add these dependencies to your Debezium installation:
+
+=== Core Dependencies
+
+The following JAR files are required for the OpenLineage integration to work:
+
+* `openlineage-java-<version>.jar` - Core OpenLineage Java client
+* `commons-codec-<version>.jar` - Apache Commons Codec utilities
+* `httpclient5-<version>.jar` - Apache HTTP client for sending lineage events
+* `httpcore5-<version>.jar` - Apache HTTP core components
+* `httpcore5-h2-<version>.jar` - HTTP/2 support for Apache HTTP core
+* `jackson-dataformat-yaml-<version>.jar` - YAML parsing support
+* `jackson-datatype-jsr310-<version>.jar` - Java 8 time API support for Jackson
+* `micrometer-commons-<version>.jar` - Micrometer metrics commons
+* `micrometer-core-<version>.jar` - Micrometer metrics core
+* `snakeyaml-<version>.jar` - YAML parser
+
+=== Obtaining Dependencies
+
+To determine the exact versions and download the required dependencies:
+
+1. Check the https://mvnrepository.com/artifact/io.openlineage/openlineage-java[Maven Central repository for openlineage-java] to find the latest version
+2. View the dependency tree for your chosen `openlineage-java` version to identify the exact versions of all transitive dependencies
+3. Download all required JAR files and place them in your Debezium connector's classpath
+
+[NOTE]
+====
+Dependency versions must be compatible with each other. Always refer to the Maven dependency tree of the specific `openlineage-java` version you plan to use to ensure compatibility.
+====
+
+== Configuration
+
+=== Basic Configuration
+
+To enable OpenLineage integration, add the following properties to your connector configuration:
+
+[source,properties]
+----
+# Enable OpenLineage integration
+openlineage.integration.enabled=true
+
+# Path to OpenLineage configuration file
+openlineage.integration.config.file.path=/path/to/openlineage.yml
+
+# Job metadata (optional but recommended)
+openlineage.integration.job.namespace=myNamespace
+openlineage.integration.job.description=CDC connector for products database
+openlineage.integration.job.tags=env=prod,team=data-engineering
+openlineage.integration.job.owners=Alice Smith=maintainer,Bob Johnson=Data Engineer
+----
+
+=== OpenLineage Configuration File
+
+Create an `openlineage.yml` file to configure the OpenLineage client. Here's a basic example:
+
+[source,yaml]
+----
+transport:
+  type: http
+  url: http://your-openlineage-server:5000
+  endpoint: /api/v1/lineage
+  auth:
+    type: api_key
+    api_key: your-api-key
+
+# Alternative: Console transport for testing
+# transport:
+#   type: console
+----
+
+For detailed OpenLineage client configuration options, refer to the https://openlineage.io/docs/client/java[OpenLineage client documentation].
+
+=== Configuration Properties
+
+[cols="3,4,1,2"]
+|===
+|Property |Description |Required |Default
+
+|`openlineage.integration.enabled`
+|Enables/disables OpenLineage integration
+|Yes
+|`false`
+
+|`openlineage.integration.config.file.path`
+|Path to OpenLineage configuration file
+|Yes
+|-
+
+|`openlineage.integration.job.namespace`
+|Namespace used for the job
+|Value from `topic.prefix`
+|-
+
+|`openlineage.integration.job.description`
+|Human-readable job description
+|No
+|-
+
+|`openlineage.integration.job.tags`
+|Comma-separated key=value tags
+|No
+|-
+
+|`openlineage.integration.job.owners`
+|Comma-separated name=role ownership info
+|No
+|-
+|===
+
+=== Tags Format
+
+Tags should be provided as comma-separated key=value pairs:
+
+[source,properties]
+----
+openlineage.integration.job.tags=environment=production,team=data-platform,criticality=high
+----
+
+=== Owners Format
+
+Owners should be provided as comma-separated name=role pairs:
+
+[source,properties]
+----
+openlineage.integration.job.owners=John Doe=maintainer,Jane Smith=Data Engineer,Team Lead=owner
+----
+
+=== Output Dataset Lineage
+
+To capture output dataset lineage (Kafka topics), you must also configure the OpenLineage Single Message Transform (SMT):
+
+[source,properties]
+----
+# Add OpenLineage transform
+transforms=openlineage
+transforms.openlineage.type=io.debezium.transforms.openlineage.OpenLineage
+
+# Required: Configure schema history with Kafka bootstrap servers
+schema.history.internal.kafka.bootstrap.servers=your-kafka:9092
+----
+
+The SMT captures detailed schema information about the CDC events written to Kafka topics, including:
+
+* Event structure (before, after, source, transaction metadata)
+* Field types and nested structures
+* Topic names and namespaces
+
+== Example Complete Configuration
+
+Here's a complete example for a PostgreSQL connector with OpenLineage integration:
+
+[source,properties]
+----
+# Connector basics
+name=products-cdc-connector
+connector.class=io.debezium.connector.postgresql.PostgresConnector
+database.hostname=localhost
+database.port=5432
+database.user=debezium
+database.password=debezium
+database.dbname=inventory
+topic.prefix=inventory
+
+# Snapshot configuration
+snapshot.mode=initial
+slot.drop.on.stop=false
+
+# OpenLineage integration
+openlineage.integration.enabled=true
+openlineage.integration.config.file.path=/opt/debezium/config/openlineage.yml
+openlineage.integration.job.description=CDC connector for inventory database
+openlineage.integration.job.tags=env=production,team=data-platform,database=postgresql
+openlineage.integration.job.owners=Data Team=maintainer,Alice Johnson=Data Engineer
+
+# For output lineage (optional)
+transforms=openlineage
+transforms.openlineage.type=io.debezium.transforms.openlineage.OpenLineage
+schema.history.internal.kafka.bootstrap.servers=kafka:9092
+
+# Standard Kafka Connect settings
+key.converter=org.apache.kafka.connect.json.JsonConverter
+value.converter=org.apache.kafka.connect.json.JsonConverter
+----
+
+== Lineage Events
+
+The integration produces several types of OpenLineage events:
+
+=== Run Events
+
+* *START*: When the connector starts
+* *RUNNING*: During normal operation and when processing tables
+* *COMPLETE*: When the connector stops gracefully
+* *FAIL*: When the connector encounters errors
+
+=== Dataset Information
+
+*Input Datasets* represent source database tables. The namespace follows the https://openlineage.io/docs/spec/naming#dataset-naming[OpenLineage dataset naming specification].
+
+For example, with PostgreSQL:
+
+* Namespace: `postgres://hostname:port`
+* Name: `schema.table`
+* Schema: Column names and types from the source table
+
+The exact namespace format depends on your database system and follows the OpenLineage specification for dataset naming conventions.
+
+*Output Datasets* represent Kafka topics (when using the OpenLineage transform):
+
+* Namespace: `kafka://bootstrap-server:port`
+* Name: `topic-prefix.schema.table`
+* Schema: Complete CDC event structure including metadata fields
+
+== Monitoring and Troubleshooting
+
+=== Verifying Integration
+
+1. *Check connector logs* for OpenLineage-related messages
+2. *Verify events in your OpenLineage backend* (if using HTTP transport)
+3. *Use console transport* for testing:
++
+[source,yaml]
+----
+transport:
+  type: console
+----
+
+=== Common Issues
+
+*Integration not working:*
+
+* Verify `openlineage.integration.enabled=true`
+* Check that the configuration file path is correct and accessible
+* Ensure the OpenLineage configuration file is valid YAML
+* Verify all required JAR dependencies are present in the classpath
+
+*Missing output datasets:*
+
+* Verify the OpenLineage transform is configured
+* Check that `schema.history.internal.kafka.bootstrap.servers` is set
+
+*Connection issues:*
+
+* Verify OpenLineage server URL and authentication
+* Check network connectivity from Debezium to OpenLineage server
+
+*Dependency issues:*
+
+* Ensure all required JAR files are present and compatible versions
+* Check for classpath conflicts with existing dependencies
+
+=== Error Events
+
+When the connector fails, OpenLineage FAIL events include:
+
+* Error messages
+* Stack traces
+* Connector configuration for debugging
