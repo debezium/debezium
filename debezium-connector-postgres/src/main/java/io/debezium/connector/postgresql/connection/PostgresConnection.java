@@ -824,7 +824,13 @@ public class PostgresConnection extends JdbcConnection {
         final String query = String.format("SELECT %s FROM %s WHERE %s",
                 columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
                 quotedTableIdString(table.id()),
-                keyColumns.stream().map(key -> key + "=?::" + table.columnWithName(key).typeName()).collect(Collectors.joining(" AND ")));
+                keyColumns.stream()
+                        .map(key -> {
+                            Column column = table.columnWithName(key);
+                            String castableType = typeRegistry.get(column.nativeType()).getName();
+                            return key + "=?::" + castableType;
+                        })
+                        .collect(Collectors.joining(" AND ")));
         return reselectColumns(query, table.id(), columns, keyValues);
     }
 
