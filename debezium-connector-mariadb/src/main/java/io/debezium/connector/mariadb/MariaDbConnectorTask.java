@@ -139,9 +139,9 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
 
         MariaDbOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
-        validateAndLoadSchemaHistory(connectorConfig, connection::validateLogPosition, previousOffsets, schema, snapshotter);
+        validateSchemaHistory(connectorConfig, connection::validateLogPosition, previousOffsets, schema, snapshotter);
 
-        LOGGER.info("Reconnecting after finishing schema recovery");
+        LOGGER.info("Reconnecting after validating schema recovery");
 
         try {
             try {
