@@ -426,4 +426,45 @@ public class PostgresReselectColumnsProcessorIT extends AbstractReselectProcesso
 
         assertColumnReselectedForUnavailableValue(logInterceptor, "s1.dbz8277_toast", "data");
     }
+
+    @Test
+    @FixFor("DBZ-9086")
+    public void testToastColumnReselectedWhenPrimaryKeyIsSerialType() throws Exception {
+        TestHelper.execute("CREATE TABLE s1.dbz9086_toast (id serial primary key, data text, data2 int);");
+
+        final LogInterceptor logInterceptor = getReselectLogInterceptor();
+
+        Configuration config = getConfigurationBuilder()
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1\\.dbz9086_toast")
+                .build();
+
+        start(PostgresConnector.class, config);
+        waitForStreamingStarted();
+
+        final String text = RandomStringUtils.randomAlphabetic(10000);
+
+        TestHelper.execute("INSERT INTO s1.dbz9086_toast (id,data,data2) values (1,'" + text + "',1);",
+                "UPDATE s1.dbz9086_toast SET data2 = 2 where id = 1;");
+
+        final SourceRecords sourceRecords = consumeRecordsByTopic(2);
+        final List<SourceRecord> tableRecords = sourceRecords.recordsForTopic("test_server.s1.dbz9086_toast");
+
+        // Check insert
+        SourceRecord record = tableRecords.get(0);
+        Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        VerifyRecord.isValidInsert(record, "id", 1);
+        assertThat(after.get("id")).isEqualTo(1);
+        assertThat(after.get("data")).isEqualTo(text);
+        assertThat(after.get("data2")).isEqualTo(1);
+
+        // Check update
+        record = tableRecords.get(1);
+        after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+        VerifyRecord.isValidUpdate(record, "id", 1);
+        assertThat(after.get("id")).isEqualTo(1);
+        assertThat(after.get("data")).isEqualTo(text);
+        assertThat(after.get("data2")).isEqualTo(2);
+
+        assertColumnReselectedForUnavailableValue(logInterceptor, "s1.dbz9086_toast", "data");
+    }
 }
