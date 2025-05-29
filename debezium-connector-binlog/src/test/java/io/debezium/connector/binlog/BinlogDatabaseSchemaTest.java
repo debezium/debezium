@@ -217,7 +217,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     }
 
     @Test
-    public void shouldAllowDecimalPrecision() {
+    public void shouldAllowDecimalPrecision() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfig()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
@@ -240,7 +240,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
 
     @Test
     @FixFor("DBZ-3622")
-    public void shouldStoreNonCapturedDatabase() {
+    public void shouldStoreNonCapturedDatabase() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfig()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
@@ -272,7 +272,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
 
     @Test
     @FixFor("DBZ-3622")
-    public void shouldNotStoreNonCapturedDatabase() {
+    public void shouldNotStoreNonCapturedDatabase() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfig()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
@@ -305,7 +305,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
 
     @Test
     @FixFor("DBZ-3622")
-    public void shouldStoreNonCapturedTable() {
+    public void shouldStoreNonCapturedTable() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfigWithoutDatabaseFilter()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
@@ -337,7 +337,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
 
     @Test
     @FixFor("DBZ-3622")
-    public void shouldNotStoreNonCapturedTable() {
+    public void shouldNotStoreNonCapturedTable() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfigWithoutDatabaseFilter()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
@@ -446,7 +446,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
         assertThat(schema.tableIds().stream().filter(id -> id.catalog().equals(dbName)).count()).isGreaterThan(0);
     }
 
-    protected void assertHistoryRecorded(Configuration config, P partition, OffsetContext offset) {
+    protected void assertHistoryRecorded(Configuration config, P partition, OffsetContext offset) throws InterruptedException {
         try (S duplicate = getSchema(config)) {
             duplicate.recover(Offsets.of(partition, offset));
 

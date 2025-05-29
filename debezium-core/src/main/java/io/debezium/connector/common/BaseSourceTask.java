@@ -75,9 +75,9 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     private Configuration config;
     private List<SignalChannelReader> signalChannels;
 
-    protected void validateAndLoadSchemaHistory(CommonConnectorConfig config, LogPositionValidator logPositionValidator, Offsets<P, O> previousOffsets,
-                                                DatabaseSchema schema,
-                                                Snapshotter snapshotter) {
+    protected void validateSchemaHistory(CommonConnectorConfig config, LogPositionValidator logPositionValidator, Offsets<P, O> previousOffsets,
+                                         DatabaseSchema schema,
+                                         Snapshotter snapshotter) {
 
         for (Map.Entry<P, O> previousOffset : previousOffsets) {
 
@@ -155,10 +155,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                                 + "available on the server. Reconfigure the connector to use a snapshot when needed if you want to recover. " +
                                 "If not the connector will streaming from the last available position in the log");
                     }
-                }
-
-                if (schema.isHistorized()) {
-                    ((HistorizedDatabaseSchema) schema).recover(partition, offset);
                 }
             }
         }
