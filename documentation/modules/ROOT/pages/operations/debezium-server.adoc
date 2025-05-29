@@ -1803,6 +1803,78 @@ By default, dots in a name are replaced with underscores.
 |===
 
 
+==== Qdrant Sink
+
+Qdrant is an open-source vector database optimized for vector similarity search and extended with powerful filtering capabilities.
+It's designed for high-load applications and allows you to efficiently store, manage, and search vector embeddings. You can use Qdrant to process vector datatypes that are captured from a source database, or use it with a transformation to calculate vectors from message fields and then use them as embeddings.
+
+Qdrant sink ingests incoming messages and upserts the `after` part of each message into a collection.
+When a delete message arrives, the matching record is removed from the collection.
+
+The sink follows these rules
+
+* Each Debezium collection/table is mapped to a Qdrant collection
+* Primary keys are required and used as Qdrant point IDs (only `INT64` and `UUID` are supported)
+* `FloatVector` and `DoubleVector` can be used as source for Qdrant vector
+* Non-primary key and non-vector fields are mapped to Qdrant payload
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Property
+|Default
+|Description
+
+|[[qdrant-type]]<<qdrant-type, `debezium.sink.type`>>
+|
+|Specifies the type of sink.
+Must be set to `qdrant`.
+
+|[[qdrant-host]]<<qdrant-host, `debezium.sink.qdrant.host`>>
+|_localhost_
+|(Optional) The hostname to access the Qdrant database instance.
+
+|[[qdrant-port]]<<qdrant-port, `debezium.sink.qdrant.port`>>
+|_6333_
+|(Optional) The port to access the Qdrant database instance.
+
+|[[qdrant-api-key]]<<qdrant-api-key, `debezium.sink.qdrant.api.key`>>
+|
+|(Optional) The API key used to authenticate to access the Qdrant database instance.
+
+|[[qdrant-vector-field-names]]<<qdrant-vector-field-names, `debezium.sink.qdrant.vector.field.names`>>
+|
+|(Optional) Comma-separated list of `collection-name:field-name` pairs to explicitly define which vector field should be used for given collection. +
+This is mandatory for source tables/collections with more than one vector field.
+
+|[[qdrant-field-include-list]]<<qdrant-field-include-list, `debezium.sink.qdrant.field.include.list.<collection-name>`>>
+|
+|(Optional) Comma-separated list of a subset of field names for given collection that will form the Qdrant collection payload.
+
+|===
+
+
+===== Injection points
+
+You can modify the behavior of the Qdrant sink connector by applying custom logic that provides alternative implementations for specific functions.
+If the alternative implementations are not available, the connector uses the default implementations.
+
+[cols="35%a,10%a,55%a",options="header"]
+|===
+|Interface
+|CDI classifier
+|Description
+
+|[[qdrant-ext-client]]<<qdrant-ext-client, `io.qdrant.client.QdrantClient`>>
+|`@CustomConsumerBuilder`
+|An instance of a custom `QdrantClient` client that is configured to access target collections.
+
+|[[qdrant-ext-stream-name-mapper]]<<qdrant-ext-stream-name-mapper, `io.debezium.server.StreamNameMapper`>>
+|
+|Custom implementation that maps the name of the planned destination topic to a Qdrant collection.
+
+|===
+
+
 ==== InstructLab
 
 InstructLab is a community-driven approach to build truly open-source large language models (LLMs).
