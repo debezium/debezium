@@ -1617,6 +1617,17 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
+     * Returns an SQL identifier representing the given database object name.
+     */
+    public String quoteIdentifier(String name) {
+        if (name.contains(closingQuoteCharacter)) {
+            name = name.replace(closingQuoteCharacter, closingQuoteCharacter + closingQuoteCharacter);
+        }
+
+        return openingQuoteCharacter + name + closingQuoteCharacter;
+    }
+
+    /**
      * Converts a table id into a string with all components of the id quoted so non-alphanumeric
      * characters are properly handled.
      *
@@ -1629,7 +1640,10 @@ public class JdbcConnection implements AutoCloseable {
 
     /**
      * Prepares qualified column names with appropriate quote character as per the specific database's rules.
+     *
+     * @deprecated Use {@link #quoteIdentifier(String)} instead.
      */
+    @Deprecated
     public String quotedColumnIdString(String columnName) {
         return openingQuoteCharacter + columnName + closingQuoteCharacter;
     }

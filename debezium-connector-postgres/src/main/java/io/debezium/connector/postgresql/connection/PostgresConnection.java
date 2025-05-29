@@ -619,6 +619,7 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     @Override
+    @Deprecated
     public String quotedColumnIdString(String columnName) {
         if (columnName.contains("\"")) {
             columnName = columnName.replace("\"", "\"\"");
