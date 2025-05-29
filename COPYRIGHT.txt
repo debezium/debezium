@@ -7,6 +7,7 @@ Adam Strickland
 Addison Higham
 Adham
 Adrian Kreuziger
+Ahmed Bayraktar
 Ahmed Eljami
 Aidas
 Akshansh Jain
@@ -80,6 +81,7 @@ Ben Hardesty
 Ben Williams
 Bertrand Paquet
 Bhagyashree Goyal
+Bhumika Bayani
 Biel Garau Estarellas
 Bin Li
 Bingqin Zhou
@@ -230,6 +232,7 @@ Jan Hendrik Dolling
 Jan Werner
 Jannik Steinmann
 Jason Schweier
+Jason Speck
 Jesse Ehrenzweig
 Jiabao Sun
 Jiri Kulhanek
@@ -382,6 +385,7 @@ Martin Walsh
 Masazumi Kobayashi
 Mathijs van den Worm
 Matt Beary
+Matt Hejnas
 Matt Vance
 Matteo Capitanio
 Mathieu Rozieres
@@ -394,6 +398,7 @@ Meng Qiu
 Melissa Winstanley
 Michael Cambria
 Michael Cizmar
+Michael Terranova
 Michael Wang
 Michal Augustýn
 Michal Pioun
@@ -427,6 +432,7 @@ Nenad Stojanovikj
 Nick Murray
 Niels Pardon
 Nikhil Benesch
+Nikolay Angelov
 Nils Hartmann
 Nir Levy
 Nishant Singh
@@ -607,6 +613,7 @@ Willie Cheong
 Willie Zhu
 Wu Zhenhua
 Wout Scheepers
+Wouter Coekaerts
 Xiao Fu
 Xiaojian Sun
 Xiaolin Zhang
