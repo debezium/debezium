@@ -455,47 +455,6 @@ public class SqlServerConnection extends JdbcConnection {
         return userHasAccess.get();
     }
 
-    /**
-     * Creates an exclusive lock for a given table.
-     *
-     * @param tableId to be locked
-     * @throws SQLException
-     */
-    public void lockTable(TableId tableId) throws SQLException {
-        final String lockTableStmt = LOCK_TABLE.replace(STATEMENTS_PLACEHOLDER, tableId.table());
-        execute(lockTableStmt);
-    }
-
-    private String cdcNameForTable(TableId tableId) {
-        return tableId.schema() + '_' + tableId.table();
-    }
-
-    public static class CdcEnabledTable {
-
-        private final String tableId;
-        private final String captureName;
-        private final Lsn fromLsn;
-
-        private CdcEnabledTable(String tableId, String captureName, Lsn fromLsn) {
-            this.tableId = tableId;
-            this.captureName = captureName;
-            this.fromLsn = fromLsn;
-        }
-
-        public String getTableId() {
-            return tableId;
-        }
-
-        public String getCaptureName() {
-            return captureName;
-        }
-
-        public Lsn getFromLsn() {
-            return fromLsn;
-        }
-
-    }
-
     public List<SqlServerChangeTable> getChangeTables(String databaseName) throws SQLException {
         return getChangeTables(databaseName, Lsn.NULL);
     }
