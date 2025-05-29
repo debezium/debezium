@@ -18,6 +18,7 @@ import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.spi.topic.TopicNamingStrategy;
 
 /**
@@ -31,19 +32,22 @@ import io.debezium.spi.topic.TopicNamingStrategy;
 @NotThreadSafe
 public class MySqlDatabaseSchema extends BinlogDatabaseSchema<MySqlPartition, MySqlOffsetContext, MySqlValueConverters, MySqlDefaultValueConverter> {
 
+    private ServiceRegistry serviceRegistry;
+
     /**
      * Create a schema component given the supplied {@link MySqlConnectorConfig MySQL connector configuration}.
      * The DDL statements passed to the schema are parsed and a logical model of the database schema is created.
      *
      */
     public MySqlDatabaseSchema(MySqlConnectorConfig connectorConfig, MySqlValueConverters valueConverter, TopicNamingStrategy<TableId> topicNamingStrategy,
-                               SchemaNameAdjuster schemaNameAdjuster, boolean tableIdCaseInsensitive) {
+                               SchemaNameAdjuster schemaNameAdjuster, boolean tableIdCaseInsensitive, ServiceRegistry serviceRegistry) {
         super(connectorConfig,
                 valueConverter,
                 new MySqlDefaultValueConverter(valueConverter),
                 topicNamingStrategy,
                 schemaNameAdjuster,
                 tableIdCaseInsensitive);
+        this.serviceRegistry = serviceRegistry;
     }
 
     @Override
@@ -53,7 +57,7 @@ public class MySqlDatabaseSchema extends BinlogDatabaseSchema<MySqlPartition, My
                 false,
                 connectorConfig.isSchemaCommentsHistoryEnabled(),
                 getTableFilter(),
-                connectorConfig.getServiceRegistry().getService(BinlogCharsetRegistry.class));
+                serviceRegistry.getService(BinlogCharsetRegistry.class));
     }
 
 }

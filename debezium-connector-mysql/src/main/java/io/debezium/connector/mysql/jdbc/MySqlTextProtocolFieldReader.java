@@ -14,6 +14,7 @@ import java.util.Calendar;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
@@ -27,8 +28,8 @@ public class MySqlTextProtocolFieldReader extends AbstractFieldReader {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlTextProtocolFieldReader.class);
 
-    public MySqlTextProtocolFieldReader(MySqlConnectorConfig config) {
-        super(config);
+    public MySqlTextProtocolFieldReader(MySqlConnectorConfig config, BinlogCharsetRegistry binlogCharsetRegistry) {
+        super(config, binlogCharsetRegistry);
     }
 
     @Override

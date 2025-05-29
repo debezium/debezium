@@ -7,6 +7,7 @@ package io.debezium.connector.sqlserver;
 
 import java.util.Optional;
 
+import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -35,11 +36,13 @@ public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFacto
     private final SqlServerDatabaseSchema schema;
     private final NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService;
     private final SnapshotterService snapshotterService;
+    private final BeanRegistry beanRegistry;
 
     public SqlServerChangeEventSourceFactory(SqlServerConnectorConfig configuration, MainConnectionProvidingConnectionFactory<SqlServerConnection> connectionFactory,
                                              SqlServerConnection metadataConnection, ErrorHandler errorHandler, EventDispatcher<SqlServerPartition, TableId> dispatcher,
                                              Clock clock, SqlServerDatabaseSchema schema,
-                                             NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService, SnapshotterService snapshotterService) {
+                                             NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService, SnapshotterService snapshotterService,
+                                             BeanRegistry beanRegistry) {
         this.configuration = configuration;
         this.connectionFactory = connectionFactory;
         this.metadataConnection = metadataConnection;
@@ -49,13 +52,15 @@ public class SqlServerChangeEventSourceFactory implements ChangeEventSourceFacto
         this.schema = schema;
         this.notificationService = notificationService;
         this.snapshotterService = snapshotterService;
+        this.beanRegistry = beanRegistry;
     }
 
     @Override
     public SnapshotChangeEventSource<SqlServerPartition, SqlServerOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<SqlServerPartition> snapshotProgressListener,
-                                                                                                              NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService) {
+                                                                                                              NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService,
+                                                                                                              BeanRegistry beanRegistry) {
         return new SqlServerSnapshotChangeEventSource(configuration, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService,
-                snapshotterService);
+                snapshotterService, this.beanRegistry);
     }
 
     @Override

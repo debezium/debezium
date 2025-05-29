@@ -13,6 +13,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogDatabaseSchemaTest;
+import io.debezium.connector.mariadb.charset.MariaDbCharsetRegistry;
 import io.debezium.connector.mariadb.jdbc.MariaDbValueConverters;
 import io.debezium.connector.mariadb.util.MariaDbValueConvertersFactory;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -68,7 +69,7 @@ public class DatabaseSchemaTest extends BinlogDatabaseSchemaTest<MariaDbConnecto
                         CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN),
                 (TopicNamingStrategy) DefaultTopicNamingStrategy.create(connectorConfig),
                 SchemaNameAdjuster.create(),
-                false);
+                false, new MariaDbCharsetRegistry());
     }
 
     @Override

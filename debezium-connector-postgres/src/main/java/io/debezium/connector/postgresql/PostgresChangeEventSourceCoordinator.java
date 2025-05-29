@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
@@ -25,6 +26,7 @@ import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContex
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.snapshot.SnapshotterService;
 
 /**
@@ -47,9 +49,10 @@ public class PostgresChangeEventSourceCoordinator extends ChangeEventSourceCoord
                                                 EventDispatcher<PostgresPartition, ?> eventDispatcher, DatabaseSchema<?> schema,
                                                 SnapshotterService snapshotterService, SlotState slotInfo,
                                                 SignalProcessor<PostgresPartition, PostgresOffsetContext> signalProcessor,
-                                                NotificationService<PostgresPartition, PostgresOffsetContext> notificationService) {
+                                                NotificationService<PostgresPartition, PostgresOffsetContext> notificationService, BeanRegistry beanRegistry,
+                                                ServiceRegistry serviceRegistry) {
         super(previousOffsets, errorHandler, connectorType, connectorConfig, changeEventSourceFactory,
-                changeEventSourceMetricsFactory, eventDispatcher, schema, signalProcessor, notificationService, snapshotterService);
+                changeEventSourceMetricsFactory, eventDispatcher, schema, signalProcessor, notificationService, snapshotterService, beanRegistry, serviceRegistry);
         this.snapshotterService = snapshotterService;
         this.slotInfo = slotInfo;
     }

@@ -10,6 +10,7 @@ import java.util.function.Function;
 
 import org.apache.kafka.connect.source.SourceRecord;
 
+import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.mariadb.metrics.MariaDbSnapshotChangeEventSourceMetrics;
@@ -76,7 +77,8 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
     @Override
     public SnapshotChangeEventSource<MariaDbPartition, MariaDbOffsetContext> getSnapshotChangeEventSource(
                                                                                                           SnapshotProgressListener<MariaDbPartition> snapshotProgressListener,
-                                                                                                          NotificationService<MariaDbPartition, MariaDbOffsetContext> notificationService) {
+                                                                                                          NotificationService<MariaDbPartition, MariaDbOffsetContext> notificationService,
+                                                                                                          BeanRegistry beanRegistry) {
         return new MariaDbSnapshotChangeEventSource(
                 configuration,
                 connectionFactory,
@@ -87,7 +89,7 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
                 this::modifyAndFlushLastRecord,
                 this::preSnapshot,
                 notificationService,
-                snapshotterService);
+                snapshotterService, beanRegistry);
     }
 
     @Override

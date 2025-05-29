@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotIsolationMode;
 import io.debezium.connector.sqlserver.SqlServerOffsetContext.Loader;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
@@ -55,8 +56,8 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
                                               SqlServerDatabaseSchema schema, EventDispatcher<SqlServerPartition, TableId> dispatcher, Clock clock,
                                               SnapshotProgressListener<SqlServerPartition> snapshotProgressListener,
                                               NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService,
-                                              SnapshotterService snapshotterService) {
-        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService, snapshotterService);
+                                              SnapshotterService snapshotterService, BeanRegistry beanRegistry) {
+        super(connectorConfig, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService, snapshotterService, beanRegistry);
         this.connectorConfig = connectorConfig;
         this.jdbcConnection = connectionFactory.mainConnection();
         this.sqlServerDatabaseSchema = schema;

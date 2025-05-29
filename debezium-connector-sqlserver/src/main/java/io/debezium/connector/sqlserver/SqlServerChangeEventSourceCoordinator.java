@@ -15,6 +15,7 @@ import org.apache.kafka.connect.source.SourceConnector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
@@ -30,6 +31,7 @@ import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.SnapshotResult;
 import io.debezium.schema.DatabaseSchema;
+import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
@@ -57,9 +59,9 @@ public class SqlServerChangeEventSourceCoordinator extends ChangeEventSourceCoor
                                                  Clock clock,
                                                  SignalProcessor<SqlServerPartition, SqlServerOffsetContext> signalProcessor,
                                                  NotificationService<SqlServerPartition, SqlServerOffsetContext> notificationService,
-                                                 SnapshotterService snapshotterService) {
+                                                 SnapshotterService snapshotterService, BeanRegistry beanRegistry, ServiceRegistry serviceRegistry) {
         super(previousOffsets, errorHandler, connectorType, connectorConfig, changeEventSourceFactory,
-                changeEventSourceMetricsFactory, eventDispatcher, schema, signalProcessor, notificationService, snapshotterService);
+                changeEventSourceMetricsFactory, eventDispatcher, schema, signalProcessor, notificationService, snapshotterService, beanRegistry, serviceRegistry);
         this.clock = clock;
         this.pollInterval = connectorConfig.getPollInterval();
     }

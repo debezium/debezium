@@ -7,6 +7,7 @@ package io.debezium.pipeline.source.spi;
 
 import java.util.Optional;
 
+import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -27,12 +28,14 @@ public interface ChangeEventSourceFactory<P extends Partition, O extends OffsetC
      * {@link StreamingChangeEventSource#execute(ChangeEventSource.ChangeEventSourceContext, Partition, io.debezium.pipeline.spi.OffsetContext)}
      * method.
      *
+     * @param beanRegistry
      * @param snapshotProgressListener
      *            A listener called for changes in the state of snapshot. May be {@code null}.
      *
      * @return A snapshot change event source
      */
-    SnapshotChangeEventSource<P, O> getSnapshotChangeEventSource(SnapshotProgressListener<P> snapshotProgressListener, NotificationService<P, O> notificationService);
+    SnapshotChangeEventSource<P, O> getSnapshotChangeEventSource(SnapshotProgressListener<P> snapshotProgressListener, NotificationService<P, O> notificationService,
+                                                                 BeanRegistry beanRegistry);
 
     /**
      * Returns a streaming change event source that starts streaming at the given offset.
