@@ -8,6 +8,7 @@ package io.debezium.connector.mysql;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -239,6 +240,11 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
         return coordinator;
     }
 
+    @Override
+    protected String connectorName() {
+        return Module.name();
+    }
+
     private MySqlValueConverters getValueConverters(MySqlConnectorConfig configuration) {
         return new MySqlValueConverters(
                 configuration.getDecimalMode(),
@@ -254,6 +260,11 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
     public List<SourceRecord> doPoll() throws InterruptedException {
         final List<DataChangeEvent> records = queue.poll();
         return records.stream().map(DataChangeEvent::getRecord).collect(Collectors.toList());
+    }
+
+    @Override
+    protected Optional<ErrorHandler> getErrorHandler() {
+        return Optional.of(errorHandler);
     }
 
     @Override

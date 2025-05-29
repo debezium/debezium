@@ -23,6 +23,7 @@ import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.doc.FixFor;
+import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.Table;
@@ -57,6 +58,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
 
     @Before
     public void beforeEach() {
+        DebeziumOpenLineageEmitter.init(Configuration.empty(), "test");
         Testing.Files.delete(TEST_FILE_PATH);
     }
 

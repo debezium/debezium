@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.connect.data.Schema;
@@ -32,6 +33,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 
@@ -187,8 +189,18 @@ public class BaseSourceTaskTest {
         }
 
         @Override
+        protected String connectorName() {
+            return "";
+        }
+
+        @Override
         protected List<SourceRecord> doPoll() {
             return records;
+        }
+
+        @Override
+        protected Optional<ErrorHandler> getErrorHandler() {
+            return Optional.empty();
         }
 
         @Override

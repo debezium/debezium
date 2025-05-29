@@ -8,6 +8,7 @@ package io.debezium.connector.oracle;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -181,6 +182,11 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         return coordinator;
     }
 
+    @Override
+    protected String connectorName() {
+        return Module.name();
+    }
+
     private void checkArchiveLogDestination(OracleConnection connection, String destinationName) {
         try {
 
@@ -217,6 +223,11 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         return records.stream()
                 .map(DataChangeEvent::getRecord)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    protected Optional<ErrorHandler> getErrorHandler() {
+        return Optional.of(errorHandler);
     }
 
     @Override

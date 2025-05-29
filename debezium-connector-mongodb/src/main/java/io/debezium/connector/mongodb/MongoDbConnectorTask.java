@@ -10,6 +10,7 @@ import static java.util.Comparator.comparing;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -171,6 +172,11 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         }
     }
 
+    @Override
+    protected String connectorName() {
+        return Module.name();
+    }
+
     private Offsets<MongoDbPartition, MongoDbOffsetContext> getPreviousOffsets(MongoDbConnectorConfig connectorConfig) {
         var partitionProvider = new MongoDbPartition.Provider(connectorConfig);
         var offsetLoader = new MongoDbOffsetContext.Loader(connectorConfig);
@@ -238,6 +244,11 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
     public List<SourceRecord> doPoll() throws InterruptedException {
         List<DataChangeEvent> records = queue.poll();
         return records.stream().map(DataChangeEvent::getRecord).collect(Collectors.toList());
+    }
+
+    @Override
+    protected Optional<ErrorHandler> getErrorHandler() {
+        return Optional.of(errorHandler);
     }
 
     @Override
