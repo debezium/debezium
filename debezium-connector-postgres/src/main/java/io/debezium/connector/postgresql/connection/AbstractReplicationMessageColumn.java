@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.postgresql.PostgresType;
+import io.debezium.util.LRUCacheMap;
 
 /**
  * Extracts type information from replication messages and associates them with each column.
@@ -34,6 +35,8 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
         private static final Pattern TYPEMOD_PATTERN = Pattern.compile("\\s*,\\s*");
         // "text"; "character varying(255)"; "numeric(12,3)"; "geometry(MultiPolygon,4326)"; "timestamp (12) with time zone"; "int[]"; "myschema.geometry"
 
+        private static LRUCacheMap<String, String[]> modifierCache = new LRUCacheMap(128);
+
         /**
          * Length of the type, if present
          */
@@ -51,13 +54,7 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
 
         public TypeMetadataImpl(String columnName, PostgresType type, String typeWithModifiers, boolean optional) {
             this.optional = optional;
-            Matcher m = TYPE_PATTERN.matcher(typeWithModifiers);
-            if (!m.matches()) {
-                LOGGER.error("Failed to parse columnType for {} '{}'", columnName, typeWithModifiers);
-                throw new ConnectException(String.format("Failed to parse columnType '%s' for column %s", typeWithModifiers, columnName));
-            }
-
-            String[] typeModifiers = m.group("mod") != null ? TYPEMOD_PATTERN.split(m.group("mod")) : NO_MODIFIERS;
+            String[] typeModifiers = modifierCache.computeIfAbsent(typeWithModifiers, mod -> parseModifiers(mod, columnName));
 
             // TODO: make this more elegant/type-specific
             length = type.getDefaultLength();
@@ -93,6 +90,16 @@ public abstract class AbstractReplicationMessageColumn implements ReplicationMes
 
         public boolean isOptional() {
             return optional;
+        }
+
+        private String[] parseModifiers(String typeWithModifiers, String columnName) {
+            Matcher m = TYPE_PATTERN.matcher(typeWithModifiers);
+            if (!m.matches()) {
+                LOGGER.error("Failed to parse columnType for {} '{}'", columnName, typeWithModifiers);
+                throw new ConnectException(String.format("Failed to parse columnType '%s' for column %s", typeWithModifiers, columnName));
+            }
+
+            return m.group("mod") != null ? TYPEMOD_PATTERN.split(m.group("mod")) : NO_MODIFIERS;
         }
     }
 
