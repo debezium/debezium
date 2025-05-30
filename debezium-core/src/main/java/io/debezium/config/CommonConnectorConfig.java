@@ -579,6 +579,7 @@ public abstract class CommonConnectorConfig {
     public static final long DEFAULT_RETRIABLE_RESTART_WAIT = 10000L;
     public static final long DEFAULT_MAX_QUEUE_SIZE_IN_BYTES = 0; // In case we don't want to pass max.queue.size.in.bytes;
     public static final String NOTIFICATION_CONFIGURATION_FIELD_PREFIX_STRING = "notification.";
+    public static final long DEFAULT_CONNECTION_VALIDATION_TIMEOUT_MS = 60000L; // 60 seconds default timeout
 
     public static final int DEFAULT_MAX_RETRIES = ErrorHandler.RETRIES_UNLIMITED;
     public static final String ERRORS_MAX_RETRIES = "errors.max.retries";
@@ -1089,6 +1090,16 @@ public abstract class CommonConnectorConfig {
             .optional()
             .withDescription("When enabled the connector will emit advanced streaming metrics");
 
+    public static final Field CONNECTION_VALIDATION_TIMEOUT_MS = Field.create("connection.validation.timeout.ms")
+        .withDisplayName("Connection validation timeout (ms)")
+        .withType(Type.LONG)
+        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 13))
+        .withWidth(Width.SHORT)
+        .withImportance(Importance.LOW)
+        .withDefault(DEFAULT_CONNECTION_VALIDATION_TIMEOUT_MS)
+        .withDescription("The maximum time in milliseconds to wait for connection validation to complete. Defaults to 60 seconds.")
+        .withValidation(Field::isPositiveLong);
+
     public static final Field FAIL_ON_NO_TABLES = Field.createInternal("fail.on.no.tables")
             .withDisplayName("Fail if no tables are found")
             .withType(Type.BOOLEAN)
@@ -1124,7 +1135,8 @@ public abstract class CommonConnectorConfig {
                     INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY,
                     LOG_POSITION_CHECK_ENABLED,
                     ADVANCED_METRICS_ENABLE,
-                    FAIL_ON_NO_TABLES)
+                    FAIL_ON_NO_TABLES,
+                    CONNECTION_VALIDATION_TIMEOUT_MS)
             .events(
                     CUSTOM_CONVERTERS,
                     CUSTOM_POST_PROCESSORS,
@@ -1613,6 +1625,10 @@ public abstract class CommonConnectorConfig {
 
     public boolean isAdvancedMetricsEnabled() {
         return isAdvancedMetricsEnabled;
+    }
+
+    public Duration getConnectionValidationTimeout() {
+        return Duration.ofMillis(config.getLong(CONNECTION_VALIDATION_TIMEOUT_MS));
     }
 
     public EnumeratedValue snapshotQueryMode() {

@@ -6,13 +6,16 @@
 package io.debezium.connector.binlog;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
+import io.debezium.util.Threads;
 import org.apache.kafka.common.config.ConfigValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,21 +62,33 @@ public abstract class BinlogConnector<T extends BinlogConnectorConfig> extends R
     protected void validateConnection(Map<String, ConfigValue> configValues, Configuration config) {
         ConfigValue hostnameValue = configValues.get(RelationalDatabaseConnectorConfig.HOSTNAME.name());
         final T connectorConfig = createConnectorConfig(config);
-        try (BinlogConnectorConnection connection = createConnection(config, connectorConfig)) {
-            try {
-                connection.connect();
-                connection.execute("SELECT version()");
-                LOGGER.info("Successfully tested connection for {} with user '{}'",
-                        connection.connectionString(), connection.connectionConfig().username());
-            }
-            catch (SQLException e) {
-                LOGGER.error("Failed testing connection for {} with user '{}'",
-                        connection.connectionString(), connection.connectionConfig().username(), e);
-                hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
-            }
+        Duration timeout = connectorConfig.getConnectionValidationTimeout();
+
+        try {
+            Threads.runWithTimeout(this.getClass(), () -> {
+                try (BinlogConnectorConnection connection = createConnection(config, connectorConfig)) {
+                    try {
+                        connection.connect();
+                        connection.execute("SELECT version()");
+                        LOGGER.info("Successfully tested connection for {} with user '{}'",
+                            connection.connectionString(), connection.connectionConfig().username());
+                    }
+                    catch (SQLException e) {
+                        LOGGER.error("Failed testing connection for {} with user '{}'",
+                            connection.connectionString(), connection.connectionConfig().username(), e);
+                        hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
+                    }
+                }
+                catch (SQLException e) {
+                    LOGGER.error("Unexpected error shutting down the database connection", e);
+                }
+            }, timeout, connectorConfig.getLogicalName(), "connection-validation");
         }
-        catch (SQLException e) {
-            LOGGER.error("Unexpected error shutting down the database connection", e);
+        catch (TimeoutException e) {
+            hostnameValue.addErrorMessage("Connection validation timed out after " + timeout.toMillis() + " ms");
+        }
+        catch (Exception e) {
+            hostnameValue.addErrorMessage("Error during connection validation: " + e.getMessage());
         }
     }
 

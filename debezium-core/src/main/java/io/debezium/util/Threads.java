@@ -7,11 +7,14 @@ package io.debezium.util;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.LongSupplier;
@@ -309,5 +312,35 @@ public class Threads {
 
     public static ScheduledExecutorService newSingleThreadScheduledExecutor(Class<?> component, String componentId, String name, boolean daemon) {
         return Executors.newSingleThreadScheduledExecutor(threadFactory(component, componentId, name, false, daemon));
+    }
+
+    /**
+     * Runs an operation with a timeout using a single-threaded executor.
+     *
+     * @param componentClass the class of the component using this method
+     * @param operation the operation to run
+     * @param timeout the timeout duration
+     * @param componentName the name of the component
+     * @param operationName the name of the operation being executed with timeout
+     * @throws Exception if the operation fails or times out
+     */
+    public static void runWithTimeout(Class<?> componentClass, Runnable operation, Duration timeout, String componentName, String operationName) throws Exception {
+        ExecutorService executor = newSingleThreadExecutor(componentClass, componentName, operationName);
+        Future<?> future = executor.submit(operation);
+        try {
+            future.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
+        }
+        catch (TimeoutException e) {
+            LOGGER.error("Operation {} timed out after {} ms", operationName, timeout.toMillis());
+            future.cancel(true);
+            throw e;
+        }
+        catch (ExecutionException e) {
+            LOGGER.error("Operation {} failed", operationName, e);
+            throw (e.getCause() != null) ? new Exception(e.getCause()) : e;
+        }
+        finally {
+            executor.shutdownNow();
+        }
     }
 }
