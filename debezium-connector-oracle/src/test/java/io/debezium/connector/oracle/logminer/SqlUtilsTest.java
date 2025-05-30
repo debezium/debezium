@@ -39,6 +39,32 @@ public class SqlUtilsTest {
     }
 
     @Test
+    public void testLogMinerStatement(){
+        String result = SqlUtils.startLogMinerStatement(Scn.valueOf(10L), Scn.valueOf(20L), OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG, true, null);
+        expected = "BEGIN sys.dbms_logmnr.start_logmnr(startScn => '10', endScn => '20', " +
+                "OPTIONS => DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG + DBMS_LOGMNR.CONTINUOUS_MINE + DBMS_LOGMNR.NO_ROWID_IN_STMT);END;";
+        assertThat(result).isEqualTo(expected);
+
+        result = SqlUtils.startLogMinerStatement(Scn.valueOf(10L), Scn.valueOf(20L), OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO, false, null);
+        expected = "BEGIN sys.dbms_logmnr.start_logmnr(startScn => '10', endScn => '20', " +
+                "OPTIONS => DBMS_LOGMNR.DICT_FROM_REDO_LOGS + DBMS_LOGMNR.DDL_DICT_TRACKING + DBMS_LOGMNR.NO_ROWID_IN_STMT);END;";
+        assertThat(result).isEqualTo(expected);
+      
+        result = SqlUtils.startLogMinerStatement(Scn.valueOf(10L), Scn.valueOf(20L), OracleConnectorConfig.LogMiningStrategy.DICTIONARY_FROM_FILE, false,
+                "/u01/dictionary.file");
+        expected = "BEGIN sys.dbms_logmnr.start_logmnr(startScn => '10', endScn => '20', " +
+                "OPTIONS => DBMS_LOGMNR.NO_ROWID_IN_STMT, DICTFILENAME => '/u01/dictionary.file');END;";
+        assertThat(result).isEqualTo(expected);
+    }
+
+    @Test
+    public void testTableSupplementalLogCheckSql() {
+        String result = SqlUtils.tableSupplementalLoggingCheckQuery();
+        String expected = "SELECT 'KEY', LOG_GROUP_TYPE FROM ALL_LOG_GROUPS WHERE OWNER=? AND TABLE_NAME=?";
+        assertThat(result).isEqualTo(expected);
+    }
+
+    @Test
     public void testScnByTimeDeltaSql() {
         String result = SqlUtils.getScnByTimeDeltaQuery(Scn.valueOf(123L), Duration.ofMinutes(1));
         String expected = "select timestamp_to_scn(CAST(scn_to_timestamp(123) as date) - INTERVAL '1' MINUTE) from dual";

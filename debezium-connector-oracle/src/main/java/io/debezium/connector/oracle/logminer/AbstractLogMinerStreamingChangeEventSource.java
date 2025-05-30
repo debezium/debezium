@@ -111,6 +111,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private final ExtendedStringParser extendedStringParser;
     private final XmlBeginParser xmlBeginParser;
     private final Tables.TableFilter tableFilter;
+    private final String pathToDictionary;
 
     private boolean sequenceUnavailable = false;
     private List<LogFile> currentLogFiles;
@@ -147,6 +148,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         this.extendedStringParser = new ExtendedStringParser();
         this.xmlBeginParser = new XmlBeginParser();
         this.tableFilter = connectorConfig.getTableFilters().dataCollectionFilter();
+        this.pathToDictionary = connectorConfig.getLogMiningPathToDictionary();
 
         metrics.setBatchSize(connectorConfig.getLogMiningBatchSizeDefault());
         metrics.setSleepTime(connectorConfig.getLogMiningSleepTimeDefault().toMillis());
@@ -1127,7 +1129,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             LOGGER.debug("Starting mining session [startScn={}, endScn={}, strategy={}, attempts={}/{}]",
                     startScn, endScn, connectorConfig.getLogMiningStrategy(), attempts, MINING_START_RETRIES);
 
-            sessionContext.startSession(startScn, endScn, isUsingCommittedDataOnly());
+            sessionContext.startSession(startScn, endScn, isUsingCommittedDataOnly(), pathToDictionary);
             metrics.setLastMiningSessionStartDuration(sessionContext.getLastSessionStartTime());
 
             return true;
