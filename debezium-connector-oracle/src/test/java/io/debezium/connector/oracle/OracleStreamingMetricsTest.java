@@ -22,6 +22,7 @@ import org.mockito.Mockito;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.pipeline.DataChangeEvent;
@@ -51,6 +52,7 @@ public abstract class OracleStreamingMetricsTest<T extends AbstractOracleStreami
                 .pollInterval(Duration.of(DEFAULT_MAX_QUEUE_SIZE, ChronoUnit.MILLIS))
                 .maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
                 .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE)
+                .queueProvider(new DefaultQueueProvider<>(DEFAULT_MAX_QUEUE_SIZE))
                 .build();
 
         final OracleTaskContext taskContext = mock(OracleTaskContext.class);

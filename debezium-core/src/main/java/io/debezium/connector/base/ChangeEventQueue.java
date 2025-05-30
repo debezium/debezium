@@ -74,7 +74,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
     private final Condition isFull;
     private final Condition isNotFull;
 
-    private final Queue<T> queue;
+    private final QueueProvider<T> queue;
     private final Supplier<PreviousContext> loggingContextSupplier;
     private final Queue<Long> sizeInBytesQueue;
     private long currentQueueSizeInBytes = 0;
@@ -92,7 +92,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
     private volatile RuntimeException producerException;
 
     private ChangeEventQueue(Duration pollInterval, int maxQueueSize, int maxBatchSize, Supplier<LoggingContext.PreviousContext> loggingContextSupplier,
-                             long maxQueueSizeInBytes, boolean buffering) {
+                             long maxQueueSizeInBytes, boolean buffering, QueueProvider<T> queueProvider) {
         this.pollInterval = pollInterval;
         this.maxBatchSize = maxBatchSize;
         this.maxQueueSize = maxQueueSize;
@@ -101,11 +101,17 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
         this.isFull = lock.newCondition();
         this.isNotFull = lock.newCondition();
 
-        this.queue = new ArrayDeque<>(maxQueueSize);
         this.loggingContextSupplier = loggingContextSupplier;
-        this.sizeInBytesQueue = new ArrayDeque<>(maxQueueSize);
+        if (maxQueueSizeInBytes > 0) {
+            this.sizeInBytesQueue = new ArrayDeque<>(maxQueueSize);
+        }
+        else {
+            this.sizeInBytesQueue = new ArrayDeque<>(0);
+        }
+
         this.maxQueueSizeInBytes = maxQueueSizeInBytes;
         this.buffering = buffering;
+        this.queue = queueProvider;
     }
 
     public static class Builder<T extends Sizeable> {
@@ -116,6 +122,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
         private Supplier<LoggingContext.PreviousContext> loggingContextSupplier;
         private long maxQueueSizeInBytes;
         private boolean buffering;
+        private QueueProvider<T> queueProvider;
 
         public Builder<T> pollInterval(Duration pollInterval) {
             this.pollInterval = pollInterval;
@@ -142,13 +149,28 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
             return this;
         }
 
+        /**
+         * Sets a custom {@link QueueProvider} implementation to be used by the {@link ChangeEventQueue}.
+         * <p>
+         * If not set, a default provider will be used internally based on the max queue size.
+         * This allows for custom queue behavior or instrumentation if needed.
+         *
+         * @param queueProvider the queue provider to use; may be {@code null}, in which case a default will be used
+         * @return this builder instance for method chaining
+         */
+        public ChangeEventQueue.Builder<T> queueProvider(QueueProvider<T> queueProvider) {
+            this.queueProvider = queueProvider;
+            return this;
+        }
+
         public Builder<T> buffering() {
             this.buffering = true;
             return this;
         }
 
         public ChangeEventQueue<T> build() {
-            return new ChangeEventQueue<T>(pollInterval, maxQueueSize, maxBatchSize, loggingContextSupplier, maxQueueSizeInBytes, buffering);
+            QueueProvider<T> effectiveQueueProvider = (queueProvider != null) ? queueProvider : new DefaultQueueProvider<>(maxQueueSize);
+            return new ChangeEventQueue<>(pollInterval, maxQueueSize, maxBatchSize, loggingContextSupplier, maxQueueSizeInBytes, buffering, effectiveQueueProvider);
         }
     }
 
@@ -226,7 +248,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
                 this.isNotFull.await(pollInterval.toMillis(), TimeUnit.MILLISECONDS);
             }
 
-            queue.add(record);
+            queue.enqueue(record);
             // If we pass a positiveLong max.queue.size.in.bytes to enable handling queue size in bytes feature
             if (maxQueueSizeInBytes > 0) {
                 long messageSize = record.objectSize();
@@ -291,7 +313,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
         }
     }
 
-    private long drainRecords(List<T> records, int maxElements) {
+    private long drainRecords(List<T> records, int maxElements) throws InterruptedException {
         int queueSize = queue.size();
         if (queueSize == 0) {
             return records.size();

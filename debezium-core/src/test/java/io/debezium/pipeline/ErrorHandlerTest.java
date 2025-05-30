@@ -22,6 +22,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.util.LoggingContext;
 
 public class ErrorHandlerTest {
@@ -211,12 +212,12 @@ public class ErrorHandlerTest {
     }
 
     private ChangeEventQueue<DataChangeEvent> queue() {
-        final ChangeEventQueue<DataChangeEvent> queue = new ChangeEventQueue.Builder<DataChangeEvent>()
+        return new ChangeEventQueue.Builder<DataChangeEvent>()
                 .pollInterval(Duration.ofMillis(1))
                 .maxBatchSize(1000)
                 .maxQueueSize(1000)
+                .queueProvider(new DefaultQueueProvider<>(1000))
                 .loggingContextSupplier(() -> LoggingContext.forConnector("test", "test", "test"))
                 .build();
-        return queue;
     }
 }

@@ -30,6 +30,7 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.util.LoggingContext;
 
@@ -56,9 +57,12 @@ public class ChangeEventQueuePerf {
         public void setup() {
             changeEventQueue = new ChangeEventQueue.Builder<DataChangeEvent>()
                     .pollInterval(Duration.ofMillis(pollIntervalMillis))
-                    .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE).maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
+                    .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE)
+                    .maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
+                    .queueProvider(new DefaultQueueProvider<>(DEFAULT_MAX_QUEUE_SIZE))
                     .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))
-                    .maxQueueSizeInBytes(DEFAULT_MAX_QUEUE_SIZE_IN_BYTES).build();
+                    .maxQueueSizeInBytes(DEFAULT_MAX_QUEUE_SIZE_IN_BYTES)
+                    .build();
             consumer = new Thread(() -> {
                 try {
                     while (true) {
@@ -105,9 +109,13 @@ public class ChangeEventQueuePerf {
         public void setup() {
             changeEventQueue = new ChangeEventQueue.Builder<DataChangeEvent>()
                     .pollInterval(Duration.ofMillis(pollIntervalMillis))
-                    .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE).maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
+                    .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE)
+                    .maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
+                    .queueProvider(new DefaultQueueProvider<>(DEFAULT_MAX_QUEUE_SIZE))
                     .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))
-                    .maxQueueSizeInBytes(DEFAULT_MAX_QUEUE_SIZE_IN_BYTES).build();
+                    .maxQueueSizeInBytes(DEFAULT_MAX_QUEUE_SIZE_IN_BYTES)
+                    .build();
+
             producer = new Thread(() -> {
                 try {
                     for (;;) {
@@ -156,9 +164,12 @@ public class ChangeEventQueuePerf {
         public void setupInvocation() {
             changeEventQueue = new ChangeEventQueue.Builder<DataChangeEvent>()
                     .pollInterval(Duration.ofMillis(pollIntervalMillis))
-                    .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE).maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
+                    .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE)
+                    .maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
+                    .queueProvider(new DefaultQueueProvider<>(DEFAULT_MAX_QUEUE_SIZE))
                     .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))
-                    .maxQueueSizeInBytes(DEFAULT_MAX_QUEUE_SIZE_IN_BYTES).build();
+                    .maxQueueSizeInBytes(DEFAULT_MAX_QUEUE_SIZE_IN_BYTES)
+                    .build();
         }
 
         @Setup(Level.Invocation)
@@ -231,8 +242,10 @@ public class ChangeEventQueuePerf {
             changeEventQueue = new ChangeEventQueue.Builder<DataChangeEvent>()
                     .pollInterval(Duration.ofMillis(pollIntervalMillis))
                     .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE).maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
+                    .queueProvider(new DefaultQueueProvider<>(DEFAULT_MAX_QUEUE_SIZE))
                     .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))
-                    .maxQueueSizeInBytes(DEFAULT_MAX_QUEUE_SIZE_IN_BYTES).build();
+                    .maxQueueSizeInBytes(DEFAULT_MAX_QUEUE_SIZE_IN_BYTES)
+                    .build();
         }
 
         @Setup(Level.Invocation)

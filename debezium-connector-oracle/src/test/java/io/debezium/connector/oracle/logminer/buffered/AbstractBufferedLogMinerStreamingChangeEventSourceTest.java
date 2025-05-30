@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.connector.oracle.CommitScn;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -610,6 +611,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                 .pollInterval(Duration.of(DEFAULT_MAX_QUEUE_SIZE, ChronoUnit.MILLIS))
                 .maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
                 .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE)
+                .queueProvider(new DefaultQueueProvider<>(DEFAULT_MAX_QUEUE_SIZE))
                 .build();
 
         return new LogMinerStreamingChangeEventSourceMetrics(taskContext, queue, null, connectorConfig);
