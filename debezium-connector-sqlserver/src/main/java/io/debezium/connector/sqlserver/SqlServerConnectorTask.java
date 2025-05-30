@@ -20,6 +20,8 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.base.ChangeEventQueueContext;
+import io.debezium.connector.base.DefaultChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.sqlserver.metrics.SqlServerMetricsFactory;
 import io.debezium.document.DocumentReader;
@@ -112,13 +114,14 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         taskContext = new SqlServerTaskContext(connectorConfig, schema);
 
         // Set up the task record queue ...
-        this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()
+        ChangeEventQueueContext changeEventQueueContext = ChangeEventQueueContext.builder()
                 .pollInterval(connectorConfig.getPollInterval())
                 .maxBatchSize(connectorConfig.getMaxBatchSize())
                 .maxQueueSize(connectorConfig.getMaxQueueSize())
                 .maxQueueSizeInBytes(connectorConfig.getMaxQueueSizeInBytes())
                 .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                 .build();
+        this.queue = new DefaultChangeEventQueue<>(changeEventQueueContext);
 
         errorHandler = new SqlServerErrorHandler(connectorConfig, queue, errorHandler);
 
