@@ -9,7 +9,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
-import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.util.Strings;
 

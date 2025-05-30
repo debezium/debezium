@@ -13,7 +13,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 
-import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
@@ -50,11 +49,18 @@ public class SqlUtilsTest {
         expected = "BEGIN sys.dbms_logmnr.start_logmnr(startScn => '10', endScn => '20', " +
                 "OPTIONS => DBMS_LOGMNR.DICT_FROM_REDO_LOGS + DBMS_LOGMNR.DDL_DICT_TRACKING + DBMS_LOGMNR.NO_ROWID_IN_STMT);END;";
         assertThat(result).isEqualTo(expected);
-
+      
         result = SqlUtils.startLogMinerStatement(Scn.valueOf(10L), Scn.valueOf(20L), OracleConnectorConfig.LogMiningStrategy.DICTIONARY_FROM_FILE, false,
                 "/u01/dictionary.file");
         expected = "BEGIN sys.dbms_logmnr.start_logmnr(startScn => '10', endScn => '20', " +
                 "OPTIONS => DBMS_LOGMNR.NO_ROWID_IN_STMT, DICTFILENAME => '/u01/dictionary.file');END;";
+        assertThat(result).isEqualTo(expected);
+    }
+
+    @Test
+    public void testTableSupplementalLogCheckSql() {
+        String result = SqlUtils.tableSupplementalLoggingCheckQuery();
+        String expected = "SELECT 'KEY', LOG_GROUP_TYPE FROM ALL_LOG_GROUPS WHERE OWNER=? AND TABLE_NAME=?";
         assertThat(result).isEqualTo(expected);
     }
 
