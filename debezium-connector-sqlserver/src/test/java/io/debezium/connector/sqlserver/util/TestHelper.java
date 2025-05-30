@@ -63,14 +63,15 @@ public class TestHelper {
 
     private static final String TEST_TASK_ID = "0";
     private static final String STATEMENTS_PLACEHOLDER = "#";
+    private static final String DATABASE_NAME_PLACEHOLDER = "#db";
     private static final String SCHEMA_PLACEHOLDER = "%";
 
     private static final String ENABLE_DB_CDC = "IF EXISTS(select 1 from sys.databases where name='#' AND is_cdc_enabled=0)\n"
             + "EXEC sys.sp_cdc_enable_db";
     private static final String DISABLE_DB_CDC = "IF EXISTS(select 1 from sys.databases where name='#' AND is_cdc_enabled=1)\n"
             + "EXEC sys.sp_cdc_disable_db";
-    private static final String ENABLE_TABLE_CDC = "IF EXISTS(select 1 from sys.tables where name = '#' AND is_tracked_by_cdc=0)\n"
-            + "EXEC sys.sp_cdc_enable_table @source_schema = N'%', @source_name = N'#', @role_name = NULL, @supports_net_changes = 0";
+    private static final String ENABLE_TABLE_CDC = "IF EXISTS(select 1 from #db.sys.tables where name = '#' AND is_tracked_by_cdc=0)\n"
+            + "EXEC #db.sys.sp_cdc_enable_table @source_schema = N'%', @source_name = N'#', @role_name = NULL, @supports_net_changes = 0";
     private static final String IS_CDC_ENABLED = "SELECT COUNT(1) FROM sys.databases WHERE name = '#' AND is_cdc_enabled=1";
     private static final String IS_CDC_TABLE_ENABLED = "SELECT COUNT(*) FROM sys.tables tb WHERE tb.is_tracked_by_cdc = 1 AND tb.name='#'";
     private static final String ENABLE_TABLE_CDC_WITH_CUSTOM_CAPTURE = "EXEC sys.sp_cdc_enable_table @source_schema = N'dbo', @source_name = N'%s', @capture_instance = N'%s', @role_name = NULL, @supports_net_changes = 0, @captured_column_list = %s";
@@ -326,8 +327,7 @@ public class TestHelper {
     }
 
     /**
-     * Enables CDC for given schema and table if not already enabled and generates the wrapper
-     * functions for that table.
+     * Enables CDC for the given table if not already enabled and generates the wrapper functions for that table.
      *
      * @param connection
      *            sql connection
@@ -336,17 +336,28 @@ public class TestHelper {
      *
      * @throws SQLException if anything unexpected fails
      */
-    public static void enableSchemaTableCdc(SqlServerConnection connection, TableId tableId) throws SQLException {
+    public static void enableTableCdc(SqlServerConnection connection, TableId tableId) throws SQLException {
         Objects.requireNonNull(tableId.schema());
         Objects.requireNonNull(tableId.table());
-        String enableCdcForTableStmt = ENABLE_TABLE_CDC.replace(STATEMENTS_PLACEHOLDER, tableId.table()).replace(SCHEMA_PLACEHOLDER, tableId.schema());
-        String generateWrapperFunctionsStmts = CDC_WRAPPERS_DML.replace(STATEMENTS_PLACEHOLDER, tableId.table());
+        String enableCdcForTableStmt = replaceDatabaseNamePlaceholder(connection, ENABLE_TABLE_CDC, tableId.catalog())
+                .replace(STATEMENTS_PLACEHOLDER, tableId.table())
+                .replace(SCHEMA_PLACEHOLDER, tableId.schema());
+        String generateWrapperFunctionsStmts = replaceDatabaseNamePlaceholder(connection, CDC_WRAPPERS_DML, tableId.catalog())
+                .replace(STATEMENTS_PLACEHOLDER, tableId.table());
         connection.execute(enableCdcForTableStmt, generateWrapperFunctionsStmts);
     }
 
+    private static String replaceDatabaseNamePlaceholder(SqlServerConnection connection, String sql, String databaseName) {
+        if (databaseName != null) {
+            return sql.replace(DATABASE_NAME_PLACEHOLDER, connection.quoteIdentifier(databaseName));
+        }
+
+        return sql.replace(DATABASE_NAME_PLACEHOLDER.concat("."), "");
+    }
+
     /**
-     * Enables CDC for a table in default schema if not already enabled and generates the wrapper
-     * functions for that table.
+     * Enables CDC for a table in the "dbo" schema of the current database if not already enabled and generates the
+     * wrapper functions for that table.
      *
      * @param connection
      *            sql connection
@@ -355,7 +366,7 @@ public class TestHelper {
      * @throws SQLException if anything unexpected fails
      */
     public static void enableTableCdc(SqlServerConnection connection, String name) throws SQLException {
-        TestHelper.enableSchemaTableCdc(connection, new TableId(null, "dbo", name));
+        TestHelper.enableTableCdc(connection, new TableId(null, "dbo", name));
     }
 
     /**

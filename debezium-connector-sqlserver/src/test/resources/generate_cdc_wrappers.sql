@@ -1,4 +1,4 @@
-IF EXISTS(select 1 from sys.tables where name = '#' AND is_tracked_by_cdc=1)
+IF EXISTS(select 1 from #db.sys.tables where name = '#' AND is_tracked_by_cdc=1)
     BEGIN
         RETURN
     END
@@ -9,7 +9,7 @@ ELSE
             create_script NVARCHAR(MAX))
 
         INSERT INTO @wrapper_functions
-        EXEC sys.sp_cdc_generate_wrapper_function
+        EXEC #db.sys.sp_cdc_generate_wrapper_function
 
         DECLARE @create_script NVARCHAR(MAX)
 
