@@ -119,7 +119,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
                     }
 
                     Optional<String> lockingStatement = snapshotterService.getSnapshotLock().tableLockingStatement(connectorConfig.snapshotLockTimeout(),
-                            quoteTableName(tableId));
+                            jdbcConnection.quotedTableIdString(tableId));
 
                     if (lockingStatement.isPresent()) {
                         LOGGER.info("Locking table {}", tableId);
@@ -279,12 +279,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
     protected Optional<String> getSnapshotSelect(RelationalSnapshotContext<SqlServerPartition, SqlServerOffsetContext> snapshotContext,
                                                  TableId tableId, List<String> columns) {
 
-        return snapshotterService.getSnapshotQuery().snapshotQuery(quoteTableName(tableId), columns);
-    }
-
-    private String quoteTableName(TableId tableId) {
-
-        return String.format("[%s].[%s].[%s]", tableId.catalog(), tableId.schema(), tableId.table());
+        return snapshotterService.getSnapshotQuery().snapshotQuery(jdbcConnection.quotedTableIdString(tableId), columns);
     }
 
     @Override

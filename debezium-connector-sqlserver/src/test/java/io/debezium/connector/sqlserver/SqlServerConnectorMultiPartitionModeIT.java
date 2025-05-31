@@ -19,6 +19,7 @@ import org.junit.Test;
 import io.debezium.config.Configuration;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.relational.TableId;
 import io.debezium.util.Testing;
 
 public class SqlServerConnectorMultiPartitionModeIT extends AbstractAsyncEngineConnectorTest {
@@ -29,22 +30,36 @@ public class SqlServerConnectorMultiPartitionModeIT extends AbstractAsyncEngineC
     public void before() throws SQLException {
         TestHelper.createTestDatabases(TestHelper.TEST_DATABASE_1, TestHelper.TEST_DATABASE_2);
         connection = TestHelper.multiPartitionTestConnection();
+
+        TableId db1TableA = new TableId(TestHelper.TEST_DATABASE_1, "dbo", "tableA");
+        TableId db1TableB = new TableId(TestHelper.TEST_DATABASE_1, "dbo", "tableB");
+
         connection.execute(
-                "USE " + TestHelper.TEST_DATABASE_1,
-                "CREATE TABLE tableA (id int primary key, colA varchar(32))",
-                "CREATE TABLE tableB (id int primary key, colB varchar(32))",
-                "INSERT INTO tableA VALUES(1, 'a1')",
-                "INSERT INTO tableB VALUES(2, 'b')");
-        TestHelper.enableTableCdc(connection, "tableA");
-        TestHelper.enableTableCdc(connection, "tableB");
+                "CREATE TABLE %s (id int primary key, colA varchar(32))"
+                        .formatted(connection.quotedTableIdString(db1TableA)),
+                "CREATE TABLE %s (id int primary key, colB varchar(32))"
+                        .formatted(connection.quotedTableIdString(db1TableB)),
+                "INSERT INTO %s VALUES(1, 'a1')"
+                        .formatted(connection.quotedTableIdString(db1TableA)),
+                "INSERT INTO %s VALUES(2, 'b')"
+                        .formatted(connection.quotedTableIdString(db1TableB)));
+        TestHelper.enableTableCdc(connection, db1TableA);
+        TestHelper.enableTableCdc(connection, db1TableB);
+
+        TableId db2TableA = new TableId(TestHelper.TEST_DATABASE_2, "dbo", "tableA");
+        TableId db2TableC = new TableId(TestHelper.TEST_DATABASE_2, "dbo", "tableC");
+
         connection.execute(
-                "USE " + TestHelper.TEST_DATABASE_2,
-                "CREATE TABLE tableA (id int primary key, colA varchar(32))",
-                "CREATE TABLE tableC (id int primary key, colC varchar(32))",
-                "INSERT INTO tableA VALUES(3, 'a2')",
-                "INSERT INTO tableC VALUES(4, 'c')");
-        TestHelper.enableTableCdc(connection, "tableA");
-        TestHelper.enableTableCdc(connection, "tableC");
+                "CREATE TABLE %s (id int primary key, colA varchar(32))"
+                        .formatted(connection.quotedTableIdString(db2TableA)),
+                "CREATE TABLE %s (id int primary key, colC varchar(32))"
+                        .formatted(connection.quotedTableIdString(db2TableC)),
+                "INSERT INTO %s VALUES(3, 'a2')"
+                        .formatted(connection.quotedTableIdString(db2TableA)),
+                "INSERT INTO %s VALUES(4, 'c')"
+                        .formatted(connection.quotedTableIdString(db2TableC)));
+        TestHelper.enableTableCdc(connection, db2TableA);
+        TestHelper.enableTableCdc(connection, db2TableC);
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
