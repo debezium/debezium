@@ -269,6 +269,18 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     /**
+     * The {@code [} character is used in SQL Server's extended pattern syntax to define character ranges or sets.
+     *
+     * @see <a href="https://learn.microsoft.com/en-us/sql/t-sql/language-elements/like-transact-sql#pattern">
+     *     SQL Server LIKE pattern syntax</a>
+     */
+    @Override
+    protected Set<Character> getLikeWildcardCharacters() {
+        return Stream.concat(super.getLikeWildcardCharacters().stream(), Stream.of('['))
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    /**
      * Returns a JDBC connection string for the current configuration.
      *
      * @return a {@code String} where the variables in {@code urlPattern} are replaced with values from the configuration
