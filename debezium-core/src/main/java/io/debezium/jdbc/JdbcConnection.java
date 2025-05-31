@@ -1280,16 +1280,26 @@ public class JdbcConnection implements AutoCloseable {
             return null;
         }
 
-        StringBuilder pattern = new StringBuilder();
+        final int length = name.length();
+        StringBuilder pattern = null;
 
-        for (char c : name.toCharArray()) {
+        for (int i = 0; i < length; i++) {
+            char c = name.charAt(i);
+
             if (likeWildcardCharacters.contains(c) || LIKE_ESCAPE_CHARACTER.equals(c)) {
+                if (pattern == null) {
+                    pattern = new StringBuilder();
+                    pattern.append(name, 0, i);
+                }
                 pattern.append(LIKE_ESCAPE_CHARACTER);
             }
-            pattern.append(c);
+
+            if (pattern != null) {
+                pattern.append(c);
+            }
         }
 
-        return pattern.toString();
+        return pattern == null ? name : pattern.toString();
     }
 
     protected Map<TableId, List<Column>> getColumnsDetails(String databaseCatalog, String schemaNamePattern,
