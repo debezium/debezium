@@ -84,26 +84,16 @@ public class JdbcConnection implements AutoCloseable {
     private static final char STATEMENT_DELIMITER = ';';
 
     /**
-     * The escape character used to escape special characters in the patterns being passed to the JDBC's
-     * DatabaseMetaData methods.
+     * The character used to escape special characters (the wildcard characters and the escape character itself) in the
+     * patterns being passed to the JDBC {@link java.sql.DatabaseMetaData} methods.
      */
-    private static final Character ESCAPE_CHAR = '\\';
+    private static final Character LIKE_ESCAPE_CHARACTER = '\\';
 
     /**
-     * The special characters that must be escaped when constructing patterns for JDBC {@link java.sql.DatabaseMetaData}
-     * methods such as {@code getColumns}, {@code getTables}, etc.
-     *
-     * <p>These characters require escaping due to their special meaning in SQL {@code LIKE} patterns:
-     *
-     * <ol>
-     *     <li>{@code %} and {@code _} are wildcard characters defined by the ANSI SQL standard.</li>
-     *     <li>{@code [} is used in SQL Server's extended pattern syntax to define character ranges or sets.</li>
-     *     <li>The escape character itself (denoted by {@code ESCAPE_CHAR}) must also be escaped.</li>
-     * </ol>
-     *
-     * @see <a href="https://learn.microsoft.com/en-us/sql/t-sql/language-elements/like-transact-sql#pattern">SQL Server LIKE pattern syntax</a>
+     * The wildcard characters that must be escaped when constructing patterns for the JDBC
+     * {@link java.sql.DatabaseMetaData} methods such as {@code getColumns}, {@code getTables}, etc.
      */
-    private static final Set<Character> SPECIAL_CHARS = Set.of('%', '_', '[', ESCAPE_CHAR);
+    private final Set<Character> likeWildcardCharacters;
 
     private static final int STATEMENT_CACHE_CAPACITY = 10_000;
     private final static Logger LOGGER = LoggerFactory.getLogger(JdbcConnection.class);
@@ -377,6 +367,7 @@ public class JdbcConnection implements AutoCloseable {
         this.closingQuoteCharacter = closingQuotingChar;
         this.conn = null;
         this.queryTimeout = (int) config.getQueryTimeout().toSeconds();
+        this.likeWildcardCharacters = getLikeWildcardCharacters();
     }
 
     /**
@@ -1291,8 +1282,8 @@ public class JdbcConnection implements AutoCloseable {
         StringBuilder pattern = new StringBuilder();
 
         for (char c : name.toCharArray()) {
-            if (SPECIAL_CHARS.contains(c)) {
-                pattern.append(ESCAPE_CHAR);
+            if (likeWildcardCharacters.contains(c) || LIKE_ESCAPE_CHARACTER.equals(c)) {
+                pattern.append(LIKE_ESCAPE_CHARACTER);
             }
             pattern.append(c);
         }
@@ -1529,6 +1520,18 @@ public class JdbcConnection implements AutoCloseable {
 
     protected static boolean isNullable(int jdbcNullable) {
         return jdbcNullable == ResultSetMetaData.columnNullable || jdbcNullable == ResultSetMetaData.columnNullableUnknown;
+    }
+
+    /**
+     * Returns the wildcard characters that must be escaped when constructing patterns for the JDBC
+     * {@link java.sql.DatabaseMetaData} methods such as {@code getColumns}, {@code getTables}, etc.
+     *
+     * <p>The base implementation returns the wildcard characters defined by the ANSI SQL standard. Subclasses may
+     * override this method to include additional characters that need to be escaped in their specific database
+     * dialects.</p>
+     */
+    protected Set<Character> getLikeWildcardCharacters() {
+        return Set.of('%', '_');
     }
 
     public <T> ResultSetMapper<T> singleResultMapper(ResultSetExtractor<T> extractor, String error) throws SQLException {
