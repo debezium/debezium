@@ -90,7 +90,8 @@ public class OracleConnector extends RelationalBaseSourceConnector {
                     LOGGER.error("Failed testing connection for {} with user '{}'", config.withMaskedPasswords(), userValue, e);
                     hostnameValue.addErrorMessage("Unable to connect: " + e.getMessage());
                 }
-            }, timeout, connectorConfig.getLogicalName(), "connection-validation");
+            }, timeout, connectorConfig.getLogicalName(), "connection-validation", connectorConfig.connectorName(),
+             connectorConfig.getConnectorThreadNamePattern(), connectorConfig.getTaskId());
         }
         catch (TimeoutException e) {
             hostnameValue.addErrorMessage("Connection validation timed out after " + timeout.toMillis() + " ms");

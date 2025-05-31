@@ -35,7 +35,7 @@ public class ThreadsTest {
                 operation,
                 Duration.ofMillis(1000),
                 "test-connector",
-                "test-operation");
+                "test-operation", "test-connector", "test-connector-thread", "test-1");
 
         assertTrue(taskCompleted.get());
     }
@@ -56,7 +56,7 @@ public class ThreadsTest {
                 operation,
                 Duration.ofMillis(500),
                 "test-connector",
-                "test-operation"));
+                "test-operation", "test-connector", "test-connector-thread", "test-1"));
     }
 
     @Test
@@ -70,7 +70,7 @@ public class ThreadsTest {
                 operation,
                 Duration.ofMillis(1000),
                 "test-connector",
-                "test-operation"));
+                "test-operation", "test-connector", "test-connector-thread", "test-1"));
 
         assertTrue(exception.getCause() instanceof RuntimeException);
         assertTrue(exception.getCause().getMessage().contains("Test exception"));
@@ -88,7 +88,7 @@ public class ThreadsTest {
                 operation,
                 Duration.ofMillis(1000),
                 "test-connector",
-                "test-operation"));
+                "test-operation", "test-connector", "test-connector-thread", "test-1"));
 
         assertTrue(exception instanceof Exception);
         assertTrue(exception.getCause() instanceof RuntimeException);
@@ -108,6 +108,6 @@ public class ThreadsTest {
                 operation,
                 Duration.ofMillis(1000),
                 "test-connector",
-                "test-operation"));
+                "test-operation", "test-connector", "test-connector-thread", "test-1"));
     }
 }

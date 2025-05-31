@@ -342,7 +342,7 @@ public class BufferingChangeStreamCursor<TResult> implements MongoChangeStreamCu
 
         return new BufferingChangeStreamCursor<>(
                 new EventFetcher<>(stream, config.getMaxBatchSize(), metrics, clock, config.getPollInterval()),
-                Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.getServerName(), "replicator-fetcher", 1),
+                Threads.newFixedThreadPool(MongoDbConnector.class, taskContext.getServerName(), "replicator-fetcher", config.connectorName(), config.getConnectorThreadNamePattern(), config.getTaskId() ,1),
                 config.getPollInterval());
     }
 

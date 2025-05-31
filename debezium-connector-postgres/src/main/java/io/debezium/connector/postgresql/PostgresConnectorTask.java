@@ -87,7 +87,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
         final Charset databaseCharset;
-        try (PostgresConnection tempConnection = new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL)) {
+        try (PostgresConnection tempConnection = new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL, connectorConfig.getConnectorName(), connectorConfig.getConnectorThreadNamePattern(), connectorConfig.getTaskId())) {
             databaseCharset = tempConnection.getDatabaseCharset();
         }
 
@@ -97,7 +97,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                 typeRegistry);
 
         MainConnectionProvidingConnectionFactory<PostgresConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
-                () -> new PostgresConnection(connectorConfig.getJdbcConfig(), valueConverterBuilder, PostgresConnection.CONNECTION_GENERAL));
+                () -> new PostgresConnection(connectorConfig.getJdbcConfig(), valueConverterBuilder, PostgresConnection.CONNECTION_GENERAL, connectorConfig.getConnectorName(), connectorConfig.getConnectorThreadNamePattern(), connectorConfig.getTaskId()));
         // Global JDBC connection used both for snapshotting and streaming.
         // Must be able to resolve datatypes.
         jdbcConnection = connectionFactory.mainConnection();
@@ -198,7 +198,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     connectorConfig.createHeartbeat(
                             topicNamingStrategy,
                             schemaNameAdjuster,
-                            () -> new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL),
+                            () -> new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL, connectorConfig.getConnectorName(), connectorConfig.getConnectorThreadNamePattern(), connectorConfig.getTaskId()),
                             exception -> {
                                 String sqlErrorId = exception.getSQLState();
                                 switch (sqlErrorId) {

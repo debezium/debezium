@@ -114,6 +114,30 @@ public interface SchemaHistory {
             .withDescription("The unique identifier of the Debezium connector")
             .withNoValidation();
 
+    Field CONNECTOR_NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "connector.name")
+            .withDisplayName("Debezium connector name")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withDescription("The unique name of the Debezium connector")
+            .withNoValidation();
+
+    Field CONNECTOR_THREAD_NAME_PATTERN = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "connector.thread.name.pattern")
+            .withDisplayName("Debezium Connector Thread Name Pattern")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withDescription("The pattern name of the Debezium connector threads")
+            .withNoValidation();
+
+    Field TASK_NAME = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "task.name")
+            .withDisplayName("Debezium Connector Task Name")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.HIGH)
+            .withDescription("The Task Name of Debezium connector")
+            .withNoValidation();
+
     // Temporary preference for DDL over logical schema due to DBZ-32
     Field INTERNAL_PREFER_DDL = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "prefer.ddl")
             .withDisplayName("Prefer DDL for schema recovery")
