@@ -340,7 +340,7 @@ public class TestHelper {
         Objects.requireNonNull(tableId.schema());
         Objects.requireNonNull(tableId.table());
         String enableCdcForTableStmt = ENABLE_TABLE_CDC.replace(STATEMENTS_PLACEHOLDER, tableId.table()).replace(SCHEMA_PLACEHOLDER, tableId.schema());
-        String generateWrapperFunctionsStmts = CDC_WRAPPERS_DML.replaceAll(STATEMENTS_PLACEHOLDER, tableId.table().replaceAll("\\$", "\\\\\\$"));
+        String generateWrapperFunctionsStmts = CDC_WRAPPERS_DML.replace(STATEMENTS_PLACEHOLDER, tableId.table());
         connection.execute(enableCdcForTableStmt, generateWrapperFunctionsStmts);
     }
 
