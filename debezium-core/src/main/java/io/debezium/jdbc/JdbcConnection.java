@@ -1107,7 +1107,7 @@ public class JdbcConnection implements AutoCloseable {
                 String catalogName = rs.getString(1);
                 String schemaName = rs.getString(2);
                 String tableName = rs.getString(3);
-                TableId tableId = new TableId(catalogName, schemaName, tableName);
+                TableId tableId = createTableId(catalogName, schemaName, tableName);
                 tableIds.add(tableId);
             }
         }
@@ -1209,14 +1209,14 @@ public class JdbcConnection implements AutoCloseable {
                 final String tableType = rs.getString(4);
                 if (isTableType(tableType)) {
                     totalTables++;
-                    TableId tableId = new TableId(catalogName, schemaName, tableName);
+                    TableId tableId = createTableId(catalogName, schemaName, tableName);
                     if (tableFilter == null || tableFilter.isIncluded(tableId)) {
                         tableIds.add(tableId);
                         attributesByTable.putAll(getAttributeDetails(tableId, tableType));
                     }
                 }
                 else {
-                    TableId tableId = new TableId(catalogName, schemaName, tableName);
+                    TableId tableId = createTableId(catalogName, schemaName, tableName);
                     viewIds.add(tableId);
                 }
             }
@@ -1313,7 +1313,7 @@ public class JdbcConnection implements AutoCloseable {
                 String catalogName = resolveCatalogName(columnMetadata.getString(1));
                 String schemaName = columnMetadata.getString(2);
                 String metaTableName = columnMetadata.getString(3);
-                TableId tableId = new TableId(catalogName, schemaName, metaTableName);
+                TableId tableId = createTableId(catalogName, schemaName, metaTableName);
 
                 // exclude views and non-captured tables
                 if (viewIds.contains(tableId) ||
