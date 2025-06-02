@@ -97,7 +97,7 @@ public class WasmFilterTest {
     }
 
     @Test
-    public void shouldProcessConditionWithWasmAot() {
+    public void shouldProcessConditionWithWasmCompiler() {
         try (Filter<SourceRecord> transform = new Filter<>()) {
             final Map<String, String> props = new HashMap<>();
             props.put(EXPRESSION, FILTER_1);
