@@ -65,6 +65,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private static Logger LOGGER = LoggerFactory.getLogger(PostgresReplicationConnection.class);
 
     private final String slotName;
+    private final boolean automaticFlush;
     private final String publicationName;
     private final RelationalTableFilters tableFilter;
     private final PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode;
@@ -103,6 +104,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      */
     private PostgresReplicationConnection(PostgresConnectorConfig config,
                                           String slotName,
+                                          boolean automaticFlush,
                                           String publicationName,
                                           RelationalTableFilters tableFilter,
                                           PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode,
@@ -118,6 +120,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
         this.connectorConfig = config;
         this.slotName = slotName;
+        this.automaticFlush = automaticFlush;
         this.publicationName = publicationName;
         this.tableFilter = tableFilter;
         this.publicationAutocreateMode = publicationAutocreateMode;
@@ -871,6 +874,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 .logical()
                 .withSlotName("\"" + slotName + "\"")
                 .withStartPosition(lsn.asLogSequenceNumber())
+                .withAutomaticFlush(automaticFlush)
                 .withSlotOptions(streamParams);
         streamBuilder = configurator.apply(streamBuilder, this::hasMinimumVersion);
 
@@ -943,6 +947,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
         private final PostgresConnectorConfig config;
         private String slotName = DEFAULT_SLOT_NAME;
+        private boolean automaticFlush;
         private String publicationName = DEFAULT_PUBLICATION_NAME;
         private RelationalTableFilters tableFilter;
         private PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode = PostgresConnectorConfig.AutoCreateMode.ALL_TABLES;
@@ -964,6 +969,12 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         public ReplicationConnectionBuilder withSlot(final String slotName) {
             assert slotName != null;
             this.slotName = slotName;
+            return this;
+        }
+
+        @Override
+        public Builder withAutomaticFlush(final boolean automaticFlush) {
+            this.automaticFlush = automaticFlush;
             return this;
         }
 
@@ -1040,7 +1051,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         @Override
         public ReplicationConnection build() {
             assert plugin != null : "Decoding plugin name is not set";
-            return new PostgresReplicationConnection(config, slotName, publicationName, tableFilter,
+            return new PostgresReplicationConnection(config, slotName, automaticFlush, publicationName, tableFilter,
                     publicationAutocreateMode, plugin, dropSlotOnClose, createFailOverSlot, statusUpdateIntervalVal,
                     jdbcConnection, typeRegistry, slotStreamParams, schema);
         }
