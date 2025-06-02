@@ -2,6 +2,52 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.1.2.Final
+June 2nd 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12454967)
+
+### New features since 3.1.1.Final
+
+* Uppdate Informix JDBC Driver to 4.50.11.2 [DBZ-9072](https://issues.redhat.com/browse/DBZ-9072)
+
+
+### Breaking changes since 3.1.1.Final
+
+* Exclude TRUNCATE and REPLACE statements from schema history [DBZ-9085](https://issues.redhat.com/browse/DBZ-9085)
+
+
+### Fixes since 3.1.1.Final
+
+* Oracle log consistency check always fails after database refresh with residual archive logs [DBZ-8744](https://issues.redhat.com/browse/DBZ-8744)
+* DDL statement couldn't be parsed. PAGE_COMPRESSED [DBZ-8916](https://issues.redhat.com/browse/DBZ-8916)
+* Processing error because of incomplete date part of DATETIME datatype in MariaDB [DBZ-8940](https://issues.redhat.com/browse/DBZ-8940)
+* Multiple Predicates Don't Function with the Operator API [DBZ-8975](https://issues.redhat.com/browse/DBZ-8975)
+* NatsJetStreamIT fails [DBZ-8985](https://issues.redhat.com/browse/DBZ-8985)
+* Make StreamingChangeEventSource closeable [DBZ-8995](https://issues.redhat.com/browse/DBZ-8995)
+* The in-progress notification is sent before the snapshot job starts [DBZ-9002](https://issues.redhat.com/browse/DBZ-9002)
+* Connection left in "idle in transaction" state when setting snapshot mode to initial only [DBZ-9003](https://issues.redhat.com/browse/DBZ-9003)
+* DB2 for Z/OS Fixes [DBZ-9007](https://issues.redhat.com/browse/DBZ-9007)
+* IBMi connector is not included in Debezium Server [DBZ-9015](https://issues.redhat.com/browse/DBZ-9015)
+* PostgresSQL Read-only incremental snapshot continue to read chunks even with completed snapshot [DBZ-9016](https://issues.redhat.com/browse/DBZ-9016)
+* Oracle database PDB name in lowercase is not connecting to the connector. [DBZ-9019](https://issues.redhat.com/browse/DBZ-9019)
+* Error parsing MariaDB DDL [DBZ-9027](https://issues.redhat.com/browse/DBZ-9027)
+* LogMiner performance regression with buffered implementation [DBZ-9030](https://issues.redhat.com/browse/DBZ-9030)
+* Column named SEQUENCE, a MySQL keyword fails to be parsed [DBZ-9031](https://issues.redhat.com/browse/DBZ-9031)
+* MySQL parser fails when using a JSON_TABLE in a join clause [DBZ-9034](https://issues.redhat.com/browse/DBZ-9034)
+* Default values may be misinterpreted as bind parameters due to nested quotes [DBZ-9040](https://issues.redhat.com/browse/DBZ-9040)
+* Missing configuration properties for signal channel readers can lead to NullPointerException [DBZ-9052](https://issues.redhat.com/browse/DBZ-9052)
+* Blocking snapshot does not always resume streaming thread when task is in shutdown [DBZ-9055](https://issues.redhat.com/browse/DBZ-9055)
+* Error while parsing a MariaDB DDL [DBZ-9065](https://issues.redhat.com/browse/DBZ-9065)
+* Postgres Reselector fails on serial primary keys [DBZ-9086](https://issues.redhat.com/browse/DBZ-9086)
+
+
+### Other changes since 3.1.1.Final
+
+* Upgrade MariaDB driver to 3.5.3 [DBZ-8758](https://issues.redhat.com/browse/DBZ-8758)
+* Turn off opentelemetry logging in the tests [DBZ-8971](https://issues.redhat.com/browse/DBZ-8971)
+* Update Debezium base images to Fedora 41 [DBZ-9035](https://issues.redhat.com/browse/DBZ-9035)
+
+
+
 ## 3.1.1.Final
 April 23rd 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12449976)
 
