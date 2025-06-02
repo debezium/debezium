@@ -3,7 +3,7 @@
   <parent>
     <groupId>io.debezium</groupId>
     <artifactId>debezium-parent</artifactId>
-    <version>3.1.2-SNAPSHOT</version>
+    <version>3.1.2.Final</version>
     <relativePath>../debezium-parent/pom.xml</relativePath>
   </parent>
   <modelVersion>4.0.0</modelVersion>
