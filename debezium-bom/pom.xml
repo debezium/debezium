@@ -38,7 +38,7 @@
         <version.groovy>4.0.17</version.groovy>
         <version.graalvm.js>23.0.2</version.graalvm.js>
         <!-- Wasm -->
-        <version.chicory>1.2.1</version.chicory>
+        <version.chicory>1.4.0</version.chicory>
 
         <!-- Storages -->
 
@@ -333,17 +333,17 @@
             </dependency>
             <dependency>
                 <groupId>com.dylibso.chicory</groupId>
-                <artifactId>aot-experimental</artifactId>
+                <artifactId>compiler</artifactId>
                 <version>${version.chicory}</version>
             </dependency>
             <dependency>
                 <groupId>com.dylibso.chicory</groupId>
-                <artifactId>host-module-annotations-experimental</artifactId>
+                <artifactId>annotations</artifactId>
                 <version>${version.chicory}</version>
             </dependency>
             <dependency>
                 <groupId>com.dylibso.chicory</groupId>
-                <artifactId>host-module-processor-experimental</artifactId>
+                <artifactId>annotations-processor</artifactId>
                 <version>${version.chicory}</version>
             </dependency>
 
