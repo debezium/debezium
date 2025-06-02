@@ -11,17 +11,6 @@
     <name>Debezium Connector for MySQL</name>
     <packaging>jar</packaging>
 
-    <dependencyManagement>
-        <dependencies>
-            <!-- Guava library with testscope forces Error Prone as compile and leaks into package -->
-            <dependency>
-                <groupId>com.google.errorprone</groupId>
-                <artifactId>error_prone_annotations</artifactId>
-                <scope>test</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
     <dependencies>
         <dependency>
             <groupId>io.debezium</groupId>
