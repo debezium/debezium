@@ -16,11 +16,13 @@ public enum OpenshiftOperatorEnum {
     APICURIO(PRODUCT_BUILD ? "Service Registry" : "Apicurio",
             "apicurio-registry-operator",
             ConfigProperties.APICURIO_OPERATOR_CHANNEL,
-            ConfigProperties.OCP_PROJECT_REGISTRY + "-opgroup"),
+            ConfigProperties.OCP_PROJECT_REGISTRY + "-opgroup",
+            "apicurio-registry-operator.v" + ConfigProperties.APICURIO_OPERATOR_VERSION),
     STRIMZI(PRODUCT_BUILD ? "AMQ Streams" : "Strimzi",
             PRODUCT_BUILD ? "amq-streams" : "strimzi",
             ConfigProperties.STRIMZI_OPERATOR_CHANNEL,
-            ConfigProperties.OCP_PROJECT_DBZ + "-opgroup");
+            ConfigProperties.OCP_PROJECT_DBZ + "-opgroup",
+            "strimzi-cluster-operator.v" + ConfigProperties.STRIMZI_OPERATOR_VERSION);
 
     /** Human name for usage in logging and prints */
     private final String name;
@@ -30,12 +32,15 @@ public enum OpenshiftOperatorEnum {
     private final String subscriptionUpdateChannel;
     /** Name of operator group to install operator in */
     private final String operatorGroupName;
+    /** Starting CSV version to be used when installing the operator */
+    private final String startingCSV;
 
-    OpenshiftOperatorEnum(String name, String deploymentName, String channel, String operatorGroupName) {
+    OpenshiftOperatorEnum(String name, String deploymentName, String channel, String operatorGroupName, String startingCSV) {
         this.name = name;
         this.deploymentNamePrefix = deploymentName;
         this.subscriptionUpdateChannel = channel;
         this.operatorGroupName = operatorGroupName;
+        this.startingCSV = startingCSV;
     }
 
     public String getName() {
@@ -52,5 +57,9 @@ public enum OpenshiftOperatorEnum {
 
     public String getSubscriptionUpdateChannel() {
         return subscriptionUpdateChannel;
+    }
+
+    public String getStartingCSV() {
+        return startingCSV;
     }
 }

@@ -88,4 +88,11 @@ public class ApicurioSubscriptionBuilder extends FabricBuilderWrapper<ApicurioSu
                 .endSpec();
         return self();
     }
+
+    public ApicurioSubscriptionBuilder withStartingCSV(String startingCSV) {
+        builder.editSpec()
+                .withStartingCSV(startingCSV)
+                .endSpec();
+        return self();
+    }
 }

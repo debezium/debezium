@@ -53,6 +53,9 @@ import io.fabric8.openshift.api.model.RouteBuilder;
 import io.fabric8.openshift.api.model.operatorhub.v1.OperatorGroup;
 import io.fabric8.openshift.api.model.operatorhub.v1.OperatorGroupBuilder;
 import io.fabric8.openshift.api.model.operatorhub.v1.OperatorGroupSpecBuilder;
+import io.fabric8.openshift.api.model.operatorhub.v1alpha1.InstallPlan;
+import io.fabric8.openshift.api.model.operatorhub.v1alpha1.Subscription;
+import io.fabric8.openshift.api.model.operatorhub.v1alpha1.SubscriptionStatus;
 import io.fabric8.openshift.client.DefaultOpenShiftClient;
 import io.fabric8.openshift.client.OpenShiftClient;
 
@@ -290,6 +293,31 @@ public class OpenShiftUtils {
                 .until(() -> podListSupplier.get().getItems().isEmpty());
     }
 
+    public Optional<Subscription> subscriptionWithName(String project, String name) {
+        var subscriptions = client.operatorHub().subscriptions().inNamespace(project).list().getItems();
+        return subscriptions.stream()
+                .filter(s -> s.getMetadata().getName().equals(name))
+                .findFirst();
+    }
+
+    public Optional<SubscriptionStatus> subscriptionStatusWithName(String project, String name) {
+        Subscription subscription = subscriptionWithName(project, name).orElse(null);
+        if (subscription == null
+                || subscription.getStatus() == null
+                || subscription.getStatus().getInstallPlanRef() == null) {
+            return Optional.empty();
+        }
+
+        return Optional.of(subscription.getStatus());
+    }
+
+    public Optional<InstallPlan> installPlanWithName(String project, String name) {
+        var installPlans = client.operatorHub().installPlans().inNamespace(project).list().getItems();
+        return installPlans.stream()
+                .filter(s -> s.getMetadata().getName().equals(name))
+                .findFirst();
+    }
+
     /**
      * Finds the first deployment with name matching given prefixes
      *
@@ -317,6 +345,23 @@ public class OpenShiftUtils {
                         .build())
                 .build();
         client.operatorHub().operatorGroups().inNamespace(namespace).createOrReplace(operatorGroup);
+    }
+
+    public void waitForOperatorSubscriptionExists(String namespace, String subscriptionName) {
+        LOGGER.info("Waiting for subscription " + subscriptionName + " to be created");
+        await().atMost(scaled(2), TimeUnit.MINUTES)
+                .pollInterval(Duration.ofSeconds(2))
+                .until(() -> subscriptionWithName(namespace, subscriptionName).isPresent());
+        await().atMost(scaled(2), TimeUnit.MINUTES)
+                .pollInterval(Duration.ofSeconds(2))
+                .until(() -> subscriptionStatusWithName(namespace, subscriptionName).isPresent());
+    }
+
+    public void waitForOperatorInstallPlanExists(String namespace, String installPlanName) {
+        LOGGER.info("Waiting for install plan " + installPlanName + " to be created");
+        await().atMost(scaled(2), TimeUnit.MINUTES)
+                .pollInterval(Duration.ofSeconds(2))
+                .until(() -> installPlanWithName(namespace, installPlanName).isPresent());
     }
 
     /**
