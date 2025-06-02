@@ -1276,7 +1276,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     QUERY_TIMEOUT_MS,
                     PLUGIN_NAME,
                     SLOT_NAME,
-                    // AUTOMATIC_FLUSH,
                     PUBLICATION_NAME,
                     PUBLICATION_AUTOCREATE_MODE,
                     REPLICA_IDENTITY_AUTOSET_VALUES,
