@@ -62,7 +62,7 @@ transforms.embeddings.field.source=after.product
 transforms.embeddings.field.embedding=after.product_embedding
 ----
 
-Finally, you must place the model provider jar file in the connector class path, and configure the provider.
+Finally, you must place the model provider JAR file in the connector class path, and configure the provider.
 For example, for the Ollama provider, add `debezium-ai-embeddings-ollama-$VERSION.jar` to your connector class path, and add the Ollama URL and model name to the connector configuration, as shown in the following example:
 
 [source]
