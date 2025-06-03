@@ -470,7 +470,6 @@ DUMPFILE                    : 'DUMPFILE';
 DUPLICATE                   : 'DUPLICATE';
 DYNAMIC                     : 'DYNAMIC';
 ENABLE                      : 'ENABLE';
-ENCRYPTED                   : 'ENCRYPTED';
 ENCRYPTION                  : 'ENCRYPTION';
 ENCRYPTION_KEY_ID           : 'ENCRYPTION_KEY_ID';
 END                         : 'END';
