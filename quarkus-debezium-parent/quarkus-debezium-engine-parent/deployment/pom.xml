@@ -10,6 +10,8 @@
 
     <artifactId>quarkus-debezium-engine-deployment</artifactId>
 
+    <name>Quarkus Debezium :: Extension :: Engine :: Deployment</name>
+
     <dependencies>
         <dependency>
             <groupId>io.quarkus</groupId>

@@ -10,6 +10,8 @@
 
     <artifactId>quarkus-debezium-postgres</artifactId>
 
+    <name>Quarkus Debezium :: Extension :: Postgres :: Runtime</name>
+
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>

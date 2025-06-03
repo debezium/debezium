@@ -16,6 +16,8 @@
 
     <artifactId>quarkus-debezium-engine-spi</artifactId>
 
+    <name>Quarkus Debezium :: Extension :: SPI :: Runtime</name>
+
     <dependencies>
         <dependency>
             <groupId>io.quarkus</groupId>
