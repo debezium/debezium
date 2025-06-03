@@ -10,6 +10,8 @@
 
     <artifactId>quarkus-debezium-postgres-integration-test</artifactId>
 
+    <name>Quarkus Debezium :: Extension :: Postgres :: Integration Test</name>
+
     <dependencies>
         <dependency>
             <groupId>io.quarkus</groupId>

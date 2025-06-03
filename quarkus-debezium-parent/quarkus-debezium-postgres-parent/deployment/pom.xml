@@ -10,6 +10,8 @@
 
     <artifactId>quarkus-debezium-postgres-deployment</artifactId>
 
+    <name>Quarkus Debezium :: Extension :: Postgres :: Deployment</name>
+
     <dependencies>
         <dependency>
             <groupId>io.quarkus</groupId>

@@ -9,7 +9,7 @@
         <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
 
-    <name>Debezium Quarkus Parent</name>
+    <name>Quarkus Debezium :: Extension :: Build Aggregator</name>
     <description>Debezium Parent Module for Quarkus extensions</description>
 
     <artifactId>quarkus-debezium-parent</artifactId>

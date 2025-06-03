@@ -10,6 +10,8 @@
 
     <artifactId>quarkus-debezium-engine-parent</artifactId>
 
+    <name>Quarkus Debezium :: Extension :: Engine :: Build Aggregator</name>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
