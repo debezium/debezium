@@ -40,11 +40,11 @@ To integrate with OpenLineage, {prodname} maps its life cycle to the OpenLineage
 
 The {prodname} connector is mapped to an OpenLineage *Job*, which includes the following elements:
 
-* Name will be the connector name
-* Namespace will be `topic.prefix` if not specified with `openlineage.integration.job.namespace`
-* Debezium version information
-* Complete connector configuration
-* Job metadata (description, tags, owners)
+Name:: The job name is inherited from the {prodname} connector name.
+Namespace:: Inherited from `openlineage.integration.job.namespace`, if specified; otherwise defaults to `topic.prefix`
+Debezium version information::
+Complete connector configuration::
+Job metadata:: Description, tags, and owners.
 
 .Dataset Mapping
 
@@ -105,9 +105,9 @@ To install the dependencies, determine the version that is required and then dow
 
 .Procedure
 
-1. Check the https://mvnrepository.com/artifact/io.openlineage/openlineage-java[Maven Central repository for openlineage-java] to find the latest version
+1. On Maven Central, open the https://mvnrepository.com/artifact/io.openlineage/openlineage-java[`openlineage-java` repository] and identify the version used by {prodname}.
 2. View the dependency tree for the `openlineage-java` version and identify the exact versions of all transitive dependencies.
-3. Download the required JAR files and place them in your the classpath for your {prodname} connector.
+3. Download the required JAR files and place them in the classpath for your {prodname} connector.
 
 [NOTE]
 ====
@@ -179,7 +179,7 @@ For detailed OpenLineage client configuration options, refer to the https://open
 |`openlineage.integration.job.namespace`
 |Namespace used for the job.
 |Value from `topic.prefix`
-|-
+|Value of `topic.prefix`
 
 |`openlineage.integration.job.description`
 |Human-readable job description
