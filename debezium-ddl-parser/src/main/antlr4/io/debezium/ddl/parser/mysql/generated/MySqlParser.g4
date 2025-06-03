@@ -1697,6 +1697,7 @@ privilege
     | TP_CONNECTION_ADMIN
     | VERSION_TOKEN_ADMIN
     | XA_RECOVER_ADMIN
+    | GROUP_REPLICATION_STREAM
     // MySQL on Amazon RDS
     | LOAD FROM S3
     | SELECT INTO S3
@@ -3161,6 +3162,7 @@ keywordsCanBeId
     | XA_RECOVER_ADMIN
     | XML
     | YES
+    | GROUP_REPLICATION_STREAM
     ;
 
 functionNameBase
