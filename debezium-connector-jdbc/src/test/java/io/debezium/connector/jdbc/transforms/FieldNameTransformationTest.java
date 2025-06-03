@@ -204,11 +204,30 @@ public class FieldNameTransformationTest {
         }
     }
 
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-9017")
+    void testNonOptionalFieldValues(SinkRecordFactory factory) {
+        try (FieldNameTransformation<SinkRecord> transform = new FieldNameTransformation<>()) {
+            final Map<String, String> properties = new HashMap<>();
+            transform.configure(properties);
+
+            var record = new KafkaDebeziumSinkRecord(transform.apply(createSinkRecord(factory, "id", false, "id", "name", "nick_name_")),
+                    new JdbcSinkConnectorConfig(properties).cloudEventsSchemaNamePattern());
+            assertSchemaFieldNames(record.keySchema()).containsOnly("id");
+            assertSchemaFieldNames(record.getPayload().schema()).containsOnly("id", "name", "nick_name_");
+        }
+    }
+
     private static ListAssert assertSchemaFieldNames(Schema schema) {
         return assertThat(schema.fields().stream().map(Field::name).toList());
     }
 
     private static SinkRecord createSinkRecord(SinkRecordFactory factory, String keyFieldName, String... payloadFieldNames) {
+        return createSinkRecord(factory, keyFieldName, true, payloadFieldNames);
+    }
+
+    private static SinkRecord createSinkRecord(SinkRecordFactory factory, String keyFieldName, boolean optionalFields, String... payloadFieldNames) {
         final Schema keySchema = SchemaBuilder.struct().field(keyFieldName, Schema.INT8_SCHEMA).build();
         final Schema sourceSchema = SchemaBuilder.struct().field("ts_ms", Schema.OPTIONAL_INT32_SCHEMA).build();
 
@@ -221,7 +240,7 @@ public class FieldNameTransformationTest {
 
         final SchemaBuilder recordSchemaBuilder = SchemaBuilder.struct();
         Arrays.stream(payloadFieldNames).forEach(payloadFieldName -> {
-            recordSchemaBuilder.field(payloadFieldName, Schema.OPTIONAL_STRING_SCHEMA);
+            recordSchemaBuilder.field(payloadFieldName, optionalFields ? Schema.OPTIONAL_STRING_SCHEMA : Schema.STRING_SCHEMA);
             builder.after(payloadFieldName, "randomValue");
         });
 
