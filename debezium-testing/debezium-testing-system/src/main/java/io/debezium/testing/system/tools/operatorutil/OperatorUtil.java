@@ -52,49 +52,19 @@ public class OperatorUtil {
 
         Subscription subscription = sb.build();
         ocp.operatorHub().subscriptions().inNamespace(namespace).createOrReplace(subscription);
-        approveInstallPlan(ocp, subscription.getMetadata().getName(), namespace);
+        approveInstallPlan(ocp, namespace, subscription.getMetadata().getName(), subscription.getSpec().getStartingCSV());
         utils.waitForOperatorDeploymentExists(namespace, operatorEnum);
     }
 
-    public static void approveInstallPlan(OpenShiftClient ocp, String subscriptionName, String namespace) {
+    public static void approveInstallPlan(OpenShiftClient ocp, String namespace, String subscriptionName, String startingCSV) {
         final OpenShiftUtils utils = new OpenShiftUtils(ocp);
 
-        utils.waitForOperatorSubscriptionExists(namespace, subscriptionName);
-        Subscription subscription = utils.subscriptionWithName(namespace, subscriptionName).orElse(null);
-
-        String installPlanName = null;
-        if (subscription != null
-                && subscription.getStatus() != null
-                && subscription.getStatus().getInstallPlanRef() != null) {
-            installPlanName = subscription.getStatus().getInstallPlanRef().getName();
-        }
-
-        if (installPlanName == null) {
-            LOGGER.error("No InstallPlan reference found for subscription: " + subscriptionName);
-            return;
-        }
-
-        // Wait for the install plan to be created
-        utils.waitForOperatorInstallPlanExists(namespace, installPlanName);
-
-        // Retrieve the InstallPlan
-        InstallPlan plan = ocp.operatorHub()
-                .installPlans()
-                .inNamespace(namespace)
-                .withName(installPlanName)
-                .get();
-
-        if (plan == null) {
-            LOGGER.error("InstallPlan '" + installPlanName + "' not found!");
-            return;
-        }
+        utils.waitForInstallPlanExists(namespace, subscriptionName, startingCSV);
+        InstallPlan plan = utils.installPlan(namespace, subscriptionName, startingCSV).orElseThrow();
 
         plan.getSpec().setApproved(true);
-        ocp.operatorHub()
-                .installPlans()
-                .inNamespace(namespace)
-                .withName(installPlanName)
-                .replace(plan);
-        LOGGER.info("InstallPlan '" + installPlanName + "' approved for subscription: " + subscriptionName);
+        ocp.operatorHub().installPlans().inNamespace(namespace).replace(plan);
+        LOGGER.info("Approved InstallPlan " + plan.getMetadata().getName() + " with CSV Names " + plan.getSpec().getClusterServiceVersionNames() + " for subscription: "
+                + subscriptionName);
     }
 }
