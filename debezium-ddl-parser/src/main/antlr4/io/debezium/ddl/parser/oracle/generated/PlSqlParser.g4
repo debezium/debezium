@@ -7544,7 +7544,7 @@ object_privilege
     | DEBUG
     | DELETE
     | EXECUTE
-    | FLASHBACK ARCHIVE
+    | FLASHBACK ARCHIVE?
     | INDEX
     | INHERIT PRIVILEGES
     | INSERT
