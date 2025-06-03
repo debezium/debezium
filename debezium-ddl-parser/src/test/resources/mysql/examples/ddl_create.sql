@@ -973,3 +973,5 @@ BEGIN
   AND i.strategy_id IS NULL;
 END
 #end
+
+CREATE TABLE IF NOT EXISTS table_with_encrypted_column_name(uuid VARCHAR(40) NOT NULL PRIMARY KEY, encrypted VARCHAR(40) DEFAULT NULL)
