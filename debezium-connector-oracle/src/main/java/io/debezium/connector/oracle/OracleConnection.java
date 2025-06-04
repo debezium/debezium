@@ -615,7 +615,7 @@ public class OracleConnection extends JdbcConnection {
 
     @Override
     protected Map<TableId, List<Column>> getColumnsDetails(String catalogName,
-                                                           String schemaNamePattern,
+                                                           String schemaName,
                                                            String tableName,
                                                            Tables.TableFilter tableFilter,
                                                            ColumnNameFilter columnFilter,
@@ -628,7 +628,7 @@ public class OracleConnection extends JdbcConnection {
         if (tableName != null && tableName.contains("/")) {
             tableName = tableName.replace("/", "//");
         }
-        return super.getColumnsDetails(catalogName, schemaNamePattern, tableName, tableFilter, columnFilter, metadata, viewIds);
+        return super.getColumnsDetails(catalogName, schemaName, tableName, tableFilter, columnFilter, metadata, viewIds);
     }
 
     /**
