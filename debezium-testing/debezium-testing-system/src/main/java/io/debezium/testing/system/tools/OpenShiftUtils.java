@@ -24,6 +24,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -293,10 +294,12 @@ public class OpenShiftUtils {
 
     public Optional<InstallPlan> installPlan(String namespace, String subscriptionName, String startingCSV) {
         List<InstallPlan> installPlans = client.operatorHub().installPlans().inNamespace(namespace).list().getItems();
-        return installPlans.stream()
-                .filter(plan -> subscriptionName.equals(plan.getMetadata().getOwnerReferences().getFirst().getName()))
-                .filter(plan -> plan.getSpec().getClusterServiceVersionNames().contains(startingCSV))
-                .findFirst();
+        Stream<InstallPlan> installPlanStream = installPlans.stream()
+                .filter(plan -> subscriptionName.equals(plan.getMetadata().getOwnerReferences().getFirst().getName()));
+        if (startingCSV != null) {
+            installPlanStream = installPlanStream.filter(plan -> plan.getSpec().getClusterServiceVersionNames().contains(startingCSV));
+        }
+        return installPlanStream.findFirst();
     }
 
     /**

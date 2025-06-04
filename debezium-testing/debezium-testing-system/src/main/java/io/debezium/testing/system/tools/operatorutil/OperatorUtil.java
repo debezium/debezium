@@ -36,11 +36,13 @@ public class OperatorUtil {
         OpenShiftUtils utils = new OpenShiftUtils(ocp);
         utils.createOrReplaceOperatorGroup(namespace, operatorEnum.getOperatorGroupName());
 
+        String startingCSV = null;
         OperatorSubscriptionBuilder sb;
         if (operatorEnum == OpenshiftOperatorEnum.STRIMZI) {
             sb = StrimziSubscriptionBuilder.base().withConfig(PRODUCT_BUILD);
             if (!PRODUCT_BUILD) {
-                sb.withStartingCSV(operatorEnum.getStartingCSV());
+                startingCSV = operatorEnum.getStartingCSV();
+                sb.withStartingCSV(startingCSV);
             }
         }
         else {
@@ -52,7 +54,7 @@ public class OperatorUtil {
 
         Subscription subscription = sb.build();
         ocp.operatorHub().subscriptions().inNamespace(namespace).createOrReplace(subscription);
-        approveInstallPlan(ocp, namespace, subscription.getMetadata().getName(), subscription.getSpec().getStartingCSV());
+        approveInstallPlan(ocp, namespace, subscription.getMetadata().getName(), startingCSV);
         utils.waitForOperatorDeploymentExists(namespace, operatorEnum);
     }
 
