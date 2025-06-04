@@ -44,6 +44,7 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.heartbeat.HeartbeatConnectionProvider;
 import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.heartbeat.HeartbeatImpl;
+import io.debezium.openlineage.OpenLineageConfig;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import io.debezium.pipeline.txmetadata.DefaultTransactionMetadataFactory;
@@ -1099,59 +1100,6 @@ public abstract class CommonConnectorConfig {
             .withDescription("The maximum time in milliseconds to wait for connection validation to complete. Defaults to 60 seconds.")
             .withValidation(Field::isPositiveLong);
 
-    public static final Field OPENLINEAGE_INTEGRATION_ENABLED = Field.create("openlineage.integration.enabled")
-            .withDisplayName("Enables OpenLineage integration")
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 40))
-            .withType(Type.BOOLEAN)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDescription("Enable Debezium to emit data lineage metadata through OpenLineage API")
-            .withDefault(false);
-
-    public static final Field OPENLINEAGE_INTEGRATION_CONFIG_FILE_PATH = Field.create("openlineage.integration.config.file.path")
-            .withDisplayName("Path to OpenLineage file configuration")
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 41))
-            .withType(Type.STRING)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withDefault("./openlineage.yml")
-            .withDescription("Path to OpenLineage file configuration. See https://openlineage.io/docs/client/java/configuration");
-
-    public static final Field OPENLINEAGE_INTEGRATION_JOB_NAMESPACE = Field.create("openlineage.integration.job.namespace")
-            .withDisplayName("Namespace used for Debezium job")
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 42))
-            .withType(Type.STRING)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withDescription("The job's namespace emitted by Debezium");
-
-    public static final Field OPENLINEAGE_INTEGRATION_JOB_DESCRIPTION = Field.create("openlineage.integration.job.description")
-            .withDisplayName("Description used for Debezium job")
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 43))
-            .withType(Type.STRING)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withDescription("The job's description emitted by Debezium")
-            .withDefault("Debezium change data capture job");
-
-    public static final Field OPENLINEAGE_INTEGRATION_JOB_TAGS = Field.create("openlineage.integration.job.tags")
-            .withDisplayName("Debezium job tags")
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 44))
-            .withType(Type.LIST)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withValidation(Field::isListOfMap)
-            .withDescription("The job's tags emitted by Debezium. A comma-separated list of key-value pairs.For example: k1=v1,k2=v2");
-
-    public static final Field OPENLINEAGE_INTEGRATION_JOB_OWNERS = Field.create("openlineage.integration.job.owners")
-            .withDisplayName("Debezium job owners")
-            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 45))
-            .withType(Type.LIST)
-            .withWidth(Width.LONG)
-            .withImportance(Importance.LOW)
-            .withValidation(Field::isListOfMap)
-            .withDescription("The job's owners emitted by Debezium. A comma-separated list of key-value pairs.For example: k1=v1,k2=v2");
-
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -1179,12 +1127,12 @@ public abstract class CommonConnectorConfig {
                     LOG_POSITION_CHECK_ENABLED,
                     ADVANCED_METRICS_ENABLE,
                     CONNECTION_VALIDATION_TIMEOUT_MS,
-                    OPENLINEAGE_INTEGRATION_ENABLED,
-                    OPENLINEAGE_INTEGRATION_CONFIG_FILE_PATH,
-                    OPENLINEAGE_INTEGRATION_JOB_NAMESPACE,
-                    OPENLINEAGE_INTEGRATION_JOB_DESCRIPTION,
-                    OPENLINEAGE_INTEGRATION_JOB_TAGS,
-                    OPENLINEAGE_INTEGRATION_JOB_OWNERS)
+                    OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_ENABLED,
+                    OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH,
+                    OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE,
+                    OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION,
+                    OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_TAGS,
+                    OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_OWNERS)
             .events(
                     CUSTOM_CONVERTERS,
                     CUSTOM_POST_PROCESSORS,
