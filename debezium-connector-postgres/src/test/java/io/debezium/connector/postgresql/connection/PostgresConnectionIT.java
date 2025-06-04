@@ -19,6 +19,7 @@ import java.sql.SQLException;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.After;
 import org.junit.Ignore;
@@ -57,6 +58,25 @@ public class PostgresConnectionIT {
             Long txId = connection.currentTransactionId();
             connection.executeWithoutCommitting("SELECT 1;");
             assertEquals("tx id should be the same", txId, connection.currentTransactionId());
+            connection.connection().commit();
+        }
+    }
+
+    @Test
+    public void shouldCovertXidBackwardCompatible() throws SQLException {
+        try (PostgresConnection connection = TestHelper.create()) {
+            connection.connect();
+            connection.setAutoCommit(false);
+            assertTrue(connection.currentTransactionId() > 0);
+
+            AtomicLong txId = new AtomicLong(0);
+            connection.query("select txid_current() AS pg_current_txid", rs -> {
+                if (rs.next()) {
+                    txId.compareAndSet(0, rs.getLong(1));
+                }
+            });
+
+            assertEquals("tx id should be converted in backward compatible way", txId.get(), connection.currentTransactionId().longValue());
             connection.connection().commit();
         }
     }
