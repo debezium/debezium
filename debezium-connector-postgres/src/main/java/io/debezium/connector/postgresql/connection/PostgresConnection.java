@@ -527,7 +527,10 @@ public class PostgresConnection extends JdbcConnection {
      */
     public Long currentTransactionId() throws SQLException {
         AtomicLong txId = new AtomicLong(0);
-        query("select (case pg_is_in_recovery() when 't' then 0 else txid_current() end) AS pg_current_txid", rs -> {
+        int majorVersion = connection().getMetaData().getDatabaseMajorVersion();
+        String txIdQuery = majorVersion >= 13 ? "select (case pg_is_in_recovery() when 't' then '0'::xid8 else pg_current_xact_id() end) AS pg_current_txid"
+                : "select (case pg_is_in_recovery() when 't' then 0 else txid_current() end) AS pg_current_txid";
+        query(txIdQuery, rs -> {
             if (rs.next()) {
                 txId.compareAndSet(0, rs.getLong(1));
             }
