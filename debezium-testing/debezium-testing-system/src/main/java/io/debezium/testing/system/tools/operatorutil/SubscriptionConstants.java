@@ -10,7 +10,7 @@ package io.debezium.testing.system.tools.operatorutil;
  */
 public class SubscriptionConstants {
 
-    public static final String INSTALL_PLAN_APPROVAL = "Automatic";
+    public static final String INSTALL_PLAN_APPROVAL = "Manual";
     public static final String REDHAT_OPERATORS_SOURCE = "redhat-operators";
     public static final String COMMUNITY_OPERATORS_SOURCE = "community-operators";
     public static final String OPENSHIFT_MARKETPLACE_SOURCE_NAMESPACE = "openshift-marketplace";
