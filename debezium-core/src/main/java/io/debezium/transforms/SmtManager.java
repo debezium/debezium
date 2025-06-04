@@ -63,6 +63,26 @@ public class SmtManager<R extends ConnectRecord<R>> {
         return true;
     }
 
+    public boolean isValidHeartBeat(final R record) {
+        if (record.valueSchema() == null ||
+                record.valueSchema().name() == null ||
+                !SchemaFactory.get().isHeartBeatSchema(record.valueSchema())) {
+            LOGGER.debug("Expected heartbeat schema for transformation, passing it unchanged");
+            return false;
+        }
+        return true;
+    }
+
+    public boolean isValidNotification(final R record) {
+        if (record.valueSchema() == null ||
+                record.valueSchema().name() == null ||
+                !SchemaFactory.get().isNotificationSchema(record.valueSchema())) {
+            LOGGER.debug("Expected notification schema for transformation, passing it unchanged");
+            return false;
+        }
+        return true;
+    }
+
     public boolean isValidKey(final R record) {
         if (record.keySchema() == null ||
                 record.keySchema().name() == null ||
