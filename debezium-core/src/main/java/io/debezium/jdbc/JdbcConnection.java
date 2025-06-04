@@ -1200,7 +1200,8 @@ public class JdbcConnection implements AutoCloseable {
         Map<TableId, List<Attribute>> attributesByTable = new HashMap<>();
 
         int totalTables = 0;
-        try (ResultSet rs = metadata.getTables(catalogName, schemaName, null, supportedTableTypes())) {
+        String schemaNamePattern = createPatternFromName(schemaName);
+        try (ResultSet rs = metadata.getTables(catalogName, schemaNamePattern, null, supportedTableTypes())) {
             while (rs.next()) {
                 final String metaCatalogName = resolveCatalogName(rs.getString(1));
                 final String metaSchemaName = rs.getString(2);
@@ -1307,7 +1308,8 @@ public class JdbcConnection implements AutoCloseable {
             throws SQLException {
         Map<TableId, List<Column>> columnsByTable = new HashMap<>();
         String tableNamePattern = createPatternFromName(tableName);
-        try (ResultSet columnMetadata = metadata.getColumns(catalogName, schemaName, tableNamePattern, null)) {
+        String schemaNamePattern = createPatternFromName(schemaName);
+        try (ResultSet columnMetadata = metadata.getColumns(catalogName, schemaNamePattern, tableNamePattern, null)) {
             while (columnMetadata.next()) {
                 String metaCatalogName = resolveCatalogName(columnMetadata.getString(1));
                 String metaSchemaName = columnMetadata.getString(2);
