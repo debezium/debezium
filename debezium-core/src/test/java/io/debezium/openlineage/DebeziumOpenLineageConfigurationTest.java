@@ -5,12 +5,6 @@
  */
 package io.debezium.openlineage;
 
-import static io.debezium.config.CommonConnectorConfig.OPENLINEAGE_INTEGRATION_CONFIG_FILE_PATH;
-import static io.debezium.config.CommonConnectorConfig.OPENLINEAGE_INTEGRATION_ENABLED;
-import static io.debezium.config.CommonConnectorConfig.OPENLINEAGE_INTEGRATION_JOB_DESCRIPTION;
-import static io.debezium.config.CommonConnectorConfig.OPENLINEAGE_INTEGRATION_JOB_NAMESPACE;
-import static io.debezium.config.CommonConnectorConfig.OPENLINEAGE_INTEGRATION_JOB_OWNERS;
-import static io.debezium.config.CommonConnectorConfig.OPENLINEAGE_INTEGRATION_JOB_TAGS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -27,12 +21,12 @@ public class DebeziumOpenLineageConfigurationTest {
     @Test
     public void testFromConfigurationParsesAllFieldsCorrectly() {
         Configuration config = Configuration.create()
-                .with(OPENLINEAGE_INTEGRATION_ENABLED, true)
-                .with(OPENLINEAGE_INTEGRATION_CONFIG_FILE_PATH, "/etc/debezium/openlineage.yml")
-                .with(OPENLINEAGE_INTEGRATION_JOB_NAMESPACE, "test-namespace")
-                .with(OPENLINEAGE_INTEGRATION_JOB_DESCRIPTION, "This is a test job")
-                .with(OPENLINEAGE_INTEGRATION_JOB_TAGS, "tag1=value1,tag2=value2")
-                .with(OPENLINEAGE_INTEGRATION_JOB_OWNERS, "owner1=teamA,owner2=teamB")
+                .with(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_ENABLED, true)
+                .with(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH, "/etc/debezium/openlineage.yml")
+                .with(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE, "test-namespace")
+                .with(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION, "This is a test job")
+                .with(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_TAGS, "tag1=value1,tag2=value2")
+                .with(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_OWNERS, "owner1=teamA,owner2=teamB")
                 .build();
 
         DebeziumOpenLineageConfiguration result = DebeziumOpenLineageConfiguration.from(config);
@@ -50,12 +44,12 @@ public class DebeziumOpenLineageConfigurationTest {
     @Test
     public void testFromConfigurationUsesTopicPrefixAsNamespaceFallback() {
         Configuration config = Configuration.create()
-                .with(OPENLINEAGE_INTEGRATION_ENABLED, true)
-                .with(OPENLINEAGE_INTEGRATION_CONFIG_FILE_PATH, "conf.yml")
+                .with(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_ENABLED, true)
+                .with(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH, "conf.yml")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "fallback-prefix")
-                .with(OPENLINEAGE_INTEGRATION_JOB_DESCRIPTION, "Fallback test")
-                .with(OPENLINEAGE_INTEGRATION_JOB_TAGS, "tag=value")
-                .with(OPENLINEAGE_INTEGRATION_JOB_OWNERS, "owner=value")
+                .with(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION, "Fallback test")
+                .with(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_TAGS, "tag=value")
+                .with(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_OWNERS, "owner=value")
                 .build();
 
         DebeziumOpenLineageConfiguration result = DebeziumOpenLineageConfiguration.from(config);
@@ -66,10 +60,10 @@ public class DebeziumOpenLineageConfigurationTest {
     @Test
     public void testEmptyTagsAndOwnersAreParsedAsEmptyMaps() {
         Configuration config = Configuration.create()
-                .with(OPENLINEAGE_INTEGRATION_ENABLED, false)
-                .with(OPENLINEAGE_INTEGRATION_CONFIG_FILE_PATH, "none")
-                .with(OPENLINEAGE_INTEGRATION_JOB_NAMESPACE, "some-namespace")
-                .with(OPENLINEAGE_INTEGRATION_JOB_DESCRIPTION, "")
+                .with(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_ENABLED, false)
+                .with(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH, "none")
+                .with(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE, "some-namespace")
+                .with(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION, "")
                 .build();
 
         DebeziumOpenLineageConfiguration result = DebeziumOpenLineageConfiguration.from(config);
@@ -82,12 +76,12 @@ public class DebeziumOpenLineageConfigurationTest {
     @Test(expected = ArrayIndexOutOfBoundsException.class)
     public void testMalformedTagEntryThrowsException() {
         Configuration config = Configuration.create()
-                .with(OPENLINEAGE_INTEGRATION_ENABLED, true)
-                .with(OPENLINEAGE_INTEGRATION_CONFIG_FILE_PATH, "file.yml")
-                .with(OPENLINEAGE_INTEGRATION_JOB_NAMESPACE, "namespace")
-                .with(OPENLINEAGE_INTEGRATION_JOB_DESCRIPTION, "desc")
-                .with(OPENLINEAGE_INTEGRATION_JOB_TAGS, "tagOnlyNoEquals") // malformed
-                .with(OPENLINEAGE_INTEGRATION_JOB_OWNERS, "")
+                .with(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_ENABLED, true)
+                .with(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH, "file.yml")
+                .with(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE, "namespace")
+                .with(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION, "desc")
+                .with(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_TAGS, "tagOnlyNoEquals") // malformed
+                .with(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_OWNERS, "")
                 .build();
 
         DebeziumOpenLineageConfiguration.from(config);

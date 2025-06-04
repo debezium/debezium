@@ -22,9 +22,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.Module;
+import io.debezium.config.Configuration;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.openlineage.dataset.DatasetMetadata;
+import io.debezium.transforms.SmtManager;
 import io.debezium.util.BoundedConcurrentHashMap;
 
 public class OpenLineage<R extends ConnectRecord<R>> implements Transformation<R>, Versioned {
@@ -36,6 +38,7 @@ public class OpenLineage<R extends ConnectRecord<R>> implements Transformation<R
     private ZonedDateTime lastEmissionTime;
     private final BoundedConcurrentHashMap<String, Boolean> recentlySeenTopics = new BoundedConcurrentHashMap<>(CACHE_SIZE);
     private final BoundedConcurrentHashMap<Schema, Boolean> recentlySeenSchemas = new BoundedConcurrentHashMap<>(CACHE_SIZE);
+    private SmtManager<R> smtManager;
 
     @Override
     public ConfigDef config() {
@@ -45,12 +48,15 @@ public class OpenLineage<R extends ConnectRecord<R>> implements Transformation<R
 
     @Override
     public void configure(Map<String, ?> props) {
+
+        final Configuration config = Configuration.from(props);
+        smtManager = new SmtManager<>(config);
     }
 
     @Override
     public R apply(R record) {
 
-        if (record.value() == null) {
+        if (isInvalidLineageRecord(record)) {
             return record;
         }
 
@@ -77,6 +83,13 @@ public class OpenLineage<R extends ConnectRecord<R>> implements Transformation<R
         }
 
         return record;
+    }
+
+    private boolean isInvalidLineageRecord(R record) {
+        return record.value() == null ||
+                smtManager.isValidSchemaChange(record) ||
+                smtManager.isValidNotification(record) ||
+                smtManager.isValidHeartBeat(record);
     }
 
     private DatasetMetadata.FieldDefinition buildFieldDefinition(Field field) {
