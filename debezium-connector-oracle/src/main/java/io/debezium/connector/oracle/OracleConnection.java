@@ -201,14 +201,14 @@ public class OracleConnection extends JdbcConnection {
     }
 
     @Override
-    public Set<TableId> readTableNames(String databaseCatalog, String schemaNamePattern, String tableNamePattern,
+    public Set<TableId> readTableNames(String catalogName, String schemaNamePattern, String tableNamePattern,
                                        String[] tableTypes)
             throws SQLException {
 
         Set<TableId> tableIds = super.readTableNames(null, schemaNamePattern, tableNamePattern, tableTypes);
 
         return tableIds.stream()
-                .map(t -> new TableId(databaseCatalog, t.schema(), t.table()))
+                .map(t -> new TableId(catalogName, t.schema(), t.table()))
                 .collect(Collectors.toSet());
     }
 
@@ -614,7 +614,7 @@ public class OracleConnection extends JdbcConnection {
     }
 
     @Override
-    protected Map<TableId, List<Column>> getColumnsDetails(String databaseCatalog,
+    protected Map<TableId, List<Column>> getColumnsDetails(String catalogName,
                                                            String schemaNamePattern,
                                                            String tableName,
                                                            Tables.TableFilter tableFilter,
@@ -628,7 +628,7 @@ public class OracleConnection extends JdbcConnection {
         if (tableName != null && tableName.contains("/")) {
             tableName = tableName.replace("/", "//");
         }
-        return super.getColumnsDetails(databaseCatalog, schemaNamePattern, tableName, tableFilter, columnFilter, metadata, viewIds);
+        return super.getColumnsDetails(catalogName, schemaNamePattern, tableName, tableFilter, columnFilter, metadata, viewIds);
     }
 
     /**
