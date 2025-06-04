@@ -4457,7 +4457,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
 
             Awaitility.await()
                     .atMost(waitTime, TimeUnit.SECONDS)
-                    .until(() -> streamInterceptor.containsMessage("is not a relational table and will be skipped"));
+                    .until(() -> streamInterceptor.containsMessage("not a relational table. The event will be skipped."));
 
             assertNoRecordsToConsume();
             stopConnector();

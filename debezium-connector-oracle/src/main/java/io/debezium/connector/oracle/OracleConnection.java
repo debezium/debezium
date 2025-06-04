@@ -310,7 +310,8 @@ public class OracleConnection extends JdbcConnection {
                         ps.setString(2, tableId.table());
                     },
                     rs -> rs.next() ? rs.getInt(1) : 0) == 0) {
-                throw new NonRelationalTableException("Table " + tableId + " is not a relational table");
+                throw new NonRelationalTableException("Table " + tableId + " was not found in ALL_ALL_TABLES, " +
+                        "which could mean its a grant/permission issue or it's not a relational table.");
             }
 
             // The storage and segment attributes aren't necessary

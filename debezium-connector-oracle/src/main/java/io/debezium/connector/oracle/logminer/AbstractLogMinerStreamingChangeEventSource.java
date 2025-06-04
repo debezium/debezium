@@ -29,6 +29,7 @@ import io.debezium.DebeziumException;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
+import io.debezium.connector.oracle.OracleConnection.NonRelationalTableException;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleDatabaseSchema;
 import io.debezium.connector.oracle.OracleOffsetContext;
@@ -1640,8 +1641,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
             return getSchema().tableFor(tableId);
         }
-        catch (OracleConnection.NonRelationalTableException e) {
-            LOGGER.warn("Table {} is not a relational table and will be skipped.", tableId);
+        catch (NonRelationalTableException e) {
+            LOGGER.warn("{} The event will be skipped.", e.getMessage());
             getMetrics().incrementWarningCount();
             return null;
         }
