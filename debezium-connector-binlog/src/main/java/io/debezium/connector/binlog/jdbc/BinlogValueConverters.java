@@ -55,7 +55,6 @@ import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.ValueConverter;
-import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.time.Year;
 import io.debezium.util.Loggings;
 import io.debezium.util.Strings;
@@ -111,18 +110,17 @@ public abstract class BinlogValueConverters extends JdbcValueConverters {
      * @param binaryHandlingMode how binary columns should be treated
      * @param adjuster a temporal adjuster to make a database specific time before conversion
      * @param eventConvertingFailureHandlingMode how to handle conversion failures
-     * @param serviceRegistry the service registry instance, should not be {@code null}
+     * @param binlogCharsetRegistry
      */
     public BinlogValueConverters(DecimalMode decimalMode,
                                  TemporalPrecisionMode temporalPrecisionMode,
                                  BigIntUnsignedMode bigIntUnsignedMode,
                                  BinaryHandlingMode binaryHandlingMode,
                                  TemporalAdjuster adjuster,
-                                 EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode,
-                                 ServiceRegistry serviceRegistry) {
+                                 EventConvertingFailureHandlingMode eventConvertingFailureHandlingMode, BinlogCharsetRegistry binlogCharsetRegistry) {
         super(decimalMode, temporalPrecisionMode, ZoneOffset.UTC, adjuster, bigIntUnsignedMode, binaryHandlingMode);
         this.eventConvertingFailureHandlingMode = eventConvertingFailureHandlingMode;
-        this.charsetRegistry = serviceRegistry.getService(BinlogCharsetRegistry.class);
+        this.charsetRegistry = binlogCharsetRegistry;
     }
 
     @Override

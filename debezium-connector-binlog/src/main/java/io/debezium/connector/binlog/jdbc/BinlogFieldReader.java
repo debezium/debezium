@@ -33,9 +33,11 @@ public abstract class BinlogFieldReader {
     private static final Set<String> TEXT_DATA_TYPES = Collect.unmodifiableSet("CHAR", "VARCHAR", "TEXT");
 
     private final BinlogConnectorConfig connectorConfig;
+    private BinlogCharsetRegistry binlogCharsetRegistry;
 
-    public BinlogFieldReader(BinlogConnectorConfig connectorConfig) {
+    public BinlogFieldReader(BinlogConnectorConfig connectorConfig, BinlogCharsetRegistry binlogCharsetRegistry) {
         this.connectorConfig = connectorConfig;
+        this.binlogCharsetRegistry = binlogCharsetRegistry;
     }
 
     /**
@@ -144,6 +146,6 @@ public abstract class BinlogFieldReader {
     }
 
     protected BinlogCharsetRegistry getCharsetRegistry() {
-        return connectorConfig.getServiceRegistry().getService(BinlogCharsetRegistry.class);
+        return binlogCharsetRegistry;
     }
 }

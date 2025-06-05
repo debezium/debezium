@@ -24,6 +24,7 @@ import io.debezium.pipeline.spi.Partition;
 import io.debezium.schema.DataCollectionFilters;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.schema.SchemaNameAdjuster;
+import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.topic.TopicNamingStrategy;
 
@@ -42,7 +43,7 @@ public class PostgresEventDispatcher<T extends DataCollectionId> extends EventDi
                                    DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilters.DataCollectionFilter<T> filter,
                                    ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<PostgresPartition, T> inconsistentSchemaHandler,
                                    EventMetadataProvider metadataProvider, Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster,
-                                   SignalProcessor<PostgresPartition, PostgresOffsetContext> signalProcessor) {
+                                   SignalProcessor<PostgresPartition, PostgresOffsetContext> signalProcessor, ServiceRegistry serviceRegistry) {
         super(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, inconsistentSchemaHandler, heartbeat, schemaNameAdjuster,
                 new PostgresTransactionMonitor(
                         connectorConfig,
@@ -52,7 +53,7 @@ public class PostgresEventDispatcher<T extends DataCollectionId> extends EventDi
                             queue.enqueue(new DataChangeEvent(record));
                         },
                         topicNamingStrategy.transactionTopic()),
-                signalProcessor);
+                signalProcessor, serviceRegistry);
         this.queue = queue;
         this.logicalDecodingMessageMonitor = new LogicalDecodingMessageMonitor(connectorConfig, this::enqueueLogicalDecodingMessage);
         this.messageFilter = connectorConfig.getMessageFilter();

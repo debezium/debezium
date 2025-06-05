@@ -7,6 +7,7 @@ package io.debezium.connector.oracle;
 
 import java.util.Optional;
 
+import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.config.Configuration;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ErrorHandler;
@@ -36,11 +37,13 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
     private final OracleTaskContext taskContext;
     private final AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics;
     private final SnapshotterService snapshotterService;
+    private final BeanRegistry beanRegistry;
 
     public OracleChangeEventSourceFactory(OracleConnectorConfig configuration, MainConnectionProvidingConnectionFactory<OracleConnection> connectionFactory,
                                           ErrorHandler errorHandler, EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock, OracleDatabaseSchema schema,
                                           Configuration jdbcConfig, OracleTaskContext taskContext,
-                                          AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics, SnapshotterService snapshotterService) {
+                                          AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics, SnapshotterService snapshotterService,
+                                          BeanRegistry beanRegistry) {
         this.configuration = configuration;
         this.connectionFactory = connectionFactory;
         this.errorHandler = errorHandler;
@@ -51,13 +54,15 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
         this.taskContext = taskContext;
         this.streamingMetrics = streamingMetrics;
         this.snapshotterService = snapshotterService;
+        this.beanRegistry = beanRegistry;
     }
 
     @Override
     public SnapshotChangeEventSource<OraclePartition, OracleOffsetContext> getSnapshotChangeEventSource(SnapshotProgressListener<OraclePartition> snapshotProgressListener,
-                                                                                                        NotificationService<OraclePartition, OracleOffsetContext> notificationService) {
+                                                                                                        NotificationService<OraclePartition, OracleOffsetContext> notificationService,
+                                                                                                        BeanRegistry beanRegistry) {
         return new OracleSnapshotChangeEventSource(configuration, connectionFactory, schema, dispatcher, clock, snapshotProgressListener, notificationService,
-                snapshotterService);
+                snapshotterService, this.beanRegistry);
     }
 
     @Override

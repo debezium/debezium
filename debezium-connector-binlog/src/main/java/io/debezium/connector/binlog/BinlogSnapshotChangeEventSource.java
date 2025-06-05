@@ -36,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.bean.spi.BeanRegistry;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection.DatabaseLocales;
@@ -91,8 +92,8 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
                                            BlockingConsumer<Function<SourceRecord, SourceRecord>> lastEventProcessor,
                                            Runnable preSnapshotAction,
                                            NotificationService<P, O> notificationService,
-                                           SnapshotterService snapshotterService) {
-        super(connectorConfig, connectionFactory, schema, dispatcher, clock, metrics, notificationService, snapshotterService);
+                                           SnapshotterService snapshotterService, BeanRegistry beanRegistry) {
+        super(connectorConfig, connectionFactory, schema, dispatcher, clock, metrics, notificationService, snapshotterService, beanRegistry);
         this.connectorConfig = connectorConfig;
         this.connection = connectionFactory.mainConnection();
         this.filters = connectorConfig.getTableFilters();

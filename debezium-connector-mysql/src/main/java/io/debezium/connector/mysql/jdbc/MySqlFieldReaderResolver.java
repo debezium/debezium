@@ -7,6 +7,7 @@ package io.debezium.connector.mysql.jdbc;
 
 import io.debezium.connector.binlog.jdbc.BinlogFieldReader;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
+import io.debezium.connector.mysql.charset.MySqlCharsetRegistry;
 
 /**
  * Used to resolve which {@link BinlogFieldReader} implementation to use for MySQL.
@@ -14,6 +15,8 @@ import io.debezium.connector.mysql.MySqlConnectorConfig;
  * @author Chris Cranford
  */
 public final class MySqlFieldReaderResolver {
+
+    private static final MySqlCharsetRegistry binlogCharsetRegistry = new MySqlCharsetRegistry();
 
     private MySqlFieldReaderResolver() {
     }
@@ -26,8 +29,8 @@ public final class MySqlFieldReaderResolver {
      */
     public static BinlogFieldReader resolve(MySqlConnectorConfig connectorConfig) {
         if (connectorConfig.useCursorFetch()) {
-            return new MySqlBinaryProtocolFieldReader(connectorConfig);
+            return new MySqlBinaryProtocolFieldReader(connectorConfig, binlogCharsetRegistry);
         }
-        return new MySqlTextProtocolFieldReader(connectorConfig);
+        return new MySqlTextProtocolFieldReader(connectorConfig, binlogCharsetRegistry);
     }
 }
