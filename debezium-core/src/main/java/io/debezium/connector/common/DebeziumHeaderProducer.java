@@ -14,6 +14,7 @@ import org.apache.kafka.connect.header.ConnectHeaders;
 
 import io.debezium.service.Service;
 
+<<<<<<< HEAD
 /**
  * A service implementation that produces Debezium-specific headers for CDC (Change Data Capture) events.
  * <p>
@@ -24,20 +25,26 @@ import io.debezium.service.Service;
  *
  * @author Mario Fiore Vitale
  */
+=======
+>>>>>>> 77778c0c6 (DBZ-9020 Add support for multi task connectors)
 public class DebeziumHeaderProducer implements Service {
 
     private final CdcSourceTaskContext sourceTaskContext;
 
+<<<<<<< HEAD
     /**
      * Constructs a new DebeziumHeaderProducer with the specified source task context.
      *
      * @param sourceTaskContext the CDC source task context containing connector metadata;
      *                         must not be null
      */
+=======
+>>>>>>> 77778c0c6 (DBZ-9020 Add support for multi task connectors)
     public DebeziumHeaderProducer(CdcSourceTaskContext sourceTaskContext) {
         this.sourceTaskContext = sourceTaskContext;
     }
 
+<<<<<<< HEAD
     /**
      * Creates and returns a set of standardized Debezium context headers.
      * <p>
@@ -57,12 +64,18 @@ public class DebeziumHeaderProducer implements Service {
      *         never returns null
      * @throws RuntimeException if there's an error accessing the source task context
      */
+=======
+>>>>>>> 77778c0c6 (DBZ-9020 Add support for multi task connectors)
     public ConnectHeaders contextHeaders() {
 
         var debeziumContextHeaders = new ConnectHeaders();
         debeziumContextHeaders.add(DEBEZIUM_CONNECTOR_LOGICAL_NAME_HEADER, sourceTaskContext.getConnectorLogicalName(), Schema.STRING_SCHEMA);
         debeziumContextHeaders.add(DEBEZIUM_TASK_ID_HEADER, sourceTaskContext.getTaskId(), Schema.STRING_SCHEMA);
+<<<<<<< HEAD
         debeziumContextHeaders.add(DEBEZIUM_CONNECTOR_NAME_HEADER, sourceTaskContext.getConnectorPluginName(), Schema.STRING_SCHEMA);
+=======
+        debeziumContextHeaders.add(DEBEZIUM_CONNECTOR_NAME_HEADER, sourceTaskContext.getConnectorName(), Schema.STRING_SCHEMA);
+>>>>>>> 77778c0c6 (DBZ-9020 Add support for multi task connectors)
 
         return debeziumContextHeaders;
     }

@@ -14,7 +14,10 @@ import org.apache.kafka.connect.header.Headers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+<<<<<<< HEAD
 import io.debezium.config.CommonConnectorConfig;
+=======
+>>>>>>> 77778c0c6 (DBZ-9020 Add support for multi task connectors)
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.DebeziumHeaders;
 
@@ -39,6 +42,15 @@ public record ConnectorContext(String connectorLogicalName, String connectorName
 
     private static final String KEY_FORMAT = "%s:%s";
 
+<<<<<<< HEAD
+=======
+    /** Configuration key for the topic prefix setting */
+    public static final String TOPIC_PREFIX = "topic.prefix";
+
+    /** Configuration key for the connector task ID */
+    public static final String CONNECTOR_TASK_ID = "task.id";
+
+>>>>>>> 77778c0c6 (DBZ-9020 Add support for multi task connectors)
     /**
      * Creates a ConnectorContext instance from a configuration object and connector type name.
      *
@@ -52,9 +64,15 @@ public record ConnectorContext(String connectorLogicalName, String connectorName
     public static ConnectorContext from(Configuration configuration, String connectorTypeName) {
 
         return new ConnectorContext(
+<<<<<<< HEAD
                 configuration.getString(CommonConnectorConfig.TOPIC_PREFIX),
                 connectorTypeName,
                 configuration.getString(CommonConnectorConfig.TASK_ID, "0"),
+=======
+                configuration.getString(TOPIC_PREFIX),
+                connectorTypeName,
+                configuration.getString(CONNECTOR_TASK_ID, "0"),
+>>>>>>> 77778c0c6 (DBZ-9020 Add support for multi task connectors)
                 configuration);
     }
 
@@ -101,4 +119,8 @@ public record ConnectorContext(String connectorLogicalName, String connectorName
     public String toEmitterKey() {
         return String.format(KEY_FORMAT, connectorLogicalName, taskId);
     }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 77778c0c6 (DBZ-9020 Add support for multi task connectors)
