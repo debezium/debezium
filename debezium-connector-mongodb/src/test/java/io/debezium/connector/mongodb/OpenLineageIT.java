@@ -236,7 +236,6 @@ public class OpenLineageIT extends AbstractMongoConnectorIT {
                 "errors.max.retries=-1",
                 "errors.retry.delay.initial.ms=300",
                 "errors.retry.delay.max.ms=10000",
-                "internal.task.management.timeout.ms=180000",
                 "key.converter=org.apache.kafka.connect.json.JsonConverter",
                 "name=testing-connector",
                 "offset.flush.interval.ms=0",

@@ -260,7 +260,7 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
 
         // Validate headers
         Headers headers = routedEvent.headers();
-        assertThat(headers).hasSize(2);
+        assertThat(headers).hasSize(5);
         Header headerId = headers.lastWithName("id");
         assertThat(headerId.schema()).isEqualTo(getIdSchema());
         assertThat(headerId.value()).isEqualTo(getId("f9171eb6-19f3-4579-9206-0e179d2ebad7"));
@@ -356,7 +356,7 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
 
         // Validate headers
         Headers headers = routedEvent.headers();
-        assertThat(headers.size()).isEqualTo(2);
+        assertThat(headers.size()).isEqualTo(5);
         Header headerId = headers.lastWithName("id");
         assertThat(headerId.schema()).isEqualTo(getIdSchema());
         assertThat(headerId.value()).isEqualTo(getId("a9d76f78-bda6-48d3-97ed-13a146163218"));
@@ -418,7 +418,7 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
 
         // Validate headers
         Headers headers = routedEvent.headers();
-        assertThat(headers.size()).isEqualTo(2);
+        assertThat(headers.size()).isEqualTo(5);
         Header headerId = headers.lastWithName("id");
         assertThat(headerId.schema()).isEqualTo(getIdSchema());
         assertThat(headerId.value()).isEqualTo(getId("a9d76f78-bda6-48d3-97ed-13a146163218"));
@@ -467,7 +467,7 @@ public abstract class AbstractEventRouterTest<T extends SourceConnector> extends
 
         // Validate headers
         Headers headers = routedEvent.headers();
-        assertThat(headers.size()).isEqualTo(1);
+        assertThat(headers.size()).isEqualTo(4);
         Header headerId = headers.lastWithName("id");
         assertThat(headerId.schema()).isEqualTo(getIdSchema());
         assertThat(headerId.value()).isEqualTo(getId("a9d76f78-bda6-48d3-97ed-13a146163218"));
