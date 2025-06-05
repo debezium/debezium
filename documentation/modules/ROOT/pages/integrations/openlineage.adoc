@@ -40,13 +40,13 @@ To integrate with OpenLineage, {prodname} maps its life cycle to the OpenLineage
 
 The {prodname} connector is mapped to an OpenLineage *Job*, which includes the following elements:
 
-Name:: The job name is inherited from the {prodname} connector name.
+Name:: The job name is inherited from the {prodname} `topic.prefix`.<taskId>.
 Namespace:: Inherited from `openlineage.integration.job.namespace`, if specified; otherwise defaults to `topic.prefix`
 Debezium version information::
 Complete connector configuration::
 Job metadata:: Description, tags, and owners.
 
-.Dataset Mapping
+.Dataset Mapping for source connectors
 
 The following dataset mappings are possible: 
 
@@ -65,6 +65,9 @@ Mappings are created according to the following principles:
 * Each Kafka topic that the connector produces becomes an output dataset.
 * The output dataset captures the complete CDC event structure, including metadata fields.
 * The name of the dataset is based on the connector's topic prefix configuration.
+
+.Dataset Mapping for sink connectors
+The support for sink connectors is not yet available.
 
 .Run Events
 
@@ -215,7 +218,7 @@ Specify Owners as a comma-separated list of name-role pairs, as shown in the fol
 openlineage.integration.job.owners=John Doe=maintainer,Jane Smith=Data Engineer,Team Lead=owner
 ----
 
-== Output dataset lineage
+== Source connectors output dataset lineage
 
 To capture output dataset lineage (Kafka topics), configure {prodname} to use the OpenLineage Single Message Transform (SMT):
 
