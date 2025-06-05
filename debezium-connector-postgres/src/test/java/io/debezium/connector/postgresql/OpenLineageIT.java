@@ -65,7 +65,6 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with("openlineage.integration.enabled", true)
                 .with("openlineage.integration.config.file.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
                 .with("openlineage.integration.job.description", "This connector does cdc for products")
@@ -91,7 +90,6 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with("openlineage.integration.enabled", true)
                 .with("openlineage.integration.config.file.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
                 .with("openlineage.integration.job.description", "This connector does cdc for products")
@@ -117,7 +115,6 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with("openlineage.integration.enabled", true)
                 .with("openlineage.integration.config.file.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
                 .with("openlineage.integration.job.description", "This connector does cdc for products")
@@ -147,7 +144,6 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with("openlineage.integration.enabled", true)
                 .with("openlineage.integration.config.file.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
                 .with("openlineage.integration.job.description", "This connector does cdc for products")
@@ -185,7 +181,6 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with("openlineage.integration.enabled", true)
                 .with("openlineage.integration.config.file.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
                 .with("openlineage.integration.job.description", "This connector does cdc for products")
@@ -220,7 +215,6 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE, "s1.a")
                 .with(PostgresConnectorConfig.SNAPSHOT_SELECT_STATEMENT_OVERRIDES_BY_TABLE.name() + ".s1.a", "this is intentionally a wrong statement")
                 .with(CommonConnectorConfig.MAX_RETRIES_ON_ERROR, 1)
@@ -267,7 +261,6 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL.getValue())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.FALSE)
                 .with("schema.history.internal.kafka.bootstrap.servers", "test-kafka:9092")
                 .with("openlineage.integration.enabled", true)
                 .with("openlineage.integration.config.file.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
@@ -466,7 +459,6 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                 "errors.max.retries=-1",
                 "errors.retry.delay.initial.ms=300",
                 "errors.retry.delay.max.ms=10000",
-                "internal.task.management.timeout.ms=180000",
                 "key.converter=org.apache.kafka.connect.json.JsonConverter",
                 "name=testing-connector",
                 "offset.flush.interval.ms=0",
@@ -480,7 +472,6 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                 "record.processing.shutdown.timeout.ms=1000",
                 "record.processing.threads=",
                 "record.processing.with.serial.consumer=false",
-                "slot.drop.on.stop=false",
                 "slot.max.retries=2",
                 "slot.retry.delay.ms=2000",
                 "snapshot.mode=initial",
