@@ -13,11 +13,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.testing.system.tools.fabric8.FabricBuilderWrapper;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.strimzi.api.kafka.model.common.template.PodTemplate;
 import io.strimzi.api.kafka.model.common.template.PodTemplateBuilder;
 import io.strimzi.api.kafka.model.kafka.EphemeralStorage;
+import io.strimzi.api.kafka.model.kafka.EphemeralStorageBuilder;
 import io.strimzi.api.kafka.model.kafka.Kafka;
 import io.strimzi.api.kafka.model.kafka.KafkaBuilder;
 import io.strimzi.api.kafka.model.kafka.KafkaClusterSpec;
@@ -29,6 +33,9 @@ import io.strimzi.api.kafka.model.kafka.entityoperator.EntityUserOperatorSpec;
 import io.strimzi.api.kafka.model.kafka.listener.GenericKafkaListener;
 import io.strimzi.api.kafka.model.kafka.listener.GenericKafkaListenerBuilder;
 import io.strimzi.api.kafka.model.kafka.listener.KafkaListenerType;
+import io.strimzi.api.kafka.model.nodepool.KafkaNodePool;
+import io.strimzi.api.kafka.model.nodepool.KafkaNodePoolBuilder;
+import io.strimzi.api.kafka.model.nodepool.ProcessRoles;
 import io.strimzi.api.kafka.model.zookeeper.ZookeeperClusterSpec;
 import io.strimzi.api.kafka.model.zookeeper.ZookeeperClusterSpecBuilder;
 
@@ -36,7 +43,10 @@ import io.strimzi.api.kafka.model.zookeeper.ZookeeperClusterSpecBuilder;
  * This class simplifies building of kafka by providing default configuration for whole kafka or parts of its definition
  */
 public final class FabricKafkaBuilder extends FabricBuilderWrapper<FabricKafkaBuilder, KafkaBuilder, Kafka> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(FabricKafkaBuilder.class);
+    private static Boolean USE_KRAFT;
     public static String DEFAULT_KAFKA_NAME = "debezium-kafka-cluster";
+    public static String DEFAULT_NODE_POOL_NAME = "node-pool";
 
     private FabricKafkaBuilder(KafkaBuilder kafkaBuilder) {
         super(kafkaBuilder);
@@ -49,7 +59,6 @@ public final class FabricKafkaBuilder extends FabricBuilderWrapper<FabricKafkaBu
 
     public static FabricKafkaBuilder base() {
         KafkaClusterSpec kafka = defaultKafkaSpec();
-        ZookeeperClusterSpec zookeeper = defaultKafkaZookeeperSpec();
         EntityOperatorSpec entityOperator = defaultKafkaEntityOperatorSpec();
 
         KafkaBuilder builder = new KafkaBuilder()
@@ -58,9 +67,25 @@ public final class FabricKafkaBuilder extends FabricBuilderWrapper<FabricKafkaBu
                 .endMetadata()
                 .withNewSpec()
                 .withKafka(kafka)
-                .withZookeeper(zookeeper)
                 .withEntityOperator(entityOperator)
                 .endSpec();
+
+        if (shouldKRaftBeUsed()) {
+            Map<String, String> clusterAnnotations = Map.of("strimzi.io/node-pools", "enabled", "strimzi.io/kraft", "enabled");
+            builder
+                    .editMetadata()
+                    .withAnnotations(clusterAnnotations)
+                    .endMetadata()
+                    .editSpec()
+                    .withZookeeper(null)
+                    .endSpec();
+        }
+        else {
+            builder
+                    .editSpec()
+                    .withZookeeper(defaultKafkaZookeeperSpec())
+                    .endSpec();
+        }
 
         return new FabricKafkaBuilder(builder);
     }
@@ -80,28 +105,55 @@ public final class FabricKafkaBuilder extends FabricBuilderWrapper<FabricKafkaBu
                 .editKafka()
                 .withNewTemplate().withPod(podTemplate).endTemplate()
                 .endKafka()
-                .editZookeeper()
-                .withNewTemplate().withPod(podTemplate).endTemplate()
-                .endZookeeper()
                 .editEntityOperator()
                 .withNewTemplate().withPod(podTemplate).endTemplate()
                 .endEntityOperator()
                 .endSpec();
 
+        if (!shouldKRaftBeUsed()) {
+            builder
+                    .editSpec()
+                    .editZookeeper()
+                    .withNewTemplate().withPod(podTemplate).endTemplate()
+                    .endZookeeper()
+                    .endSpec();
+        }
+
         return self();
+    }
+
+    public static boolean shouldKRaftBeUsed() {
+        if (USE_KRAFT == null) {
+            // TODO: aviana detect based in the params if Kraft mode should be used
+            LOGGER.warn("ALVAR: Kafka Cluster being built with KRAFT");
+            USE_KRAFT = false;
+
+            //Force KRAFT == true --->>> USE_KRAFT = true;
+            //kafka version >= 4.0.0 --->>> USE_KRAFT = true;
+            //strimzi version >= 0.46.0  --->>> USE_KRAFT = true;
+            // else  --->>> USE_KRAFT = false;
+            // if (builder == null) {
+            // LOGGER.error("Kafka Cluster cannot be built with the actual params");
+            // }
+        }
+        return USE_KRAFT;
     }
 
     private static KafkaClusterSpec defaultKafkaSpec() {
         Map<String, Object> config = defaultKafkaConfig();
         List<GenericKafkaListener> listeners = defaultKafkaListeners();
 
-        return new KafkaClusterSpecBuilder()
+        KafkaClusterSpecBuilder kafkaClusterSpec = new KafkaClusterSpecBuilder()
                 .withConfig(config)
-                .withReplicas(3)
                 .withVersion(STRIMZI_VERSION_KAFKA)
-                .withListeners(listeners)
-                .withStorage(new EphemeralStorage())
-                .build();
+                .withListeners(listeners);
+
+        if (!shouldKRaftBeUsed()) {
+            kafkaClusterSpec
+                    .withStorage(new EphemeralStorage())
+                    .withReplicas(3);
+        }
+        return kafkaClusterSpec.build();
     }
 
     private static List<GenericKafkaListener> defaultKafkaListeners() {
@@ -134,6 +186,11 @@ public final class FabricKafkaBuilder extends FabricBuilderWrapper<FabricKafkaBu
         config.put("transaction.state.log.replication.factor", 1);
         config.put("transaction.state.log.min.isr", 1);
 
+        if (shouldKRaftBeUsed()) {
+            config.put("default.replication.factor", 3);
+            config.put("min.insync.replicas", 2);
+        }
+
         return config;
     }
 
@@ -151,6 +208,21 @@ public final class FabricKafkaBuilder extends FabricBuilderWrapper<FabricKafkaBu
         return new EntityOperatorSpecBuilder()
                 .withTopicOperator(topicOperator)
                 .withUserOperator(userOperator)
+                .build();
+    }
+
+    public KafkaNodePool defaultKafkaNodePool() {
+        LOGGER.info("Creating Node Pool for kafka cluster: " + DEFAULT_KAFKA_NAME);
+        return new KafkaNodePoolBuilder()
+                .withNewMetadata()
+                .withName(DEFAULT_NODE_POOL_NAME)
+                .withLabels(Map.of("strimzi.io/cluster", DEFAULT_KAFKA_NAME))
+                .endMetadata()
+                .withNewSpec()
+                .withReplicas(3)
+                .withRoles(List.of(ProcessRoles.CONTROLLER, ProcessRoles.BROKER))
+                .withStorage(new EphemeralStorageBuilder().build())
+                .endSpec()
                 .build();
     }
 }
