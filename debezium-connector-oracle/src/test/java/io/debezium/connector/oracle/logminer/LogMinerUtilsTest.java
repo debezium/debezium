@@ -17,6 +17,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 
+import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
@@ -30,6 +31,30 @@ public class LogMinerUtilsTest {
 
     @Rule
     public TestRule skipRule = new SkipTestDependingOnAdapterNameRule();
+
+    @Test
+    public void testStartLogMinerStatement() {
+        String statement = SqlUtils.startLogMinerStatement(SCN, OTHER_SCN, OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO, false, null);
+        assertThat(statement.contains("DBMS_LOGMNR.DICT_FROM_REDO_LOGS")).isTrue();
+        assertThat(statement.contains("DBMS_LOGMNR.DDL_DICT_TRACKING")).isTrue();
+        assertThat(statement.contains("DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG")).isFalse();
+        assertThat(statement.contains("DBMS_LOGMNR.CONTINUOUS_MINE")).isFalse();
+        statement = SqlUtils.startLogMinerStatement(SCN, OTHER_SCN, OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG, false, null);
+        assertThat(statement.contains("DBMS_LOGMNR.DICT_FROM_REDO_LOGS")).isFalse();
+        assertThat(statement.contains("DBMS_LOGMNR.DDL_DICT_TRACKING")).isFalse();
+        assertThat(statement.contains("DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG")).isTrue();
+        assertThat(statement.contains("DBMS_LOGMNR.CONTINUOUS_MINE")).isFalse();
+        statement = SqlUtils.startLogMinerStatement(SCN, OTHER_SCN, OracleConnectorConfig.LogMiningStrategy.CATALOG_IN_REDO, true, null);
+        assertThat(statement.contains("DBMS_LOGMNR.DICT_FROM_REDO_LOGS")).isTrue();
+        assertThat(statement.contains("DBMS_LOGMNR.DDL_DICT_TRACKING")).isTrue();
+        assertThat(statement.contains("DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG")).isFalse();
+        assertThat(statement.contains("DBMS_LOGMNR.CONTINUOUS_MINE")).isTrue();
+        statement = SqlUtils.startLogMinerStatement(SCN, OTHER_SCN, OracleConnectorConfig.LogMiningStrategy.ONLINE_CATALOG, true, null);
+        assertThat(statement.contains("DBMS_LOGMNR.DICT_FROM_REDO_LOGS")).isFalse();
+        assertThat(statement.contains("DBMS_LOGMNR.DDL_DICT_TRACKING")).isFalse();
+        assertThat(statement.contains("DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG")).isTrue();
+        assertThat(statement.contains("DBMS_LOGMNR.CONTINUOUS_MINE")).isTrue();
+    }
 
     // todo delete after replacement == -1 in the code
     @Test
