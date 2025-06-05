@@ -37,7 +37,6 @@ public class OracleDatabaseSchemaTest {
 
     @Before
     public void before() throws Exception {
-        DebeziumOpenLineageEmitter.init(Configuration.empty(), "oracle");
         this.connection = Mockito.mock(OracleConnection.class);
         Mockito.when(this.connection.getNationalCharacterSet()).thenReturn(CharacterSet.make(CharacterSet.UTF8_CHARSET));
         this.schema = createOracleDatabaseSchema();
@@ -66,7 +65,9 @@ public class OracleDatabaseSchemaTest {
     }
 
     private OracleDatabaseSchema createOracleDatabaseSchema() {
-        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(TestHelper.defaultConfig().build());
+        Configuration configuration = TestHelper.defaultConfig().build();
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(configuration);
+        DebeziumOpenLineageEmitter.init(configuration, "oracle");
         final TopicNamingStrategy topicNamingStrategy = SchemaTopicNamingStrategy.create(connectorConfig);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
         final OracleValueConverters converters = connectorConfig.getAdapter().getValueConverter(connectorConfig, connection);

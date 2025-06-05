@@ -26,6 +26,7 @@ import io.debezium.util.LoggingContext;
 public class CdcSourceTaskContext {
 
     private final String connectorType;
+    private final String connectorLogicalName;
     private final String connectorName;
     private final String taskId;
     private final Map<String, String> customMetricTags;
@@ -42,7 +43,8 @@ public class CdcSourceTaskContext {
                                 Map<String, String> customMetricTags,
                                 Supplier<Collection<? extends DataCollectionId>> collectionsSupplier) {
         this.connectorType = config.getContextName();
-        this.connectorName = config.getLogicalName();
+        this.connectorLogicalName = config.getLogicalName();
+        this.connectorName = config.getConnectorName();
         this.taskId = taskId;
         this.customMetricTags = customMetricTags;
         this.collectionsSupplier = collectionsSupplier != null ? collectionsSupplier : Collections::emptyList;
@@ -64,11 +66,11 @@ public class CdcSourceTaskContext {
      * @throws IllegalArgumentException if {@code contextName} is null
      */
     public LoggingContext.PreviousContext configureLoggingContext(String contextName) {
-        return LoggingContext.forConnector(connectorType, connectorName, contextName);
+        return LoggingContext.forConnector(connectorType, connectorLogicalName, contextName);
     }
 
     public LoggingContext.PreviousContext configureLoggingContext(String contextName, Partition partition) {
-        return LoggingContext.forConnector(connectorType, connectorName, taskId, contextName, partition);
+        return LoggingContext.forConnector(connectorType, connectorLogicalName, taskId, contextName, partition);
     }
 
     /**
@@ -102,12 +104,16 @@ public class CdcSourceTaskContext {
         return connectorType;
     }
 
-    public String getConnectorName() {
-        return connectorName;
+    public String getConnectorLogicalName() {
+        return connectorLogicalName;
     }
 
     public String getTaskId() {
         return taskId;
+    }
+
+    public String getConnectorName() {
+        return connectorName;
     }
 
     public Map<String, String> getCustomMetricTags() {

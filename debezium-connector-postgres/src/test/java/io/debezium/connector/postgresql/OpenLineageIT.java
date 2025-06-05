@@ -60,7 +60,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldProduceOpenLineageStartEvent() throws Exception {
+    public void shouldProduceOpenLineageStartEvent() {
 
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
@@ -86,7 +86,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldProduceOpenLineageRunningEvent() throws Exception {
+    public void shouldProduceOpenLineageRunningEvent() {
 
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
@@ -112,7 +112,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
-    public void shouldProduceOpenLineageCompleteEvent() throws Exception {
+    public void shouldProduceOpenLineageCompleteEvent() {
 
         DebeziumTestTransport debeziumTestTransport = getDebeziumTestTransport();
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
@@ -446,7 +446,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
     private static void assertEventContainsExpectedData(OpenLineage.RunEvent startEvent) {
 
         assertThat(startEvent.getJob().getNamespace()).isEqualTo("test_server");
-        assertThat(startEvent.getJob().getName()).isEqualTo("testing-connector");
+        assertThat(startEvent.getJob().getName()).isEqualTo("test_server.0");
         assertThat(startEvent.getJob().getFacets().getDocumentation().getDescription()).isEqualTo("This connector does cdc for products");
 
         assertThat(startEvent.getRun().getFacets().getProcessing_engine().getName()).isEqualTo("Debezium");
@@ -462,7 +462,6 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                 "database.password=postgres",
                 "database.port=5432",
                 "database.sslmode=disable",
-                "database.topic.prefix=dbserver1",
                 "database.user=postgres",
                 "errors.max.retries=-1",
                 "errors.retry.delay.initial.ms=300",

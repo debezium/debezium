@@ -493,9 +493,21 @@ public class TestHelper {
         waitForSnapshotToBeCompleted(getObjectName("snapshot", "server1", databaseName));
     }
 
+    public static void waitForDatabaseSnapshotToBeCompleted(String databaseName, String taskId) {
+        waitForSnapshotToBeCompleted(getObjectName("snapshot", "server1", databaseName, taskId));
+    }
+
     public static void waitForDatabaseSnapshotsToBeCompleted(String... databaseNames) {
         for (String databaseName : databaseNames) {
             waitForDatabaseSnapshotToBeCompleted(databaseName);
+        }
+    }
+
+    public static void waitForDatabaseSnapshotsToBeCompletedWithMultipleTasks(String... databaseNames) {
+        int taskId = 0;
+        for (String databaseName : databaseNames) {
+            waitForDatabaseSnapshotToBeCompleted(databaseName, Integer.toString(taskId));
+            taskId++;
         }
     }
 
@@ -573,6 +585,14 @@ public class TestHelper {
         return getObjectName(Collect.linkMapOf(
                 "server", serverName,
                 "task", TEST_TASK_ID,
+                "context", context,
+                "database", databaseName));
+    }
+
+    private static ObjectName getObjectName(String context, String serverName, String databaseName, String taskId) {
+        return getObjectName(Collect.linkMapOf(
+                "server", serverName,
+                "task", taskId,
                 "context", context,
                 "database", databaseName));
     }

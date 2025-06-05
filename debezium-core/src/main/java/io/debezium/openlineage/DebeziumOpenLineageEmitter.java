@@ -7,6 +7,7 @@ package io.debezium.openlineage;
 
 import java.util.List;
 import java.util.ServiceLoader;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,59 +34,81 @@ import io.debezium.openlineage.emitter.OpenLineageEventEmitter;
  * @see LineageEmitter
  * @see OpenLineageEventEmitter
  * @see OpenLineageContext
+ *
+ * @author Mario Fiore Vitale
  */
 public class DebeziumOpenLineageEmitter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumOpenLineageEmitter.class);
-    private static LineageEmitter lineageEmitter;
     private static final ServiceLoader<LineageEmitterFactory> lineageEmitterFactory = ServiceLoader.load(LineageEmitterFactory.class);
+    private static final Object SERVICE_LOADER_LOCK = new Object();
+
+    // Thread-safe map to store emitters per connector
+    private static final ConcurrentHashMap<String, LineageEmitter> emitters = new ConcurrentHashMap<>();
 
     /**
-     * Initializes the lineage emitter with the given configuration.
+     * Initializes the lineage emitter with the given configuration for a specific connector.
      * <p>
      * This method must be called before any emission methods are used. It sets up the
      * OpenLineage context and emitter if OpenLineage integration is enabled in the configuration.
-     * The initialization is thread-safe and ensures the context is only created once.
+     * The initialization is thread-safe and ensures each connector has its own emitter instance.
      *
      * @param configuration The Debezium connector configuration containing OpenLineage settings
-     * @param connName The name of the connector used for event attribution
+     * @param connectorTypeName The name of the connector used for event attribution
      */
-    public static void init(Configuration configuration, String connName) {
+    public static void init(Configuration configuration, String connectorTypeName) {
 
-        LOGGER.debug("Calling init for connector {} and config {}", connName, configuration);
-        /*
-         * Addresses native compilation issues with the Debezium Quarkus extension when OpenLineage
-         * dependencies are scoped as 'provided'. In native builds, Quarkus performs comprehensive
-         * classpath scanning and fails when referenced classes are unavailable at build time.
-         * ServiceLoader registration signals to Quarkus that the implementation will be available
-         * at runtime, allowing the native compilation to proceed successfully.
-         */
-        lineageEmitter = lineageEmitterFactory
-                .stream()
-                .findFirst()
-                .map(ServiceLoader.Provider::get)
-                .orElse((ignore, ignore2) -> new NoOpLineageEmitter())
-                .get(configuration, connName);
+        LOGGER.debug("Calling init for connector {} and config {}", connectorTypeName, configuration);
 
-        LOGGER.debug("Emitter instance {}", lineageEmitter);
+        ConnectorContext connectorContext = ConnectorContext.from(configuration, connectorTypeName);
+        LineageEmitter emitter = emitters.computeIfAbsent(connectorContext.toEmitterKey(), key -> {
+            LOGGER.debug("Creating new emitter for connector with name {}", key);
+            /*
+             * lineageEmitterFactory addresses native compilation issues with the Debezium Quarkus extension when OpenLineage
+             * dependencies are scoped as 'provided'. In native builds, Quarkus performs comprehensive
+             * classpath scanning and fails when referenced classes are unavailable at build time.
+             * ServiceLoader registration signals to Quarkus that the implementation will be available
+             * at runtime, allowing the native compilation to proceed successfully.
+             */
+            synchronized (SERVICE_LOADER_LOCK) { // This required for connectors with multiple tasks because the ServiceLoader is not thread-safe
+                return lineageEmitterFactory
+                        .stream()
+                        .findFirst()
+                        .map(ServiceLoader.Provider::get)
+                        .orElse((ignore) -> new NoOpLineageEmitter())
+                        .get(connectorContext);
+            }
+        });
+
+        LOGGER.debug("Emitter instance for connector {}: {}", connectorTypeName, emitter);
     }
 
-    private static void checkInitialized() {
-        if (lineageEmitter == null) {
-            throw new IllegalStateException("DebeziumOpenLineageEmitter not initialized. Call init() first.");
+    /**
+     * Removes the emitter for the specified connector.
+     * Should be called when a connector is stopped or destroyed.
+     *
+     * @param connectorContext The context the connector
+     */
+    public static void cleanup(ConnectorContext connectorContext) {
+        LineageEmitter removed = emitters.remove(connectorContext.toEmitterKey());
+        if (removed != null) {
+            LOGGER.debug("Cleaned up emitter for connector {}", connectorContext);
         }
+    }
+
+    public static ConnectorContext connectorContext(Configuration config, String connectorName) {
+        return ConnectorContext.from(config, connectorName);
     }
 
     /**
      * Emits a lineage event for the given source task state.
      *
+     * @param connectorContext The connector context
      * @param state The current state of the source task
-     * @throws IllegalStateException If the emitter has not been initialized
+     * @throws IllegalStateException If the emitter has not been initialized for this connector
      */
-    public static void emit(BaseSourceTask.State state) {
-
-        checkInitialized();
-        lineageEmitter.emit(state);
+    public static void emit(ConnectorContext connectorContext, BaseSourceTask.State state) {
+        getEmitter(connectorContext).emit(state);
     }
 
     /**
@@ -93,14 +116,13 @@ public class DebeziumOpenLineageEmitter {
      * <p>
      * This method is typically used for error reporting.
      *
+     * @param connectorContext The connector context
      * @param state The current state of the source task
      * @param t The exception that occurred during processing
-     * @throws IllegalStateException If the emitter has not been initialized
+     * @throws IllegalStateException If the emitter has not been initialized for this connector
      */
-    public static void emit(BaseSourceTask.State state, Throwable t) {
-
-        checkInitialized();
-        lineageEmitter.emit(state, List.of(), t);
+    public static void emit(ConnectorContext connectorContext, BaseSourceTask.State state, Throwable t) {
+        getEmitter(connectorContext).emit(state, List.of(), t);
     }
 
     /**
@@ -108,14 +130,13 @@ public class DebeziumOpenLineageEmitter {
      * <p>
      * This method is typically used for emitting input dataset lineage.
      *
+     * @param connectorContext The connector context
      * @param state The current state of the source task
      * @param datasetMetadata A list of input dataset metadata containing metadata for lineage
-     * @throws IllegalStateException If the emitter has not been initialized
+     * @throws IllegalStateException If the emitter has not been initialized for this connector
      */
-    public static void emit(BaseSourceTask.State state, List<DatasetMetadata> datasetMetadata) {
-
-        checkInitialized();
-        lineageEmitter.emit(state, datasetMetadata);
+    public static void emit(ConnectorContext connectorContext, BaseSourceTask.State state, List<DatasetMetadata> datasetMetadata) {
+        getEmitter(connectorContext).emit(state, datasetMetadata);
     }
 
     /**
@@ -124,14 +145,21 @@ public class DebeziumOpenLineageEmitter {
      * This method provides the most detailed lineage information, including both table
      * metadata and any exception that occurred during processing.
      *
+     * @param connectorContext The connector context
      * @param state The current state of the source task
      * @param datasetMetadata A list of input dataset metadata containing metadata for lineage
      * @param t The exception that occurred during processing, may be {@code null}
-     * @throws IllegalStateException If the emitter has not been initialized
+     * @throws IllegalStateException If the emitter has not been initialized for this connector
      */
-    public static void emit(BaseSourceTask.State state, List<DatasetMetadata> datasetMetadata, Throwable t) {
+    public static void emit(ConnectorContext connectorContext, BaseSourceTask.State state, List<DatasetMetadata> datasetMetadata, Throwable t) {
+        getEmitter(connectorContext).emit(state, datasetMetadata, t);
+    }
 
-        checkInitialized();
-        lineageEmitter.emit(state, datasetMetadata, t);
+    private static LineageEmitter getEmitter(ConnectorContext connectorContext) {
+        LineageEmitter emitter = emitters.get(connectorContext.toEmitterKey());
+        if (emitter == null) {
+            throw new IllegalStateException("DebeziumOpenLineageEmitter not initialized for connector " + connectorContext + ". Call init() first.");
+        }
+        return emitter;
     }
 }

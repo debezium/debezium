@@ -7,7 +7,6 @@ package io.debezium.transforms.openlineage;
 
 import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetType.OUTPUT;
 
-import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.Module;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.openlineage.dataset.DatasetMetadata;
 import io.debezium.transforms.SmtManager;
@@ -67,7 +67,9 @@ public class OpenLineage<R extends ConnectRecord<R>> implements Transformation<R
                 List<DatasetMetadata.FieldDefinition> fieldDefinitions = record.valueSchema().fields().stream()
                         .map(this::buildFieldDefinition)
                         .toList();
-                DebeziumOpenLineageEmitter.emit(BaseSourceTask.State.RUNNING, List.of(new DatasetMetadata(record.topic(), OUTPUT, fieldDefinitions)));
+
+                ConnectorContext connectorContext = ConnectorContext.from(record.headers());
+                DebeziumOpenLineageEmitter.emit(connectorContext, BaseSourceTask.State.RUNNING, List.of(new DatasetMetadata(record.topic(), OUTPUT, fieldDefinitions)));
 
                 lastEmissionTime = ZonedDateTime.now();
             }
@@ -75,11 +77,6 @@ public class OpenLineage<R extends ConnectRecord<R>> implements Transformation<R
             LOGGER.debug("Emitting running event for output dataset {}", record.topic());
 
             return record;
-        }
-
-        if (Duration.between(lastEmissionTime.toInstant(), ZonedDateTime.now().toInstant()).getSeconds() >= 120) {
-            DebeziumOpenLineageEmitter.emit(BaseSourceTask.State.RUNNING);
-            LOGGER.debug("Emitting periodic running event. No new output dataset detected");
         }
 
         return record;

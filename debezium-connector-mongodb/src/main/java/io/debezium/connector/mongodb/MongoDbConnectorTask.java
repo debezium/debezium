@@ -26,6 +26,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
@@ -87,7 +88,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         this.connectionContext = new MongoDbConnectionContext(config);
 
         final Schema structSchema = connectorConfig.getSourceInfoStructMaker().schema();
-        this.schema = new MongoDbSchema(taskContext.getFilters(), taskContext.getTopicNamingStrategy(), structSchema, schemaNameAdjuster);
+        this.schema = new MongoDbSchema(connectorConfig, taskContext.getFilters(), taskContext.getTopicNamingStrategy(), structSchema, schemaNameAdjuster);
 
         final Offsets<MongoDbPartition, MongoDbOffsetContext> previousOffsets = getPreviousOffsets(connectorConfig);
         final Clock clock = Clock.system();
@@ -118,6 +119,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
             connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
             connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
             connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
+            connectorConfig.getBeanRegistry().add(StandardBeanNames.CDC_SOURCE_TASK_CONTEXT, taskContext);
 
             // Service providers
             registerServiceProviders(connectorConfig.getServiceRegistry());
@@ -133,7 +135,8 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     DataChangeEvent::new,
                     metadataProvider,
                     schemaNameAdjuster,
-                    signalProcessor);
+                    signalProcessor,
+                    connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
 
             validate(connectorConfig, taskContext.getConnection(dispatcher, previousOffsets.getTheOnlyPartition()), previousOffsets,
                     snapshotterService.getSnapshotter());

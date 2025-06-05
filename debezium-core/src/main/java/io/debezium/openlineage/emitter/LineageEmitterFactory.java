@@ -5,9 +5,9 @@
  */
 package io.debezium.openlineage.emitter;
 
-import io.debezium.config.Configuration;
+import io.debezium.openlineage.ConnectorContext;
 
 public interface LineageEmitterFactory {
 
-    LineageEmitter get(Configuration connectorConfig, String connName);
+    LineageEmitter get(ConnectorContext connectorContext);
 }

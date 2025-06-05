@@ -220,7 +220,7 @@ public class OpenLineageIT extends AbstractMongoConnectorIT {
     private static void assertEventContainsExpectedData(OpenLineage.RunEvent startEvent) {
 
         assertThat(startEvent.getJob().getNamespace()).isEqualTo("mongo");
-        assertThat(startEvent.getJob().getName()).isEqualTo("testing-connector");
+        assertThat(startEvent.getJob().getName()).isEqualTo("mongo.0");
         assertThat(startEvent.getJob().getFacets().getDocumentation().getDescription()).isEqualTo("This connector does cdc for products");
 
         assertThat(startEvent.getRun().getFacets().getProcessing_engine().getName()).isEqualTo("Debezium");

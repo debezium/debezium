@@ -244,7 +244,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             config = Configuration.from(props);
 
             DebeziumOpenLineageEmitter.init(config, connectorName());
-            DebeziumOpenLineageEmitter.emit(State.INITIAL);
+            DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config, connectorName()), State.INITIAL);
 
             retriableRestartWait = config.getDuration(CommonConnectorConfig.RETRIABLE_RESTART_WAIT, ChronoUnit.MILLIS);
             // need to reset the delay or you only get one delayed restart
@@ -265,7 +265,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                 this.coordinator = start(config);
                 setTaskState(State.RUNNING);
 
-                DebeziumOpenLineageEmitter.emit(State.RUNNING);
+                DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config, connectorName()), State.RUNNING);
 
             }
             catch (RetriableException e) {
@@ -432,8 +432,9 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             else if (currentState == State.RESTARTING) {
 
                 getErrorHandler().ifPresentOrElse(
-                        handler -> DebeziumOpenLineageEmitter.emit(State.RESTARTING, handler.getProducerThrowable()),
-                        () -> DebeziumOpenLineageEmitter.emit(State.RESTARTING));
+                        handler -> DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config, connectorName()), State.RESTARTING,
+                                handler.getProducerThrowable()),
+                        () -> DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config, connectorName()), State.RESTARTING));
 
                 // we're in restart mode... check if it's time to restart
                 if (restartDelay.hasElapsed()) {
@@ -459,6 +460,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     @Override
     public final void stop() {
         stop(false);
+        DebeziumOpenLineageEmitter.cleanup(DebeziumOpenLineageEmitter.connectorContext(config, connectorName()));
     }
 
     private void stop(boolean restart) {
@@ -494,7 +496,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
             else {
                 setTaskState(State.STOPPED);
-                DebeziumOpenLineageEmitter.emit(State.STOPPED);
+                DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config, connectorName()), State.STOPPED);
             }
         }
         finally {
@@ -608,5 +610,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         serviceRegistry.registerServiceProvider(new SnapshotLockProvider());
         serviceRegistry.registerServiceProvider(new SnapshotQueryProvider());
         serviceRegistry.registerServiceProvider(new SnapshotterServiceProvider());
+        serviceRegistry.registerServiceProvider(new DebeziumHeaderProducerProvider());
     }
 }

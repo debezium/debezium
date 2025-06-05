@@ -32,7 +32,7 @@ public class MongoDbTaskContextTest implements Testing {
     @Test
     public void shouldConfigureCommonTaskPropertiesFromConfig() {
         assertThat(context.getTaskId()).isEqualTo(config.getString(MongoDbConnectorConfig.TASK_ID));
-        assertThat(context.getConnectorName()).isEqualTo(config.getString(CommonConnectorConfig.TOPIC_PREFIX));
+        assertThat(context.getConnectorLogicalName()).isEqualTo(config.getString(CommonConnectorConfig.TOPIC_PREFIX));
         assertThat(context.getConnectorType()).isEqualTo(Module.contextName());
     }
 

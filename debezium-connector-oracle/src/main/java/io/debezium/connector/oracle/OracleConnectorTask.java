@@ -22,6 +22,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.document.DocumentReader;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
@@ -77,6 +78,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         TableNameCaseSensitivity tableNameCaseSensitivity = connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection);
         this.schema = new OracleDatabaseSchema(connectorConfig, valueConverters, defaultValueConverter, schemaNameAdjuster,
                 topicNamingStrategy, tableNameCaseSensitivity, extendedStringsSupported);
+        taskContext = new OracleTaskContext(connectorConfig, schema);
 
         Offsets<OraclePartition, OracleOffsetContext> previousOffsets = getPreviousOffsets(new OraclePartition.Provider(connectorConfig),
                 connectorConfig.getAdapter().getOffsetContextLoader());
@@ -95,6 +97,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, beanRegistryJdbcConnection);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.CDC_SOURCE_TASK_CONTEXT, taskContext);
 
         // Service providers
         registerServiceProviders(connectorConfig.getServiceRegistry());
@@ -108,8 +111,6 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         OracleOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
         validateSchemaHistory(connectorConfig, jdbcConnection::validateLogPosition, previousOffsets, schema, snapshotterService.getSnapshotter());
-
-        taskContext = new OracleTaskContext(connectorConfig, schema);
 
         // If the redo log position is not available it is necessary to re-execute snapshot
         if (previousOffset == null) {
@@ -157,7 +158,8 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                             throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
                         }),
                 schemaNameAdjuster,
-                signalProcessor);
+                signalProcessor,
+                connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
 
         final AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics = connectorConfig.getAdapter()
                 .getStreamingMetrics(taskContext, queue, metadataProvider, connectorConfig);
