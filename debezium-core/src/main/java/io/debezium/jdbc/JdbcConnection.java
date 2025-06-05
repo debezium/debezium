@@ -1269,23 +1269,28 @@ public class JdbcConnection implements AutoCloseable {
      * Given a database object name, creates a pattern, escaping any special characters such that the pattern matches
      * the name itself.
      */
-    protected String createPatternFromName(String name, String databaseSearchEscapeCharacter) {
+    protected String createPatternFromName(String name, String searchEscapeCharacter) {
         if (name == null) {
             return null;
+        }
+
+        if (Strings.isNullOrBlank(searchEscapeCharacter) || searchEscapeCharacter.length() > 1) {
+            throw new DebeziumException("The driver's search escape character should be a length of 1");
         }
 
         final int length = name.length();
         StringBuilder pattern = null;
 
+        final char escapeCharacter = searchEscapeCharacter.charAt(0);
         for (int i = 0; i < length; i++) {
             char c = name.charAt(i);
 
-            if (likeWildcardCharacters.contains(c) || databaseSearchEscapeCharacter.equals(String.valueOf(c))) {
+            if (likeWildcardCharacters.contains(c) || escapeCharacter == c) {
                 if (pattern == null) {
                     pattern = new StringBuilder();
                     pattern.append(name, 0, i);
                 }
-                pattern.append(databaseSearchEscapeCharacter);
+                pattern.append(escapeCharacter);
             }
 
             if (pattern != null) {
