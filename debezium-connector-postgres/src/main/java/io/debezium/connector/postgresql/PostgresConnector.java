@@ -15,7 +15,6 @@ import java.util.Map;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
-import io.debezium.util.Threads;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
@@ -33,6 +32,7 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ServerInfo;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
+import io.debezium.util.Threads;
 
 /**
  * A Kafka Connect source connector that creates tasks which use Postgresql streaming replication off a logical replication slot
@@ -122,7 +122,7 @@ public class PostgresConnector extends RelationalBaseSourceConnector {
                     }
                     catch (SQLException e) {
                         LOGGER.error("Failed testing connection for {} with user '{}'", connection.connectionString(),
-                            connection.username(), e);
+                                connection.username(), e);
                         hostnameValue.addErrorMessage("Error while validating connector config: " + e.getMessage());
                         databaseValue.addErrorMessage("Error while validating connector config: " + e.getMessage());
                         portValue.addErrorMessage("Error while validating connector config: " + e.getMessage());

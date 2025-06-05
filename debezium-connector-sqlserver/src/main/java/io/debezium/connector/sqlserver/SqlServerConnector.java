@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
-import io.debezium.util.Threads;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
@@ -30,6 +29,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.common.RelationalBaseSourceConnector;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.TableId;
+import io.debezium.util.Threads;
 
 /**
  * The main connector class used to instantiate configuration and execution classes
@@ -130,7 +130,7 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
                 try (SqlServerConnection connection = connect(sqlServerConfig)) {
                     connection.execute("SELECT @@VERSION");
                     LOGGER.debug("Successfully tested connection for {} with user '{}'", connection.connectionString(),
-                        connection.username());
+                            connection.username());
                     LOGGER.info("Checking if user has access to CDC table");
                     if (sqlServerConfig.getSnapshotMode() != SqlServerConnectorConfig.SnapshotMode.INITIAL_ONLY) {
                         final List<String> noAccessDatabaseNames = new ArrayList<>();
@@ -141,8 +141,8 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
                         }
                         if (!noAccessDatabaseNames.isEmpty()) {
                             String errorMessage = String.format(
-                                "User %s does not have access to CDC schema in the following databases: %s. This user can only be used in initial_only snapshot mode",
-                                config.getString(RelationalDatabaseConnectorConfig.USER), String.join(", ", noAccessDatabaseNames));
+                                    "User %s does not have access to CDC schema in the following databases: %s. This user can only be used in initial_only snapshot mode",
+                                    config.getString(RelationalDatabaseConnectorConfig.USER), String.join(", ", noAccessDatabaseNames));
                             LOGGER.error(errorMessage);
                             userValue.addErrorMessage(errorMessage);
                         }
@@ -150,9 +150,9 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
                 }
                 catch (Exception e) {
                     LOGGER.error("Failed testing connection for {} with user '{}'", config.withMaskedPasswords(),
-                        userValue, e);
+                            userValue, e);
                     hostnameValue.addErrorMessage("Unable to connect. Check this and other connection properties. Error: "
-                        + e.getMessage());
+                            + e.getMessage());
                 }
             }, timeout, sqlServerConfig.getLogicalName(), "connection-validation");
         }

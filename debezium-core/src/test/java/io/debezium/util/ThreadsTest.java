@@ -17,97 +17,97 @@ import org.junit.Test;
 
 public class ThreadsTest {
 
-  @Test
-  public void shouldCompleteSuccessfullyWithinTimeout() throws Exception {
-    AtomicBoolean taskCompleted = new AtomicBoolean(false);
-    Runnable operation = () -> {
-      try {
-        Thread.sleep(100);
-        taskCompleted.set(true);
-      }
-      catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
-    };
+    @Test
+    public void shouldCompleteSuccessfullyWithinTimeout() throws Exception {
+        AtomicBoolean taskCompleted = new AtomicBoolean(false);
+        Runnable operation = () -> {
+            try {
+                Thread.sleep(100);
+                taskCompleted.set(true);
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        };
 
-    Threads.runWithTimeout(
-        ThreadsTest.class,
-        operation,
-        Duration.ofMillis(1000),
-        "test-connector",
-        "test-operation");
+        Threads.runWithTimeout(
+                ThreadsTest.class,
+                operation,
+                Duration.ofMillis(1000),
+                "test-connector",
+                "test-operation");
 
-    assertTrue(taskCompleted.get());
-  }
+        assertTrue(taskCompleted.get());
+    }
 
-  @Test
-  public void shouldTimeoutWhenOperationTakesTooLong() {
-    Runnable operation = () -> {
-      try {
-        Thread.sleep(2000);
-      }
-      catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
-    };
+    @Test
+    public void shouldTimeoutWhenOperationTakesTooLong() {
+        Runnable operation = () -> {
+            try {
+                Thread.sleep(2000);
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        };
 
-    assertThrows(TimeoutException.class, () -> Threads.runWithTimeout(
-        ThreadsTest.class,
-        operation,
-        Duration.ofMillis(500),
-        "test-connector",
-        "test-operation"));
-  }
+        assertThrows(TimeoutException.class, () -> Threads.runWithTimeout(
+                ThreadsTest.class,
+                operation,
+                Duration.ofMillis(500),
+                "test-connector",
+                "test-operation"));
+    }
 
-  @Test
-  public void shouldPropagateOperationException() {
-    Runnable operation = () -> {
-      throw new RuntimeException("Test exception");
-    };
+    @Test
+    public void shouldPropagateOperationException() {
+        Runnable operation = () -> {
+            throw new RuntimeException("Test exception");
+        };
 
-    Exception exception = assertThrows(Exception.class, () -> Threads.runWithTimeout(
-        ThreadsTest.class,
-        operation,
-        Duration.ofMillis(1000),
-        "test-connector",
-        "test-operation"));
+        Exception exception = assertThrows(Exception.class, () -> Threads.runWithTimeout(
+                ThreadsTest.class,
+                operation,
+                Duration.ofMillis(1000),
+                "test-connector",
+                "test-operation"));
 
-    assertTrue(exception.getCause() instanceof RuntimeException);
-    assertTrue(exception.getCause().getMessage().contains("Test exception"));
-  }
+        assertTrue(exception.getCause() instanceof RuntimeException);
+        assertTrue(exception.getCause().getMessage().contains("Test exception"));
+    }
 
-  @Test
-  public void shouldPropagateWrappedOperationException() {
-    Runnable operation = () -> {
-      SQLException se = new SQLException("Test exception");
-      throw new RuntimeException(se);
-    };
+    @Test
+    public void shouldPropagateWrappedOperationException() {
+        Runnable operation = () -> {
+            SQLException se = new SQLException("Test exception");
+            throw new RuntimeException(se);
+        };
 
-    Exception exception = assertThrows(Exception.class, () -> Threads.runWithTimeout(
-        ThreadsTest.class,
-        operation,
-        Duration.ofMillis(1000),
-        "test-connector",
-        "test-operation"));
+        Exception exception = assertThrows(Exception.class, () -> Threads.runWithTimeout(
+                ThreadsTest.class,
+                operation,
+                Duration.ofMillis(1000),
+                "test-connector",
+                "test-operation"));
 
-    assertTrue(exception instanceof Exception);
-    assertTrue(exception.getCause() instanceof RuntimeException);
-    assertTrue(exception.getCause().getCause() instanceof SQLException);
-    assertTrue(exception.getCause().getCause().getMessage().contains("Test exception"));
-  }
+        assertTrue(exception instanceof Exception);
+        assertTrue(exception.getCause() instanceof RuntimeException);
+        assertTrue(exception.getCause().getCause() instanceof SQLException);
+        assertTrue(exception.getCause().getCause().getMessage().contains("Test exception"));
+    }
 
-  @Test
-  public void shouldHandleInterruptedException() {
-    Runnable operation = () -> {
-      Thread.currentThread().interrupt();
-      throw new RuntimeException("Should be interrupted");
-    };
+    @Test
+    public void shouldHandleInterruptedException() {
+        Runnable operation = () -> {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Should be interrupted");
+        };
 
-    assertThrows(Exception.class, () -> Threads.runWithTimeout(
-        ThreadsTest.class,
-        operation,
-        Duration.ofMillis(1000),
-        "test-connector",
-        "test-operation"));
-  }
+        assertThrows(Exception.class, () -> Threads.runWithTimeout(
+                ThreadsTest.class,
+                operation,
+                Duration.ofMillis(1000),
+                "test-connector",
+                "test-operation"));
+    }
 }

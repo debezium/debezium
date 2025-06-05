@@ -1091,14 +1091,14 @@ public abstract class CommonConnectorConfig {
             .withDescription("When enabled the connector will emit advanced streaming metrics");
 
     public static final Field CONNECTION_VALIDATION_TIMEOUT_MS = Field.create("connection.validation.timeout.ms")
-        .withDisplayName("Connection validation timeout (ms)")
-        .withType(Type.LONG)
-        .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 13))
-        .withWidth(Width.SHORT)
-        .withImportance(Importance.LOW)
-        .withDefault(DEFAULT_CONNECTION_VALIDATION_TIMEOUT_MS)
-        .withDescription("The maximum time in milliseconds to wait for connection validation to complete. Defaults to 60 seconds.")
-        .withValidation(Field::isPositiveLong);
+            .withDisplayName("Connection validation timeout (ms)")
+            .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 13))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(DEFAULT_CONNECTION_VALIDATION_TIMEOUT_MS)
+            .withDescription("The maximum time in milliseconds to wait for connection validation to complete. Defaults to 60 seconds.")
+            .withValidation(Field::isPositiveLong);
 
     public static final Field FAIL_ON_NO_TABLES = Field.createInternal("fail.on.no.tables")
             .withDisplayName("Fail if no tables are found")

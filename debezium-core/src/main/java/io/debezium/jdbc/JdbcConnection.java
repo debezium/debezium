@@ -37,13 +37,11 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import io.debezium.util.Threads;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.slf4j.Logger;
@@ -72,6 +70,7 @@ import io.debezium.util.BoundedConcurrentHashMap.EvictionListener;
 import io.debezium.util.Collect;
 import io.debezium.util.ColumnUtils;
 import io.debezium.util.Strings;
+import io.debezium.util.Threads;
 
 /**
  * A utility that simplifies using a JDBC connection and executing transactions composed of multiple statements.
