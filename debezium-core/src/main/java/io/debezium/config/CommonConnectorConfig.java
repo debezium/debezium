@@ -22,6 +22,7 @@ import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -65,7 +66,7 @@ import io.debezium.util.Strings;
  *
  * @author Gunnar Morling
  */
-public abstract class CommonConnectorConfig {
+public abstract class CommonConnectorConfig extends AbstractConfig {
     public static final String TASK_ID = "task.id";
     public static final Pattern TOPIC_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_.\\-]+$");
     public static final String MULTI_PARTITION_MODE = "multi.partition.mode";
@@ -83,6 +84,7 @@ public abstract class CommonConnectorConfig {
     protected final boolean snapshotModeConfigurationBasedSnapshotOnDataError;
     protected final boolean isLogPositionCheckEnabled;
     protected final boolean isAdvancedMetricsEnabled;
+    protected final String connectorThreadNamePattern;
 
     /**
      * The set of predefined versions e.g. for source struct maker version
@@ -1099,6 +1101,19 @@ public abstract class CommonConnectorConfig {
             .withDescription("The maximum time in milliseconds to wait for connection validation to complete. Defaults to 60 seconds.")
             .withValidation(Field::isPositiveLong);
 
+    public static final Field CONNECTOR_THREAD_NAME_PATTERN = Field.createInternal("connector.thread.name.pattern")
+            .withDisplayName("Connector Thread Name Pattern")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 32))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.LOW)
+            .optional()
+            .withDefault("${debezium-prefix}-${connector.class.simple}-${topic.prefix}-${functionality}")
+            .withDescription("The pattern used to name the connector threads. "
+                       + "The default value is '${debezium-prefix}-${connector.class.simple}-${topic.prefix}-${functionality}'. "
+                       + "The following variables are available: ${debezium-prefix}, ${connector.class.simple}, ${topic.prefix}, ${functionality}. "
+                       + "The value can be configured with any value but to have the default value as suffix.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -1125,7 +1140,8 @@ public abstract class CommonConnectorConfig {
                     INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY,
                     LOG_POSITION_CHECK_ENABLED,
                     ADVANCED_METRICS_ENABLE,
-                    CONNECTION_VALIDATION_TIMEOUT_MS)
+                    CONNECTION_VALIDATION_TIMEOUT_MS,
+                    CONNECTOR_THREAD_NAME_PATTERN)
             .events(
                     CUSTOM_CONVERTERS,
                     CUSTOM_POST_PROCESSORS,
@@ -1190,6 +1206,7 @@ public abstract class CommonConnectorConfig {
     protected final DefaultServiceRegistry serviceRegistry;
 
     protected CommonConnectorConfig(Configuration config, int defaultSnapshotFetchSize) {
+        super(CONFIG_DEFINITION.configDef(), config.asProperties());
         this.beanRegistry = new DefaultBeanRegistry();
         this.serviceRegistry = new DefaultServiceRegistry(config, beanRegistry);
         this.config = config;
@@ -1240,6 +1257,7 @@ public abstract class CommonConnectorConfig {
         this.snapshotModeConfigurationBasedSnapshotOnDataError = config.getBoolean(SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_DATA_ERROR);
         this.isLogPositionCheckEnabled = config.getBoolean(LOG_POSITION_CHECK_ENABLED);
         this.isAdvancedMetricsEnabled = config.getBoolean(ADVANCED_METRICS_ENABLE);
+        this.connectorThreadNamePattern = config.getString(CONNECTOR_THREAD_NAME_PATTERN);
 
         this.signalingDataCollectionId = !Strings.isNullOrBlank(this.signalingDataCollection)
                 ? TableId.parse(this.signalingDataCollection)
@@ -1314,6 +1332,15 @@ public abstract class CommonConnectorConfig {
     public String getLogicalName() {
         return logicalName;
     }
+
+    public String connectorName() {
+        return originalsStrings().get("name");
+    }
+
+    public String getConnectorThreadNamePattern() {
+        return connectorThreadNamePattern;
+    }
+
 
     public abstract String getContextName();
 

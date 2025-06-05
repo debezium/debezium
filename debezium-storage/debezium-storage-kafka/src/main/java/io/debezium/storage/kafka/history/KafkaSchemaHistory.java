@@ -167,6 +167,8 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
             .withDefault(Duration.ofSeconds(30).toMillis())
             .withValidation(Field::isPositiveInteger);
 
+
+
     public static Field.Set ALL_FIELDS = Field.setOf(TOPIC, BOOTSTRAP_SERVERS, NAME, RECOVERY_POLL_INTERVAL_MS,
             RECOVERY_POLL_ATTEMPTS, INTERNAL_CONNECTOR_CLASS, INTERNAL_CONNECTOR_ID, KAFKA_QUERY_TIMEOUT_MS);
 
@@ -254,7 +256,7 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
             final String connectorClassname = config.getString(INTERNAL_CONNECTOR_CLASS);
             if (connectorClassname != null) {
                 checkTopicSettingsExecutor = Threads.newSingleThreadExecutor((Class<? extends SourceConnector>) Class.forName(connectorClassname),
-                        config.getString(INTERNAL_CONNECTOR_ID), "db-history-config-check", true);
+                        config.getString(INTERNAL_CONNECTOR_ID), "db-history-config-check", config.getString(CONNECTOR_NAME), config.getString(CONNECTOR_THREAD_NAME_PATTERN), config.getString(TASK_NAME) , true);
             }
         }
         catch (ClassNotFoundException e) {

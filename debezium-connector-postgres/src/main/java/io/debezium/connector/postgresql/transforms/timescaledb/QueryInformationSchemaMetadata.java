@@ -52,7 +52,7 @@ public class QueryInformationSchemaMetadata extends AbstractTimescaleDbMetadata 
         connection = new PostgresConnection(
                 JdbcConfiguration.adapt(config.subset(CommonConnectorConfig.DATABASE_CONFIG_PREFIX, true)
                         .merge(config.subset(CommonConnectorConfig.DRIVER_CONFIG_PREFIX, true))),
-                "Debezium TimescaleDB metadata");
+                "Debezium TimescaleDB metadata", "", "", "");
     }
 
     @Override
