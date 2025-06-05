@@ -5210,9 +5210,11 @@ object_privilege
     | DEBUG
     | DELETE
     | EXECUTE
-    | FLASHBACK ARCHIVE?
+    | FLASHBACK
+    | FLASHBACK ARCHIVE
     | INDEX
     | INHERIT PRIVILEGES
+    | INHERIT REMOTE PRIVILEGES
     | INSERT
     | KEEP SEQUENCE
     | MERGE VIEW
@@ -5686,6 +5688,7 @@ non_reserved_keywords_in_12c
     | REALM
     | REDEFINE
     | RELOCATE
+    | REMOTE
     | RESTART
     | ROLESET
     | ROWID_MAPPING_TABLE
