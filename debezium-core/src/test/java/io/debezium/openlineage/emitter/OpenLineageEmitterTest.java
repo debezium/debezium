@@ -26,6 +26,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageConfiguration;
 import io.debezium.openlineage.OpenLineageContext;
 import io.debezium.openlineage.OpenLineageJobIdentifier;
@@ -54,9 +55,9 @@ public class OpenLineageEmitterTest {
 
         Configuration config = Configuration.from(configMap);
 
+        ConnectorContext connectorContext = new ConnectorContext("test-connector", "mysql", "0", config);
         emitter = new OpenLineageEmitter(
-                "mysql",
-                config,
+                connectorContext,
                 new OpenLineageContext(
                         new OpenLineage(URI.create("http://producer.io")),
                         new DebeziumOpenLineageConfiguration(

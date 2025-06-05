@@ -18,6 +18,11 @@ import java.util.stream.Collectors;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 
+/**
+ * A commodity class that maintain the configuration of OpenLineage integration
+ *
+ * @author Mario Fiore Vitale
+ */
 public record DebeziumOpenLineageConfiguration(boolean enabled, Config config, Job job) {
 
     private static final String KEY_VALUE_SEPARATOR = "=";

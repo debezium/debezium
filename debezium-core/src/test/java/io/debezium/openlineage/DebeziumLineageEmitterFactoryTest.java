@@ -33,7 +33,7 @@ public class DebeziumLineageEmitterFactoryTest {
                 .with("openlineage.integration.enabled", false)
                 .build();
 
-        LineageEmitter emitter = factory.get(config, "test-connector");
+        LineageEmitter emitter = factory.get(new ConnectorContext("test-connector", "mysql", "0", config));
 
         assertNotNull(emitter);
         assertTrue(emitter instanceof NoOpLineageEmitter);
@@ -52,7 +52,7 @@ public class DebeziumLineageEmitterFactoryTest {
                 .with("openlineage.integration.job.owners", "owner1=teamA")
                 .build();
 
-        LineageEmitter emitter = factory.get(config, "test-connector");
+        LineageEmitter emitter = factory.get(new ConnectorContext("test-connector", "mysql", "0", config));
 
         assertNotNull(emitter);
         assertTrue(emitter instanceof OpenLineageEmitter);
@@ -72,8 +72,8 @@ public class DebeziumLineageEmitterFactoryTest {
                 .with("openlineage.integration.job.owners", "o=w")
                 .build();
 
-        LineageEmitter emitter1 = factory.get(config, "test-connector");
-        LineageEmitter emitter2 = factory.get(config, "test-connector");
+        LineageEmitter emitter1 = factory.get(new ConnectorContext("test-connector", "mysql", "0", config));
+        LineageEmitter emitter2 = factory.get(new ConnectorContext("test-connector", "mysql", "0", config));
 
         assertSame(
                 ((OpenLineageEmitter) emitter1).getContext(),

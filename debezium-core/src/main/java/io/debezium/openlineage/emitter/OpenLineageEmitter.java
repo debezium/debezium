@@ -16,6 +16,7 @@ import java.util.List;
 import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.OpenLineageContext;
 import io.debezium.openlineage.OpenLineageJobCreator;
 import io.debezium.openlineage.ProcessingEngineMetadata;
@@ -61,12 +62,12 @@ public class OpenLineageEmitter implements LineageEmitter {
     private final InputDatasetNamespaceResolver inputDatasetNamespaceResolver;
     private final OutputDatasetNamespaceResolver outputDatasetNamespaceResolver;
 
-    public OpenLineageEmitter(String connectorName, Configuration config, OpenLineageContext openLineageContext, OpenLineageEventEmitter emitter,
+    public OpenLineageEmitter(ConnectorContext connectorContext, OpenLineageContext openLineageContext, OpenLineageEventEmitter emitter,
                               InputDatasetNamespaceResolver inputDatasetNamespaceResolver, OutputDatasetNamespaceResolver outputDatasetNamespaceResolver) {
         this.openLineageContext = openLineageContext;
-        this.connectorName = connectorName;
+        this.connectorName = connectorContext.connectorName();
         this.emitter = emitter;
-        this.config = config;
+        this.config = connectorContext.config();
         this.inputDatasetNamespaceResolver = inputDatasetNamespaceResolver;
         this.outputDatasetNamespaceResolver = outputDatasetNamespaceResolver;
     }

@@ -47,6 +47,7 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
 
     public static final Schema UPDATED_DESCRIPTION_SCHEMA = MongoDbSchemaFactory.get().updatedDescriptionSchema();
 
+    private final MongoDbConnectorConfig config;
     private final Filters filters;
     private final TopicNamingStrategy<CollectionId> topicNamingStrategy;
     private final Schema sourceSchema;
@@ -54,8 +55,9 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
     private final ConcurrentMap<CollectionId, MongoDbCollectionSchema> collections = new ConcurrentHashMap<>();
     private final JsonSerialization serialization = new JsonSerialization();
 
-    public MongoDbSchema(Filters filters, TopicNamingStrategy<CollectionId> topicNamingStrategy, Schema sourceSchema,
+    public MongoDbSchema(MongoDbConnectorConfig config, Filters filters, TopicNamingStrategy<CollectionId> topicNamingStrategy, Schema sourceSchema,
                          SchemaNameAdjuster schemaNameAdjuster) {
+        this.config = config;
         this.filters = filters;
         this.topicNamingStrategy = topicNamingStrategy;
         this.sourceSchema = sourceSchema;
@@ -91,7 +93,8 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
 
             final Envelope envelope = Envelope.fromSchema(valueSchema);
 
-            DebeziumOpenLineageEmitter.emit(BaseSourceTask.State.RUNNING, List.of(new DatasetMetadata(collectionId.identifier(), INPUT, List.of())));
+            DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config.getConfig(), config.getConnectorName()), BaseSourceTask.State.RUNNING,
+                    List.of(new DatasetMetadata(collectionId.identifier(), INPUT, List.of())));
 
             return new MongoDbCollectionSchema(
                     id,

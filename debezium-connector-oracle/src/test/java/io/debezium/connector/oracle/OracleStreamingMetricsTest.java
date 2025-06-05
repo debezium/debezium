@@ -54,7 +54,7 @@ public abstract class OracleStreamingMetricsTest<T extends AbstractOracleStreami
                 .build();
 
         final OracleTaskContext taskContext = mock(OracleTaskContext.class);
-        Mockito.when(taskContext.getConnectorName()).thenReturn("connector name");
+        Mockito.when(taskContext.getConnectorLogicalName()).thenReturn("connector name");
         Mockito.when(taskContext.getConnectorType()).thenReturn("connector type");
 
         final OracleEventMetadataProvider metadataProvider = new OracleEventMetadataProvider();

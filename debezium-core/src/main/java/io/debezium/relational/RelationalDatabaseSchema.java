@@ -35,6 +35,7 @@ import io.debezium.spi.topic.TopicNamingStrategy;
 public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId> {
     private final static Logger LOG = LoggerFactory.getLogger(RelationalDatabaseSchema.class);
 
+    private final RelationalDatabaseConnectorConfig config;
     private final TopicNamingStrategy<TableId> topicNamingStrategy;
     private final TableSchemaBuilder schemaBuilder;
     private final TableFilter tableFilter;
@@ -48,6 +49,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
     protected RelationalDatabaseSchema(RelationalDatabaseConnectorConfig config, TopicNamingStrategy<TableId> topicNamingStrategy,
                                        TableFilter tableFilter, ColumnNameFilter columnFilter, TableSchemaBuilder schemaBuilder,
                                        boolean tableIdCaseInsensitive, KeyMapper customKeysMapper) {
+        this.config = config;
 
         this.topicNamingStrategy = topicNamingStrategy;
         this.schemaBuilder = schemaBuilder;
@@ -127,7 +129,8 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
         if (tableFilter.isIncluded(table.id())) {
             TableSchema schema = schemaBuilder.create(topicNamingStrategy, table, columnFilter, columnMappers, customKeysMapper);
             schemasByTableId.put(table.id(), schema);
-            DebeziumOpenLineageEmitter.emit(BaseSourceTask.State.RUNNING, List.of(extractDatasetMetadata(table)));
+            DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config.getConfig(), config.getConnectorName()), BaseSourceTask.State.RUNNING,
+                    List.of(extractDatasetMetadata(table)));
         }
     }
 
