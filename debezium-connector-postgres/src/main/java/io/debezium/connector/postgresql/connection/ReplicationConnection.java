@@ -116,14 +116,6 @@ public interface ReplicationConnection extends AutoCloseable {
         Builder withSlot(String slotName);
 
         /**
-         * Whether the backend should flush data after receive notification from client
-         *
-         * @param automaticFlush true if advance FlushLSN to ServerLSN data after receive notification
-         * @return this instance
-         */
-        Builder withAutomaticFlush(boolean automaticFlush);
-
-        /**
          * Sets the publication name for the PG logical publication
          *
          * @param publicationName the name of the publication, may not be null.

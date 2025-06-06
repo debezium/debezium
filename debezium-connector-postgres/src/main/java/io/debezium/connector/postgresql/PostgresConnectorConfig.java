@@ -683,14 +683,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withImportance(Importance.LOW)
             .withDescription("The timeout in seconds for the creation of the replication slot.");
 
-    public static final Field AUTOMATIC_FLUSH = Field.create("automatic.flush")
-            .withDisplayName("LSN Automatic Flush")
-            .withType(Type.BOOLEAN)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 5))
-            .withDefault(false)
-            .withImportance(Importance.MEDIUM)
-            .withDescription("Whether to track the LSN of the most recent replication message by using the LSN of the KeepAlive message to advance the flush LSN.");
-
     public static final Field PUBLICATION_NAME = Field.create("publication.name")
             .withDisplayName("Publication")
             .withType(Type.STRING)
@@ -1143,10 +1135,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public String slotName() {
         return getConfig().getString(SLOT_NAME);
-    }
-
-    public boolean automaticFlush() {
-        return getConfig().getBoolean(AUTOMATIC_FLUSH);
     }
 
     protected boolean dropSlotOnStop() {
