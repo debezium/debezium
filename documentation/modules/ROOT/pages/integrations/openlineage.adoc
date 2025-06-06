@@ -14,7 +14,7 @@
 toc::[]
 
 {prodname} provides built-in integration with OpenLineage to automatically track data lineage for Change Data Capture (CDC) operations. 
-This integration enables comprehensive visibility into the data flow and transformations that you use in your data infrastructure.
+The OpenLineage integration provides you with comprehensive visibility into the data flow and transformations that you use in your data pipeline.
 
 == About Data Lineage and OpenLineage
 
@@ -28,51 +28,52 @@ Insights into data lineage is crucial for the following activities:
 * Understanding data dependencies
 
 https://openlineage.io/[OpenLineage] is an open standard for data lineage that provides a unified way to collect and track lineage metadata across multiple data systems. 
-The specification defines a common model for describing datasets, jobs, and runs, making it easier to build comprehensive lineage graphs across heterogeneous data infrastructures.
+The specification defines a common model for describing datasets, jobs, and runs, simplifying the process of building comprehensive lineage graphs across heterogeneous data infrastructures.
 
 For more information, see the OpenLineage https://openlineage.io/[website] and https://openlineage.io/docs/[documentation].
 
 == How {prodname} integrates with OpenLineage
 
-To integrate with OpenLineage, {prodname} maps its life cycle to the OpenLineage data model.
+To integrate with OpenLineage, {prodname} maps events in its lifecycle to artifacts in the OpenLineage data model.
 
 .OpenLineage job mapping
 
 The {prodname} connector is mapped to an OpenLineage *Job*, which includes the following elements:
 
-Name:: The job name is inherited from the {prodname} `topic.prefix`.<taskId>.
-Namespace:: Inherited from `openlineage.integration.job.namespace`, if specified; otherwise defaults to `topic.prefix`
-Debezium version information::
+Name:: A job inherits its name from the {prodname} `topic.prefix.<taskId>`.
+Namespace:: Inherited from `openlineage.integration.job.namespace`, if specified; otherwise defaults to the value of the `topic.prefix`.
+{prodname} connector version::
 Complete connector configuration::
 Job metadata:: Description, tags, and owners.
 
-.Dataset Mapping for source connectors
+.Dataset mapping for source connectors
 
 The following dataset mappings are possible: 
 
 Input Datasets::
-Automatically created for the database tables that Debezium is configured to capture changes from.
-The following characteristics affect the mapping: 
+Represents the database tables that {prodname} is configured to capture changes from.
+The OpenLineage integration automatically creates input datasets based on the connector configuration.
+The integration applies the following principles when it creates dataset mappings: 
 
-* Each monitored table becomes an input dataset.
-* Schema information for a table is captured, including column names and types.
-* Dataset schemas are updated dynamically after a DDL change.
+* Each table that the connector monitors becomes an input dataset.
+* Each dataset captures schema information for the corresponding source table, including the name and data type of each column.
+* DDL changes in the source table are reflected dynamically in the dataset schema.
 
-Output Datasets::
-Represent the Kafka topics that result after you apply the OpenLineage transform.
-Mappings are created according to the following principles:
+Output datasets::
+Represents the Kafka topics that result after you apply the OpenLineage single message transformation (SMT):.
+Output dataset mappings are created according to the following principles:
 
 * Each Kafka topic that the connector produces becomes an output dataset.
 * The output dataset captures the complete CDC event structure, including metadata fields.
 * The name of the dataset is based on the connector's topic prefix configuration.
 
 .Dataset Mapping for sink connectors
-The support for sink connectors is not yet available.
+Support for sink connectors is not yet available.
 
 .Run Events
 
 When you integrate {prodname} with OpenLineage, the connector emits events to report changes of status.
-Status information is emitted to the following OpenLineage run events:
+The connector emits OpenLineage run events after the following status changes:
 
 START:: Reports connector initialization.
 RUNNING:: Emitted periodically during normal streaming operations and during processing individual tables. These periodic events ensure continuous lineage tracking for long-running streaming CDC operations.
@@ -83,10 +84,7 @@ FAIL:: Reports that the connector encountered an error.
 == Required Dependencies
 
 The OpenLineage integration requires several JAR files that are not bundled with {prodname}. 
-You must download the following dependencies and add them to your {prodname} installation:
-
-
-You must obtain the following JAR files to use {prodname} with OpenLineage:
+To use {prodname} with OpenLineage, you must download the JAR files for the following dependencies and add them to your {prodname} installation:
 
 [horizontal]
 `openlineage-java-_<version>_.jar`:: Core OpenLineage Java client
@@ -120,7 +118,7 @@ Always refer to the Maven dependency tree of the specific `openlineage-java` ver
 
 == Configuring the integration
 
-To  enable the integration, you must configure the {prodname} connector and the OpenLineage client.
+To enable the integration, you must configure the {prodname} connector and the OpenLineage client.
 
 == Configuring connectors with a basic OpenLineage configuration
 
