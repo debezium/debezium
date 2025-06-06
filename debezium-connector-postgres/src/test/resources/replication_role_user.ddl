@@ -18,3 +18,17 @@ BEGIN;
     REVOKE EXECUTE ON PROCEDURE ybpgconn.set_yb_read_time FROM PUBLIC;
     GRANT EXECUTE ON PROCEDURE ybpgconn.set_yb_read_time TO ybpgconn;
 COMMIT;
+
+BEGIN;
+    CREATE OR REPLACE PROCEDURE ybpgconn.disable_catalog_version_check()
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+      EXECUTE 'SET yb_disable_catalog_version_check = true';
+    END;
+    $$
+    SECURITY DEFINER;
+
+    REVOKE EXECUTE ON PROCEDURE ybpgconn.disable_catalog_version_check FROM PUBLIC; 
+    GRANT EXECUTE ON PROCEDURE ybpgconn.disable_catalog_version_check TO ybpgconn;
+COMMIT;
