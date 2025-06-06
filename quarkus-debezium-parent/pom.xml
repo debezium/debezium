@@ -24,7 +24,7 @@
         <maven.compiler.testTarget>${debezium.java.specific.target}</maven.compiler.testTarget>
         <maven.compiler.testRelease>${debezium.java.specific.target}</maven.compiler.testRelease>
 
-        <quarkus.platform.version>3.22.1</quarkus.platform.version>
+        <quarkus.platform.version>3.23.2</quarkus.platform.version>
         <debezium.version>${project.version}</debezium.version>
     </properties>
 
