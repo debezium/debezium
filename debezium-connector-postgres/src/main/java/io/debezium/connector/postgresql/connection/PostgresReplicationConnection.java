@@ -65,7 +65,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private static Logger LOGGER = LoggerFactory.getLogger(PostgresReplicationConnection.class);
 
     private final String slotName;
-    private final boolean automaticFlush;
     private final String publicationName;
     private final RelationalTableFilters tableFilter;
     private final PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode;
@@ -104,7 +103,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      */
     private PostgresReplicationConnection(PostgresConnectorConfig config,
                                           String slotName,
-                                          boolean automaticFlush,
                                           String publicationName,
                                           RelationalTableFilters tableFilter,
                                           PostgresConnectorConfig.AutoCreateMode publicationAutocreateMode,
@@ -120,7 +118,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
         this.connectorConfig = config;
         this.slotName = slotName;
-        this.automaticFlush = automaticFlush;
         this.publicationName = publicationName;
         this.tableFilter = tableFilter;
         this.publicationAutocreateMode = publicationAutocreateMode;
@@ -874,7 +871,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 .logical()
                 .withSlotName("\"" + slotName + "\"")
                 .withStartPosition(lsn.asLogSequenceNumber())
-                .withAutomaticFlush(automaticFlush)
+                .withAutomaticFlush(false)
                 .withSlotOptions(streamParams);
         streamBuilder = configurator.apply(streamBuilder, this::hasMinimumVersion);
 
@@ -1051,7 +1048,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         @Override
         public ReplicationConnection build() {
             assert plugin != null : "Decoding plugin name is not set";
-            return new PostgresReplicationConnection(config, slotName, automaticFlush, publicationName, tableFilter,
+            return new PostgresReplicationConnection(config, slotName, publicationName, tableFilter,
                     publicationAutocreateMode, plugin, dropSlotOnClose, createFailOverSlot, statusUpdateIntervalVal,
                     jdbcConnection, typeRegistry, slotStreamParams, schema);
         }
