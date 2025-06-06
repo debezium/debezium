@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Set;
 
+import io.confluent.credentialproviders.DefaultJdbcCredentialsProvider;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
 import io.debezium.config.Configuration;
@@ -32,7 +33,7 @@ public class MySqlDatabaseSchemaTest extends BinlogDatabaseSchemaTest<MySqlConne
     @Override
     protected MySqlConnectorConfig getConnectorConfig(Configuration config) {
         config = config.edit().with(AbstractSchemaHistory.INTERNAL_PREFER_DDL, true).build();
-        return new MySqlConnectorConfig(config);
+        return new MySqlConnectorConfig(config, new DefaultJdbcCredentialsProvider());
     }
 
     @Override

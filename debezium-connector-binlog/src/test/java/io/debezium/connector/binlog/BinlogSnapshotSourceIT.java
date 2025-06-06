@@ -153,6 +153,8 @@ public abstract class BinlogSnapshotSourceIT<C extends SourceConnector> extends 
             builder
                     .with(BinlogConnectorConfig.USER, "cloud")
                     .with(BinlogConnectorConfig.PASSWORD, "cloudpass")
+                    .with("jdbc.creds.provider.user", "cloud")
+                    .with("jdbc.creds.provider.password", "cloudpass")
                     .with(BinlogConnectorConfig.TEST_DISABLE_GLOBAL_LOCKING, "true")
                     .with(BinlogConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, storeOnlyCapturedTables);
         }

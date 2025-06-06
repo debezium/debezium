@@ -5,10 +5,13 @@
  */
 package io.debezium.connector.mysql.jdbc;
 
+import java.util.Properties;
+
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.jdbc.BinlogConnectionConfiguration;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
+import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.util.Strings;
 
@@ -21,9 +24,11 @@ public class MySqlConnectionConfiguration extends BinlogConnectionConfiguration 
 
     private static final String JDBC_PROPERTY_CONNECTION_TIME_ZONE = "connectionTimeZone";
     public static final String URL_PATTERN = "${protocol}://${hostname}:${port}/?useInformationSchema=true&nullCatalogMeansCurrent=false&useUnicode=true&characterEncoding=UTF-8&characterSetResults=UTF-8&zeroDateTimeBehavior=CONVERT_TO_NULL&connectTimeout=${connectTimeout}";
+    private final MySqlConnectorConfig connectorConfig;
 
     public MySqlConnectionConfiguration(Configuration config) {
         super(config);
+        this.connectorConfig = new MySqlConnectorConfig(config);
     }
 
     @Override
@@ -50,13 +55,29 @@ public class MySqlConnectionConfiguration extends BinlogConnectionConfiguration 
     }
 
     @Override
+    public String username() {
+        return connectorConfig.getUserName();
+    }
+
+    @Override
+    public String password() {
+        return connectorConfig.getPassword();
+    }
+
+    @Override
     protected JdbcConnection.ConnectionFactory createFactory(Configuration configuration) {
         final String driverClassName = configuration.getString(MySqlConnectorConfig.JDBC_DRIVER);
-        return JdbcConnection.patternBasedFactory(
+        JdbcConnection.ConnectionFactory baseFactory = JdbcConnection.patternBasedFactory(
                 URL_PATTERN,
                 driverClassName,
                 getClass().getClassLoader(),
                 MySqlConnectorConfig.JDBC_PROTOCOL);
+        return jdbcConfig -> {
+            Properties props = jdbcConfig.asProperties();
+            props.setProperty(JdbcConfiguration.USER.name(), username());
+            props.setProperty(JdbcConfiguration.PASSWORD.name(), password());
+            return baseFactory.connect(JdbcConfiguration.adapt(Configuration.from(props)));
+        };
     }
 
     @Override

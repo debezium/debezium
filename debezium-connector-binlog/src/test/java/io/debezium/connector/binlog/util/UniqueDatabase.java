@@ -233,6 +233,8 @@ public abstract class UniqueDatabase {
                 .with(BinlogConnectorConfig.PORT, System.getProperty("database.port", "3306"))
                 .with(BinlogConnectorConfig.USER, "snapper")
                 .with(BinlogConnectorConfig.PASSWORD, "snapperpass")
+                .with("jdbc.creds.provider.user", "snapper")
+                .with("jdbc.creds.provider.password", "snapperpass")
                 .with("driver.allowPublicKeyRetrieval", "true");
 
         builder = applyConnectorDefaultJdbcConfiguration(builder);

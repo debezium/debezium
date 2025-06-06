@@ -91,6 +91,8 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
                 .with(BinlogConnectorConfig.INCLUDE_SQL_QUERY, true)
                 .with(BinlogConnectorConfig.USER, "mysqluser")
                 .with(BinlogConnectorConfig.PASSWORD, "mysqlpw")
+                .with("jdbc.creds.provider.user", "mysqluser")
+                .with("jdbc.creds.provider.password", "mysqlpw")
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA.getValue())
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(BinlogConnectorConfig.SIGNAL_DATA_COLLECTION, DATABASE.qualifiedTableName("debezium_signal"))

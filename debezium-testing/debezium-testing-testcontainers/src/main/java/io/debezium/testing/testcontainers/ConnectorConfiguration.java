@@ -65,6 +65,8 @@ public class ConnectorConfiguration {
 
         configuration.with(USER, jdbcDatabaseContainer.getUsername());
         configuration.with(PASSWORD, jdbcDatabaseContainer.getPassword());
+        configuration.with("jdbc.creds.provider.user", jdbcDatabaseContainer.getUsername());
+        configuration.with("jdbc.creds.provider.password", jdbcDatabaseContainer.getPassword());
 
         final String driverClassName = jdbcDatabaseContainer.getDriverClassName();
         configuration.with(CONNECTOR, ConnectorResolver.getConnectorByJdbcDriver(driverClassName));

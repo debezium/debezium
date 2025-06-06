@@ -8,6 +8,7 @@ package io.debezium.connector.mysql;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import io.confluent.credentialproviders.DefaultJdbcCredentialsProvider;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogSourceInfoTest;
 import io.debezium.connector.binlog.history.BinlogHistoryRecordComparator;
@@ -32,11 +33,11 @@ public class SourceInfoTest extends BinlogSourceInfoTest<SourceInfo, MySqlOffset
 
     @Override
     protected MySqlOffsetContext createInitialOffsetContext(Configuration configuration) {
-        return MySqlOffsetContext.initial(new MySqlConnectorConfig(configuration));
+        return MySqlOffsetContext.initial(new MySqlConnectorConfig(configuration, new DefaultJdbcCredentialsProvider()));
     }
 
     @Override
     protected MySqlOffsetContext loadOffsetContext(Configuration configuration, Map<String, ?> offsets) {
-        return new MySqlOffsetContext.Loader(new MySqlConnectorConfig(configuration)).load(offsets);
+        return new MySqlOffsetContext.Loader(new MySqlConnectorConfig(configuration, new DefaultJdbcCredentialsProvider())).load(offsets);
     }
 }

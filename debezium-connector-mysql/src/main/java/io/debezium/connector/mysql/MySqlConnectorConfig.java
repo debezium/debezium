@@ -15,6 +15,8 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.confluent.credentialproviders.JdbcCredentialsProvider;
+import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
@@ -37,6 +39,8 @@ import io.debezium.relational.history.HistoryRecordComparator;
 public class MySqlConnectorConfig extends BinlogConnectorConfig {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlConnectorConfig.class);
+
+    private final JdbcCredentialsProvider credsProvider;
 
     /**
      * The set of predefined Snapshot Locking Mode options.
@@ -235,6 +239,16 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
             .withImportance(Importance.LOW)
             .withDescription("JDBC protocol to use with the driver.");
 
+    public static final Field CREDENTIALS_PROVIDER_CLASS_NAME = Field.create("jdbc.creds.provider.class.name")
+            .withDisplayName("JDBC Credentials Provider Class Name")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 43))
+            .withWidth(Width.MEDIUM)
+            .withDefault("io.confluent.credentialproviders.DefaultJdbcCredentialsProvider")
+            .withImportance(Importance.LOW)
+            .withValidation(Field::isOptional)
+            .withDescription("JDBC Credentials Provider class name used to provide credentials for connecting to the MySQL database server.");
+
     /**
      * A comma-separated list of regular expressions that match source UUIDs in the GTID set used to find the binlog
      * position in the MySQL server. Only the GTID ranges that have sources matching one of these include patterns will
@@ -298,7 +312,8 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
             .type(
                     JDBC_DRIVER,
                     JDBC_PROTOCOL,
-                    SSL_MODE)
+                    SSL_MODE,
+                    CREDENTIALS_PROVIDER_CLASS_NAME)
             .connector(SNAPSHOT_LOCKING_MODE)
             .events(
                     GTID_SOURCE_INCLUDES,
@@ -322,6 +337,11 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
     private final SecureConnectionMode secureConnectionMode;
 
     public MySqlConnectorConfig(Configuration config) {
+        this(config, getCredentialsProvider(config));
+    }
+
+    // visible for testing
+    public MySqlConnectorConfig(Configuration config, JdbcCredentialsProvider credsProvider) {
         super(MySqlConnector.class, config, DEFAULT_SNAPSHOT_FETCH_SIZE);
         this.gtidSetFactory = new MySqlGtidSetFactory();
 
@@ -335,6 +355,8 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
         final String gtidSetExcludes = config.getString(GTID_SOURCE_EXCLUDES);
         this.gtidSourceFilter = gtidSetIncludes != null ? Predicates.includesUuids(gtidSetIncludes)
                 : (gtidSetExcludes != null ? Predicates.excludesUuids(gtidSetExcludes) : null);
+
+        this.credsProvider = credsProvider;
 
         getServiceRegistry().registerServiceProvider(new MySqlCharsetRegistryServiceProvider());
     }
@@ -441,5 +463,32 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
 
         // Everything checks out ok.
         return 0;
+    }
+
+    private static JdbcCredentialsProvider getCredentialsProvider(Configuration config) {
+        String providerClass = config.getString(MySqlConnectorConfig.CREDENTIALS_PROVIDER_CLASS_NAME);
+        try {
+            JdbcCredentialsProvider provider = (JdbcCredentialsProvider) Class.forName(providerClass)
+                    .getDeclaredConstructor().newInstance();
+
+            provider.configure(config.asMap());
+            LOGGER.info("Configured credentials provider: {}", provider);
+
+            return provider;
+        }
+        catch (Exception e) {
+            LOGGER.error("Error initializing credentials provider", e);
+            throw new DebeziumException("Failed to initialize credentials provider: " + providerClass, e);
+        }
+    }
+
+    @Override
+    public String getUserName() {
+        return credsProvider.getJdbcCreds().user();
+    }
+
+    @Override
+    public String getPassword() {
+        return credsProvider.getJdbcCreds().password();
     }
 }

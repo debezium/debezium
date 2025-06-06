@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.common.config.Config;
 import org.junit.Test;
 
+import io.confluent.credentialproviders.DefaultJdbcCredentialsProvider;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.binlog.BinlogConnectorIT;
@@ -91,7 +92,7 @@ public class MySqlConnectorIT extends BinlogConnectorIT<MySqlConnector, MySqlPar
 
     @Override
     protected void assertSnapshotLockingModeIsNone(Configuration config) {
-        assertThat(new MySqlConnectorConfig(config).getSnapshotLockingMode().get()).isEqualTo(SnapshotLockingMode.NONE);
+        assertThat(new MySqlConnectorConfig(config, new DefaultJdbcCredentialsProvider()).getSnapshotLockingMode().get()).isEqualTo(SnapshotLockingMode.NONE);
     }
 
     @Override
@@ -101,7 +102,7 @@ public class MySqlConnectorIT extends BinlogConnectorIT<MySqlConnector, MySqlPar
 
     @Override
     protected MySqlOffsetContext loadOffsets(Configuration configuration, Map<String, ?> offsets) {
-        return new MySqlOffsetContext.Loader(new MySqlConnectorConfig(configuration)).load(offsets);
+        return new MySqlOffsetContext.Loader(new MySqlConnectorConfig(configuration, new DefaultJdbcCredentialsProvider())).load(offsets);
     }
 
     @Override

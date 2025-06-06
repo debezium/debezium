@@ -72,6 +72,11 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>credential-providers</artifactId>
+            <version>${credential.providers.version}</version>
+        </dependency>
 
         <!-- Testing -->
         <dependency>
@@ -195,6 +200,7 @@
         <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
         <mysql.database.protocol>jdbc:mysql</mysql.database.protocol>
         <mysql.database.jdbc.driver>com.mysql.cj.jdbc.Driver</mysql.database.jdbc.driver>
+        <credential.providers.version>0.14.0</credential.providers.version>
         <mysql.replica.fileset.path>${project.basedir}/src/test/docker/init-replica</mysql.replica.fileset.path>
         <!--
         By default, we should use the docker image maintained by the MySQL team. This property is changed with different profiles.

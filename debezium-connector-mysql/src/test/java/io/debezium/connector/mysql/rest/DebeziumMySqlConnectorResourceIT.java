@@ -239,6 +239,8 @@ public class DebeziumMySqlConnectorResourceIT {
         final ConnectorConfiguration config = ConnectorConfiguration.forJdbcContainer(TestInfrastructureHelper.getMySqlContainer())
                 .with(MySqlConnectorConfig.USER.name(), "debezium")
                 .with(MySqlConnectorConfig.PASSWORD.name(), "dbz")
+                .with("jdbc.creds.provider.user", "debezium")
+                .with("jdbc.creds.provider.password", "dbz")
                 .with(MySqlConnectorConfig.SNAPSHOT_MODE.name(), "never") // temporarily disable snapshot mode globally until we can check if connectors inside testcontainers are in SNAPSHOT or STREAMING mode (wait for snapshot finished!)
                 .with(MySqlConnectorConfig.TOPIC_PREFIX.name(), "dbserver" + id)
                 .with(KafkaSchemaHistory.BOOTSTRAP_SERVERS.name(), TestInfrastructureHelper.KAFKA_HOSTNAME + ":9092")

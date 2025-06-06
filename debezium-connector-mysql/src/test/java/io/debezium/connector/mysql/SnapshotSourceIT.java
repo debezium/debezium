@@ -34,6 +34,8 @@ public class SnapshotSourceIT extends BinlogSnapshotSourceIT<MySqlConnector> imp
         config = simpleConfig()
                 .with(MySqlConnectorConfig.USER, "cloud")
                 .with(MySqlConnectorConfig.PASSWORD, "cloudpass")
+                .with("jdbc.creds.provider.user", "cloud")
+                .with("jdbc.creds.provider.password", "cloudpass")
                 .with(MySqlConnectorConfig.SNAPSHOT_LOCKING_MODE, MySqlConnectorConfig.SnapshotLockingMode.MINIMAL_PERCONA)
                 .build();
 

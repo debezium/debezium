@@ -5,6 +5,7 @@
  */
 package io.debezium.relational.history;
 
+import io.confluent.credentialproviders.DefaultJdbcCredentialsProvider;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mysql.MySqlConnectorConfig;
 import io.debezium.connector.mysql.MySqlOffsetContext;
@@ -31,7 +32,7 @@ public class KafkaSchemaHistoryTest extends AbstractKafkaSchemaHistoryTest<MySql
                 true,
                 new TransactionContext(),
                 new MySqlReadOnlyIncrementalSnapshotContext<>(),
-                new SourceInfo(new MySqlConnectorConfig(config)));
+                new SourceInfo(new MySqlConnectorConfig(config, new DefaultJdbcCredentialsProvider())));
     }
 
     @Override

@@ -130,6 +130,8 @@ public abstract class BinlogTestConnection extends JdbcConnection {
                 .withDefault(JdbcConfiguration.PORT, 3306)
                 .withDefault(JdbcConfiguration.USER, "mysqluser")
                 .withDefault(JdbcConfiguration.PASSWORD, "mysqlpw")
+                .withDefault("jdbc.creds.provider.user", "mysqluser")
+                .withDefault("jdbc.creds.provider.password", "mysqlpw")
                 .build());
 
     }

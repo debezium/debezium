@@ -35,7 +35,7 @@ public abstract class RelationalBaseSourceConnector extends BaseSourceConnector 
         Map<String, ConfigValue> results = validateAllFields(config);
 
         if (Strings.isNullOrEmpty(config.getString(RelationalDatabaseConnectorConfig.PASSWORD))) {
-            LOGGER.debug("The connection password is empty");
+            LOGGER.info("The connection password is empty");
         }
 
         results.values().stream()

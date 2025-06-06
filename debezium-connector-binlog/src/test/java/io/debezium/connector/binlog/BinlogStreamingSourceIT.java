@@ -157,6 +157,8 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
         return DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.USER, "replicator")
                 .with(BinlogConnectorConfig.PASSWORD, "replpass")
+                .with("jdbc.creds.provider.user", "replicator")
+                .with("jdbc.creds.provider.password", "replpass")
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
                 .with(BinlogConnectorConfig.INCLUDE_SQL_QUERY, false)
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NEVER);
@@ -538,6 +540,8 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
         config = simpleConfig()
                 .with(BinlogConnectorConfig.USER, "snapper")
                 .with(BinlogConnectorConfig.PASSWORD, "snapperpass")
+                .with("jdbc.creds.provider.user", "snapper")
+                .with("jdbc.creds.provider.password", "snapperpass")
                 .with(AbstractTopicNamingStrategy.DEFAULT_HEARTBEAT_TOPIC_PREFIX, HEARTBEAT_TOPIC_PREFIX_VALUE)
                 .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
                 .with(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME,
