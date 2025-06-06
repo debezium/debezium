@@ -133,17 +133,20 @@ public final class FabricKafkaBuilder extends FabricBuilderWrapper<FabricKafkaBu
             if (ConfigProperties.FORCE_KRAFT) {
                 USE_KRAFT = true;
                 LOGGER.info("KRaft forced by configuration.");
-            } else if (kafkaVersion.compareTo(new ComparableVersion("4.0.0")) >= 0) {
+            }
+            else if (kafkaVersion.compareTo(new ComparableVersion("4.0.0")) >= 0) {
                 USE_KRAFT = true;
                 LOGGER.info("Kafka version >= 4.0.0 detected.");
-            } else if (!ConfigProperties.PRODUCT_BUILD && strimziVersion.compareTo(new ComparableVersion("0.46.0")) >= 0) {
+            }
+            else if (!ConfigProperties.PRODUCT_BUILD && strimziVersion.compareTo(new ComparableVersion("0.46.0")) >= 0) {
                 USE_KRAFT = true;
                 LOGGER.info("Strimzi version >= 0.46.0.");
             }
 
             if (USE_KRAFT) {
                 LOGGER.info("Using Kafka with KRaft is enabled.");
-            } else {
+            }
+            else {
                 LOGGER.warn("Using Kafka with Zookeeper is enabled. This way will become deprecated soon.");
             }
         }
