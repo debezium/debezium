@@ -14,20 +14,55 @@ import org.apache.kafka.connect.header.ConnectHeaders;
 
 import io.debezium.service.Service;
 
+/**
+ * A service implementation that produces Debezium-specific headers for CDC (Change Data Capture) events.
+ * <p>
+ * This class is responsible for creating standardized headers containing metadata about the
+ * Debezium connector context, which can be attached to Kafka Connect records to provide
+ * traceability and identification information.
+ * </p>
+ *
+ * @author Mario Fiore Vitale
+ */
 public class DebeziumHeaderProducer implements Service {
 
     private final CdcSourceTaskContext sourceTaskContext;
 
+    /**
+     * Constructs a new DebeziumHeaderProducer with the specified source task context.
+     *
+     * @param sourceTaskContext the CDC source task context containing connector metadata;
+     *                         must not be null
+     */
     public DebeziumHeaderProducer(CdcSourceTaskContext sourceTaskContext) {
         this.sourceTaskContext = sourceTaskContext;
     }
 
+    /**
+     * Creates and returns a set of standardized Debezium context headers.
+     * <p>
+     * The returned headers include:
+     * </p>
+     * <ul>
+     *   <li><strong>Connector Logical Name</strong> - The logical name of the Debezium connector</li>
+     *   <li><strong>Task ID</strong> - The unique identifier of the connector task</li>
+     *   <li><strong>Connector Name</strong> - The name of the Debezium connector</li>
+     * </ul>
+     * <p>
+     * These headers provide essential metadata for tracking and identifying the source
+     * of CDC events in downstream processing systems.
+     * </p>
+     *
+     * @return a {@link ConnectHeaders} object containing the Debezium context headers;
+     *         never returns null
+     * @throws RuntimeException if there's an error accessing the source task context
+     */
     public ConnectHeaders contextHeaders() {
 
         var debeziumContextHeaders = new ConnectHeaders();
         debeziumContextHeaders.add(DEBEZIUM_CONNECTOR_LOGICAL_NAME_HEADER, sourceTaskContext.getConnectorLogicalName(), Schema.STRING_SCHEMA);
         debeziumContextHeaders.add(DEBEZIUM_TASK_ID_HEADER, sourceTaskContext.getTaskId(), Schema.STRING_SCHEMA);
-        debeziumContextHeaders.add(DEBEZIUM_CONNECTOR_NAME_HEADER, sourceTaskContext.getConnectorName(), Schema.STRING_SCHEMA);
+        debeziumContextHeaders.add(DEBEZIUM_CONNECTOR_NAME_HEADER, sourceTaskContext.getConnectorPluginName(), Schema.STRING_SCHEMA);
 
         return debeziumContextHeaders;
     }

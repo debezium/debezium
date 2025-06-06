@@ -27,7 +27,7 @@ public class CdcSourceTaskContext {
 
     private final String connectorType;
     private final String connectorLogicalName;
-    private final String connectorName;
+    private final String connectorPluginName;
     private final String taskId;
     private final Map<String, String> customMetricTags;
     private final Clock clock;
@@ -44,7 +44,7 @@ public class CdcSourceTaskContext {
                                 Supplier<Collection<? extends DataCollectionId>> collectionsSupplier) {
         this.connectorType = config.getContextName();
         this.connectorLogicalName = config.getLogicalName();
-        this.connectorName = config.getConnectorName();
+        this.connectorPluginName = config.getConnectorName();
         this.taskId = taskId;
         this.customMetricTags = customMetricTags;
         this.collectionsSupplier = collectionsSupplier != null ? collectionsSupplier : Collections::emptyList;
@@ -112,8 +112,8 @@ public class CdcSourceTaskContext {
         return taskId;
     }
 
-    public String getConnectorName() {
-        return connectorName;
+    public String getConnectorPluginName() {
+        return connectorPluginName;
     }
 
     public Map<String, String> getCustomMetricTags() {
