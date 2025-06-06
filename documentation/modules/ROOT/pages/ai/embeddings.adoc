@@ -1,4 +1,4 @@
-:page-aliases: ai/embeddings.adoc
+:page-aliases: transforms/embeddings.adoc
 // Category: debezium-using
 // Type: assembly
 // ModuleID: embeddings-transformation
