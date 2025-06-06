@@ -13,9 +13,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.apache.maven.artifact.versioning.ComparableVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.fabric8.FabricBuilderWrapper;
 import io.fabric8.kubernetes.api.model.Secret;
 import io.strimzi.api.kafka.model.common.template.PodTemplate;
@@ -124,17 +126,26 @@ public final class FabricKafkaBuilder extends FabricBuilderWrapper<FabricKafkaBu
 
     public static boolean shouldKRaftBeUsed() {
         if (USE_KRAFT == null) {
-            // TODO: aviana detect based in the params if Kraft mode should be used
-            LOGGER.warn("ALVAR: Kafka Cluster being built with KRAFT");
-            USE_KRAFT = false;
+            ComparableVersion kafkaVersion = new ComparableVersion(ConfigProperties.STRIMZI_VERSION_KAFKA);
+            ComparableVersion strimziVersion = new ComparableVersion(ConfigProperties.STRIMZI_OPERATOR_VERSION);
 
-            //Force KRAFT == true --->>> USE_KRAFT = true;
-            //kafka version >= 4.0.0 --->>> USE_KRAFT = true;
-            //strimzi version >= 0.46.0  --->>> USE_KRAFT = true;
-            // else  --->>> USE_KRAFT = false;
-            // if (builder == null) {
-            // LOGGER.error("Kafka Cluster cannot be built with the actual params");
-            // }
+            USE_KRAFT = false;
+            if (ConfigProperties.FORCE_KRAFT) {
+                USE_KRAFT = true;
+                LOGGER.info("KRaft forced by configuration.");
+            } else if (kafkaVersion.compareTo(new ComparableVersion("4.0.0")) >= 0) {
+                USE_KRAFT = true;
+                LOGGER.info("Kafka version >= 4.0.0 detected.");
+            } else if (!ConfigProperties.PRODUCT_BUILD && strimziVersion.compareTo(new ComparableVersion("0.46.0")) >= 0) {
+                USE_KRAFT = true;
+                LOGGER.info("Strimzi version >= 0.46.0.");
+            }
+
+            if (USE_KRAFT) {
+                LOGGER.info("Using Kafka with KRaft is enabled.");
+            } else {
+                LOGGER.warn("Using Kafka with Zookeeper is enabled. This way will become deprecated soon.");
+            }
         }
         return USE_KRAFT;
     }
