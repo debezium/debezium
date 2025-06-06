@@ -85,12 +85,6 @@ public class JdbcConnection implements AutoCloseable {
     private static final char STATEMENT_DELIMITER = ';';
 
     /**
-     * The character used to escape special characters (the wildcard characters and the escape character itself) in the
-     * patterns being passed to the JDBC {@link java.sql.DatabaseMetaData} methods.
-     */
-    private static final Character LIKE_ESCAPE_CHARACTER = '\\';
-
-    /**
      * The wildcard characters that must be escaped when constructing patterns for the JDBC
      * {@link java.sql.DatabaseMetaData} methods such as {@code getColumns}, {@code getTables}, etc.
      */
@@ -1275,23 +1269,28 @@ public class JdbcConnection implements AutoCloseable {
      * Given a database object name, creates a pattern, escaping any special characters such that the pattern matches
      * the name itself.
      */
-    protected String createPatternFromName(String name) {
+    protected String createPatternFromName(String name, String searchEscapeCharacter) {
         if (name == null) {
             return null;
+        }
+
+        if (Strings.isNullOrBlank(searchEscapeCharacter) || searchEscapeCharacter.length() > 1) {
+            throw new DebeziumException("The driver's search escape character should be a length of 1");
         }
 
         final int length = name.length();
         StringBuilder pattern = null;
 
+        final char escapeCharacter = searchEscapeCharacter.charAt(0);
         for (int i = 0; i < length; i++) {
             char c = name.charAt(i);
 
-            if (likeWildcardCharacters.contains(c) || LIKE_ESCAPE_CHARACTER.equals(c)) {
+            if (likeWildcardCharacters.contains(c) || escapeCharacter == c) {
                 if (pattern == null) {
                     pattern = new StringBuilder();
                     pattern.append(name, 0, i);
                 }
-                pattern.append(LIKE_ESCAPE_CHARACTER);
+                pattern.append(escapeCharacter);
             }
 
             if (pattern != null) {
@@ -1307,7 +1306,7 @@ public class JdbcConnection implements AutoCloseable {
                                                            final Set<TableId> viewIds)
             throws SQLException {
         Map<TableId, List<Column>> columnsByTable = new HashMap<>();
-        String tableNamePattern = createPatternFromName(tableName);
+        String tableNamePattern = createPatternFromName(tableName, metadata.getSearchStringEscape());
         try (ResultSet columnMetadata = metadata.getColumns(databaseCatalog, schemaNamePattern, tableNamePattern, null)) {
             while (columnMetadata.next()) {
                 String catalogName = resolveCatalogName(columnMetadata.getString(1));
