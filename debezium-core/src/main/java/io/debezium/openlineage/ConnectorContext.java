@@ -14,6 +14,7 @@ import org.apache.kafka.connect.header.Headers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.DebeziumHeaders;
 
@@ -38,12 +39,6 @@ public record ConnectorContext(String connectorLogicalName, String connectorName
 
     private static final String KEY_FORMAT = "%s:%s";
 
-    /** Configuration key for the topic prefix setting */
-    public static final String TOPIC_PREFIX = "topic.prefix";
-
-    /** Configuration key for the connector task ID */
-    public static final String CONNECTOR_TASK_ID = "task.id";
-
     /**
      * Creates a ConnectorContext instance from a configuration object and connector type name.
      *
@@ -57,9 +52,9 @@ public record ConnectorContext(String connectorLogicalName, String connectorName
     public static ConnectorContext from(Configuration configuration, String connectorTypeName) {
 
         return new ConnectorContext(
-                configuration.getString(TOPIC_PREFIX),
+                configuration.getString(CommonConnectorConfig.TOPIC_PREFIX),
                 connectorTypeName,
-                configuration.getString(CONNECTOR_TASK_ID, "0"),
+                configuration.getString(CommonConnectorConfig.TASK_ID, "0"),
                 configuration);
     }
 
