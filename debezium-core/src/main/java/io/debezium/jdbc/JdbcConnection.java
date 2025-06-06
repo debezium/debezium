@@ -1083,18 +1083,17 @@ public class JdbcConnection implements AutoCloseable {
     /**
      * Get the identifiers of the tables.
      *
-     * @param databaseCatalog the name of the catalog, which is typically the database name; may be an empty string for tables
+     * @param catalogName the name of the catalog, which is typically the database name; may be an empty string for tables
      *            that have no catalog, or {@code null} if the catalog name should not be used to narrow the list of table
      *            identifiers
-     * @param schemaNamePattern the pattern used to match database schema names, which may be "" to match only those tables with
-     *            no schema or {@code null} if the schema name should not be used to narrow the list of table
-     *            identifiers
+     * @param schemaName the name of the schema; may be {@code null} if all accessible schemas are to be processed or if
+     *                   the target database platform does not support schemas
      * @param tableNamePattern the pattern used to match database table names, which may be null to match all table names
      * @param tableTypes the set of table types to include in the results, which may be null for all table types
      * @return the set of {@link TableId}s; never null but possibly empty
      * @throws SQLException if an error occurs while accessing the database metadata
      */
-    public Set<TableId> readTableNames(String databaseCatalog, String schemaNamePattern, String tableNamePattern,
+    public Set<TableId> readTableNames(String catalogName, String schemaName, String tableNamePattern,
                                        String[] tableTypes)
             throws SQLException {
         if (tableNamePattern == null) {
@@ -1102,12 +1101,12 @@ public class JdbcConnection implements AutoCloseable {
         }
         Set<TableId> tableIds = new HashSet<>();
         DatabaseMetaData metadata = connection().getMetaData();
-        try (ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, tableNamePattern, tableTypes)) {
+        try (ResultSet rs = metadata.getTables(catalogName, schemaName, tableNamePattern, tableTypes)) {
             while (rs.next()) {
-                String catalogName = rs.getString(1);
-                String schemaName = rs.getString(2);
-                String tableName = rs.getString(3);
-                TableId tableId = new TableId(catalogName, schemaName, tableName);
+                String metaCatalogName = rs.getString(1);
+                String metaSchemaName = rs.getString(2);
+                String metaTableName = rs.getString(3);
+                TableId tableId = new TableId(metaCatalogName, metaSchemaName, metaTableName);
                 tableIds.add(tableId);
             }
         }
@@ -1173,10 +1172,10 @@ public class JdbcConnection implements AutoCloseable {
      * column filter.
      *
      * @param tables the set of table definitions to be modified; may not be null
-     * @param databaseCatalog the name of the catalog, which is typically the database name; may be null if all accessible
+     * @param catalogName the name of the catalog, which is typically the database name; may be null if all accessible
      *            databases are to be processed
-     * @param schemaNamePattern the pattern used to match database schema names, which may be "" to match only those tables with
-     *            no schema or null to process all accessible tables regardless of database schema name
+     * @param schemaName the name of the schema; may be {@code null} if all accessible schemas are to be processed or if
+     *                  the target database platform does not support schemas
      * @param tableFilter used to determine for which tables are to be processed; may be null if all accessible tables are to be
      *            processed
      * @param columnFilter used to determine which columns should be included as fields in its table's definition; may
@@ -1185,7 +1184,7 @@ public class JdbcConnection implements AutoCloseable {
      *            that are not found in the database metadata, or {@code false} if such tables should be left untouched
      * @throws SQLException if an error occurs while accessing the database metadata
      */
-    public void readSchema(Tables tables, String databaseCatalog, String schemaNamePattern,
+    public void readSchema(Tables tables, String catalogName, String schemaName,
                            TableFilter tableFilter, ColumnNameFilter columnFilter, boolean removeTablesNotFoundInJdbc)
             throws SQLException {
         // Before we make any changes, get the copy of the set of table IDs ...
@@ -1201,22 +1200,23 @@ public class JdbcConnection implements AutoCloseable {
         Map<TableId, List<Attribute>> attributesByTable = new HashMap<>();
 
         int totalTables = 0;
-        try (ResultSet rs = metadata.getTables(databaseCatalog, schemaNamePattern, null, supportedTableTypes())) {
+        String schemaNamePattern = createPatternFromName(schemaName);
+        try (ResultSet rs = metadata.getTables(catalogName, schemaNamePattern, null, supportedTableTypes())) {
             while (rs.next()) {
-                final String catalogName = resolveCatalogName(rs.getString(1));
-                final String schemaName = rs.getString(2);
-                final String tableName = rs.getString(3);
+                final String metaCatalogName = resolveCatalogName(rs.getString(1));
+                final String metaSchemaName = rs.getString(2);
+                final String metaTableName = rs.getString(3);
                 final String tableType = rs.getString(4);
                 if (isTableType(tableType)) {
                     totalTables++;
-                    TableId tableId = new TableId(catalogName, schemaName, tableName);
+                    TableId tableId = new TableId(metaCatalogName, metaSchemaName, metaTableName);
                     if (tableFilter == null || tableFilter.isIncluded(tableId)) {
                         tableIds.add(tableId);
                         attributesByTable.putAll(getAttributeDetails(tableId, tableType));
                     }
                 }
                 else {
-                    TableId tableId = new TableId(catalogName, schemaName, tableName);
+                    TableId tableId = new TableId(metaCatalogName, metaSchemaName, metaTableName);
                     viewIds.add(tableId);
                 }
             }
@@ -1226,13 +1226,13 @@ public class JdbcConnection implements AutoCloseable {
         Map<TableId, List<Column>> columnsByTable = new HashMap<>();
 
         if (totalTables == tableIds.size() || config.getBoolean(RelationalDatabaseConnectorConfig.SNAPSHOT_FULL_COLUMN_SCAN_FORCE)) {
-            columnsByTable = getColumnsDetails(databaseCatalog, schemaNamePattern, null, tableFilter, columnFilter, metadata, viewIds);
+            columnsByTable = getColumnsDetails(catalogName, schemaName, null, tableFilter, columnFilter, metadata, viewIds);
         }
         else {
             for (TableId includeTable : tableIds) {
                 LOGGER.debug("Retrieving columns of table {}", includeTable);
 
-                Map<TableId, List<Column>> cols = getColumnsDetails(databaseCatalog, schemaNamePattern, includeTable.table(), tableFilter,
+                Map<TableId, List<Column>> cols = getColumnsDetails(catalogName, schemaName, includeTable.table(), tableFilter,
                         columnFilter, metadata, viewIds);
                 columnsByTable.putAll(cols);
             }
@@ -1302,18 +1302,19 @@ public class JdbcConnection implements AutoCloseable {
         return pattern == null ? name : pattern.toString();
     }
 
-    protected Map<TableId, List<Column>> getColumnsDetails(String databaseCatalog, String schemaNamePattern,
+    protected Map<TableId, List<Column>> getColumnsDetails(String catalogName, String schemaName,
                                                            String tableName, TableFilter tableFilter, ColumnNameFilter columnFilter, DatabaseMetaData metadata,
                                                            final Set<TableId> viewIds)
             throws SQLException {
         Map<TableId, List<Column>> columnsByTable = new HashMap<>();
         String tableNamePattern = createPatternFromName(tableName);
-        try (ResultSet columnMetadata = metadata.getColumns(databaseCatalog, schemaNamePattern, tableNamePattern, null)) {
+        String schemaNamePattern = createPatternFromName(schemaName);
+        try (ResultSet columnMetadata = metadata.getColumns(catalogName, schemaNamePattern, tableNamePattern, null)) {
             while (columnMetadata.next()) {
-                String catalogName = resolveCatalogName(columnMetadata.getString(1));
-                String schemaName = columnMetadata.getString(2);
+                String metaCatalogName = resolveCatalogName(columnMetadata.getString(1));
+                String metaSchemaName = columnMetadata.getString(2);
                 String metaTableName = columnMetadata.getString(3);
-                TableId tableId = new TableId(catalogName, schemaName, metaTableName);
+                TableId tableId = new TableId(metaCatalogName, metaSchemaName, metaTableName);
 
                 // exclude views and non-captured tables
                 if (viewIds.contains(tableId) ||

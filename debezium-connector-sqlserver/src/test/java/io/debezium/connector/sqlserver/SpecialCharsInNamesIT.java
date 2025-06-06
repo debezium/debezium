@@ -24,6 +24,7 @@ import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.relational.TableId;
 import io.debezium.util.Testing;
 
 /**
@@ -53,25 +54,40 @@ public class SpecialCharsInNamesIT extends AbstractAsyncEngineConnectorTest {
 
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo\\.UAT WAG CZ\\$Fixed Asset.*, dbo\\.UAT WAG CZ\\$Fixed Prop.*")
+                .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "s \\['1']\\.UAT WAG CZ\\$Fixed Asset.*, s_\\\\%/\\.UAT WAG CZ\\$Fixed Prop.*")
                 .build();
 
+        String schema1Name = "s ['1']";
+        String schema2Name = "s_\\%/";
+        String table1Name = "UAT WAG CZ$Fixed Asset ['1']";
+        String table2Name = "UAT WAG CZ$Fixed Prop_\\%/";
+        TableId table1 = new TableId(TestHelper.TEST_DATABASE_1, schema1Name, table1Name);
+        TableId table2 = new TableId(TestHelper.TEST_DATABASE_1, schema2Name, table2Name);
+
+        connection.execute("DROP SCHEMA IF EXISTS %s".formatted(connection.quoteIdentifier(schema1Name)));
+        connection.execute("DROP SCHEMA IF EXISTS %s".formatted(connection.quoteIdentifier(schema2Name)));
+        connection.execute("CREATE SCHEMA %s".formatted(connection.quoteIdentifier(schema1Name)));
+        connection.execute("CREATE SCHEMA %s".formatted(connection.quoteIdentifier(schema2Name)));
         connection.execute(
-                "CREATE TABLE [UAT WAG CZ$Fixed Asset ['1']]] (id int primary key, [my col$a] varchar(30))",
-                "CREATE TABLE [UAT WAG CZ$Fixed Prop_\\%/] (id int primary key, [my col$a] varchar(30))",
-                "INSERT INTO [UAT WAG CZ$Fixed Asset ['1']]] VALUES(1, 'asset')",
-                "INSERT INTO [UAT WAG CZ$Fixed Prop_\\%/] VALUES(1, 'prop')");
-        TestHelper.enableTableCdc(connection, "UAT WAG CZ$Fixed Asset ['1']");
+                "CREATE TABLE %s (id int primary key, [my col$a] varchar(30))"
+                        .formatted(connection.quotedTableIdString(table1)),
+                "CREATE TABLE %s (id int primary key, [my col$a] varchar(30))"
+                        .formatted(connection.quotedTableIdString(table2)),
+                "INSERT INTO %s VALUES(1, 'asset')"
+                        .formatted(connection.quotedTableIdString(table1)),
+                "INSERT INTO %s VALUES(1, 'prop')"
+                        .formatted(connection.quotedTableIdString(table2)));
+        TestHelper.enableTableCdc(connection, table1);
         TestHelper.enableTableCdc(connection, "person");
 
         start(SqlServerConnector.class, config);
         assertConnectorIsRunning();
 
         SourceRecords actualRecords = consumeRecordsByTopic(2, false);
-        assertThat(actualRecords.recordsForTopic("server1.testDB1.dbo.UAT_WAG_CZ_Fixed_Asset___1__")).hasSize(1);
-        assertThat(actualRecords.recordsForTopic("server1.testDB1.dbo.UAT_WAG_CZ_Fixed_Prop____")).hasSize(1);
+        assertThat(actualRecords.recordsForTopic("server1.testDB1.s___1__.UAT_WAG_CZ_Fixed_Asset___1__")).hasSize(1);
+        assertThat(actualRecords.recordsForTopic("server1.testDB1.s____.UAT_WAG_CZ_Fixed_Prop____")).hasSize(1);
 
-        List<SourceRecord> carRecords = actualRecords.recordsForTopic("server1.testDB1.dbo.UAT_WAG_CZ_Fixed_Asset___1__");
+        List<SourceRecord> carRecords = actualRecords.recordsForTopic("server1.testDB1.s___1__.UAT_WAG_CZ_Fixed_Asset___1__");
         assertThat(carRecords.size()).isEqualTo(1);
         SourceRecord carRecord = carRecords.get(0);
 
@@ -79,19 +95,19 @@ public class SpecialCharsInNamesIT extends AbstractAsyncEngineConnectorTest {
                 (Struct) ((Struct) carRecord.value()).get("after"),
                 SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB1.dbo.UAT_WAG_CZ_Fixed_Asset___1__.Value")
+                        .name("server1.testDB1.s___1__.UAT_WAG_CZ_Fixed_Asset___1__.Value")
                         .field("id", Schema.INT32_SCHEMA)
                         .field("my col$a", Schema.OPTIONAL_STRING_SCHEMA)
                         .build());
         assertSchemaMatchesStruct(
                 (Struct) carRecord.key(),
                 SchemaBuilder.struct()
-                        .name("server1.testDB1.dbo.UAT_WAG_CZ_Fixed_Asset___1__.Key")
+                        .name("server1.testDB1.s___1__.UAT_WAG_CZ_Fixed_Asset___1__.Key")
                         .field("id", Schema.INT32_SCHEMA)
                         .build());
         assertThat(((Struct) carRecord.value()).getStruct("after").getString("my col$a")).isEqualTo("asset");
 
-        List<SourceRecord> personRecords = actualRecords.recordsForTopic("server1.testDB1.dbo.UAT_WAG_CZ_Fixed_Prop____");
+        List<SourceRecord> personRecords = actualRecords.recordsForTopic("server1.testDB1.s____.UAT_WAG_CZ_Fixed_Prop____");
         assertThat(personRecords.size()).isEqualTo(1);
         SourceRecord personRecord = personRecords.get(0);
 
@@ -99,14 +115,14 @@ public class SpecialCharsInNamesIT extends AbstractAsyncEngineConnectorTest {
                 (Struct) ((Struct) personRecord.value()).get("after"),
                 SchemaBuilder.struct()
                         .optional()
-                        .name("server1.testDB1.dbo.UAT_WAG_CZ_Fixed_Prop____.Value")
+                        .name("server1.testDB1.s____.UAT_WAG_CZ_Fixed_Prop____.Value")
                         .field("id", Schema.INT32_SCHEMA)
                         .field("my col$a", Schema.OPTIONAL_STRING_SCHEMA)
                         .build());
         assertSchemaMatchesStruct(
                 (Struct) personRecord.key(),
                 SchemaBuilder.struct()
-                        .name("server1.testDB1.dbo.UAT_WAG_CZ_Fixed_Prop____.Key")
+                        .name("server1.testDB1.s____.UAT_WAG_CZ_Fixed_Prop____.Key")
                         .field("id", Schema.INT32_SCHEMA)
                         .build());
         assertThat(((Struct) personRecord.value()).getStruct("after").getString("my col$a")).isEqualTo("prop");
