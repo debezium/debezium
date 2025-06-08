@@ -229,6 +229,7 @@ public class BaseSourceTaskSnapshotModesValidationTest {
         when(schemaHistory.exists()).thenReturn(true);
         Snapshotter snapshotter = mock(Snapshotter.class);
         when(snapshotter.shouldSnapshotOnDataError()).thenReturn(false);
+        when(snapshotter.shouldStream()).thenReturn(true);
 
         assertThatThrownBy(() -> baseSourceTask.validateSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter))
                 .isInstanceOf(DebeziumException.class)
@@ -256,6 +257,7 @@ public class BaseSourceTaskSnapshotModesValidationTest {
         when(databaseSchema.getSchemaHistory().exists()).thenReturn(true);
         Snapshotter snapshotter = mock(Snapshotter.class);
         when(snapshotter.shouldSnapshotOnDataError()).thenReturn(true);
+        when(snapshotter.shouldStream()).thenReturn(true);
 
         baseSourceTask.validateSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter);
 
