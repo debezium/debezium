@@ -71,7 +71,7 @@ public class RelationalTableFilters implements DataCollectionFilters {
                 finalTablePredicate = finalTablePredicate.or(signalDataCollectionPredicate);
             }
         }
-        this.tableFilter = finalTablePredicate::test;
+        this.tableFilter = TableFilter.cached(finalTablePredicate::test);
 
         // Define the database filter using the include and exclude lists for database names ...
         this.databaseFilter = Selectors.databaseSelector()
