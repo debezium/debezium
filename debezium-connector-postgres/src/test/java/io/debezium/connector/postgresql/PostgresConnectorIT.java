@@ -96,6 +96,7 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.SkipWhenKafkaVersion;
 import io.debezium.junit.SkipWhenKafkaVersion.KafkaVersion;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.txmetadata.TransactionStructMaker;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
@@ -3622,6 +3623,15 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
             assertEquals("foo", message.getString("prefix"));
             assertEquals("{}", new String(message.getBytes("content")));
         });
+    }
+
+    /**
+     * Postgres override for getting TX ID, as due to DBZ-5329 Postgres TX ID is in form of {@code txId:LSN}.
+     */
+    @Override
+    protected String getTxId(Struct value) {
+        final String txId = value.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY);
+        return Arrays.stream(txId.split(":")).findFirst().get();
     }
 
     private Predicate<SourceRecord> stopOnPKPredicate(int pkValue) {
