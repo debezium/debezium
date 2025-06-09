@@ -114,6 +114,10 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
             return value.equals(MINIMAL_PERCONA_NO_TABLE_LOCKS.value);
         }
 
+        public boolean useSingleTransaction() {
+            return value.equals(MINIMAL.value) || value.equals(MINIMAL_PERCONA.value) || value.equals(MINIMAL_PERCONA_NO_TABLE_LOCKS.value);
+        }
+
         /**
          * Determine if the supplied value is one of the predefined options.
          *
@@ -428,6 +432,11 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
         @Override
         public boolean preventsTableLocks() {
             return snapshotLockingMode.preventsTableLocks();
+        }
+
+        @Override
+        public boolean isSingleTransaction() {
+            return snapshotLockingMode.useSingleTransaction();
         }
     }
 
