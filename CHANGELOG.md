@@ -2,6 +2,45 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.2.0.Beta2
+June 9th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12462099)
+
+### New features since 3.2.0.Beta1
+
+* Move schema history recovery out of task start method [DBZ-8562](https://issues.redhat.com/browse/DBZ-8562)
+* OpenLineage integration [DBZ-9020](https://issues.redhat.com/browse/DBZ-9020)
+* Reduce calls to getEndOffset during kafka schema history recovery [DBZ-9098](https://issues.redhat.com/browse/DBZ-9098)
+
+
+### Breaking changes since 3.2.0.Beta1
+
+None
+
+
+### Fixes since 3.2.0.Beta1
+
+* Error validating connector with special character $ [DBZ-8660](https://issues.redhat.com/browse/DBZ-8660)
+* Error when converting table and column names to uppercase [DBZ-9017](https://issues.redhat.com/browse/DBZ-9017)
+* Oracle LogMiner mistakenly emits rollback transactions in commit data only mode [DBZ-9074](https://issues.redhat.com/browse/DBZ-9074)
+* UI is breaking on the pipeline details page. [DBZ-9084](https://issues.redhat.com/browse/DBZ-9084)
+* SQL Server connector doesn't properly handle special characters in database object names [DBZ-9091](https://issues.redhat.com/browse/DBZ-9091)
+* Column name encrypted is not supported by MySqlParser [DBZ-9092](https://issues.redhat.com/browse/DBZ-9092)
+* Typo in the registry link for amq streams kafka container  [DBZ-9094](https://issues.redhat.com/browse/DBZ-9094)
+* Removal of REST extension left service loader definition in Oracle connector [DBZ-9101](https://issues.redhat.com/browse/DBZ-9101)
+
+
+### Other changes since 3.2.0.Beta1
+
+* Support signals in UI frontend [DBZ-8422](https://issues.redhat.com/browse/DBZ-8422)
+* Replace Postgres txid_current() by pg_current_xact_id() [DBZ-9011](https://issues.redhat.com/browse/DBZ-9011)
+* Create documentation for embeddings SMT [DBZ-9053](https://issues.redhat.com/browse/DBZ-9053)
+* Update Docker Build and CI issues [DBZ-9076](https://issues.redhat.com/browse/DBZ-9076)
+* Lots of time spent in parsing column type modifiers [DBZ-9093](https://issues.redhat.com/browse/DBZ-9093)
+* Bump Chicory to 1.4.0 [DBZ-9100](https://issues.redhat.com/browse/DBZ-9100)
+* Improve the messaging in the "Table is not a relational table" logged exception [DBZ-9111](https://issues.redhat.com/browse/DBZ-9111)
+
+
+
 ## 3.2.0.Beta1
 May 29th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12455584)
 
