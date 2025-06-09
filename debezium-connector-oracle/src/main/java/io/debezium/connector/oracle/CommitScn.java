@@ -19,7 +19,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
 import io.debezium.DebeziumException;
-import io.debezium.annotation.VisibleForTesting;
+import io.debezium.common.annotation.VisibleForTesting;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.util.Strings;
 

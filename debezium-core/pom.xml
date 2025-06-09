@@ -56,10 +56,10 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- OpenLineage Integration -->
+        <!-- OpenLineage Module -->
         <dependency>
-            <groupId>io.openlineage</groupId>
-            <artifactId>openlineage-java</artifactId>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-openlineage</artifactId>
             <scope>provided</scope>
         </dependency>
 

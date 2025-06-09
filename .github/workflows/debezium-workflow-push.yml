@@ -437,3 +437,15 @@ jobs:
       - uses: ./.github/actions/build-debezium-ai
         with:
           maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+
+  build_openlineage:
+    name: "Debezium OpenLineage module"
+    needs: [ check_style ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/build-debezium-openlineage
+        with:
+          maven-cache-key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}

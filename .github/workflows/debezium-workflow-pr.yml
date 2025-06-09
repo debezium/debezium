@@ -26,6 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       ai-changed: ${{ steps.changed-files-ai.outputs.any_changed }}
+      openlineage-changed: ${{ steps.changed-files-openlineage.outputs.any_changed }}
       common-changed: ${{ steps.changed-files-common.outputs.any_changed }}
       mongodb-changed: ${{ steps.changed-files-mongodb.outputs.any_changed }}
       mariadb-changed: ${{ steps.changed-files-mariadb.outputs.any_changed }}
@@ -210,6 +211,15 @@ jobs:
         with:
           files: |
             debezium-ai/**
+
+      - name: Get modified files (OpenLineage)
+        id: changed-files-openlineage
+        uses: tj-actions/changed-files@v46.0.5
+        with:
+          files: |
+            debezium-openlineage/**
+    
+      
 
   # Approx 1m
   build_cache:
@@ -528,6 +538,18 @@ jobs:
       - name: Checkout Action
         uses: actions/checkout@v4
       - uses: ./.github/actions/build-debezium-ai
+        with:
+          maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
+
+  build_openlineage:
+    name: "Debezium OpenLineage module"
+    needs: [ check_style, file_changes ]
+    runs-on: ubuntu-latest
+    if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.openlineage-changed == 'true' }}
+    steps:
+      - name: Checkout Action
+        uses: actions/checkout@v4
+      - uses: ./.github/actions/build-debezium-openlineage
         with:
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
 

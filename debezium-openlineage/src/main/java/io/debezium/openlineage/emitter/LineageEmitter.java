@@ -1,0 +1,22 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+package io.debezium.openlineage.emitter;
+
+import java.util.List;
+
+import io.debezium.connector.common.ConnectorState;
+import io.debezium.openlineage.dataset.DatasetMetadata;
+
+public interface LineageEmitter {
+
+    void emit(ConnectorState state);
+
+    void emit(ConnectorState state, Throwable t);
+
+    void emit(ConnectorState state, List<DatasetMetadata> datasetMetadata);
+
+    void emit(ConnectorState state, List<DatasetMetadata> datasetMetadata, Throwable t);
+}
