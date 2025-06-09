@@ -96,6 +96,10 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
             return !value.equals(NONE.value);
         }
 
+        public boolean useSingleTransaction() {
+            return value.equals(MINIMAL.value);
+        }
+
         public boolean flushResetsIsolationLevel() {
             return true;
         }
@@ -368,6 +372,11 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
         @Override
         public boolean isIsolationLevelResetOnFlush() {
             return snapshotLockingMode.flushResetsIsolationLevel();
+        }
+
+        @Override
+        public boolean isSingleTransaction() {
+            return snapshotLockingMode.useSingleTransaction();
         }
     }
 

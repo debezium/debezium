@@ -262,6 +262,10 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
         default boolean preventsTableLocks() {
             return false;
         }
+
+        default boolean isSingleTransaction() {
+            return false;
+        }
     }
 
     /**
