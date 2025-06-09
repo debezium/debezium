@@ -225,6 +225,7 @@
         <module>debezium-sink</module>
         <module>debezium-ai</module>
         <module>quarkus-debezium-parent</module>
+        <module>debezium-openlineage</module>
     </modules>
 
     <distributionManagement>

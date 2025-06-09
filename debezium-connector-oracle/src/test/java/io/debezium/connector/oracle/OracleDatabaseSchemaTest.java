@@ -67,7 +67,7 @@ public class OracleDatabaseSchemaTest {
     private OracleDatabaseSchema createOracleDatabaseSchema() {
         Configuration configuration = TestHelper.defaultConfig().build();
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(configuration);
-        DebeziumOpenLineageEmitter.init(configuration, "oracle");
+        DebeziumOpenLineageEmitter.init(configuration.asMap(), "oracle");
         final TopicNamingStrategy topicNamingStrategy = SchemaTopicNamingStrategy.create(connectorConfig);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
         final OracleValueConverters converters = connectorConfig.getAdapter().getValueConverter(connectorConfig, connection);

@@ -24,7 +24,7 @@ public class MongoDbSchemaIT {
     @Test
     public void shouldAlwaysProduceCollectionSchema() {
         config = TestHelper.getConfiguration();
-        DebeziumOpenLineageEmitter.init(config, "mongodb");
+        DebeziumOpenLineageEmitter.init(config.asMap(), "mongodb");
         taskContext = new MongoDbTaskContext(config);
 
         final MongoDbSchema schema = getSchema(config, taskContext);

@@ -898,6 +898,11 @@
                 <artifactId>debezium-ai-embeddings</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-openlineage</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
 
             <!-- Debezium test artifacts -->
@@ -928,6 +933,12 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-ai-embeddings</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-openlineage</artifactId>
                 <version>${project.version}</version>
                 <type>test-jar</type>
             </dependency>

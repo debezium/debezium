@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.sqlserver;
 
-import static io.debezium.config.CommonConnectorConfig.TASK_ID;
+import static io.debezium.config.ConfigurationDefinition.TASK_ID_PROPERTY_NAME;
 import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.DATABASE_NAMES;
 
 import java.sql.SQLException;
@@ -98,7 +98,7 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
             String taskDatabases = String.join(",", databasesByTask.get(taskIndex));
             Map<String, String> taskProperties = new HashMap<>(properties);
             taskProperties.put(SqlServerConnectorConfig.DATABASE_NAMES.name(), taskDatabases);
-            taskProperties.put(TASK_ID, String.valueOf(taskIndex));
+            taskProperties.put(TASK_ID_PROPERTY_NAME, String.valueOf(taskIndex));
             taskConfigs.add(Collections.unmodifiableMap(taskProperties));
         }
 

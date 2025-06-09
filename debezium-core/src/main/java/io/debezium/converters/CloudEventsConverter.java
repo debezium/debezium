@@ -47,7 +47,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.debezium.Module;
 import io.debezium.annotation.Immutable;
-import io.debezium.annotation.VisibleForTesting;
+import io.debezium.common.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.config.Instantiator;
 import io.debezium.connector.AbstractSourceInfo;
