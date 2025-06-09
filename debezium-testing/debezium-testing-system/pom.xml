@@ -143,7 +143,7 @@
     <database.oracle.pdbname>ORCLPDB1</database.oracle.pdbname>
 
     <!--Debezium connector versions-->
-    <version.debezium.connector>${project.version}</version.debezium.connector>
+    <version.debezium.connector>3.2.0.Beta2</version.debezium.connector>
 
     <!-- Artifact repository for KC build -->
     <as.url>http://debezium-artifact-server.${ocp.project.debezium}.svc.cluster.local:8080</as.url>
