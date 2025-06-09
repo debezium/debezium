@@ -198,7 +198,7 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
             // Choose how we create statements based on the # of rows.
             // This is approximate and less accurate then COUNT(*),
             // but far more efficient for large InnoDB tables.
-            execute("USE `" + tableId.catalog() + "`;");
+            executeWithoutCommitting("USE `" + tableId.catalog() + "`;");
             return queryAndMap("SHOW TABLE STATUS LIKE '" + tableId.table() + "';", rs -> {
                 if (rs.next()) {
                     return OptionalLong.of((rs.getLong(5)));

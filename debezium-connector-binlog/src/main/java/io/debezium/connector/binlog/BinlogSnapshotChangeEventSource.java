@@ -190,6 +190,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
             if (connectorConfig.getSnapshotLockingStrategy().isIsolationLevelResetOnFlush()) {
                 // FLUSH TABLES resets TX and isolation level
                 connection.executeWithoutCommitting("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
+                connection.executeWithoutCommitting("START TRANSACTION WITH CONSISTENT SNAPSHOT");
             }
         }
     }
