@@ -46,9 +46,9 @@ import io.strimzi.api.kafka.model.zookeeper.ZookeeperClusterSpecBuilder;
  */
 public final class FabricKafkaBuilder extends FabricBuilderWrapper<FabricKafkaBuilder, KafkaBuilder, Kafka> {
     private static final Logger LOGGER = LoggerFactory.getLogger(FabricKafkaBuilder.class);
-    private static Boolean USE_KRAFT;
     public static String DEFAULT_KAFKA_NAME = "debezium-kafka-cluster";
     public static String DEFAULT_NODE_POOL_NAME = "node-pool";
+    private static Boolean useKraft;
 
     private FabricKafkaBuilder(KafkaBuilder kafkaBuilder) {
         super(kafkaBuilder);
@@ -125,32 +125,32 @@ public final class FabricKafkaBuilder extends FabricBuilderWrapper<FabricKafkaBu
     }
 
     public static boolean shouldKRaftBeUsed() {
-        if (USE_KRAFT == null) {
+        if (useKraft == null) {
             ComparableVersion kafkaVersion = new ComparableVersion(ConfigProperties.STRIMZI_VERSION_KAFKA);
             ComparableVersion strimziVersion = new ComparableVersion(ConfigProperties.STRIMZI_OPERATOR_VERSION);
 
-            USE_KRAFT = false;
+            useKraft = false;
             if (ConfigProperties.FORCE_KRAFT) {
-                USE_KRAFT = true;
+                useKraft = true;
                 LOGGER.info("KRaft forced by configuration.");
             }
             else if (kafkaVersion.compareTo(new ComparableVersion("4.0.0")) >= 0) {
-                USE_KRAFT = true;
+                useKraft = true;
                 LOGGER.info("Kafka version >= 4.0.0 detected.");
             }
             else if (!ConfigProperties.PRODUCT_BUILD && strimziVersion.compareTo(new ComparableVersion("0.46.0")) >= 0) {
-                USE_KRAFT = true;
+                useKraft = true;
                 LOGGER.info("Strimzi version >= 0.46.0.");
             }
 
-            if (USE_KRAFT) {
+            if (useKraft) {
                 LOGGER.info("Using Kafka with KRaft is enabled.");
             }
             else {
                 LOGGER.warn("Using Kafka with Zookeeper is enabled. This way will become deprecated soon.");
             }
         }
-        return USE_KRAFT;
+        return useKraft;
     }
 
     private static KafkaClusterSpec defaultKafkaSpec() {
