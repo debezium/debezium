@@ -813,13 +813,11 @@ public abstract class AbstractConnectorTest implements Testing {
                 final Struct value = (Struct) record.value();
                 if (isTransactionRecord(record)) {
                     final String status = value.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_STATUS_KEY);
-                    final String txId = value.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY);
-                    String id = Arrays.stream(txId.split(":")).findFirst().get();
                     if (status.equals(TransactionStatus.BEGIN.name())) {
-                        endTransactions.add(id);
+                        endTransactions.add(getTxId(value));
                     }
                     else {
-                        endTransactions.remove(id);
+                        endTransactions.remove(getTxId(value));
                     }
                 }
                 else {
@@ -858,13 +856,11 @@ public abstract class AbstractConnectorTest implements Testing {
                 final Struct value = (Struct) record.value();
                 if (isTransactionRecord(record)) {
                     final String status = value.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_STATUS_KEY);
-                    final String txId = value.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY);
-                    String id = Arrays.stream(txId.split(":")).findFirst().get();
                     if (status.equals(TransactionStatus.END.name())) {
-                        endTransactions.remove(id);
+                        endTransactions.remove(getTxId(value));
                     }
                     else {
-                        endTransactions.add(id);
+                        endTransactions.add(getTxId(value));
                     }
                 }
                 else {
@@ -902,6 +898,10 @@ public abstract class AbstractConnectorTest implements Testing {
         return record != null
                 && record.topic().endsWith(".transaction")
                 && record.keySchema().name().equals("io.debezium.connector.common.TransactionMetadataKey");
+    }
+
+    protected String getTxId(Struct value) {
+        return value.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY);
     }
 
     protected class SourceRecords {
