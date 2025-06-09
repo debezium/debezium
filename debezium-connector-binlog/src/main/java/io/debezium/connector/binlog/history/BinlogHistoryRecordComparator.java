@@ -7,7 +7,7 @@ package io.debezium.connector.binlog.history;
 
 import java.util.function.Predicate;
 
-import io.debezium.annotation.VisibleForTesting;
+import io.debezium.common.annotation.VisibleForTesting;
 import io.debezium.connector.binlog.BinlogOffsetContext;
 import io.debezium.connector.binlog.BinlogSourceInfo;
 import io.debezium.connector.binlog.gtid.GtidSet;
