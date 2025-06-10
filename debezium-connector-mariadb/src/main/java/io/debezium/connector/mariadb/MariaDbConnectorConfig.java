@@ -72,6 +72,12 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
          * set to schema_only or schema_only_recovery.
          */
         NONE("none"),
+
+        /**
+         * the connector holds the global read lock and set a transaction `SET TRANSACTION ISOLATION LEVEL REPEATABLE READ` to ensure
+         * that the snapshot process will have a view from the mvcc. This mode is invalid for rocksDB
+         */
+        SINGLE_TRANSACTION("single_transaction"),
         /**
          * Inject a custom mode, which allows for more control over snapshot locking.
          */
@@ -89,7 +95,7 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
         }
 
         public boolean usesMinimalLocking() {
-            return value.equals(MINIMAL.value);
+            return value.equals(MINIMAL.value) || value.equals(SINGLE_TRANSACTION.value);
         }
 
         public boolean usesLocking() {
@@ -97,7 +103,7 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
         }
 
         public boolean useSingleTransaction() {
-            return value.equals(MINIMAL.value);
+            return value.equals(SINGLE_TRANSACTION.value);
         }
 
         public boolean flushResetsIsolationLevel() {

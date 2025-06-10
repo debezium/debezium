@@ -1,3 +1,4 @@
 io.debezium.connector.mariadb.snapshot.lock.ExtendedSnapshotLock
 io.debezium.connector.mariadb.snapshot.lock.MinimalSnapshotLock
+io.debezium.connector.mariadb.snapshot.lock.SingleTransactionSnapshotLock
 io.debezium.connector.mariadb.snapshot.lock.NoneSnapshotLock
