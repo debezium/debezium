@@ -56,11 +56,9 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- OpenLineage Module -->
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-openlineage</artifactId>
-            <scope>provided</scope>
+            <artifactId>debezium-openlineage-api</artifactId>
         </dependency>
 
         <!-- Testing -->

@@ -22,4 +22,4 @@ runs:
     - name: Build Debezium OpenLineage module
       shell: ${{ inputs.shell }}
       run: >
-        ./mvnw clean install -B -pl :debezium-openlineage -am
+        ./mvnw clean install -B -pl :debezium-openlineage -am -amd
