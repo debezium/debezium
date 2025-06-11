@@ -8,8 +8,6 @@ package io.debezium.connector.mariadb.snapshot.lock;
 
 import java.util.Map;
 
-import io.debezium.annotation.ConnectorSpecific;
-import io.debezium.connector.mariadb.MariaDbConnector;
 import io.debezium.connector.mariadb.MariaDbConnectorConfig;
 import io.debezium.snapshot.spi.SnapshotLock;
 
