@@ -74,7 +74,7 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
         NONE("none"),
 
         /**
-         * the connector holds the global read lock and set a transaction `SET TRANSACTION ISOLATION LEVEL REPEATABLE READ` to ensure
+         * the connector holds the global read lock and set a transaction `START TRANSACTION WITH CONSISTENT SNAPSHOT` to ensure
          * that the snapshot process will have a view from the mvcc. This mode is invalid for rocksDB
          */
         SINGLE_TRANSACTION("single_transaction"),
