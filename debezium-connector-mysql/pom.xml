@@ -61,11 +61,6 @@
                 </exclusion>
             </exclusions>
         </dependency>
-        <dependency>
-            <groupId>io.debezium</groupId>
-            <artifactId>debezium-openlineage</artifactId>
-            <scope>provided</scope>
-        </dependency>
 
         <!-- Testing -->
         <dependency>
