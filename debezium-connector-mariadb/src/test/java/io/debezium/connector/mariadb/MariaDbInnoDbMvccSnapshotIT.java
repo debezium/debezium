@@ -11,7 +11,7 @@ public class MariaDbInnoDbMvccSnapshotIT extends InnoDBMvccSnapshot<MariaDbConne
 
     @Override
     protected String snapshotMode() {
-        return "single_transaction";
+        return "minimal";
     }
 
 }

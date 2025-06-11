@@ -74,10 +74,10 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
         NONE("none"),
 
         /**
-         * the connector holds the global read lock and set a transaction `START TRANSACTION WITH CONSISTENT SNAPSHOT` to ensure
-         * that the snapshot process will have a view from the mvcc. This mode is invalid for rocksDB
+         * the connector holds the global read lock but does not set a transaction `START TRANSACTION WITH CONSISTENT SNAPSHOT` to ensure
+         * that the snapshot process will have a view from the mvcc. This mode is valid for myRocks engine that doesn't provide mvcc support
          */
-        SINGLE_TRANSACTION("single_transaction"),
+        AT_LEAST_ONCE("at_least_once"),
         /**
          * Inject a custom mode, which allows for more control over snapshot locking.
          */
@@ -95,7 +95,7 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
         }
 
         public boolean usesMinimalLocking() {
-            return value.equals(MINIMAL.value) || value.equals(SINGLE_TRANSACTION.value);
+            return value.equals(MINIMAL.value) || value.equals(AT_LEAST_ONCE.value);
         }
 
         public boolean usesLocking() {
@@ -103,7 +103,7 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
         }
 
         public boolean useSingleTransaction() {
-            return value.equals(SINGLE_TRANSACTION.value);
+            return value.equals(MINIMAL.value);
         }
 
         public boolean flushResetsIsolationLevel() {
