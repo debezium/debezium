@@ -13,11 +13,10 @@ import io.debezium.connector.mariadb.MariaDbConnector;
 import io.debezium.connector.mariadb.MariaDbConnectorConfig;
 import io.debezium.snapshot.spi.SnapshotLock;
 
-@ConnectorSpecific(connector = MariaDbConnector.class)
-public class SingleTransactionSnapshotLock extends DefaultSnapshotLock implements SnapshotLock {
+public class AtLeastOnceSnapshotLock extends DefaultSnapshotLock implements SnapshotLock {
     @Override
     public String name() {
-        return MariaDbConnectorConfig.SnapshotLockingMode.SINGLE_TRANSACTION.getValue();
+        return MariaDbConnectorConfig.SnapshotLockingMode.AT_LEAST_ONCE.getValue();
     }
 
     @Override
