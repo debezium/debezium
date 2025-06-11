@@ -20,10 +20,10 @@
                 <exclude>com.fasterxml.jackson.core:jackson-core:*</exclude>
                 <exclude>com.fasterxml.jackson.core:jackson-databind:*</exclude>
                 <exclude>com.fasterxml.jackson.core:jackson-annotations:*</exclude>
-                <exclude>com.fasterxml.jackson.datatype:jackson-datatype-jsr310:*</exclude>
 
                 <!-- Exclude debezium dependencies -->
                 <exclude>io.debezium:debezium-api:*</exclude>
+                <exclude>io.debezium:debezium-openlineage-api:*</exclude>
 
 
             </excludes>
@@ -36,27 +36,4 @@
             </includes>
         </dependencySet>
     </dependencySets>
-    <fileSets>
-        <fileSet>
-            <!-- Get the files from the top-level directory, which should be two levels above -->
-            <directory>${project.basedir}/../..</directory>
-            <outputDirectory>${project.artifactId}</outputDirectory>
-            <includes>
-                <include>README*</include>
-                <include>CHANGELOG*</include>
-                <include>CONTRIBUTE*</include>
-                <include>COPYRIGHT*</include>
-                <include>LICENSE*</include>
-            </includes>
-            <useDefaultExcludes>true</useDefaultExcludes>
-        </fileSet>
-        <fileSet>
-            <directory>${project.build.directory}/generated-sources</directory>
-            <outputDirectory>${project.artifactId}</outputDirectory>
-            <includes>
-                <include>*.json</include>
-            </includes>
-            <useDefaultExcludes>true</useDefaultExcludes>
-        </fileSet>
-    </fileSets>
 </assembly>
