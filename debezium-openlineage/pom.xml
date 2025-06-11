@@ -9,120 +9,24 @@
     <modelVersion>4.0.0</modelVersion>
     <artifactId>debezium-openlineage</artifactId>
     <name>Debezium OpenLineage Integration</name>
-    <packaging>jar</packaging>
+    <packaging>pom</packaging>
 
     <properties>
+        <!-- JDK version is controlled by Debezium Parent, do not change! -->
+        <maven.compiler.source>${debezium.java.source}</maven.compiler.source>
+        <maven.compiler.target>${debezium.java.specific.target}</maven.compiler.target>
+        <maven.compiler.release>${debezium.java.specific.target}</maven.compiler.release>
+        <maven.compiler.testSource>${debezium.java.source}</maven.compiler.testSource>
+        <maven.compiler.testTarget>${debezium.java.specific.target}</maven.compiler.testTarget>
+        <maven.compiler.testRelease>${debezium.java.specific.target}</maven.compiler.testRelease>
+
         <!-- Assembly configuration -->
         <assembly.descriptor>openlineage-distribution</assembly.descriptor>
     </properties>
-    <dependencies>
 
-        <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>connect-api</artifactId>
-            <scope>provided</scope>
-        </dependency>
+    <modules>
+        <module>debezium-openlineage-api</module>
+        <module>debezium-openlineage-core</module>
+    </modules>
 
-        <dependency>
-            <groupId>io.openlineage</groupId>
-            <artifactId>openlineage-java</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.debezium</groupId>
-            <artifactId>debezium-api</artifactId>
-        </dependency>
-
-
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.assertj</groupId>
-            <artifactId>assertj-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-
-    <build>
-        <resources>
-            <!-- Apply the properties set in the POM to the resource files -->
-            <resource>
-                <filtering>true</filtering>
-                <directory>src/main/resources</directory>
-                <includes>
-                    <include>*</include>
-                    <include>**/*</include>
-                </includes>
-            </resource>
-        </resources>
-        <testResources>
-            <testResource>
-                <directory>src/test/resources</directory>
-                <filtering>true</filtering>
-                <includes>
-                    <include>*</include>
-                    <include>**/*</include>
-                </includes>
-            </testResource>
-        </testResources>
-    </build>
-    <profiles>
-        <profile>
-            <id>quick</id>
-            <properties>
-                <revapi.skip>true</revapi.skip>
-            </properties>
-        </profile>
-
-        <profile>
-            <id>assembly</id>
-            <activation>
-                <activeByDefault>false</activeByDefault>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-assembly-plugin</artifactId>
-                        <version>${version.assembly.plugin}</version>
-                        <dependencies>
-                            <dependency>
-                                <groupId>io.debezium</groupId>
-                                <artifactId>debezium-assembly-descriptors</artifactId>
-                                <version>${project.version}</version>
-                            </dependency>
-                        </dependencies>
-                        <executions>
-                            <execution>
-                                <id>default</id>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>single</goal>
-                                </goals>
-                                <configuration>
-                                    <finalName>${project.artifactId}-${project.version}</finalName>
-                                    <attach>true</attach>  <!-- we want attach & deploy these to Maven -->
-                                    <descriptorRefs>
-                                        <descriptorRef>${assembly.descriptor}</descriptorRef>
-                                    </descriptorRefs>
-                                    <tarLongFileMode>posix</tarLongFileMode>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>

@@ -57,11 +57,6 @@
             <artifactId>slf4j-api</artifactId>
             <scope>provided</scope>
         </dependency>
-        <dependency>
-            <groupId>io.debezium</groupId>
-            <artifactId>debezium-openlineage</artifactId>
-            <scope>provided</scope>
-        </dependency>
 
         <!-- Testing -->
         <dependency>
@@ -140,7 +135,13 @@
 
         <dependency>
             <groupId>io.debezium</groupId>
-            <artifactId>debezium-openlineage</artifactId>
+            <artifactId>debezium-openlineage-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-openlineage-core</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
