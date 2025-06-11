@@ -8,10 +8,8 @@
     </parent>
 
     <artifactId>debezium-openlineage-core</artifactId>
+    <name>Debezium OpenLineage Core</name>
     <packaging>jar</packaging>
-
-    <name>debezium-openlineage-core</name>
-    <url>http://maven.apache.org</url>
 
     <dependencies>
         <dependency>

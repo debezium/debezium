@@ -38,6 +38,8 @@ public class DebeziumOpenLineageClient {
     public DebeziumOpenLineageClient(ConnectorContext connectorContext, DebeziumOpenLineageConfiguration config) {
         this.connectorContext = connectorContext;
 
+        LOGGER.debug("Creating new openlineage client with config {}", config.config().path());
+
         if (config.enabled()) {
             openLineageClient = Clients.newClient(() -> List.of(
                     Path.of(config.config().path())));

@@ -9,10 +9,8 @@
     </parent>
 
     <artifactId>debezium-openlineage-api</artifactId>
+    <name>Debezium OpenLineage API</name>
     <packaging>jar</packaging>
-
-    <name>debezium-openlineage-api</name>
-    <url>http://maven.apache.org</url>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
