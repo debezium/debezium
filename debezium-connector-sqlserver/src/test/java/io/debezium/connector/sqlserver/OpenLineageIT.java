@@ -14,10 +14,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import org.awaitility.Awaitility;
 import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
@@ -29,7 +32,6 @@ import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.openlineage.DebeziumTestTransport;
 import io.debezium.openlineage.facets.DebeziumConfigFacet;
 import io.debezium.relational.TableId;
-import io.debezium.util.Testing;
 import io.openlineage.client.OpenLineage;
 import io.openlineage.client.transports.TransportBuilder;
 
@@ -79,7 +81,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
         TestHelper.enableTableCdc(connection, db2TableC);
 
         initializeConnectorTestFramework();
-        Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
+        Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
     }
 
     @After
@@ -87,6 +89,8 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
         if (connection != null) {
             connection.close();
         }
+
+        getDebeziumTestTransport().clear();
     }
 
     @Test
@@ -109,15 +113,24 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
 
         TestHelper.waitForDatabaseSnapshotsToBeCompletedWithMultipleTasks(TestHelper.TEST_DATABASE_1, TestHelper.TEST_DATABASE_2);
 
-        List<OpenLineage.RunEvent> runEvents = debeziumTestTransport.getRunEvents().stream()
-                .filter(runningEventsWithOutInputDatasets())
-                .sorted(Comparator.comparing(event -> event.getJob().getName()))
-                .toList();
+        TestHelper.waitForStreamingStarted();
 
-        assertThat(runEvents).hasSize(2);
+        AtomicReference<List<OpenLineage.RunEvent>> runEvents = new AtomicReference<>();
 
-        assertEventContainsExpectedData(runEvents.get(0), "0", "testDB1");
-        assertEventContainsExpectedData(runEvents.get(1), "1", "testDB2");
+        Awaitility.await()
+                .atMost(60, TimeUnit.SECONDS)
+                .pollInterval(1, TimeUnit.SECONDS)
+                .until(() -> {
+
+                    runEvents.set(debeziumTestTransport.getRunEvents().stream()
+                            .filter(runningEventsWithOutInputDatasets())
+                            .sorted(Comparator.comparing(event -> event.getJob().getName()))
+                            .toList());
+                    return runEvents.get().size() == 2;
+                });
+
+        assertEventContainsExpectedData(runEvents.get().get(0), "0", "testDB1");
+        assertEventContainsExpectedData(runEvents.get().get(1), "1", "testDB2");
 
     }
 

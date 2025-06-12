@@ -11,7 +11,7 @@ import java.util.Objects;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.annotation.VisibleForTesting;
+import io.debezium.common.annotation.VisibleForTesting;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 
 /**

@@ -17,7 +17,7 @@ import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.annotation.VisibleForTesting;
+import io.debezium.common.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.storage.redis.RedisClient;
 import io.debezium.storage.redis.RedisClientConnectionException;
