@@ -3357,7 +3357,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         start(PostgresConnector.class, configBuilder.build());
         Awaitility.await().atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)
-                .until(() -> logInterceptor.containsStacktraceElement("Cannot seek to the last known offset "));
+                .until(() -> logInterceptor.containsErrorMessage("but this is no longer available on the server"));
         assertConnectorNotRunning();
     }
 

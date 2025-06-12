@@ -234,7 +234,7 @@ public abstract class AbstractNotificationsIT<T extends SourceConnector> extends
     public void sinkNotificationWillCorrectlySaveOffsetAfterSnapshot() throws InterruptedException {
         // Testing.Print.enable();
 
-        startConnector(config -> config
+        startConnector(config -> config.with("slot.drop.on.stop", "false")
                 .with(SinkNotificationChannel.NOTIFICATION_TOPIC, "io.debezium.notification")
                 .with(CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS, "sink"));
 
