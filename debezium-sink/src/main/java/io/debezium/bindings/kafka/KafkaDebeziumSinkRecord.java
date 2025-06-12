@@ -312,7 +312,7 @@ public class KafkaDebeziumSinkRecord implements DebeziumSinkRecord {
             final Schema schema = schemaBuilder.build();
             Struct filteredData = new Struct(schema);
             schema.fields().forEach(field -> {
-                Object fieldValue = data.get(field);
+                Object fieldValue = data.get(field.name());
                 if (null != fieldValue && (null == fieldsFilter || fieldsFilter.matches(topicName, field.name()))) {
                     filteredData.put(field.name(), fieldValue);
                 }
