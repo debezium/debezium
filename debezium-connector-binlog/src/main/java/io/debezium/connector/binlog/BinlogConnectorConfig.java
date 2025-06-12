@@ -121,6 +121,28 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     }
 
     /**
+     * Set of predefined SnapshotLockingMode options or aliases.
+     */
+    public enum SnapshotLockingMode implements EnumeratedValue {
+        /**
+         * the connector holds the global read lock but does not set a transaction `START TRANSACTION WITH CONSISTENT SNAPSHOT` to ensure
+         * that the snapshot process will have a view from the mvcc. This mode is valid for myRocks engine that doesn't provide mvcc support
+         */
+        MINIMAL_AT_LEAST_ONCE("minimal_at_least_once");
+
+        private final String value;
+
+        SnapshotLockingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+    }
+
+    /**
      * Set of predefined SnapshotMode options or aliases.
      */
     public enum SnapshotMode implements EnumeratedValue {
@@ -263,7 +285,7 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
             return false;
         }
 
-        default boolean isSingleTransaction() {
+        default boolean useConsistentSnapshotTransaction() {
             return false;
         }
     }
