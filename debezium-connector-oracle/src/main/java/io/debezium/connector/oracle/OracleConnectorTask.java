@@ -25,9 +25,7 @@ import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.document.DocumentReader;
-import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
@@ -67,9 +65,13 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
         JdbcConfiguration jdbcConfig = connectorConfig.getJdbcConfig();
-        MainConnectionProvidingConnectionFactory<OracleConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
-                () -> new OracleConnection(jdbcConfig));
-        jdbcConnection = connectionFactory.mainConnection();
+        Configuration readonlyConfig = connectorConfig.isLogMiningReadOnly() ? buildReadonlyConfig(jdbcConfig.asMap(), connectorConfig) : null;
+        OracleConnection mainConnection = new OracleConnection(jdbcConfig);
+        DualOracleConnectionFactory<OracleConnection> dualConnectionFactory = new DualOracleConnectionFactory<>(
+                () -> mainConnection,
+                () -> readonlyConfig != null ? new ReadOnlyOracleConnection(JdbcConfiguration.adapt(readonlyConfig)) : mainConnection,
+                connectorConfig);
+        jdbcConnection = dualConnectionFactory.mainConnection();
 
         final boolean extendedStringsSupported = jdbcConnection.hasExtendedStringSupport();
 
@@ -85,7 +87,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         // The bean registry JDBC connection should always be pinned to the PDB
         // when the connector is configured to use a pluggable database
-        beanRegistryJdbcConnection = connectionFactory.newConnection();
+        beanRegistryJdbcConnection = dualConnectionFactory.newReadonlyConnection();
         if (!Strings.isNullOrEmpty(connectorConfig.getPdbName())) {
             beanRegistryJdbcConnection.setSessionToPdb(connectorConfig.getPdbName());
         }
@@ -115,8 +117,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         // If the redo log position is not available it is necessary to re-execute snapshot
         if (previousOffset == null) {
             LOGGER.info("No previous offset found");
-        }
-        else {
+        } else {
             LOGGER.info("Found previous offset {}", previousOffset);
         }
 
@@ -172,7 +173,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 errorHandler,
                 OracleConnector.class,
                 connectorConfig,
-                new OracleChangeEventSourceFactory(connectorConfig, connectionFactory, errorHandler, dispatcher, clock, schema, jdbcConfig, taskContext,
+                new OracleChangeEventSourceFactory(connectorConfig, dualConnectionFactory, errorHandler, dispatcher, clock, schema, jdbcConfig, taskContext,
                         streamingMetrics, snapshotterService),
                 new OracleChangeEventSourceMetricsFactory(streamingMetrics),
                 dispatcher,
@@ -184,6 +185,14 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         return coordinator;
     }
 
+    private Configuration buildReadonlyConfig(Map<String, String> config, OracleConnectorConfig connectorConfig) {
+        config.put("hostname", connectorConfig.getReadonlyHostname());
+        Configuration.Builder builder = Configuration.create();
+        config.forEach(
+                (k, v) -> builder.with(k.toString(), v));
+        return builder.build();
+    }
+  
     @Override
     protected String connectorName() {
         return Module.name();
@@ -196,16 +205,14 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 if (!connection.isArchiveLogDestinationValid(destinationName)) {
                     LOGGER.warn("Archive log destination '{}' may not be valid, please check the database.", destinationName);
                 }
-            }
-            else {
+            } else {
                 if (!connection.isOnlyOneArchiveLogDestinationValid()) {
                     LOGGER.warn("There are multiple valid archive log destinations. " +
-                            "Please add '{}' to the connector configuration to avoid log availability problems.",
+                                    "Please add '{}' to the connector configuration to avoid log availability problems.",
                             OracleConnectorConfig.ARCHIVE_DESTINATION_NAME.name());
                 }
             }
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             throw new DebeziumException("Error while checking validity of archive log configuration", e);
         }
     }
@@ -238,8 +245,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
             if (jdbcConnection != null) {
                 jdbcConnection.close();
             }
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             LOGGER.error("Exception while closing JDBC connection", e);
         }
 
@@ -247,8 +253,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
             if (beanRegistryJdbcConnection != null) {
                 beanRegistryJdbcConnection.close();
             }
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             LOGGER.error("Exception while closing JDBC bean registry connection", e);
         }
 
@@ -270,8 +275,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 throw new DebeziumException("The Oracle server is not configured to use a archive log LOG_MODE, which is "
                         + "required for this connector to work properly. Change the Oracle configuration to use a "
                         + "LOG_MODE=ARCHIVELOG and restart the connector.");
-            }
-            else {
+            } else {
                 LOGGER.warn("Failed the archive log check but continuing as redo log isn't strictly required");
             }
         }
