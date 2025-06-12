@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mariadb;
 
+import static io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotLockingMode.MINIMAL_AT_LEAST_ONCE;
+
 import java.util.Optional;
 import java.util.function.Predicate;
 
@@ -72,12 +74,6 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
          * set to schema_only or schema_only_recovery.
          */
         NONE("none"),
-
-        /**
-         * the connector holds the global read lock but does not set a transaction `START TRANSACTION WITH CONSISTENT SNAPSHOT` to ensure
-         * that the snapshot process will have a view from the mvcc. This mode is valid for myRocks engine that doesn't provide mvcc support
-         */
-        AT_LEAST_ONCE("at_least_once"),
         /**
          * Inject a custom mode, which allows for more control over snapshot locking.
          */
@@ -95,14 +91,14 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
         }
 
         public boolean usesMinimalLocking() {
-            return value.equals(MINIMAL.value) || value.equals(AT_LEAST_ONCE.value);
+            return value.equals(MINIMAL.value) || value.equals(MINIMAL_AT_LEAST_ONCE.getValue());
         }
 
         public boolean usesLocking() {
             return !value.equals(NONE.value);
         }
 
-        public boolean useSingleTransaction() {
+        public boolean useConsistentSnapshotTransaction() {
             return value.equals(MINIMAL.value);
         }
 
@@ -381,8 +377,8 @@ public class MariaDbConnectorConfig extends BinlogConnectorConfig {
         }
 
         @Override
-        public boolean isSingleTransaction() {
-            return snapshotLockingMode.useSingleTransaction();
+        public boolean useConsistentSnapshotTransaction() {
+            return snapshotLockingMode.useConsistentSnapshotTransaction();
         }
     }
 

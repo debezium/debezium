@@ -192,12 +192,14 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
                 connection.executeWithoutCommitting("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
             }
 
-            if (connectorConfig.getSnapshotLockingStrategy().isSingleTransaction()) {
+            if (connectorConfig.getSnapshotLockingStrategy().useConsistentSnapshotTransaction()) {
                 try {
                     connection.executeWithoutCommitting("START TRANSACTION WITH CONSISTENT SNAPSHOT");
                 }
                 catch (SQLException e) {
-                    LOGGER.warn("It's possible to receive duplicated events between snapshot and streaming. It can be caused by an unsupported engine", e);
+                    LOGGER.error("It's possible to receive duplicated events between snapshot and streaming. It can be caused by an unsupported engine");
+
+                    throw e;
                 }
             }
         }

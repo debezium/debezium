@@ -83,7 +83,6 @@ public abstract class InnoDBMvccSnapshot<C extends SourceConnector> extends Abst
                 .untilAsserted(() -> Assertions.assertThat(duplicate.get()).isNull());
 
         executorService.shutdownNow();
-        stopConnector();
     }
 
     protected AtomicReference<SourceRecord> consumeEvents() {
