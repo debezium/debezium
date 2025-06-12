@@ -2673,10 +2673,10 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
                 "CREATE TABLE s2.tableb (id int PRIMARY KEY, valb integer);";
         connection.execute(statements);
         connection.setAutoCommit(true);
-        TestHelper.enableSchemaTableCdc(connection, new TableId(null, "s1", "tablea"));
-        TestHelper.enableSchemaTableCdc(connection, new TableId(null, "s1", "tableb"));
-        TestHelper.enableSchemaTableCdc(connection, new TableId(null, "s2", "tablea"));
-        TestHelper.enableSchemaTableCdc(connection, new TableId(null, "s2", "tableb"));
+        TestHelper.enableTableCdc(connection, new TableId(null, "s1", "tablea"));
+        TestHelper.enableTableCdc(connection, new TableId(null, "s1", "tableb"));
+        TestHelper.enableTableCdc(connection, new TableId(null, "s2", "tablea"));
+        TestHelper.enableTableCdc(connection, new TableId(null, "s2", "tableb"));
 
         // Test exclude filter, s2 schema and default dbo schema should be included.
         Configuration config = TestHelper.defaultConfig()
@@ -3440,12 +3440,12 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
 
         @Override
-        public void recover(Offsets<?, ?> offsets, Tables schema, DdlParser ddlParser) {
+        public void recover(Offsets<?, ?> offsets, Tables schema, DdlParser ddlParser) throws InterruptedException {
             delegate.recover(offsets, schema, ddlParser);
         }
 
         @Override
-        public void recover(Map<Map<String, ?>, Map<String, ?>> offsets, Tables schema, DdlParser ddlParser) {
+        public void recover(Map<Map<String, ?>, Map<String, ?>> offsets, Tables schema, DdlParser ddlParser) throws InterruptedException {
             delegate.recover(offsets, schema, ddlParser);
         }
 

@@ -249,7 +249,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
 
         // Validate headers
         Headers headers = eventRouted.headers();
-        assertThat(headers.size()).isEqualTo(2);
+        assertThat(headers.size()).isEqualTo(5);
         Header headerId = headers.lastWithName("id");
         assertThat(headerId.schema()).isEqualTo(Schema.OPTIONAL_STRING_SCHEMA);
         assertThat(headerId.value()).isEqualTo("111111111111111111111111");
@@ -298,7 +298,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
 
         // Validate headers
         Headers headers = eventRouted.headers();
-        assertThat(headers.size()).isEqualTo(1);
+        assertThat(headers.size()).isEqualTo(4);
         Header headerId = headers.lastWithName("id");
         assertThat(headerId.value()).isEqualTo("000000000000000000000000");
 
@@ -339,7 +339,7 @@ public class MongoEventRouterTestIT extends AbstractMongoConnectorIT {
 
         // Validate headers
         Headers headers = eventRouted.headers();
-        assertThat(headers.size()).isEqualTo(1);
+        assertThat(headers.size()).isEqualTo(4);
         Header headerId = headers.lastWithName("id");
         assertThat(headerId.value()).isEqualTo("000000000000000000000000");
 

@@ -83,6 +83,13 @@ public class StrimziSubscriptionBuilder extends FabricBuilderWrapper<StrimziSubs
         return self();
     }
 
+    public StrimziSubscriptionBuilder withStartingCSV(String startingCSV) {
+        builder.editSpec()
+                .withStartingCSV(startingCSV)
+                .endSpec();
+        return self();
+    }
+
     @Override
     public Subscription build() {
         return builder.build();

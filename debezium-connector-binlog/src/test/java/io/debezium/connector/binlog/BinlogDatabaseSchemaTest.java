@@ -23,6 +23,7 @@ import io.debezium.connector.binlog.jdbc.BinlogSystemVariables;
 import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.doc.FixFor;
+import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.relational.Table;
@@ -80,6 +81,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     public void shouldApplyDdlStatementsAndRecover() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfig().build();
+        DebeziumOpenLineageEmitter.init(config, "mysql");
         schema = getSchema(config);
         schema.initializeStorage();
         final P partition = initializePartition(connectorConfig, config);
@@ -107,6 +109,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
         final Configuration config = DATABASE.defaultConfig()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
                 .build();
+        DebeziumOpenLineageEmitter.init(config, "mysql");
         schema = getSchema(config);
         schema.initializeStorage();
 
@@ -136,6 +139,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfig()
                 .build();
+        DebeziumOpenLineageEmitter.init(config, "mysql");
         schema = getSchema(config);
         schema.initializeStorage();
         final P partition = initializePartition(connectorConfig, config);
@@ -155,6 +159,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
         final Configuration config = DATABASE.defaultConfigWithoutDatabaseFilter()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
                 .build();
+        DebeziumOpenLineageEmitter.init(config, "mysql");
         schema = getSchema(config);
         schema.initializeStorage();
         final P partition = initializePartition(connectorConfig, config);
@@ -189,6 +194,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, true)
                 .with(BinlogConnectorConfig.TABLE_IGNORE_BUILTIN, false)
                 .build();
+        DebeziumOpenLineageEmitter.init(config, "mysql");
         schema = getSchema(config);
         schema.initializeStorage();
         final P partition = initializePartition(connectorConfig, config);
@@ -217,11 +223,12 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     }
 
     @Test
-    public void shouldAllowDecimalPrecision() {
+    public void shouldAllowDecimalPrecision() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfig()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
                 .build();
+        DebeziumOpenLineageEmitter.init(config, "mysql");
         schema = getSchema(config);
         schema.initializeStorage();
         final P partition = initializePartition(connectorConfig, config);
@@ -240,12 +247,13 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
 
     @Test
     @FixFor("DBZ-3622")
-    public void shouldStoreNonCapturedDatabase() {
+    public void shouldStoreNonCapturedDatabase() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfig()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
                 .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, "captured")
                 .build();
+        DebeziumOpenLineageEmitter.init(config, "mysql");
         schema = getSchema(config);
         schema.initializeStorage();
         final P partition = initializePartition(connectorConfig, config);
@@ -272,13 +280,14 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
 
     @Test
     @FixFor("DBZ-3622")
-    public void shouldNotStoreNonCapturedDatabase() {
+    public void shouldNotStoreNonCapturedDatabase() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfig()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
                 .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, "captured")
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                 .build();
+        DebeziumOpenLineageEmitter.init(config, "mysql");
         schema = getSchema(config);
         schema.initializeStorage();
         final P partition = initializePartition(connectorConfig, config);
@@ -305,12 +314,13 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
 
     @Test
     @FixFor("DBZ-3622")
-    public void shouldStoreNonCapturedTable() {
+    public void shouldStoreNonCapturedTable() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfigWithoutDatabaseFilter()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, "captured.ct")
                 .build();
+        DebeziumOpenLineageEmitter.init(config, "mysql");
         schema = getSchema(config);
         schema.initializeStorage();
         final P partition = initializePartition(connectorConfig, config);
@@ -337,13 +347,14 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
 
     @Test
     @FixFor("DBZ-3622")
-    public void shouldNotStoreNonCapturedTable() {
+    public void shouldNotStoreNonCapturedTable() throws InterruptedException {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfigWithoutDatabaseFilter()
                 .with(SchemaHistory.SKIP_UNPARSEABLE_DDL_STATEMENTS, false)
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, "captured.ct")
                 .build();
+        DebeziumOpenLineageEmitter.init(config, "mysql");
         schema = getSchema(config);
         schema.initializeStorage();
         final P partition = initializePartition(connectorConfig, config);
@@ -376,7 +387,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
                 .with(SchemaHistory.STORE_ONLY_CAPTURED_TABLES_DDL, true)
                 .with(BinlogConnectorConfig.INCLUDE_SCHEMA_COMMENTS, true)
                 .build();
-
+        DebeziumOpenLineageEmitter.init(config, "mysql");
         schema = getSchema(config);
         schema.initializeStorage();
         final P partition = initializePartition(connectorConfig, config);
@@ -397,6 +408,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
     public void shouldProduceCorrectTableChangesForDropStatement() {
         // Testing.Print.enable();
         final Configuration config = DATABASE.defaultConfig().build();
+        DebeziumOpenLineageEmitter.init(config, "mysql");
         schema = getSchema(config);
         schema.initializeStorage();
         final P partition = initializePartition(connectorConfig, config);
@@ -446,7 +458,7 @@ public abstract class BinlogDatabaseSchemaTest<C extends BinlogConnectorConfig, 
         assertThat(schema.tableIds().stream().filter(id -> id.catalog().equals(dbName)).count()).isGreaterThan(0);
     }
 
-    protected void assertHistoryRecorded(Configuration config, P partition, OffsetContext offset) {
+    protected void assertHistoryRecorded(Configuration config, P partition, OffsetContext offset) throws InterruptedException {
         try (S duplicate = getSchema(config)) {
             duplicate.recover(Offsets.of(partition, offset));
 

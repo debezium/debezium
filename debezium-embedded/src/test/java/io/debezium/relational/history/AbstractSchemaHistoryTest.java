@@ -76,7 +76,7 @@ public abstract class AbstractSchemaHistoryTest extends AbstractAsyncEngineConne
         Arrays.stream(records).forEach(schemaHistory::storeRecord);
     }
 
-    protected Tables recoverHistory() {
+    protected Tables recoverHistory() throws InterruptedException {
         // Initialize history
         schemaHistory.configure(getHistoryConfiguration(), null, SchemaHistoryMetrics.NOOP, true);
         schemaHistory.start();

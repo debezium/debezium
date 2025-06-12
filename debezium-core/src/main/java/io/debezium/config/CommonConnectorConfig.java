@@ -44,6 +44,7 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.heartbeat.HeartbeatConnectionProvider;
 import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.heartbeat.HeartbeatImpl;
+import io.debezium.openlineage.OpenLineageConfig;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import io.debezium.pipeline.txmetadata.DefaultTransactionMetadataFactory;
@@ -565,7 +566,9 @@ public abstract class CommonConnectorConfig {
     private static final String CONFLUENT_AVRO_CONVERTER = "io.confluent.connect.avro.AvroConverter";
     private static final String APICURIO_AVRO_CONVERTER = "io.apicurio.registry.utils.converter.AvroConverter";
 
-    public static final long EXECUTOR_SHUTDOWN_TIMEOUT_SEC = 90;
+    // This should be less than the value of worker config task.shutdown.graceful.timeout.ms. It
+    // defaults to 5 seconds, hence setting it to 4 seconds.
+    public static final long EXECUTOR_SHUTDOWN_TIMEOUT_SEC = 4;
     public static final int DEFAULT_MAX_QUEUE_SIZE = 8192;
     public static final int DEFAULT_MAX_BATCH_SIZE = 2048;
     public static final int DEFAULT_QUERY_FETCH_SIZE = 0;
@@ -1123,7 +1126,13 @@ public abstract class CommonConnectorConfig {
                     INCREMENTAL_SNAPSHOT_WATERMARKING_STRATEGY,
                     LOG_POSITION_CHECK_ENABLED,
                     ADVANCED_METRICS_ENABLE,
-                    CONNECTION_VALIDATION_TIMEOUT_MS)
+                    CONNECTION_VALIDATION_TIMEOUT_MS,
+                    OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_ENABLED,
+                    OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH,
+                    OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE,
+                    OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION,
+                    OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_TAGS,
+                    OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_OWNERS)
             .events(
                     CUSTOM_CONVERTERS,
                     CUSTOM_POST_PROCESSORS,

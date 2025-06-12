@@ -12,8 +12,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
+import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -63,7 +65,9 @@ public class OracleDatabaseSchemaTest {
     }
 
     private OracleDatabaseSchema createOracleDatabaseSchema() {
-        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(TestHelper.defaultConfig().build());
+        Configuration configuration = TestHelper.defaultConfig().build();
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(configuration);
+        DebeziumOpenLineageEmitter.init(configuration, "oracle");
         final TopicNamingStrategy topicNamingStrategy = SchemaTopicNamingStrategy.create(connectorConfig);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
         final OracleValueConverters converters = connectorConfig.getAdapter().getValueConverter(connectorConfig, connection);

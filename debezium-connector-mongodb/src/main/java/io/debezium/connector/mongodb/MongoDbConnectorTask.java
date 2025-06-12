@@ -10,6 +10,7 @@ import static java.util.Comparator.comparing;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -25,6 +26,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
@@ -86,7 +88,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         this.connectionContext = new MongoDbConnectionContext(config);
 
         final Schema structSchema = connectorConfig.getSourceInfoStructMaker().schema();
-        this.schema = new MongoDbSchema(taskContext.getFilters(), taskContext.getTopicNamingStrategy(), structSchema, schemaNameAdjuster);
+        this.schema = new MongoDbSchema(connectorConfig, taskContext.getFilters(), taskContext.getTopicNamingStrategy(), structSchema, schemaNameAdjuster);
 
         final Offsets<MongoDbPartition, MongoDbOffsetContext> previousOffsets = getPreviousOffsets(connectorConfig);
         final Clock clock = Clock.system();
@@ -117,6 +119,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
             connectorConfig.getBeanRegistry().add(StandardBeanNames.CONNECTOR_CONFIG, connectorConfig);
             connectorConfig.getBeanRegistry().add(StandardBeanNames.DATABASE_SCHEMA, schema);
             connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
+            connectorConfig.getBeanRegistry().add(StandardBeanNames.CDC_SOURCE_TASK_CONTEXT, taskContext);
 
             // Service providers
             registerServiceProviders(connectorConfig.getServiceRegistry());
@@ -132,7 +135,8 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     DataChangeEvent::new,
                     metadataProvider,
                     schemaNameAdjuster,
-                    signalProcessor);
+                    signalProcessor,
+                    connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
 
             validate(connectorConfig, taskContext.getConnection(dispatcher, previousOffsets.getTheOnlyPartition()), previousOffsets,
                     snapshotterService.getSnapshotter());
@@ -169,6 +173,11 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         finally {
             previousLogContext.restore();
         }
+    }
+
+    @Override
+    protected String connectorName() {
+        return Module.name();
     }
 
     private Offsets<MongoDbPartition, MongoDbOffsetContext> getPreviousOffsets(MongoDbConnectorConfig connectorConfig) {
@@ -241,6 +250,11 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
     }
 
     @Override
+    protected Optional<ErrorHandler> getErrorHandler() {
+        return Optional.of(errorHandler);
+    }
+
+    @Override
     public void doStop() {
         PreviousContext previousLogContext = this.taskContext.configureLoggingContext(taskName);
         try {
@@ -305,9 +319,8 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                         return;
                     }
 
-                    LOGGER.warn("The connector is trying to read change stream starting at " + offset + ", but this is no longer "
-                            + "available on the server. Reconfigure the connector to use a snapshot when needed if you want to recover. " +
-                            "If not the connector will streaming from the last available position in the log");
+                    throw new DebeziumException("The connector is trying to read change stream starting at " + offset.getSourceInfo() + ", but this is no longer "
+                            + "available on the server. Reconfigure the connector to use a snapshot mode when needed.");
                 }
             }
         }

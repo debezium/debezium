@@ -38,7 +38,7 @@
         <version.groovy>4.0.17</version.groovy>
         <version.graalvm.js>23.0.2</version.graalvm.js>
         <!-- Wasm -->
-        <version.chicory>1.2.1</version.chicory>
+        <version.chicory>1.4.0</version.chicory>
 
         <!-- Storages -->
 
@@ -59,6 +59,9 @@
 
         <!-- Debezium AI -->
         <version.langchain4j>1.0.1</version.langchain4j>
+
+        <!-- Open Lineage -->
+        <version.openlineage>1.31.0</version.openlineage>
 
         <!-- Testing -->
         <version.junit>4.13.1</version.junit>
@@ -105,6 +108,19 @@
             <dependency>
                 <groupId>com.fasterxml.jackson.datatype</groupId>
                 <artifactId>jackson-datatype-jsr310</artifactId>
+                <version>${version.jackson}</version>
+                <optional>true</optional>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-datatype-jdk8</artifactId>
+                <version>${version.jackson}</version>
+                <optional>true</optional>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
                 <version>${version.jackson}</version>
                 <optional>true</optional>
             </dependency>
@@ -333,17 +349,17 @@
             </dependency>
             <dependency>
                 <groupId>com.dylibso.chicory</groupId>
-                <artifactId>aot-experimental</artifactId>
+                <artifactId>compiler</artifactId>
                 <version>${version.chicory}</version>
             </dependency>
             <dependency>
                 <groupId>com.dylibso.chicory</groupId>
-                <artifactId>host-module-annotations-experimental</artifactId>
+                <artifactId>annotations</artifactId>
                 <version>${version.chicory}</version>
             </dependency>
             <dependency>
                 <groupId>com.dylibso.chicory</groupId>
-                <artifactId>host-module-processor-experimental</artifactId>
+                <artifactId>annotations-processor</artifactId>
                 <version>${version.chicory}</version>
             </dependency>
 
@@ -352,6 +368,13 @@
                 <groupId>io.opentelemetry</groupId>
                 <artifactId>opentelemetry-api</artifactId>
                 <version>${version.opentelemetry}</version>
+            </dependency>
+
+            <!-- OpenLineage Integration -->
+            <dependency>
+                <groupId>io.openlineage</groupId>
+                <artifactId>openlineage-java</artifactId>
+                <version>${version.openlineage}</version>
             </dependency>
 
             <!-- Kafka runtime libs -->
@@ -875,6 +898,7 @@
                 <artifactId>debezium-ai-embeddings</artifactId>
                 <version>${project.version}</version>
             </dependency>
+
 
             <!-- Debezium test artifacts -->
             <dependency>

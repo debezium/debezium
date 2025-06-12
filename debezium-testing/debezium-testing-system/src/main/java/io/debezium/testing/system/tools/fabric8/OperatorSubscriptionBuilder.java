@@ -10,6 +10,10 @@ import io.fabric8.openshift.api.model.operatorhub.v1alpha1.Subscription;
 public interface OperatorSubscriptionBuilder {
     Subscription build();
 
+    default OperatorSubscriptionBuilder withConfig(boolean productBuild) {
+        return productBuild ? withProductConfig() : withCommunityConfig();
+    }
+
     OperatorSubscriptionBuilder withCommunityConfig();
 
     OperatorSubscriptionBuilder withProductConfig();
@@ -17,4 +21,6 @@ public interface OperatorSubscriptionBuilder {
     OperatorSubscriptionBuilder withNamespace(String namespace);
 
     OperatorSubscriptionBuilder withChannel(String namespace);
+
+    OperatorSubscriptionBuilder withStartingCSV(String version);
 }
