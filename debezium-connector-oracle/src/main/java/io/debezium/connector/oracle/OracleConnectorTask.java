@@ -64,9 +64,10 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         JdbcConfiguration jdbcConfig = connectorConfig.getJdbcConfig();
         Configuration readonlyConfig = buildReadonlyConfig(jdbcConfig.asMap(), connectorConfig);
+        OracleConnection mainConnection = new OracleConnection(jdbcConfig);
         DualOracleConnectionFactory<OracleConnection> dualConnectionFactory = new DualOracleConnectionFactory<>(
-                () -> new OracleConnection(jdbcConfig),
-                () -> new ReadOnlyOracleConnection(JdbcConfiguration.adapt(readonlyConfig)),
+                () -> mainConnection,
+                () -> connectorConfig.isLogMiningReadOnly() ? new ReadOnlyOracleConnection(JdbcConfiguration.adapt(readonlyConfig)) : mainConnection,
                 connectorConfig);
         jdbcConnection = dualConnectionFactory.mainConnection();
 
@@ -114,8 +115,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         // If the redo log position is not available it is necessary to re-execute snapshot
         if (previousOffset == null) {
             LOGGER.info("No previous offset found");
-        }
-        else {
+        } else {
             LOGGER.info("Found previous offset {}", previousOffset);
         }
 
@@ -197,16 +197,14 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 if (!connection.isArchiveLogDestinationValid(destinationName)) {
                     LOGGER.warn("Archive log destination '{}' may not be valid, please check the database.", destinationName);
                 }
-            }
-            else {
+            } else {
                 if (!connection.isOnlyOneArchiveLogDestinationValid()) {
                     LOGGER.warn("There are multiple valid archive log destinations. " +
-                            "Please add '{}' to the connector configuration to avoid log availability problems.",
+                                    "Please add '{}' to the connector configuration to avoid log availability problems.",
                             OracleConnectorConfig.ARCHIVE_DESTINATION_NAME.name());
                 }
             }
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             throw new DebeziumException("Error while checking validity of archive log configuration", e);
         }
     }
@@ -234,8 +232,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
             if (jdbcConnection != null) {
                 jdbcConnection.close();
             }
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             LOGGER.error("Exception while closing JDBC connection", e);
         }
 
@@ -243,8 +240,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
             if (beanRegistryJdbcConnection != null) {
                 beanRegistryJdbcConnection.close();
             }
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             LOGGER.error("Exception while closing JDBC bean registry connection", e);
         }
 
@@ -266,8 +262,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 throw new DebeziumException("The Oracle server is not configured to use a archive log LOG_MODE, which is "
                         + "required for this connector to work properly. Change the Oracle configuration to use a "
                         + "LOG_MODE=ARCHIVELOG and restart the connector.");
-            }
-            else {
+            } else {
                 LOGGER.warn("Failed the archive log check but continuing as redo log isn't strictly required");
             }
         }
