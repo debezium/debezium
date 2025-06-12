@@ -83,38 +83,12 @@ FAIL:: Reports that the connector encountered an error.
 
 == Required Dependencies
 
-The OpenLineage integration requires several JAR files that are not bundled with {prodname}. 
-To use {prodname} with OpenLineage, you must download the JAR files for the following dependencies and add them to your {prodname} installation:
+The OpenLineage integration requires several JAR files that are bundled with `debezium-openlineage-core`.
 
-[horizontal]
-`openlineage-java-_<version>_.jar`:: Core OpenLineage Java client
-`commons-codec-_<version>_.jar`:: Apache Commons Codec utilities
-`httpclient5-_<version>_.jar`:: Apache HTTP client for sending lineage events
-`httpcore5-_<version>_.jar`:: Apache HTTP core components
-`httpcore5-h2-_<version>_.jar`:: HTTP/2 support for Apache HTTP core
-`jackson-dataformat-yaml-_<version>_.jar`:: YAML parsing support
-`jackson-datatype-jsr310-_<version>_.jar`:: Java 8 time API support for Jackson
-`micrometer-commons-_<version>_.jar`:: Micrometer metrics commons
-`micrometer-core-_<version>_.jar`:: Micrometer metrics core
-`snakeyaml-_<version>_.jar`:: YAML parser
+To use {prodname} with OpenLineage, you must
 
-== Obtaining Dependencies
-
-
-The dependencies that are required to support the integration might be available in multiple versions. 
-To install the dependencies, determine the version that is required and then download the JAR file.
-
-.Procedure
-
-1. On Maven Central, open the https://mvnrepository.com/artifact/io.openlineage/openlineage-java[`openlineage-java` repository] and identify the version used by {prodname}.
-2. View the dependency tree for the `openlineage-java` version and identify the exact versions of all transitive dependencies.
-3. Download the required JAR files and place them in the classpath for your {prodname} connector.
-
-[NOTE]
-====
-Dependency versions must be compatible with each other. 
-Always refer to the Maven dependency tree of the specific `openlineage-java` version you plan to use to ensure compatibility.
-====
+. Download the link:https://repo1.maven.org/maven2/io/debezium/debezium-openlineage-core/{debezium-version}/debezium-openlineage-core-{debezium-version}.tar.gz[OpenLineage core archive]
+. Extract the contents of the archive into the {prodname} plug-in directories of your Kafka Connect environment.
 
 == Configuring the integration
 
