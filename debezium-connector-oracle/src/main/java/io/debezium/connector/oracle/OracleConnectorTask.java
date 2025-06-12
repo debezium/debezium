@@ -65,11 +65,11 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
         JdbcConfiguration jdbcConfig = connectorConfig.getJdbcConfig();
-        Configuration readonlyConfig = buildReadonlyConfig(jdbcConfig.asMap(), connectorConfig);
+        Configuration readonlyConfig = connectorConfig.isLogMiningReadOnly() ? buildReadonlyConfig(jdbcConfig.asMap(), connectorConfig) : null;
         OracleConnection mainConnection = new OracleConnection(jdbcConfig);
         DualOracleConnectionFactory<OracleConnection> dualConnectionFactory = new DualOracleConnectionFactory<>(
                 () -> mainConnection,
-                () -> connectorConfig.isLogMiningReadOnly() ? new ReadOnlyOracleConnection(JdbcConfiguration.adapt(readonlyConfig)) : mainConnection,
+                () -> readonlyConfig != null ? new ReadOnlyOracleConnection(JdbcConfiguration.adapt(readonlyConfig)) : mainConnection,
                 connectorConfig);
         jdbcConnection = dualConnectionFactory.mainConnection();
 
