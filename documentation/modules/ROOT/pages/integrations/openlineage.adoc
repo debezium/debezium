@@ -83,12 +83,12 @@ FAIL:: Reports that the connector encountered an error.
 
 == Required Dependencies
 
-The OpenLineage integration requires several JAR files that are bundled with `debezium-openlineage-core`.
+The OpenLineage integration requires several JAR files that are bundled together in the `debezium-openlineage-core` archive.
 
-To use {prodname} with OpenLineage, you must
+Before you can use {prodname} with OpenLineage, complete the following steps to obtain the required dependencies:
 
-. Download the link:https://repo1.maven.org/maven2/io/debezium/debezium-openlineage-core/{debezium-version}/debezium-openlineage-core-{debezium-version}.tar.gz[OpenLineage core archive]
-. Extract the contents of the archive into the {prodname} plug-in directories of your Kafka Connect environment.
+. Download the link:https://repo1.maven.org/maven2/io/debezium/debezium-openlineage-core/{debezium-version}/debezium-openlineage-core-{debezium-version}-libs.tar.gz[OpenLineage core archive].
+. Extract the contents of the archive into the {prodname} plug-in directories in your Kafka Connect environment.
 
 == Configuring the integration
 
