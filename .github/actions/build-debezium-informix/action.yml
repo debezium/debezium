@@ -8,6 +8,9 @@ inputs:
   path-informix:
     description: "Debezium Informix repository checkout path"
     required: true
+  cache-hit:
+    required: false
+    default: 'false'
   profile:
     description: "The Informix build profile to use"
     required: false
@@ -21,10 +24,11 @@ runs:
   using: "composite"
   steps:
     - name: Build Debezium (Core)
+      if: inputs.cache-hit != 'true'
       shell: ${{ inputs.shell }}
       run: >
         ./${{ inputs.path-core }}/mvnw clean install -B -ntp -f ${{ inputs.path-core }}/pom.xml
-        -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
+        -pl debezium-assembly-descriptors,debezium-bom,debezium-core,debezium-embedded,:debezium-storage-file,:debezium-storage-kafka,:debezium-ide-configs,:debezium-checkstyle,:debezium-revapi
         -am
         -DskipTests=true
         -DskipITs=true
