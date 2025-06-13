@@ -50,7 +50,6 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     private AntlrDdlParserListener antlrDdlParserListener;
 
     protected Tables databaseTables;
-    protected DataTypeResolver dataTypeResolver;
 
     public AntlrDdlParser(boolean throwErrorsFromTreeWalk, boolean includeViews, boolean includeComments) {
         super(includeViews, includeComments);
@@ -64,8 +63,6 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
         CodePointCharStream ddlContentCharStream = CharStreams.fromString(ddlContent);
         L lexer = createNewLexerInstance(new CaseChangingCharStream(ddlContentCharStream, isGrammarInUpperCase()));
         P parser = createNewParserInstance(new CommonTokenStream(lexer));
-
-        dataTypeResolver = initializeDataTypeResolver();
 
         // remove default console output printing error listener
         parser.removeErrorListener(ConsoleErrorListener.INSTANCE);
@@ -138,9 +135,10 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     protected abstract boolean isGrammarInUpperCase();
 
     /**
-     * Initialize DB to JDBC data types mapping for resolver.
+     * Return DB to JDBC data types mapping resolver.
+     * @return DataTypeResolver instance
      */
-    protected abstract DataTypeResolver initializeDataTypeResolver();
+    public abstract DataTypeResolver dataTypeResolver();
 
     /**
      * Returns actual tables schema.
@@ -149,15 +147,6 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      */
     public Tables databaseTables() {
         return databaseTables;
-    }
-
-    /**
-     * Returns a data type resolver component.
-     *
-     * @return data type resolver.
-     */
-    public DataTypeResolver dataTypeResolver() {
-        return dataTypeResolver;
     }
 
     /**
