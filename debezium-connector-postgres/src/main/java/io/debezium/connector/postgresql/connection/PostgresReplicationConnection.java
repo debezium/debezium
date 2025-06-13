@@ -827,7 +827,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                 metronome.pause();
                             }
                             catch (Exception exp) {
-                                throw new RuntimeException("received unexpected exception will perform keep alive", exp);
+                                // Immediately log the error. Don't rethrow the exception, because it will
+                                // never be seen (or be seen in a timely manner).
+                                LOGGER.error("Unexpected exception while performing keepalive status update on the replication stream", exp);
+                                return;
                             }
                         }
                     });
