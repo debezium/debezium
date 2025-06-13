@@ -35,7 +35,6 @@ import io.debezium.relational.mapping.ColumnMappers;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.FieldNameSelector.FieldNamer;
-import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.spi.common.ReplacementFunction;
@@ -684,30 +683,6 @@ public class TableSchemaBuilderTest {
         assertThat(schema.keySchema().name()).isEqualTo("testSchemaPrefix.Key");
         assertThat(schema.valueSchema().name()).isEqualTo("testSchemaPrefix.Value");
         assertThat(schema.getEnvelopeSchema().schema().name()).isEqualTo("testDataTopic.Envelope");
-    }
-
-    @Test
-    @FixFor("DBZ-6641")
-    public void shouldUseDefaultOrCustomTransactionSchema() {
-        // default transaction schema
-        schema = new TableSchemaBuilder(new JdbcValueConverters(), null, adjuster, customConverterRegistry,
-                SchemaBuilder.struct().build(), defaultFieldNamer, false)
-                .create(topicNamingStrategy, table, null, null, null);
-        assertThat(schema).isNotNull();
-        assertThat(schema.keySchema().name()).isEqualTo("test.schema.table.Key");
-        assertThat(schema.valueSchema().name()).isEqualTo("test.schema.table.Value");
-        assertThat(schema.getEnvelopeSchema().schema().field("transaction").schema()).isEqualTo(SchemaFactory.get().transactionBlockSchema());
-
-        // custom transaction schema
-        Schema expectedCustomSchema = SchemaBuilder.string().build();
-        schema = new TableSchemaBuilder(new JdbcValueConverters(), adjuster, customConverterRegistry,
-                expectedCustomSchema, SchemaBuilder.string().build(), defaultFieldNamer, false)
-                .create(new CustomTopicNamingStrategy(topicProperties, null, "testSchemaPrefix"), table, null, null, null);
-
-        assertThat(schema).isNotNull();
-        assertThat(schema.keySchema().name()).isEqualTo("testSchemaPrefix.Key");
-        assertThat(schema.valueSchema().name()).isEqualTo("testSchemaPrefix.Value");
-        assertThat(schema.getEnvelopeSchema().schema().field("transaction").schema()).isEqualTo(expectedCustomSchema);
     }
 
     @Test

@@ -23,8 +23,6 @@ public abstract class AbstractSourceInfo {
     public static final String DEBEZIUM_CONNECTOR_KEY = "connector";
     public static final String SERVER_NAME_KEY = "name";
     public static final String TIMESTAMP_KEY = "ts_ms";
-    public static final String TIMESTAMP_US_KEY = "ts_us";
-    public static final String TIMESTAMP_NS_KEY = "ts_ns";
     public static final String SNAPSHOT_KEY = "snapshot";
     public static final String DATABASE_NAME_KEY = "db";
     public static final String SCHEMA_NAME_KEY = "schema";

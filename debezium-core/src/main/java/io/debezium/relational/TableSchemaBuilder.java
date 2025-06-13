@@ -212,7 +212,6 @@ public class TableSchemaBuilder {
                 .withName(schemaNameAdjuster.adjust(envelopSchemaName))
                 .withRecord(valSchema)
                 .withSource(sourceInfoSchema)
-                .withTransaction(transactionSchema)
                 .build();
 
         // Create the generators ...

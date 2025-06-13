@@ -8,8 +8,6 @@ package io.debezium.transforms;
 import static io.debezium.data.Envelope.FieldName.OPERATION;
 import static io.debezium.data.Envelope.FieldName.SOURCE;
 import static io.debezium.data.Envelope.FieldName.TIMESTAMP;
-import static io.debezium.data.Envelope.FieldName.TIMESTAMP_NS;
-import static io.debezium.data.Envelope.FieldName.TIMESTAMP_US;
 import static io.debezium.data.Envelope.FieldName.TRANSACTION;
 import static io.debezium.pipeline.txmetadata.TransactionStructMaker.DEBEZIUM_TRANSACTION_DATA_COLLECTION_ORDER_KEY;
 import static io.debezium.pipeline.txmetadata.TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY;
@@ -228,8 +226,6 @@ public abstract class AbstractExtractNewRecordState<R extends ConnectRecord<R>> 
                     return TRANSACTION;
                 case OPERATION:
                 case TIMESTAMP:
-                case TIMESTAMP_US:
-                case TIMESTAMP_NS:
                     return null;
                 // for mongodb
                 case UPDATE_DESCRIPTION:

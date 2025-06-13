@@ -29,7 +29,7 @@ import io.debezium.schema.SchemaFactory;
  */
 public final class Envelope {
 
-    public static final int SCHEMA_VERSION = 2;
+    public static final int SCHEMA_VERSION = 1;
 
     /**
      * The constants for the values for the {@link FieldName#OPERATION operation} field in the message envelope.
@@ -117,14 +117,6 @@ public final class Envelope {
          * variations.
          */
         public static final String TIMESTAMP = "ts_ms";
-        /**
-         * The {@code ts_us} field represents the {@link #TIMESTAMP} but in microseconds.
-         */
-        public static final String TIMESTAMP_US = "ts_us";
-        /**
-         * The {@code ts_ns} field represents the {@link #TIMESTAMP} but in nanoseconds.
-         */
-        public static final String TIMESTAMP_NS = "ts_ns";
     }
 
     /**
@@ -141,8 +133,6 @@ public final class Envelope {
         Set<String> fields = new HashSet<>();
         fields.add(FieldName.OPERATION);
         fields.add(FieldName.TIMESTAMP);
-        fields.add(FieldName.TIMESTAMP_US);
-        fields.add(FieldName.TIMESTAMP_NS);
         fields.add(FieldName.BEFORE);
         fields.add(FieldName.AFTER);
         fields.add(FieldName.SOURCE);
@@ -263,8 +253,6 @@ public final class Envelope {
         }
         if (timestamp != null) {
             struct.put(FieldName.TIMESTAMP, timestamp.toEpochMilli());
-            struct.put(FieldName.TIMESTAMP_US, (timestamp.getEpochSecond() * 1_000_000) + (timestamp.getNano() / 1_000));
-            struct.put(FieldName.TIMESTAMP_NS, (timestamp.getEpochSecond() * 1_000_000_000L) + timestamp.getNano());
         }
         return struct;
     }
@@ -286,8 +274,6 @@ public final class Envelope {
         }
         if (timestamp != null) {
             struct.put(FieldName.TIMESTAMP, timestamp.toEpochMilli());
-            struct.put(FieldName.TIMESTAMP_US, (timestamp.getEpochSecond() * 1_000_000) + (timestamp.getNano() / 1_000));
-            struct.put(FieldName.TIMESTAMP_NS, (timestamp.getEpochSecond() * 1_000_000_000L) + timestamp.getNano());
         }
         return struct;
     }
@@ -313,8 +299,6 @@ public final class Envelope {
         }
         if (timestamp != null) {
             struct.put(FieldName.TIMESTAMP, timestamp.toEpochMilli());
-            struct.put(FieldName.TIMESTAMP_US, (timestamp.getEpochSecond() * 1_000_000) + (timestamp.getNano() / 1_000));
-            struct.put(FieldName.TIMESTAMP_NS, (timestamp.getEpochSecond() * 1_000_000_000L) + timestamp.getNano());
         }
         return struct;
     }
@@ -338,8 +322,6 @@ public final class Envelope {
         }
         if (timestamp != null) {
             struct.put(FieldName.TIMESTAMP, timestamp.toEpochMilli());
-            struct.put(FieldName.TIMESTAMP_US, (timestamp.getEpochSecond() * 1_000_000) + (timestamp.getNano() / 1_000));
-            struct.put(FieldName.TIMESTAMP_NS, (timestamp.getEpochSecond() * 1_000_000_000L) + timestamp.getNano());
         }
         return struct;
     }
@@ -356,8 +338,6 @@ public final class Envelope {
         struct.put(FieldName.OPERATION, Operation.TRUNCATE.code());
         struct.put(FieldName.SOURCE, source);
         struct.put(FieldName.TIMESTAMP, timestamp.toEpochMilli());
-        struct.put(FieldName.TIMESTAMP_US, (timestamp.getEpochSecond() * 1_000_000) + (timestamp.getNano() / 1_000));
-        struct.put(FieldName.TIMESTAMP_NS, (timestamp.getEpochSecond() * 1_000_000_000L) + timestamp.getNano());
         return struct;
     }
 
