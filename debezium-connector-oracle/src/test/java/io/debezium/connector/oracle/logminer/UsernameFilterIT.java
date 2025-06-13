@@ -6,6 +6,7 @@
 package io.debezium.connector.oracle.logminer;
 
 import static io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName.ANY_LOGMINER;
+import static io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.runners.Parameterized.Parameters;
 
@@ -35,6 +36,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
+import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningBufferType;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -85,7 +87,6 @@ public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
 
     @Test
     @FixFor("DBZ-3978")
-    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED, reason = "Buffered filters at commit time while unbuffered filters at transaction start")
     public void shouldExcludeEventsByUsernameFilter() throws Exception {
         try {
             TestHelper.dropTable(connection, "dbz3978");
@@ -114,13 +115,59 @@ public class UsernameFilterIT extends AbstractAsyncEngineConnectorTest {
             // all messages are filtered out
             assertThat(waitForAvailableRecords(10, TimeUnit.SECONDS)).isFalse();
 
-            // There should be at least 2 DML events captured but ignored
             Long totalDmlCount = getStreamingMetric("TotalCapturedDmlCount");
-            assertThat(totalDmlCount).isGreaterThanOrEqualTo(2L);
+            assertThat(totalDmlCount).isGreaterThanOrEqualTo(0L);
 
         }
         finally {
             TestHelper.dropTable(connection, "dbz3978");
+        }
+    }
+
+    @Test
+    @FixFor("DBZ-9000")
+    @SkipWhenAdapterNameIsNot(value = LOGMINER_BUFFERED, reason = "Buffered filters at commit time while unbuffered filters at transaction start")
+    public void shouldExcludeEventsByUsernameFilterOnlyAtCommitTime() throws Exception {
+        try {
+            TestHelper.dropTable(connection, "dbz9000");
+
+            connection.execute("CREATE TABLE dbz9000 (id number(9,0), data varchar2(50), primary key (id))");
+            TestHelper.streamTable(connection, "dbz9000");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ9000")
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, OracleConnectorConfig.SnapshotMode.NO_DATA)
+                    .with(OracleConnectorConfig.LOG_MINING_USERNAME_EXCLUDE_LIST, "DEBEZIUM")
+                    // This test expects the filtering to occur in the connector, not the query
+                    .with(OracleConnectorConfig.LOG_MINING_QUERY_FILTER_MODE, "none")
+                    // Uses legacy behavior
+                    .with(OracleConnectorConfig.LOG_MINING_BUFFER_MEMORY_LEGACY_TRANSACTION_START, "true")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.executeWithoutCommitting("INSERT INTO debezium.dbz9000 VALUES (1, 'Test1')");
+            connection.executeWithoutCommitting("INSERT INTO debezium.dbz9000 VALUES (2, 'Test2')");
+            connection.execute("COMMIT");
+
+            // all messages are filtered out
+            assertThat(waitForAvailableRecords(10, TimeUnit.SECONDS)).isFalse();
+
+            long expectedTotalDmlCount = 0L;
+            if (LogMiningBufferType.MEMORY.equals(TestHelper.getLogMiningBufferType(config))) {
+                // Because we've enabled the legacy transaction start behavior for memory caches
+                expectedTotalDmlCount = 2L;
+            }
+
+            Long totalDmlCount = getStreamingMetric("TotalCapturedDmlCount");
+            assertThat(totalDmlCount).isGreaterThanOrEqualTo(expectedTotalDmlCount);
+
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz9000");
         }
     }
 
