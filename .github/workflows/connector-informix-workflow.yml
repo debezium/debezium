@@ -21,7 +21,7 @@ jobs:
       max-parallel: ${{ inputs.max-parallel }}
       fail-fast: false
       matrix:
-        profile: [ "assembly,informix12", "assembly,informix14" ]
+        profile: [ "assembly,informix12", "assembly,informix14", "assembly,informix15" ]
     name: Informix - ${{ matrix.profile }}
     runs-on: ubuntu-latest
 
@@ -49,4 +49,5 @@ jobs:
         with:
           path-core: core
           path-informix: informix
+          cache-hit: ${{ steps.cache-check.outputs.cache-hit }}
           profile: ${{ matrix.profile }}
