@@ -48,6 +48,7 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
     private final ConcurrentHashMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
     private final Tables.TableFilter tableFilter;
     private final BinlogCharsetRegistry charsetRegistry;
+    private static final DataTypeResolver dataTypeResolver = initializeDataTypeResolver();
 
     @VisibleForTesting
     public MariaDbAntlrDdlParser() {
@@ -98,7 +99,11 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
     }
 
     @Override
-    protected DataTypeResolver initializeDataTypeResolver() {
+    public DataTypeResolver dataTypeResolver() {
+        return dataTypeResolver;
+    }
+
+    private static DataTypeResolver initializeDataTypeResolver() {
         DataTypeResolver.Builder dataTypeResolverBuilder = new DataTypeResolver.Builder();
         dataTypeResolverBuilder.registerDataTypes(MariaDBParser.StringDataTypeContext.class.getCanonicalName(), Arrays.asList(
                 new DataTypeResolver.DataTypeEntry(Types.CHAR, MariaDBParser.CHAR),
