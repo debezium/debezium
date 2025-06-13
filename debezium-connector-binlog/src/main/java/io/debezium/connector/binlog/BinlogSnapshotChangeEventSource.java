@@ -27,6 +27,8 @@ import java.util.concurrent.CompletionService;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -58,6 +60,7 @@ import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 import io.debezium.util.Collect;
 import io.debezium.util.Strings;
+import io.debezium.util.Threads;
 
 /**
  * An abstract implementation of {@link SnapshotChangeEventSource} for binlog-based connectors.
@@ -69,6 +72,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BinlogSnapshotChangeEventSource.class);
     private static final Logger ROW_ESTIMATE_LOGGER = LoggerFactory.getLogger(BinlogSnapshotChangeEventSource.class.getName() + ".RowEstimate");
+    private static final Integer LOCK_HEARTBEAT_INTERVAL = 30;
 
     private final BinlogConnectorConfig connectorConfig;
     private final BinlogConnectorConnection connection;
@@ -81,6 +85,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
     private Set<TableId> delayedSchemaSnapshotTables = Collections.emptySet();
     private long globalLockAcquiredAt = -1;
     private long tableLockAcquiredAt = -1;
+    private ScheduledExecutorService lockKeepAliveExecutor;
 
     public BinlogSnapshotChangeEventSource(BinlogConnectorConfig connectorConfig,
                                            MainConnectionProvidingConnectionFactory<BinlogConnectorConnection> connectionFactory,
@@ -497,6 +502,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         if (lockingStatement.isPresent()) {
             connection.executeWithoutCommitting(lockingStatement.get());
             globalLockAcquiredAt = clock.currentTimeInMillis();
+            startLockHeartbeat();
         }
     }
 
@@ -507,6 +513,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         metrics.setGlobalLockReleased();
         LOGGER.info("Writes to MySQL tables prevented for a total of {}", Strings.duration(lockReleased - globalLockAcquiredAt));
         globalLockAcquiredAt = -1;
+        stopLockHeartbeat();
     }
 
     private void tableLock(RelationalSnapshotContext<P, O> snapshotContext)
@@ -532,6 +539,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         }
         tableLockAcquiredAt = clock.currentTimeInMillis();
         metrics.setGlobalLockAcquired();
+        startLockHeartbeat();
     }
 
     private void tableUnlock() throws SQLException {
@@ -541,6 +549,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         metrics.setGlobalLockReleased();
         LOGGER.info("Writes to MySQL tables prevented for a total of {}", Strings.duration(lockReleased - tableLockAcquiredAt));
         tableLockAcquiredAt = -1;
+        stopLockHeartbeat();
     }
 
     private String quote(String dbOrTableName) {
@@ -668,5 +677,33 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         lastEventProcessor.accept(Function.identity());
 
         super.aborted(snapshotContext);
+    }
+
+    private void startLockHeartbeat() {
+        if (lockKeepAliveExecutor == null || lockKeepAliveExecutor.isShutdown()) {
+            LOGGER.info("Starting lock heartbeat");
+            lockKeepAliveExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "mysql-snapshot-lock-heartbeat");
+                t.setDaemon(true);
+                return t;
+            });
+            Runnable task = () -> {
+                try {
+                    connection.query("SELECT 1", rs -> {
+                    });
+                }
+                catch (SQLException e) {
+                    LOGGER.warn("Snapshot lock heartbeat query failed", e);
+                }
+            };
+            lockKeepAliveExecutor.scheduleAtFixedRate(task, LOCK_HEARTBEAT_INTERVAL, LOCK_HEARTBEAT_INTERVAL, TimeUnit.SECONDS);
+        }
+    }
+
+    private void stopLockHeartbeat() {
+        if (lockKeepAliveExecutor != null) {
+            lockKeepAliveExecutor.shutdownNow();
+            lockKeepAliveExecutor = null;
+        }
     }
 }
