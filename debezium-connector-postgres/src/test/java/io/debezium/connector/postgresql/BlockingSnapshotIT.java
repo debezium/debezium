@@ -6,7 +6,6 @@
 
 package io.debezium.connector.postgresql;
 
-import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static io.debezium.pipeline.signal.actions.AbstractSnapshotSignal.SnapshotType.BLOCKING;
 
 import java.nio.file.Path;
@@ -23,7 +22,6 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.pipeline.AbstractBlockingSnapshotTest;
 import io.debezium.pipeline.signal.channels.FileSignalChannel;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
@@ -149,61 +147,6 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest<PostgresCon
         startConnector();
 
         sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("", "", BLOCKING, tableDataCollectionId());
-
-        waitForLogMessage("Snapshot completed", AbstractSnapshotChangeEventSource.class);
-
-        int signalingRecords = 1;
-
-        assertRecordsFromSnapshotAndStreamingArePresent(ROW_COUNT, consumeRecordsByTopic(ROW_COUNT + signalingRecords, 10));
-
-        insertRecords(ROW_COUNT, ROW_COUNT * 2);
-
-        assertStreamingRecordsArePresent(ROW_COUNT, consumeRecordsByTopic(ROW_COUNT, 10));
-
-    }
-
-    @FixFor("DBZ-8680")
-    @Test
-    @SkipWhenDatabaseVersion(check = LESS_THAN, major = 14, minor = 0, reason = "idle_session_timeout not supported for PG version < 14")
-    public void probeConnectionDuringBlockingSnapshot() throws Exception {
-        // Testing.Print.enable();
-
-        // This test ensures that the streaming connection is periodically probed while a blocking snapshot is taken. This helps reduce the risk
-        // of an idle disconnect during the snapshot due to inactivity on the streaming connection. If such a disconnect were to occur, then it
-        // would mean that the connector would fail to resume streaming after the snapshot is finished. What's worse: the snapshot completion
-        // may not be committed, leading to an infinite snapshot loop with the connector failing after every snapshot attempt.
-
-        // Avoid to start the streaming from data inserted before the connector start
-        TestHelper.dropDefaultReplicationSlot();
-        TestHelper.dropPublication();
-
-        populateTable();
-
-        final long snapshotDelayMs = 10000;
-        startConnector(x -> config()
-                // Wait several seconds before starting the blocking snapshot. During this time, streaming has been paused, and could be at risk of
-                // an idle disconnection if the connector does not keep the connection active.
-                .with(CommonConnectorConfig.SNAPSHOT_DELAY_MS, snapshotDelayMs)
-                // When streaming is paused, the streaming connection is idle. Disconnect it if it's idle for too long.
-                // "options" is a PostgreSQL JDBC driver connection parameter that lets us pass through PG client configuration parameters.
-                // While this is a simple mechanism for the test, in complex cloud environments there could always be other factors that lead to
-                // idle TCP connections getting disconnected.
-                //
-                // For this test, the values must be lower than the snapshot delay, configured above.
-                .with(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + "options", "-c idle_session_timeout=5000 -c idle_in_transaction_session_timeout=5000")
-                // The status update interval is also used as the frequency at which to probe the streaming connection. For this test, it must be
-                // less than the idle timeouts configured on the JDBC driver, configured above.
-                .with(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS, 2000)
-                // Disable retries: if the test is going to fail, this makes it fail cleaner:
-                .with(CommonConnectorConfig.ERRORS_MAX_RETRIES, 0)
-
-        );
-
-        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("", "", BLOCKING, tableDataCollectionId());
-
-        // Make sure the log message emitted by SNAPSHOT_DELAY_MS does get logged, thus ensuring that the snapshot took at least the configured
-        // snapshot delay, so that we know idle timeouts could be reached in a failing test scenario.
-        waitForLogMessage("The connector will wait for", AbstractSnapshotChangeEventSource.class);
 
         waitForLogMessage("Snapshot completed", AbstractSnapshotChangeEventSource.class);
 

@@ -31,19 +31,6 @@ public interface ChangeEventSource {
         void waitSnapshotCompletion() throws InterruptedException;
 
         /**
-         * Wait for the resumeStreaming function to be called, which indicates that a snapshot is done
-         * and that streaming should resume.
-         *
-         * @param heartbeatCallback A callback function which will be periodically called while waiting for
-         *                          the snapshot to be completed.  Implementations should be kept simple and
-         *                          relatively fast: only do activities like generating activity on the
-         *                          streaming database connection to prevent idle timeouts.  Implementations
-         *                          should also check their own ElapsedTimeStrategy to control how often any
-         *                          heartbeat activities actually occur.
-         */
-        void waitSnapshotCompletion(Runnable heartbeatCallback) throws InterruptedException;
-
-        /**
          * Called by the StreamingChangeEventSource to indicate that the streaming has now been paused, and
          * that no streaming records are being processed anymore.
          */
