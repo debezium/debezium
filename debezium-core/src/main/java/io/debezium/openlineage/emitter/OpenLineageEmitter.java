@@ -10,6 +10,7 @@ import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetType.OUTPUT
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 
@@ -105,18 +106,13 @@ public class OpenLineageEmitter implements LineageEmitter {
                                 ProcessingEngineMetadata.debezium().version(),
                                 ProcessingEngineMetadata.debezium().name(),
                                 ProcessingEngineMetadata.debezium().openlineageAdapterVersion()))
-                .nominalTime(
-                        openLineageContext.getOpenLineage().newNominalTimeRunFacetBuilder()
-                                .nominalStartTime(ZonedDateTime.now())
-                                .nominalEndTime(ZonedDateTime.now())
-                                .build())
                 .put(DebeziumConfigFacet.FACET_KEY_NAME, new DebeziumConfigFacet(emitter.getProducer(), config.asMap()));
 
         addStackTrace(t, runFacetsBuilder);
 
         OpenLineage.RunEvent startEvent = openLineageContext.getOpenLineage().newRunEventBuilder()
                 .eventType(getEventType(state))
-                .eventTime(ZonedDateTime.now())
+                .eventTime(ZonedDateTime.now(ZoneOffset.UTC))
                 .run(openLineageContext.getOpenLineage().newRun(openLineageContext.getRunUuid(), runFacetsBuilder.build()))
                 .inputs(inputs)
                 .outputs(outputs)
