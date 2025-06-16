@@ -10,7 +10,7 @@ import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetType.OUTPUT
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.List;
 
