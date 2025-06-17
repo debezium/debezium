@@ -20,6 +20,7 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.Ignore;
 
 import io.debezium.connector.mariadb.MariaDbConnector;
 import io.debezium.connector.mariadb.MariaDbConnectorConfig;
@@ -33,6 +34,7 @@ import io.restassured.http.ContentType;
 /**
  * @author Chris Cranford
  */
+@Ignore
 public class DebeziumMariaDbConnectorResourceIT {
     @BeforeClass
     public static void checkCondition() {

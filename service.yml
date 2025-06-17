@@ -9,5 +9,5 @@ semaphore:
   enable: true
   pipeline_type: cp
   cve_scan: true
-  extra_build_args: "-Dcloud -Passembly -pl debezium-connector-mysql,debezium-connector-postgres,debezium-connector-sqlserver -am"
-  extra_deploy_args: "-Dcloud -Passembly -pl debezium-connector-mysql,debezium-connector-postgres,debezium-connector-sqlserver -am"
+  extra_build_args: "-Dcloud -Passembly -pl debezium-connector-mariadb,debezium-connector-mysql,debezium-connector-postgres,debezium-connector-sqlserver -am"
+  extra_deploy_args: "-Dcloud -Passembly -pl debezium-connector-mariadb,debezium-connector-mysql,debezium-connector-postgres,debezium-connector-sqlserver -am"
