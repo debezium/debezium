@@ -1,0 +1,25 @@
+name: "Build Debezium OpenLineage"
+description: "Builds the Debezium OpenLineage module"
+
+inputs:
+  maven-cache-key:
+    description: "The maven build cache key"
+    required: true
+  shell:
+    description: "The shell to use"
+    required: false
+    default: bash
+
+runs:
+  using: "composite"
+  steps:
+    - uses: ./.github/actions/setup-java
+  
+    - uses: ./.github/actions/maven-cache
+      with:
+        key: ${{ inputs.maven-cache-key }}
+
+    - name: Build Debezium OpenLineage module
+      shell: ${{ inputs.shell }}
+      run: >
+        ./mvnw clean install -B -pl :debezium-openlineage-api,:debezium-openlineage-core -am

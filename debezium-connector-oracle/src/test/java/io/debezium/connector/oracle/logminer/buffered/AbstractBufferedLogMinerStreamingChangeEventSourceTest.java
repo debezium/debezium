@@ -91,7 +91,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     @Before
     @SuppressWarnings({ "unchecked" })
     public void before() throws Exception {
-        DebeziumOpenLineageEmitter.init(getConfig().build(), "oracle");
+        DebeziumOpenLineageEmitter.init(getConfig().build().asMap(), "oracle");
         this.context = Mockito.mock(ChangeEventSourceContext.class);
         Mockito.when(this.context.isRunning()).thenReturn(true);
 
