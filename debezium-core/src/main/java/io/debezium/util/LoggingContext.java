@@ -29,7 +29,7 @@ public class LoggingContext {
     /**
      * The key for the connector logical name MDC property.
      */
-    public static final String CONNECTOR_NAME = "dbz.connectorName";
+    public static final String CONNECTOR_NAME = "dbz.connectorLogicalName";
     /**
      * The key for the connector context name MDC property.
      */
@@ -88,7 +88,7 @@ public class LoggingContext {
      * @param contextName the name of the context; may not be null
      * @param partition the partition; may be null
      * @return the previous MDC context; never null
-     * @throws NullPointerException if connectorType, connectorName, or contextName parameters are null
+     * @throws NullPointerException if connectorType, connectorLogicalName, or contextName parameters are null
      */
     public static PreviousContext forConnector(String connectorType, String connectorName, String taskId, String contextName, Partition partition) {
         Objects.requireNonNull(connectorType, "The MDC value for the connector type may not be null");

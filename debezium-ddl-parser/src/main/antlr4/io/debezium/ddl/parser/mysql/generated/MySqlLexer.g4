@@ -470,7 +470,6 @@ DUMPFILE                    : 'DUMPFILE';
 DUPLICATE                   : 'DUPLICATE';
 DYNAMIC                     : 'DYNAMIC';
 ENABLE                      : 'ENABLE';
-ENCRYPTED                   : 'ENCRYPTED';
 ENCRYPTION                  : 'ENCRYPTION';
 ENCRYPTION_KEY_ID           : 'ENCRYPTION_KEY_ID';
 END                         : 'END';
@@ -825,6 +824,7 @@ TABLES                      : 'TABLES';
 TABLE_ENCRYPTION_ADMIN      : 'TABLE_ENCRYPTION_ADMIN';
 VERSION_TOKEN_ADMIN         : 'VERSION_TOKEN_ADMIN';
 XA_RECOVER_ADMIN            : 'XA_RECOVER_ADMIN';
+GROUP_REPLICATION_STREAM   : 'GROUP_REPLICATION_STREAM';
 
 // Charsets
 

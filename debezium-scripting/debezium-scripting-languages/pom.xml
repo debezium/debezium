@@ -38,7 +38,7 @@
         </dependency>
         <dependency>
             <groupId>com.dylibso.chicory</groupId>
-            <artifactId>aot-experimental</artifactId>
+            <artifactId>compiler</artifactId>
         </dependency>
     </dependencies>
 </project>

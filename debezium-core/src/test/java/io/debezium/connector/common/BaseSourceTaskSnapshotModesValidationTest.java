@@ -14,8 +14,12 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTaskContext;
 import org.junit.Before;
@@ -27,8 +31,8 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.doc.FixFor;
 import io.debezium.function.LogPositionValidator;
-import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
@@ -63,7 +67,7 @@ public class BaseSourceTaskSnapshotModesValidationTest {
         when(snapshotter.shouldSnapshotData(true, true)).thenReturn(false);
         when(snapshotter.shouldSnapshotSchema(true, true)).thenReturn(true);
 
-        assertThatCode(() -> baseSourceTask.validateAndLoadSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter))
+        assertThatCode(() -> baseSourceTask.validateSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter))
                 .doesNotThrowAnyException();
 
     }
@@ -84,7 +88,7 @@ public class BaseSourceTaskSnapshotModesValidationTest {
         when(snapshotter.shouldSnapshotData(true, true)).thenReturn(false);
         when(snapshotter.shouldSnapshotSchema(true, true)).thenReturn(false);
 
-        assertThatCode(() -> baseSourceTask.validateAndLoadSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter))
+        assertThatCode(() -> baseSourceTask.validateSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter))
                 .isInstanceOf(DebeziumException.class)
                 .hasMessage("The connector previously stopped while taking a snapshot, but now the connector is configured "
                         + "to never allow snapshots. Reconfigure the connector to use snapshots initially or when needed.");
@@ -105,7 +109,7 @@ public class BaseSourceTaskSnapshotModesValidationTest {
 
         when(snapshotter.shouldSnapshotOnSchemaError()).thenReturn(true);
 
-        assertThatThrownBy(() -> baseSourceTask.validateAndLoadSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter))
+        assertThatThrownBy(() -> baseSourceTask.validateSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter))
                 .isInstanceOf(DebeziumException.class)
                 .hasMessage("Could not find existing redo log information while attempting schema only recovery snapshot");
 
@@ -126,7 +130,7 @@ public class BaseSourceTaskSnapshotModesValidationTest {
         when(databaseSchema.getSchemaHistory()).thenReturn(schemaHistory);
         Snapshotter snapshotter = mock(Snapshotter.class);
 
-        baseSourceTask.validateAndLoadSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter);
+        baseSourceTask.validateSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter);
 
         verify(databaseSchema).initializeStorage();
     }
@@ -149,7 +153,7 @@ public class BaseSourceTaskSnapshotModesValidationTest {
         Snapshotter snapshotter = mock(Snapshotter.class);
         when(snapshotter.shouldSnapshotOnSchemaError()).thenReturn(true);
 
-        baseSourceTask.validateAndLoadSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter);
+        baseSourceTask.validateSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter);
 
         verify(databaseSchema).initializeStorage();
 
@@ -173,7 +177,7 @@ public class BaseSourceTaskSnapshotModesValidationTest {
         Snapshotter snapshotter = mock(Snapshotter.class);
         when(snapshotter.shouldSnapshotOnSchemaError()).thenReturn(false);
 
-        assertThatThrownBy(() -> baseSourceTask.validateAndLoadSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter))
+        assertThatThrownBy(() -> baseSourceTask.validateSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter))
                 .isInstanceOf(DebeziumException.class)
                 .hasMessage("The db history topic is missing. You may attempt to recover it by reconfiguring the connector to recovery.");
 
@@ -198,16 +202,12 @@ public class BaseSourceTaskSnapshotModesValidationTest {
         when(schemaHistory.exists()).thenReturn(true);
         Snapshotter snapshotter = mock(Snapshotter.class);
 
-        baseSourceTask.validateAndLoadSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter);
-
-        verify(databaseSchema).recover(partition, offset);
+        baseSourceTask.validateSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter);
 
     }
 
     @Test
-    public void whenCompletedSnapshotExistsAndStoredOffsetPositionIsNotPresentOnDbLogThenAWarnShouldBeLogged() {
-
-        LogInterceptor logInterceptor = new LogInterceptor(BaseSourceTask.class);
+    public void whenCompletedSnapshotExistsAndStoredOffsetPositionIsNotPresentOnDbLogThenAnExceptionShouldBeThrown() {
 
         CommonConnectorConfig commonConnectorConfig = mock(CommonConnectorConfig.class);
         when(commonConnectorConfig.isLogPositionCheckEnabled()).thenReturn(true);
@@ -216,6 +216,10 @@ public class BaseSourceTaskSnapshotModesValidationTest {
         Partition partition = mock(Partition.class);
         OffsetContext offset = mock(OffsetContext.class);
         when(offset.isInitialSnapshotRunning()).thenReturn(false);
+        Schema schema = SchemaBuilder.struct().field("test", Schema.STRING_SCHEMA).build();
+        Struct sourceInfo = new Struct(schema);
+        sourceInfo.put("test", "test-offset");
+        when(offset.getSourceInfo()).thenReturn(sourceInfo);
 
         Offsets previousOffsets = Offsets.of(partition, offset);
         HistorizedDatabaseSchema databaseSchema = mock(HistorizedDatabaseSchema.class);
@@ -224,12 +228,13 @@ public class BaseSourceTaskSnapshotModesValidationTest {
         when(databaseSchema.getSchemaHistory()).thenReturn(schemaHistory);
         when(schemaHistory.exists()).thenReturn(true);
         Snapshotter snapshotter = mock(Snapshotter.class);
+        when(snapshotter.shouldSnapshotOnDataError()).thenReturn(false);
+        when(snapshotter.shouldStream()).thenReturn(true);
 
-        baseSourceTask.validateAndLoadSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter);
-
-        assertThat(logInterceptor.containsWarnMessage("The connector is trying to read redo log starting at " + offset + ", but this is no longer "
-                + "available on the server. Reconfigure the connector to use a snapshot when needed if you want to recover. " +
-                "If not the connector will streaming from the last available position in the log")).isTrue();
+        assertThatThrownBy(() -> baseSourceTask.validateSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter))
+                .isInstanceOf(DebeziumException.class)
+                .hasMessage("The connector is trying to read change stream starting at Struct{test=test-offset}, but this is no longer "
+                        + "available on the server. Reconfigure the connector to use a snapshot mode when needed.");
 
     }
 
@@ -252,8 +257,9 @@ public class BaseSourceTaskSnapshotModesValidationTest {
         when(databaseSchema.getSchemaHistory().exists()).thenReturn(true);
         Snapshotter snapshotter = mock(Snapshotter.class);
         when(snapshotter.shouldSnapshotOnDataError()).thenReturn(true);
+        when(snapshotter.shouldStream()).thenReturn(true);
 
-        baseSourceTask.validateAndLoadSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter);
+        baseSourceTask.validateSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter);
 
         assertThat(previousOffsets.getTheOnlyOffset()).isNull();
 
@@ -274,8 +280,18 @@ public class BaseSourceTaskSnapshotModesValidationTest {
         }
 
         @Override
+        protected String connectorName() {
+            return "";
+        }
+
+        @Override
         protected List<SourceRecord> doPoll() {
             return records;
+        }
+
+        @Override
+        protected Optional<ErrorHandler> getErrorHandler() {
+            return Optional.empty();
         }
 
         @Override

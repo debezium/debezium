@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,19 +68,21 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String STATEMENTS_PLACEHOLDER = "#";
     private static final String DATABASE_NAME_PLACEHOLDER = "#db";
     private static final String TABLE_NAME_PLACEHOLDER = "#table";
-    private static final String GET_MAX_LSN = "SELECT [#db].sys.fn_cdc_get_max_lsn()";
-    private static final String GET_MAX_TRANSACTION_LSN = "SELECT MAX(start_lsn) FROM [#db].cdc.lsn_time_mapping WHERE tran_id <> 0x00";
-    private static final String GET_NTH_TRANSACTION_LSN_FROM_BEGINNING = "SELECT MAX(start_lsn) FROM (SELECT TOP (?) start_lsn FROM [#db].cdc.lsn_time_mapping WHERE tran_id <> 0x00 ORDER BY start_lsn) as next_lsns";
-    private static final String GET_NTH_TRANSACTION_LSN_FROM_LAST = "SELECT MAX(start_lsn) FROM (SELECT TOP (? + 1) start_lsn FROM [#db].cdc.lsn_time_mapping WHERE start_lsn >= ? AND tran_id <> 0x00 ORDER BY start_lsn) as next_lsns";
+    private static final String FUNCTION_NAME_PLACEHOLDER = "#function";
+    private static final String GET_ALL_CHANGES_FUNCTION_PREFIX = "fn_cdc_get_all_changes_";
+    private static final String GET_MAX_LSN = "SELECT #db.sys.fn_cdc_get_max_lsn()";
+    private static final String GET_MAX_TRANSACTION_LSN = "SELECT MAX(start_lsn) FROM #db.cdc.lsn_time_mapping WHERE tran_id <> 0x00";
+    private static final String GET_NTH_TRANSACTION_LSN_FROM_BEGINNING = "SELECT MAX(start_lsn) FROM (SELECT TOP (?) start_lsn FROM #db.cdc.lsn_time_mapping WHERE tran_id <> 0x00 ORDER BY start_lsn) as next_lsns";
+    private static final String GET_NTH_TRANSACTION_LSN_FROM_LAST = "SELECT MAX(start_lsn) FROM (SELECT TOP (? + 1) start_lsn FROM #db.cdc.lsn_time_mapping WHERE start_lsn >= ? AND tran_id <> 0x00 ORDER BY start_lsn) as next_lsns";
 
-    private static final String GET_MIN_LSN = "SELECT [#db].sys.fn_cdc_get_min_lsn('#')";
-    private static final String LOCK_TABLE = "SELECT * FROM [#] WITH (TABLOCKX)";
-    private static final String INCREMENT_LSN = "SELECT [#db].sys.fn_cdc_increment_lsn(?)";
-    protected static final String LSN_TIMESTAMP_SELECT_STATEMENT = "TODATETIMEOFFSET([#db].sys.fn_cdc_map_lsn_to_time([__$start_lsn]), DATEPART(TZOFFSET, SYSDATETIMEOFFSET()))";
+    private static final String GET_MIN_LSN = "SELECT #db.sys.fn_cdc_get_min_lsn(?)";
+    private static final String LOCK_TABLE = "SELECT * FROM #table WITH (TABLOCKX)";
+    private static final String INCREMENT_LSN = "SELECT #db.sys.fn_cdc_increment_lsn(?)";
+    protected static final String LSN_TIMESTAMP_SELECT_STATEMENT = "TODATETIMEOFFSET(#db.sys.fn_cdc_map_lsn_to_time([__$start_lsn]), DATEPART(TZOFFSET, SYSDATETIMEOFFSET()))";
     private static final String GET_ALL_CHANGES_FOR_TABLE_SELECT = "SELECT [__$start_lsn], [__$seqval], [__$operation], [__$update_mask], #, "
             + LSN_TIMESTAMP_SELECT_STATEMENT;
-    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION = "FROM [#db].cdc.[fn_cdc_get_all_changes_#table](?, ?, N'all update old')";
-    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT = "FROM [#db].cdc.[#table]";
+    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION = "FROM #db.cdc.#function(?, ?, N'all update old')";
+    private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT = "FROM #db.cdc.#table";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_FUNCTION_ORDER_BY = "ORDER BY [__$start_lsn] ASC, [__$seqval] ASC, [__$operation] ASC";
     private static final String GET_ALL_CHANGES_FOR_TABLE_FROM_DIRECT_ORDER_BY = "ORDER BY [__$start_lsn] ASC, [__$command_id] ASC, [__$seqval] ASC, [__$operation] ASC";
 
@@ -87,7 +90,7 @@ public class SqlServerConnection extends JdbcConnection {
      * Queries the list of captured column names and their change table identifiers in the given database.
      */
     private static final String GET_CAPTURED_COLUMNS = "SELECT object_id, column_name" +
-            " FROM [#db].cdc.captured_columns" +
+            " FROM #db.cdc.captured_columns" +
             " ORDER BY object_id, column_id";
 
     /**
@@ -103,7 +106,7 @@ public class SqlServerConnection extends JdbcConnection {
     private static final String GET_CHANGE_TABLES = "WITH ordered_change_tables" +
             " AS (SELECT ROW_NUMBER() OVER (PARTITION BY ct.source_object_id, ct.start_lsn ORDER BY ct.create_date DESC) AS ct_sequence," +
             " ct.*" +
-            " FROM [#db].cdc.change_tables AS ct#)" +
+            " FROM #db.cdc.change_tables AS ct#)" +
             " SELECT OBJECT_SCHEMA_NAME(source_object_id, DB_ID(?))," +
             " OBJECT_NAME(source_object_id, DB_ID(?))," +
             " capture_instance," +
@@ -111,8 +114,8 @@ public class SqlServerConnection extends JdbcConnection {
             " start_lsn" +
             " FROM ordered_change_tables WHERE ct_sequence = 1";
 
-    private static final String GET_NEW_CHANGE_TABLES = "SELECT * FROM [#db].cdc.change_tables WHERE start_lsn BETWEEN ? AND ?";
-    private static final String GET_MIN_LSN_FROM_ALL_CHANGE_TABLES = "select min(start_lsn) from [#db].cdc.change_tables";
+    private static final String GET_NEW_CHANGE_TABLES = "SELECT * FROM #db.cdc.change_tables WHERE start_lsn BETWEEN ? AND ?";
+    private static final String GET_MIN_LSN_FROM_ALL_CHANGE_TABLES = "select min(start_lsn) from #db.cdc.change_tables";
     private static final String OPENING_QUOTING_CHARACTER = "[";
     private static final String CLOSING_QUOTING_CHARACTER = "]";
 
@@ -130,7 +133,7 @@ public class SqlServerConnection extends JdbcConnection {
     private static final Field AGENT_STATUS_QUERY = Field.create("sqlserver.agent.status.query")
             .withDescription("Query to get the running status of the SQL Server Agent")
             .withDefault(
-                    "SELECT CASE WHEN dss.[status]=4 THEN 1 ELSE 0 END AS isRunning FROM [#db].sys.dm_server_services dss WHERE dss.[servicename] LIKE N'SQL Server Agent (%';");
+                    "SELECT CASE WHEN dss.[status]=4 THEN 1 ELSE 0 END AS isRunning FROM #db.sys.dm_server_services dss WHERE dss.[servicename] LIKE N'SQL Server Agent (%';");
 
     /**
      * Creates a new connection using the supplied configuration.
@@ -266,6 +269,18 @@ public class SqlServerConnection extends JdbcConnection {
     }
 
     /**
+     * The {@code [} character is used in SQL Server's extended pattern syntax to define character ranges or sets.
+     *
+     * @see <a href="https://learn.microsoft.com/en-us/sql/t-sql/language-elements/like-transact-sql#pattern">
+     *     SQL Server LIKE pattern syntax</a>
+     */
+    @Override
+    protected Set<Character> getLikeWildcardCharacters() {
+        return Stream.concat(super.getLikeWildcardCharacters().stream(), Stream.of('['))
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    /**
      * Returns a JDBC connection string for the current configuration.
      *
      * @return a {@code String} where the variables in {@code urlPattern} are replaced with values from the configuration
@@ -342,9 +357,10 @@ public class SqlServerConnection extends JdbcConnection {
      * @return the smallest log sequence number of table
      */
     public Lsn getMinLsn(String databaseName, String changeTableName) throws SQLException {
-        String query = replaceDatabaseNamePlaceholder(GET_MIN_LSN, databaseName)
-                .replace(STATEMENTS_PLACEHOLDER, changeTableName);
-        return queryAndMap(query, singleResultMapper(rs -> {
+        String query = replaceDatabaseNamePlaceholder(GET_MIN_LSN, databaseName);
+        return prepareQueryAndMap(query, preparer -> {
+            preparer.setString(1, changeTableName);
+        }, singleResultMapper(rs -> {
             final Lsn ret = Lsn.valueOf(rs.getBytes(1));
             LOGGER.trace("Current minimum lsn is {}", ret);
             return ret;
@@ -366,17 +382,18 @@ public class SqlServerConnection extends JdbcConnection {
                                         Lsn intervalToLsn, int maxRows)
             throws SQLException {
         String databaseName = changeTable.getSourceTableId().catalog();
-        String capturedColumns = changeTable.getCapturedColumns().stream().map(c -> "[" + c + "]")
+        String capturedColumns = changeTable.getCapturedColumns().stream().map(this::quoteIdentifier)
                 .collect(Collectors.joining(", "));
 
-        String source = changeTable.getCaptureInstance();
-        if (config.getDataQueryMode() == SqlServerConnectorConfig.DataQueryMode.DIRECT) {
-            source = changeTable.getChangeTableId().table();
-        }
-
         String query = replaceDatabaseNamePlaceholder(getAllChangesForTable, databaseName)
-                .replaceFirst(STATEMENTS_PLACEHOLDER, Matcher.quoteReplacement(capturedColumns))
-                .replace(TABLE_NAME_PLACEHOLDER, source);
+                .replaceFirst(STATEMENTS_PLACEHOLDER, Matcher.quoteReplacement(capturedColumns));
+
+        query = switch (config.getDataQueryMode()) {
+            case FUNCTION ->
+                query.replace(FUNCTION_NAME_PLACEHOLDER, quoteIdentifier(GET_ALL_CHANGES_FUNCTION_PREFIX.concat(changeTable.getCaptureInstance())));
+            case DIRECT ->
+                query.replace(TABLE_NAME_PLACEHOLDER, quoteIdentifier(changeTable.getChangeTableId().table()));
+        };
 
         if (maxRows > 0) {
             query = query.replace("SELECT ", String.format("SELECT TOP %d ", maxRows));
@@ -450,50 +467,9 @@ public class SqlServerConnection extends JdbcConnection {
      */
     public boolean checkIfConnectedUserHasAccessToCDCTable(String databaseName) throws SQLException {
         final AtomicBoolean userHasAccess = new AtomicBoolean();
-        final String query = replaceDatabaseNamePlaceholder("EXEC [#db].sys.sp_cdc_help_change_data_capture", databaseName);
+        final String query = replaceDatabaseNamePlaceholder("EXEC #db.sys.sp_cdc_help_change_data_capture", databaseName);
         this.query(query, rs -> userHasAccess.set(rs.next()));
         return userHasAccess.get();
-    }
-
-    /**
-     * Creates an exclusive lock for a given table.
-     *
-     * @param tableId to be locked
-     * @throws SQLException
-     */
-    public void lockTable(TableId tableId) throws SQLException {
-        final String lockTableStmt = LOCK_TABLE.replace(STATEMENTS_PLACEHOLDER, tableId.table());
-        execute(lockTableStmt);
-    }
-
-    private String cdcNameForTable(TableId tableId) {
-        return tableId.schema() + '_' + tableId.table();
-    }
-
-    public static class CdcEnabledTable {
-
-        private final String tableId;
-        private final String captureName;
-        private final Lsn fromLsn;
-
-        private CdcEnabledTable(String tableId, String captureName, Lsn fromLsn) {
-            this.tableId = tableId;
-            this.captureName = captureName;
-            this.fromLsn = fromLsn;
-        }
-
-        public String getTableId() {
-            return tableId;
-        }
-
-        public String getCaptureName() {
-            return captureName;
-        }
-
-        public Lsn getFromLsn() {
-            return fromLsn;
-        }
-
     }
 
     public List<SqlServerChangeTable> getChangeTables(String databaseName) throws SQLException {
@@ -748,11 +724,13 @@ public class SqlServerConnection extends JdbcConnection {
 
     @Override
     public String quotedTableIdString(TableId tableId) {
-        return "[" + tableId.catalog() + "].[" + tableId.schema() + "].[" + tableId.table() + "]";
+        return Stream.of(tableId.catalog(), tableId.schema(), tableId.table())
+                .map(this::quoteIdentifier)
+                .collect(Collectors.joining("."));
     }
 
     private String replaceDatabaseNamePlaceholder(String sql, String databaseName) {
-        return sql.replace(DATABASE_NAME_PLACEHOLDER, databaseName);
+        return sql.replace(DATABASE_NAME_PLACEHOLDER, quoteIdentifier(databaseName));
     }
 
     public SqlServerDefaultValueConverter getDefaultValueConverter() {

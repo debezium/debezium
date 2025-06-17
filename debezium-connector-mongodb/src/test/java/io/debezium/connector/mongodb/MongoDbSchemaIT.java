@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.schema.DataCollectionSchema;
 
 /**
@@ -23,6 +24,7 @@ public class MongoDbSchemaIT {
     @Test
     public void shouldAlwaysProduceCollectionSchema() {
         config = TestHelper.getConfiguration();
+        DebeziumOpenLineageEmitter.init(config, "mongodb");
         taskContext = new MongoDbTaskContext(config);
 
         final MongoDbSchema schema = getSchema(config, taskContext);
@@ -36,7 +38,7 @@ public class MongoDbSchemaIT {
 
     private static MongoDbSchema getSchema(Configuration config, MongoDbTaskContext taskContext) {
         final MongoDbConnectorConfig connectorConfig = new MongoDbConnectorConfig(config);
-        return new MongoDbSchema(taskContext.getFilters(), taskContext.getTopicNamingStrategy(),
+        return new MongoDbSchema(connectorConfig, taskContext.getFilters(), taskContext.getTopicNamingStrategy(),
                 connectorConfig.getSourceInfoStructMaker().schema(),
                 connectorConfig.schemaNameAdjuster());
     }

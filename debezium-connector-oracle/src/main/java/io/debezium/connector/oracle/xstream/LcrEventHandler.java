@@ -174,7 +174,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
                 tableDdl = getTableMetadataDdl(tableId);
             }
             catch (NonRelationalTableException e) {
-                LOGGER.warn("Table {} is not a relational table and will be skipped.", tableId);
+                LOGGER.warn("{} The event will be skipped.", e.getMessage());
                 streamingMetrics.incrementWarningCount();
                 return;
             }

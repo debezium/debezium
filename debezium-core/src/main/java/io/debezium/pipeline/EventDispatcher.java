@@ -16,6 +16,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+import java.util.stream.StreamSupport;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -28,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
@@ -79,6 +81,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     private final ChangeEventQueue<DataChangeEvent> queue;
     private final DataCollectionFilter<T> filter;
     private final ChangeEventCreator changeEventCreator;
+    private final DebeziumHeaderProducer debeziumHeaderProducer;
     private final Heartbeat heartbeat;
     private DataChangeEventListener<P> eventListener = DataChangeEventListener.NO_OP();
     private final boolean emitTombstonesOnDelete;
@@ -105,39 +108,42 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider, SchemaNameAdjuster schemaNameAdjuster,
-                           SignalProcessor<P, ?> signalProcessor) {
+                           SignalProcessor<P, ?> signalProcessor, DebeziumHeaderProducer debeziumHeaderProducer) {
         this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                connectorConfig.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, null, null), schemaNameAdjuster, signalProcessor);
+                connectorConfig.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, null, null), schemaNameAdjuster, signalProcessor, debeziumHeaderProducer);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider,
-                           Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster, SignalProcessor<P, ?> signalProcessor) {
-        this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                heartbeat, schemaNameAdjuster, signalProcessor);
+                           Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster, SignalProcessor<P, ?> signalProcessor,
+                           DebeziumHeaderProducer debeziumHeaderProducer) {
+        this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider, heartbeat, schemaNameAdjuster, signalProcessor,
+                debeziumHeaderProducer);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider,
-                           Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster) {
-        this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                heartbeat, schemaNameAdjuster, null);
+                           Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster, DebeziumHeaderProducer debeziumHeaderProducer) {
+        this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider, heartbeat, schemaNameAdjuster, null,
+                debeziumHeaderProducer);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
-                           ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider, SchemaNameAdjuster schemaNameAdjuster) {
+                           ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider, SchemaNameAdjuster schemaNameAdjuster,
+                           DebeziumHeaderProducer debeziumHeaderProducer) {
         this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                connectorConfig.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, null, null), schemaNameAdjuster, null);
+                connectorConfig.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, null, null), schemaNameAdjuster, null, debeziumHeaderProducer);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<P, T> inconsistentSchemaHandler,
-                           EventMetadataProvider metadataProvider, Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster,
-                           SignalProcessor<P, ?> signalProcessor) {
+                           EventMetadataProvider metadataProvider, Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster, SignalProcessor<P, ?> signalProcessor,
+                           DebeziumHeaderProducer debeziumHeaderProducer) {
+        this.debeziumHeaderProducer = debeziumHeaderProducer;
         this.tableChangesSerializer = new ConnectTableChangeSerializer(schemaNameAdjuster);
         this.connectorConfig = connectorConfig;
         this.topicNamingStrategy = topicNamingStrategy;
@@ -175,7 +181,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<P, T> inconsistentSchemaHandler, Heartbeat heartbeat,
                            SchemaNameAdjuster schemaNameAdjuster, TransactionMonitor transactionMonitor,
-                           SignalProcessor<P, ?> signalProcessor) {
+                           SignalProcessor<P, ?> signalProcessor, DebeziumHeaderProducer debeziumHeaderProducer) {
         this.tableChangesSerializer = new ConnectTableChangeSerializer(schemaNameAdjuster);
         this.connectorConfig = connectorConfig;
         this.topicNamingStrategy = topicNamingStrategy;
@@ -184,6 +190,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         this.queue = queue;
         this.filter = filter;
         this.changeEventCreator = changeEventCreator;
+        this.debeziumHeaderProducer = debeziumHeaderProducer;
         this.streamingReceiver = new StreamingChangeRecordReceiver();
         this.emitTombstonesOnDelete = connectorConfig.isEmitTombstoneOnDelete();
         this.inconsistentSchemaHandler = inconsistentSchemaHandler != null ? inconsistentSchemaHandler : this::errorOnMissingSchema;
@@ -230,8 +237,10 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                     LOGGER.trace("Received change record {} for {} operation on key {} with context {}", maybeRedactSensitiveData(value), operation,
                             maybeRedactSensitiveData(key), offset);
 
+                    var extendedHeaders = getExtendedHeaders(headers);
+
                     eventListener.onEvent(partition, dataCollectionSchema.id(), offset, key, value, operation);
-                    receiver.changeRecord(partition, dataCollectionSchema, operation, key, value, offset, headers);
+                    receiver.changeRecord(partition, dataCollectionSchema, operation, key, value, offset, extendedHeaders);
                 }
             });
         }
@@ -520,6 +529,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
             doPostProcessing(key, value);
 
+            var extendedHeaders = getExtendedHeaders(headers);
+
             SourceRecord record = new SourceRecord(partition.getSourcePartition(),
                     offsetContext.getOffset(),
                     topicName, null,
@@ -527,7 +538,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                     dataCollectionSchema.getEnvelopeSchema().schema(),
                     value,
                     null,
-                    headers);
+                    extendedHeaders);
 
             queue.enqueue(changeEventCreator.createDataChangeEvent(record));
 
@@ -545,6 +556,13 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 queue.enqueue(changeEventCreator.createDataChangeEvent(tombStone));
             }
         }
+    }
+
+    private ConnectHeaders getExtendedHeaders(ConnectHeaders headers) {
+        var extendedHeaders = new ConnectHeaders(headers);
+        StreamSupport.stream(debeziumHeaderProducer.contextHeaders().spliterator(), false)
+                .forEach(extendedHeaders::add);
+        return extendedHeaders;
     }
 
     private final class BufferingSnapshotChangeRecordReceiver implements SnapshotReceiver<P> {
@@ -655,19 +673,21 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
             doPostProcessing(key, value);
 
+            var extendedHeaders = getExtendedHeaders(headers);
+
             SourceRecord record = new SourceRecord(
                     partition.getSourcePartition(),
                     offsetContext.getOffset(),
                     topicName, null,
                     keySchema, key,
                     dataCollectionSchema.getEnvelopeSchema().schema(), value,
-                    null, headers);
+                    null, extendedHeaders);
             dataListener.onEvent(partition, dataCollectionSchema.id(), offsetContext, keySchema, value, operation);
             queue.enqueue(changeEventCreator.createDataChangeEvent(record));
         }
 
         @Override
-        public void completeSnapshot() throws InterruptedException {
+        public void completeSnapshot() {
         }
     }
 
@@ -701,8 +721,11 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 final Integer partition = 0;
                 final Struct key = schemaChangeRecordKey(event);
                 final Struct value = schemaChangeRecordValue(event);
+
+                var extendedHeaders = getExtendedHeaders(new ConnectHeaders());
+
                 final SourceRecord record = new SourceRecord(event.getPartition(), event.getOffset(), topicName, partition,
-                        schemaChangeKeySchema, key, schemaChangeValueSchema, value);
+                        schemaChangeKeySchema, key, schemaChangeValueSchema, value, null, extendedHeaders);
                 enqueueSchemaChangeMessage(record);
             }
         }

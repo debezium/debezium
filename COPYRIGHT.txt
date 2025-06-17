@@ -360,6 +360,7 @@ Luis Garcés-Erice
 Lukas Krejci
 Lukas Langegger
 Lukasz Korzeniowski
+Lukasz Selwa
 lyidataminr
 M Sazzadul Hoque
 Maciej Bryński

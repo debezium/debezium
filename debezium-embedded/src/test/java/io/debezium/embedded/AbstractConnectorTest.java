@@ -301,6 +301,18 @@ public abstract class AbstractConnectorTest implements Testing {
     }
 
     /**
+    * Start the connector using the supplied connector configuration, where upon completion the status of the connector is
+    * logged.
+    *
+    * @param connectorClass    the connector class; may not be null
+    * @param connectorConfig   the configuration for the connector; may not be null
+    * @param connectorCallback {@link io.debezium.engine.DebeziumEngine.ConnectorCallback} instance; may be null
+    */
+    protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig, DebeziumEngine.ConnectorCallback connectorCallback) {
+        start(connectorClass, connectorConfig, loggingCompletion(), null, connectorCallback);
+    }
+
+    /**
      * Start the connector using the supplied connector configuration, where upon completion the status of the connector is
      * logged. Records arriving after connector stop must not be ignored.
      *
@@ -349,12 +361,30 @@ public abstract class AbstractConnectorTest implements Testing {
      *
      * @param connectorClass the connector class; may not be null
      * @param connectorConfig the configuration for the connector; may not be null
+     * @param isStopRecord the function that will be called to determine if the connector should be stopped before processing
+     *            this record; may be null if not needed
+     * @param callback the function that will be called when the engine fails to start the connector or when the connector
+     *            stops running after completing successfully or due to an error; may be null
+     * @param connectorCallback {@link io.debezium.engine.DebeziumEngine.ConnectorCallback} instance; may be null
+     */
+    protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
+                         DebeziumEngine.CompletionCallback callback, Predicate<SourceRecord> isStopRecord,
+                         DebeziumEngine.ConnectorCallback connectorCallback) {
+        start(connectorClass, connectorConfig, callback, isStopRecord, x -> {
+        }, true, null, connectorCallback);
+    }
+
+    /**
+     * Start the connector using the supplied connector configuration.
+     *
+     * @param connectorClass the connector class; may not be null
+     * @param connectorConfig the configuration for the connector; may not be null
      * @param changeConsumer {@link io.debezium.engine.DebeziumEngine.ChangeConsumer} invoked when a record arrives and is stored in the queue
      */
     protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
                          DebeziumEngine.ChangeConsumer<SourceRecord> changeConsumer) {
         start(connectorClass, connectorConfig, loggingCompletion(), null, x -> {
-        }, true, changeConsumer);
+        }, true, changeConsumer, null);
     }
 
     /**
@@ -372,7 +402,7 @@ public abstract class AbstractConnectorTest implements Testing {
     protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
                          DebeziumEngine.CompletionCallback callback, Predicate<SourceRecord> isStopRecord,
                          Consumer<SourceRecord> recordArrivedListener, boolean ignoreRecordsAfterStop) {
-        start(connectorClass, connectorConfig, callback, isStopRecord, recordArrivedListener, ignoreRecordsAfterStop, null);
+        start(connectorClass, connectorConfig, callback, isStopRecord, recordArrivedListener, ignoreRecordsAfterStop, null, null);
     }
 
     /**
@@ -390,7 +420,8 @@ public abstract class AbstractConnectorTest implements Testing {
      */
     protected void start(Class<? extends SourceConnector> connectorClass, Configuration connectorConfig,
                          DebeziumEngine.CompletionCallback callback, Predicate<SourceRecord> isStopRecord,
-                         Consumer<SourceRecord> recordArrivedListener, boolean ignoreRecordsAfterStop, DebeziumEngine.ChangeConsumer<SourceRecord> changeConsumer) {
+                         Consumer<SourceRecord> recordArrivedListener, boolean ignoreRecordsAfterStop,
+                         DebeziumEngine.ChangeConsumer changeConsumer, DebeziumEngine.ConnectorCallback connectorCallback) {
         Configuration config = Configuration.copy(connectorConfig)
                 .with(EmbeddedEngineConfig.ENGINE_NAME, "testing-connector")
                 .with(EmbeddedEngineConfig.CONNECTOR_CLASS, connectorClass.getName())
@@ -413,10 +444,13 @@ public abstract class AbstractConnectorTest implements Testing {
             Testing.debug("Stopped connector");
         };
 
-        DebeziumEngine.ConnectorCallback connectorCallback = new DebeziumEngine.ConnectorCallback() {
+        DebeziumEngine.ConnectorCallback wrapperConnectorCallback = new DebeziumEngine.ConnectorCallback() {
             @Override
             public void taskStarted() {
                 // if this is called, it means a task has been started successfully so we can continue
+                if (connectorCallback != null) {
+                    connectorCallback.taskStarted();
+                }
                 latch.countDown();
             }
 
@@ -439,7 +473,7 @@ public abstract class AbstractConnectorTest implements Testing {
                 .notifying(getConsumer(isStopRecord, recordArrivedListener, ignoreRecordsAfterStop))
                 .using(this.getClass().getClassLoader())
                 .using(wrapperCallback)
-                .using(connectorCallback);
+                .using(wrapperConnectorCallback);
         if (changeConsumer != null) {
             builder.notifying(changeConsumer);
         }
@@ -779,13 +813,11 @@ public abstract class AbstractConnectorTest implements Testing {
                 final Struct value = (Struct) record.value();
                 if (isTransactionRecord(record)) {
                     final String status = value.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_STATUS_KEY);
-                    final String txId = value.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY);
-                    String id = Arrays.stream(txId.split(":")).findFirst().get();
                     if (status.equals(TransactionStatus.BEGIN.name())) {
-                        endTransactions.add(id);
+                        endTransactions.add(getTxId(value));
                     }
                     else {
-                        endTransactions.remove(id);
+                        endTransactions.remove(getTxId(value));
                     }
                 }
                 else {
@@ -825,10 +857,10 @@ public abstract class AbstractConnectorTest implements Testing {
                 if (isTransactionRecord(record)) {
                     final String status = value.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_STATUS_KEY);
                     if (status.equals(TransactionStatus.END.name())) {
-                        endTransactions.remove(value.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY));
+                        endTransactions.remove(getTxId(value));
                     }
                     else {
-                        endTransactions.add(value.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY));
+                        endTransactions.add(getTxId(value));
                     }
                 }
                 else {
@@ -866,6 +898,10 @@ public abstract class AbstractConnectorTest implements Testing {
         return record != null
                 && record.topic().endsWith(".transaction")
                 && record.keySchema().name().equals("io.debezium.connector.common.TransactionMetadataKey");
+    }
+
+    protected String getTxId(Struct value) {
+        return value.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY);
     }
 
     protected class SourceRecords {

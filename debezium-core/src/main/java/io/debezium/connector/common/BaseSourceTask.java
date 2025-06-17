@@ -41,7 +41,9 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.data.Envelope;
 import io.debezium.function.LogPositionValidator;
+import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.notification.channels.NotificationChannel;
 import io.debezium.pipeline.signal.channels.SignalChannelReader;
 import io.debezium.pipeline.signal.channels.process.SignalChannelWriter;
@@ -75,9 +77,9 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     private Configuration config;
     private List<SignalChannelReader> signalChannels;
 
-    protected void validateAndLoadSchemaHistory(CommonConnectorConfig config, LogPositionValidator logPositionValidator, Offsets<P, O> previousOffsets,
-                                                DatabaseSchema schema,
-                                                Snapshotter snapshotter) {
+    protected void validateSchemaHistory(CommonConnectorConfig config, LogPositionValidator logPositionValidator, Offsets<P, O> previousOffsets,
+                                         DatabaseSchema schema,
+                                         Snapshotter snapshotter) {
 
         for (Map.Entry<P, O> previousOffset : previousOffsets) {
 
@@ -137,7 +139,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
                     boolean logPositionAvailable = isLogPositionAvailable(logPositionValidator, partition, offset, config);
 
-                    if (!logPositionAvailable) {
+                    if (!logPositionAvailable && snapshotter.shouldStream()) {
                         LOGGER.warn("Last recorded offset is no longer available on the server.");
 
                         if (snapshotter.shouldSnapshotOnDataError()) {
@@ -151,14 +153,9 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                             return;
                         }
 
-                        LOGGER.warn("The connector is trying to read redo log starting at " + offset + ", but this is no longer "
-                                + "available on the server. Reconfigure the connector to use a snapshot when needed if you want to recover. " +
-                                "If not the connector will streaming from the last available position in the log");
+                        throw new DebeziumException("The connector is trying to read change stream starting at " + offset.getSourceInfo() + ", but this is no longer "
+                                + "available on the server. Reconfigure the connector to use a snapshot mode when needed.");
                     }
-                }
-
-                if (schema.isHistorized()) {
-                    ((HistorizedDatabaseSchema) schema).recover(partition, offset);
                 }
             }
         }
@@ -244,6 +241,10 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         try {
             setTaskState(State.INITIAL);
             config = Configuration.from(props);
+
+            DebeziumOpenLineageEmitter.init(config, connectorName());
+            DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config, connectorName()), State.INITIAL);
+
             retriableRestartWait = config.getDuration(CommonConnectorConfig.RETRIABLE_RESTART_WAIT, ChronoUnit.MILLIS);
             // need to reset the delay or you only get one delayed restart
             restartDelay = null;
@@ -262,6 +263,9 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             try {
                 this.coordinator = start(config);
                 setTaskState(State.RUNNING);
+
+                DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config, connectorName()), State.RUNNING);
+
             }
             catch (RetriableException e) {
                 LOGGER.warn("Failed to start connector, will re-attempt during polling.", e);
@@ -314,6 +318,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
      *            {@link CommonConnectorConfig} and work with typed access to configuration properties that way
      */
     protected abstract ChangeEventSourceCoordinator<P, O> start(Configuration config);
+
+    protected abstract String connectorName();
 
     @Override
     public final List<SourceRecord> poll() throws InterruptedException {
@@ -407,6 +413,8 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
      */
     protected abstract List<SourceRecord> doPoll() throws InterruptedException;
 
+    protected abstract Optional<ErrorHandler> getErrorHandler();
+
     /**
      * Starts this connector in case it has been stopped after a retriable error,
      * and the backoff period has passed.
@@ -421,6 +429,12 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                 result = true;
             }
             else if (currentState == State.RESTARTING) {
+
+                getErrorHandler().ifPresentOrElse(
+                        handler -> DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config, connectorName()), State.RESTARTING,
+                                handler.getProducerThrowable()),
+                        () -> DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config, connectorName()), State.RESTARTING));
+
                 // we're in restart mode... check if it's time to restart
                 if (restartDelay.hasElapsed()) {
                     LOGGER.info("Attempting to restart task.");
@@ -445,6 +459,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     @Override
     public final void stop() {
         stop(false);
+        DebeziumOpenLineageEmitter.cleanup(DebeziumOpenLineageEmitter.connectorContext(config, connectorName()));
     }
 
     private void stop(boolean restart) {
@@ -480,6 +495,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
             else {
                 setTaskState(State.STOPPED);
+                DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config, connectorName()), State.STOPPED);
             }
         }
         finally {
@@ -593,5 +609,6 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         serviceRegistry.registerServiceProvider(new SnapshotLockProvider());
         serviceRegistry.registerServiceProvider(new SnapshotQueryProvider());
         serviceRegistry.registerServiceProvider(new SnapshotterServiceProvider());
+        serviceRegistry.registerServiceProvider(new DebeziumHeaderProducerProvider());
     }
 }

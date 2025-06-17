@@ -121,7 +121,7 @@ public abstract class AbstractKafkaSchemaHistoryTest<P extends BinlogPartition, 
 
     protected abstract DdlParser getDdlParser();
 
-    private void testHistoryTopicContent(String topicName, boolean skipUnparseableDDL) {
+    private void testHistoryTopicContent(String topicName, boolean skipUnparseableDDL) throws InterruptedException {
         interceptor = new LogInterceptor(KafkaSchemaHistory.class);
         // Start up the history ...
         Configuration config = Configuration.create()
@@ -333,7 +333,7 @@ public abstract class AbstractKafkaSchemaHistoryTest<P extends BinlogPartition, 
     }
 
     @Test
-    public void testExists() {
+    public void testExists() throws InterruptedException {
         String topicName = "exists-schema-changes";
 
         // happy path

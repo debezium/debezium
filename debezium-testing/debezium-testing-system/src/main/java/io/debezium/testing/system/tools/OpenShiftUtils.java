@@ -24,6 +24,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +54,7 @@ import io.fabric8.openshift.api.model.RouteBuilder;
 import io.fabric8.openshift.api.model.operatorhub.v1.OperatorGroup;
 import io.fabric8.openshift.api.model.operatorhub.v1.OperatorGroupBuilder;
 import io.fabric8.openshift.api.model.operatorhub.v1.OperatorGroupSpecBuilder;
+import io.fabric8.openshift.api.model.operatorhub.v1alpha1.InstallPlan;
 import io.fabric8.openshift.client.DefaultOpenShiftClient;
 import io.fabric8.openshift.client.OpenShiftClient;
 
@@ -290,6 +292,16 @@ public class OpenShiftUtils {
                 .until(() -> podListSupplier.get().getItems().isEmpty());
     }
 
+    public Optional<InstallPlan> installPlan(String namespace, String subscriptionName, String startingCSV) {
+        List<InstallPlan> installPlans = client.operatorHub().installPlans().inNamespace(namespace).list().getItems();
+        Stream<InstallPlan> installPlanStream = installPlans.stream()
+                .filter(plan -> subscriptionName.equals(plan.getMetadata().getOwnerReferences().getFirst().getName()));
+        if (startingCSV != null) {
+            installPlanStream = installPlanStream.filter(plan -> plan.getSpec().getClusterServiceVersionNames().contains(startingCSV));
+        }
+        return installPlanStream.findFirst();
+    }
+
     /**
      * Finds the first deployment with name matching given prefixes
      *
@@ -317,6 +329,13 @@ public class OpenShiftUtils {
                         .build())
                 .build();
         client.operatorHub().operatorGroups().inNamespace(namespace).createOrReplace(operatorGroup);
+    }
+
+    public void waitForInstallPlanExists(String namespace, String subscriptionName, String startingCSV) {
+        LOGGER.info("Waiting for install plan for subscription " + subscriptionName + " and starting CSV " + startingCSV);
+        await().atMost(scaled(2), TimeUnit.MINUTES)
+                .pollInterval(Duration.ofSeconds(2))
+                .until(() -> installPlan(namespace, subscriptionName, startingCSV).isPresent());
     }
 
     /**
