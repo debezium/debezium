@@ -9,6 +9,10 @@ import java.sql.SQLException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalLong;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -434,33 +438,77 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
     @Override
     public void commitOffset(Map<String, ?> partition, Map<String, ?> offset) {
-        try {
-            ReplicationStream replicationStream = this.replicationStream.get();
-            final Lsn commitLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMMIT_LSN_KEY));
-            final Lsn changeLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMPLETELY_PROCESSED_LSN_KEY));
-            final Lsn lsn = (commitLsn != null) ? commitLsn : changeLsn;
+        ReplicationStream replicationStream = this.replicationStream.get();
+        final Lsn commitLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMMIT_LSN_KEY));
+        final Lsn changeLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMPLETELY_PROCESSED_LSN_KEY));
+        final Lsn lsn = (commitLsn != null) ? commitLsn : changeLsn;
 
-            LOGGER.debug("Received offset commit request on commit LSN '{}' and change LSN '{}'", commitLsn, changeLsn);
-            if (replicationStream != null && lsn != null) {
-                if (!lsnFlushingAllowed) {
-                    LOGGER.info("Received offset commit request on '{}', but ignoring it. LSN flushing is not allowed yet", lsn);
-                    return;
-                }
-
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Flushing LSN to server: {}", lsn);
-                }
-                // tell the server the point up to which we've processed data, so it can be free to recycle WAL segments
-                replicationStream.flushLsn(lsn);
+        LOGGER.debug("Received offset commit request on commit LSN '{}' and change LSN '{}'", commitLsn, changeLsn);
+        if (replicationStream != null && lsn != null) {
+            if (!lsnFlushingAllowed) {
+                LOGGER.info("Received offset commit request on '{}', but ignoring it. LSN flushing is not allowed yet", lsn);
+                return;
             }
-            else {
-                LOGGER.debug("Streaming has already stopped, ignoring commit callback...");
+
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Flushing LSN to server: {}", lsn);
+            }
+            // tell the server the point up to which we've processed data, so it can be free to recycle WAL segments
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                try {
+                    replicationStream.flushLsn(lsn);
+                }
+                catch (SQLException e) {
+                    commitOffsetFailure = true;
+                    cleanUpStreamingOnStop(null);
+                    throw new ConnectException(e);
+                }
+            });
+            try {
+                future.get(connectorConfig.lsnFlushTimeout().toMillis(), TimeUnit.MILLISECONDS);
+            }
+            catch (TimeoutException e) {
+                // Handle the timeout according to configuration
+                handleTimeout(lsn);
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                LOGGER.warn("LSN flush operation for '{}' was interrupted. Continuing without waiting for flush completion.", lsn);
+            }
+            catch (ExecutionException e) {
+                Throwable cause = e.getCause();
+                if (cause instanceof ConnectException) {
+                    throw (ConnectException) cause;
+                }
+                throw new ConnectException("LSN flush operation failed", cause);
             }
         }
-        catch (SQLException e) {
-            commitOffsetFailure = true;
-            cleanUpStreamingOnStop(null);
-            throw new ConnectException(e);
+        else {
+            LOGGER.debug("Streaming has already stopped, ignoring commit callback...");
+        }
+    }
+
+    /**
+     * Handles the scenario when an LSN flush timeout occurs.
+     *
+     * @param lsn the LSN that failed to flush
+     */
+    private void handleTimeout(Lsn lsn) {
+        String action = connectorConfig.lsnFlushTimeoutAction().getValue();
+        long timeoutMillis = connectorConfig.lsnFlushTimeout().toMillis();
+
+        if ("fail".equals(action)) {
+            LOGGER.error("LSN flush operation for LSN '{}' did not complete within the configured timeout of {} ms. ",
+                    lsn, timeoutMillis);
+            throw new ConnectException(String.format(
+                    "LSN flush operation timed out for LSN '%s'. " +
+                            "Task is configured to fail on timeout as configured by lsn.flush.timeout.action configuration.",
+                    lsn));
+        }
+        else {
+            LOGGER.warn("LSN flush operation for LSN '{}' did not complete within the configured timeout of {} ms. " +
+                    "Continuing to process as configured by lsn.flush.timeout.action configuration.",
+                    lsn, timeoutMillis);
         }
     }
 

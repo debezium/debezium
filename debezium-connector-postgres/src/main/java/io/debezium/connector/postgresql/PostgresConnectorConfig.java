@@ -993,6 +993,88 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDescription("Frequency for sending replication connection status updates to the server, given in milliseconds. Defaults to 10 seconds (10,000 ms).")
             .withValidation(Field::isPositiveInteger);
 
+    public static final Field LSN_FLUSH_TIMEOUT_MS = Field.create("lsn.flush.timeout.ms")
+            .withDisplayName("LSN flush timeout (ms)")
+            .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 12))
+            .withDefault(30_000)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Maximum time in milliseconds to wait for LSN flush operation to complete. "
+                    + "If the flush operation does not complete within this timeout, the action specified by "
+                    + "lsn.flush.timeout.action will be taken. Defaults to 30 seconds.")
+            .withValidation(Field::isPositiveInteger);
+
+    /**
+     * The set of predefined LSN flush timeout action options
+     */
+    public enum LsnFlushTimeoutAction implements EnumeratedValue {
+        /**
+         * Fail the connector when timeout occurs
+         */
+        FAIL("fail"),
+
+        /**
+         * Continue processing and ignore timeouts
+         */
+        IGNORE("ignore");
+
+        private final String value;
+
+        LsnFlushTimeoutAction(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @return the matching option, or null if no match is found
+         */
+        public static LsnFlushTimeoutAction parse(String value) {
+            if (value == null) {
+                return null;
+            }
+            value = value.trim();
+            for (LsnFlushTimeoutAction option : LsnFlushTimeoutAction.values()) {
+                if (option.getValue().equalsIgnoreCase(value)) {
+                    return option;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Determine if the supplied value is one of the predefined options.
+         *
+         * @param value the configuration property value; may not be null
+         * @param defaultValue the default value; may be null
+         * @return the matching option, or null if no match is found and the non-null default is invalid
+         */
+        public static LsnFlushTimeoutAction parse(String value, String defaultValue) {
+            LsnFlushTimeoutAction action = parse(value);
+            if (action == null && defaultValue != null) {
+                action = parse(defaultValue);
+            }
+            return action;
+        }
+    }
+
+    public static final Field LSN_FLUSH_TIMEOUT_ACTION = Field.create("lsn.flush.timeout.action")
+            .withDisplayName("LSN flush timeout action")
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 13))
+            .withEnum(LsnFlushTimeoutAction.class, LsnFlushTimeoutAction.FAIL)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Action to take when an LSN flush timeout occurs. Options include: " +
+                    "'fail' (default) to fail the connector; " +
+                    "'ignore' to continue processing and ignore the timeout.");
+
     public static final Field TCP_KEEPALIVE = Field.create(DATABASE_CONFIG_PREFIX + "tcpKeepAlive")
             .withDisplayName("TCP keep-alive probe")
             .withType(Type.BOOLEAN)
@@ -1098,6 +1180,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     private final SchemaRefreshMode schemaRefreshMode;
     private final boolean flushLsnOnSource;
     private final ReplicaIdentityMapper replicaIdentityMapper;
+    private final LsnFlushTimeoutAction lsnFlushTimeoutAction;
 
     private final SnapshotMode snapshotMode;
     private final SnapshotIsolationMode snapshotIsolationMode;
@@ -1128,6 +1211,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
         this.readOnlyConnection = config.getBoolean(READ_ONLY_CONNECTION);
         this.publishViaPartitionRoot = config.getBoolean(PUBLISH_VIA_PARTITION_ROOT);
+        this.lsnFlushTimeoutAction = LsnFlushTimeoutAction.parse(config.getString(LSN_FLUSH_TIMEOUT_ACTION));
     }
 
     protected String hostname() {
@@ -1188,6 +1272,14 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     protected Duration statusUpdateInterval() {
         return Duration.ofMillis(getConfig().getLong(PostgresConnectorConfig.STATUS_UPDATE_INTERVAL_MS));
+    }
+
+    protected Duration lsnFlushTimeout() {
+        return Duration.ofMillis(getConfig().getLong(PostgresConnectorConfig.LSN_FLUSH_TIMEOUT_MS));
+    }
+
+    protected LsnFlushTimeoutAction lsnFlushTimeoutAction() {
+        return lsnFlushTimeoutAction;
     }
 
     public LogicalDecodingMessageFilter getMessageFilter() {
@@ -1297,6 +1389,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     RETRY_DELAY_MS,
                     SSL_SOCKET_FACTORY,
                     STATUS_UPDATE_INTERVAL_MS,
+                    LSN_FLUSH_TIMEOUT_MS,
+                    LSN_FLUSH_TIMEOUT_ACTION,
                     TCP_KEEPALIVE,
                     XMIN_FETCH_INTERVAL,
                     // Use this connector's implementation rather than common connector's flavor
