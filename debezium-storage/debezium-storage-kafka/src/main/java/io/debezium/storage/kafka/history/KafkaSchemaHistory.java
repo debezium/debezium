@@ -310,6 +310,9 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
             Long endOffset = null;
             int recoveryAttempts = 0;
 
+            endOffset = getEndOffsetOfDbHistoryTopic(endOffset, historyConsumer);
+            LOGGER.debug("End offset of database schema history topic is {}", endOffset);
+
             // read the topic until the end
             do {
                 if (recoveryAttempts > maxRecoveryAttempts) {
@@ -317,11 +320,6 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
                             "The database schema history couldn't be recovered. Consider to increase the value for " + RECOVERY_POLL_INTERVAL_MS.name());
                 }
 
-                checkForInterruption();
-                endOffset = getEndOffsetOfDbHistoryTopic(endOffset, historyConsumer);
-                LOGGER.debug("End offset of database schema history topic is {}", endOffset);
-
-                checkForInterruption();
                 ConsumerRecords<String, String> recoveredRecords = historyConsumer.poll(this.pollInterval);
                 int numRecordsProcessed = 0;
 
@@ -367,6 +365,8 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
                     recoveryAttempts = 0;
                 }
             } while (lastProcessedOffset < endOffset - 1);
+            // Check if the end offset has changed during the recovery process
+            getEndOffsetOfDbHistoryTopic(endOffset, historyConsumer);
         }
         catch (InterruptedException e) {
             Thread.currentThread().interrupt();
