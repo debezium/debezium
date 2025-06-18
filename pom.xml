@@ -210,6 +210,7 @@
         <module>debezium-connector-oracle</module>
         <module>debezium-connector-binlog</module>
         <module>debezium-connector-mariadb</module>
+        <module>debezium-connector-cockroachdb</module>
         <module>debezium-connector-jdbc</module>
         <module>debezium-microbenchmark-engine</module>
         <module>debezium-microbenchmark</module>
