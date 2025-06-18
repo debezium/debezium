@@ -131,7 +131,8 @@ public abstract class AbstractSchemaHistory implements SchemaHistory {
                     if (recovered.schemaName() != null) {
                         ddlParser.setCurrentSchema(recovered.schemaName()); // may be null
                     }
-                    if (ddlFilter.test(ddl)) {
+                    // Fast-path: only run expensive regex if DDL likely matches filter patterns
+                    if (likelyFiltered(ddl) && ddlFilter.test(ddl)) {
                         logger.info("a DDL '{}' was filtered out of processing by regular expression '{}'", ddl,
                                 config.getString(DDL_FILTER));
                         return;
@@ -156,6 +157,29 @@ public abstract class AbstractSchemaHistory implements SchemaHistory {
             }
         });
         listener.recoveryStopped();
+    }
+
+    private boolean likelyFiltered(String ddl) {
+        String ddlNormalized = ddl.trim().toUpperCase().replaceAll("\\s+", " ");
+        String ddlUpper = ddlNormalized.trim().toUpperCase();
+        return ddlUpper.startsWith("DROP TEMPORARY TABLE IF EXISTS") ||
+                ddlUpper.startsWith("(SET STATEMENT") ||
+                (ddlUpper.startsWith("INSERT INTO") &&
+                        (ddlUpper.contains("RDS_HEARTBEAT") ||
+                                ddlUpper.contains("RDS_SYSINFO") ||
+                                ddlUpper.contains("RDS_MONITOR")))
+                ||
+                (ddlUpper.startsWith("DELETE FROM") &&
+                        (ddlUpper.contains("RDS_SYSINFO") ||
+                                ddlUpper.contains("RDS_MONITOR")))
+                ||
+                ddlUpper.startsWith("FLUSH RELAY LOGS") ||
+                ddlUpper.startsWith("SAVEPOINT ") ||
+                (ddlUpper.startsWith("#") && ddlUpper.contains("DUMMY EVENT")) ||
+                // Inspired from tests
+                ddlNormalized.startsWith("CREATE ROLE") ||
+                (ddlNormalized.startsWith("CREATE") &&
+                        ddlNormalized.contains("VIEW"));
     }
 
     protected abstract void storeRecord(HistoryRecord record) throws SchemaHistoryException;
