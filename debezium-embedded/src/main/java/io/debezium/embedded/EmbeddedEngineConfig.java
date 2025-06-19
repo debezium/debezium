@@ -14,9 +14,9 @@ import org.apache.kafka.connect.storage.FileOffsetBackingStore;
 import org.apache.kafka.connect.storage.KafkaOffsetBackingStore;
 import org.apache.kafka.connect.storage.OffsetBackingStore;
 
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Field;
 import io.debezium.engine.spi.OffsetCommitPolicy;
-import io.debezium.pipeline.ChangeEventSourceCoordinator;
 
 /**
  * Common configuration options used in embedded implementations of {@link io.debezium.engine.DebeziumEngine}.
@@ -170,7 +170,7 @@ public interface EmbeddedEngineConfig {
             .withDefault(Duration.ofMinutes(5).toMillis())
             .withValidation(Field::isPositiveInteger)
             .withDescription(String.format("How long we wait before forcefully stopping the connector thread when shutting down. " +
-                    "Must be bigger than the time it takes two polling loops to finish ({} ms)", ChangeEventSourceCoordinator.SHUTDOWN_WAIT_TIMEOUT.toMillis() * 2));
+                    "Must be bigger than the time it takes two polling loops to finish ({} ms)", CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_SEC * 2));
 
     int DEFAULT_ERROR_MAX_RETRIES = -1;
 
