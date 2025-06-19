@@ -39,7 +39,6 @@ class SourceRecordDebezium extends RunnableDebezium {
                          CapturingInvokerRegistry<RecordChangeEvent<SourceRecord>> registry) {
         this.debeziumEngineConfiguration = debeziumEngineConfiguration;
         this.stateHandler = stateHandler;
-
         this.engine = DebeziumEngine.create(ChangeEventFormat.of(Connect.class))
                 .using(Configuration.empty()
                         .withSystemProperties(Function.identity())
@@ -50,6 +49,7 @@ class SourceRecordDebezium extends RunnableDebezium {
                 .using(this.stateHandler.completionCallback())
                 .notifying(event -> registry.get(event).capture(event))
                 .build();
+        this.stateHandler.setDebeziumEngine(this);
         this.connector = connector;
     }
 
