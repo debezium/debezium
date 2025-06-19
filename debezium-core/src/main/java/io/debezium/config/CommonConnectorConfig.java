@@ -1100,6 +1100,16 @@ public abstract class CommonConnectorConfig {
             .withDescription("The maximum time in milliseconds to wait for connection validation to complete. Defaults to 60 seconds.")
             .withValidation(Field::isPositiveLong);
 
+    public static final Field EXECUTOR_SHUTDOWN_TIMEOUT_MS = Field.create("executor.shutdown.timeout.sec")
+            .withDisplayName("Executor shutdown timeout (ms)")
+            .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 19))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(EXECUTOR_SHUTDOWN_TIMEOUT_SEC * 1_000)
+            .withDescription("The maximum time in milliseconds to wait for task executor to shut down.")
+            .withValidation(Field::isPositiveLong);
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -1127,6 +1137,7 @@ public abstract class CommonConnectorConfig {
                     LOG_POSITION_CHECK_ENABLED,
                     ADVANCED_METRICS_ENABLE,
                     CONNECTION_VALIDATION_TIMEOUT_MS,
+                    EXECUTOR_SHUTDOWN_TIMEOUT_MS,
                     OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_ENABLED,
                     OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH,
                     OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE,
@@ -1620,6 +1631,10 @@ public abstract class CommonConnectorConfig {
 
     public Duration getConnectionValidationTimeout() {
         return Duration.ofMillis(config.getLong(CONNECTION_VALIDATION_TIMEOUT_MS));
+    }
+
+    public Duration getExecutorShutdownTimeout() {
+        return Duration.ofMillis(config.getLong(EXECUTOR_SHUTDOWN_TIMEOUT_MS));
     }
 
     public EnumeratedValue snapshotQueryMode() {
