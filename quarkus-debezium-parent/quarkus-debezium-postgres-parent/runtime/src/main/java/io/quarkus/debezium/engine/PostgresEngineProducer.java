@@ -29,13 +29,16 @@ public class PostgresEngineProducer implements ConnectorProducer {
     @Inject
     private CapturingInvokerRegistry<RecordChangeEvent<SourceRecord>> registry;
 
+    @Inject
+    StateHandler stateHandler;
+
     @Produces
     @Singleton
     public Debezium engine(DebeziumEngineConfiguration debeziumEngineConfiguration) {
         debeziumEngineConfiguration.configuration().put(CONNECTOR_CLASS, POSTGRES.name());
 
         return new SourceRecordDebezium(debeziumEngineConfiguration,
-                new DefaultStateHandler(),
+                stateHandler,
                 POSTGRES,
                 registry);
     }

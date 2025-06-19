@@ -7,6 +7,7 @@
 package io.quarkus.debezium.engine;
 
 import io.debezium.engine.DebeziumEngine;
+import io.debezium.runtime.Debezium;
 import io.debezium.runtime.DebeziumStatus;
 
 public interface StateHandler {
@@ -15,4 +16,6 @@ public interface StateHandler {
     DebeziumEngine.CompletionCallback completionCallback();
 
     DebeziumStatus get();
+
+    void setDebeziumEngine(Debezium engine);
 }
