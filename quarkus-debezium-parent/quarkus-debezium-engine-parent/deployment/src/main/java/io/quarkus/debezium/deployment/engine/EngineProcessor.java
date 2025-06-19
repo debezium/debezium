@@ -64,6 +64,7 @@ import io.quarkus.debezium.deployment.items.DebeziumConnectorBuildItem;
 import io.quarkus.debezium.deployment.items.DebeziumGeneratedInvokerBuildItem;
 import io.quarkus.debezium.deployment.items.DebeziumMediatorBuildItem;
 import io.quarkus.debezium.engine.DebeziumRecorder;
+import io.quarkus.debezium.engine.DefaultStateHandler;
 import io.quarkus.debezium.engine.capture.CapturingInvoker;
 import io.quarkus.debezium.engine.capture.CapturingSourceRecordInvokerRegistryProducer;
 import io.quarkus.debezium.engine.capture.DynamicCapturingInvokerSupplier;
@@ -100,6 +101,12 @@ public class EngineProcessor {
                 .addBeanClasses(CapturingSourceRecordInvokerRegistryProducer.class)
                 .setDefaultScope(DotNames.APPLICATION_SCOPED)
                 .setUnremovable()
+                .build());
+
+        // Beans that will be injected by child modules
+        additionalBeanProducer.produce(AdditionalBeanBuildItem
+                .builder()
+                .addBeanClasses(DefaultStateHandler.class)
                 .build());
     }
 
