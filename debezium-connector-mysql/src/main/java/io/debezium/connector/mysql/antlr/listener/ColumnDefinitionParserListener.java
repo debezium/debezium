@@ -285,7 +285,8 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
     private Integer parseLength(String lengthStr) {
         Long length = Long.parseLong(lengthStr);
         if (length > Integer.MAX_VALUE) {
-            LOGGER.warn("The length '{}' of the column `{}`.`{}` is too large to be supported, truncating it to '{}'",
+            LOGGER.warn("The length of one of the column is too large to be supported, it will be truncated to '{}'", Integer.MAX_VALUE);
+            LOGGER.trace("The length '{}' of the column `{}`.`{}` is too large to be supported, truncating it to '{}'",
                     length, tableEditor.tableId(), columnEditor.name(), Integer.MAX_VALUE);
             length = (long) Integer.MAX_VALUE;
         }
