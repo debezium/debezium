@@ -50,7 +50,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     private final ConcurrentMap<String, String> charsetNameForDatabase = new ConcurrentHashMap<>();
     private final TableFilter tableFilter;
     private final BinlogCharsetRegistry charsetRegistry;
-    private static final DataTypeResolver dataTypeResolver = initializeDataTypeResolver();
+    private final DataTypeResolver dataTypeResolver = initializeDataTypeResolver();
 
     @VisibleForTesting
     public MySqlAntlrDdlParser() {
@@ -105,7 +105,7 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
         return dataTypeResolver;
     }
 
-    private static DataTypeResolver initializeDataTypeResolver() {
+    private DataTypeResolver initializeDataTypeResolver() {
         DataTypeResolver.Builder dataTypeResolverBuilder = new DataTypeResolver.Builder();
 
         dataTypeResolverBuilder.registerDataTypes(MySqlParser.StringDataTypeContext.class.getCanonicalName(), Arrays.asList(
