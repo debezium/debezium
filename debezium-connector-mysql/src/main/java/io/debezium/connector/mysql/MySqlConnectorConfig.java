@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import static io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotLockingMode.MINIMAL_AT_LEAST_ONCE;
+
 import java.util.Optional;
 import java.util.function.Predicate;
 
@@ -99,7 +101,10 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
         }
 
         public boolean usesMinimalLocking() {
-            return value.equals(MINIMAL.value) || value.equals(MINIMAL_PERCONA.value) || value.equals(MINIMAL_PERCONA_NO_TABLE_LOCKS.value);
+            return value.equals(MINIMAL.value) ||
+                    value.equals(MINIMAL_PERCONA.value) ||
+                    value.equals(MINIMAL_PERCONA_NO_TABLE_LOCKS.value) ||
+                    value.equals(MINIMAL_AT_LEAST_ONCE.getValue());
         }
 
         public boolean usesLocking() {
@@ -112,6 +117,10 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
 
         public boolean preventsTableLocks() {
             return value.equals(MINIMAL_PERCONA_NO_TABLE_LOCKS.value);
+        }
+
+        public boolean useConsistentSnapshotTransaction() {
+            return value.equals(MINIMAL.value) || value.equals(MINIMAL_PERCONA.value) || value.equals(MINIMAL_PERCONA_NO_TABLE_LOCKS.value);
         }
 
         /**
@@ -428,6 +437,11 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
         @Override
         public boolean preventsTableLocks() {
             return snapshotLockingMode.preventsTableLocks();
+        }
+
+        @Override
+        public boolean useConsistentSnapshotTransaction() {
+            return snapshotLockingMode.useConsistentSnapshotTransaction();
         }
     }
 
