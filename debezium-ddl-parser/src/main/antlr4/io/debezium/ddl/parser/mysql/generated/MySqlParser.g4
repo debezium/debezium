@@ -2917,6 +2917,7 @@ keywordsCanBeId
     | LEVEL
     | LIST
     | LOCAL
+    | LOCKED
     | LOGFILE
     | LOGS
     | MASTER
