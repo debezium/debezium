@@ -27,7 +27,11 @@ public class CdcSourceTaskContext {
 
     private final String connectorType;
     private final String connectorLogicalName;
+<<<<<<< HEAD
     private final String connectorPluginName;
+=======
+    private final String connectorName;
+>>>>>>> 77778c0c6 (DBZ-9020 Add support for multi task connectors)
     private final String taskId;
     private final Map<String, String> customMetricTags;
     private final Clock clock;
@@ -44,7 +48,11 @@ public class CdcSourceTaskContext {
                                 Supplier<Collection<? extends DataCollectionId>> collectionsSupplier) {
         this.connectorType = config.getContextName();
         this.connectorLogicalName = config.getLogicalName();
+<<<<<<< HEAD
         this.connectorPluginName = config.getConnectorName();
+=======
+        this.connectorName = config.getConnectorName();
+>>>>>>> 77778c0c6 (DBZ-9020 Add support for multi task connectors)
         this.taskId = taskId;
         this.customMetricTags = customMetricTags;
         this.collectionsSupplier = collectionsSupplier != null ? collectionsSupplier : Collections::emptyList;
@@ -112,8 +120,13 @@ public class CdcSourceTaskContext {
         return taskId;
     }
 
+<<<<<<< HEAD
     public String getConnectorPluginName() {
         return connectorPluginName;
+=======
+    public String getConnectorName() {
+        return connectorName;
+>>>>>>> 77778c0c6 (DBZ-9020 Add support for multi task connectors)
     }
 
     public Map<String, String> getCustomMetricTags() {

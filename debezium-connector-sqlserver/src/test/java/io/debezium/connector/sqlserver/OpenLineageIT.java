@@ -28,7 +28,10 @@ import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.openlineage.DebeziumTestTransport;
 import io.debezium.openlineage.facets.DebeziumConfigFacet;
+<<<<<<< HEAD
 import io.debezium.relational.TableId;
+=======
+>>>>>>> 77778c0c6 (DBZ-9020 Add support for multi task connectors)
 import io.debezium.util.Testing;
 import io.openlineage.client.OpenLineage;
 import io.openlineage.client.transports.TransportBuilder;
@@ -44,6 +47,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
 
     @Before
     public void before() throws SQLException {
+<<<<<<< HEAD
 
         TestHelper.createTestDatabases(TestHelper.TEST_DATABASE_1, TestHelper.TEST_DATABASE_2);
         connection = TestHelper.multiPartitionTestConnection();
@@ -77,6 +81,26 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                         .formatted(connection.quotedTableIdString(db2TableC)));
         TestHelper.enableTableCdc(connection, db2TableA);
         TestHelper.enableTableCdc(connection, db2TableC);
+=======
+        TestHelper.createTestDatabases(TestHelper.TEST_DATABASE_1, TestHelper.TEST_DATABASE_2);
+        connection = TestHelper.multiPartitionTestConnection();
+        connection.execute(
+                "USE " + TestHelper.TEST_DATABASE_1,
+                "CREATE TABLE tableA (id int primary key, colA varchar(32))",
+                "CREATE TABLE tableB (id int primary key, colB varchar(32))",
+                "INSERT INTO tableA VALUES(1, 'a1')",
+                "INSERT INTO tableB VALUES(2, 'b')");
+        TestHelper.enableTableCdc(connection, "tableA");
+        TestHelper.enableTableCdc(connection, "tableB");
+        connection.execute(
+                "USE " + TestHelper.TEST_DATABASE_2,
+                "CREATE TABLE tableA (id int primary key, colA varchar(32))",
+                "CREATE TABLE tableC (id int primary key, colC varchar(32))",
+                "INSERT INTO tableA VALUES(3, 'a2')",
+                "INSERT INTO tableC VALUES(4, 'c')");
+        TestHelper.enableTableCdc(connection, "tableA");
+        TestHelper.enableTableCdc(connection, "tableC");
+>>>>>>> 77778c0c6 (DBZ-9020 Add support for multi task connectors)
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
@@ -158,6 +182,10 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                 "errors.max.retries=-1",
                 "errors.retry.delay.initial.ms=300",
                 "errors.retry.delay.max.ms=10000",
+<<<<<<< HEAD
+=======
+                "internal.task.management.timeout.ms=180000",
+>>>>>>> 77778c0c6 (DBZ-9020 Add support for multi task connectors)
                 "key.converter=org.apache.kafka.connect.json.JsonConverter",
                 "name=testing-connector",
                 "tasks.max=2",
