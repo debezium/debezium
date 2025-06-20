@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.quarkus.debezium.engine.events;
+package io.debezium.runtime.events;
 
 /**
  * This event is fired after the Debezium engine completes it's shutdown. It includes all the
