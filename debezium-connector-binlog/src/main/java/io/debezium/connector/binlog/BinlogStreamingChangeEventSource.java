@@ -734,7 +734,9 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             LOGGER.trace("DDL '{}' was filtered out of processing", sql);
             return;
         }
-        if (upperCasedStatementBegin.equals("INSERT ") || upperCasedStatementBegin.equals("UPDATE ") || upperCasedStatementBegin.equals("DELETE ")) {
+        // Check and exclude DML statements from DDL statements handling logic.
+        Set<String> DML_STATEMENTS = Set.of("INSERT ", "UPDATE ", "DELETE ", "REPLACE ");
+        if (DML_STATEMENTS.contains(upperCasedStatementBegin)) {
             LOGGER.warn("Received DML of type {}, binlog probably contains events generated with statement or mixed based replication format",
                     upperCasedStatementBegin.trim());
             return;
@@ -754,19 +756,22 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 }
 
                 final TableId tableId = schemaChangeEvent.getTables().isEmpty() ? null : schemaChangeEvent.getTables().iterator().next().id();
-                if (tableId != null && !connectorConfig.getSkippedOperations().contains(Envelope.Operation.TRUNCATE)
-                        && schemaChangeEvent.getType().equals(SchemaChangeEvent.SchemaChangeEventType.TRUNCATE)) {
-                    eventDispatcher.dispatchDataChangeEvent(partition, tableId,
-                            new BinlogChangeRecordEmitter<>(partition, offsetContext, clock, Envelope.Operation.TRUNCATE, null, null, connectorConfig));
+                if (tableId != null && schemaChangeEvent.getType().equals(SchemaChangeEvent.SchemaChangeEventType.TRUNCATE)) {
+                    if (!connectorConfig.getSkippedOperations().contains(Envelope.Operation.TRUNCATE)) {
+                        eventDispatcher.dispatchDataChangeEvent(partition, tableId,
+                                new BinlogChangeRecordEmitter<>(partition, offsetContext, clock, Envelope.Operation.TRUNCATE, null, null, connectorConfig));
+                    }
                 }
-                eventDispatcher.dispatchSchemaChangeEvent(partition, offsetContext, tableId, (receiver) -> {
-                    try {
-                        receiver.schemaChangeEvent(schemaChangeEvent);
-                    }
-                    catch (Exception e) {
-                        throw new DebeziumException(e);
-                    }
-                });
+                else {
+                    eventDispatcher.dispatchSchemaChangeEvent(partition, offsetContext, tableId, (receiver) -> {
+                        try {
+                            receiver.schemaChangeEvent(schemaChangeEvent);
+                        }
+                        catch (Exception e) {
+                            throw new DebeziumException(e);
+                        }
+                    });
+                }
             }
         }
         catch (InterruptedException e) {
