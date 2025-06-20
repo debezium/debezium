@@ -12,7 +12,8 @@ import io.debezium.runtime.Debezium;
  *
  * @author Chris Cranford
  */
-public abstract class AbstractDebeziumLifecycleEvent {
+public sealed abstract class AbstractDebeziumLifecycleEvent
+        permits ConnectorStartedEvent, ConnectorStoppedEvent, PollingStartedEvent, PollingStoppedEvent, TasksStartedEvent, TasksStoppedEvent {
 
     private final Debezium engine;
 

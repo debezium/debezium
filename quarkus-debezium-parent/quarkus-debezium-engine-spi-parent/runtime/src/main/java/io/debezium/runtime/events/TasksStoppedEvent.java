@@ -12,7 +12,7 @@ import io.debezium.runtime.Debezium;
  *
  * @author Chris Cranford
  */
-public class TasksStoppedEvent extends AbstractDebeziumLifecycleEvent {
+public final class TasksStoppedEvent extends AbstractDebeziumLifecycleEvent {
     public TasksStoppedEvent(Debezium engine) {
         super(engine);
     }
