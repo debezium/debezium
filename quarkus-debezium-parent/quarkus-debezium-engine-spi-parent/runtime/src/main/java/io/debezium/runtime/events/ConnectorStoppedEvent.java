@@ -12,7 +12,7 @@ import io.debezium.runtime.Debezium;
  *
  * @author Chris Cranford
  */
-public class ConnectorStoppedEvent extends AbstractDebeziumLifecycleEvent {
+public final class ConnectorStoppedEvent extends AbstractDebeziumLifecycleEvent {
     public ConnectorStoppedEvent(Debezium engine) {
         super(engine);
     }
