@@ -12,7 +12,7 @@ import io.debezium.runtime.Debezium;
  *
  * @author Chris Cranford
  */
-public class PollingStartedEvent extends AbstractDebeziumLifecycleEvent {
+public final class PollingStartedEvent extends AbstractDebeziumLifecycleEvent {
     public PollingStartedEvent(Debezium engine) {
         super(engine);
     }
