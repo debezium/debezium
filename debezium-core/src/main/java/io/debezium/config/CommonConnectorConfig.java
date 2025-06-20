@@ -568,7 +568,7 @@ public abstract class CommonConnectorConfig {
 
     // This should be less than the value of worker config task.shutdown.graceful.timeout.ms. It
     // defaults to 5 seconds, hence setting it to 4 seconds.
-    public static final long EXECUTOR_SHUTDOWN_TIMEOUT_SEC = 4;
+    public static final long EXECUTOR_SHUTDOWN_TIMEOUT_SEC = 66;
     public static final int DEFAULT_MAX_QUEUE_SIZE = 8192;
     public static final int DEFAULT_MAX_BATCH_SIZE = 2048;
     public static final int DEFAULT_QUERY_FETCH_SIZE = 0;
