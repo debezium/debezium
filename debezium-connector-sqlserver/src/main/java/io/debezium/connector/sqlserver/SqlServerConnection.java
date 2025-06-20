@@ -763,7 +763,8 @@ public class SqlServerConnection extends JdbcConnection {
                 return false;
             }
 
-            LOGGER.trace("Oldest SCN in logs is '{}'", oldestScn);
+            LOGGER.info("Oldest SCN in logs is '{}'", oldestScn);
+            LOGGER.info("Stored LSN is '{}'", storedLsn);
             return storedLsn == null || Lsn.valueOf(oldestScn).compareTo(storedLsn) < 0;
         }
         catch (SQLException e) {
