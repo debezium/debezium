@@ -165,6 +165,56 @@ public abstract class BinlogSchemaHistoryIT<C extends SourceConnector> extends A
         stopConnector();
     }
 
+    @Test
+    @FixFor("DBZ-9162")
+    public void shouldNotStoreTruncate() throws SQLException, InterruptedException {
+        skipAvroValidation();
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
+                .build();
+
+        // Start the connector ...
+        start(getConnectorClass(), config);
+
+        Print.enable();
+        // SET + USE + Drop DB + create DB + CREATE/DROP for each table
+        SourceRecords records = consumeRecordsByTopic(1 + 1 + 1 + 1 + TABLE_COUNT * 2);
+        assertDdls(records);
+
+        // By default, TRUNCATE operations are skipped (debezium.skipped.operations=t)
+        try (BinlogTestConnection connection = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            connection.execute("TRUNCATE table `t-1`");
+        }
+
+        // So no records should be received
+        records = consumeRecordsByTopic(1);
+        assertThat(records.allRecordsInOrder()).isEmpty();
+
+        stopConnector();
+
+        // Reconfigure the connector to NOT skip TRUNCATE operations
+        config = config.edit().with(BinlogConnectorConfig.SKIPPED_OPERATIONS, "none").build();
+
+        // Restart the connector with the new configuration
+        start(getConnectorClass(), config);
+
+        // Execute a TRUNCATE statement
+        try (BinlogTestConnection connection = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            connection.execute("TRUNCATE table `t-1`");
+        }
+
+        // Now we should receive a TRUNCATE record
+        records = consumeRecordsByTopic(1);
+        final List<SourceRecord> truncateRecords = records.recordsForTopic(DATABASE.topicForTable("t-1"));
+        assertThat(truncateRecords).hasSize(1);
+        final SourceRecord truncateRecord = truncateRecords.get(0);
+        final Struct value = (Struct) truncateRecord.value();
+        assertThat(value.getString("op")).isEqualTo("t");
+
+        // but no DDLs should be received
+        assertThat(records.recordsForTopic(DATABASE.getDatabaseName())).isNull();
+    }
+
     private void assertDdls(SourceRecords records) {
         final List<SourceRecord> schemaChanges = records.recordsForTopic(DATABASE.getServerName());
         int index = 0;
