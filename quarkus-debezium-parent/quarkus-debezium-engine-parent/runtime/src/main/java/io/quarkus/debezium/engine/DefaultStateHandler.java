@@ -16,14 +16,14 @@ import io.debezium.engine.DebeziumEngine.CompletionCallback;
 import io.debezium.engine.DebeziumEngine.ConnectorCallback;
 import io.debezium.runtime.Debezium;
 import io.debezium.runtime.DebeziumStatus;
+import io.debezium.runtime.events.ConnectorStartedEvent;
+import io.debezium.runtime.events.ConnectorStoppedEvent;
+import io.debezium.runtime.events.DebeziumCompletionEvent;
+import io.debezium.runtime.events.PollingStartedEvent;
+import io.debezium.runtime.events.PollingStoppedEvent;
+import io.debezium.runtime.events.TasksStartedEvent;
+import io.debezium.runtime.events.TasksStoppedEvent;
 import io.quarkus.arc.Unremovable;
-import io.quarkus.debezium.engine.events.ConnectorStartedEvent;
-import io.quarkus.debezium.engine.events.ConnectorStoppedEvent;
-import io.quarkus.debezium.engine.events.DebeziumCompletionEvent;
-import io.quarkus.debezium.engine.events.PollingStartedEvent;
-import io.quarkus.debezium.engine.events.PollingStoppedEvent;
-import io.quarkus.debezium.engine.events.TasksStartedEvent;
-import io.quarkus.debezium.engine.events.TasksStoppedEvent;
 
 @ApplicationScoped
 @Unremovable
