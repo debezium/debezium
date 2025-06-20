@@ -484,8 +484,9 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                 LOGGER.error("Interrupted while stopping coordinator", e);
                 throw new ConnectException("Interrupted while stopping coordinator, failing the task");
             }
-
-            doStop();
+            finally {
+                doStop();
+            }
 
             if (restart) {
                 setTaskState(State.RESTARTING);
