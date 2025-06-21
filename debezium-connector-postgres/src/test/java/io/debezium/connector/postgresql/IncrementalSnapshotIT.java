@@ -205,7 +205,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
             connection.setAutoCommit(false);
             for (int i = 0; i < enumValues.size(); i++) {
                 connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
-                        "s1.enumpk", connection.quotedColumnIdString(pkFieldName()), "'" + enumValues.get(i) + "'", i));
+                        "s1.enumpk", connection.quoteIdentifier(pkFieldName()), "'" + enumValues.get(i) + "'", i));
             }
             connection.commit();
         }

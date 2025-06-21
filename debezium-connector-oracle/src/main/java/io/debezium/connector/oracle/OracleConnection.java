@@ -655,7 +655,7 @@ public class OracleConnection extends JdbcConnection {
             final String commitScn = source.getString(SourceInfo.COMMIT_SCN_KEY);
             if (!Strings.isNullOrEmpty(commitScn)) {
                 final String query = String.format("SELECT %s FROM (SELECT * FROM %s AS OF SCN ?) WHERE %s",
-                        columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
+                        columns.stream().map(this::quoteIdentifier).collect(Collectors.joining(",")),
                         quotedTableIdString(oracleTableId),
                         keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
                 final List<Object> bindValues = new ArrayList<>(keyValues.size() + 1);
@@ -676,7 +676,7 @@ public class OracleConnection extends JdbcConnection {
         }
 
         final String query = String.format("SELECT %s FROM %s WHERE %s",
-                columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
+                columns.stream().map(this::quoteIdentifier).collect(Collectors.joining(",")),
                 quotedTableIdString(oracleTableId),
                 keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
 
