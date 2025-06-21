@@ -1689,16 +1689,6 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
-     * Prepares qualified column names with appropriate quote character as per the specific database's rules.
-     *
-     * @deprecated Use {@link #quoteIdentifier(String)} instead.
-     */
-    @Deprecated
-    public String quotedColumnIdString(String columnName) {
-        return openingQuoteCharacter + columnName + closingQuoteCharacter;
-    }
-
-    /**
      * Read JKS type keystore/truststore file according related password.
      */
     public KeyStore loadKeyStore(String filePath, char[] passwordArray) {
@@ -1723,7 +1713,7 @@ public class JdbcConnection implements AutoCloseable {
     public Map<String, Object> reselectColumns(Table table, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source)
             throws SQLException {
         final String query = String.format("SELECT %s FROM %s WHERE %s",
-                columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
+                columns.stream().map(this::quoteIdentifier).collect(Collectors.joining(",")),
                 quotedTableIdString(table.id()),
                 keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
         return reselectColumns(query, table.id(), columns, keyValues);

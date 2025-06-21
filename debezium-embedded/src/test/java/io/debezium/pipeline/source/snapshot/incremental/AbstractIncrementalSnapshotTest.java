@@ -200,7 +200,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             for (int i = 0; i < ROW_COUNT; i++) {
                 connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
                         tableName(),
-                        connection.quotedColumnIdString(pkFieldName()),
+                        connection.quoteIdentifier(pkFieldName()),
                         i + ROW_COUNT + 1,
                         i + ROW_COUNT));
             }
@@ -228,7 +228,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             for (int i = 0; i < ROW_COUNT; i++) {
                 connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
                         tableName(),
-                        connection.quotedColumnIdString(pkFieldName()),
+                        connection.quoteIdentifier(pkFieldName()),
                         i + ROW_COUNT + 1,
                         i + ROW_COUNT));
             }
@@ -324,9 +324,9 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                 connection.executeWithoutCommitting(
                         String.format("UPDATE %s SET aa = aa + 2000 WHERE %s > %s AND %s <= %s",
                                 tableName(),
-                                connection.quotedColumnIdString(pkFieldName()),
+                                connection.quoteIdentifier(pkFieldName()),
                                 i * batchSize,
-                                connection.quotedColumnIdString(pkFieldName()),
+                                connection.quoteIdentifier(pkFieldName()),
                                 (i + 1) * batchSize));
                 connection.commit();
             }
@@ -361,9 +361,9 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
                 connection.executeWithoutCommitting(
                         String.format("UPDATE %s SET aa = aa + 2000 WHERE %s > %s AND %s <= %s",
                                 tableName(),
-                                connection.quotedColumnIdString(pkFieldName()),
+                                connection.quoteIdentifier(pkFieldName()),
                                 i * batchSize,
-                                connection.quotedColumnIdString(pkFieldName()),
+                                connection.quoteIdentifier(pkFieldName()),
                                 (i + 1) * batchSize));
                 connection.commit();
             }
@@ -621,7 +621,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         try (JdbcConnection connection = databaseConnection()) {
             connection.execute(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
                     tableName(),
-                    connection.quotedColumnIdString(pkFieldName()),
+                    connection.quoteIdentifier(pkFieldName()),
                     2 * ROW_COUNT + 1,
                     2 * ROW_COUNT));
         }
@@ -642,7 +642,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             for (int i = 0; i < ROW_COUNT; i++) {
                 connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
                         tableName(),
-                        connection.quotedColumnIdString(pkFieldName()),
+                        connection.quoteIdentifier(pkFieldName()),
                         i + ROW_COUNT + 1,
                         i + ROW_COUNT));
             }
@@ -689,7 +689,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         try (JdbcConnection connection = databaseConnection()) {
             connection.execute(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
                     tableName(),
-                    connection.quotedColumnIdString(pkFieldName()),
+                    connection.quoteIdentifier(pkFieldName()),
                     2 * ROW_COUNT + 1,
                     2 * ROW_COUNT));
         }
@@ -710,7 +710,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             for (int i = 0; i < ROW_COUNT; i++) {
                 connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
                         tableName(),
-                        connection.quotedColumnIdString(pkFieldName()),
+                        connection.quoteIdentifier(pkFieldName()),
                         i + ROW_COUNT + 1,
                         i + ROW_COUNT));
             }
@@ -761,7 +761,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             for (int i = 0; i < ROW_COUNT; i++) {
                 connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
                         tableToSnapshot,
-                        connection.quotedColumnIdString(pkFieldName()),
+                        connection.quoteIdentifier(pkFieldName()),
                         i + ROW_COUNT + 1,
                         i + ROW_COUNT));
             }
@@ -812,7 +812,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             for (int i = 0; i < ROW_COUNT; i++) {
                 connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
                         tableToSnapshot,
-                        connection.quotedColumnIdString(pkFieldName()),
+                        connection.quoteIdentifier(pkFieldName()),
                         i + ROW_COUNT + 1,
                         i + ROW_COUNT));
             }
@@ -1139,7 +1139,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             for (int i = 0; i < ROW_COUNT; i++) {
                 connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
                         tableName(),
-                        connection.quotedColumnIdString(pkFieldName()),
+                        connection.quoteIdentifier(pkFieldName()),
                         i + ROW_COUNT + 1,
                         i + ROW_COUNT));
             }
@@ -1173,7 +1173,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             for (int i = 0; i < ROW_COUNT; i++) {
                 connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
                         tableName(),
-                        connection.quotedColumnIdString(pkFieldName()),
+                        connection.quoteIdentifier(pkFieldName()),
                         i + ROW_COUNT + 1,
                         i + ROW_COUNT));
             }

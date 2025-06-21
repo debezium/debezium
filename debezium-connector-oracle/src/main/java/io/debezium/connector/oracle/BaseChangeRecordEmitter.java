@@ -147,7 +147,7 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
     private String getReselectQuery(List<Column> reselectColumns, Table table, OracleConnection connection) {
         final TableId id = new TableId(null, table.id().schema(), table.id().table());
         final StringBuilder query = new StringBuilder("SELECT ")
-                .append(reselectColumns.stream().map(c -> connection.quotedColumnIdString(c.name())).collect(Collectors.joining(", ")))
+                .append(reselectColumns.stream().map(c -> connection.quoteIdentifier(c.name())).collect(Collectors.joining(", ")))
                 .append(" FROM ")
                 .append(id.toDoubleQuotedString())
                 .append(" WHERE ");
@@ -156,7 +156,7 @@ public abstract class BaseChangeRecordEmitter<T> extends RelationalChangeRecordE
             if (i > 0) {
                 query.append(" AND ");
             }
-            query.append(connection.quotedColumnIdString(table.primaryKeyColumnNames().get(i))).append("=?");
+            query.append(connection.quoteIdentifier(table.primaryKeyColumnNames().get(i))).append("=?");
         }
 
         return query.toString();

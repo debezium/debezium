@@ -70,7 +70,7 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
             throw new UnsupportedOperationException("The sort order of NULL values in the incremental snapshot key is unknown.");
         }
         final String orderBy = queryColumns.stream()
-                .map(c -> jdbcConnection.quotedColumnIdString(c.name()))
+                .map(c -> jdbcConnection.quoteIdentifier(c.name()))
                 .collect(Collectors.joining(", "));
         return jdbcConnection.buildSelectWithRowLimits(table.id(),
                 limit,
@@ -86,7 +86,7 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
             TableId tableId = table.id();
             projection = table.columns().stream()
                     .filter(column -> columnFilter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
-                    .map(column -> jdbcConnection.quotedColumnIdString(column.name()))
+                    .map(column -> jdbcConnection.quoteIdentifier(column.name()))
                     .collect(Collectors.joining(", "));
         }
         return projection;
@@ -128,7 +128,7 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
             sql.append('(');
             for (int j = 0; j < i + 1; j++) {
                 final boolean isLastIterationForJ = (i == j);
-                final String pkColumnName = jdbcConnection.quotedColumnIdString(pkColumns.get(j).name());
+                final String pkColumnName = jdbcConnection.quoteIdentifier(pkColumns.get(j).name());
                 if (pkColumns.get(j).isRequired()) {
                     sql.append(pkColumnName);
                     sql.append(isLastIterationForJ ? " > ?" : " = ?");
@@ -222,7 +222,7 @@ public abstract class AbstractChunkQueryBuilder<T extends DataCollectionId>
     @Override
     public String buildMaxPrimaryKeyQuery(IncrementalSnapshotContext<T> context, Table table, Optional<String> additionalCondition) {
         final String orderBy = getQueryColumns(context, table).stream()
-                .map(c -> jdbcConnection.quotedColumnIdString(c.name()))
+                .map(c -> jdbcConnection.quoteIdentifier(c.name()))
                 .collect(Collectors.joining(" DESC, ")) + " DESC";
         String selectWithRowLimits = jdbcConnection.buildSelectWithRowLimits(table.id(), 1, buildProjection(table), Optional.empty(),
                 additionalCondition, orderBy);
