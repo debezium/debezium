@@ -622,16 +622,6 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     @Override
-    @Deprecated
-    public String quotedColumnIdString(String columnName) {
-        if (columnName.contains("\"")) {
-            columnName = columnName.replace("\"", "\"\"");
-        }
-
-        return super.quotedColumnIdString(columnName);
-    }
-
-    @Override
     protected int resolveNativeType(String typeName) {
         return getTypeRegistry().get(typeName).getRootType().getOid();
     }
@@ -826,7 +816,7 @@ public class PostgresConnection extends JdbcConnection {
     public Map<String, Object> reselectColumns(Table table, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source)
             throws SQLException {
         final String query = String.format("SELECT %s FROM %s WHERE %s",
-                columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
+                columns.stream().map(this::quoteIdentifier).collect(Collectors.joining(",")),
                 quotedTableIdString(table.id()),
                 keyColumns.stream()
                         .map(key -> {

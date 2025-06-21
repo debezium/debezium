@@ -452,7 +452,7 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
             for (int i = 0; i < rowCount; i++) {
                 connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
                         tableName(),
-                        connection.quotedColumnIdString(pkFieldName()),
+                        connection.quoteIdentifier(pkFieldName()),
                         i + startingPkId + 1,
                         i + startingPkId));
             }
@@ -467,7 +467,7 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
             for (int i = 0; i < rowCount; i++) {
                 connection.execute(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
                         tableName(),
-                        connection.quotedColumnIdString(pkFieldName()),
+                        connection.quoteIdentifier(pkFieldName()),
                         i + startingPkId + 1,
                         i + startingPkId));
                 actionOnInsert.run();

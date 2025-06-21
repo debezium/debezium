@@ -100,7 +100,7 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
         connection.setAutoCommit(false);
         for (int i = 0; i < ROW_COUNT; i++) {
             connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
-                    tableName, connection.quotedColumnIdString(pkFieldName()), i + 1, i));
+                    tableName, connection.quoteIdentifier(pkFieldName()), i + 1, i));
         }
         connection.commit();
     }
@@ -139,7 +139,7 @@ public abstract class AbstractSnapshotTest<T extends SourceConnector> extends Ab
         for (int i = startRow + 1; i <= startRow + count; i++) {
             connection.executeWithoutCommitting(
                     String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
-                            tableName, connection.quotedColumnIdString(pkFieldName()), count + i, value));
+                            tableName, connection.quoteIdentifier(pkFieldName()), count + i, value));
         }
         connection.commit();
     }

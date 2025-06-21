@@ -50,7 +50,7 @@ public class RowValueConstructorChunkQueryBuilder<T extends DataCollectionId> ex
         }
         for (int i = 0; i < pkColumns.size(); i++) {
             final boolean isLastIterationForI = (i == pkColumns.size() - 1);
-            final String pkColumnName = jdbcConnection.quotedColumnIdString(pkColumns.get(i).name());
+            final String pkColumnName = jdbcConnection.quoteIdentifier(pkColumns.get(i).name());
             sql.append(pkColumnName);
             if (!isLastIterationForI) {
                 sql.append(", ");
