@@ -1057,6 +1057,17 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDefault(2)
             .withDescription("Number of fractional digits when money type is converted to 'precise' decimal number.");
 
+    public static final Field PUBLISH_VIA_PARTITION_ROOT = Field.create("publish.via.partition.root")
+            .withDisplayName("Publish via partition root")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 23))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("A boolean that determines whether the connector should publish changes via the partition root. " +
+                    "When true, changes are published through partition root. When false, changes are published directly.")
+            .withDefault(false)
+            .withValidation(Field::isBoolean);
+
     public static final Field SHOULD_FLUSH_LSN_IN_SOURCE_DB = Field.create("flush.lsn.source")
             .withDisplayName("Boolean to determine if Debezium should flush LSN in the source database")
             .withType(Type.BOOLEAN)
@@ -1092,6 +1103,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
     private final SnapshotIsolationMode snapshotIsolationMode;
     private final SnapshotLockingMode snapshotLockingMode;
     private final boolean readOnlyConnection;
+    private final boolean publishViaPartitionRoot;
 
     public PostgresConnectorConfig(Configuration config) {
         super(
@@ -1115,6 +1127,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         this.snapshotIsolationMode = SnapshotIsolationMode.parse(config.getString(SNAPSHOT_ISOLATION_MODE), SNAPSHOT_ISOLATION_MODE.defaultValueAsString());
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
         this.readOnlyConnection = config.getBoolean(READ_ONLY_CONNECTION);
+        this.publishViaPartitionRoot = config.getBoolean(PUBLISH_VIA_PARTITION_ROOT);
     }
 
     protected String hostname() {
@@ -1207,6 +1220,10 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public boolean isFlushLsnOnSource() {
         return flushLsnOnSource;
+    }
+
+    public boolean isPublishViaPartitionRoot() {
+        return publishViaPartitionRoot;
     }
 
     @Override
@@ -1303,7 +1320,8 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
                     UNAVAILABLE_VALUE_PLACEHOLDER,
                     LOGICAL_DECODING_MESSAGE_PREFIX_INCLUDE_LIST,
-                    LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST)
+                    LOGICAL_DECODING_MESSAGE_PREFIX_EXCLUDE_LIST,
+                    PUBLISH_VIA_PARTITION_ROOT)
             .excluding(INCLUDE_SCHEMA_CHANGES)
             .create();
 
