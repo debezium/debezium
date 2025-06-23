@@ -209,7 +209,7 @@ The source configuration uses the same configuration properties that are describ
 |Class to use for storing and retrieving offsets for non-Kafka deployments.
 Available options
 
-* `org.apache.kafka.connect.storage.FileOffsetBackingStore` for non-Kafka deployments  
+* `org.apache.kafka.connect.storage.FileOffsetBackingStore` for non-Kafka deployments
 * `org.apache.kafka.connect.storage.MemoryOffsetBackingStore` volatile store for test environments
 * `io.debezium.storage.jdbc.offset.JdbcOffsetBackingStore` for database using JDBC
 * `io.debezium.storage.redis.offset.RedisOffsetBackingStore` for Redis deployments
@@ -916,7 +916,7 @@ optional https://en.wikipedia.org/wiki/JSON_Web_Token[JSON Web Token (JWT) authe
 
 |[[httpclient-authentication-type]]<<httpclient-authentication-type, `debezium.sink.http.authentication.type` >>
 |
-|Specifies the type of authentication the HTTP client sink uses when connecting to an HTTP server.  
+|Specifies the type of authentication the HTTP client sink uses when connecting to an HTTP server.
 Supports one of the following options:
 
 `jwt`:: JSON Web Token (JWT) authentication.
@@ -946,10 +946,10 @@ If you omit this property, the HTTP client sink does not use authentication head
 
 |[[httpclient-authentication-webhook-secret]]<<httpclient-authentication-webhook-secret, `debezium.sink.http.authentication.webhook.secret` >>
 |
-|The webhooks signing secret that {prodname} uses to generate HMAC-SHA256 signatures for the webhook request. 
+|The webhooks signing secret that {prodname} uses to generate HMAC-SHA256 signatures for the webhook request.
 The secret must be Base64-encoded, with a size from 24 bytes to 64 bytes (192–512 bits).
 Optionally, you can add the prefix `whsec_` to the secret to help distinguish it from other types of keys or tokens.
-For more information about implementing or validating webhook signatures, see the link:https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md[Standard Webhooks specification]. 
+For more information about implementing or validating webhook signatures, see the link:https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md[Standard Webhooks specification].
 
 
 |===
@@ -1806,7 +1806,7 @@ By default, dots in a name are replaced with underscores.
 ==== Qdrant Sink
 
 Qdrant is an open-source vector database optimized for vector similarity search and extended with powerful filtering capabilities.
-It's designed for high-load applications, and it enables you to efficiently store, manage, and search embedding vectors. 
+It's designed for high-load applications, and it enables you to efficiently store, manage, and search embedding vectors.
 You can use Qdrant to process vector datatypes that are captured directly from a source database, or you can use a transformation to calculate embeddings from message fields, and then send those embeddings to the database for processing.
 
 Qdrant sink ingests incoming messages and upserts the `after` part of each message into a collection.
@@ -1854,7 +1854,7 @@ This field is mandatory for source tables and collections that contain multiple 
 |===
 
 
-== Injection points
+.Injection points
 
 To modify connector behavior, you can apply custom logic to specify alternative implementations for certain functions.
 If you specify implementations that are not available, the connector uses the default implementations.
@@ -1878,12 +1878,12 @@ If you specify implementations that are not available, the connector uses the de
 
 ==== InstructLab
 
-InstructLab is a community-driven approach to build truly open-source large language models (LLMs).
-InstructLab augments models using **taxonomies**, a collection of skills and knowledge to help to identify gaps in desired capabilities and used to tune base models efficiently.
+InstructLab is a community-driven project for augmenting large language models (LLMs) for use in generative artificial intelligence applications.
+Working with InstructLab, users who identify gaps in the capabilities of a base model can collaboratively develop a taxonomy to augment the model, with each contributor providing specific expertise and skills.
 
-Debezium Server supports automating the addition of skills and knowledge directly into taxonomies by creating or updating InstructLab's question and answer (`qna.yml`) files.
+{prodname} Server enables you to automate the process of adding skills and knowledge into a taxonomy by configuring a data sink based on InstructLab question and answer (`qna.yml`) files.
 The sink configuration defines a series of mappings that are used to derive question, answer, and context values from an event stream.
-The mappings can source values directly from fields within the event payload, headers, or statically configured constants.
+These mappings can source values directly from fields within the event payload, headers, or statically configured constants.
 Periodically, users can then use InstructLab to train the model to take advantage of the new skills and knowledge added to the taxonomies.
 
 [cols="40%a,10%a,50%a",options="header"]
@@ -1896,58 +1896,62 @@ Periodically, users can then use InstructLab to train the model to take advantag
 
 |[[instructlab-taxonomy-base-path]]<<instructlab-taxonomy-base-path, `debezium.sink.instructlab.taxonomy.base.path`>>
 |
-|The absolute path to the root directory where taxonomy skills and knowledge are stored.
-This will be used in conjunction with taxonomy domain properties to construct the full path to the `qna.yml`.
+|The absolute path to the root directory where you store InstructLab taxonomy skills and knowledge.
+This value is used in conjunction with xref:instructlab-taxonomy-domain[taxonomy domain] properties to construct the full path to the `qna.yml` file.
 
 |[[instructlab-taxonomies]]<<instructlab-taxonomies, `debezium.sink.instructlab.taxonomies`>>
 |
-|The comma separated list of symbolic names of taxonomy mappings.
+|A comma-separated list of the symbolic names of taxonomy mappings.
 
 |[[instructlab-taxonomy-topic]]<<instructlab-taxonomy-topic, `debezium.sink.instructlab.taxonomy._<name>_.topic`>>
 |`.*`
-|A regular expression used to match topics to determine if the _<name>_ taxonomy mapping is applied.
+|A regular expression that is used to match topics to determine whether to apply the _<name>_ taxonomy mapping.
 
 |[[instructlab-taxonomy-question]]<<instructlab-taxonomy-question, `debezium.sink.instructlab.taxonomy._<name>_.question`>>
 |
-|Specifies a xref:#instructlab-mapping-definition[] that will be used as the seed example's `question` attribute in the `qna.yml` file.
+|Specifies a xref:instructlab-mapping-definition[Mapping definition] to use as the seed example's `question` attribute in the `qna.yml` file.
 This is required.
 
 |[[instructlab-taxonomy-answer]]<<instructlab-taxonomy-answer, `debezium.sink.instructlab.taxonomy._<name>_.answer`>>
 |
-|Specifies a xref:#instructlab-mapping-definition[] that will be used as the seed example's `answer` attribute in the `qna.yml` file.
+|Specifies a xref:instructlab-mapping-definition[Mapping definition] to use as the seed example's `answer` attribute in the `qna.yml` file.
 This is required.
 
 |[[instructlab-taxonomy-context]]<<instructlab-taxonomy-context, `debezium.sink.instructlab.taxonomy._<name>_.context`>>
 |
-|Specifies a xref:#instructlab-mapping-definition[] that will be used as the seed example's `context` attribute in the `qna.yml` file.
+|Specifies a xref:instructlab-mapping-definition[Mapping definition] to use as the seed example's `context` attribute in the `qna.yml` file.
 This is optional.
 
 |[[instructlab-taxonomy-domain]]<<instructlab-taxonomy-domain, `debezium.sink.instructlab.taxonomy._<name>_.domain`>>
 |
 |Specifies the taxonomy domain, a series of directories separated by `/` to the `qna.yml`, excluding the taxonomy base path.
-For example, a value of `a/b` and a base path of `/taxonomy` will represent `/taxonomy/a/b/qna.yml`.
+For example, a value of `a/b` and a base path of `/taxonomy` represents `/taxonomy/a/b/qna.yml`.
 
 |===
 
 [id="instructlab-mapping-definition"]
-===== Mapping Definition
+===== Mapping definition
 
-A mapping definition represents one of three options:
+In the InstructLab sink configuration, you can set properties to specify how {prodname} Server maps fields in event messages to xref:instructlab-taxonomy-question[question], xref:instructlab-taxonomy-answer[answer], and xref:instructlab-taxonomy-context[context]attributes in an InstructLab `qna.yml` file.
+
+For each attribute type that you want to populate in the `qna.yml` file, you specify a mapping prefix that determines the message field from which {prodname} extracts the value.
+You can specify the following prefix values:
 
 Value::
-When the mapping is prefixed with `value:`, it is interpreted as a specific field in the event's payload that supplies the value used.
-For example, given a mapping of `value:abc`, the sink expects a field named `abc` to source the value from.
-If the event is a {prodname}-structured payload, the field will be sourced from the `after` section of the payload.
-If the event is flattened, the field will be sourced directly from the event's value.
+If you prefix a mapping definition with the string `value:`, {prodname} extracts the value of the specified field from the incoming event payload.
+For example, to populate an InstructLab `question` attribute with the value of the `abc` field in the event payload, set the `debezium.sink.instructlab.taxonomy._<name>_.question` property to `value:abc`.
+When {prodname} processes the message it takes the value of the payload field `abc` and adds it as a `question` attribute in the `qna.yml` file.
+
+For events that have a {prodname}-structured payload, {prodname} extracts the specified field from the `after` section of the payload.
+If the event is flattened, the field is sourced directly from the event's value.
 
 Header::
-When the mapping is prefixed with `header:`, it is interpreted as a specific header in the event that supplies the value used.
-For example, given a mapping of `header:h1`, the sink expects a header named `h1` to source the value from.
+If you prefix a mapping definition with the string `header:`, {prodname} extracts the value of the specified header field of the incoming event message.
+For example, if you specify the mapping `header:h1`, when {prodname} detects a header with the name `h1` in a source message, it extracts the value of the `h1` field.
 
 Constant::
-Any value that is not prefixed with `header:` or `value:` will be treated as a constant value, and will be used as-is.
-This permits setting a specific mapping to a static, constant value via configuration.
-
+If the mapping definition does not include the `header:` or `value:` prefixes, when {prodname} detects instances of the specified value in incoming messages, it treats them as constants, and uses them as-is.
+Use this option when you want to map the value of a specific static constant to an attribute in the `qna.yml` file.
 
 == Extensions
 
