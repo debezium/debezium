@@ -28,6 +28,7 @@ class ClassesInConfigurationHandler {
         }
 
         return Arrays.stream(elements.split(DELIMITER))
+                .map(String::trim)
                 .map(value -> config.get(type + "." + value + ".type"))
                 .toList();
     }
