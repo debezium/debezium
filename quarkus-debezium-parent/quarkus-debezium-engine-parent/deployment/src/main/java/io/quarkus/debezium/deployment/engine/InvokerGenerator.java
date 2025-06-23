@@ -47,7 +47,7 @@ public class InvokerGenerator {
      * @param beanInfo
      * @return
      */
-    public InvokerMetaData generate(MethodInfo methodInfo, BeanInfo beanInfo) {
+    public GeneratedClassMetaData generate(MethodInfo methodInfo, BeanInfo beanInfo) {
         String name = generateClassName(beanInfo, methodInfo);
 
         try (ClassCreator invoker = ClassCreator.builder()
@@ -87,7 +87,7 @@ public class InvokerGenerator {
                 capture.returnVoid();
             }
 
-            return new InvokerMetaData(UUID.randomUUID(), name.replace('/', '.'), beanInfo);
+            return new GeneratedClassMetaData(UUID.randomUUID(), name.replace('/', '.'), beanInfo);
         }
     }
 
