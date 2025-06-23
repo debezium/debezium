@@ -45,12 +45,9 @@ class ClassesInConfigurationHandlerTest {
             "enabled", "false");
 
     private static final Map<String, String> CONFIGURATION_WITH_POST_PROCESSING = Map.of(
-            "post.processors", "reselector",
-            "reselector.type", "io.debezium.processors.reselect.ReselectColumnsPostProcessor",
-            "reselector.reselect.unavailable.values", "true",
-            "reselector.reselect.null.values", "true",
-            "reselector.reselect.use.event.key", "false",
-            "reselector.reselect.error.handling.mode", "WARN");
+            "post.processors", "reselector, another",
+            "post.processors.reselector.type", "io.debezium.processors.reselect.ReselectColumnsPostProcessor",
+            "post.processors.another.type", "io.debezium.processors.reselect.AnotherReselectColumnsPostProcessor");
 
     @Test
     @DisplayName("should return empty when there are no transforms")
@@ -79,12 +76,13 @@ class ClassesInConfigurationHandlerTest {
     }
 
     @Test
-    @DisplayName("should return multiple classes when there is more than one transform")
-    void shouldBeMultipleElementWhenThereIsMoreThanOnePostProcessor() {
+    @DisplayName("should return multiple classes when there is more than one post processors even with spaces")
+    void shouldBeMultipleElementWhenThereIsMoreThanOnePostProcessorEvenWithSpaces() {
         ClassesInConfigurationHandler underTest = ClassesInConfigurationHandler.POST_PROCESSOR;
 
         assertThat(underTest.extract(CONFIGURATION_WITH_POST_PROCESSING)).containsExactly(
-                "io.debezium.processors.reselect.ReselectColumnsPostProcessor");
+                "io.debezium.processors.reselect.ReselectColumnsPostProcessor",
+                "io.debezium.processors.reselect.AnotherReselectColumnsPostProcessor");
     }
 
     @Test
