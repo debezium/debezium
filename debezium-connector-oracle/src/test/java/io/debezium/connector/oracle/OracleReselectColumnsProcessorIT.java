@@ -83,7 +83,7 @@ public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorT
         return TestHelper.defaultConfig()
                 .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ4321")
                 .with(OracleConnectorConfig.CUSTOM_POST_PROCESSORS, "reselector")
-                .with("reselector.type", ReselectColumnsPostProcessor.class.getName());
+                .with("post.processors.reselector.type", ReselectColumnsPostProcessor.class.getName());
     }
 
     @Override
@@ -148,7 +148,7 @@ public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorT
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ7729")
                     .with(OracleConnectorConfig.MSG_KEY_COLUMNS, "(.*).DEBEZIUM.DBZ7729:DATA3")
                     .with(OracleConnectorConfig.LOB_ENABLED, "true")
-                    .with("reselector.reselect.columns.include.list", "DEBEZIUM.DBZ7729:DATA")
+                    .with("post.processors.reselector.reselect.columns.include.list", "DEBEZIUM.DBZ7729:DATA")
                     .build();
 
             start(getConnectorClass(), config);
@@ -204,7 +204,7 @@ public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorT
 
             Configuration config = getConfigurationBuilder()
                     .with(OracleConnectorConfig.LOB_ENABLED, "true")
-                    .with("reselector.reselect.columns.include.list", reselectColumnsList())
+                    .with("post.processors.reselector.reselect.columns.include.list", reselectColumnsList())
                     .build();
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
@@ -254,7 +254,7 @@ public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorT
 
             Configuration config = getConfigurationBuilder()
                     .with(OracleConnectorConfig.LOB_ENABLED, "true")
-                    .with("reselector.reselect.columns.include.list", reselectColumnsList())
+                    .with("post.processors.reselector.reselect.columns.include.list", reselectColumnsList())
                     .build();
             start(OracleConnector.class, config);
             assertConnectorIsRunning();
@@ -304,7 +304,7 @@ public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorT
 
             Configuration config = getConfigurationBuilder()
                     .with(OracleConnectorConfig.LOB_ENABLED, "true")
-                    .with("reselector.reselect.columns.include.list", reselectColumnsList())
+                    .with("post.processors.reselector.reselect.columns.include.list", reselectColumnsList())
                     .build();
 
             start(OracleConnector.class, config);
