@@ -7,6 +7,7 @@
 package io.quarkus.debezium.deployment.engine;
 
 import static io.quarkus.debezium.deployment.dotnames.DebeziumDotNames.CapturingDotName.CAPTURING;
+import static io.quarkus.debezium.deployment.engine.ClassesInConfigurationHandler.POST_PROCESSOR;
 import static io.quarkus.debezium.deployment.engine.ClassesInConfigurationHandler.PREDICATE;
 import static io.quarkus.debezium.deployment.engine.ClassesInConfigurationHandler.TRANSFORM;
 import static io.quarkus.deployment.annotations.ExecutionTime.RUNTIME_INIT;
@@ -164,6 +165,12 @@ public class EngineProcessor {
         PREDICATE.extract(debeziumEngineConfiguration.configuration())
                 .forEach(predicate -> reflectiveClasses.produce(ReflectiveClassBuildItem
                         .builder(predicate)
+                        .reason(getClass().getName())
+                        .build()));
+
+        POST_PROCESSOR.extract(debeziumEngineConfiguration.configuration())
+                .forEach(postProcessor -> reflectiveClasses.produce(ReflectiveClassBuildItem
+                        .builder(postProcessor)
                         .reason(getClass().getName())
                         .build()));
 
