@@ -44,6 +44,14 @@ class ClassesInConfigurationHandlerTest {
             "predicates", "p2",
             "enabled", "false");
 
+    private static final Map<String, String> CONFIGURATION_WITH_POST_PROCESSING = Map.of(
+            "post.processors", "reselector",
+            "reselector.type", "io.debezium.processors.reselect.ReselectColumnsPostProcessor",
+            "reselector.reselect.unavailable.values", "true",
+            "reselector.reselect.null.values", "true",
+            "reselector.reselect.use.event.key", "false",
+            "reselector.reselect.error.handling.mode", "WARN");
+
     @Test
     @DisplayName("should return empty when there are no transforms")
     void shouldBeEmptyWithoutTransforms() {
@@ -68,6 +76,15 @@ class ClassesInConfigurationHandlerTest {
         assertThat(underTest.extract(CONFIGURATION_WITH_MULTIPLE_TRANSFORMATION)).containsExactly(
                 "io.debezium.transforms.ExtractNewRecordState",
                 "io.debezium.transforms.ExtractNewRecordState");
+    }
+
+    @Test
+    @DisplayName("should return multiple classes when there is more than one transform")
+    void shouldBeMultipleElementWhenThereIsMoreThanOnePostProcessor() {
+        ClassesInConfigurationHandler underTest = ClassesInConfigurationHandler.POST_PROCESSOR;
+
+        assertThat(underTest.extract(CONFIGURATION_WITH_POST_PROCESSING)).containsExactly(
+                "io.debezium.processors.reselect.ReselectColumnsPostProcessor");
     }
 
     @Test

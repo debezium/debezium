@@ -35,4 +35,6 @@ class ClassesInConfigurationHandler {
     public static ClassesInConfigurationHandler TRANSFORM = new ClassesInConfigurationHandler("transforms");
 
     public static ClassesInConfigurationHandler PREDICATE = new ClassesInConfigurationHandler("predicates");
+
+    public static ClassesInConfigurationHandler POST_PROCESSOR = new ClassesInConfigurationHandler("post.processors");
 }
