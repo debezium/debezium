@@ -170,7 +170,7 @@ public interface EmbeddedEngineConfig {
             .withDefault(Duration.ofMinutes(5).toMillis())
             .withValidation(Field::isPositiveInteger)
             .withDescription(String.format("How long we wait before forcefully stopping the connector thread when shutting down. " +
-                    "Must be bigger than the time it takes two polling loops to finish ({} ms)", CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_SEC * 2));
+                    "Must be bigger than the time it takes two polling loops to finish ({} ms)", CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_MS.name()));
 
     int DEFAULT_ERROR_MAX_RETRIES = -1;
 
