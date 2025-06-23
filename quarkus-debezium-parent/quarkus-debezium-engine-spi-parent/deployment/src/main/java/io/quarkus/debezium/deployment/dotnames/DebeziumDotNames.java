@@ -6,28 +6,47 @@
 
 package io.quarkus.debezium.deployment.dotnames;
 
+import java.util.List;
+import java.util.Objects;
+
+import org.jboss.jandex.AnnotationInstance;
 import org.jboss.jandex.DotName;
 import org.jboss.jandex.MethodInfo;
 
 import io.debezium.runtime.Capturing;
+import io.debezium.runtime.PostProcessing;
 import io.quarkus.arc.processor.BeanInfo;
 
 public class DebeziumDotNames {
-    public static class CapturingDotName {
-        public static final DotName CAPTURING = DotName.createSimple(Capturing.class.getName());
 
-        public static boolean filter(MethodInfo info) {
-            return info.annotations()
-                    .stream()
-                    .anyMatch(instance -> CAPTURING.equals(instance.name()));
-        }
+    public static final DotName CAPTURING = DotName.createSimple(Capturing.class.getName());
+    public static final DotName POST_PROCESSING = DotName.createSimple(PostProcessing.class.getName());
+    public static final List<DotName> dotNames = List.of(CAPTURING, POST_PROCESSING);
 
-        public static boolean filter(BeanInfo info) {
-            return info.getTarget()
-                    .map(annotation -> annotation.asClass().methods()
-                            .stream()
-                            .anyMatch(CapturingDotName::filter))
-                    .orElse(false);
-        }
+    public boolean filter(BeanInfo info) {
+        return info.getTarget()
+                .map(annotation -> annotation.asClass().methods()
+                        .stream()
+                        .anyMatch(this::filter))
+                .orElse(false);
     }
+
+    public boolean filter(MethodInfo info) {
+        return info.annotations()
+                .stream()
+                .anyMatch(instance -> dotNames
+                        .stream()
+                        .anyMatch(debeziumDotName -> debeziumDotName.equals(instance.name())));
+    }
+
+    public DotName get(MethodInfo info) {
+        return dotNames
+                .stream()
+                .map(info::annotation)
+                .filter(Objects::nonNull)
+                .map(AnnotationInstance::name)
+                .findFirst()
+                .orElse(null);
+    }
+
 }

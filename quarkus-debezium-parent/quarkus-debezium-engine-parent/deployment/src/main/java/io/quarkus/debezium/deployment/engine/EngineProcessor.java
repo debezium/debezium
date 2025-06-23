@@ -6,7 +6,6 @@
 
 package io.quarkus.debezium.deployment.engine;
 
-import static io.quarkus.debezium.deployment.dotnames.DebeziumDotNames.CapturingDotName.CAPTURING;
 import static io.quarkus.debezium.deployment.engine.ClassesInConfigurationHandler.POST_PROCESSOR;
 import static io.quarkus.debezium.deployment.engine.ClassesInConfigurationHandler.PREDICATE;
 import static io.quarkus.debezium.deployment.engine.ClassesInConfigurationHandler.TRANSFORM;
@@ -38,6 +37,7 @@ import io.debezium.pipeline.signal.channels.SourceSignalChannel;
 import io.debezium.pipeline.signal.channels.jmx.JmxSignalChannel;
 import io.debezium.pipeline.signal.channels.process.InProcessSignalChannel;
 import io.debezium.pipeline.txmetadata.DefaultTransactionMetadataFactory;
+import io.debezium.processors.spi.PostProcessor;
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.snapshot.lock.NoLockingSupport;
@@ -60,14 +60,18 @@ import io.quarkus.arc.deployment.SyntheticBeanBuildItem;
 import io.quarkus.arc.deployment.UnremovableBeanBuildItem;
 import io.quarkus.arc.deployment.UnremovableBeanBuildItem.BeanClassAnnotationExclusion;
 import io.quarkus.arc.processor.DotNames;
+import io.quarkus.debezium.deployment.PostProcessorGenerator;
 import io.quarkus.debezium.deployment.dotnames.DebeziumDotNames;
 import io.quarkus.debezium.deployment.items.DebeziumConnectorBuildItem;
 import io.quarkus.debezium.deployment.items.DebeziumGeneratedInvokerBuildItem;
+import io.quarkus.debezium.deployment.items.DebeziumGeneratedPostProcessorBuildItem;
 import io.quarkus.debezium.deployment.items.DebeziumMediatorBuildItem;
 import io.quarkus.debezium.engine.DebeziumRecorder;
 import io.quarkus.debezium.engine.capture.CapturingInvoker;
 import io.quarkus.debezium.engine.capture.CapturingSourceRecordInvokerRegistryProducer;
 import io.quarkus.debezium.engine.capture.DynamicCapturingInvokerSupplier;
+import io.quarkus.debezium.engine.post.processing.ArcPostProcessorFactory;
+import io.quarkus.debezium.engine.post.processing.DynamicPostProcessingSupplier;
 import io.quarkus.deployment.GeneratedClassGizmoAdaptor;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
@@ -131,6 +135,7 @@ public class EngineProcessor {
         resources.produce(new NativeImageResourceBuildItem("META-INF/services/io.debezium.spi.snapshot.Snapshotter"));
         resources.produce(new NativeImageResourceBuildItem("META-INF/services/org.apache.kafka.connect.source.SourceConnector"));
         resources.produce(new NativeImageResourceBuildItem("META-INF/services/io.debezium.pipeline.signal.channels.SignalChannelReader"));
+        resources.produce(new NativeImageResourceBuildItem("META-INF/services/io.debezium.processors.PostProcessorProducer"));
     }
 
     @BuildStep(onlyIf = NativeOrNativeSourcesBuild.class)
@@ -156,6 +161,7 @@ public class EngineProcessor {
                         .build()));
 
         reflectiveClasses.produce(ReflectiveClassBuildItem.builder(
+                ArcPostProcessorFactory.class,
                 DebeziumEngine.BuilderFactory.class,
                 ConvertingAsyncEngineBuilderFactory.class,
                 SaslClientAuthenticator.class,
@@ -198,16 +204,32 @@ public class EngineProcessor {
     public void generateInvokers(List<DebeziumMediatorBuildItem> mediatorBuildItems,
                                  BuildProducer<GeneratedClassBuildItem> generatedClassBuildItemBuildProducer,
                                  BuildProducer<ReflectiveClassBuildItem> reflectiveClassBuildItemBuildProducer,
-                                 BuildProducer<DebeziumGeneratedInvokerBuildItem> debeziumGeneratedInvokerBuildItemBuildProducer) {
+                                 BuildProducer<DebeziumGeneratedInvokerBuildItem> debeziumGeneratedInvokerBuildItemBuildProducer,
+                                 BuildProducer<DebeziumGeneratedPostProcessorBuildItem> debeziumGeneratedPostProcessorBuildItemmBuildProducer) {
         InvokerGenerator invokerGenerator = new InvokerGenerator(new GeneratedClassGizmoAdaptor(generatedClassBuildItemBuildProducer,
                 true));
 
+        PostProcessorGenerator postProcessorGenerator = new PostProcessorGenerator(new GeneratedClassGizmoAdaptor(generatedClassBuildItemBuildProducer, true));
+
         mediatorBuildItems.forEach(item -> {
-            InvokerMetaData metadata = invokerGenerator.generate(item.getMethodInfo(),
-                    item.getBean());
-            debeziumGeneratedInvokerBuildItemBuildProducer.produce(new DebeziumGeneratedInvokerBuildItem(metadata.invokerClassName(),
-                    metadata.mediator(), metadata.getShortIdentifier()));
-            reflectiveClassBuildItemBuildProducer.produce(ReflectiveClassBuildItem.builder(metadata.invokerClassName()).build());
+            if (item.getDotName().equals(DebeziumDotNames.CAPTURING)) {
+                GeneratedClassMetaData metadata = invokerGenerator.generate(item.getMethodInfo(),
+                        item.getBean());
+                debeziumGeneratedInvokerBuildItemBuildProducer.produce(new DebeziumGeneratedInvokerBuildItem(metadata.generatedClassName(),
+                        metadata.mediator(), metadata.getShortIdentifier()));
+                reflectiveClassBuildItemBuildProducer.produce(ReflectiveClassBuildItem.builder(metadata.generatedClassName()).build());
+            }
+
+            if (item.getDotName().equals(DebeziumDotNames.POST_PROCESSING)) {
+                GeneratedClassMetaData metaData = postProcessorGenerator.generate(item.getMethodInfo(), item.getBean());
+
+                debeziumGeneratedPostProcessorBuildItemmBuildProducer.produce(new DebeziumGeneratedPostProcessorBuildItem(
+                        metaData.generatedClassName(),
+                        metaData.mediator(),
+                        metaData.getShortIdentifier()));
+
+                reflectiveClassBuildItemBuildProducer.produce(ReflectiveClassBuildItem.builder(metaData.generatedClassName()).build());
+            }
         });
     }
 
@@ -231,25 +253,51 @@ public class EngineProcessor {
     }
 
     @BuildStep
+    @Record(RUNTIME_INIT)
+    public void injectPostProcessors(
+                                     RecorderContext recorderContext,
+                                     BuildProducer<SyntheticBeanBuildItem> syntheticBeanBuildItemBuildProducer,
+                                     DynamicPostProcessingSupplier dynamicPostProcessingSupplier,
+                                     List<DebeziumGeneratedPostProcessorBuildItem> debeziumGeneratedPostProcessorBuildItems) {
+        debeziumGeneratedPostProcessorBuildItems.forEach(item -> syntheticBeanBuildItemBuildProducer.produce(
+                SyntheticBeanBuildItem.configure(PostProcessor.class)
+                        .setRuntimeInit()
+                        .scope(ApplicationScoped.class)
+                        .unremovable()
+                        .supplier(dynamicPostProcessingSupplier.createPostProcessor(
+                                recorderContext.classProxy(item.getMediator().getImplClazz().name().toString()),
+                                (Class<? extends PostProcessor>) recorderContext.classProxy(item.getGeneratedClassName())))
+                        .named(DynamicPostProcessingSupplier.BASE_NAME + item.getMediator().getImplClazz().name() + item.getId())
+                        .done()));
+    }
+
+    @BuildStep
     public void extractMediators(BuildProducer<DebeziumMediatorBuildItem> mediatorBuildItemBuildProducer,
                                  BeanDiscoveryFinishedBuildItem beanDiscoveryFinished) {
+
+        DebeziumDotNames dbz = new DebeziumDotNames();
+
         beanDiscoveryFinished
                 .beanStream()
                 .classBeans()
                 .stream()
-                .filter(DebeziumDotNames.CapturingDotName::filter)
+                .filter(dbz::filter)
                 .flatMap(beanInfo -> beanInfo
                         .getTarget()
                         .map(target -> target.asClass().methods())
                         .stream()
                         .flatMap(Collection::stream)
-                        .filter(DebeziumDotNames.CapturingDotName::filter)
-                        .map(methodInfo -> new DebeziumMediatorBuildItem(beanInfo, methodInfo)))
+                        .filter(dbz::filter)
+                        .map(methodInfo -> new DebeziumMediatorBuildItem(beanInfo, methodInfo, dbz.get(methodInfo))))
                 .forEach(mediatorBuildItemBuildProducer::produce);
+
     }
 
     @BuildStep
     public List<UnremovableBeanBuildItem> removalExclusion() {
-        return List.of(new UnremovableBeanBuildItem(new BeanClassAnnotationExclusion(CAPTURING)));
+        return DebeziumDotNames.dotNames
+                .stream()
+                .map(dotName -> new UnremovableBeanBuildItem(new BeanClassAnnotationExclusion(dotName)))
+                .toList();
     }
 }

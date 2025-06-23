@@ -6,21 +6,24 @@
 
 package io.quarkus.debezium.deployment.items;
 
+import org.jboss.jandex.DotName;
 import org.jboss.jandex.MethodInfo;
 
 import io.quarkus.arc.processor.BeanInfo;
 import io.quarkus.builder.item.MultiBuildItem;
 
 /**
- * Represents a method annotated with {@code Capturing}
+ * Represents a method annotated with {@code Capturing, PostProcessing}
  */
 public final class DebeziumMediatorBuildItem extends MultiBuildItem {
     private final BeanInfo bean;
     private final MethodInfo methodInfo;
+    private final DotName dotName;
 
-    public DebeziumMediatorBuildItem(BeanInfo bean, MethodInfo methodInfo) {
+    public DebeziumMediatorBuildItem(BeanInfo bean, MethodInfo methodInfo, DotName dotName) {
         this.bean = bean;
         this.methodInfo = methodInfo;
+        this.dotName = dotName;
     }
 
     public BeanInfo getBean() {
@@ -29,5 +32,9 @@ public final class DebeziumMediatorBuildItem extends MultiBuildItem {
 
     public MethodInfo getMethodInfo() {
         return methodInfo;
+    }
+
+    public DotName getDotName() {
+        return dotName;
     }
 }
