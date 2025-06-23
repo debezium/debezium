@@ -10,7 +10,7 @@ import java.util.UUID;
 
 import io.quarkus.arc.processor.BeanInfo;
 
-public record InvokerMetaData(UUID id, String invokerClassName, BeanInfo mediator) {
+public record GeneratedClassMetaData(UUID id, String generatedClassName, BeanInfo mediator) {
 
     public String getShortIdentifier() {
         return id.toString().split("-")[0].replaceAll("\\D", "");
