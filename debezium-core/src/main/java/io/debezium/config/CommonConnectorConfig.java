@@ -72,6 +72,7 @@ public abstract class CommonConnectorConfig {
     public static final String MULTI_PARTITION_MODE = "multi.partition.mode";
     public static final String SNAPSHOT_MODE_PROPERTY_NAME = "snapshot.mode";
     public static final String SNAPSHOT_LOCKING_MODE_PROPERTY_NAME = "snapshot.locking.mode";
+    public static final String TASKS_MAX = "tasks.max";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CommonConnectorConfig.class);
     protected SnapshotQueryMode snapshotQueryMode;
@@ -1196,6 +1197,7 @@ public abstract class CommonConnectorConfig {
     private final List<String> signalEnabledChannels;
     private final EnumSet<Operation> skippedOperations;
     private final String taskId;
+    private final int maxTasks;
     private final boolean skipMessagesWithoutChange;
 
     private final String notificationTopicName;
@@ -1242,6 +1244,7 @@ public abstract class CommonConnectorConfig {
         this.signalEnabledChannels = getSignalEnabledChannels(config);
         this.skippedOperations = determineSkippedOperations(config);
         this.taskId = config.getString(TASK_ID);
+        this.maxTasks = config.getInteger(TASKS_MAX, 1);
         this.notificationTopicName = config.getString(SinkNotificationChannel.NOTIFICATION_TOPIC);
         this.enabledNotificationChannels = config.getList(NOTIFICATION_ENABLED_CHANNELS);
         this.skipMessagesWithoutChange = config.getBoolean(SKIP_MESSAGES_WITHOUT_CHANGE);
@@ -1709,6 +1712,10 @@ public abstract class CommonConnectorConfig {
 
     public String getTaskId() {
         return taskId;
+    }
+
+    public int getMaxTasks() {
+        return maxTasks;
     }
 
     public Heartbeat createHeartbeat(TopicNamingStrategy topicNamingStrategy, SchemaNameAdjuster schemaNameAdjuster,
