@@ -371,7 +371,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
             Thread.interrupted();
             executor.shutdown();
             blockingSnapshotExecutor.shutdown();
-            long shutdownWaitTimeout = connectorConfig.getExecutorShutdownTimeout().toMillis();
+            final long shutdownWaitTimeout = connectorConfig.getExecutorShutdownTimeout().toMillis();
             boolean isShutdown = executor.awaitTermination(shutdownWaitTimeout, TimeUnit.MILLISECONDS);
             boolean isBlockingSnapshotShutdown = blockingSnapshotExecutor.awaitTermination(shutdownWaitTimeout, TimeUnit.MILLISECONDS);
 

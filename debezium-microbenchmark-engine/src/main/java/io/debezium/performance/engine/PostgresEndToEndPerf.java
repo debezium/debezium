@@ -122,7 +122,7 @@ public class PostgresEndToEndPerf {
                 if (executors != null) {
                     executors.shutdown();
                     try {
-                        executors.awaitTermination(CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_SEC, TimeUnit.SECONDS);
+                        executors.awaitTermination(CommonConnectorConfig.DEFAULT_EXECUTOR_SHUTDOWN_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
                     }
                     catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
