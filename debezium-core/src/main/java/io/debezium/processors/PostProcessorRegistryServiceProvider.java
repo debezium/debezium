@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
@@ -23,6 +26,8 @@ import io.debezium.util.Strings;
  * @author Chris Cranford
  */
 public class PostProcessorRegistryServiceProvider implements ServiceProvider<PostProcessorRegistry> {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(PostProcessorRegistryServiceProvider.class);
 
     private static final String POST_PROCESSOR_MISS_CONFIGURATION_ERROR_MESSAGE = "Post processor '%s' is missing '%s.type' and/or '%s.<option>' configurations";
     private final String TYPE_SUFFIX = ".type";
@@ -42,15 +47,26 @@ public class PostProcessorRegistryServiceProvider implements ServiceProvider<Pos
     private PostProcessor getPostProcessor(Configuration configuration, String postProcessorName) {
 
         String type = postProcessorName + TYPE_SUFFIX;
-        Map<String, String> postProcessorConfigs = configuration.subset(postProcessorName, true).asMap();
 
-        if (!configuration.hasKey(type) || postProcessorConfigs.isEmpty()) {
+        Map<String, String> postProcessorConfigsOldConvention = configuration.subset(postProcessorName, true).asMap();
+        Map<String, String> postProcessorConfigsNewConvention = configuration.subset(CommonConnectorConfig.CUSTOM_POST_PROCESSORS.name() + "." + postProcessorName, true)
+                .asMap();
+
+        if (!postProcessorConfigsNewConvention.isEmpty()) {
+            PostProcessor postProcessor = configuration.getInstance(CommonConnectorConfig.CUSTOM_POST_PROCESSORS.name() + "." + type, PostProcessor.class);
+            postProcessor.configure(postProcessorConfigsNewConvention);
+            return postProcessor;
+        }
+
+        if (!configuration.hasKey(type) || postProcessorConfigsOldConvention.isEmpty()) {
             throw new DebeziumException(String.format(POST_PROCESSOR_MISS_CONFIGURATION_ERROR_MESSAGE, postProcessorName,
                     postProcessorName, postProcessorName));
         }
 
+        LOGGER.warn("The configuration used for post-processors is deprecated, please refer to the documentation.");
+
         PostProcessor postProcessor = configuration.getInstance(type, PostProcessor.class);
-        postProcessor.configure(postProcessorConfigs);
+        postProcessor.configure(postProcessorConfigsOldConvention);
         return postProcessor;
     }
 
