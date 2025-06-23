@@ -1100,7 +1100,7 @@ public abstract class CommonConnectorConfig {
             .withDescription("The maximum time in milliseconds to wait for connection validation to complete. Defaults to 60 seconds.")
             .withValidation(Field::isPositiveLong);
 
-    public static final Field EXECUTOR_SHUTDOWN_TIMEOUT_MS = Field.create("executor.shutdown.timeout.sec")
+    public static final Field EXECUTOR_SHUTDOWN_TIMEOUT_MS = Field.create("executor.shutdown.timeout.ms")
             .withDisplayName("Executor shutdown timeout (ms)")
             .withType(Type.LONG)
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 19))
