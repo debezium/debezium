@@ -5,8 +5,10 @@
  */
 package io.debezium.processors;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -31,17 +33,32 @@ public class PostProcessorRegistryServiceProvider implements ServiceProvider<Pos
 
     private static final String POST_PROCESSOR_MISS_CONFIGURATION_ERROR_MESSAGE = "Post processor '%s' is missing '%s.type' and/or '%s.<option>' configurations";
     private final String TYPE_SUFFIX = ".type";
+    private final ServiceLoader<PostProcessorFactory> postProcessorFactory = ServiceLoader.load(PostProcessorFactory.class);
 
     @Override
     public PostProcessorRegistry createService(Configuration configuration, ServiceRegistry serviceRegistry) {
         String postProcessorNameList = configuration.getString(CommonConnectorConfig.CUSTOM_POST_PROCESSORS);
+        List<PostProcessor> postProcessors = getPostProcessors(configuration, postProcessorNameList);
+
+        return new PostProcessorRegistry(postProcessors);
+    }
+
+    private List<PostProcessor> getPostProcessors(Configuration configuration, String postProcessorNameList) {
         List<String> processorNames = Strings.listOf(postProcessorNameList, x -> x.split(","), String::trim);
 
-        List<PostProcessor> postProcessors = processorNames.stream()
+        List<PostProcessor> postProcessors = processorNames
+                .stream()
                 .map(postProcessorName -> getPostProcessor(configuration, postProcessorName))
                 .collect(Collectors.toList());
 
-        return new PostProcessorRegistry(postProcessors);
+        List<PostProcessor> externalPostProcessors = postProcessorFactory
+                .findFirst()
+                .map(PostProcessorFactory::get)
+                .orElse(Collections.emptyList());
+
+        postProcessors.addAll(externalPostProcessors);
+
+        return postProcessors;
     }
 
     private PostProcessor getPostProcessor(Configuration configuration, String postProcessorName) {
