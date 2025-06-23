@@ -74,7 +74,7 @@ public class PostgresReselectColumnsProcessorIT extends AbstractReselectProcesso
         return TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1\\.dbz4321")
                 .with(PostgresConnectorConfig.CUSTOM_POST_PROCESSORS, "reselector")
-                .with("reselector.type", ReselectColumnsPostProcessor.class.getName());
+                .with("post.processors.reselector.type", ReselectColumnsPostProcessor.class.getName());
     }
 
     @Override

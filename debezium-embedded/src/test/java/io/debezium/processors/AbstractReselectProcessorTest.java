@@ -81,9 +81,9 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
 
         Configuration config = getConfigurationBuilder()
                 .with("snapshot.mode", "initial")
-                .with("reselector.reselect.null.values", "false")
-                .with("reselector.reselect.unavailable.values", "false")
-                .with("reselector.reselect.columns.include.list", reselectColumnsList()).build();
+                .with("post.processors.reselector.reselect.null.values", "false")
+                .with("post.processors.reselector.reselect.unavailable.values", "false")
+                .with("post.processors.reselector.reselect.columns.include.list", reselectColumnsList()).build();
 
         start(getConnectorClass(), config);
         assertConnectorIsRunning();
@@ -116,7 +116,7 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
 
         Configuration config = getConfigurationBuilder()
                 .with("snapshot.mode", "initial")
-                .with("reselector.reselect.columns.include.list", reselectColumnsList()).build();
+                .with("post.processors.reselector.reselect.columns.include.list", reselectColumnsList()).build();
 
         start(getConnectorClass(), config);
         assertConnectorIsRunning();
@@ -146,7 +146,7 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
         LogInterceptor interceptor = getReselectLogInterceptor();
 
         Configuration config = getConfigurationBuilder()
-                .with("reselector.reselect.columns.include.list", reselectColumnsList())
+                .with("post.processors.reselector.reselect.columns.include.list", reselectColumnsList())
                 .build();
 
         start(getConnectorClass(), config);
@@ -202,7 +202,7 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
 
         Configuration config = getConfigurationBuilder()
                 .with("snapshot.mode", "initial")
-                .with("reselector.reselect.columns.include.list", reselectColumnsList())
+                .with("post.processors.reselector.reselect.columns.include.list", reselectColumnsList())
                 .build();
 
         start(getConnectorClass(), config);
@@ -229,7 +229,7 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
         enableTableForCdc();
 
         Configuration config = getConfigurationBuilder()
-                .with("reselector.reselect.columns.include.list", reselectColumnsList())
+                .with("post.processors.reselector.reselect.columns.include.list", reselectColumnsList())
                 .build();
 
         start(getConnectorClass(), config);
@@ -271,7 +271,7 @@ public abstract class AbstractReselectProcessorTest<T extends SourceConnector> e
         enableTableForCdc();
 
         Configuration config = getConfigurationBuilder()
-                .without("reselector.type")
+                .without("post.processors.reselector.type")
                 .build();
 
         start(getConnectorClass(), config);
