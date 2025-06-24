@@ -28,9 +28,6 @@ import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
-import io.debezium.heartbeat.Heartbeat;
-import io.debezium.heartbeat.HeartbeatConnectionProvider;
-import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -42,9 +39,7 @@ import io.debezium.relational.Tables.ColumnNameFilterFactory;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.FieldNameSelector.FieldNamer;
-import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.schema.DataCollectionId;
-import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Strings;
 
 /**
@@ -775,22 +770,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         }
 
         return Collections.unmodifiableMap(snapshotSelectOverridesByTable);
-    }
-
-    @Override
-    public Heartbeat createHeartbeat(TopicNamingStrategy topicNamingStrategy, SchemaNameAdjuster schemaNameAdjuster,
-                                     HeartbeatConnectionProvider connectionProvider, HeartbeatErrorHandler errorHandler) {
-        if (!Strings.isNullOrBlank(getHeartbeatActionQuery()) && !getHeartbeatInterval().isZero()) {
-            return new DatabaseHeartbeatImpl(
-                    getHeartbeatInterval(),
-                    topicNamingStrategy.heartbeatTopic(),
-                    getLogicalName(),
-                    connectionProvider.get(),
-                    getHeartbeatActionQuery(),
-                    errorHandler,
-                    schemaNameAdjuster);
-        }
-        return super.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, connectionProvider, errorHandler);
     }
 
     private static int validateSchemaExcludeList(Configuration config, Field field, ValidationOutput problems) {

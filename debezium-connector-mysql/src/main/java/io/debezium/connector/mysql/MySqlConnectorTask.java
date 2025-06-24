@@ -29,6 +29,7 @@ import io.debezium.connector.mysql.jdbc.MySqlConnectionConfiguration;
 import io.debezium.connector.mysql.jdbc.MySqlFieldReaderResolver;
 import io.debezium.connector.mysql.jdbc.MySqlValueConverters;
 import io.debezium.document.DocumentReader;
+import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
@@ -192,6 +193,16 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                 previousOffsets);
 
         final Configuration heartbeatConfig = config;
+
+        HeartbeatFactory<TableId> heartbeatFactory = new HeartbeatFactory<>(
+                connectorConfig,
+                topicNamingStrategy,
+                schemaNameAdjuster,
+                () -> new MySqlConnection(
+                        new MySqlConnectionConfiguration(heartbeatConfig),
+                        MySqlFieldReaderResolver.resolve(connectorConfig)),
+                new BinlogHeartbeatErrorHandler());
+
         final EventDispatcher<MySqlPartition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicNamingStrategy,
@@ -201,13 +212,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                 DataChangeEvent::new,
                 null,
                 metadataProvider,
-                connectorConfig.createHeartbeat(
-                        topicNamingStrategy,
-                        schemaNameAdjuster,
-                        () -> new MySqlConnection(
-                                new MySqlConnectionConfiguration(heartbeatConfig),
-                                MySqlFieldReaderResolver.resolve(connectorConfig)),
-                        new BinlogHeartbeatErrorHandler()),
+                heartbeatFactory.createHeartbeat(),
                 schemaNameAdjuster, signalProcessor, connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
 
         final MySqlStreamingChangeEventSourceMetrics streamingMetrics = new MySqlStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider);

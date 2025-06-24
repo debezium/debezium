@@ -34,6 +34,7 @@ import io.debezium.connector.mariadb.jdbc.MariaDbValueConverters;
 import io.debezium.connector.mariadb.metrics.MariaDbChangeEventSourceMetricsFactory;
 import io.debezium.connector.mariadb.metrics.MariaDbStreamingChangeEventSourceMetrics;
 import io.debezium.document.DocumentReader;
+import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
@@ -201,7 +202,13 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                 DocumentReader.defaultReader(),
                 previousOffsets);
 
-        final Configuration heartbeatConfig = config;
+        HeartbeatFactory<TableId> tableIdHeartbeatFactory = new HeartbeatFactory<>(connectorConfig,
+                topicNamingStrategy,
+                schemaNameAdjuster, () -> new MariaDbConnection(
+                        new MariaDbConnectionConfiguration(config),
+                        getFieldReader(connectorConfig)),
+                new BinlogHeartbeatErrorHandler());
+
         final EventDispatcher<MariaDbPartition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicNamingStrategy,
@@ -211,13 +218,7 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                 DataChangeEvent::new,
                 null,
                 metadataProvider,
-                connectorConfig.createHeartbeat(
-                        topicNamingStrategy,
-                        schemaNameAdjuster,
-                        () -> new MariaDbConnection(
-                                new MariaDbConnectionConfiguration(heartbeatConfig),
-                                getFieldReader(connectorConfig)),
-                        new BinlogHeartbeatErrorHandler()),
+                tableIdHeartbeatFactory.createHeartbeat(),
                 schemaNameAdjuster,
                 signalProcessor,
                 connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
