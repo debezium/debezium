@@ -99,9 +99,9 @@ public class HeartbeatFactory<T extends DataCollectionId> implements HeartbeatsF
 
         DefaultHeartbeat heartbeat = new DefaultHeartbeat(
                 connectorConfig.getHeartbeatInterval(),
-                topicName,
+                topicNamingStrategy.heartbeatTopic(),
                 connectorConfig.getLogicalName(),
-                schemaNameAdjuster);
+                schemaNameAdjuster, queue);
 
         if (connectorConfig instanceof RelationalDatabaseConnectorConfig relConfig) {
             if (!Strings.isNullOrBlank(relConfig.getHeartbeatActionQuery())) {

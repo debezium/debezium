@@ -13,6 +13,7 @@ import java.util.Map;
 import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.function.BlockingConsumer;
+import io.debezium.pipeline.spi.OffsetContext;
 
 public class CompositeHeartbeat implements Heartbeat {
     private final List<Heartbeat> heartbeats;
@@ -39,6 +40,20 @@ public class CompositeHeartbeat implements Heartbeat {
     public void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
         for (Heartbeat heartbeat : heartbeats) {
             heartbeat.heartbeat(partition, offset, consumer);
+        }
+    }
+
+    @Override
+    public void heartbeat(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
+        for (Heartbeat heartbeat : heartbeats) {
+            heartbeat.heartbeat(partition, offset);
+        }
+    }
+
+    @Override
+    public void forcedBeat(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
+        for (Heartbeat heartbeat : heartbeats) {
+            heartbeat.forcedBeat(partition, offset);
         }
     }
 
