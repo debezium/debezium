@@ -5,6 +5,8 @@
  */
 package io.debezium.heartbeat;
 
+import java.util.List;
+
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.pipeline.DataChangeEvent;
@@ -67,24 +69,23 @@ public class HeartbeatFactory<T extends DataCollectionId> implements HeartbeatsF
             return Heartbeat.DEFAULT_NOOP_HEARTBEAT;
         }
 
-        if (connectorConfig instanceof RelationalDatabaseConnectorConfig relConfig) {
-            if (!Strings.isNullOrBlank(relConfig.getHeartbeatActionQuery())) {
-                return new DatabaseHeartbeat(
-                        connectorConfig.getHeartbeatInterval(),
-                        topicNamingStrategy.heartbeatTopic(),
-                        connectorConfig.getLogicalName(),
-                        connectionProvider.get(),
-                        relConfig.getHeartbeatActionQuery(),
-                        errorHandler,
-                        schemaNameAdjuster);
-            }
-        }
-
-        return new DefaultHeartbeat(
+        DefaultHeartbeat heartbeat = new DefaultHeartbeat(
                 connectorConfig.getHeartbeatInterval(),
                 topicNamingStrategy.heartbeatTopic(),
                 connectorConfig.getLogicalName(),
                 schemaNameAdjuster);
+
+        if (connectorConfig instanceof RelationalDatabaseConnectorConfig relConfig) {
+            if (!Strings.isNullOrBlank(relConfig.getHeartbeatActionQuery())) {
+
+                return new CompositeHeartbeat(List.of(heartbeat, new DatabaseHeartbeat(
+                        connectionProvider.get(),
+                        relConfig.getHeartbeatActionQuery(),
+                        errorHandler)));
+            }
+        }
+
+        return heartbeat;
     }
 
     @Override
@@ -96,23 +97,23 @@ public class HeartbeatFactory<T extends DataCollectionId> implements HeartbeatsF
             return Heartbeat.DEFAULT_NOOP_HEARTBEAT;
         }
 
-        if (connectorConfig instanceof RelationalDatabaseConnectorConfig relConfig) {
-            if (!Strings.isNullOrBlank(relConfig.getHeartbeatActionQuery())) {
-                return new DatabaseHeartbeat(
-                        connectorConfig.getHeartbeatInterval(),
-                        topicName,
-                        connectorConfig.getLogicalName(),
-                        connectionProvider.get(),
-                        relConfig.getHeartbeatActionQuery(),
-                        errorHandler,
-                        schemaNameAdjuster);
-            }
-        }
-
-        return new DefaultHeartbeat(
+        DefaultHeartbeat heartbeat = new DefaultHeartbeat(
                 connectorConfig.getHeartbeatInterval(),
                 topicName,
                 connectorConfig.getLogicalName(),
                 schemaNameAdjuster);
+
+        if (connectorConfig instanceof RelationalDatabaseConnectorConfig relConfig) {
+            if (!Strings.isNullOrBlank(relConfig.getHeartbeatActionQuery())) {
+
+                return new CompositeHeartbeat(List.of(heartbeat, new DatabaseHeartbeat(
+                        connectionProvider.get(),
+                        relConfig.getHeartbeatActionQuery(),
+                        errorHandler)));
+            }
+        }
+
+        return heartbeat;
     }
+
 }
