@@ -341,8 +341,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
             heartbeat.heartbeat(
                     changeRecordEmitter.getPartition().getSourcePartition(),
-                    changeRecordEmitter.getOffset().getOffset(),
-                    this::enqueueHeartbeat);
+                    changeRecordEmitter.getOffset());
 
             return handled;
         }
@@ -448,17 +447,11 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     }
 
     public void alwaysDispatchHeartbeatEvent(P partition, OffsetContext offset) throws InterruptedException {
-        heartbeat.forcedBeat(
-                partition.getSourcePartition(),
-                offset.getOffset(),
-                this::enqueueHeartbeat);
+        heartbeat.forcedBeat(partition.getSourcePartition(), offset);
     }
 
     public void dispatchHeartbeatEvent(P partition, OffsetContext offset) throws InterruptedException {
-        heartbeat.heartbeat(
-                partition.getSourcePartition(),
-                offset.getOffset(),
-                this::enqueueHeartbeat);
+        heartbeat.heartbeat(partition.getSourcePartition(), offset);
     }
 
     // Use this method when you want to dispatch the heartbeat also to incremental snapshot.
@@ -467,8 +460,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     public void dispatchHeartbeatEventAlsoToIncrementalSnapshot(P partition, OffsetContext offset) throws InterruptedException {
         heartbeat.heartbeat(
                 partition.getSourcePartition(),
-                offset.getOffset(),
-                this::enqueueHeartbeat);
+                offset);
 
         if (incrementalSnapshotChangeEventSource != null) {
             incrementalSnapshotChangeEventSource.processHeartbeat(partition, offset);
@@ -477,10 +469,6 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
     public boolean heartbeatsEnabled() {
         return heartbeat.isEnabled();
-    }
-
-    private void enqueueHeartbeat(SourceRecord record) throws InterruptedException {
-        queue.enqueue(new DataChangeEvent(record));
     }
 
     private void enqueueTransactionMessage(SourceRecord record) throws InterruptedException {

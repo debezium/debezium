@@ -16,7 +16,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.pipeline.DataChangeEvent;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.util.Clock;
@@ -51,6 +54,7 @@ public class DefaultHeartbeat implements Heartbeat {
     private final Schema keySchema;
     private final Schema valueSchema;
     private final Struct serverNameKey;
+    private final ChangeEventQueue<DataChangeEvent> queue;
 
     private volatile Timer heartbeatTimeout;
 
@@ -62,6 +66,18 @@ public class DefaultHeartbeat implements Heartbeat {
         this.valueSchema = SchemaFactory.get().heartbeatValueSchema(schemaNameAdjuster);
         this.heartbeatTimeout = resetHeartbeat();
         this.serverNameKey = serverNameKey();
+        this.queue = null;
+    }
+
+    public DefaultHeartbeat(Duration heartbeatInterval, String topicName, String key, SchemaNameAdjuster schemaNameAdjuster, ChangeEventQueue<DataChangeEvent> queue) {
+        this.topicName = topicName;
+        this.heartbeatInterval = heartbeatInterval;
+        this.key = key;
+        this.keySchema = SchemaFactory.get().heartbeatKeySchema(schemaNameAdjuster);
+        this.valueSchema = SchemaFactory.get().heartbeatValueSchema(schemaNameAdjuster);
+        this.serverNameKey = serverNameKey();
+        this.queue = queue;
+        this.heartbeatTimeout = resetHeartbeat();
     }
 
     @Override
@@ -89,6 +105,34 @@ public class DefaultHeartbeat implements Heartbeat {
             return;
         }
         consumer.accept(heartbeatRecord(partition, offset));
+    }
+
+    @Override
+    public void heartbeat(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
+        if (heartbeatTimeout.expired()) {
+            forcedBeat(partition, offset);
+            heartbeatTimeout = resetHeartbeat();
+        }
+    }
+
+    @Override
+    public void forcedBeat(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
+        if (queue == null) {
+            throw new IllegalArgumentException("new heartbeat API should be used with the recommended constructor");
+        }
+        LOGGER.debug("Generating heartbeat event");
+        if (offset == null || offset.getOffset() == null || offset.getOffset().isEmpty()) {
+            return;
+        }
+
+        this.queue.enqueue(new DataChangeEvent(new SourceRecord(partition,
+                offset.getOffset(),
+                topicName,
+                0,
+                keySchema,
+                serverNameKey,
+                valueSchema,
+                messageValue())));
     }
 
     @Override
