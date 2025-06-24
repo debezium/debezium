@@ -92,7 +92,6 @@ import io.debezium.snapshot.mode.NeverSnapshotter;
 import io.debezium.time.Conversions;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
-import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 
 /**
@@ -733,7 +732,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             return;
         }
 
-        String upperCasedStatementBegin = Strings.getBegin(removeSetStatement(sql), 7).toUpperCase();
+        String upperCasedStatementBegin = removeSetStatement(sql).toUpperCase();
 
         if (upperCasedStatementBegin.startsWith("XA ")) {
             // This is an XA transaction, and we currently ignore these and do nothing ...
@@ -973,7 +972,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
      * @param value the value to initialize the set based upon
      */
     protected abstract void initializeGtidSet(String value);
-    
+
     private Predicate<String> getGtidDmlSourceFilter() {
         if (connectorConfig.getConfig().getBoolean(BinlogConnectorConfig.GTID_SOURCE_FILTER_DML_EVENTS)) {
             return connectorConfig.getGtidSourceFilter();

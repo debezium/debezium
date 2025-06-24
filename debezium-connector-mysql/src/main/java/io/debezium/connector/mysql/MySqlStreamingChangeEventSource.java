@@ -21,7 +21,6 @@ import com.github.shyiko.mysql.binlog.event.EventType;
 import com.github.shyiko.mysql.binlog.event.GtidEventData;
 import com.github.shyiko.mysql.binlog.event.RowsQueryEventData;
 import com.github.shyiko.mysql.binlog.network.SSLMode;
-import com.google.re2j.Pattern;
 
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogStreamingChangeEventSource;
@@ -42,7 +41,7 @@ public class MySqlStreamingChangeEventSource extends BinlogStreamingChangeEventS
 
     private final MySqlConnectorConfig connectorConfig;
     private GtidSet gtidSet;
-    
+
     public MySqlStreamingChangeEventSource(MySqlConnectorConfig connectorConfig,
                                            BinlogConnectorConnection connection,
                                            EventDispatcher<MySqlPartition, TableId> dispatcher,
