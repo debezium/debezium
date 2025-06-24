@@ -2,6 +2,32 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.1.3.Final
+June 24th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12462451)
+
+### New features since 3.1.2.Final
+
+None
+
+
+### Breaking changes since 3.1.2.Final
+
+None
+
+
+### Fixes since 3.1.2.Final
+
+* Column name encrypted is not supported by MySqlParser [DBZ-9092](https://issues.redhat.com/browse/DBZ-9092)
+* Removal of REST extension left service loader definition in Oracle connector [DBZ-9101](https://issues.redhat.com/browse/DBZ-9101)
+* Cannot use idenitifier named LOCKED [DBZ-9163](https://issues.redhat.com/browse/DBZ-9163)
+
+
+### Other changes since 3.1.2.Final
+
+None
+
+
+
 ## 3.1.2.Final
 June 2nd 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12454967)
 
