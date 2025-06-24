@@ -56,7 +56,7 @@ public class HeartbeatFactory<T extends DataCollectionId> {
 
     /**
      *
-     * @deprecated replaced by the {@link #create(CommonConnectorConfig, TopicNamingStrategy, SchemaNameAdjuster, HeartbeatConnectionProvider, HeartbeatErrorHandler)}
+     * @deprecated replaced by the {@link #create(CommonConnectorConfig, SchemaNameAdjuster, HeartbeatConnectionProvider, HeartbeatErrorHandler, String)}
      */
     @Deprecated
     public Heartbeat createHeartbeat() {
@@ -85,10 +85,9 @@ public class HeartbeatFactory<T extends DataCollectionId> {
     }
 
     public Heartbeat create(CommonConnectorConfig connectorConfig,
-                            TopicNamingStrategy<T> topicNamingStrategy,
                             SchemaNameAdjuster schemaNameAdjuster,
                             HeartbeatConnectionProvider connectionProvider,
-                            HeartbeatErrorHandler errorHandler) {
+                            HeartbeatErrorHandler errorHandler, String topicName) {
         if (connectorConfig.getHeartbeatInterval().isZero()) {
             return Heartbeat.DEFAULT_NOOP_HEARTBEAT;
         }
@@ -97,7 +96,7 @@ public class HeartbeatFactory<T extends DataCollectionId> {
             if (relConfig.getHeartbeatActionQuery() != null) {
                 return new DatabaseHeartbeatImpl(
                         connectorConfig.getHeartbeatInterval(),
-                        topicNamingStrategy.heartbeatTopic(),
+                        topicName,
                         connectorConfig.getLogicalName(),
                         connectionProvider.get(),
                         relConfig.getHeartbeatActionQuery(),
@@ -108,7 +107,7 @@ public class HeartbeatFactory<T extends DataCollectionId> {
 
         return new HeartbeatImpl(
                 connectorConfig.getHeartbeatInterval(),
-                topicNamingStrategy.heartbeatTopic(),
+                topicName,
                 connectorConfig.getLogicalName(),
                 schemaNameAdjuster);
     }
