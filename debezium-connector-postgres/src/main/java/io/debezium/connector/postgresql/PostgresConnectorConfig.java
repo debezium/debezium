@@ -1015,6 +1015,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         FAIL("fail"),
 
         /**
+         * Log a warning when timeout occurs, but continue processing
+         */
+        WARN("warn"),
+
+        /**
          * Continue processing and ignore timeouts
          */
         IGNORE("ignore");
@@ -1073,6 +1078,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withImportance(Importance.MEDIUM)
             .withDescription("Action to take when an LSN flush timeout occurs. Options include: " +
                     "'fail' (default) to fail the connector; " +
+                    "'warn' to log a warning and continue processing; " +
                     "'ignore' to continue processing and ignore the timeout.");
 
     public static final Field TCP_KEEPALIVE = Field.create(DATABASE_CONFIG_PREFIX + "tcpKeepAlive")
