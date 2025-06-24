@@ -14,6 +14,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.config.Field;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.pipeline.spi.OffsetContext;
 
 /**
  * A class that is able to generate periodic heartbeat messages based on a pre-configured interval. The clients are
@@ -88,14 +89,33 @@ public interface Heartbeat extends AutoCloseable {
     }
 
     /**
-     * Generates a heartbeat record unconditionaly
+     * Generates a heartbeat record unconditionally
      *
      * @param partition partition for the heartbeat record
      * @param offset    offset for the heartbeat record
      * @param consumer  - a code to place record among others to be sent into Connect
      */
-    // TODO would be nice to pass OffsetContext here; not doing it for now, though, until MySQL is using OffsetContext, too
     default void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
+        // ignore
+    }
+
+    /**
+     * Generates a heartbeat record if defined time has elapsed
+     *
+     * @param partition partition for the heartbeat record
+     * @param offset    offset for the heartbeat record
+     */
+    default void heartbeat(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
+        // ignore
+    }
+
+    /**
+     * Generates a heartbeat record unconditionally
+     *
+     * @param partition partition for the heartbeat record
+     * @param offset    offset for the heartbeat record
+     */
+    default void forcedBeat(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
         // ignore
     }
 
