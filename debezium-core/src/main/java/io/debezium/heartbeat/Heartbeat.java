@@ -62,38 +62,19 @@ public interface Heartbeat extends AutoCloseable {
     /**
      * No-op Heartbeat implementation
      */
-    Heartbeat DEFAULT_NOOP_HEARTBEAT = new Heartbeat() {
-
-        @Override
-        public void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
-        }
-
-        @Override
-        public void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer)
-                throws InterruptedException {
-        }
-
-        @Override
-        public void heartbeat(Map<String, ?> partition, OffsetProducer offsetProducer,
-                              BlockingConsumer<SourceRecord> consumer)
-                throws InterruptedException {
-        }
-
-        @Override
-        public boolean isEnabled() {
-            return false;
-        }
-    };
+    Heartbeat DEFAULT_NOOP_HEARTBEAT = new CompositeHeartbeat();
 
     /**
      * Generates a heartbeat record if defined time has elapsed
      *
      * @param partition partition for the heartbeat record
-     * @param offset offset for the heartbeat record
-     * @param consumer - a code to place record among others to be sent into Connect
+     * @param offset    offset for the heartbeat record
+     * @param consumer  - a code to place record among others to be sent into Connect
      */
     // TODO would be nice to pass OffsetContext here; not doing it for now, though, until MySQL is using OffsetContext, too
-    void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException;
+    default void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
+        // ignore
+    }
 
     /**
      * Generates a heartbeat record if defined time has elapsed
@@ -102,17 +83,21 @@ public interface Heartbeat extends AutoCloseable {
      * @param offsetProducer lazily calculated offset for the heartbeat record
      * @param consumer - a code to place record among others to be sent into Connect
      */
-    void heartbeat(Map<String, ?> partition, OffsetProducer offsetProducer, BlockingConsumer<SourceRecord> consumer) throws InterruptedException;
+    default void heartbeat(Map<String, ?> partition, OffsetProducer offsetProducer, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
+        // ignore
+    }
 
     /**
      * Generates a heartbeat record unconditionaly
      *
      * @param partition partition for the heartbeat record
-     * @param offset offset for the heartbeat record
-     * @param consumer - a code to place record among others to be sent into Connect
+     * @param offset    offset for the heartbeat record
+     * @param consumer  - a code to place record among others to be sent into Connect
      */
     // TODO would be nice to pass OffsetContext here; not doing it for now, though, until MySQL is using OffsetContext, too
-    void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException;
+    default void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
+        // ignore
+    }
 
     /**
      * Whether heartbeats are enabled or not.
