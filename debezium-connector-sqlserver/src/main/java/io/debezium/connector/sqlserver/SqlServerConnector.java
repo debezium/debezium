@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
+import org.apache.kafka.connect.source.ExactlyOnceSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -199,5 +200,10 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
         catch (SQLException e) {
             throw new RuntimeException("Could not retrieve real database name", e);
         }
+    }
+
+    @Override
+    public ExactlyOnceSupport exactlyOnceSupport(Map<String, String> connectorConfig) {
+        return ExactlyOnceSupport.SUPPORTED;
     }
 }
