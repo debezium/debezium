@@ -85,7 +85,7 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.data.geometry.Point;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.EmbeddedEngineConfig;
-import io.debezium.heartbeat.DatabaseHeartbeatImpl;
+import io.debezium.heartbeat.DatabaseHeartbeat;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
@@ -3604,7 +3604,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         // A low heartbeat interval should make sure that a heartbeat message is emitted at least once during the test.
         startConnector(config -> config
                 .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
-                .with(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY,
+                .with(DatabaseHeartbeat.HEARTBEAT_ACTION_QUERY,
                         "INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat');"));
 
         // Expecting 1 data change

@@ -22,8 +22,8 @@ import io.debezium.schema.SchemaNameAdjuster;
 /**
  *  Implementation of the heartbeat feature that allows for a DB query to be executed with every heartbeat.
  */
-public class DatabaseHeartbeatImpl extends HeartbeatImpl {
-    private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseHeartbeatImpl.class);
+public class DatabaseHeartbeat extends DefaultHeartbeat {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseHeartbeat.class);
 
     public static final String HEARTBEAT_ACTION_QUERY_PROPERTY_NAME = "heartbeat.action.query";
 
@@ -39,8 +39,8 @@ public class DatabaseHeartbeatImpl extends HeartbeatImpl {
     private final JdbcConnection jdbcConnection;
     private final HeartbeatErrorHandler errorHandler;
 
-    public DatabaseHeartbeatImpl(Duration heartbeatInterval, String topicName, String key, JdbcConnection jdbcConnection, String heartBeatActionQuery,
-                                 HeartbeatErrorHandler errorHandler, SchemaNameAdjuster schemaNameAdjuster) {
+    public DatabaseHeartbeat(Duration heartbeatInterval, String topicName, String key, JdbcConnection jdbcConnection, String heartBeatActionQuery,
+                             HeartbeatErrorHandler errorHandler, SchemaNameAdjuster schemaNameAdjuster) {
         super(heartbeatInterval, topicName, key, schemaNameAdjuster);
 
         this.heartBeatActionQuery = heartBeatActionQuery;
