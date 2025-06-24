@@ -33,6 +33,7 @@ import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.signal.channels.SourceSignalChannel;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
@@ -110,7 +111,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider, SchemaNameAdjuster schemaNameAdjuster,
                            SignalProcessor<P, ?> signalProcessor, DebeziumHeaderProducer debeziumHeaderProducer) {
         this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                connectorConfig.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, null, null), schemaNameAdjuster, signalProcessor, debeziumHeaderProducer);
+                new HeartbeatFactory<>(connectorConfig, topicNamingStrategy, schemaNameAdjuster, null, null).createHeartbeat(), schemaNameAdjuster, signalProcessor,
+                debeziumHeaderProducer);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
@@ -134,8 +136,15 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider, SchemaNameAdjuster schemaNameAdjuster,
                            DebeziumHeaderProducer debeziumHeaderProducer) {
+
         this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                connectorConfig.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, null, null), schemaNameAdjuster, null, debeziumHeaderProducer);
+                new HeartbeatFactory<>(
+                        connectorConfig,
+                        topicNamingStrategy,
+                        schemaNameAdjuster,
+                        null,
+                        null).createHeartbeat(),
+                schemaNameAdjuster, null, debeziumHeaderProducer);
     }
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
