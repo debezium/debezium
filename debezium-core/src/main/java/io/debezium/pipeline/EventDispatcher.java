@@ -111,7 +111,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider, SchemaNameAdjuster schemaNameAdjuster,
                            SignalProcessor<P, ?> signalProcessor, DebeziumHeaderProducer debeziumHeaderProducer) {
         this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                new HeartbeatFactory<>(connectorConfig, topicNamingStrategy, schemaNameAdjuster, null, null).createHeartbeat(), schemaNameAdjuster, signalProcessor,
+                new HeartbeatFactory<>().create(connectorConfig, schemaNameAdjuster, null, null, topicNamingStrategy.heartbeatTopic()), schemaNameAdjuster,
+                signalProcessor,
                 debeziumHeaderProducer);
     }
 
@@ -138,12 +139,11 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                            DebeziumHeaderProducer debeziumHeaderProducer) {
 
         this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                new HeartbeatFactory<>(
+                new HeartbeatFactory<>().create(
                         connectorConfig,
-                        topicNamingStrategy,
                         schemaNameAdjuster,
                         null,
-                        null).createHeartbeat(),
+                        null, topicNamingStrategy.heartbeatTopic()),
                 schemaNameAdjuster, null, debeziumHeaderProducer);
     }
 
