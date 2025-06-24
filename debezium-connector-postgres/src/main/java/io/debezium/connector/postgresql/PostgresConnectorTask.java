@@ -193,25 +193,6 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     DocumentReader.defaultReader(),
                     previousOffsets);
 
-            HeartbeatFactory<TableId> heartbeatFactory = new HeartbeatFactory<>(
-                    connectorConfig,
-                    topicNamingStrategy,
-                    schemaNameAdjuster,
-                    () -> new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL),
-                    exception -> {
-                        String sqlErrorId = exception.getSQLState();
-                        switch (sqlErrorId) {
-                            case "57P01":
-                                // Postgres error admin_shutdown, see https://www.postgresql.org/docs/12/errcodes-appendix.html
-                                throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
-                            case "57P03":
-                                // Postgres error cannot_connect_now, see https://www.postgresql.org/docs/12/errcodes-appendix.html
-                                throw new RetriableException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
-                            default:
-                                break;
-                        }
-                    });
-
             final PostgresEventDispatcher<TableId> dispatcher = new PostgresEventDispatcher<>(
                     connectorConfig,
                     topicNamingStrategy,
@@ -221,7 +202,23 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     DataChangeEvent::new,
                     PostgresChangeRecordEmitter::updateSchema,
                     metadataProvider,
-                    heartbeatFactory.createHeartbeat(),
+                    new HeartbeatFactory<>().create(
+                            connectorConfig,
+                            schemaNameAdjuster,
+                            () -> new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL),
+                            exception -> {
+                                String sqlErrorId = exception.getSQLState();
+                                switch (sqlErrorId) {
+                                    case "57P01":
+                                        // Postgres error admin_shutdown, see https://www.postgresql.org/docs/12/errcodes-appendix.html
+                                        throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
+                                    case "57P03":
+                                        // Postgres error cannot_connect_now, see https://www.postgresql.org/docs/12/errcodes-appendix.html
+                                        throw new RetriableException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
+                                    default:
+                                        break;
+                                }
+                            }, topicNamingStrategy.heartbeatTopic()),
                     schemaNameAdjuster,
                     signalProcessor,
                     connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));

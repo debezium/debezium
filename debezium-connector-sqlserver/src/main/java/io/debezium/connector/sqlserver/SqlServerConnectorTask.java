@@ -136,16 +136,6 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 DocumentReader.defaultReader(),
                 offsets);
 
-        HeartbeatFactory<TableId> heartbeatFactory = new HeartbeatFactory<>(
-                connectorConfig,
-                topicNamingStrategy,
-                schemaNameAdjuster,
-                connectionFactory::newConnection,
-                exception -> {
-                    final String sqlErrorId = exception.getMessage();
-                    throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
-                });
-
         final EventDispatcher<SqlServerPartition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicNamingStrategy,
@@ -154,7 +144,15 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 connectorConfig.getTableFilters().dataCollectionFilter(),
                 DataChangeEvent::new,
                 metadataProvider,
-                heartbeatFactory.createHeartbeat(),
+                new HeartbeatFactory<>().create(
+                        connectorConfig,
+                        schemaNameAdjuster,
+                        connectionFactory::newConnection,
+                        exception -> {
+                            final String sqlErrorId = exception.getMessage();
+                            throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
+                        },
+                        topicNamingStrategy.heartbeatTopic()),
                 schemaNameAdjuster,
                 signalProcessor,
                 connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));

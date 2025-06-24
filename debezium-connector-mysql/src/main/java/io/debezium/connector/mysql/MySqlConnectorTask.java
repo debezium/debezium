@@ -194,15 +194,6 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
 
         final Configuration heartbeatConfig = config;
 
-        HeartbeatFactory<TableId> heartbeatFactory = new HeartbeatFactory<>(
-                connectorConfig,
-                topicNamingStrategy,
-                schemaNameAdjuster,
-                () -> new MySqlConnection(
-                        new MySqlConnectionConfiguration(heartbeatConfig),
-                        MySqlFieldReaderResolver.resolve(connectorConfig)),
-                new BinlogHeartbeatErrorHandler());
-
         final EventDispatcher<MySqlPartition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicNamingStrategy,
@@ -212,7 +203,14 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                 DataChangeEvent::new,
                 null,
                 metadataProvider,
-                heartbeatFactory.createHeartbeat(),
+                new HeartbeatFactory<>().create(
+                        connectorConfig,
+                        schemaNameAdjuster,
+                        () -> new MySqlConnection(
+                                new MySqlConnectionConfiguration(heartbeatConfig),
+                                MySqlFieldReaderResolver.resolve(connectorConfig)),
+                        new BinlogHeartbeatErrorHandler(),
+                        topicNamingStrategy.heartbeatTopic()),
                 schemaNameAdjuster, signalProcessor, connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
 
         final MySqlStreamingChangeEventSourceMetrics streamingMetrics = new MySqlStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider);
