@@ -45,22 +45,12 @@ public class DatabaseHeartbeat implements Heartbeat {
     }
 
     @Override
-    public void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
-        // ignore
-    }
-
-    @Override
-    public void heartbeat(Map<String, ?> partition, OffsetProducer offsetProducer, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
-        // ignore
-    }
-
-    @Override
     public boolean isEnabled() {
         return true;
     }
 
     @Override
-    public void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
+    public void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) {
         try {
             jdbcConnection.execute(heartBeatActionQuery);
         }
