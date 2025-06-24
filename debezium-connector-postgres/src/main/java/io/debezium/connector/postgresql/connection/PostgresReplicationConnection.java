@@ -174,6 +174,9 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                             ? String.format("CREATE PUBLICATION %s FOR ALL TABLES WITH (publish_via_partition_root = true);", publicationName)
                                             : String.format("CREATE PUBLICATION %s FOR ALL TABLES;", publicationName);
                                     LOGGER.info("Creating Publication with statement '{}'", createPublicationStmt);
+                                    if (connectorConfig.isPublishViaPartitionRoot()) {
+                                        LOGGER.error(" 'publish_via_partition_root' option enabled");
+                                    }
                                     // Publication doesn't exist, create it.
                                     if (!isOnlyRead) {
                                         stmt.execute(createPublicationStmt);
@@ -310,6 +313,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 createOrUpdatePublicationStmt = connectorConfig.isPublishViaPartitionRoot()
                         ? String.format("CREATE PUBLICATION %s FOR TABLE %s WITH (publish_via_partition_root = true);", publicationName, tableFilterString)
                         : String.format("CREATE PUBLICATION %s FOR TABLE %s;", publicationName, tableFilterString);
+                if (connectorConfig.isPublishViaPartitionRoot()) {
+                    LOGGER.error(" publish_via_partition_root filtered enabled");
+                    System.out.println(" publish_via_partition_root filtered enabled");
+                }
             }
             LOGGER.info(isUpdate ? "Updating Publication with statement '{}'" : "Creating Publication with statement '{}'", createOrUpdatePublicationStmt);
             stmt.execute(createOrUpdatePublicationStmt);
