@@ -218,7 +218,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                                     default:
                                         break;
                                 }
-                            }, topicNamingStrategy.heartbeatTopic()),
+                            }, topicNamingStrategy.heartbeatTopic(), queue),
                     schemaNameAdjuster,
                     signalProcessor,
                     connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));

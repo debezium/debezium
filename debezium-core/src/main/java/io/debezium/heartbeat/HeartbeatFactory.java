@@ -6,6 +6,8 @@
 package io.debezium.heartbeat;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.schema.DataCollectionId;
@@ -57,7 +59,7 @@ public class HeartbeatFactory<T extends DataCollectionId> implements HeartbeatsF
 
     /**
      *
-     * @deprecated replaced by the {@link #create(CommonConnectorConfig, SchemaNameAdjuster, HeartbeatConnectionProvider, HeartbeatErrorHandler, String)}
+     * @deprecated replaced by the {@link HeartbeatsFactory#create(CommonConnectorConfig, SchemaNameAdjuster, HeartbeatConnectionProvider, HeartbeatErrorHandler, String, ChangeEventQueue)}
      */
     @Deprecated
     public Heartbeat createHeartbeat() {
@@ -89,7 +91,7 @@ public class HeartbeatFactory<T extends DataCollectionId> implements HeartbeatsF
     public Heartbeat create(CommonConnectorConfig connectorConfig,
                             SchemaNameAdjuster schemaNameAdjuster,
                             HeartbeatConnectionProvider connectionProvider,
-                            HeartbeatErrorHandler errorHandler, String topicName) {
+                            HeartbeatErrorHandler errorHandler, String topicName, ChangeEventQueue<DataChangeEvent> queue) {
         if (connectorConfig.getHeartbeatInterval().isZero()) {
             return Heartbeat.DEFAULT_NOOP_HEARTBEAT;
         }
