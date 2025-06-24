@@ -69,7 +69,7 @@ public class HeartbeatFactory<T extends DataCollectionId> implements HeartbeatsF
 
         if (connectorConfig instanceof RelationalDatabaseConnectorConfig relConfig) {
             if (!Strings.isNullOrBlank(relConfig.getHeartbeatActionQuery())) {
-                return new DatabaseHeartbeatImpl(
+                return new DatabaseHeartbeat(
                         connectorConfig.getHeartbeatInterval(),
                         topicNamingStrategy.heartbeatTopic(),
                         connectorConfig.getLogicalName(),
@@ -80,7 +80,7 @@ public class HeartbeatFactory<T extends DataCollectionId> implements HeartbeatsF
             }
         }
 
-        return new HeartbeatImpl(
+        return new DefaultHeartbeat(
                 connectorConfig.getHeartbeatInterval(),
                 topicNamingStrategy.heartbeatTopic(),
                 connectorConfig.getLogicalName(),
@@ -98,7 +98,7 @@ public class HeartbeatFactory<T extends DataCollectionId> implements HeartbeatsF
 
         if (connectorConfig instanceof RelationalDatabaseConnectorConfig relConfig) {
             if (!Strings.isNullOrBlank(relConfig.getHeartbeatActionQuery())) {
-                return new DatabaseHeartbeatImpl(
+                return new DatabaseHeartbeat(
                         connectorConfig.getHeartbeatInterval(),
                         topicName,
                         connectorConfig.getLogicalName(),
@@ -109,7 +109,7 @@ public class HeartbeatFactory<T extends DataCollectionId> implements HeartbeatsF
             }
         }
 
-        return new HeartbeatImpl(
+        return new DefaultHeartbeat(
                 connectorConfig.getHeartbeatInterval(),
                 topicName,
                 connectorConfig.getLogicalName(),

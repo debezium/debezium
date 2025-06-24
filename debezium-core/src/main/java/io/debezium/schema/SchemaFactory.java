@@ -26,7 +26,7 @@ import io.debezium.data.Xml;
 import io.debezium.data.vector.DoubleVector;
 import io.debezium.data.vector.FloatVector;
 import io.debezium.data.vector.SparseDoubleVector;
-import io.debezium.heartbeat.HeartbeatImpl;
+import io.debezium.heartbeat.DefaultHeartbeat;
 import io.debezium.pipeline.notification.Notification;
 import io.debezium.pipeline.txmetadata.TransactionStructMaker;
 import io.debezium.relational.history.ConnectTableChangeSerializer;
@@ -166,7 +166,7 @@ public class SchemaFactory {
         return SchemaBuilder.struct()
                 .name(adjuster.adjust(HEARTBEAT_KEY_SCHEMA_NAME))
                 .version(HEARTBEAT_KEY_SCHEMA_VERSION)
-                .field(HeartbeatImpl.SERVER_NAME_KEY, Schema.STRING_SCHEMA)
+                .field(DefaultHeartbeat.SERVER_NAME_KEY, Schema.STRING_SCHEMA)
                 .build();
     }
 

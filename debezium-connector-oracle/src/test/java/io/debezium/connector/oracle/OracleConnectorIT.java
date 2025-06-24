@@ -94,7 +94,7 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.EmbeddedEngineConfig;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
-import io.debezium.heartbeat.DatabaseHeartbeatImpl;
+import io.debezium.heartbeat.DatabaseHeartbeat;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.logging.LogInterceptor;
@@ -4031,8 +4031,8 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.SNAPSHOT_MODE, "schema_only")
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5119,DEBEZIUM\\.HEARTBEAT")
-                    .with(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY, "UPDATE debezium.heartbeat set data = sysdate WHERE ROWNUM = 1")
-                    .with(DatabaseHeartbeatImpl.HEARTBEAT_INTERVAL, 1000)
+                    .with(DatabaseHeartbeat.HEARTBEAT_ACTION_QUERY, "UPDATE debezium.heartbeat set data = sysdate WHERE ROWNUM = 1")
+                    .with(DatabaseHeartbeat.HEARTBEAT_INTERVAL, 1000)
                     .build();
 
             start(OracleConnector.class, config);
