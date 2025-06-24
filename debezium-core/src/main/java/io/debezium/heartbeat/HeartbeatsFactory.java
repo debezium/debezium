@@ -7,11 +7,13 @@
 package io.debezium.heartbeat;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.schema.SchemaNameAdjuster;
 
 public interface HeartbeatsFactory {
     Heartbeat create(CommonConnectorConfig connectorConfig,
                      SchemaNameAdjuster schemaNameAdjuster,
                      HeartbeatConnectionProvider connectionProvider,
-                     HeartbeatErrorHandler errorHandler, String topicName);
+                     HeartbeatErrorHandler errorHandler, String topicName, ChangeEventQueue<DataChangeEvent> queue);
 }
