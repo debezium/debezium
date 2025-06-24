@@ -398,6 +398,11 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
     @Override
     public void commit() throws InterruptedException {
+        shouldPerformCommit.set(true);
+    }
+
+    @Override
+    public void performCommit() {
         boolean locked = commitLock.tryLock();
 
         if (locked) {
