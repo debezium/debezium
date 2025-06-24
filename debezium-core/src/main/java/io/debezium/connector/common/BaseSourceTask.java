@@ -211,7 +211,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
     @SingleThreadAccess("polling thread")
     private int previousOutputBatchSize;
 
-    private final AtomicBoolean shouldPerformCommit = new AtomicBoolean(false);
+    protected final AtomicBoolean shouldPerformCommit = new AtomicBoolean(false);
 
     private final ServiceLoader<SignalChannelReader> availableSignalChannels = ServiceLoader.load(SignalChannelReader.class);
 
