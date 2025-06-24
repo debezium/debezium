@@ -160,7 +160,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                         exception -> {
                             final String sqlErrorId = exception.getMessage();
                             throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
-                        }, topicNamingStrategy.heartbeatTopic()),
+                        }, topicNamingStrategy.heartbeatTopic(), queue),
                 schemaNameAdjuster,
                 signalProcessor,
                 connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));

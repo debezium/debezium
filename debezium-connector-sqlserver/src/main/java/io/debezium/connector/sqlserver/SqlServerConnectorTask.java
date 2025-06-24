@@ -152,7 +152,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                             final String sqlErrorId = exception.getMessage();
                             throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
                         },
-                        topicNamingStrategy.heartbeatTopic()),
+                        topicNamingStrategy.heartbeatTopic(), queue),
                 schemaNameAdjuster,
                 signalProcessor,
                 connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));

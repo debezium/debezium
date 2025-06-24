@@ -217,7 +217,7 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                                 new MariaDbConnectionConfiguration(config),
                                 getFieldReader(connectorConfig)),
                         new BinlogHeartbeatErrorHandler(),
-                        topicNamingStrategy.heartbeatTopic()),
+                        topicNamingStrategy.heartbeatTopic(), queue),
                 schemaNameAdjuster,
                 signalProcessor,
                 connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
