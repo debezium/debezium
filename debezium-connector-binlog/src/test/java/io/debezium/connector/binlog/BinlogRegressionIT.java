@@ -107,7 +107,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
         int numCreateDatabase = 1;
         int numCreateTables = 12;
         int numDataRecords = 22;
-        int numCreateDefiner = 1;
+        int numCreateDefiner = 0; // After CC-34779 we're not inserting FUNCTION,PROCEDURE,VIEW and TRIGGER definitions in the history topic and schema change topic
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords + numCreateDefiner);
         stopConnector();
         assertThat(records).isNotNull();
@@ -461,7 +461,7 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
         int numCreateDatabase = 1;
         int numCreateTables = 12;
         int numDataRecords = 22;
-        int numCreateDefiner = 1;
+        int numCreateDefiner = 0; // After CC-34779 we're not inserting FUNCTION,PROCEDURE,VIEW and TRIGGER definitions in the history topic and schema change topic
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numDataRecords + numCreateDefiner);
         stopConnector();
         assertThat(records).isNotNull();
@@ -668,7 +668,6 @@ public abstract class BinlogRegressionIT<C extends SourceConnector> extends Abst
         int numTables = 12;
         int numDataRecords = 22;
         int numDdlRecords = numTables * 2 + 3; // for each table (1 drop + 1 create) + for each db (1 create + 1 drop + 1 use)
-        int numCreateDefiner = 1;
         int numSetVariables = 1;
         SourceRecords records = consumeRecordsByTopic(numDdlRecords + numSetVariables + numDataRecords);
         stopConnector();
