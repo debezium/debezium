@@ -25,6 +25,7 @@ import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.sqlserver.metrics.SqlServerMetricsFactory;
 import io.debezium.document.DocumentReader;
+import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
@@ -133,6 +134,16 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 DocumentReader.defaultReader(),
                 offsets);
 
+        HeartbeatFactory<TableId> heartbeatFactory = new HeartbeatFactory<>(
+                connectorConfig,
+                topicNamingStrategy,
+                schemaNameAdjuster,
+                connectionFactory::newConnection,
+                exception -> {
+                    final String sqlErrorId = exception.getMessage();
+                    throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
+                });
+
         final EventDispatcher<SqlServerPartition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicNamingStrategy,
@@ -141,14 +152,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 connectorConfig.getTableFilters().dataCollectionFilter(),
                 DataChangeEvent::new,
                 metadataProvider,
-                connectorConfig.createHeartbeat(
-                        topicNamingStrategy,
-                        schemaNameAdjuster,
-                        connectionFactory::newConnection,
-                        exception -> {
-                            final String sqlErrorId = exception.getMessage();
-                            throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
-                        }),
+                heartbeatFactory.createHeartbeat(),
                 schemaNameAdjuster,
                 signalProcessor,
                 connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
