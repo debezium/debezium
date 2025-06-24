@@ -25,27 +25,75 @@ public class HeartbeatFactory<T extends DataCollectionId> {
     private final HeartbeatConnectionProvider connectionProvider;
     private final HeartbeatErrorHandler errorHandler;
 
+    /**
+     *  replaced by {@link #HeartbeatFactory()}
+     */
+    @Deprecated
     public HeartbeatFactory(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy, SchemaNameAdjuster schemaNameAdjuster) {
         this(connectorConfig, topicNamingStrategy, schemaNameAdjuster, null, null);
     }
 
+    /**
+     *  replaced by {@link #HeartbeatFactory()}
+     */
+    @Deprecated
     public HeartbeatFactory(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy, SchemaNameAdjuster schemaNameAdjuster,
                             HeartbeatConnectionProvider connectionProvider, HeartbeatErrorHandler errorHandler) {
         this.connectorConfig = connectorConfig;
         this.topicNamingStrategy = topicNamingStrategy;
         this.schemaNameAdjuster = schemaNameAdjuster;
-
         this.connectionProvider = connectionProvider;
         this.errorHandler = errorHandler;
     }
 
+    public HeartbeatFactory() {
+        this.connectorConfig = null;
+        this.topicNamingStrategy = null;
+        this.schemaNameAdjuster = null;
+        this.connectionProvider = null;
+        this.errorHandler = null;
+    }
+
+    /**
+     *
+     * @deprecated replaced by the {@link #create(CommonConnectorConfig, TopicNamingStrategy, SchemaNameAdjuster, HeartbeatConnectionProvider, HeartbeatErrorHandler)}
+     */
+    @Deprecated
     public Heartbeat createHeartbeat() {
         if (connectorConfig.getHeartbeatInterval().isZero()) {
             return Heartbeat.DEFAULT_NOOP_HEARTBEAT;
         }
 
-        if (connectorConfig instanceof RelationalDatabaseConnectorConfig) {
-            RelationalDatabaseConnectorConfig relConfig = (RelationalDatabaseConnectorConfig) connectorConfig;
+        if (connectorConfig instanceof RelationalDatabaseConnectorConfig relConfig) {
+            if (relConfig.getHeartbeatActionQuery() != null) {
+                return new DatabaseHeartbeatImpl(
+                        connectorConfig.getHeartbeatInterval(),
+                        topicNamingStrategy.heartbeatTopic(),
+                        connectorConfig.getLogicalName(),
+                        connectionProvider.get(),
+                        relConfig.getHeartbeatActionQuery(),
+                        errorHandler,
+                        schemaNameAdjuster);
+            }
+        }
+
+        return new HeartbeatImpl(
+                connectorConfig.getHeartbeatInterval(),
+                topicNamingStrategy.heartbeatTopic(),
+                connectorConfig.getLogicalName(),
+                schemaNameAdjuster);
+    }
+
+    public Heartbeat create(CommonConnectorConfig connectorConfig,
+                            TopicNamingStrategy<T> topicNamingStrategy,
+                            SchemaNameAdjuster schemaNameAdjuster,
+                            HeartbeatConnectionProvider connectionProvider,
+                            HeartbeatErrorHandler errorHandler) {
+        if (connectorConfig.getHeartbeatInterval().isZero()) {
+            return Heartbeat.DEFAULT_NOOP_HEARTBEAT;
+        }
+
+        if (connectorConfig instanceof RelationalDatabaseConnectorConfig relConfig) {
             if (relConfig.getHeartbeatActionQuery() != null) {
                 return new DatabaseHeartbeatImpl(
                         connectorConfig.getHeartbeatInterval(),
