@@ -46,7 +46,7 @@ public interface Heartbeat extends AutoCloseable {
                     + "to a heartbeat topic. "
                     + "Use 0 to disable heartbeat messages. "
                     + "Disabled by default.")
-            .withDefault(HeartbeatImpl.DEFAULT_HEARTBEAT_INTERVAL)
+            .withDefault(DefaultHeartbeat.DEFAULT_HEARTBEAT_INTERVAL)
             .withValidation(Field::isNonNegativeInteger);
 
     Field HEARTBEAT_TOPICS_PREFIX = Field.create("heartbeat.topics.prefix")
@@ -56,8 +56,8 @@ public interface Heartbeat extends AutoCloseable {
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
             .withDescription("The prefix that is used to name heartbeat topics."
-                    + "Defaults to " + HeartbeatImpl.DEFAULT_HEARTBEAT_TOPICS_PREFIX + ".")
-            .withDefault(HeartbeatImpl.DEFAULT_HEARTBEAT_TOPICS_PREFIX);
+                    + "Defaults to " + DefaultHeartbeat.DEFAULT_HEARTBEAT_TOPICS_PREFIX + ".")
+            .withDefault(DefaultHeartbeat.DEFAULT_HEARTBEAT_TOPICS_PREFIX);
 
     /**
      * No-op Heartbeat implementation

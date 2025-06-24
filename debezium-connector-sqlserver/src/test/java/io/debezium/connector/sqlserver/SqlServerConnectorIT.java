@@ -68,7 +68,7 @@ import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.embedded.async.RetryingCallable;
-import io.debezium.heartbeat.DatabaseHeartbeatImpl;
+import io.debezium.heartbeat.DatabaseHeartbeat;
 import io.debezium.junit.ConditionalFail;
 import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
@@ -3311,8 +3311,8 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
                     .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.NO_DATA)
                     .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.heartbeat")
                     .with(SqlServerConnectorConfig.STORE_ONLY_CAPTURED_DATABASES_DDL, "true")
-                    .with(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY, "UPDATE dbo.heartbeat set data = current_timestamp")
-                    .with(DatabaseHeartbeatImpl.HEARTBEAT_INTERVAL, 1000)
+                    .with(DatabaseHeartbeat.HEARTBEAT_ACTION_QUERY, "UPDATE dbo.heartbeat set data = current_timestamp")
+                    .with(DatabaseHeartbeat.HEARTBEAT_INTERVAL, 1000)
                     .build();
 
             start(SqlServerConnector.class, config);
