@@ -25,6 +25,7 @@ import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.document.DocumentReader;
+import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
@@ -144,6 +145,16 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 DocumentReader.defaultReader(),
                 previousOffsets);
 
+        HeartbeatFactory<TableId> heartbeatFactory = new HeartbeatFactory<>(
+                connectorConfig,
+                topicNamingStrategy,
+                schemaNameAdjuster,
+                () -> getHeartbeatConnection(connectorConfig, jdbcConfig),
+                exception -> {
+                    final String sqlErrorId = exception.getMessage();
+                    throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
+                });
+
         EventDispatcher<OraclePartition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicNamingStrategy,
@@ -152,14 +163,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 connectorConfig.getTableFilters().dataCollectionFilter(),
                 DataChangeEvent::new,
                 metadataProvider,
-                connectorConfig.createHeartbeat(
-                        topicNamingStrategy,
-                        schemaNameAdjuster,
-                        () -> getHeartbeatConnection(connectorConfig, jdbcConfig),
-                        exception -> {
-                            final String sqlErrorId = exception.getMessage();
-                            throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
-                        }),
+                heartbeatFactory.createHeartbeat(),
                 schemaNameAdjuster,
                 signalProcessor,
                 connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
