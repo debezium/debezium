@@ -50,6 +50,7 @@ public class DefaultHeartbeat implements Heartbeat {
 
     private final Schema keySchema;
     private final Schema valueSchema;
+    private final Struct serverNameKey;
 
     private volatile Timer heartbeatTimeout;
 
@@ -60,6 +61,7 @@ public class DefaultHeartbeat implements Heartbeat {
         this.keySchema = SchemaFactory.get().heartbeatKeySchema(schemaNameAdjuster);
         this.valueSchema = SchemaFactory.get().heartbeatValueSchema(schemaNameAdjuster);
         this.heartbeatTimeout = resetHeartbeat();
+        this.serverNameKey = serverNameKey();
     }
 
     @Override
@@ -94,13 +96,9 @@ public class DefaultHeartbeat implements Heartbeat {
         return true;
     }
 
-    /**
-     * Produce a key struct based on the server name and KEY_SCHEMA
-     *
-     */
-    private Struct serverNameKey(String serverName) {
+    private Struct serverNameKey() {
         Struct result = new Struct(keySchema);
-        result.put(SERVER_NAME_KEY, serverName);
+        result.put(SERVER_NAME_KEY, key);
         return result;
     }
 
@@ -122,7 +120,7 @@ public class DefaultHeartbeat implements Heartbeat {
         final Integer partition = 0;
 
         return new SourceRecord(sourcePartition, sourceOffset,
-                topicName, partition, keySchema, serverNameKey(key), valueSchema, messageValue());
+                topicName, partition, keySchema, serverNameKey, valueSchema, messageValue());
     }
 
     private Timer resetHeartbeat() {
