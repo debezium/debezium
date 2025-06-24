@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.postgresql;
 
+import static io.debezium.connector.postgresql.PostgresConnectorConfig.LsnFlushTimeoutAction;
+
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.Objects;
@@ -494,10 +496,10 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
      * @param lsn the LSN that failed to flush
      */
     private void handleTimeout(Lsn lsn) {
-        String action = connectorConfig.lsnFlushTimeoutAction().getValue();
+        LsnFlushTimeoutAction action = connectorConfig.lsnFlushTimeoutAction();
         long timeoutMillis = connectorConfig.lsnFlushTimeout().toMillis();
 
-        if ("fail".equals(action)) {
+        if (action == LsnFlushTimeoutAction.FAIL) {
             LOGGER.error("LSN flush operation for LSN '{}' did not complete within the configured timeout of {} ms. ",
                     lsn, timeoutMillis);
             throw new ConnectException(String.format(
@@ -505,8 +507,13 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                             "Task is configured to fail on timeout as configured by lsn.flush.timeout.action configuration.",
                     lsn));
         }
-        else {
+        else if (action == LsnFlushTimeoutAction.WARN) {
             LOGGER.warn("LSN flush operation for LSN '{}' did not complete within the configured timeout of {} ms. " +
+                    "Continuing to process as configured by lsn.flush.timeout.action configuration.",
+                    lsn, timeoutMillis);
+        }
+        else {
+            LOGGER.debug("LSN flush operation for LSN '{}' did not complete within the configured timeout of {} ms. " +
                     "Continuing to process as configured by lsn.flush.timeout.action configuration.",
                     lsn, timeoutMillis);
         }
