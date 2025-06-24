@@ -5,8 +5,6 @@
  */
 package io.debezium.heartbeat;
 
-import java.util.List;
-
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.pipeline.DataChangeEvent;
@@ -78,10 +76,10 @@ public class HeartbeatFactory<T extends DataCollectionId> implements HeartbeatsF
         if (connectorConfig instanceof RelationalDatabaseConnectorConfig relConfig) {
             if (!Strings.isNullOrBlank(relConfig.getHeartbeatActionQuery())) {
 
-                return new CompositeHeartbeat(List.of(heartbeat, new DatabaseHeartbeat(
+                return new CompositeHeartbeat(heartbeat, new DatabaseHeartbeat(
                         connectionProvider.get(),
                         relConfig.getHeartbeatActionQuery(),
-                        errorHandler)));
+                        errorHandler));
             }
         }
 
@@ -92,7 +90,9 @@ public class HeartbeatFactory<T extends DataCollectionId> implements HeartbeatsF
     public Heartbeat create(CommonConnectorConfig connectorConfig,
                             SchemaNameAdjuster schemaNameAdjuster,
                             HeartbeatConnectionProvider connectionProvider,
-                            HeartbeatErrorHandler errorHandler, String topicName, ChangeEventQueue<DataChangeEvent> queue) {
+                            HeartbeatErrorHandler errorHandler,
+                            String topicName,
+                            ChangeEventQueue<DataChangeEvent> queue) {
         if (connectorConfig.getHeartbeatInterval().isZero()) {
             return Heartbeat.DEFAULT_NOOP_HEARTBEAT;
         }
@@ -106,10 +106,10 @@ public class HeartbeatFactory<T extends DataCollectionId> implements HeartbeatsF
         if (connectorConfig instanceof RelationalDatabaseConnectorConfig relConfig) {
             if (!Strings.isNullOrBlank(relConfig.getHeartbeatActionQuery())) {
 
-                return new CompositeHeartbeat(List.of(heartbeat, new DatabaseHeartbeat(
+                return new CompositeHeartbeat(heartbeat, new DatabaseHeartbeat(
                         connectionProvider.get(),
                         relConfig.getHeartbeatActionQuery(),
-                        errorHandler)));
+                        errorHandler));
             }
         }
 

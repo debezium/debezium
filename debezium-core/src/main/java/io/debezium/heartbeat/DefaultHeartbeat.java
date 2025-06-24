@@ -57,12 +57,9 @@ public class DefaultHeartbeat implements Heartbeat {
         this.topicName = topicName;
         this.key = key;
         this.heartbeatInterval = heartbeatInterval;
-
-        keySchema = SchemaFactory.get().heartbeatKeySchema(schemaNameAdjuster);
-
-        valueSchema = SchemaFactory.get().heartbeatValueSchema(schemaNameAdjuster);
-
-        heartbeatTimeout = resetHeartbeat();
+        this.keySchema = SchemaFactory.get().heartbeatKeySchema(schemaNameAdjuster);
+        this.valueSchema = SchemaFactory.get().heartbeatValueSchema(schemaNameAdjuster);
+        this.heartbeatTimeout = resetHeartbeat();
     }
 
     @Override
