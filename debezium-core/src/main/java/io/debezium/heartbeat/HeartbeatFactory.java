@@ -10,6 +10,7 @@ import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.topic.TopicNamingStrategy;
+import io.debezium.util.Strings;
 
 /**
  * A factory for creating the appropriate {@link Heartbeat} implementation based on the connector
@@ -17,7 +18,7 @@ import io.debezium.spi.topic.TopicNamingStrategy;
  *
  * @author Chris Cranford
  */
-public class HeartbeatFactory<T extends DataCollectionId> {
+public class HeartbeatFactory<T extends DataCollectionId> implements HeartbeatsFactory {
 
     private final CommonConnectorConfig connectorConfig;
     private final TopicNamingStrategy<T> topicNamingStrategy;
@@ -65,7 +66,7 @@ public class HeartbeatFactory<T extends DataCollectionId> {
         }
 
         if (connectorConfig instanceof RelationalDatabaseConnectorConfig relConfig) {
-            if (relConfig.getHeartbeatActionQuery() != null) {
+            if (!Strings.isNullOrBlank(relConfig.getHeartbeatActionQuery())) {
                 return new DatabaseHeartbeatImpl(
                         connectorConfig.getHeartbeatInterval(),
                         topicNamingStrategy.heartbeatTopic(),
@@ -84,6 +85,7 @@ public class HeartbeatFactory<T extends DataCollectionId> {
                 schemaNameAdjuster);
     }
 
+    @Override
     public Heartbeat create(CommonConnectorConfig connectorConfig,
                             SchemaNameAdjuster schemaNameAdjuster,
                             HeartbeatConnectionProvider connectionProvider,
@@ -93,7 +95,7 @@ public class HeartbeatFactory<T extends DataCollectionId> {
         }
 
         if (connectorConfig instanceof RelationalDatabaseConnectorConfig relConfig) {
-            if (relConfig.getHeartbeatActionQuery() != null) {
+            if (!Strings.isNullOrBlank(relConfig.getHeartbeatActionQuery())) {
                 return new DatabaseHeartbeatImpl(
                         connectorConfig.getHeartbeatInterval(),
                         topicName,
