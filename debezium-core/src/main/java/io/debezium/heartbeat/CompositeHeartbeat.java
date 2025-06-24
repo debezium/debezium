@@ -6,6 +6,7 @@
 
 package io.debezium.heartbeat;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -13,11 +14,11 @@ import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.function.BlockingConsumer;
 
-class CompositeHeartbeat implements Heartbeat {
+public class CompositeHeartbeat implements Heartbeat {
     private final List<Heartbeat> heartbeats;
 
-    CompositeHeartbeat(List<Heartbeat> heartbeats) {
-        this.heartbeats = heartbeats;
+    public CompositeHeartbeat(Heartbeat... heartbeat) {
+        this.heartbeats = Arrays.stream(heartbeat).toList();
     }
 
     @Override
