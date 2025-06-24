@@ -199,13 +199,6 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                 DocumentReader.defaultReader(),
                 previousOffsets);
 
-        HeartbeatFactory<TableId> tableIdHeartbeatFactory = new HeartbeatFactory<>(connectorConfig,
-                topicNamingStrategy,
-                schemaNameAdjuster, () -> new MariaDbConnection(
-                        new MariaDbConnectionConfiguration(config),
-                        getFieldReader(connectorConfig)),
-                new BinlogHeartbeatErrorHandler());
-
         final EventDispatcher<MariaDbPartition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicNamingStrategy,
@@ -215,7 +208,13 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                 DataChangeEvent::new,
                 null,
                 metadataProvider,
-                tableIdHeartbeatFactory.createHeartbeat(),
+                new HeartbeatFactory<>().create(connectorConfig,
+                        schemaNameAdjuster,
+                        () -> new MariaDbConnection(
+                                new MariaDbConnectionConfiguration(config),
+                                getFieldReader(connectorConfig)),
+                        new BinlogHeartbeatErrorHandler(),
+                        topicNamingStrategy.heartbeatTopic()),
                 schemaNameAdjuster,
                 signalProcessor,
                 connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
