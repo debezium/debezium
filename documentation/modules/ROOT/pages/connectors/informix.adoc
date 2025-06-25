@@ -2500,7 +2500,7 @@ To address this situation, create a heartbeat table in the low-traffic database,
  +
 `INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat')` +
  +
-This allows the connector to receive changes from the low-traffic database and update its last committed/restart LSN before the physical log files rotete.
+This allows the connector to receive changes from the low-traffic database and update its last committed/restart LSN before the physical log files rotate.
 
 |[[informix-property-snapshot-delay-ms]]<<informix-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
 |No default
