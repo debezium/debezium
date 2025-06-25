@@ -10,6 +10,11 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.pipeline.DataChangeEvent;
 
+/**
+ *
+ * factory interface for creating the appropriate {@link Heartbeat} implementation based on the connector
+ * and context
+ */
 public interface DebeziumHeartbeatFactory {
     Heartbeat create(CommonConnectorConfig connectorConfig,
                      HeartbeatConnectionProvider connectionProvider,
