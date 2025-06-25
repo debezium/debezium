@@ -17,8 +17,8 @@ import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Strings;
 
 /**
- * A factory for creating the appropriate {@link Heartbeat} implementation based on the connector
- * type and its configured properties.
+ * Default factory for creating the appropriate {@link Heartbeat} implementation based on the connector
+ * type and its configured properties in the Debezium context.
  *
  * @author Chris Cranford
  */

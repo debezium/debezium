@@ -15,6 +15,11 @@ import org.apache.kafka.connect.source.SourceRecord;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.spi.OffsetContext;
 
+/**
+ * Composite Heartbeat {@link Heartbeat}. It executes the heartbeats in chain
+ *
+ * @author gpanice
+ */
 public class CompositeHeartbeat implements Heartbeat {
     private final List<Heartbeat> heartbeats;
 
