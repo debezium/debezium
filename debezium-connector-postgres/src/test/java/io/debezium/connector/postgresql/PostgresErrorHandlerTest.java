@@ -14,7 +14,7 @@ import org.postgresql.util.PSQLState;
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.connector.base.ChangeEventQueueContext;
+import io.debezium.connector.base.ChangeEventQueueConfig;
 import io.debezium.connector.base.DefaultChangeEventQueue;
 import io.debezium.pipeline.DataChangeEvent;
 
@@ -24,7 +24,7 @@ public class PostgresErrorHandlerTest {
             new PostgresConnectorConfig(Configuration.create()
                     .with(CommonConnectorConfig.TOPIC_PREFIX, "postgres")
                     .build()),
-            new DefaultChangeEventQueue<DataChangeEvent>(ChangeEventQueueContext.builder().build()), null);
+            new DefaultChangeEventQueue<DataChangeEvent>(ChangeEventQueueConfig.builder().build()), null);
 
     @Test
     public void classifiedPSQLExceptionIsRetryable() {
