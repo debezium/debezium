@@ -425,6 +425,7 @@ public class JdbcConnection implements AutoCloseable {
                     if (LOGGER.isTraceEnabled()) {
                         LOGGER.trace("executing '{}'", sqlStatement);
                     }
+
                     statement.execute(sqlStatement);
                 }
             }
