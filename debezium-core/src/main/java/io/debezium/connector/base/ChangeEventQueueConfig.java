@@ -11,7 +11,7 @@ import java.util.function.Supplier;
 import io.debezium.annotation.SingleThreadAccess;
 import io.debezium.util.LoggingContext;
 
-public class ChangeEventQueueContext {
+public class ChangeEventQueueConfig {
 
     private final Duration pollInterval;
     private final int maxBatchSize;
@@ -22,8 +22,8 @@ public class ChangeEventQueueContext {
     @SingleThreadAccess("producer thread")
     private boolean buffering;
 
-    private ChangeEventQueueContext(Duration pollInterval, int maxQueueSize, int maxBatchSize, Supplier<LoggingContext.PreviousContext> loggingContextSupplier,
-                                    long maxQueueSizeInBytes, boolean buffering) {
+    private ChangeEventQueueConfig(Duration pollInterval, int maxQueueSize, int maxBatchSize, Supplier<LoggingContext.PreviousContext> loggingContextSupplier,
+                                   long maxQueueSizeInBytes, boolean buffering) {
         this.pollInterval = pollInterval;
         this.maxBatchSize = maxBatchSize;
         this.maxQueueSize = maxQueueSize;
@@ -98,8 +98,8 @@ public class ChangeEventQueueContext {
             return this;
         }
 
-        public ChangeEventQueueContext build() {
-            return new ChangeEventQueueContext(pollInterval, maxQueueSize, maxBatchSize, loggingContextSupplier, maxQueueSizeInBytes, buffering);
+        public ChangeEventQueueConfig build() {
+            return new ChangeEventQueueConfig(pollInterval, maxQueueSize, maxBatchSize, loggingContextSupplier, maxQueueSizeInBytes, buffering);
         }
     }
 

@@ -71,7 +71,7 @@ public class DefaultChangeEventQueue<T extends Sizeable> extends AbstractChangeE
     private final Queue<Long> sizeInBytesQueue;
     private long currentQueueSizeInBytes = 0;
 
-    public DefaultChangeEventQueue(ChangeEventQueueContext context) {
+    public DefaultChangeEventQueue(ChangeEventQueueConfig context) {
         super(context);
         this.pollInterval = context.getPollInterval();
         this.maxBatchSize = context.getMaxBatchSize();

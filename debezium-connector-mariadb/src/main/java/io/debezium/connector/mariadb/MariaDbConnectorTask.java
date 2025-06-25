@@ -21,7 +21,7 @@ import io.debezium.bean.StandardBeanNames;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
-import io.debezium.connector.base.ChangeEventQueueContext;
+import io.debezium.connector.base.ChangeEventQueueConfig;
 import io.debezium.connector.base.DefaultChangeEventQueue;
 import io.debezium.connector.binlog.BinlogEventMetadataProvider;
 import io.debezium.connector.binlog.BinlogSourceTask;
@@ -176,7 +176,7 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
 
         taskContext = new MariaDbTaskContext(connectorConfig, schema);
 
-        ChangeEventQueueContext changeEventQueueContext = ChangeEventQueueContext.builder()
+        ChangeEventQueueConfig changeEventQueueConfig = ChangeEventQueueConfig.builder()
                 .pollInterval(connectorConfig.getPollInterval())
                 .maxBatchSize(connectorConfig.getMaxBatchSize())
                 .maxQueueSize(connectorConfig.getMaxQueueSize())
@@ -185,7 +185,7 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                 .buffering()
                 .build();
         // Set up the task record queue ...
-        this.queue = new DefaultChangeEventQueue<>(changeEventQueueContext);
+        this.queue = new DefaultChangeEventQueue<>(changeEventQueueConfig);
 
         errorHandler = new MariaDbErrorHandler(connectorConfig, queue, errorHandler);
 
