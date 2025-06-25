@@ -5737,3 +5737,21 @@ When the following JVM argument is provided, the Oracle connector will start suc
 ----
 -Djavax.xml.parsers.SAXParserFactory=com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl
 ----
+
+
+*What's the cause for ORA-00600 and how to handle it?*::
+ORA-00600 is a generic internal error. It indicates the relevant process has encountered a low-level unexpected condition - which typically means you have encountered a bug. See this https://blogs.oracle.com/database/post/ora-00600[Oracle Blog] for more information.
+
+ORA-00600 comes along with multiple arguments whereas the first one is the most significant. Depending on the first argument there is a supposed solution to be applied:
++
+```
+ORA-00600: internal error code, arguments: [flg0], ...
+```
++
+The solution to avoid this issue is to enable supplemental logging on db level.
++
+```
+ORA-00600: internal error code, arguments: [kdli_iread], ...
+```
++
+This exception can be avoided by upgrading the Oracle db to 19.25 and applying patch 32209850.
