@@ -11,7 +11,7 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.schema.SchemaNameAdjuster;
 
-public interface HeartbeatsFactory {
+public interface DebeziumHeartbeatFactory {
     Heartbeat create(CommonConnectorConfig connectorConfig,
                      SchemaNameAdjuster schemaNameAdjuster,
                      HeartbeatConnectionProvider connectionProvider,
