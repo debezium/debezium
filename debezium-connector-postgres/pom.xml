@@ -321,7 +321,7 @@
                         <database.user>${postgres.user}</database.user>
                         <database.password>${postgres.password}</database.password>
                         <database.dbname>${postgres.db.name}</database.dbname>
-                        <plugin.name>pgoutput</plugin.name>
+                        <plugin.name>${decoder.plugin.name}</plugin.name>
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                     </systemPropertyVariables>
                     <argLine>-javaagent:"${settings.localRepository}/@{opentelemetry.agent.for.testing.artifact.relative.path}" -Dio.opentelemetry.javaagent.slf4j.simpleLogger.defaultLogLevel=off</argLine>
