@@ -3039,7 +3039,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
                 .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.part")
                 .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue())
-                .with(PostgresConnectorConfig.PUBLISH_VIA_PARTITION_ROOT,"true");
+                .with(PostgresConnectorConfig.PUBLISH_VIA_PARTITION_ROOT, "true");
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
