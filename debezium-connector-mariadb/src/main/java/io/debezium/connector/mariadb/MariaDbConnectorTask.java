@@ -212,12 +212,11 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                 null,
                 metadataProvider,
                 new HeartbeatFactory<>().create(connectorConfig,
-                        schemaNameAdjuster,
                         () -> new MariaDbConnection(
                                 new MariaDbConnectionConfiguration(config),
                                 getFieldReader(connectorConfig)),
                         new BinlogHeartbeatErrorHandler(),
-                        topicNamingStrategy.heartbeatTopic(), queue),
+                        queue),
                 schemaNameAdjuster,
                 signalProcessor,
                 connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));

@@ -5,6 +5,8 @@
  */
 package io.debezium.heartbeat;
 
+import static io.debezium.config.CommonConnectorConfig.TOPIC_NAMING_STRATEGY;
+
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.pipeline.DataChangeEvent;
@@ -59,7 +61,7 @@ public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHea
 
     /**
      *
-     * @deprecated replaced by the {@link DebeziumHeartbeatFactory#create(CommonConnectorConfig, SchemaNameAdjuster, HeartbeatConnectionProvider, HeartbeatErrorHandler, String, ChangeEventQueue)}
+     * @deprecated replaced by the {@link DebeziumHeartbeatFactory#create(CommonConnectorConfig, HeartbeatConnectionProvider, HeartbeatErrorHandler, ChangeEventQueue)}
      */
     @Deprecated
     public Heartbeat createHeartbeat() {
@@ -88,10 +90,8 @@ public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHea
 
     @Override
     public Heartbeat create(CommonConnectorConfig connectorConfig,
-                            SchemaNameAdjuster schemaNameAdjuster,
                             HeartbeatConnectionProvider connectionProvider,
                             HeartbeatErrorHandler errorHandler,
-                            String topicName,
                             ChangeEventQueue<DataChangeEvent> queue) {
         if (connectorConfig.getHeartbeatInterval().isZero()) {
             return Heartbeat.DEFAULT_NOOP_HEARTBEAT;
@@ -99,9 +99,9 @@ public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHea
 
         DefaultHeartbeat heartbeat = new DefaultHeartbeat(
                 connectorConfig.getHeartbeatInterval(),
-                topicName,
+                connectorConfig.getTopicNamingStrategy(TOPIC_NAMING_STRATEGY).heartbeatTopic(),
                 connectorConfig.getLogicalName(),
-                schemaNameAdjuster, queue);
+                connectorConfig.schemaNameAdjuster(), queue);
 
         if (connectorConfig instanceof RelationalDatabaseConnectorConfig relConfig) {
             if (!Strings.isNullOrBlank(relConfig.getHeartbeatActionQuery())) {
