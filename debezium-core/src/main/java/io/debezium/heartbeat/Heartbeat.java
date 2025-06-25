@@ -67,18 +67,20 @@ public interface Heartbeat extends AutoCloseable {
 
     /**
      * Generates a heartbeat record if defined time has elapsed
+     * Replaced by {@link #heartbeat(Map, OffsetContext)}
      *
      * @param partition partition for the heartbeat record
      * @param offset    offset for the heartbeat record
      * @param consumer  - a code to place record among others to be sent into Connect
      */
-    // TODO would be nice to pass OffsetContext here; not doing it for now, though, until MySQL is using OffsetContext, too
+    @Deprecated
     default void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
         // ignore
     }
 
     /**
      * Generates a heartbeat record if defined time has elapsed
+     * Replaced by {@link #heartbeat(Map, OffsetContext)}
      *
      * @param partition partition for the heartbeat record
      * @param offsetProducer lazily calculated offset for the heartbeat record
@@ -90,6 +92,7 @@ public interface Heartbeat extends AutoCloseable {
 
     /**
      * Generates a heartbeat record unconditionally
+     * Replaced by {@link #forcedBeat(Map, OffsetContext)}
      *
      * @param partition partition for the heartbeat record
      * @param offset    offset for the heartbeat record
