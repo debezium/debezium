@@ -20,7 +20,7 @@ import io.debezium.util.Strings;
  *
  * @author Chris Cranford
  */
-public class HeartbeatFactory<T extends DataCollectionId> implements HeartbeatsFactory {
+public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHeartbeatFactory {
 
     private final CommonConnectorConfig connectorConfig;
     private final TopicNamingStrategy<T> topicNamingStrategy;
@@ -59,7 +59,7 @@ public class HeartbeatFactory<T extends DataCollectionId> implements HeartbeatsF
 
     /**
      *
-     * @deprecated replaced by the {@link HeartbeatsFactory#create(CommonConnectorConfig, SchemaNameAdjuster, HeartbeatConnectionProvider, HeartbeatErrorHandler, String, ChangeEventQueue)}
+     * @deprecated replaced by the {@link DebeziumHeartbeatFactory#create(CommonConnectorConfig, SchemaNameAdjuster, HeartbeatConnectionProvider, HeartbeatErrorHandler, String, ChangeEventQueue)}
      */
     @Deprecated
     public Heartbeat createHeartbeat() {
@@ -99,7 +99,7 @@ public class HeartbeatFactory<T extends DataCollectionId> implements HeartbeatsF
 
         DefaultHeartbeat heartbeat = new DefaultHeartbeat(
                 connectorConfig.getHeartbeatInterval(),
-                topicNamingStrategy.heartbeatTopic(),
+                topicName,
                 connectorConfig.getLogicalName(),
                 schemaNameAdjuster, queue);
 
