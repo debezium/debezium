@@ -238,6 +238,7 @@ Jiabao Sun
 Jiri Kulhanek
 Jon Bruno
 Jonas Thelemann
+Jono Morris
 Jordan Pittier
 Juan Fiallo
 Juanma Barea
@@ -393,6 +394,7 @@ Mathieu Rozieres
 Matthias Wessendorf
 Mauricio Scheffer
 Max Kaplan
+Maxim Martynov
 Martín Pérez
 Mehmet Firat Komurcu
 Meng Qiu
@@ -543,6 +545,7 @@ Shivam Sharma
 Shubham Rawat
 Shuguang Xiang
 Shuran Zhang
+Shushant Kumar
 SiuFay
 Siddhant Agnihotry
 Stanislav Deviatov
