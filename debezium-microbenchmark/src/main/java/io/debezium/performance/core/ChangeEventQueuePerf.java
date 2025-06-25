@@ -30,7 +30,7 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
 import io.debezium.connector.base.ChangeEventQueue;
-import io.debezium.connector.base.ChangeEventQueueContext;
+import io.debezium.connector.base.ChangeEventQueueConfig;
 import io.debezium.connector.base.DefaultChangeEventQueue;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.util.LoggingContext;
@@ -56,13 +56,13 @@ public class ChangeEventQueuePerf {
 
         @Setup(Level.Trial)
         public void setup() {
-            ChangeEventQueueContext changeEventQueueContext = ChangeEventQueueContext.builder()
+            ChangeEventQueueConfig changeEventQueueConfig = ChangeEventQueueConfig.builder()
                     .pollInterval(Duration.ofMillis(pollIntervalMillis))
                     .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE).maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
                     .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))
                     .maxQueueSizeInBytes(DEFAULT_MAX_QUEUE_SIZE_IN_BYTES)
                     .build();
-            changeEventQueue = new DefaultChangeEventQueue<>(changeEventQueueContext);
+            changeEventQueue = new DefaultChangeEventQueue<>(changeEventQueueConfig);
             consumer = new Thread(() -> {
                 try {
                     while (true) {
@@ -107,13 +107,13 @@ public class ChangeEventQueuePerf {
 
         @Setup(Level.Trial)
         public void setup() {
-            ChangeEventQueueContext changeEventQueueContext = ChangeEventQueueContext.builder()
+            ChangeEventQueueConfig changeEventQueueConfig = ChangeEventQueueConfig.builder()
                     .pollInterval(Duration.ofMillis(pollIntervalMillis))
                     .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE).maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
                     .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))
                     .maxQueueSizeInBytes(DEFAULT_MAX_QUEUE_SIZE_IN_BYTES)
                     .build();
-            changeEventQueue = new DefaultChangeEventQueue<>(changeEventQueueContext);
+            changeEventQueue = new DefaultChangeEventQueue<>(changeEventQueueConfig);
 
             producer = new Thread(() -> {
                 try {
@@ -161,13 +161,13 @@ public class ChangeEventQueuePerf {
 
         @Setup(Level.Trial)
         public void setupInvocation() {
-            ChangeEventQueueContext changeEventQueueContext = ChangeEventQueueContext.builder()
+            ChangeEventQueueConfig changeEventQueueConfig = ChangeEventQueueConfig.builder()
                     .pollInterval(Duration.ofMillis(pollIntervalMillis))
                     .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE).maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
                     .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))
                     .maxQueueSizeInBytes(DEFAULT_MAX_QUEUE_SIZE_IN_BYTES)
                     .build();
-            changeEventQueue = new DefaultChangeEventQueue<>(changeEventQueueContext);
+            changeEventQueue = new DefaultChangeEventQueue<>(changeEventQueueConfig);
         }
 
         @Setup(Level.Invocation)
@@ -237,13 +237,13 @@ public class ChangeEventQueuePerf {
 
         @Setup(Level.Trial)
         public void setupInvocation() {
-            ChangeEventQueueContext changeEventQueueContext = ChangeEventQueueContext.builder()
+            ChangeEventQueueConfig changeEventQueueConfig = ChangeEventQueueConfig.builder()
                     .pollInterval(Duration.ofMillis(pollIntervalMillis))
                     .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE).maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
                     .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))
                     .maxQueueSizeInBytes(DEFAULT_MAX_QUEUE_SIZE_IN_BYTES)
                     .build();
-            changeEventQueue = new DefaultChangeEventQueue<>(changeEventQueueContext);
+            changeEventQueue = new DefaultChangeEventQueue<>(changeEventQueueConfig);
         }
 
         @Setup(Level.Invocation)

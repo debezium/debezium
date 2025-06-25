@@ -20,7 +20,7 @@ public abstract class AbstractChangeEventQueue<T extends Sizeable> implements Ch
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractChangeEventQueue.class);
 
-    private final ChangeEventQueueContext changeEventQueueContext;
+    private final ChangeEventQueueConfig changeEventQueueConfig;
 
     @SingleThreadAccess("producer thread")
     protected boolean buffering;
@@ -29,9 +29,9 @@ public abstract class AbstractChangeEventQueue<T extends Sizeable> implements Ch
 
     protected volatile RuntimeException producerException;
 
-    public AbstractChangeEventQueue(ChangeEventQueueContext changeEventQueueContext) {
-        this.changeEventQueueContext = changeEventQueueContext;
-        this.buffering = changeEventQueueContext.isBuffering();
+    public AbstractChangeEventQueue(ChangeEventQueueConfig changeEventQueueConfig) {
+        this.changeEventQueueConfig = changeEventQueueConfig;
+        this.buffering = changeEventQueueConfig.isBuffering();
     }
 
     /**
@@ -75,7 +75,7 @@ public abstract class AbstractChangeEventQueue<T extends Sizeable> implements Ch
      */
     @Override
     public List<T> poll() throws InterruptedException {
-        LoggingContext.PreviousContext previousContext = changeEventQueueContext.getLoggingContextSupplier().get();
+        LoggingContext.PreviousContext previousContext = changeEventQueueConfig.getLoggingContextSupplier().get();
 
         try {
             LOGGER.debug("polling records...");
