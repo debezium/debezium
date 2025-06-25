@@ -204,7 +204,6 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     metadataProvider,
                     new HeartbeatFactory<>().create(
                             connectorConfig,
-                            schemaNameAdjuster,
                             () -> new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL),
                             exception -> {
                                 String sqlErrorId = exception.getSQLState();
@@ -218,7 +217,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                                     default:
                                         break;
                                 }
-                            }, topicNamingStrategy.heartbeatTopic(), queue),
+                            }, queue),
                     schemaNameAdjuster,
                     signalProcessor,
                     connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));

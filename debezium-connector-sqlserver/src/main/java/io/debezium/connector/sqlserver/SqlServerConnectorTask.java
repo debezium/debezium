@@ -146,13 +146,12 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 metadataProvider,
                 new HeartbeatFactory<>().create(
                         connectorConfig,
-                        schemaNameAdjuster,
                         connectionFactory::newConnection,
                         exception -> {
                             final String sqlErrorId = exception.getMessage();
                             throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
                         },
-                        topicNamingStrategy.heartbeatTopic(), queue),
+                        queue),
                 schemaNameAdjuster,
                 signalProcessor,
                 connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
