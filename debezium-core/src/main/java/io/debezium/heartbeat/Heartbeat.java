@@ -17,8 +17,8 @@ import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.spi.OffsetContext;
 
 /**
- * A class that is able to generate periodic heartbeat messages based on a pre-configured interval. The clients are
- * supposed to call method {@link #heartbeat(Map, Map, BlockingConsumer)} from a main loop of a connector.
+ * A class that is able to emit heartbeat messages. The clients are
+ * supposed to call method {@link #emit(Map, OffsetContext)} from a main loop of a connector.
  *
  * @author Jiri Pechanec
  *
@@ -61,7 +61,7 @@ public interface Heartbeat extends AutoCloseable {
             .withDefault(DefaultHeartbeat.DEFAULT_HEARTBEAT_TOPICS_PREFIX);
 
     /**
-     * No-op Heartbeat implementation
+     * No-op Heartbeat implementation (not enabled)
      */
     Heartbeat DEFAULT_NOOP_HEARTBEAT = () -> false;
 
@@ -91,6 +91,10 @@ public interface Heartbeat extends AutoCloseable {
         // ignore
     }
 
+    /**
+     * A class that is able to generate periodic heartbeat messages based on a pre-configured interval. The clients are
+     * supposed to call method {@link #emitWithDelay(Map, OffsetContext)} from a main loop of a connector.
+     */
     interface ScheduledHeartbeat extends Heartbeat {
         /**
          * Generates a heartbeat record if defined time has elapsed

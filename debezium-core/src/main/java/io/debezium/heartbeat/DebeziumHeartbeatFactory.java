@@ -8,6 +8,7 @@ package io.debezium.heartbeat;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.heartbeat.Heartbeat.ScheduledHeartbeat;
 import io.debezium.pipeline.DataChangeEvent;
 
 /**
@@ -16,7 +17,7 @@ import io.debezium.pipeline.DataChangeEvent;
  * and context
  */
 public interface DebeziumHeartbeatFactory {
-    Heartbeat.ScheduledHeartbeat getScheduledHeartbeat(CommonConnectorConfig connectorConfig,
-                                                       HeartbeatConnectionProvider connectionProvider,
-                                                       HeartbeatErrorHandler errorHandler, ChangeEventQueue<DataChangeEvent> queue);
+    ScheduledHeartbeat getScheduledHeartbeat(CommonConnectorConfig connectorConfig,
+                                             HeartbeatConnectionProvider connectionProvider,
+                                             HeartbeatErrorHandler errorHandler, ChangeEventQueue<DataChangeEvent> queue);
 }
