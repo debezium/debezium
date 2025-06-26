@@ -52,7 +52,7 @@ public class CompositeHeartbeat implements Heartbeat, Heartbeat.ScheduledHeartbe
 
     @Override
     public void emitWithDelay(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
-        scheduledHeartbeat.emit(partition, offset);
+        scheduledHeartbeat.emitWithDelay(partition, offset);
 
         for (Heartbeat heartbeat : heartbeats) {
             heartbeat.emit(partition, offset);
@@ -61,6 +61,8 @@ public class CompositeHeartbeat implements Heartbeat, Heartbeat.ScheduledHeartbe
 
     @Override
     public void emit(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
+        scheduledHeartbeat.emit(partition, offset);
+
         for (Heartbeat heartbeat : heartbeats) {
             heartbeat.emit(partition, offset);
         }
