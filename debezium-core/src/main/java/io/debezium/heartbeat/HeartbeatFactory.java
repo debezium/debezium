@@ -9,6 +9,7 @@ import static io.debezium.config.CommonConnectorConfig.TOPIC_NAMING_STRATEGY;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.heartbeat.Heartbeat.ScheduledHeartbeat;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -61,7 +62,7 @@ public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHea
 
     /**
      *
-     * @deprecated replaced by the {@link DebeziumHeartbeatFactory#create(CommonConnectorConfig, HeartbeatConnectionProvider, HeartbeatErrorHandler, ChangeEventQueue)}
+     * @deprecated replaced by the {@link DebeziumHeartbeatFactory#getScheduledHeartbeat(CommonConnectorConfig, HeartbeatConnectionProvider, HeartbeatErrorHandler, ChangeEventQueue)}
      */
     @Deprecated
     public Heartbeat createHeartbeat() {
@@ -89,15 +90,15 @@ public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHea
     }
 
     @Override
-    public Heartbeat create(CommonConnectorConfig connectorConfig,
-                            HeartbeatConnectionProvider connectionProvider,
-                            HeartbeatErrorHandler errorHandler,
-                            ChangeEventQueue<DataChangeEvent> queue) {
+    public ScheduledHeartbeat getScheduledHeartbeat(CommonConnectorConfig connectorConfig,
+                                                    HeartbeatConnectionProvider connectionProvider,
+                                                    HeartbeatErrorHandler errorHandler,
+                                                    ChangeEventQueue<DataChangeEvent> queue) {
         if (connectorConfig.getHeartbeatInterval().isZero()) {
-            return Heartbeat.DEFAULT_NOOP_HEARTBEAT;
+            return () -> false;
         }
 
-        DefaultHeartbeat heartbeat = new DefaultHeartbeat(
+        ScheduledHeartbeat heartbeat = new DefaultHeartbeat(
                 connectorConfig.getHeartbeatInterval(),
                 connectorConfig.getTopicNamingStrategy(TOPIC_NAMING_STRATEGY).heartbeatTopic(),
                 connectorConfig.getLogicalName(),

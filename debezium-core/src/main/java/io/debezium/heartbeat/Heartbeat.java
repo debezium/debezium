@@ -63,11 +63,11 @@ public interface Heartbeat extends AutoCloseable {
     /**
      * No-op Heartbeat implementation
      */
-    Heartbeat DEFAULT_NOOP_HEARTBEAT = new CompositeHeartbeat();
+    Heartbeat DEFAULT_NOOP_HEARTBEAT = () -> false;
 
     /**
      * Generates a heartbeat record if defined time has elapsed
-     * Replaced by {@link #heartbeat(Map, OffsetContext)}
+     * Replaced by {@link ScheduledHeartbeat#emitWithDelay(Map, OffsetContext)}
      *
      * @param partition partition for the heartbeat record
      * @param offset    offset for the heartbeat record
@@ -80,35 +80,39 @@ public interface Heartbeat extends AutoCloseable {
 
     /**
      * Generates a heartbeat record if defined time has elapsed
-     * Replaced by {@link #heartbeat(Map, OffsetContext)}
+     * Replaced by {@link ScheduledHeartbeat#emitWithDelay(Map, OffsetContext)}
      *
      * @param partition partition for the heartbeat record
      * @param offsetProducer lazily calculated offset for the heartbeat record
      * @param consumer - a code to place record among others to be sent into Connect
      */
+    @Deprecated
     default void heartbeat(Map<String, ?> partition, OffsetProducer offsetProducer, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
         // ignore
     }
 
+    interface ScheduledHeartbeat extends Heartbeat {
+        /**
+         * Generates a heartbeat record if defined time has elapsed
+         *
+         * @param partition partition for the heartbeat record
+         * @param offset    offset for the heartbeat record
+         */
+        default void emitWithDelay(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
+            // ignore
+        }
+    }
+
     /**
      * Generates a heartbeat record unconditionally
-     * Replaced by {@link #forcedBeat(Map, OffsetContext)}
+     * Replaced by {@link #emit(Map, OffsetContext)}
      *
      * @param partition partition for the heartbeat record
      * @param offset    offset for the heartbeat record
      * @param consumer  - a code to place record among others to be sent into Connect
      */
+    @Deprecated
     default void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
-        // ignore
-    }
-
-    /**
-     * Generates a heartbeat record if defined time has elapsed
-     *
-     * @param partition partition for the heartbeat record
-     * @param offset    offset for the heartbeat record
-     */
-    default void heartbeat(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
         // ignore
     }
 
@@ -118,7 +122,7 @@ public interface Heartbeat extends AutoCloseable {
      * @param partition partition for the heartbeat record
      * @param offset    offset for the heartbeat record
      */
-    default void forcedBeat(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
+    default void emit(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
         // ignore
     }
 

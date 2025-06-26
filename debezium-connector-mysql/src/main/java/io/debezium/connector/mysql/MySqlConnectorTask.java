@@ -200,7 +200,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                 DataChangeEvent::new,
                 null,
                 metadataProvider,
-                new HeartbeatFactory<>().create(
+                new HeartbeatFactory<>().getScheduledHeartbeat(
                         connectorConfig,
                         () -> new MySqlConnection(
                                 new MySqlConnectionConfiguration(heartbeatConfig),
