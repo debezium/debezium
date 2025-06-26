@@ -70,7 +70,7 @@ public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHea
             return Heartbeat.DEFAULT_NOOP_HEARTBEAT;
         }
 
-        DefaultHeartbeat heartbeat = new DefaultHeartbeat(
+        ScheduledHeartbeat scheduledHeartbeat = new DefaultHeartbeat(
                 connectorConfig.getHeartbeatInterval(),
                 topicNamingStrategy.heartbeatTopic(),
                 connectorConfig.getLogicalName(),
@@ -79,14 +79,14 @@ public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHea
         if (connectorConfig instanceof RelationalDatabaseConnectorConfig relConfig) {
             if (!Strings.isNullOrBlank(relConfig.getHeartbeatActionQuery())) {
 
-                return new CompositeHeartbeat(heartbeat, new DatabaseHeartbeat(
+                return new CompositeHeartbeat(scheduledHeartbeat, new DatabaseHeartbeat(
                         connectionProvider.get(),
                         relConfig.getHeartbeatActionQuery(),
                         errorHandler));
             }
         }
 
-        return heartbeat;
+        return scheduledHeartbeat;
     }
 
     /**
@@ -106,7 +106,7 @@ public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHea
             return () -> false;
         }
 
-        ScheduledHeartbeat heartbeat = new DefaultHeartbeat(
+        ScheduledHeartbeat scheduledHeartbeat = new DefaultHeartbeat(
                 connectorConfig.getHeartbeatInterval(),
                 connectorConfig.getTopicNamingStrategy(TOPIC_NAMING_STRATEGY).heartbeatTopic(),
                 connectorConfig.getLogicalName(),
@@ -115,14 +115,14 @@ public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHea
         if (connectorConfig instanceof RelationalDatabaseConnectorConfig relConfig) {
             if (!Strings.isNullOrBlank(relConfig.getHeartbeatActionQuery())) {
 
-                return new CompositeHeartbeat(heartbeat, new DatabaseHeartbeat(
+                return new CompositeHeartbeat(scheduledHeartbeat, new DatabaseHeartbeat(
                         connectionProvider.get(),
                         relConfig.getHeartbeatActionQuery(),
                         errorHandler));
             }
         }
 
-        return heartbeat;
+        return scheduledHeartbeat;
     }
 
 }
