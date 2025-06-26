@@ -33,6 +33,7 @@ import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.heartbeat.Heartbeat.ScheduledHeartbeat;
 import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.signal.channels.SourceSignalChannel;
@@ -83,7 +84,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     private final DataCollectionFilter<T> filter;
     private final ChangeEventCreator changeEventCreator;
     private final DebeziumHeaderProducer debeziumHeaderProducer;
-    private final Heartbeat heartbeat;
+    private final ScheduledHeartbeat heartbeat;
     private DataChangeEventListener<P> eventListener = DataChangeEventListener.NO_OP();
     private final boolean emitTombstonesOnDelete;
     private final InconsistentSchemaHandler<P, T> inconsistentSchemaHandler;
@@ -111,7 +112,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider, SchemaNameAdjuster schemaNameAdjuster,
                            SignalProcessor<P, ?> signalProcessor, DebeziumHeaderProducer debeziumHeaderProducer) {
         this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                new HeartbeatFactory<>().create(connectorConfig, null, null, queue), schemaNameAdjuster,
+                new HeartbeatFactory<>().getScheduledHeartbeat(connectorConfig, null, null, queue), schemaNameAdjuster,
                 signalProcessor,
                 debeziumHeaderProducer);
     }
@@ -139,7 +140,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                            DebeziumHeaderProducer debeziumHeaderProducer) {
 
         this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider,
-                new HeartbeatFactory<>().create(
+                new HeartbeatFactory<>().getScheduledHeartbeat(
                         connectorConfig,
                         null,
                         null, queue),
@@ -338,7 +339,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                 handled = true;
             }
 
-            heartbeat.heartbeat(
+            heartbeat.emitWithDelay(
                     changeRecordEmitter.getPartition().getSourcePartition(),
                     changeRecordEmitter.getOffset());
 
@@ -446,18 +447,18 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     }
 
     public void alwaysDispatchHeartbeatEvent(P partition, OffsetContext offset) throws InterruptedException {
-        heartbeat.forcedBeat(partition.getSourcePartition(), offset);
+        heartbeat.emit(partition.getSourcePartition(), offset);
     }
 
     public void dispatchHeartbeatEvent(P partition, OffsetContext offset) throws InterruptedException {
-        heartbeat.heartbeat(partition.getSourcePartition(), offset);
+        heartbeat.emitWithDelay(partition.getSourcePartition(), offset);
     }
 
     // Use this method when you want to dispatch the heartbeat also to incremental snapshot.
     // Currently, this is used by PostgreSQL for read-only incremental snapshot but doesn't suites well for
     // MySQL since the dispatchHeartbeatEvent is called at every received message and not when there is no message from the DB log.
     public void dispatchHeartbeatEventAlsoToIncrementalSnapshot(P partition, OffsetContext offset) throws InterruptedException {
-        heartbeat.heartbeat(
+        heartbeat.emitWithDelay(
                 partition.getSourcePartition(),
                 offset);
 
