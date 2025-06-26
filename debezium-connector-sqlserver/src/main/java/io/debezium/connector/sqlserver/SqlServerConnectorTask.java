@@ -144,7 +144,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 connectorConfig.getTableFilters().dataCollectionFilter(),
                 DataChangeEvent::new,
                 metadataProvider,
-                new HeartbeatFactory<>().create(
+                new HeartbeatFactory<>().getScheduledHeartbeat(
                         connectorConfig,
                         connectionFactory::newConnection,
                         exception -> {

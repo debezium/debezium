@@ -16,7 +16,7 @@ import io.debezium.pipeline.DataChangeEvent;
  * and context
  */
 public interface DebeziumHeartbeatFactory {
-    Heartbeat create(CommonConnectorConfig connectorConfig,
-                     HeartbeatConnectionProvider connectionProvider,
-                     HeartbeatErrorHandler errorHandler, ChangeEventQueue<DataChangeEvent> queue);
+    Heartbeat.ScheduledHeartbeat getScheduledHeartbeat(CommonConnectorConfig connectorConfig,
+                                                       HeartbeatConnectionProvider connectionProvider,
+                                                       HeartbeatErrorHandler errorHandler, ChangeEventQueue<DataChangeEvent> queue);
 }

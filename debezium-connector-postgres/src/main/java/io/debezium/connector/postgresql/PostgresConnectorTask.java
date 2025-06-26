@@ -202,7 +202,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     DataChangeEvent::new,
                     PostgresChangeRecordEmitter::updateSchema,
                     metadataProvider,
-                    new HeartbeatFactory<>().create(
+                    new HeartbeatFactory<>().getScheduledHeartbeat(
                             connectorConfig,
                             () -> new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL),
                             exception -> {
