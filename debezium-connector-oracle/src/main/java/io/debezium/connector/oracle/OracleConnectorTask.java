@@ -153,7 +153,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 connectorConfig.getTableFilters().dataCollectionFilter(),
                 DataChangeEvent::new,
                 metadataProvider,
-                new HeartbeatFactory<>().create(
+                new HeartbeatFactory<>().getScheduledHeartbeat(
                         connectorConfig,
                         () -> getHeartbeatConnection(connectorConfig, jdbcConfig),
                         exception -> {

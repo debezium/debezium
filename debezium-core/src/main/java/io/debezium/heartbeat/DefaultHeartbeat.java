@@ -30,7 +30,7 @@ import io.debezium.util.Threads.Timer;
  * Default implementation of Heartbeat
  *
  */
-public class DefaultHeartbeat implements Heartbeat {
+public class DefaultHeartbeat implements Heartbeat.ScheduledHeartbeat, Heartbeat {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultHeartbeat.class);
 
@@ -108,15 +108,15 @@ public class DefaultHeartbeat implements Heartbeat {
     }
 
     @Override
-    public void heartbeat(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
+    public void emitWithDelay(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
         if (heartbeatTimeout.expired()) {
-            forcedBeat(partition, offset);
+            emit(partition, offset);
             heartbeatTimeout = resetHeartbeat();
         }
     }
 
     @Override
-    public void forcedBeat(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
+    public void emit(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
         if (queue == null) {
             throw new IllegalArgumentException("new heartbeat API should be used with the recommended constructor");
         }

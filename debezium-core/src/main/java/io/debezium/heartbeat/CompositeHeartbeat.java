@@ -16,14 +16,16 @@ import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.spi.OffsetContext;
 
 /**
- * Composite Heartbeat {@link Heartbeat}. It executes the heartbeats in chain
+ * Composite Heartbeat solutions (Queue, Database...) {@link Heartbeat}. It executes the heartbeats in chain
  *
  * @author gpanice
  */
-public class CompositeHeartbeat implements Heartbeat {
+public class CompositeHeartbeat implements Heartbeat, Heartbeat.ScheduledHeartbeat {
+    private final ScheduledHeartbeat scheduledHeartbeat;
     private final List<Heartbeat> heartbeats;
 
-    public CompositeHeartbeat(Heartbeat... heartbeat) {
+    public CompositeHeartbeat(ScheduledHeartbeat scheduledHeartbeat, Heartbeat... heartbeat) {
+        this.scheduledHeartbeat = scheduledHeartbeat;
         this.heartbeats = Arrays.stream(heartbeat).toList();
     }
 
@@ -49,16 +51,18 @@ public class CompositeHeartbeat implements Heartbeat {
     }
 
     @Override
-    public void heartbeat(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
+    public void emitWithDelay(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
+        scheduledHeartbeat.emit(partition, offset);
+
         for (Heartbeat heartbeat : heartbeats) {
-            heartbeat.heartbeat(partition, offset);
+            heartbeat.emit(partition, offset);
         }
     }
 
     @Override
-    public void forcedBeat(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
+    public void emit(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
         for (Heartbeat heartbeat : heartbeats) {
-            heartbeat.forcedBeat(partition, offset);
+            heartbeat.emit(partition, offset);
         }
     }
 
