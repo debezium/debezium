@@ -42,7 +42,7 @@ public class PostgresEventDispatcher<T extends DataCollectionId> extends EventDi
     public PostgresEventDispatcher(PostgresConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
                                    DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilters.DataCollectionFilter<T> filter,
                                    ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<PostgresPartition, T> inconsistentSchemaHandler,
-                                   EventMetadataProvider metadataProvider, Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster,
+                                   EventMetadataProvider metadataProvider, Heartbeat.ScheduledHeartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster,
                                    SignalProcessor<PostgresPartition, PostgresOffsetContext> signalProcessor, DebeziumHeaderProducer debeziumHeaderProducer) {
         super(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, inconsistentSchemaHandler, heartbeat, schemaNameAdjuster,
                 new PostgresTransactionMonitor(
