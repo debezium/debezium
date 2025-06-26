@@ -32,7 +32,6 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
-import io.debezium.heartbeat.Heartbeat;
 import io.debezium.heartbeat.Heartbeat.ScheduledHeartbeat;
 import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.pipeline.signal.SignalProcessor;
@@ -120,7 +119,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider,
-                           Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster, SignalProcessor<P, ?> signalProcessor,
+                           ScheduledHeartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster, SignalProcessor<P, ?> signalProcessor,
                            DebeziumHeaderProducer debeziumHeaderProducer) {
         this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider, heartbeat, schemaNameAdjuster, signalProcessor,
                 debeziumHeaderProducer);
@@ -129,7 +128,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, EventMetadataProvider metadataProvider,
-                           Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster, DebeziumHeaderProducer debeziumHeaderProducer) {
+                           ScheduledHeartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster, DebeziumHeaderProducer debeziumHeaderProducer) {
         this(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, null, metadataProvider, heartbeat, schemaNameAdjuster, null,
                 debeziumHeaderProducer);
     }
@@ -150,7 +149,8 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
                            ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<P, T> inconsistentSchemaHandler,
-                           EventMetadataProvider metadataProvider, Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster, SignalProcessor<P, ?> signalProcessor,
+                           EventMetadataProvider metadataProvider, ScheduledHeartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster,
+                           SignalProcessor<P, ?> signalProcessor,
                            DebeziumHeaderProducer debeziumHeaderProducer) {
         this.debeziumHeaderProducer = debeziumHeaderProducer;
         this.tableChangesSerializer = new ConnectTableChangeSerializer(schemaNameAdjuster);
@@ -188,7 +188,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
     public EventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
                            DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilter<T> filter,
-                           ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<P, T> inconsistentSchemaHandler, Heartbeat heartbeat,
+                           ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<P, T> inconsistentSchemaHandler, ScheduledHeartbeat heartbeat,
                            SchemaNameAdjuster schemaNameAdjuster, TransactionMonitor transactionMonitor,
                            SignalProcessor<P, ?> signalProcessor, DebeziumHeaderProducer debeziumHeaderProducer) {
         this.tableChangesSerializer = new ConnectTableChangeSerializer(schemaNameAdjuster);
