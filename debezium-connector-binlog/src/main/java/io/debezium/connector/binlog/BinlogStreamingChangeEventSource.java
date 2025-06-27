@@ -378,6 +378,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         final BinaryLogClient client = taskContext.getBinaryLogClient();
         client.setThreadFactory(
                 Threads.threadFactory(
+                        connectorConfig.connectorName(),
                         getConnectorClass(),
                         connectorConfig.getLogicalName(),
                         "binlog-client",
