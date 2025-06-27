@@ -4020,6 +4020,12 @@ For more information, see xref:postgresql-toasted-values[toasted values].
 |Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this.
 For more information, see xref:postgresql-transaction-metadata[Transaction metadata].
 
+|[[postgresql-property-publish-via-partition-root]]<<postgresql-property-publish-via-partition-root, `+publish.via.partition.root+`>>
+|`false`
+|A boolean that determines whether the connector should auto-create publication for partitioned tables.
+When `true`, publications will be created with `publish_via_partition_root = true` parameter for partitioned tables.
+When `false`, publications will be created without this parameter and it will not capture root level table changes.
+
 |[[postgresql-property-flush-lsn-source]]<<postgresql-property-flush-lsn-source, `+flush.lsn.source+`>>
 |`true`
 |Determines whether the connector should commit the LSN of the processed records in the source PostgreSQL database so that the WAL logs can be deleted.
