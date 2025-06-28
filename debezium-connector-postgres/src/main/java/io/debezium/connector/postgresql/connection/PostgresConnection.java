@@ -858,7 +858,8 @@ public class PostgresConnection extends JdbcConnection {
             if (slotState == null) {
                 return false;
             }
-            return storedLsn == null || slotState.slotRestartLsn().compareTo(storedLsn) < 0;
+            LOGGER.info("Slot '{}' has restart LSN '{}'", slotName, slotState.slotRestartLsn());
+            return storedLsn == null || slotState.slotRestartLsn().compareTo(storedLsn) <= 0;
         }
         catch (SQLException e) {
             throw new DebeziumException("Unable to get last available log position", e);

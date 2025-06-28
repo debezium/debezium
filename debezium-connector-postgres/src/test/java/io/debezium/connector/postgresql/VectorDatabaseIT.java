@@ -22,7 +22,6 @@ import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
-import io.debezium.util.Testing;
 
 /**
  * Integration test to verify PgVector types.
@@ -51,7 +50,7 @@ public class VectorDatabaseIT extends AbstractRecordsProducerTest {
 
     @Test
     public void shouldSnapshotAndStreamData() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
 
         start(PostgresConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
@@ -87,7 +86,7 @@ public class VectorDatabaseIT extends AbstractRecordsProducerTest {
 
     @Test
     public void shouldStreamData() throws Exception {
-        Testing.Print.enable();
+        // Testing.Print.enable();
         start(PostgresConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build());
