@@ -22,28 +22,27 @@ import io.debezium.engine.RecordChangeEvent;
 import io.debezium.engine.format.ChangeEventFormat;
 import io.debezium.runtime.Connector;
 import io.debezium.runtime.DebeziumStatus;
-import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
 import io.quarkus.debezium.engine.capture.CapturingInvokerRegistry;
 
 @ApplicationScoped
 class SourceRecordDebezium extends RunnableDebezium {
 
-    private final DebeziumEngineConfiguration debeziumEngineConfiguration;
+    private final Map<String, String> configuration;
     private final DebeziumEngine<?> engine;
     private final Connector connector;
     private final StateHandler stateHandler;
 
-    SourceRecordDebezium(DebeziumEngineConfiguration debeziumEngineConfiguration,
+    SourceRecordDebezium(Map<String, String> configuration,
                          StateHandler stateHandler,
                          Connector connector,
                          CapturingInvokerRegistry<RecordChangeEvent<SourceRecord>> registry) {
-        this.debeziumEngineConfiguration = debeziumEngineConfiguration;
+        this.configuration = configuration;
         this.stateHandler = stateHandler;
         this.engine = DebeziumEngine.create(ChangeEventFormat.of(Connect.class))
                 .using(Configuration.empty()
                         .withSystemProperties(Function.identity())
                         .edit()
-                        .with(Configuration.from(debeziumEngineConfiguration.configuration()))
+                        .with(Configuration.from(configuration))
                         .build().asProperties())
                 .using(this.stateHandler.connectorCallback())
                 .using(this.stateHandler.completionCallback())
@@ -60,7 +59,7 @@ class SourceRecordDebezium extends RunnableDebezium {
 
     @Override
     public Map<String, String> configuration() {
-        return debeziumEngineConfiguration.configuration();
+        return configuration;
     }
 
     @Override

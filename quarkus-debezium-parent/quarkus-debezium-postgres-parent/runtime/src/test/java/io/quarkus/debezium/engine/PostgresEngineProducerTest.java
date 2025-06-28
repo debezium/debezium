@@ -16,6 +16,7 @@ import java.util.Map;
 import jakarta.enterprise.inject.Instance;
 
 import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -23,13 +24,20 @@ import org.mockito.Mockito;
 import io.debezium.engine.RecordChangeEvent;
 import io.quarkus.debezium.configuration.PostgresDatasourceConfiguration;
 import io.quarkus.debezium.engine.capture.CapturingInvokerRegistry;
+import io.quarkus.debezium.notification.QuarkusNotificationChannel;
 
 class PostgresEngineProducerTest {
 
     private final Instance<PostgresDatasourceConfiguration> instance = Mockito.mock(Instance.class);
+    private final QuarkusNotificationChannel quarkusNotificationChannel = Mockito.mock(QuarkusNotificationChannel.class);
     private final CapturingInvokerRegistry<RecordChangeEvent<SourceRecord>> registry = identifier -> event -> {
     };
-    private final PostgresEngineProducer underTest = new PostgresEngineProducer(registry, Mockito.mock(DefaultStateHandler.class), instance);
+    private final PostgresEngineProducer underTest = new PostgresEngineProducer(registry, Mockito.mock(DefaultStateHandler.class), instance, quarkusNotificationChannel);
+
+    @BeforeEach
+    void setUp() {
+        when(quarkusNotificationChannel.name()).thenReturn("a_name");
+    }
 
     @Test
     @DisplayName("should merge configurations when debezium configuration doesn't contain datasource information")
@@ -54,6 +62,7 @@ class PostgresEngineProducerTest {
                         "database.port", "1926",
                         "database.user", "username",
                         "database.password", "password",
+                        "notification.enabled.channels", "a_name",
                         "database.dbname", "database"));
     }
 
@@ -76,6 +85,7 @@ class PostgresEngineProducerTest {
                 .isEqualTo(Map.of(
                         "connector.class", "io.debezium.connector.postgresql.PostgresConnector",
                         "name", "test",
+                        "notification.enabled.channels", "a_name",
                         "database.hostname", "native"));
     }
 }

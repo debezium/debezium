@@ -6,8 +6,11 @@
 
 package io.quarkus.debezium.configuration;
 
+import static io.debezium.config.CommonConnectorConfig.DATABASE_CONFIG_PREFIX;
+
 import java.util.Map;
 
+import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.runtime.configuration.QuarkusDatasourceConfiguration;
 
 public class PostgresDatasourceConfiguration implements QuarkusDatasourceConfiguration {
@@ -39,11 +42,11 @@ public class PostgresDatasourceConfiguration implements QuarkusDatasourceConfigu
     public Map<String, String> asDebezium() {
         return Map.of(
                 "name", name.replaceAll("[<>]", ""),
-                "database.hostname", host,
-                "database.port", port,
-                "database.user", username,
-                "database.password", password,
-                "database.dbname", database);
+                DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME.name(), host,
+                DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT.name(), port,
+                DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER.name(), username,
+                DATABASE_CONFIG_PREFIX + JdbcConfiguration.PASSWORD.name(), password,
+                DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE.name(), database);
     }
 
     @Override

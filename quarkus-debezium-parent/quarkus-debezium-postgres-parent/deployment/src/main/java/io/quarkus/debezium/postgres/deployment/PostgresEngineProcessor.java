@@ -5,18 +5,29 @@
  */
 package io.quarkus.debezium.postgres.deployment;
 
+import java.util.List;
+
+import jakarta.inject.Singleton;
+
+import io.debezium.connector.postgresql.Module;
 import io.debezium.connector.postgresql.PostgresConnector;
 import io.debezium.connector.postgresql.PostgresConnectorTask;
 import io.debezium.connector.postgresql.PostgresSourceInfoStructMaker;
 import io.debezium.connector.postgresql.snapshot.lock.NoSnapshotLock;
 import io.debezium.connector.postgresql.snapshot.lock.SharedSnapshotLock;
 import io.debezium.connector.postgresql.snapshot.query.SelectAllSnapshotQuery;
+import io.quarkus.agroal.spi.JdbcDataSourceBuildItem;
+import io.quarkus.arc.deployment.SyntheticBeanBuildItem;
 import io.quarkus.datasource.deployment.spi.DevServicesDatasourceResultBuildItem;
+import io.quarkus.debezium.configuration.DatasourceRecorder;
+import io.quarkus.debezium.configuration.PostgresDatasourceConfiguration;
 import io.quarkus.debezium.deployment.items.DebeziumConnectorBuildItem;
 import io.quarkus.debezium.engine.PostgresEngineProducer;
 import io.quarkus.deployment.IsNormal;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
+import io.quarkus.deployment.annotations.ExecutionTime;
+import io.quarkus.deployment.annotations.Record;
 import io.quarkus.deployment.builditem.DevServicesResultBuildItem;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
@@ -25,14 +36,35 @@ import io.quarkus.deployment.pkg.steps.NativeOrNativeSourcesBuild;
 
 public class PostgresEngineProcessor {
 
+    public static final String POSTGRESQL = Module.name();
+
     @BuildStep
     FeatureBuildItem feature() {
-        return new FeatureBuildItem("debezium-postgres");
+        return new FeatureBuildItem("debezium-" + POSTGRESQL);
     }
 
     @BuildStep
     public DebeziumConnectorBuildItem engine() {
-        return new DebeziumConnectorBuildItem("postgresql", PostgresEngineProducer.class);
+        return new DebeziumConnectorBuildItem(POSTGRESQL, PostgresEngineProducer.class);
+    }
+
+    @BuildStep
+    @Record(ExecutionTime.RUNTIME_INIT)
+    public void generateDatasourceConfig(
+                                         DatasourceRecorder datasourceRecorder,
+                                         BuildProducer<SyntheticBeanBuildItem> producer,
+                                         List<JdbcDataSourceBuildItem> jdbcDataSources) {
+
+        jdbcDataSources
+                .stream()
+                .filter(item -> item.getDbKind().equals(POSTGRESQL))
+                .forEach(item -> producer.produce(SyntheticBeanBuildItem
+                        .configure(PostgresDatasourceConfiguration.class)
+                        .scope(Singleton.class)
+                        .supplier(datasourceRecorder.convert(item.getName(), item.isDefault()))
+                        .setRuntimeInit()
+                        .name(item.getName())
+                        .done()));
     }
 
     @BuildStep(onlyIfNot = IsNormal.class, onlyIf = DevServicesConfig.Enabled.class)
@@ -44,7 +76,7 @@ public class PostgresEngineProcessor {
             return;
         }
 
-        if (!datasource.getDbType().equals("postgresql")) {
+        if (!datasource.getDbType().equals(POSTGRESQL)) {
             return;
         }
 
