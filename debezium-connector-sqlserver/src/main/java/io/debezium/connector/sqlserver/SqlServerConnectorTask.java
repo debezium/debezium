@@ -25,6 +25,7 @@ import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.sqlserver.metrics.SqlServerMetricsFactory;
 import io.debezium.document.DocumentReader;
+import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
@@ -141,14 +142,14 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 connectorConfig.getTableFilters().dataCollectionFilter(),
                 DataChangeEvent::new,
                 metadataProvider,
-                connectorConfig.createHeartbeat(
-                        topicNamingStrategy,
-                        schemaNameAdjuster,
+                new HeartbeatFactory<>().getScheduledHeartbeat(
+                        connectorConfig,
                         connectionFactory::newConnection,
                         exception -> {
                             final String sqlErrorId = exception.getMessage();
                             throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
-                        }),
+                        },
+                        queue),
                 schemaNameAdjuster,
                 signalProcessor,
                 connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));

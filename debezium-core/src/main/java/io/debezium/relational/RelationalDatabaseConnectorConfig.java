@@ -26,10 +26,7 @@ import io.debezium.config.Configuration;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
-import io.debezium.heartbeat.DatabaseHeartbeatImpl;
-import io.debezium.heartbeat.Heartbeat;
-import io.debezium.heartbeat.HeartbeatConnectionProvider;
-import io.debezium.heartbeat.HeartbeatErrorHandler;
+import io.debezium.heartbeat.DatabaseHeartbeat;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -41,9 +38,7 @@ import io.debezium.relational.Tables.ColumnNameFilterFactory;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.FieldNameSelector.FieldNamer;
-import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.schema.DataCollectionId;
-import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Strings;
 
 /**
@@ -568,7 +563,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     PROPAGATE_DATATYPE_SOURCE_TYPE,
                     SNAPSHOT_FULL_COLUMN_SCAN_FORCE,
                     SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT,
-                    DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY)
+                    DatabaseHeartbeat.HEARTBEAT_ACTION_QUERY)
             .create();
 
     private final RelationalTableFilters tableFilters;
@@ -614,7 +609,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             this.columnFilter = ColumnNameFilterFactory.createExcludeListFilter(columnExcludeList, columnFilterMode);
         }
 
-        this.heartbeatActionQuery = config.getString(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME, "");
+        this.heartbeatActionQuery = config.getString(DatabaseHeartbeat.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME, "");
         this.fieldNamer = FieldNameSelector.defaultSelector(fieldNameAdjuster());
         this.snapshotOrderByRowCount = SnapshotTablesRowCountOrder.parse(config.getString(SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT));
     }
@@ -774,22 +769,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         }
 
         return Collections.unmodifiableMap(snapshotSelectOverridesByTable);
-    }
-
-    @Override
-    public Heartbeat createHeartbeat(TopicNamingStrategy topicNamingStrategy, SchemaNameAdjuster schemaNameAdjuster,
-                                     HeartbeatConnectionProvider connectionProvider, HeartbeatErrorHandler errorHandler) {
-        if (!Strings.isNullOrBlank(getHeartbeatActionQuery()) && !getHeartbeatInterval().isZero()) {
-            return new DatabaseHeartbeatImpl(
-                    getHeartbeatInterval(),
-                    topicNamingStrategy.heartbeatTopic(),
-                    getLogicalName(),
-                    connectionProvider.get(),
-                    getHeartbeatActionQuery(),
-                    errorHandler,
-                    schemaNameAdjuster);
-        }
-        return super.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, connectionProvider, errorHandler);
     }
 
     private static int validateSchemaExcludeList(Configuration config, Field field, ValidationOutput problems) {
