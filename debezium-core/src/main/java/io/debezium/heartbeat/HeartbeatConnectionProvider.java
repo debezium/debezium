@@ -8,7 +8,7 @@ package io.debezium.heartbeat;
 import io.debezium.jdbc.JdbcConnection;
 
 /**
- * Defines a contract for providing a connection to the {@link DatabaseHeartbeat}.
+ * Defines a contract for providing a connection to the {@link DatabaseHeartbeatImpl}.
  *
  * @author Chris Cranford
  */
