@@ -56,6 +56,11 @@ class SqlServerSnapshotPartitionMetrics extends AbstractSqlServerPartitionMetric
     }
 
     @Override
+    public boolean getSnapshotSkipped() {
+        return snapshotMeter.getSnapshotSkipped();
+    }
+
+    @Override
     public long getSnapshotDurationInSeconds() {
         return snapshotMeter.getSnapshotDurationInSeconds();
     }
@@ -96,6 +101,10 @@ class SqlServerSnapshotPartitionMetrics extends AbstractSqlServerPartitionMetric
 
     void snapshotAborted() {
         snapshotMeter.snapshotAborted();
+    }
+
+    void snapshotSkipped() {
+        snapshotMeter.snapshotSkipped();
     }
 
     void rowsScanned(TableId tableId, long numRows) {
