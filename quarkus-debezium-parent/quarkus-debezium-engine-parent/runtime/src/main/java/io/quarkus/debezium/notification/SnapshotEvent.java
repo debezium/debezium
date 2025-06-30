@@ -65,8 +65,9 @@ public sealed abstract class SnapshotEvent implements Notification
 
     @Override
     public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass())
+        if (o == null || getClass() != o.getClass()) {
             return false;
+        }
         SnapshotEvent that = (SnapshotEvent) o;
         return Objects.equals(id, that.id) && Objects.equals(additionalData, that.additionalData) && Objects.equals(timestamp, that.timestamp) && kind == that.kind;
     }
