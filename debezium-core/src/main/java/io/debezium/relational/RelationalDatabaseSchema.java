@@ -139,8 +139,18 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
         List<DatasetMetadata.FieldDefinition> fieldDefinitions = table.columns().stream()
                 .map(c -> new DatasetMetadata.FieldDefinition(c.name(), c.typeName(), c.comment()))
                 .toList();
+        return new DatasetMetadata(getIdentifier(table), INPUT, fieldDefinitions);
+    }
 
-        return new DatasetMetadata(table.id().identifier(), INPUT, fieldDefinitions);
+    private String getIdentifier(Table table) {
+
+        String dbName = config.getJdbcConfig().getDatabase() == null ? "" : config.getJdbcConfig().getDatabase();
+
+        if (table.id().catalog() == null) {
+            return dbName + "." + table.id().identifier();
+        }
+
+        return table.id().identifier();
     }
 
     protected void removeSchema(TableId id) {
