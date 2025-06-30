@@ -68,6 +68,9 @@ import io.quarkus.debezium.engine.DefaultStateHandler;
 import io.quarkus.debezium.engine.capture.CapturingInvoker;
 import io.quarkus.debezium.engine.capture.CapturingSourceRecordInvokerRegistryProducer;
 import io.quarkus.debezium.engine.capture.DynamicCapturingInvokerSupplier;
+import io.quarkus.debezium.notification.DefaultNotificationHandler;
+import io.quarkus.debezium.notification.QuarkusNotificationChannel;
+import io.quarkus.debezium.notification.SnapshotHandler;
 import io.quarkus.deployment.GeneratedClassGizmoAdaptor;
 import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
@@ -108,6 +111,21 @@ public class EngineProcessor {
                 .builder()
                 .addBeanClasses(DefaultStateHandler.class)
                 .build());
+
+        additionalBeanProducer.produce(AdditionalBeanBuildItem.builder()
+                .addBeanClasses(DefaultNotificationHandler.class)
+                .setUnremovable()
+                .build());
+
+        additionalBeanProducer.produce(AdditionalBeanBuildItem.builder()
+                .addBeanClasses(SnapshotHandler.class)
+                .setUnremovable()
+                .build());
+
+        additionalBeanProducer.produce(AdditionalBeanBuildItem.builder()
+                .addBeanClasses(QuarkusNotificationChannel.class)
+                .setUnremovable()
+                .build());
     }
 
     @BuildStep
@@ -137,6 +155,7 @@ public class EngineProcessor {
         resources.produce(new NativeImageResourceBuildItem("META-INF/services/io.debezium.spi.snapshot.Snapshotter"));
         resources.produce(new NativeImageResourceBuildItem("META-INF/services/org.apache.kafka.connect.source.SourceConnector"));
         resources.produce(new NativeImageResourceBuildItem("META-INF/services/io.debezium.pipeline.signal.channels.SignalChannelReader"));
+        resources.produce(new NativeImageResourceBuildItem("META-INF/services/io.debezium.pipeline.notification.channels.NotificationChannel"));
     }
 
     @BuildStep(onlyIf = NativeOrNativeSourcesBuild.class)
@@ -189,6 +208,7 @@ public class EngineProcessor {
                 StandardActionProvider.class,
                 OffsetCommitPolicy.class,
                 SourceTask.class,
+                QuarkusNotificationChannel.class,
                 OffsetCommitPolicy.PeriodicCommitOffsetPolicy.class)
                 .reason(getClass().getName())
                 .build());
