@@ -64,6 +64,11 @@ class SqlServerSnapshotTaskMetrics extends AbstractSqlServerTaskMetrics<SqlServe
     }
 
     @Override
+    public void snapshotSkipped(SqlServerPartition partition) {
+        onPartitionEvent(partition, SqlServerSnapshotPartitionMetrics::snapshotSkipped);
+    }
+
+    @Override
     public void dataCollectionSnapshotCompleted(SqlServerPartition partition, DataCollectionId dataCollectionId, long numRows) {
         onPartitionEvent(partition, bean -> bean.dataCollectionSnapshotCompleted(dataCollectionId, numRows));
     }
