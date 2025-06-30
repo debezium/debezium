@@ -27,7 +27,7 @@ import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
-import io.debezium.config.ConfigurationDefinition;
+import io.debezium.config.ConfigurationNames;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
@@ -84,7 +84,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withNoValidation()
             .withValidation(OracleConnectorConfig::requiredWhenNoUrl);
 
-    public static final Field PDB_NAME = Field.create(ConfigurationDefinition.DATABASE_CONFIG_PREFIX + "pdb.name")
+    public static final Field PDB_NAME = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "pdb.name")
             .withDisplayName("PDB name")
             .withType(Type.STRING)
             .withWidth(Width.MEDIUM)
@@ -93,7 +93,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("Name of the pluggable database when working with a multi-tenant set-up. "
                     + "The CDB name must be given via " + DATABASE_NAME.name() + " in this case.");
 
-    public static final Field XSTREAM_SERVER_NAME = Field.create(ConfigurationDefinition.DATABASE_CONFIG_PREFIX + "out.server.name")
+    public static final Field XSTREAM_SERVER_NAME = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "out.server.name")
             .withDisplayName("XStream out server name")
             .withType(Type.STRING)
             .withWidth(Width.MEDIUM)
@@ -139,7 +139,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     + "locks entirely which can be done by specifying 'none'. This mode is only safe to use if no schema changes are happening while the "
                     + "snapshot is taken.");
 
-    public static final Field CONNECTOR_ADAPTER = Field.create(ConfigurationDefinition.DATABASE_CONFIG_PREFIX + "connection.adapter")
+    public static final Field CONNECTOR_ADAPTER = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "connection.adapter")
             .withDisplayName("Connector adapter")
             .withEnum(ConnectorAdapter.class, ConnectorAdapter.LOG_MINER)
             .withWidth(Width.MEDIUM)
@@ -187,7 +187,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 11))
             .withDescription("A comma-separated list of RAC node hostnames or ip addresses");
 
-    public static final Field URL = Field.create(ConfigurationDefinition.DATABASE_CONFIG_PREFIX + "url")
+    public static final Field URL = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "url")
             .withDisplayName("Complete JDBC URL")
             .withType(Type.STRING)
             .withWidth(Width.LONG)

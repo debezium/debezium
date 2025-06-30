@@ -24,8 +24,8 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.common.annotation.Incubating;
-import io.debezium.common.annotation.VisibleForTesting;
 import io.debezium.config.Configuration;
 import io.debezium.document.DocumentReader;
 import io.debezium.document.DocumentWriter;

@@ -13,7 +13,7 @@ import java.util.Map;
 
 import org.junit.Test;
 
-import io.debezium.config.ConfigurationDefinition;
+import io.debezium.config.ConfigurationNames;
 
 public class DebeziumOpenLineageConfigurationTest {
 
@@ -45,7 +45,7 @@ public class DebeziumOpenLineageConfigurationTest {
         Map<String, String> config = Map.of(
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_ENABLED, "true",
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH, "conf.yml",
-                ConfigurationDefinition.TOPIC_PREFIX_PROPERTY_NAME, "fallback-prefix",
+                ConfigurationNames.TOPIC_PREFIX_PROPERTY_NAME, "fallback-prefix",
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION, "Fallback test",
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_TAGS, "tag=value",
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_OWNERS, "owner=value");

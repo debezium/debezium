@@ -7,7 +7,7 @@ package io.debezium.config;
 
 import static io.debezium.config.CommonConnectorConfig.DRIVER_CONFIG_PREFIX;
 import static io.debezium.config.CommonConnectorConfig.TOPIC_PREFIX;
-import static io.debezium.config.ConfigurationDefinition.DATABASE_CONFIG_PREFIX;
+import static io.debezium.config.ConfigurationNames.DATABASE_CONFIG_PREFIX;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_EXCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.COLUMN_INCLUDE_LIST;
 import static io.debezium.relational.RelationalDatabaseConnectorConfig.HOSTNAME;

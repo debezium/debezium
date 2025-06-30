@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.config.ConfigurationDefinition;
+import io.debezium.config.ConfigurationNames;
 import io.debezium.connector.sqlserver.Lsn;
 import io.debezium.connector.sqlserver.SqlServerChangeTable;
 import io.debezium.connector.sqlserver.SqlServerConnection;
@@ -107,7 +107,7 @@ public class TestHelper {
     }
 
     public static JdbcConfiguration defaultJdbcConfig() {
-        return JdbcConfiguration.copy(Configuration.fromSystemProperties(ConfigurationDefinition.DATABASE_CONFIG_PREFIX))
+        return JdbcConfiguration.copy(Configuration.fromSystemProperties(ConfigurationNames.DATABASE_CONFIG_PREFIX))
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 1433)
                 .withDefault(JdbcConfiguration.USER, "sa")
@@ -127,7 +127,7 @@ public class TestHelper {
         Configuration.Builder builder = Configuration.create();
 
         jdbcConfiguration.forEach(
-                (field, value) -> builder.with(ConfigurationDefinition.DATABASE_CONFIG_PREFIX + field, value));
+                (field, value) -> builder.with(ConfigurationNames.DATABASE_CONFIG_PREFIX + field, value));
 
         return builder.with(CommonConnectorConfig.TOPIC_PREFIX, "server1")
                 .with(SqlServerConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
@@ -259,7 +259,7 @@ public class TestHelper {
 
     public static SqlServerConnection testConnection(String databaseName) {
         Configuration config = defaultConnectorConfig()
-                .with(ConfigurationDefinition.DATABASE_CONFIG_PREFIX + JdbcConfiguration.ON_CONNECT_STATEMENTS, "USE [" + databaseName + "]")
+                .with(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.ON_CONNECT_STATEMENTS, "USE [" + databaseName + "]")
                 .build();
 
         return testConnection(config);
@@ -274,8 +274,8 @@ public class TestHelper {
 
     public static SqlServerConnection testConnection(String user, String password) {
         Configuration config = defaultConnectorConfig()
-                .with(ConfigurationDefinition.DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER, user)
-                .with(ConfigurationDefinition.DATABASE_CONFIG_PREFIX + JdbcConfiguration.PASSWORD, password)
+                .with(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER, user)
+                .with(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.PASSWORD, password)
                 .build();
 
         return testConnection(config);
@@ -283,7 +283,7 @@ public class TestHelper {
 
     public static SqlServerConnection testConnectionWithOptionRecompile() {
         SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(defaultConnectorConfig()
-                .with(ConfigurationDefinition.DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE, TEST_DATABASE_1)
+                .with(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE, TEST_DATABASE_1)
                 .build());
         return new SqlServerConnection(connectorConfig,
                 new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),

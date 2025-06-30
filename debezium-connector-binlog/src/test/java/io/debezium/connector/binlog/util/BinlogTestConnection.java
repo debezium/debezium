@@ -6,7 +6,7 @@
 package io.debezium.connector.binlog.util;
 
 import static io.debezium.config.CommonConnectorConfig.DRIVER_CONFIG_PREFIX;
-import static io.debezium.config.ConfigurationDefinition.DATABASE_CONFIG_PREFIX;
+import static io.debezium.config.ConfigurationNames.DATABASE_CONFIG_PREFIX;
 import static io.debezium.connector.binlog.jdbc.BinlogSystemVariables.LOWER_CASE_TABLE_NAMES;
 
 import java.sql.SQLException;

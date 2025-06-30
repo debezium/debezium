@@ -5,7 +5,7 @@
  */
 package io.debezium.config;
 
-public interface ConfigurationDefinition {
+public interface ConfigurationNames {
 
     String TOPIC_PREFIX_PROPERTY_NAME = "topic.prefix";
     String DATABASE_CONFIG_PREFIX = "database.";

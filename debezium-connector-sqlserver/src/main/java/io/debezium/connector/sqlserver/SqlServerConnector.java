@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.sqlserver;
 
-import static io.debezium.config.ConfigurationDefinition.TASK_ID_PROPERTY_NAME;
+import static io.debezium.config.ConfigurationNames.TASK_ID_PROPERTY_NAME;
 import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.DATABASE_NAMES;
 
 import java.sql.SQLException;

@@ -46,7 +46,7 @@ import org.openjdk.jmh.annotations.Warmup;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.config.ConfigurationDefinition;
+import io.debezium.config.ConfigurationNames;
 import io.debezium.connector.postgresql.PostgresConnector;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
@@ -151,7 +151,7 @@ public class PostgresEndToEndPerf {
     private static Configuration.Builder defaultConnectorConfig() {
         JdbcConfiguration jdbcConfiguration = defaultJdbcConfig();
         Configuration.Builder builder = Configuration.create();
-        jdbcConfiguration.forEach((f, v) -> builder.with(ConfigurationDefinition.DATABASE_CONFIG_PREFIX + f, v));
+        jdbcConfiguration.forEach((f, v) -> builder.with(ConfigurationNames.DATABASE_CONFIG_PREFIX + f, v));
 
         return builder.with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
                 .with(PostgresConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)

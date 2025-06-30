@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
-import io.debezium.config.ConfigurationDefinition;
+import io.debezium.config.ConfigurationNames;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.connector.AbstractSourceInfo;
@@ -375,7 +375,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
 
-    public static final Field INSTANCE = Field.create(ConfigurationDefinition.DATABASE_CONFIG_PREFIX + SqlServerConnection.INSTANCE_NAME)
+    public static final Field INSTANCE = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + SqlServerConnection.INSTANCE_NAME)
             .withDisplayName("Instance name")
             .withType(Type.STRING)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 8))
@@ -383,7 +383,7 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
             .withValidation(Field::isOptional)
             .withDescription("The SQL Server instance name");
 
-    public static final Field DATABASE_NAMES = Field.create(ConfigurationDefinition.DATABASE_CONFIG_PREFIX + "names")
+    public static final Field DATABASE_NAMES = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "names")
             .withDisplayName("Databases")
             .withType(Type.LIST)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 7))

@@ -5,28 +5,15 @@
  */
 package io.debezium.openlineage;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.Properties;
 
+import io.debezium.util.IoUtil;
+
 public class Module {
-    private static final Properties INFO = loadProperties(Module.class, "io/debezium/openlineage/build.version");
+    private static final Properties INFO = IoUtil.loadProperties(Module.class, "io/debezium/openlineage/build.version");
 
     public static String version() {
         return INFO.getProperty("version");
     }
 
-    public static Properties loadProperties(Class<Module> clazz, String classpathResource) {
-        // This is idempotent, so we don't need to lock ...
-        ClassLoader classLoader = clazz.getClassLoader();
-        try (InputStream stream = classLoader.getResourceAsStream(classpathResource)) {
-            Properties props = new Properties();
-            props.load(stream);
-            return props;
-        }
-        catch (IOException e) {
-            throw new IllegalStateException("Unable to find or read the '" + classpathResource + "' file using the " +
-                    classLoader + " class loader", e);
-        }
-    }
 }

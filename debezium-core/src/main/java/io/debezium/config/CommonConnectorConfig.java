@@ -572,7 +572,7 @@ public abstract class CommonConnectorConfig {
     public static final int DEFAULT_MAX_BATCH_SIZE = 2048;
     public static final int DEFAULT_QUERY_FETCH_SIZE = 0;
     public static final long DEFAULT_POLL_INTERVAL_MILLIS = 500;
-    public static final String DATABASE_CONFIG_PREFIX = ConfigurationDefinition.DATABASE_CONFIG_PREFIX;
+    public static final String DATABASE_CONFIG_PREFIX = ConfigurationNames.DATABASE_CONFIG_PREFIX;
     public static final String DRIVER_CONFIG_PREFIX = "driver.";
     private static final String CONVERTER_TYPE_SUFFIX = ".type";
     public static final long DEFAULT_RETRIABLE_RESTART_WAIT = 10000L;
@@ -584,7 +584,7 @@ public abstract class CommonConnectorConfig {
     public static final String ERRORS_MAX_RETRIES = "errors.max.retries";
     private final int maxRetriesOnError;
 
-    public static final Field TOPIC_PREFIX = Field.create(ConfigurationDefinition.TOPIC_PREFIX_PROPERTY_NAME)
+    public static final Field TOPIC_PREFIX = Field.create(ConfigurationNames.TOPIC_PREFIX_PROPERTY_NAME)
             .withDisplayName("Topic prefix")
             .withType(Type.STRING)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
@@ -1374,7 +1374,7 @@ public abstract class CommonConnectorConfig {
         this.signalPollInterval = Duration.ofMillis(config.getLong(SIGNAL_POLL_INTERVAL_MS));
         this.signalEnabledChannels = getSignalEnabledChannels(config);
         this.skippedOperations = determineSkippedOperations(config);
-        this.taskId = config.getString(ConfigurationDefinition.TASK_ID_PROPERTY_NAME);
+        this.taskId = config.getString(ConfigurationNames.TASK_ID_PROPERTY_NAME);
         this.notificationTopicName = config.getString(SinkNotificationChannel.NOTIFICATION_TOPIC);
         this.enabledNotificationChannels = config.getList(NOTIFICATION_ENABLED_CHANNELS);
         this.skipMessagesWithoutChange = config.getBoolean(SKIP_MESSAGES_WITHOUT_CHANGE);
