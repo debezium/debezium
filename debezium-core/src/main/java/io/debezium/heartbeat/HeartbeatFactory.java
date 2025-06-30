@@ -70,7 +70,7 @@ public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHea
             return Heartbeat.DEFAULT_NOOP_HEARTBEAT;
         }
 
-        ScheduledHeartbeat scheduledHeartbeat = new DefaultHeartbeat(
+        ScheduledHeartbeat scheduledHeartbeat = new HeartbeatImpl(
                 connectorConfig.getHeartbeatInterval(),
                 topicNamingStrategy.heartbeatTopic(),
                 connectorConfig.getLogicalName(),
@@ -79,7 +79,7 @@ public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHea
         if (connectorConfig instanceof RelationalDatabaseConnectorConfig relConfig) {
             if (!Strings.isNullOrBlank(relConfig.getHeartbeatActionQuery())) {
 
-                return new CompositeHeartbeat(scheduledHeartbeat, new DatabaseHeartbeat(
+                return new CompositeHeartbeat(scheduledHeartbeat, new DatabaseHeartbeatImpl(
                         connectionProvider.get(),
                         relConfig.getHeartbeatActionQuery(),
                         errorHandler));
@@ -106,7 +106,7 @@ public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHea
             return () -> false;
         }
 
-        ScheduledHeartbeat scheduledHeartbeat = new DefaultHeartbeat(
+        ScheduledHeartbeat scheduledHeartbeat = new HeartbeatImpl(
                 connectorConfig.getHeartbeatInterval(),
                 connectorConfig.getTopicNamingStrategy(TOPIC_NAMING_STRATEGY).heartbeatTopic(),
                 connectorConfig.getLogicalName(),
@@ -115,7 +115,7 @@ public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHea
         if (connectorConfig instanceof RelationalDatabaseConnectorConfig relConfig) {
             if (!Strings.isNullOrBlank(relConfig.getHeartbeatActionQuery())) {
 
-                return new CompositeHeartbeat(scheduledHeartbeat, new DatabaseHeartbeat(
+                return new CompositeHeartbeat(scheduledHeartbeat, new DatabaseHeartbeatImpl(
                         connectionProvider.get(),
                         relConfig.getHeartbeatActionQuery(),
                         errorHandler));
