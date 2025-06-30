@@ -53,7 +53,7 @@ import io.debezium.data.KeyValueStore.Collection;
 import io.debezium.data.SchemaChangeHistory;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
-import io.debezium.heartbeat.DatabaseHeartbeat;
+import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipWhenDatabaseVersion;
@@ -540,7 +540,7 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
                 .with(BinlogConnectorConfig.PASSWORD, "snapperpass")
                 .with(AbstractTopicNamingStrategy.DEFAULT_HEARTBEAT_TOPIC_PREFIX, HEARTBEAT_TOPIC_PREFIX_VALUE)
                 .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
-                .with(DatabaseHeartbeat.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME,
+                .with(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME,
                         String.format("INSERT INTO %s.test_heartbeat_table (text) VALUES ('test_heartbeat');",
                                 DATABASE.getDatabaseName()))
                 .build();

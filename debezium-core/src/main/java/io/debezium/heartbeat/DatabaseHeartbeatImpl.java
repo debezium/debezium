@@ -20,8 +20,8 @@ import io.debezium.jdbc.JdbcConnection;
 /**
  *  Implementation of the heartbeat feature that allows for a DB query to be executed with every heartbeat.
  */
-public class DatabaseHeartbeat implements Heartbeat {
-    private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseHeartbeat.class);
+public class DatabaseHeartbeatImpl implements Heartbeat {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseHeartbeatImpl.class);
 
     public static final String HEARTBEAT_ACTION_QUERY_PROPERTY_NAME = "heartbeat.action.query";
 
@@ -37,8 +37,8 @@ public class DatabaseHeartbeat implements Heartbeat {
     private final JdbcConnection jdbcConnection;
     private final HeartbeatErrorHandler errorHandler;
 
-    public DatabaseHeartbeat(JdbcConnection jdbcConnection, String heartBeatActionQuery,
-                             HeartbeatErrorHandler errorHandler) {
+    public DatabaseHeartbeatImpl(JdbcConnection jdbcConnection, String heartBeatActionQuery,
+                                 HeartbeatErrorHandler errorHandler) {
         this.heartBeatActionQuery = heartBeatActionQuery;
         this.jdbcConnection = jdbcConnection;
         this.errorHandler = errorHandler;

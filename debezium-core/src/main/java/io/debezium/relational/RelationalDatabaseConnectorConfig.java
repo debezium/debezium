@@ -27,7 +27,7 @@ import io.debezium.config.ConfigurationNames;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
-import io.debezium.heartbeat.DatabaseHeartbeat;
+import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -564,7 +564,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     PROPAGATE_DATATYPE_SOURCE_TYPE,
                     SNAPSHOT_FULL_COLUMN_SCAN_FORCE,
                     SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT,
-                    DatabaseHeartbeat.HEARTBEAT_ACTION_QUERY)
+                    DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY)
             .create();
 
     private final RelationalTableFilters tableFilters;
@@ -610,7 +610,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             this.columnFilter = ColumnNameFilterFactory.createExcludeListFilter(columnExcludeList, columnFilterMode);
         }
 
-        this.heartbeatActionQuery = config.getString(DatabaseHeartbeat.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME, "");
+        this.heartbeatActionQuery = config.getString(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY_PROPERTY_NAME, "");
         this.fieldNamer = FieldNameSelector.defaultSelector(fieldNameAdjuster());
         this.snapshotOrderByRowCount = SnapshotTablesRowCountOrder.parse(config.getString(SNAPSHOT_TABLES_ORDER_BY_ROW_COUNT));
     }

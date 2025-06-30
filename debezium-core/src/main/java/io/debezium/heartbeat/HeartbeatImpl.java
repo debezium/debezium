@@ -30,9 +30,9 @@ import io.debezium.util.Threads.Timer;
  * Default implementation of Heartbeat
  *
  */
-public class DefaultHeartbeat implements Heartbeat.ScheduledHeartbeat, Heartbeat {
+public class HeartbeatImpl implements Heartbeat.ScheduledHeartbeat, Heartbeat {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultHeartbeat.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(HeartbeatImpl.class);
 
     /**
      * Default length of interval in which connector generates periodically
@@ -58,7 +58,7 @@ public class DefaultHeartbeat implements Heartbeat.ScheduledHeartbeat, Heartbeat
 
     private volatile Timer heartbeatTimeout;
 
-    public DefaultHeartbeat(Duration heartbeatInterval, String topicName, String key, SchemaNameAdjuster schemaNameAdjuster) {
+    public HeartbeatImpl(Duration heartbeatInterval, String topicName, String key, SchemaNameAdjuster schemaNameAdjuster) {
         this.topicName = topicName;
         this.key = key;
         this.heartbeatInterval = heartbeatInterval;
@@ -69,7 +69,7 @@ public class DefaultHeartbeat implements Heartbeat.ScheduledHeartbeat, Heartbeat
         this.queue = null;
     }
 
-    public DefaultHeartbeat(Duration heartbeatInterval, String topicName, String key, SchemaNameAdjuster schemaNameAdjuster, ChangeEventQueue<DataChangeEvent> queue) {
+    public HeartbeatImpl(Duration heartbeatInterval, String topicName, String key, SchemaNameAdjuster schemaNameAdjuster, ChangeEventQueue<DataChangeEvent> queue) {
         this.topicName = topicName;
         this.heartbeatInterval = heartbeatInterval;
         this.key = key;
