@@ -6,7 +6,9 @@
 
 package io.quarkus.debezium.notification;
 
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.util.Map;
 
