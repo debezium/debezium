@@ -5,7 +5,7 @@
  */
 package io.debezium.openlineage;
 
-import static io.debezium.config.ConfigurationDefinition.TOPIC_PREFIX_PROPERTY_NAME;
+import static io.debezium.config.ConfigurationNames.TOPIC_PREFIX_PROPERTY_NAME;
 import static io.debezium.openlineage.OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH;
 import static io.debezium.openlineage.OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_ENABLED;
 import static io.debezium.openlineage.OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION;
@@ -61,6 +61,6 @@ public record DebeziumOpenLineageConfiguration(boolean enabled, Config config, J
                 : Arrays.stream(value.split(Pattern.quote(separator)))
                         .map(String::trim)
                         .map(converter)
-                        .collect(Collectors.toList());
+                        .toList();
     }
 }

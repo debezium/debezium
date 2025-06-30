@@ -26,7 +26,7 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
-import io.debezium.config.ConfigurationDefinition;
+import io.debezium.config.ConfigurationNames;
 import io.debezium.connector.sqlserver.SqlServerConnectorConfig.SnapshotMode;
 import io.debezium.connector.sqlserver.util.TestHelper;
 import io.debezium.jdbc.JdbcConnection;
@@ -369,7 +369,7 @@ public class IncrementalSnapshotCollationSortOrderMismatchIT extends AbstractSna
     @Override
     protected Configuration.Builder config() {
         return TestHelper.defaultConfig()
-                .with(ConfigurationDefinition.DATABASE_CONFIG_PREFIX + "sendStringParametersAsUnicode", isSendStringParametersAsUnicode)
+                .with(ConfigurationNames.DATABASE_CONFIG_PREFIX + "sendStringParametersAsUnicode", isSendStringParametersAsUnicode)
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.SCHEMA_ONLY)
                 .with(SqlServerConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.TEST_DATABASE_1 + ".dbo.debezium_signal")
                 .with(SqlServerConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250);

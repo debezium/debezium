@@ -10,13 +10,13 @@ import org.apache.kafka.common.config.ConfigDef;
 import com.mongodb.ConnectionString;
 
 import io.debezium.config.Configuration;
-import io.debezium.config.ConfigurationDefinition;
+import io.debezium.config.ConfigurationNames;
 import io.debezium.config.Field;
 
 public interface SharedMongoDbConnectorConfig {
 
     // MongoDb fields in Connection Group start from 1 (topic.prefix is 0)
-    Field CONNECTION_STRING = Field.create(ConfigurationDefinition.MONGODB_CONNECTION_STRING_PROPERTY_NAME)
+    Field CONNECTION_STRING = Field.create(ConfigurationNames.MONGODB_CONNECTION_STRING_PROPERTY_NAME)
             .withDisplayName("Connection String")
             .withType(ConfigDef.Type.STRING)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 1))

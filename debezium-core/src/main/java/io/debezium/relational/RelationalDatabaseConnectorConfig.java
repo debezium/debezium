@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
-import io.debezium.config.ConfigurationDefinition;
+import io.debezium.config.ConfigurationNames;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
@@ -205,7 +205,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         }
     }
 
-    public static final Field HOSTNAME = Field.create(ConfigurationDefinition.DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME)
+    public static final Field HOSTNAME = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME)
             .withDisplayName("Hostname")
             .withType(Type.STRING)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 2))
@@ -215,7 +215,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withValidation(RelationalDatabaseConnectorConfig::validateHostname)
             .withDescription("Resolvable hostname or IP address of the database server.");
 
-    public static final Field PORT = Field.create(ConfigurationDefinition.DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT)
+    public static final Field PORT = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT)
             .withDisplayName("Port")
             .withType(Type.INT)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 3))
@@ -224,7 +224,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withValidation(Field::isInteger)
             .withDescription("Port of the database server.");
 
-    public static final Field USER = Field.create(ConfigurationDefinition.DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER)
+    public static final Field USER = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER)
             .withDisplayName("User")
             .withType(Type.STRING)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 4))
@@ -233,7 +233,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .required()
             .withDescription("Name of the database user to be used when connecting to the database.");
 
-    public static final Field PASSWORD = Field.create(ConfigurationDefinition.DATABASE_CONFIG_PREFIX + JdbcConfiguration.PASSWORD)
+    public static final Field PASSWORD = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.PASSWORD)
             .withDisplayName("Password")
             .withType(Type.PASSWORD)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 5))
@@ -241,7 +241,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withImportance(Importance.HIGH)
             .withDescription("Password of the database user to be used when connecting to the database.");
 
-    public static final Field DATABASE_NAME = Field.create(ConfigurationDefinition.DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE)
+    public static final Field DATABASE_NAME = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE)
             .withDisplayName("Database")
             .withType(Type.STRING)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 6))
@@ -250,7 +250,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .required()
             .withDescription("The name of the database from which the connector should capture changes");
 
-    public static final Field QUERY_TIMEOUT_MS = Field.create(ConfigurationDefinition.DATABASE_CONFIG_PREFIX + JdbcConfiguration.QUERY_TIMEOUT_MS)
+    public static final Field QUERY_TIMEOUT_MS = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.QUERY_TIMEOUT_MS)
             .withDisplayName("Query timeout")
             .withType(Type.INT)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 12))
@@ -593,7 +593,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         this.tableIdMapper = tableIdMapper;
 
         this.jdbcConfig = JdbcConfiguration.adapt(
-                config.subset(ConfigurationDefinition.DATABASE_CONFIG_PREFIX, true).merge(config.subset(DRIVER_CONFIG_PREFIX, true)));
+                config.subset(ConfigurationNames.DATABASE_CONFIG_PREFIX, true).merge(config.subset(DRIVER_CONFIG_PREFIX, true)));
 
         if (systemTablesFilter != null && tableIdMapper != null) {
             this.tableFilters = new RelationalTableFilters(config, systemTablesFilter, tableIdMapper, useCatalogBeforeSchema);

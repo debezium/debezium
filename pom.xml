@@ -226,6 +226,7 @@
         <module>debezium-ai</module>
         <module>quarkus-debezium-parent</module>
         <module>debezium-openlineage</module>
+        <module>debezium-common</module>
     </modules>
 
     <distributionManagement>

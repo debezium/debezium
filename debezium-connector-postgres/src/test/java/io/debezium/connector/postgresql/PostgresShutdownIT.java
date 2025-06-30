@@ -21,7 +21,7 @@ import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.utility.DockerImageName;
 
 import io.debezium.config.Configuration;
-import io.debezium.config.ConfigurationDefinition;
+import io.debezium.config.ConfigurationNames;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.doc.FixFor;
@@ -102,7 +102,7 @@ public class PostgresShutdownIT extends AbstractAsyncEngineConnectorTest {
             TestHelper.execute(INSERT_STMT);
         }
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                .with(ConfigurationDefinition.DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT, postgresContainer.getMappedPort(5432))
+                .with(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT, postgresContainer.getMappedPort(5432))
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.ALWAYS.getValue())
                 .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false)
                 .with(PostgresConnectorConfig.SCHEMA_INCLUDE_LIST, "s1")

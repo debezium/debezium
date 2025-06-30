@@ -15,7 +15,7 @@ import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 
-import io.debezium.common.annotation.VisibleForTesting;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.connector.common.ConnectorState;
 import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.OpenLineageContext;

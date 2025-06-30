@@ -8,7 +8,7 @@ package io.debezium.connector.oracle;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import io.debezium.common.annotation.VisibleForTesting;
+import io.debezium.annotation.VisibleForTesting;
 
 /**
  * Represents the Oracle database version.

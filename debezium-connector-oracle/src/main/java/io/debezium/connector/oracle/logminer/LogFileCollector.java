@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.Immutable;
-import io.debezium.common.annotation.VisibleForTesting;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.RedoThreadState;

@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
 import com.microsoft.sqlserver.jdbc.SQLServerDriver;
 
 import io.debezium.DebeziumException;
-import io.debezium.common.annotation.VisibleForTesting;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;

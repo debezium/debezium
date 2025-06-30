@@ -5,8 +5,8 @@
  */
 package io.debezium.openlineage;
 
-import static io.debezium.config.ConfigurationDefinition.TASK_ID_PROPERTY_NAME;
-import static io.debezium.config.ConfigurationDefinition.TOPIC_PREFIX_PROPERTY_NAME;
+import static io.debezium.config.ConfigurationNames.TASK_ID_PROPERTY_NAME;
+import static io.debezium.config.ConfigurationNames.TOPIC_PREFIX_PROPERTY_NAME;
 
 import java.util.Map;
 

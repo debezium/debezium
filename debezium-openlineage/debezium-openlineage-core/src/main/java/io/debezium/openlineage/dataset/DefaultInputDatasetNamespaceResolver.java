@@ -5,9 +5,9 @@
  */
 package io.debezium.openlineage.dataset;
 
-import static io.debezium.config.ConfigurationDefinition.DATABASE_CONFIG_PREFIX;
-import static io.debezium.config.ConfigurationDefinition.DATABASE_HOSTNAME_PROPERTY_NAME;
-import static io.debezium.config.ConfigurationDefinition.DATABASE_PORT_PROPERTY_NAME;
+import static io.debezium.config.ConfigurationNames.DATABASE_CONFIG_PREFIX;
+import static io.debezium.config.ConfigurationNames.DATABASE_HOSTNAME_PROPERTY_NAME;
+import static io.debezium.config.ConfigurationNames.DATABASE_PORT_PROPERTY_NAME;
 
 import java.util.Map;
 
