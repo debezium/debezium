@@ -41,6 +41,8 @@ import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.heartbeat.Heartbeat;
+import io.debezium.heartbeat.HeartbeatConnectionProvider;
+import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.openlineage.OpenLineageConfig;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
@@ -1816,6 +1818,18 @@ public abstract class CommonConnectorConfig {
     public String getTaskId() {
         return taskId;
     }
+
+    /**
+     * This method is deprecated and replaced with {@link io.debezium.heartbeat.HeartbeatFactory}
+     * @param topicNamingStrategy
+     * @param schemaNameAdjuster
+     * @param connectionProvider
+     * @param errorHandler
+     * @return
+     */
+    @Deprecated
+    public abstract Heartbeat createHeartbeat(TopicNamingStrategy topicNamingStrategy, SchemaNameAdjuster schemaNameAdjuster,
+                                              HeartbeatConnectionProvider connectionProvider, HeartbeatErrorHandler errorHandler);
 
     public static int validateTopicName(Configuration config, Field field, ValidationOutput problems) {
         String name = config.getString(field);
