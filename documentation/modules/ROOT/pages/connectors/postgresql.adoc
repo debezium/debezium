@@ -4022,7 +4022,7 @@ For more information, see xref:postgresql-transaction-metadata[Transaction metad
 
 |[[postgresql-property-publish-via-partition-root]]<<postgresql-property-publish-via-partition-root, `+publish.via.partition.root+`>>
 |`false`
-|A boolean that determines whether the connector should auto-create publication for partitioned tables.
+|Determines whether streaming changes for partitioned tables are captured at the root partition level (`true`) or at the individual partition level (`false`).
 When `true`, publications will be created with `publish_via_partition_root = true` parameter for partitioned tables.
 When `false`, publications will be created without this parameter and it will not capture root level table changes.
 
