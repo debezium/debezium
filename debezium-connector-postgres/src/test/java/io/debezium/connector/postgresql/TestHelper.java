@@ -41,6 +41,7 @@ import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Throwables;
@@ -295,7 +296,7 @@ public final class TestHelper {
                 config,
                 TestHelper.getDefaultValueConverter(),
                 (TopicNamingStrategy) SchemaTopicNamingStrategy.create(config),
-                getPostgresValueConverter(typeRegistry, config));
+                getPostgresValueConverter(typeRegistry, config), config.getServiceRegistry().tryGetService(CustomConverterRegistry.class));
     }
 
     protected static Set<String> schemaNames() throws SQLException {

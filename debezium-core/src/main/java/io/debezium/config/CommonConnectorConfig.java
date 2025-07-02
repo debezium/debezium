@@ -49,14 +49,11 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import io.debezium.pipeline.txmetadata.DefaultTransactionMetadataFactory;
 import io.debezium.pipeline.txmetadata.spi.TransactionMetadataFactory;
-import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.service.DefaultServiceRegistry;
 import io.debezium.service.spi.ServiceRegistry;
-import io.debezium.spi.converter.ConvertedField;
-import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Strings;
@@ -574,7 +571,6 @@ public abstract class CommonConnectorConfig {
     public static final long DEFAULT_POLL_INTERVAL_MILLIS = 500;
     public static final String DATABASE_CONFIG_PREFIX = ConfigurationNames.DATABASE_CONFIG_PREFIX;
     public static final String DRIVER_CONFIG_PREFIX = "driver.";
-    private static final String CONVERTER_TYPE_SUFFIX = ".type";
     public static final long DEFAULT_RETRIABLE_RESTART_WAIT = 10000L;
     public static final long DEFAULT_MAX_QUEUE_SIZE_IN_BYTES = 0; // In case we don't want to pass max.queue.size.in.bytes;
     public static final String NOTIFICATION_CONFIGURATION_FIELD_PREFIX_STRING = "notification.";
@@ -1316,7 +1312,6 @@ public abstract class CommonConnectorConfig {
     private final TransactionMetadataFactory transactionMetadataFactory;
     private final boolean shouldProvideTransactionMetadata;
     private final EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode;
-    private final CustomConverterRegistry customConverterRegistry;
     private final BinaryHandlingMode binaryHandlingMode;
     private final SchemaNameAdjustmentMode schemaNameAdjustmentMode;
     private final FieldNameAdjustmentMode fieldNameAdjustmentMode;
@@ -1368,7 +1363,6 @@ public abstract class CommonConnectorConfig {
         this.transactionMetadataFactory = getTransactionMetadataFactory();
         this.shouldProvideTransactionMetadata = config.getBoolean(PROVIDE_TRANSACTION_METADATA);
         this.eventProcessingFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(EVENT_PROCESSING_FAILURE_HANDLING_MODE));
-        this.customConverterRegistry = new CustomConverterRegistry(getCustomConverters());
         this.binaryHandlingMode = BinaryHandlingMode.parse(config.getString(BINARY_HANDLING_MODE));
         this.signalingDataCollection = config.getString(SIGNAL_DATA_COLLECTION);
         this.signalPollInterval = Duration.ofMillis(config.getLong(SIGNAL_POLL_INTERVAL_MS));
@@ -1530,10 +1524,6 @@ public abstract class CommonConnectorConfig {
         return eventProcessingFailureHandlingMode;
     }
 
-    public CustomConverterRegistry customConverterRegistry() {
-        return customConverterRegistry;
-    }
-
     /**
      * Whether a particular connector supports an optimized way for implementing operation skipping, or not.
      */
@@ -1565,20 +1555,6 @@ public abstract class CommonConnectorConfig {
         }
         LOGGER.info("Loading the custom topic naming strategy plugin: {}", strategyName);
         return topicNamingStrategy;
-    }
-
-    @SuppressWarnings("unchecked")
-    private List<CustomConverter<SchemaBuilder, ConvertedField>> getCustomConverters() {
-        final String converterNameList = config.getString(CUSTOM_CONVERTERS);
-        final List<String> converterNames = Strings.listOf(converterNameList, x -> x.split(","), String::trim);
-
-        return converterNames.stream()
-                .map(name -> {
-                    CustomConverter<SchemaBuilder, ConvertedField> converter = config.getInstance(name + CONVERTER_TYPE_SUFFIX, CustomConverter.class);
-                    converter.configure(config.subset(name, true).asProperties());
-                    return converter;
-                })
-                .collect(Collectors.toList());
     }
 
     @SuppressWarnings("unchecked")

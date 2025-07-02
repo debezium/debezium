@@ -14,6 +14,7 @@ import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.connector.mysql.jdbc.MySqlDefaultValueConverter;
 import io.debezium.connector.mysql.jdbc.MySqlValueConverters;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.TableId;
 import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
@@ -37,13 +38,13 @@ public class MySqlDatabaseSchema extends BinlogDatabaseSchema<MySqlPartition, My
      *
      */
     public MySqlDatabaseSchema(MySqlConnectorConfig connectorConfig, MySqlValueConverters valueConverter, TopicNamingStrategy<TableId> topicNamingStrategy,
-                               SchemaNameAdjuster schemaNameAdjuster, boolean tableIdCaseInsensitive) {
+                               SchemaNameAdjuster schemaNameAdjuster, boolean tableIdCaseInsensitive, CustomConverterRegistry converterRegistry) {
         super(connectorConfig,
                 valueConverter,
                 new MySqlDefaultValueConverter(valueConverter),
                 topicNamingStrategy,
                 schemaNameAdjuster,
-                tableIdCaseInsensitive);
+                tableIdCaseInsensitive, converterRegistry);
     }
 
     @Override

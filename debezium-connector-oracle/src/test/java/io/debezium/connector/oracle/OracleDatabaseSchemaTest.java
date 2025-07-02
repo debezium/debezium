@@ -17,6 +17,7 @@ import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.relational.Column;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -80,7 +81,7 @@ public class OracleDatabaseSchemaTest {
                 schemaNameAdjuster,
                 topicNamingStrategy,
                 sensitivity,
-                false);
+                false, connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class));
 
         Table table = Table.editor()
                 .tableId(TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE"))
