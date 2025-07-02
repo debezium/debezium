@@ -1821,14 +1821,18 @@ public abstract class CommonConnectorConfig {
 
     /**
      * This method is deprecated and replaced with {@link io.debezium.heartbeat.HeartbeatFactory}
+     *
      * @param topicNamingStrategy
      * @param schemaNameAdjuster
      * @param connectionProvider
      * @param errorHandler
      * @return
      */
-    public abstract Heartbeat createHeartbeat(TopicNamingStrategy topicNamingStrategy, SchemaNameAdjuster schemaNameAdjuster,
-                                              HeartbeatConnectionProvider connectionProvider, HeartbeatErrorHandler errorHandler);
+    @Deprecated
+    public Heartbeat createHeartbeat(TopicNamingStrategy topicNamingStrategy, SchemaNameAdjuster schemaNameAdjuster,
+                                     HeartbeatConnectionProvider connectionProvider, HeartbeatErrorHandler errorHandler) {
+        return null;
+    }
 
     public static int validateTopicName(Configuration config, Field field, ValidationOutput problems) {
         String name = config.getString(field);
