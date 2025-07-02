@@ -96,6 +96,8 @@ public interface Heartbeat extends AutoCloseable {
      * supposed to call method {@link #emitWithDelay(Map, OffsetContext)} from a main loop of a connector.
      */
     interface ScheduledHeartbeat extends Heartbeat {
+        ScheduledHeartbeat NOOP_HEARTBEAT = () -> false;
+
         /**
          * Generates a heartbeat record if defined time has elapsed
          *

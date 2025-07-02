@@ -103,7 +103,7 @@ public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHea
                                                     HeartbeatErrorHandler errorHandler,
                                                     ChangeEventQueue<DataChangeEvent> queue) {
         if (connectorConfig.getHeartbeatInterval().isZero()) {
-            return () -> false;
+            return ScheduledHeartbeat.NOOP_HEARTBEAT;
         }
 
         ScheduledHeartbeat scheduledHeartbeat = new HeartbeatImpl(
