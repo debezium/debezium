@@ -35,6 +35,7 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -73,11 +74,16 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         final boolean extendedStringsSupported = jdbcConnection.hasExtendedStringSupport();
 
+        // Service providers
+        registerServiceProviders(connectorConfig.getServiceRegistry());
+
         OracleValueConverters valueConverters = connectorConfig.getAdapter().getValueConverter(connectorConfig, jdbcConnection);
         OracleDefaultValueConverter defaultValueConverter = new OracleDefaultValueConverter(valueConverters, jdbcConnection);
         TableNameCaseSensitivity tableNameCaseSensitivity = connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection);
+        CustomConverterRegistry customConverterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
+
         this.schema = new OracleDatabaseSchema(connectorConfig, valueConverters, defaultValueConverter, schemaNameAdjuster,
-                topicNamingStrategy, tableNameCaseSensitivity, extendedStringsSupported);
+                topicNamingStrategy, tableNameCaseSensitivity, extendedStringsSupported, customConverterRegistry);
         taskContext = new OracleTaskContext(connectorConfig, schema);
 
         Offsets<OraclePartition, OracleOffsetContext> previousOffsets = getPreviousOffsets(new OraclePartition.Provider(connectorConfig),
@@ -98,9 +104,6 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CDC_SOURCE_TASK_CONTEXT, taskContext);
-
-        // Service providers
-        registerServiceProviders(connectorConfig.getServiceRegistry());
 
         final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
 

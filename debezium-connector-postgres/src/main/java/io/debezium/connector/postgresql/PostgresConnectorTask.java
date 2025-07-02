@@ -48,6 +48,7 @@ import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -114,7 +115,11 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         final PostgresDefaultValueConverter defaultValueConverter = jdbcConnection.getDefaultValueConverter();
         final PostgresValueConverter valueConverter = valueConverterBuilder.build(typeRegistry);
 
-        schema = new PostgresSchema(connectorConfig, defaultValueConverter, topicNamingStrategy, valueConverter);
+        CustomConverterRegistry customConverterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
+        // Service providers
+        registerServiceProviders(connectorConfig.getServiceRegistry());
+
+        schema = new PostgresSchema(connectorConfig, defaultValueConverter, topicNamingStrategy, valueConverter, customConverterRegistry);
         this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicNamingStrategy);
         this.partitionProvider = new PostgresPartition.Provider(connectorConfig, config);
         this.offsetContextLoader = new PostgresOffsetContext.Loader(connectorConfig);
@@ -132,9 +137,6 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverter);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CDC_SOURCE_TASK_CONTEXT, taskContext);
-
-        // Service providers
-        registerServiceProviders(connectorConfig.getServiceRegistry());
 
         final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
         final Snapshotter snapshotter = snapshotterService.getSnapshotter();

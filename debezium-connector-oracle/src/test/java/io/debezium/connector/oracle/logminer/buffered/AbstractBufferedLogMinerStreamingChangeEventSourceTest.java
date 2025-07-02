@@ -55,6 +55,7 @@ import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.Column;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -563,7 +564,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                 schemaNameAdjuster,
                 topicNamingStrategy,
                 sensitivity,
-                false);
+                false, connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class));
 
         Table table = Table.editor()
                 .tableId(TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE"))
