@@ -19,9 +19,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -61,10 +59,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     public static final String CORRELATION_ID = INCREMENTAL_SNAPSHOT_KEY + "_correlation_id";
     private final SnapshotDataCollection<T> snapshotDataCollection = new SnapshotDataCollection<>(this);
 
-    /**
-     * {@code true} if window is opened and deduplication should be executed
-     */
-    protected boolean windowOpened = false;
+    // Window state is now managed by IncrementalSnapshotStateManager
 
     /**
      * The last primary key in chunk that is now in process.
@@ -96,48 +91,32 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     private String correlationId;
 
     /**
-     * Determines if the incremental snapshot was paused or not.
+     * Centralized state manager for thread-safe operations
      */
-    private final AtomicBoolean paused = new AtomicBoolean(false);
-    private final LinkedBlockingQueue<String> dataCollectionsToStop = new LinkedBlockingQueue<>();
-    private final ConcurrentLinkedQueue<SignalDataCollection> dataCollectionsToAdd = new ConcurrentLinkedQueue<>();
+    private final IncrementalSnapshotStateManager stateManager = new IncrementalSnapshotStateManager();
 
     public AbstractIncrementalSnapshotContext(boolean useCatalogBeforeSchema) {
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
     }
 
     public boolean openWindow(String id) {
-        if (notExpectedChunk(id)) {
-            LOGGER.info("Received request to open window with id = '{}', expected = '{}', request ignored", id, currentChunkId);
-            return false;
-        }
-        LOGGER.debug("Opening window for incremental snapshot chunk");
-        windowOpened = true;
-        return true;
+        return stateManager.openWindow(id);
     }
 
     public boolean closeWindow(String id) {
-        if (notExpectedChunk(id)) {
-            LOGGER.info("Received request to close window with id = '{}', expected = '{}', request ignored", id, currentChunkId);
-            return false;
-        }
-        LOGGER.debug("Closing window for incremental snapshot chunk");
-        windowOpened = false;
-        return true;
+        return stateManager.closeWindow(id);
     }
 
     public void pauseSnapshot() {
-        LOGGER.info("Pausing incremental snapshot");
-        paused.set(true);
+        stateManager.pauseSnapshot();
     }
 
     public void resumeSnapshot() {
-        LOGGER.info("Resuming incremental snapshot");
-        paused.set(false);
+        stateManager.resumeSnapshot();
     }
 
     public boolean isSnapshotPaused() {
-        return paused.get();
+        return stateManager.isSnapshotPaused();
     }
 
     public boolean shouldUseCatalogBeforeSchema() {
@@ -160,11 +139,12 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
      * Such windowing signals are ignored.
      */
     private boolean notExpectedChunk(String id) {
-        return currentChunkId == null || !id.startsWith(currentChunkId);
+        String currentId = stateManager.getCurrentChunkId();
+        return currentId == null || !id.startsWith(currentId);
     }
 
     public boolean deduplicationNeeded() {
-        return windowOpened;
+        return stateManager.deduplicationNeeded();
     }
 
     private String arrayToSerializedString(Object[] array) {
@@ -191,14 +171,12 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     @Override
     public List<String> getDataCollectionsToStop() {
-        List<String> drainedList = new ArrayList<>();
-        dataCollectionsToStop.drainTo(drainedList);
-        return drainedList;
+        return stateManager.drainDataCollectionsToStop();
     }
 
     @Override
     public void requestAddDataCollectionNamesToSnapshot(SignalPayload signalPayload, SnapshotConfiguration snapshotConfiguration) {
-        dataCollectionsToAdd.add(new SignalDataCollection(signalPayload, snapshotConfiguration));
+        stateManager.requestAddDataCollectionToSnapshot(signalPayload, snapshotConfiguration);
     }
 
     public boolean snapshotRunning() {
@@ -255,12 +233,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     @Override
     public void requestSnapshotStop(List<String> dataCollectionIds) {
-        if (dataCollectionIds == null || dataCollectionIds.isEmpty()) {
-            dataCollectionsToStop.add(".*");
-        }
-        else {
-            dataCollectionsToStop.addAll(dataCollectionIds);
-        }
+        stateManager.requestStopSnapshot(dataCollectionIds);
     }
 
     @Override
@@ -287,7 +260,102 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     @Override
     public Queue<SignalDataCollection> getDataCollectionsToAdd() {
-        return dataCollectionsToAdd;
+        // Return a view that allows polling but maintains the state manager's thread safety
+        return new Queue<SignalDataCollection>() {
+            @Override
+            public SignalDataCollection poll() {
+                return stateManager.pollDataCollectionToAdd();
+            }
+
+            @Override
+            public boolean add(SignalDataCollection e) {
+                throw new UnsupportedOperationException("Use requestAddDataCollectionNamesToSnapshot instead");
+            }
+
+            @Override
+            public boolean offer(SignalDataCollection e) {
+                throw new UnsupportedOperationException("Use requestAddDataCollectionNamesToSnapshot instead");
+            }
+
+            @Override
+            public SignalDataCollection remove() {
+                SignalDataCollection result = poll();
+                if (result == null) {
+                    throw new java.util.NoSuchElementException();
+                }
+                return result;
+            }
+
+            @Override
+            public SignalDataCollection element() {
+                throw new UnsupportedOperationException("Peek operations not supported for thread safety");
+            }
+
+            @Override
+            public SignalDataCollection peek() {
+                throw new UnsupportedOperationException("Peek operations not supported for thread safety");
+            }
+
+            @Override
+            public int size() {
+                return stateManager.getPendingAddCount();
+            }
+
+            @Override
+            public boolean isEmpty() {
+                return size() == 0;
+            }
+
+            @Override
+            public boolean contains(Object o) {
+                throw new UnsupportedOperationException("Contains operations not supported for thread safety");
+            }
+
+            @Override
+            public java.util.Iterator<SignalDataCollection> iterator() {
+                throw new UnsupportedOperationException("Iterator operations not supported for thread safety");
+            }
+
+            @Override
+            public Object[] toArray() {
+                throw new UnsupportedOperationException("Array operations not supported for thread safety");
+            }
+
+            @Override
+            public <T> T[] toArray(T[] a) {
+                throw new UnsupportedOperationException("Array operations not supported for thread safety");
+            }
+
+            @Override
+            public boolean remove(Object o) {
+                throw new UnsupportedOperationException("Individual remove operations not supported");
+            }
+
+            @Override
+            public boolean containsAll(java.util.Collection<?> c) {
+                throw new UnsupportedOperationException("Bulk operations not supported for thread safety");
+            }
+
+            @Override
+            public boolean addAll(java.util.Collection<? extends SignalDataCollection> c) {
+                throw new UnsupportedOperationException("Use requestAddDataCollectionNamesToSnapshot instead");
+            }
+
+            @Override
+            public boolean removeAll(java.util.Collection<?> c) {
+                throw new UnsupportedOperationException("Bulk remove operations not supported");
+            }
+
+            @Override
+            public boolean retainAll(java.util.Collection<?> c) {
+                throw new UnsupportedOperationException("Retain operations not supported");
+            }
+
+            @Override
+            public void clear() {
+                throw new UnsupportedOperationException("Use state manager clear() instead");
+            }
+        };
     }
 
     protected static <U> IncrementalSnapshotContext<U> init(AbstractIncrementalSnapshotContext<U> context, Map<String, ?> offsets) {
@@ -338,7 +406,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     public void revertChunk() {
         chunkEndPosition = lastEventKeySent;
-        windowOpened = false;
+        // Window state is managed by the state manager, no direct manipulation needed
     }
 
     public boolean isNonInitialChunk() {
@@ -351,12 +419,14 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     }
 
     public void startNewChunk() {
-        currentChunkId = UUID.randomUUID().toString();
+        String newChunkId = UUID.randomUUID().toString();
+        stateManager.setCurrentChunkId(newChunkId);
+        currentChunkId = newChunkId; // Keep for serialization compatibility
         LOGGER.debug("Starting new chunk with id '{}'", currentChunkId);
     }
 
     public String currentChunkId() {
-        return currentChunkId;
+        return stateManager.getCurrentChunkId();
     }
 
     public void maximumKey(Object[] key) {
@@ -390,10 +460,10 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     @Override
     public String toString() {
-        return "IncrementalSnapshotContext [windowOpened=" + windowOpened + ", chunkEndPosition="
+        return "IncrementalSnapshotContext [windowOpened=" + stateManager.deduplicationNeeded() + ", chunkEndPosition="
                 + Arrays.toString(chunkEndPosition) + ", dataCollectionsToSnapshot=" + snapshotDataCollection.getDataCollectionsToSnapshot()
                 + ", lastEventKeySent=" + Arrays.toString(lastEventKeySent) + ", maximumKey="
-                + Arrays.toString(maximumKey) + "]";
+                + Arrays.toString(maximumKey) + ", stateManager=" + stateManager + "]";
     }
 
     private static class SnapshotDataCollection<T> extends LinkedBlockingQueue<DataCollection<T>> {

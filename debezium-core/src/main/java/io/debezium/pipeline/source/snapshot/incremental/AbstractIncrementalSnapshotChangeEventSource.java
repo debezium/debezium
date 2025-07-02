@@ -571,24 +571,81 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<P extends Par
         context.requestAddDataCollectionNamesToSnapshot(signalPayload, snapshotConfiguration);
     }
 
+    /**
+     * Template method for processing heartbeat events.
+     * This method is final to ensure the common workflow is always executed:
+     * 1. Check and add data collections (common behavior)
+     * 2. Execute connector-specific heartbeat processing (via hook method)
+     *
+     * Subclasses should override {@link #doProcessHeartbeat(Partition, OffsetContext)}
+     * instead of this method to add their specific logic.
+     */
     @Override
-    public void processHeartbeat(P partition, OffsetContext offsetContext) throws InterruptedException {
+    public final void processHeartbeat(P partition, OffsetContext offsetContext) throws InterruptedException {
         checkAndAddDataCollections(partition, offsetContext);
+        doProcessHeartbeat(partition, offsetContext);
     }
 
+    /**
+     * Template method for processing filtered events.
+     * Ensures common data collection management is always executed before connector-specific logic.
+     */
     @Override
-    public void processFilteredEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
+    public final void processFilteredEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
         checkAndAddDataCollections(partition, offsetContext);
+        doProcessFilteredEvent(partition, offsetContext);
     }
 
+    /**
+     * Template method for processing transaction started events.
+     * Ensures common data collection management is always executed before connector-specific logic.
+     */
     @Override
-    public void processTransactionStartedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
+    public final void processTransactionStartedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
         checkAndAddDataCollections(partition, offsetContext);
+        doProcessTransactionStartedEvent(partition, offsetContext);
     }
 
+    /**
+     * Template method for processing transaction committed events.
+     * Ensures common data collection management is always executed before connector-specific logic.
+     */
     @Override
-    public void processTransactionCommittedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
+    public final void processTransactionCommittedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
         checkAndAddDataCollections(partition, offsetContext);
+        doProcessTransactionCommittedEvent(partition, offsetContext);
+    }
+
+    /**
+     * Hook method for subclasses to implement heartbeat-specific processing.
+     * The common work of checking and adding data collections is already handled.
+     */
+    protected void doProcessHeartbeat(P partition, OffsetContext offsetContext) throws InterruptedException {
+        // Default implementation does nothing - subclasses can override if needed
+    }
+
+    /**
+     * Hook method for subclasses to implement filtered event-specific processing.
+     * The common work of checking and adding data collections is already handled.
+     */
+    protected void doProcessFilteredEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
+        // Default implementation does nothing - subclasses can override if needed
+    }
+
+    /**
+     * Hook method for subclasses to implement transaction started event-specific processing.
+     * The common work of checking and adding data collections is already handled.
+     */
+    protected void doProcessTransactionStartedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
+        // Default implementation does nothing - subclasses can override if needed
+    }
+
+    /**
+     * Hook method for subclasses to implement transaction committed event-specific processing.
+     * The common work of checking and adding data collections is already handled.
+     */
+    protected void doProcessTransactionCommittedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
+        // Default implementation does nothing - subclasses can override if needed
     }
 
     protected void checkAndAddDataCollections(P partition, OffsetContext offsetContext) throws InterruptedException {

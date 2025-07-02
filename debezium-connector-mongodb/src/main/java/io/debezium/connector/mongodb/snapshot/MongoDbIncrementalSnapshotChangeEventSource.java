@@ -444,25 +444,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         context.requestAddDataCollectionNamesToSnapshot(signalPayload, snapshotConfiguration);
     }
 
-    @Override
-    public void processHeartbeat(MongoDbPartition partition, OffsetContext offsetContext) throws InterruptedException {
-        checkAndAddDataCollections(partition, offsetContext);
-    }
-
-    @Override
-    public void processFilteredEvent(MongoDbPartition partition, OffsetContext offsetContext) throws InterruptedException {
-        checkAndAddDataCollections(partition, offsetContext);
-    }
-
-    @Override
-    public void processTransactionStartedEvent(MongoDbPartition partition, OffsetContext offsetContext) throws InterruptedException {
-        checkAndAddDataCollections(partition, offsetContext);
-    }
-
-    @Override
-    public void processTransactionCommittedEvent(MongoDbPartition partition, OffsetContext offsetContext) throws InterruptedException {
-        checkAndAddDataCollections(partition, offsetContext);
-    }
+    // No need to override process* methods - they're handled by the template method pattern in the abstract class
 
     private void checkAndAddDataCollections(MongoDbPartition partition, OffsetContext offsetContext) throws InterruptedException {
         if (context == null) {
