@@ -1827,7 +1827,6 @@ public abstract class CommonConnectorConfig {
      * @param errorHandler
      * @return
      */
-    @Deprecated
     public abstract Heartbeat createHeartbeat(TopicNamingStrategy topicNamingStrategy, SchemaNameAdjuster schemaNameAdjuster,
                                               HeartbeatConnectionProvider connectionProvider, HeartbeatErrorHandler errorHandler);
 
