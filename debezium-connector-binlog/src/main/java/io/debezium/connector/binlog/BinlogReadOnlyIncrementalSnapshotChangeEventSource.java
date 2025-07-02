@@ -68,22 +68,20 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
     }
 
     @Override
-    public void processHeartbeat(P partition, OffsetContext offsetContext) throws InterruptedException {
+    protected void doProcessHeartbeat(P partition, OffsetContext offsetContext) throws InterruptedException {
         if (getContext() == null) {
             LOGGER.warn("Context is null, skipping message processing");
             return;
         }
-        super.processHeartbeat(partition, offsetContext);
         readUntilGtidChange(partition, offsetContext);
     }
 
     @Override
-    public void processFilteredEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
+    protected void doProcessFilteredEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
         if (getContext() == null) {
             LOGGER.warn("Context is null, skipping message processing");
             return;
         }
-        super.processFilteredEvent(partition, offsetContext);
         boolean windowClosed = getContext().updateWindowState(offsetContext);
         if (windowClosed) {
             sendWindowEvents(partition, offsetContext);
@@ -92,12 +90,11 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
     }
 
     @Override
-    public void processTransactionStartedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
+    protected void doProcessTransactionStartedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
         if (getContext() == null) {
             LOGGER.warn("Context is null, skipping message processing");
             return;
         }
-        super.processTransactionStartedEvent(partition, offsetContext);
         boolean windowClosed = getContext().updateWindowState(offsetContext);
         if (windowClosed) {
             sendWindowEvents(partition, offsetContext);
@@ -106,12 +103,11 @@ public abstract class BinlogReadOnlyIncrementalSnapshotChangeEventSource<P exten
     }
 
     @Override
-    public void processTransactionCommittedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
+    protected void doProcessTransactionCommittedEvent(P partition, OffsetContext offsetContext) throws InterruptedException {
         if (getContext() == null) {
             LOGGER.warn("Context is null, skipping message processing");
             return;
         }
-        super.processTransactionCommittedEvent(partition, offsetContext);
         readUntilGtidChange(partition, offsetContext);
     }
 
