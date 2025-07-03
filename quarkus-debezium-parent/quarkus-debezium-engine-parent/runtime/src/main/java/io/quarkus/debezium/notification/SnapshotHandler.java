@@ -6,29 +6,34 @@
 
 package io.quarkus.debezium.notification;
 
+import static io.debezium.pipeline.notification.SnapshotStatus.ABORTED;
+import static io.debezium.pipeline.notification.SnapshotStatus.COMPLETED;
+import static io.debezium.pipeline.notification.SnapshotStatus.IN_PROGRESS;
+import static io.debezium.pipeline.notification.SnapshotStatus.PAUSED;
+import static io.debezium.pipeline.notification.SnapshotStatus.RESUMED;
+import static io.debezium.pipeline.notification.SnapshotStatus.STARTED;
+import static io.debezium.pipeline.notification.SnapshotStatus.TABLE_SCAN_COMPLETED;
+import static io.debezium.pipeline.spi.SnapshotResult.SnapshotResultStatus.SKIPPED;
+
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.function.BiConsumer;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 
 import io.debezium.pipeline.notification.Notification;
-import io.debezium.pipeline.notification.SnapshotStatus;
-import io.debezium.pipeline.spi.SnapshotResult;
 import io.quarkus.debezium.notification.SnapshotEvent.Kind;
 
 @ApplicationScoped
 public class SnapshotHandler implements NotificationHandler {
-    private final Event<SnapshotStarted> startedEvent;
-    private final Event<SnapshotInProgress> inProgressEvent;
-    private final Event<SnapshotTableScanCompleted> tableScanCompletedEvent;
-    private final Event<SnapshotCompleted> completedEvent;
-    private final Event<SnapshotAborted> abortedEvent;
-    private final Event<SnapshotSkipped> skippedEvent;
-    private final Event<SnapshotPaused> snapshotPausedEvent;
-    private final Event<SnapshotResumed> snapshotResumedEvent;
-    private final List<String> kinds = Arrays.stream(Kind.values()).map(Kind::getDescription).toList();
+    public static final BiConsumer<Kind, Notification> NO_EVENT = (a, b) -> {
+    };
+    private static final List<String> kinds = Arrays.stream(Kind.values()).map(Kind::getDescription).toList();
+
+    private final Map<String, BiConsumer<Kind, Notification>> events;
 
     @Inject
     public SnapshotHandler(Event<SnapshotStarted> startedEvent,
@@ -39,14 +44,40 @@ public class SnapshotHandler implements NotificationHandler {
                            Event<SnapshotSkipped> skippedEvent,
                            Event<SnapshotPaused> snapshotPausedEvent,
                            Event<SnapshotResumed> snapshotResumedEvent) {
-        this.startedEvent = startedEvent;
-        this.inProgressEvent = inProgressEvent;
-        this.tableScanCompletedEvent = tableScanCompletedEvent;
-        this.completedEvent = completedEvent;
-        this.abortedEvent = abortedEvent;
-        this.skippedEvent = skippedEvent;
-        this.snapshotPausedEvent = snapshotPausedEvent;
-        this.snapshotResumedEvent = snapshotResumedEvent;
+
+        this.events = Map.of(
+                STARTED.name(), (kind, notification) -> startedEvent.fire(new SnapshotStarted(
+                        notification.getId(),
+                        notification.getAdditionalData(),
+                        notification.getTimestamp(), kind)),
+                IN_PROGRESS.name(), (kind, notification) -> inProgressEvent.fire(new SnapshotInProgress(
+                        notification.getId(),
+                        notification.getAdditionalData(),
+                        notification.getTimestamp(), kind)),
+                TABLE_SCAN_COMPLETED.name(), (kind, notification) -> tableScanCompletedEvent.fire(new SnapshotTableScanCompleted(
+                        notification.getId(),
+                        notification.getAdditionalData(),
+                        notification.getTimestamp(), kind)),
+                COMPLETED.name(), (kind, notification) -> completedEvent.fire(new SnapshotCompleted(
+                        notification.getId(),
+                        notification.getAdditionalData(),
+                        notification.getTimestamp(), kind)),
+                ABORTED.name(), (kind, notification) -> abortedEvent.fire(new SnapshotAborted(
+                        notification.getId(),
+                        notification.getAdditionalData(),
+                        notification.getTimestamp(), kind)),
+                SKIPPED.name(), (kind, notification) -> skippedEvent.fire(new SnapshotSkipped(
+                        notification.getId(),
+                        notification.getAdditionalData(),
+                        notification.getTimestamp(), kind)),
+                PAUSED.name(), (kind, notification) -> snapshotPausedEvent.fire(new SnapshotPaused(
+                        notification.getId(),
+                        notification.getAdditionalData(),
+                        notification.getTimestamp(), kind)),
+                RESUMED.name(), (kind, notification) -> snapshotResumedEvent.fire(new SnapshotResumed(
+                        notification.getId(),
+                        notification.getAdditionalData(),
+                        notification.getTimestamp(), kind)));
     }
 
     @Override
@@ -57,64 +88,7 @@ public class SnapshotHandler implements NotificationHandler {
     @Override
     public void handle(io.debezium.pipeline.notification.Notification notification) {
         Kind.from(notification.getAggregateType())
-                .ifPresent(kind -> fire(kind, notification));
+                .ifPresent(kind -> events.getOrDefault(notification.getType(), NO_EVENT).accept(kind, notification));
     }
 
-    private void fire(Kind kind, Notification notification) {
-        if (notification.getType().equals(SnapshotStatus.STARTED.name())) {
-            startedEvent.fire(new SnapshotStarted(
-                    notification.getId(),
-                    notification.getAdditionalData(),
-                    notification.getTimestamp(), kind));
-        }
-
-        if (notification.getType().equals(SnapshotStatus.IN_PROGRESS.name())) {
-            inProgressEvent.fire(new SnapshotInProgress(
-                    notification.getId(),
-                    notification.getAdditionalData(),
-                    notification.getTimestamp(), kind));
-        }
-
-        if (notification.getType().equals(SnapshotStatus.TABLE_SCAN_COMPLETED.name())) {
-            tableScanCompletedEvent.fire(new SnapshotTableScanCompleted(
-                    notification.getId(),
-                    notification.getAdditionalData(),
-                    notification.getTimestamp(), kind));
-        }
-
-        if (notification.getType().equals(SnapshotStatus.COMPLETED.name())) {
-            completedEvent.fire(new SnapshotCompleted(
-                    notification.getId(),
-                    notification.getAdditionalData(),
-                    notification.getTimestamp(), kind));
-        }
-
-        if (notification.getType().equals(SnapshotStatus.ABORTED.name())) {
-            abortedEvent.fire(new SnapshotAborted(
-                    notification.getId(),
-                    notification.getAdditionalData(),
-                    notification.getTimestamp(), kind));
-        }
-
-        if (notification.getType().equals(SnapshotResult.SnapshotResultStatus.SKIPPED.name())) {
-            skippedEvent.fire(new SnapshotSkipped(
-                    notification.getId(),
-                    notification.getAdditionalData(),
-                    notification.getTimestamp(), kind));
-        }
-
-        if (notification.getType().equals(SnapshotStatus.PAUSED.name())) {
-            snapshotPausedEvent.fire(new SnapshotPaused(
-                    notification.getId(),
-                    notification.getAdditionalData(),
-                    notification.getTimestamp(), kind));
-        }
-
-        if (notification.getType().equals(SnapshotStatus.RESUMED.name())) {
-            snapshotResumedEvent.fire(new SnapshotResumed(
-                    notification.getId(),
-                    notification.getAdditionalData(),
-                    notification.getTimestamp(), kind));
-        }
-    }
 }
