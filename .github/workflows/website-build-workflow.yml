@@ -10,6 +10,9 @@ on:
       - 4.*
     paths:
       - 'documentation/**'
+  schedule:
+    - cron: '0 1 * * *'
+
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
