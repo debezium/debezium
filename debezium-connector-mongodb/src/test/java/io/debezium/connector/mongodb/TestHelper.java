@@ -17,6 +17,7 @@ import java.util.stream.Stream;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.bson.Document;
 import org.bson.UuidRepresentation;
 import org.bson.types.ObjectId;
@@ -191,6 +192,18 @@ public class TestHelper {
         else {
             assertThat(removedFields).isNull();
         }
+    }
+
+    static String formatObjectId(ObjectId objId) {
+        return "{\"$oid\": \"" + objId + "\"}";
+    }
+
+    static Document getFilterFromId(ObjectId id) {
+        return Document.parse("{\"_id\": {\"$oid\": \"" + id + "\"}}");
+    }
+
+    static String getDocumentId(SourceRecord record) {
+        return ((Struct) record.key()).getString("id");
     }
 
 }

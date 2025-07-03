@@ -1008,6 +1008,51 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
                     "for data change, schema change, transaction, heartbeat event etc.")
             .withDefault(DefaultTopicNamingStrategy.class.getName());
 
+    public static final Field MONGODB_MULTI_TASK_ENABLED = Field.create("mongodb.multi.task.enabled")
+            .withDisplayName("Enable MongoDB multi-task")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(false)
+            .withValidation(Field::isBoolean)
+            .withDescription("Should the multi-task connector setup be enabled to the MongoDB instance, only valid if the connector manages a single replset.");
+
+    public static final Field MONGODB_MULTI_TASK_GEN = Field.create("mongodb.multi.task.gen")
+            .withDisplayName("MongoDB multi-task generation")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(-1)
+            .withValidation(Field::isInteger)
+            .withDescription("Define multi-task generation to be enabled on MongoDB instance");
+
+    public static final Field MONGODB_MULTI_TASK_PREV_TASKS = Field.create("mongodb.multi.prev.tasks.max")
+            .withDisplayName("MongoDB previous multi-task generation task count")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(1)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("Maximum number of tasks allowed in the previous generation");
+
+    public static final Field MONGODB_MULTI_TASK_PREV_GEN = Field.create("mongodb.multi.prev.gen")
+            .withDisplayName("MongoDB previous multi-task generation")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(-1)
+            .withValidation(Field::isInteger, MongoDbConnectorConfig::validateMultiTaskPrevGen)
+            .withDescription("Previous multi-task generation that was enabled on MongoDB instance");
+
+    public static final Field MONGODB_MULTI_TASK_HOP_SECONDS = Field.create("mongodb.multi.hop.sec")
+            .withDisplayName("MongoDB previous multi-task hop seconds")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDefault(10)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("MongoDB previous multi-task hop seconds");
+
     public static final Field SOURCE_INFO_STRUCT_MAKER = CommonConnectorConfig.SOURCE_INFO_STRUCT_MAKER
             .withDefault(MongoDbSourceInfoStructMaker.class.getName());
 
@@ -1027,7 +1072,12 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
                     MONGODB_POLL_INTERVAL_MS,
                     SSL_ENABLED,
                     SSL_ALLOW_INVALID_HOSTNAMES,
-                    CURSOR_MAX_AWAIT_TIME_MS)
+                    CURSOR_MAX_AWAIT_TIME_MS,
+                    MONGODB_MULTI_TASK_ENABLED,
+                    MONGODB_MULTI_TASK_GEN,
+                    MONGODB_MULTI_TASK_PREV_TASKS,
+                    MONGODB_MULTI_TASK_PREV_GEN,
+                    MONGODB_MULTI_TASK_HOP_SECONDS)
             .events(
                     DATABASE_INCLUDE_LIST,
                     DATABASE_EXCLUDE_LIST,
@@ -1081,6 +1131,11 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     private final OversizeHandlingMode oversizeHandlingMode;
     private final FiltersMatchMode filtersMatchMode;
     private final int oversizeSkipThreshold;
+    private final boolean multiTaskEnabled;
+    private final int multiTaskGen;
+    private final int multiTaskPrevMaxTasks;
+    private final int multiTaskPrevGen;
+    private final int multiTaskHopSeconds;
 
     public MongoDbConnectorConfig(Configuration config) {
         super(config, DEFAULT_SNAPSHOT_FETCH_SIZE);
@@ -1132,6 +1187,12 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
 
         this.snapshotMaxThreads = resolveSnapshotMaxThreads(config);
         this.cursorMaxAwaitTimeMs = config.getInteger(MongoDbConnectorConfig.CURSOR_MAX_AWAIT_TIME_MS, 0);
+
+        this.multiTaskEnabled = config.getBoolean(MongoDbConnectorConfig.MONGODB_MULTI_TASK_ENABLED, false);
+        this.multiTaskGen = config.getInteger(MongoDbConnectorConfig.MONGODB_MULTI_TASK_GEN, -1);
+        this.multiTaskPrevMaxTasks = config.getInteger(MongoDbConnectorConfig.MONGODB_MULTI_TASK_PREV_TASKS, 1);
+        this.multiTaskPrevGen = config.getInteger(MongoDbConnectorConfig.MONGODB_MULTI_TASK_PREV_GEN, -1);
+        this.multiTaskHopSeconds = config.getInteger(MongoDbConnectorConfig.MONGODB_MULTI_TASK_HOP_SECONDS, 10);
     }
 
     private static int validateChangeStreamPipeline(Configuration config, Field field, ValidationOutput problems) {
@@ -1240,6 +1301,24 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
             return 1;
         }
 
+        return 0;
+    }
+
+    private static int validateMultiTaskPrevGen(Configuration config, Field field, ValidationOutput problems) {
+        if (!config.getBoolean(MONGODB_MULTI_TASK_ENABLED)) {
+            return 0;
+        }
+        int prevGen = config.getInteger(MONGODB_MULTI_TASK_PREV_GEN);
+        int currentGen = config.getInteger(MONGODB_MULTI_TASK_GEN);
+        if (prevGen >= currentGen) {
+            problems.accept(MONGODB_MULTI_TASK_PREV_GEN, true,
+                    String.format(
+                            "current multi-task generation must be greater than previous multi-task generation. " +
+                                    "received %s and %s as current and previous generations respectively",
+                            currentGen,
+                            prevGen));
+            return 1;
+        }
         return 0;
     }
 
@@ -1420,6 +1499,26 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     @Override
     public String getConnectorName() {
         return Module.name();
+    }
+
+    public boolean isMultiTaskEnabled() {
+        return multiTaskEnabled;
+    }
+
+    public int getMultiTaskGen() {
+        return multiTaskGen;
+    }
+
+    public int getMultiTaskPrevMaxTasks() {
+        return multiTaskPrevMaxTasks;
+    }
+
+    public int getMultiTaskPrevGen() {
+        return multiTaskPrevGen;
+    }
+
+    public int getMultiTaskHopSeconds() {
+        return multiTaskHopSeconds;
     }
 
     private static int resolveSnapshotMaxThreads(Configuration config) {

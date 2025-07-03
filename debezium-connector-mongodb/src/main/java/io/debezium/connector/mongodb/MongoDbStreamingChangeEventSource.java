@@ -22,6 +22,8 @@ import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor.ResumableChangeStreamEvent;
 import io.debezium.connector.mongodb.events.SplitEventHandler;
+import io.debezium.connector.mongodb.events.StreamManager;
+import io.debezium.connector.mongodb.events.StreamManagerFactory;
 import io.debezium.connector.mongodb.metrics.MongoDbStreamingChangeEventSourceMetrics;
 import io.debezium.connector.mongodb.recordemitter.MongoDbChangeRecordEmitter;
 import io.debezium.function.BlockingRunnable;
@@ -99,9 +101,13 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
     private void readChangeStream(MongoClient client, ChangeEventSourceContext context, MongoDbPartition partition) {
         LOGGER.info("Reading change stream");
         final SplitEventHandler<BsonDocument> splitHandler = new SplitEventHandler<>();
-        final ChangeStreamIterable<BsonDocument> stream = initChangeStream(client, effectiveOffset);
 
-        try (var cursor = BufferingChangeStreamCursor.fromIterable(stream, taskContext, streamingMetrics, clock).start()) {
+        final ChangeStreamIterable<BsonDocument> stream = initChangeStream(client);
+        StreamManager<BsonDocument> streamManager = StreamManagerFactory.create(effectiveOffset, connectorConfig, taskContext);
+        streamManager.initStream(stream);
+
+        try (BufferingChangeStreamCursor<BsonDocument> cursor = BufferingChangeStreamCursor.fromIterable(stream,
+                streamManager, taskContext, streamingMetrics, clock).start()) {
             while (context.isRunning()) {
                 waitWhenStreamingPaused(context, cursor);
                 var resumableEvent = cursor.tryNext();
@@ -189,7 +195,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         }
     }
 
-    protected ChangeStreamIterable<BsonDocument> initChangeStream(MongoClient client, MongoDbOffsetContext offsetContext) {
+    protected ChangeStreamIterable<BsonDocument> initChangeStream(MongoClient client) {
         final ChangeStreamIterable<BsonDocument> stream = MongoUtils.openChangeStream(client, taskContext);
 
         if (connectorConfig.getCaptureMode().isFullUpdate()) {
@@ -203,15 +209,6 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
         if (connectorConfig.getCaptureMode().isIncludePreImage()) {
             stream.fullDocumentBeforeChange(FullDocumentBeforeChange.WHEN_AVAILABLE);
         }
-        if (offsetContext.lastResumeToken() != null) {
-            LOGGER.info("Resuming streaming from token '{}'", offsetContext.lastResumeToken());
-            stream.resumeAfter(offsetContext.lastResumeTokenDoc());
-        }
-        else if (offsetContext.lastTimestamp() != null) {
-            LOGGER.info("Resuming streaming from operation time '{}'", offsetContext.lastTimestamp());
-            stream.startAtOperationTime(offsetContext.lastTimestamp());
-        }
-
         if (connectorConfig.getCursorMaxAwaitTime() > 0) {
             stream.maxAwaitTime(connectorConfig.getCursorMaxAwaitTime(), TimeUnit.MILLISECONDS);
         }
