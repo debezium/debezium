@@ -26,6 +26,11 @@ Embedding inference is performed according to the embeddings model served by the
 {prodname} can use a link:{link-kafka-docs}/#connect_transforms[single message transformation] (SMT) to generate embeddings.
 To interact with different embeddings providers, this Embeddings transformation uses the link:https://docs.langchain4j.dev/[langchain4j] framework.
 
+[IMPORTANT]
+====
+Embeddings transformation requires Java 21 or higher.
+====
+
 == Behavior
 
 The Embeddings transformation takes as input specific fields in the original event record, and passes the text content of those fields to the configured embedding model for inference. 
