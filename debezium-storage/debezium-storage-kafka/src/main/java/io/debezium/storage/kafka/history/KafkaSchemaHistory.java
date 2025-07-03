@@ -168,7 +168,7 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
             .withValidation(Field::isPositiveInteger);
 
     public static Field.Set ALL_FIELDS = Field.setOf(TOPIC, BOOTSTRAP_SERVERS, NAME, RECOVERY_POLL_INTERVAL_MS,
-            RECOVERY_POLL_ATTEMPTS, INTERNAL_CONNECTOR_CLASS, INTERNAL_CONNECTOR_ID, KAFKA_QUERY_TIMEOUT_MS);
+            RECOVERY_POLL_ATTEMPTS, INTERNAL_CONNECTOR_CLASS, INTERNAL_CONNECTOR_ID, CONNECTOR_NAME, KAFKA_QUERY_TIMEOUT_MS);
 
     private static final String CONSUMER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "consumer.";
     private static final String PRODUCER_PREFIX = CONFIGURATION_FIELD_PREFIX_STRING + "producer.";
@@ -253,7 +253,8 @@ public class KafkaSchemaHistory extends AbstractSchemaHistory {
         try {
             final String connectorClassname = config.getString(INTERNAL_CONNECTOR_CLASS);
             if (connectorClassname != null) {
-                checkTopicSettingsExecutor = Threads.newSingleThreadExecutor((Class<? extends SourceConnector>) Class.forName(connectorClassname),
+                checkTopicSettingsExecutor = Threads.newSingleThreadExecutor(config.getString(CONNECTOR_NAME),
+                        (Class<? extends SourceConnector>) Class.forName(connectorClassname),
                         config.getString(INTERNAL_CONNECTOR_ID), "db-history-config-check", true);
             }
         }

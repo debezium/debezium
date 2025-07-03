@@ -22,6 +22,7 @@ import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -66,7 +67,7 @@ import io.debezium.util.Strings;
  *
  * @author Gunnar Morling
  */
-public abstract class CommonConnectorConfig {
+public abstract class CommonConnectorConfig extends AbstractConfig {
     public static final String TASK_ID = "task.id";
     public static final Pattern TOPIC_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_.\\-]+$");
     public static final String MULTI_PARTITION_MODE = "multi.partition.mode";
@@ -1208,6 +1209,7 @@ public abstract class CommonConnectorConfig {
     protected final DefaultServiceRegistry serviceRegistry;
 
     protected CommonConnectorConfig(Configuration config, int defaultSnapshotFetchSize) {
+        super(CONFIG_DEFINITION.configDef(), config.asProperties());
         this.beanRegistry = new DefaultBeanRegistry();
         this.serviceRegistry = new DefaultServiceRegistry(config, beanRegistry);
         this.config = config;
@@ -1331,6 +1333,10 @@ public abstract class CommonConnectorConfig {
 
     public String getLogicalName() {
         return logicalName;
+    }
+
+    public String connectorName() {
+        return originalsStrings().get("name");
     }
 
     public abstract String getContextName();
