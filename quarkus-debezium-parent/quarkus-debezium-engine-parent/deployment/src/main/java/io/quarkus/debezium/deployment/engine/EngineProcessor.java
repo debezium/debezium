@@ -113,17 +113,10 @@ public class EngineProcessor {
                 .build());
 
         additionalBeanProducer.produce(AdditionalBeanBuildItem.builder()
-                .addBeanClasses(DefaultNotificationHandler.class)
-                .setUnremovable()
-                .build());
-
-        additionalBeanProducer.produce(AdditionalBeanBuildItem.builder()
-                .addBeanClasses(SnapshotHandler.class)
-                .setUnremovable()
-                .build());
-
-        additionalBeanProducer.produce(AdditionalBeanBuildItem.builder()
-                .addBeanClasses(QuarkusNotificationChannel.class)
+                .addBeanClasses(
+                        DefaultNotificationHandler.class,
+                        SnapshotHandler.class,
+                        QuarkusNotificationChannel.class)
                 .setUnremovable()
                 .build());
     }
