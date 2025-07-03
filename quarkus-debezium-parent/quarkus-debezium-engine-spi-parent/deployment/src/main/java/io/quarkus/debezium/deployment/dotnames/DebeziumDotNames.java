@@ -19,6 +19,9 @@ import io.quarkus.arc.processor.BeanInfo;
 
 public class DebeziumDotNames {
 
+    public static final DotName DEBEZIUM_ENGINE_PROCESSOR = DotName.createSimple("io.quarkus.debezium.deployment.engine.EngineProcessor");
+    public static final List<DotName> ANNOTATED_WITH_INJECT_SERVICE = List.of(
+            DotName.createSimple("io.debezium.processors.PostProcessorRegistry"));
     public static final DotName CAPTURING = DotName.createSimple(Capturing.class.getName());
     public static final DotName POST_PROCESSING = DotName.createSimple(PostProcessing.class.getName());
     public static final List<DotName> dotNames = List.of(CAPTURING, POST_PROCESSING);
