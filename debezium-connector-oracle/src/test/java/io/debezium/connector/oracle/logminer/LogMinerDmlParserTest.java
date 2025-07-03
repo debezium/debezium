@@ -704,4 +704,26 @@ public class LogMinerDmlParserTest {
                 .isEqualTo("Nello svolgere la sua attivita', del liquido uticante penetrava nei guanti di sicurezza scottando la pelle dei polsi");
         assertThat(entry.getNewValues()[2]).isEqualTo("1");
     }
+
+    @Test
+    @FixFor("DBZ-9191")
+    public void shouldNotTruncateInsertColumnValuesWithRelaxedQuoteDetectionLogMinerApostropheBug() throws Exception {
+        final Properties properties = new Properties();
+        properties.put("internal.log.mining.sql.relaxed.quote.detection", "true");
+        final LogMinerDmlParser parser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.from(properties)));
+
+        final Table table = Table.editor()
+                .tableId(TableId.parse("SCHEMA.TAB"))
+                .addColumn(Column.editor().name("NAME").create())
+                .addColumn(Column.editor().name("DATA").create())
+                .create();
+
+        String sql = "insert into \"SCHEMA\".\"TAB\"(\"NAME\",\"DATA\") values ('12345','M. Antoine a coupé le circuit de refroidissement de la pompe d'aspiration, puis a démonté le flexible. À ce moment-là, de l’eau a violemment jailli depuis la base de l’installation, atteignant ses pieds jusqu’au plafond, soit une hauteur de 4 à 5 mètres. Le jet, vertical, l’a entièrement aspergé d’un produit dangereux pour la santé. Il en a ingéré une partie. Il s’est rincé abondamment les yeux, a pris une douche et s'est rincé la bouche. Il souffrait de nausées et de maux de tête.');";
+        LogMinerDmlEntry entry = parser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.INSERT);
+        assertThat(entry.getOldValues()).isEmpty();
+        assertThat(entry.getNewValues()[0]).isEqualTo("12345");
+        assertThat(entry.getNewValues()[1]).isEqualTo(
+                "M. Antoine a coupé le circuit de refroidissement de la pompe d'aspiration, puis a démonté le flexible. À ce moment-là, de l’eau a violemment jailli depuis la base de l’installation, atteignant ses pieds jusqu’au plafond, soit une hauteur de 4 à 5 mètres. Le jet, vertical, l’a entièrement aspergé d’un produit dangereux pour la santé. Il en a ingéré une partie. Il s’est rincé abondamment les yeux, a pris une douche et s'est rincé la bouche. Il souffrait de nausées et de maux de tête.");
+    }
 }

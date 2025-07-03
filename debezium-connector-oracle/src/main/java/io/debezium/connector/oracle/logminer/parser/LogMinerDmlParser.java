@@ -63,10 +63,10 @@ public class LogMinerDmlParser implements DmlParser {
     private static final int SET_LENGTH = SET.length();
     private static final int WHERE_LENGTH = WHERE.length();
 
-    private final OracleConnectorConfig connectorConfig;
+    private final boolean useRelaxedQuotes;
 
     public LogMinerDmlParser(OracleConnectorConfig connectorConfig) {
-        this.connectorConfig = connectorConfig;
+        this.useRelaxedQuotes = connectorConfig.getLogMiningUseSqlRelaxedQuoteDetection();
     }
 
     @Override
@@ -287,20 +287,30 @@ public class LogMinerDmlParser implements DmlParser {
         index += VALUES_LENGTH;
 
         int columnIndex = 0;
+        int sqlLength = sql.length();
         StringBuilder collectedValue = null;
-        for (; index < sql.length(); ++index) {
+        for (; index < sqlLength; ++index) {
             char c = sql.charAt(index);
+            char lookAhead = (index + 1 < sqlLength) ? sql.charAt(index + 1) : 0;
 
             if (inQuote) {
                 if (c != '\'') {
                     collectedValue.append(c);
                 }
-                else {
-                    if (sql.charAt(index + 1) == '\'') {
-                        collectedValue.append('\'');
-                        index = index + 1;
-                        continue;
-                    }
+                else if (useRelaxedQuotes && (lookAhead != ',' && lookAhead != ')')) {
+                    // When using extended strings, LogMiner may provide the inserted column value without escaping
+                    // apostrophes, which will lead to parsing issues. This rule attempts to isolate that use case
+                    // and treat the lone apostrophe as part of the value if the next character is not a comma, to
+                    // signify the next value, or the end parenthesis to identify that being the last column value.
+                    // Obviously if the text has "'," or "')" as the text sequence, this rule will fail, but there
+                    // really is no other way to identify this.
+                    collectedValue.append(c);
+                    continue;
+                }
+                else if (lookAhead == '\'') {
+                    collectedValue.append('\'');
+                    index = index + 1;
+                    continue;
                 }
             }
 
@@ -439,7 +449,7 @@ public class LogMinerDmlParser implements DmlParser {
                     index += 1;
                     continue;
                 }
-                if (connectorConfig.getLogMiningUseSqlRelaxedQuoteDetection() && inSingleQuote && nested == 0) {
+                if (useRelaxedQuotes && inSingleQuote && nested == 0) {
                     if (lookAhead == ',' && lookAhead2 == ' ' && (lookAhead3 == '\"' || lookAhead3 == 'w')) {
                         // reached end of value
                     }
