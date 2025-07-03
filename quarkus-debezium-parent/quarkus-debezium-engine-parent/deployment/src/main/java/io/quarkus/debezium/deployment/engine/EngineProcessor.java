@@ -60,7 +60,6 @@ import io.quarkus.arc.deployment.SyntheticBeanBuildItem;
 import io.quarkus.arc.deployment.UnremovableBeanBuildItem;
 import io.quarkus.arc.deployment.UnremovableBeanBuildItem.BeanClassAnnotationExclusion;
 import io.quarkus.arc.processor.DotNames;
-import io.quarkus.debezium.deployment.PostProcessorGenerator;
 import io.quarkus.debezium.deployment.dotnames.DebeziumDotNames;
 import io.quarkus.debezium.deployment.items.DebeziumConnectorBuildItem;
 import io.quarkus.debezium.deployment.items.DebeziumGeneratedInvokerBuildItem;

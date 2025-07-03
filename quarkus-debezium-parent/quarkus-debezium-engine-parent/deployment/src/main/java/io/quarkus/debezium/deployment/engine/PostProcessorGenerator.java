@@ -4,9 +4,10 @@
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 
-package io.quarkus.debezium.deployment;
+package io.quarkus.debezium.deployment.engine;
 
 import java.lang.reflect.Modifier;
+import java.util.Map;
 import java.util.UUID;
 
 import org.apache.kafka.connect.data.Struct;
@@ -15,7 +16,6 @@ import org.jboss.jandex.MethodInfo;
 import io.debezium.processors.spi.PostProcessor;
 import io.quarkus.arc.processor.BeanInfo;
 import io.quarkus.arc.processor.DotNames;
-import io.quarkus.debezium.deployment.engine.GeneratedClassMetaData;
 import io.quarkus.gizmo.ClassCreator;
 import io.quarkus.gizmo.ClassOutput;
 import io.quarkus.gizmo.FieldDescriptor;
@@ -92,6 +92,16 @@ public class PostProcessorGenerator {
 
                 apply.invokeVirtualMethod(methodDescriptor, delegate, eventObject, eventStruct);
                 apply.returnVoid();
+            }
+
+            try (MethodCreator configure = invoker.getMethodCreator("configure", void.class, Map.class)) {
+                configure.setModifiers(Modifier.PUBLIC);
+                configure.returnVoid();
+            }
+
+            try (MethodCreator close = invoker.getMethodCreator("close", void.class)) {
+                close.setModifiers(Modifier.PUBLIC);
+                close.returnVoid();
             }
         }
 
