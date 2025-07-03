@@ -21,6 +21,7 @@ import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 import org.apache.kafka.connect.transforms.predicates.TopicNameMatches;
+import org.jboss.jandex.DotName;
 
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.embedded.async.ConvertingAsyncEngineBuilderFactory;
@@ -157,8 +158,19 @@ public class EngineProcessor {
     }
 
     @BuildStep(onlyIf = NativeOrNativeSourcesBuild.class)
-    void registerClassesThatAreLoadedThroughReflection(BuildProducer<ReflectiveClassBuildItem> reflectiveClasses,
+    void registerClassesThatAreLoadedThroughReflection(
+                                                       BuildProducer<ReflectiveClassBuildItem> reflectiveClasses,
                                                        DebeziumEngineConfiguration debeziumEngineConfiguration) {
+
+        List<String> classesAnnotatedWithInjectService = DebeziumDotNames.ANNOTATED_WITH_INJECT_SERVICE
+                .stream()
+                .map(DotName::toString)
+                .toList();
+
+        reflectiveClasses.produce(ReflectiveClassBuildItem
+                .builder(classesAnnotatedWithInjectService.toArray(new String[0]))
+                .reason(DebeziumDotNames.DEBEZIUM_ENGINE_PROCESSOR.toString())
+                .constructors(false).methods().build());
 
         TRANSFORM.extract(debeziumEngineConfiguration.configuration())
                 .forEach(transform -> reflectiveClasses.produce(ReflectiveClassBuildItem
