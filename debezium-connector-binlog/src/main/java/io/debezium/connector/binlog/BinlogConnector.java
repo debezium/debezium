@@ -16,6 +16,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.config.ConfigValue;
+import org.apache.kafka.connect.source.ExactlyOnceSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -114,6 +115,11 @@ public abstract class BinlogConnector<T extends BinlogConnectorConfig> extends R
         catch (SQLException e) {
             throw new DebeziumException(e);
         }
+    }
+
+    @Override
+    public ExactlyOnceSupport exactlyOnceSupport(Map<String, String> connectorConfig) {
+        return ExactlyOnceSupport.SUPPORTED;
     }
 
     /**
