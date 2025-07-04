@@ -164,7 +164,7 @@ public class CustomConverterRegistry implements Service {
      *
      * @param <S> schema describing the output type, usually {@link org.apache.kafka.connect.data.SchemaBuilder}
      */
-    public class ConverterDefinition<S> {
+    public static class ConverterDefinition<S> {
         public final S fieldSchema;
         public final CustomConverter.Converter converter;
 
