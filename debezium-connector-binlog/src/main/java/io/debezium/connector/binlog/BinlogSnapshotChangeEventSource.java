@@ -277,6 +277,32 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
                                                                                     SnapshotterService snapshotterService)
             throws Exception;
 
+    protected boolean isCustomBinlogStartPosition(O offset) {
+        // Check if this offset was created from custom binlog configuration
+        if (offset == null) {
+            return false;
+        }
+
+        // For binlog-based connectors, check if custom binlog position or GTID was configured
+        String customBinlogFilename = connectorConfig.getBinlogStartFilename();
+        Long customBinlogPosition = connectorConfig.getBinlogStartPosition();
+        String customGtidSet = connectorConfig.getBinlogStartGtidSet();
+
+        // Check for custom GTID set
+        if (customGtidSet != null && !customGtidSet.trim().isEmpty()) {
+            return true;
+        }
+
+        // Check for custom binlog file/position
+        if (customBinlogFilename != null && customBinlogPosition != null) {
+            // If both custom filename and position are specified, this indicates a custom start position
+            // We should perform schema snapshot but skip data snapshot
+            return true;
+        }
+
+        return false;
+    }
+
     private void addSchemaEvent(RelationalSnapshotContext<P, O> snapshotContext, String database, String ddl) {
         List<SchemaChangeEvent> schemaChangeEvents = databaseSchema.parseSnapshotDdl(snapshotContext.partition, ddl, database,
                 snapshotContext.offset, clock.currentTimeAsInstant());
