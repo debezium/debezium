@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.common;
 
-public enum ConnectorState {
+public enum DebeziumTaskState {
     RESTARTING,
     RUNNING,
     INITIAL,

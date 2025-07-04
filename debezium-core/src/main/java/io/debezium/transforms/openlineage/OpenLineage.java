@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.Module;
 import io.debezium.config.Configuration;
-import io.debezium.connector.common.ConnectorState;
+import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.openlineage.dataset.DatasetMetadata;
@@ -69,7 +69,7 @@ public class OpenLineage<R extends ConnectRecord<R>> implements Transformation<R
                         .toList();
 
                 ConnectorContext connectorContext = ConnectorContext.from(record.headers());
-                DebeziumOpenLineageEmitter.emit(connectorContext, ConnectorState.RUNNING, List.of(new DatasetMetadata(record.topic(), OUTPUT, fieldDefinitions)));
+                DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING, List.of(new DatasetMetadata(record.topic(), OUTPUT, fieldDefinitions)));
 
                 lastEmissionTime = ZonedDateTime.now();
             }

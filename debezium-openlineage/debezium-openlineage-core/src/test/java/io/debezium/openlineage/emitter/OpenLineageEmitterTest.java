@@ -24,7 +24,7 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import io.debezium.connector.common.ConnectorState;
+import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageConfiguration;
 import io.debezium.openlineage.OpenLineageContext;
@@ -73,7 +73,7 @@ public class OpenLineageEmitterTest {
 
     @Test
     public void testEmitInitialState() {
-        emitter.emit(ConnectorState.INITIAL);
+        emitter.emit(DebeziumTaskState.INITIAL);
 
         verify(eventEmitter).emit(eventCaptor.capture());
         OpenLineage.RunEvent event = eventCaptor.getValue();
@@ -87,7 +87,7 @@ public class OpenLineageEmitterTest {
     public void testEmitWithError() {
         Throwable error = new RuntimeException("Test failure");
 
-        emitter.emit(ConnectorState.RESTARTING, error);
+        emitter.emit(DebeziumTaskState.RESTARTING, error);
 
         verify(eventEmitter).emit(eventCaptor.capture());
         OpenLineage.RunEvent event = eventCaptor.getValue();
@@ -102,7 +102,7 @@ public class OpenLineageEmitterTest {
         DatasetMetadata inputDataset = new DatasetMetadata("input_table", DatasetMetadata.DatasetType.INPUT, List.of(field));
         DatasetMetadata outputDataset = new DatasetMetadata("output_table", DatasetMetadata.DatasetType.OUTPUT, List.of(field));
 
-        emitter.emit(ConnectorState.RUNNING, List.of(inputDataset, outputDataset));
+        emitter.emit(DebeziumTaskState.RUNNING, List.of(inputDataset, outputDataset));
 
         verify(eventEmitter).emit(eventCaptor.capture());
         OpenLineage.RunEvent event = eventCaptor.getValue();
@@ -119,7 +119,7 @@ public class OpenLineageEmitterTest {
 
     @Test
     public void testEmitComplete() {
-        emitter.emit(ConnectorState.STOPPED);
+        emitter.emit(DebeziumTaskState.STOPPED);
 
         verify(eventEmitter).emit(eventCaptor.capture());
         OpenLineage.RunEvent event = eventCaptor.getValue();

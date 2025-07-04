@@ -16,7 +16,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.connector.common.ConnectorState;
+import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.openlineage.dataset.DatasetMetadata;
 import io.debezium.relational.Key.KeyMapper;
@@ -129,7 +129,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
         if (tableFilter.isIncluded(table.id())) {
             TableSchema schema = schemaBuilder.create(topicNamingStrategy, table, columnFilter, columnMappers, customKeysMapper);
             schemasByTableId.put(table.id(), schema);
-            DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config.getConfig().asMap(), config.getConnectorName()), ConnectorState.RUNNING,
+            DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config.getConfig().asMap(), config.getConnectorName()), DebeziumTaskState.RUNNING,
                     List.of(extractDatasetMetadata(table)));
         }
     }
