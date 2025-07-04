@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.connector.common.ConnectorState;
+import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.openlineage.dataset.DatasetMetadata;
 import io.debezium.openlineage.emitter.LineageEmitter;
 import io.debezium.openlineage.emitter.LineageEmitterFactory;
@@ -104,7 +104,7 @@ public class DebeziumOpenLineageEmitter {
      * @param state The current state of the source task
      * @throws IllegalStateException If the emitter has not been initialized for this connector
      */
-    public static void emit(ConnectorContext connectorContext, ConnectorState state) {
+    public static void emit(ConnectorContext connectorContext, DebeziumTaskState state) {
         getEmitter(connectorContext).emit(state);
     }
 
@@ -118,7 +118,7 @@ public class DebeziumOpenLineageEmitter {
      * @param t The exception that occurred during processing
      * @throws IllegalStateException If the emitter has not been initialized for this connector
      */
-    public static void emit(ConnectorContext connectorContext, ConnectorState state, Throwable t) {
+    public static void emit(ConnectorContext connectorContext, DebeziumTaskState state, Throwable t) {
         getEmitter(connectorContext).emit(state, List.of(), t);
     }
 
@@ -132,7 +132,7 @@ public class DebeziumOpenLineageEmitter {
      * @param datasetMetadata A list of input dataset metadata containing metadata for lineage
      * @throws IllegalStateException If the emitter has not been initialized for this connector
      */
-    public static void emit(ConnectorContext connectorContext, ConnectorState state, List<DatasetMetadata> datasetMetadata) {
+    public static void emit(ConnectorContext connectorContext, DebeziumTaskState state, List<DatasetMetadata> datasetMetadata) {
         getEmitter(connectorContext).emit(state, datasetMetadata);
     }
 
@@ -148,7 +148,7 @@ public class DebeziumOpenLineageEmitter {
      * @param t The exception that occurred during processing, may be {@code null}
      * @throws IllegalStateException If the emitter has not been initialized for this connector
      */
-    public static void emit(ConnectorContext connectorContext, ConnectorState state, List<DatasetMetadata> datasetMetadata, Throwable t) {
+    public static void emit(ConnectorContext connectorContext, DebeziumTaskState state, List<DatasetMetadata> datasetMetadata, Throwable t) {
         getEmitter(connectorContext).emit(state, datasetMetadata, t);
     }
 

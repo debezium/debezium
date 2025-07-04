@@ -10,7 +10,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.connector.common.ConnectorState;
+import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.openlineage.dataset.DatasetMetadata;
 
 /**
@@ -34,22 +34,22 @@ public class NoOpLineageEmitter implements LineageEmitter {
     }
 
     @Override
-    public void emit(ConnectorState state) {
+    public void emit(DebeziumTaskState state) {
         LOGGER.debug("Emitting lineage event for {}", state.name());
     }
 
     @Override
-    public void emit(ConnectorState state, Throwable t) {
+    public void emit(DebeziumTaskState state, Throwable t) {
         LOGGER.debug("Emitting lineage event for {}", state.name(), t);
     }
 
     @Override
-    public void emit(ConnectorState state, List<DatasetMetadata> datasetMetadata) {
+    public void emit(DebeziumTaskState state, List<DatasetMetadata> datasetMetadata) {
         LOGGER.debug("Emitting lineage event for {} for dataset {}", state.name(), datasetMetadata);
     }
 
     @Override
-    public void emit(ConnectorState state, List<DatasetMetadata> datasetMetadata, Throwable t) {
+    public void emit(DebeziumTaskState state, List<DatasetMetadata> datasetMetadata, Throwable t) {
         LOGGER.debug("Emitting lineage event for {} for dataset {}", state.name(), datasetMetadata, t);
     }
 }

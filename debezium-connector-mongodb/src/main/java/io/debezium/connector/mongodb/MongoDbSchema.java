@@ -18,7 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.ThreadSafe;
-import io.debezium.connector.common.ConnectorState;
+import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.connector.mongodb.FieldSelector.FieldFilter;
 import io.debezium.data.Envelope;
 import io.debezium.data.Envelope.FieldName;
@@ -93,7 +93,7 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
 
             final Envelope envelope = Envelope.fromSchema(valueSchema);
 
-            DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config.getConfig().asMap(), config.getConnectorName()), ConnectorState.RUNNING,
+            DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config.getConfig().asMap(), config.getConnectorName()), DebeziumTaskState.RUNNING,
                     List.of(new DatasetMetadata(collectionId.identifier(), INPUT, List.of())));
 
             return new MongoDbCollectionSchema(

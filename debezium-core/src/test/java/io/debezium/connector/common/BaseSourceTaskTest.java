@@ -50,11 +50,11 @@ public class BaseSourceTaskTest {
     public void verifyTaskStartsAndStops() throws InterruptedException {
 
         baseSourceTask.start(new HashMap<>());
-        assertEquals(ConnectorState.RUNNING, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
         baseSourceTask.poll();
-        assertEquals(ConnectorState.RUNNING, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
         baseSourceTask.stop();
-        assertEquals(ConnectorState.STOPPED, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
 
         assertEquals(1, baseSourceTask.startCount.get());
         assertEquals(1, baseSourceTask.stopCount.get());
@@ -65,9 +65,9 @@ public class BaseSourceTaskTest {
     public void verifyStartAndStopWithoutPolling() {
         baseSourceTask.initialize(mock(SourceTaskContext.class));
         baseSourceTask.start(new HashMap<>());
-        assertEquals(ConnectorState.RUNNING, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
         baseSourceTask.stop();
-        assertEquals(ConnectorState.STOPPED, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
 
         assertEquals(1, baseSourceTask.startCount.get());
         assertEquals(1, baseSourceTask.stopCount.get());
@@ -92,13 +92,13 @@ public class BaseSourceTaskTest {
     public void verifyTaskCanBeStartedAfterStopped() throws InterruptedException {
 
         baseSourceTask.start(new HashMap<>());
-        assertEquals(ConnectorState.RUNNING, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
         baseSourceTask.stop();
-        assertEquals(ConnectorState.STOPPED, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
         baseSourceTask.start(new HashMap<>());
-        assertEquals(ConnectorState.RUNNING, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
         baseSourceTask.stop();
-        assertEquals(ConnectorState.STOPPED, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
 
         assertEquals(2, baseSourceTask.startCount.get());
         assertEquals(2, baseSourceTask.stopCount.get());
@@ -125,17 +125,17 @@ public class BaseSourceTaskTest {
         );
         baseSourceTask.start(config);
         sleep(1); // wait 1ms in order to satisfy retriable wait
-        assertEquals(ConnectorState.RESTARTING, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
         pollAndIgnoreRetryException(baseSourceTask);
-        assertEquals(ConnectorState.RESTARTING, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
         sleep(1); // wait 1ms in order to satisfy retriable wait
         pollAndIgnoreRetryException(baseSourceTask);
-        assertEquals(ConnectorState.RESTARTING, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
         sleep(1); // wait 1ms in order to satisfy retriable wait
         baseSourceTask.poll();
-        assertEquals(ConnectorState.RUNNING, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
         baseSourceTask.stop();
-        assertEquals(ConnectorState.STOPPED, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
 
         assertEquals(4, baseSourceTask.startCount.get());
         assertEquals(3, baseSourceTask.stopCount.get());
@@ -145,11 +145,11 @@ public class BaseSourceTaskTest {
     @Test
     public void verifyOutOfOrderPollDoesNotStartTask() throws InterruptedException {
         baseSourceTask.start(new HashMap<>());
-        assertEquals(ConnectorState.RUNNING, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
         baseSourceTask.stop();
-        assertEquals(ConnectorState.STOPPED, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
         baseSourceTask.poll();
-        assertEquals(ConnectorState.STOPPED, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
 
         assertEquals(1, baseSourceTask.startCount.get());
         assertEquals(1, baseSourceTask.stopCount.get());

@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 import io.debezium.annotation.VisibleForTesting;
-import io.debezium.connector.common.ConnectorState;
+import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.OpenLineageContext;
 import io.debezium.openlineage.OpenLineageJobCreator;
@@ -49,7 +49,7 @@ import io.openlineage.client.OpenLineage;
  * @see LineageEmitter
  * @see OpenLineageContext
  * @see DebeziumOpenLineageClient
- * @see ConnectorState
+ * @see DebeziumTaskState
  */
 public class OpenLineageEmitter implements LineageEmitter {
 
@@ -76,25 +76,25 @@ public class OpenLineageEmitter implements LineageEmitter {
     }
 
     @Override
-    public void emit(ConnectorState state) {
+    public void emit(DebeziumTaskState state) {
 
         emit(state, List.of(), null);
     }
 
     @Override
-    public void emit(ConnectorState state, Throwable t) {
+    public void emit(DebeziumTaskState state, Throwable t) {
 
         emit(state, List.of(), t);
     }
 
     @Override
-    public void emit(ConnectorState state, List<DatasetMetadata> datasetMetadata) {
+    public void emit(DebeziumTaskState state, List<DatasetMetadata> datasetMetadata) {
 
         emit(state, datasetMetadata, null);
     }
 
     @Override
-    public void emit(ConnectorState state, List<DatasetMetadata> datasetMetadata, Throwable t) {
+    public void emit(DebeziumTaskState state, List<DatasetMetadata> datasetMetadata, Throwable t) {
 
         OpenLineage.Job job = new OpenLineageJobCreator(openLineageContext).create();
 
@@ -221,7 +221,7 @@ public class OpenLineageEmitter implements LineageEmitter {
                 .build();
     }
 
-    private static OpenLineage.RunEvent.EventType getEventType(ConnectorState state) {
+    private static OpenLineage.RunEvent.EventType getEventType(DebeziumTaskState state) {
         return switch (state) {
             case INITIAL -> OpenLineage.RunEvent.EventType.START;
             case RUNNING -> OpenLineage.RunEvent.EventType.RUNNING;

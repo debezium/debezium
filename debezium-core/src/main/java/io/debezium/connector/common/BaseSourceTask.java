@@ -171,7 +171,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         return logPositionValidator.validate(partition, offsetContext, config);
     }
 
-    private final AtomicReference<ConnectorState> state = new AtomicReference<>(ConnectorState.INITIAL);
+    private final AtomicReference<DebeziumTaskState> state = new AtomicReference<>(DebeziumTaskState.INITIAL);
 
     /**
      * Used to ensure that start(), stop() and commitRecord() calls are serialized.
@@ -235,11 +235,11 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         stateLock.lock();
 
         try {
-            setTaskState(ConnectorState.INITIAL);
+            setTaskState(DebeziumTaskState.INITIAL);
             config = Configuration.from(props);
 
             DebeziumOpenLineageEmitter.init(props, connectorName());
-            DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(props, connectorName()), ConnectorState.INITIAL);
+            DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(props, connectorName()), DebeziumTaskState.INITIAL);
 
             retriableRestartWait = config.getDuration(CommonConnectorConfig.RETRIABLE_RESTART_WAIT, ChronoUnit.MILLIS);
             // need to reset the delay or you only get one delayed restart
@@ -258,15 +258,15 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
             try {
                 this.coordinator = start(config);
-                setTaskState(ConnectorState.RUNNING);
+                setTaskState(DebeziumTaskState.RUNNING);
 
-                DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(props, connectorName()), ConnectorState.RUNNING);
+                DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(props, connectorName()), DebeziumTaskState.RUNNING);
 
             }
             catch (RetriableException e) {
                 LOGGER.warn("Failed to start connector, will re-attempt during polling.", e);
                 restartDelay = ElapsedTimeStrategy.constant(Clock.system(), retriableRestartWait);
-                setTaskState(ConnectorState.RESTARTING);
+                setTaskState(DebeziumTaskState.RESTARTING);
             }
         }
         finally {
@@ -424,17 +424,18 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
 
         boolean result = false;
         try {
-            ConnectorState currentState = getTaskState();
-            if (currentState == ConnectorState.RUNNING) {
+            DebeziumTaskState currentState = getTaskState();
+            if (currentState == DebeziumTaskState.RUNNING) {
                 result = true;
             }
-            else if (currentState == ConnectorState.RESTARTING) {
+            else if (currentState == DebeziumTaskState.RESTARTING) {
 
                 getErrorHandler().ifPresentOrElse(
                         handler -> DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config.asMap(), connectorName()),
-                                ConnectorState.RESTARTING,
+                                DebeziumTaskState.RESTARTING,
                                 handler.getProducerThrowable()),
-                        () -> DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config.asMap(), connectorName()), ConnectorState.RESTARTING));
+                        () -> DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config.asMap(), connectorName()),
+                                DebeziumTaskState.RESTARTING));
 
                 // we're in restart mode... check if it's time to restart
                 if (restartDelay.hasElapsed()) {
@@ -442,7 +443,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                     this.coordinator = start(config);
                     LOGGER.info("Successfully restarted task");
                     restartDelay = null;
-                    setTaskState(ConnectorState.RUNNING);
+                    setTaskState(DebeziumTaskState.RUNNING);
                     result = true;
                 }
                 else {
@@ -490,14 +491,14 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             doStop();
 
             if (restart) {
-                setTaskState(ConnectorState.RESTARTING);
+                setTaskState(DebeziumTaskState.RESTARTING);
                 if (restartDelay == null) {
                     restartDelay = ElapsedTimeStrategy.constant(Clock.system(), retriableRestartWait);
                 }
             }
             else {
-                setTaskState(ConnectorState.STOPPED);
-                DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config.asMap(), connectorName()), ConnectorState.STOPPED);
+                setTaskState(DebeziumTaskState.STOPPED);
+                DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config.asMap(), connectorName()), DebeziumTaskState.STOPPED);
             }
         }
         finally {
@@ -590,13 +591,13 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
      *
      * @param newState
      */
-    private void setTaskState(ConnectorState newState) {
-        ConnectorState oldState = state.getAndSet(newState);
+    private void setTaskState(DebeziumTaskState newState) {
+        DebeziumTaskState oldState = state.getAndSet(newState);
         LOGGER.debug("Setting task state to '{}', previous state was '{}'", newState, oldState);
     }
 
     @VisibleForTesting
-    public ConnectorState getTaskState() {
+    public DebeziumTaskState getTaskState() {
         stateLock.lock();
         try {
             return state.get();
