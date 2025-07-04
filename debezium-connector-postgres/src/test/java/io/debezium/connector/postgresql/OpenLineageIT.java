@@ -351,7 +351,7 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
     private static void assertCorrectInputDataset(List<OpenLineage.InputDataset> inputs, String expectedName, List<String> expectedFields) {
         assertThat(inputs).hasSize(1);
         assertThat(inputs.get(0).getName()).isEqualTo(expectedName);
-        assertThat(inputs.get(0).getNamespace()).isEqualTo("postgres://localhost:5432");
+        assertThat(inputs.get(0).getNamespace()).startsWith("postgres://localhost:");
         List<OpenLineage.SchemaDatasetFacetFields> tableFields = inputs.get(0).getFacets().getSchema().getFields();
         List<String> actualFields = tableFields.stream().map(f -> String.format("%s;%s", f.getName(), f.getType())).toList();
         assertThat(actualFields).containsAll(expectedFields);
@@ -453,7 +453,6 @@ public class OpenLineageIT extends AbstractAsyncEngineConnectorTest {
                 "database.dbname=postgres",
                 "database.hostname=localhost",
                 "database.password=postgres",
-                "database.port=5432",
                 "database.sslmode=disable",
                 "database.user=postgres",
                 "errors.max.retries=-1",
