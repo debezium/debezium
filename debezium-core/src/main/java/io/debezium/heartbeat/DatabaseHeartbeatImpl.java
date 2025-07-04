@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.Field;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.pipeline.spi.OffsetContext;
 
 /**
  *  Implementation of the heartbeat feature that allows for a DB query to be executed with every heartbeat.
@@ -62,6 +63,11 @@ public class DatabaseHeartbeatImpl implements Heartbeat {
         }
         LOGGER.debug("Executed heartbeat action query");
 
+    }
+
+    @Override
+    public void emit(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
+        forcedBeat(partition, offset.getOffset(), null);
     }
 
     @Override
