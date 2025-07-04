@@ -1844,12 +1844,23 @@ public abstract class CommonConnectorConfig {
         return taskId;
     }
 
+    /**
+     * This method is deprecated and replaced with {@link io.debezium.heartbeat.HeartbeatFactory}
+     *
+     * @param topicNamingStrategy
+     * @param schemaNameAdjuster
+     * @param connectionProvider
+     * @param errorHandler
+     * @return
+     */
+    @Deprecated
     public Heartbeat createHeartbeat(TopicNamingStrategy topicNamingStrategy, SchemaNameAdjuster schemaNameAdjuster,
                                      HeartbeatConnectionProvider connectionProvider, HeartbeatErrorHandler errorHandler) {
         if (getHeartbeatInterval().isZero()) {
             return Heartbeat.DEFAULT_NOOP_HEARTBEAT;
         }
         return new HeartbeatImpl(getHeartbeatInterval(), topicNamingStrategy.heartbeatTopic(), getLogicalName(), schemaNameAdjuster);
+
     }
 
     public static int validateTopicName(Configuration config, Field field, ValidationOutput problems) {

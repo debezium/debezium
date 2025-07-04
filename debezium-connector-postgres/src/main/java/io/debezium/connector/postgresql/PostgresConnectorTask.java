@@ -37,6 +37,7 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.document.DocumentReader;
+import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
@@ -198,9 +199,8 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     DataChangeEvent::new,
                     PostgresChangeRecordEmitter::updateSchema,
                     metadataProvider,
-                    connectorConfig.createHeartbeat(
-                            topicNamingStrategy,
-                            schemaNameAdjuster,
+                    new HeartbeatFactory<>().getScheduledHeartbeat(
+                            connectorConfig,
                             () -> new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL),
                             exception -> {
                                 String sqlErrorId = exception.getSQLState();
@@ -214,7 +214,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                                     default:
                                         break;
                                 }
-                            }),
+                            }, queue),
                     schemaNameAdjuster,
                     signalProcessor,
                     connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
