@@ -393,10 +393,27 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
                     .filter(id -> !delayedSchemaSnapshotTables.contains(id))
                     .collect(Collectors.toList());
         }
+
+        // Get binlog_row_image mode
+        final String[] binlogRowImage = { null };
+        connection.query("SHOW VARIABLES LIKE \'binlog_row_image\';", rs -> {
+            if (rs.next()) {
+                binlogRowImage[0] = rs.getString("Value");
+            }
+        });
+
         for (TableId tableId : realTablesToRead) {
             connection.query("SHOW CREATE TABLE " + connection.quotedTableIdString(tableId), rs -> {
                 if (rs.next()) {
-                    addSchemaEvent(snapshotContext, tableId.catalog(), rs.getString(2));
+                    final String createStatment = rs.getString(2);
+                    // If binlog_row_image=noblob is set, it will exclude text/blob columns from the create query.
+                    final String mode = binlogRowImage[0];
+                    if ("NOBLOB".equals(mode)) {
+                        addSchemaEvent(snapshotContext, tableId.catalog(), createStatment);
+                    }
+                    else {
+                        addSchemaEvent(snapshotContext, tableId.catalog(), createStatment);
+                    }
                 }
             });
         }
