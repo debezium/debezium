@@ -6,16 +6,14 @@
 
 package io.quarkus.debezium.engine.relational.converter;
 
-import java.util.function.Predicate;
-
 import org.apache.kafka.connect.data.SchemaBuilder;
 
 import io.debezium.relational.CustomConverterRegistry.ConverterDefinition;
 import io.debezium.spi.converter.ConvertedField;
 
 public interface QuarkusCustomConverter {
-    default Predicate<ConvertedField> filter() {
-        return convertedField -> true;
+    default boolean filter(ConvertedField convertedField) {
+        return true;
     }
 
     ConverterDefinition<SchemaBuilder> bind(ConvertedField field);
