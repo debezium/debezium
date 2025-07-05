@@ -166,8 +166,154 @@ public abstract class BinlogSchemaHistoryIT<C extends SourceConnector> extends A
     }
 
     @Test
-    @FixFor("DBZ-9162")
-    public void shouldNotStoreTruncate() throws SQLException, InterruptedException {
+    public void shouldNotStoreView() throws SQLException, InterruptedException {
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
+                .build();
+
+        // Start the connector ...
+        start(getConnectorClass(), config);
+
+        Print.enable();
+        // SET + USE + Drop DB + create DB + CREATE/DROP for each table
+        consumeRecordsByTopic(1 + 1 + 1 + 1 + TABLE_COUNT * 2);
+
+        // Execute a TRUNCATE statement
+        try (BinlogTestConnection connection = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            connection.execute("CREATE TABLE employees (\n" +
+                    "    id INT PRIMARY KEY AUTO_INCREMENT,\n" +
+                    "    first_name VARCHAR(50),\n" +
+                    "    last_name VARCHAR(50),\n" +
+                    "    department_id INT,\n" +
+                    "    created_at DATETIME DEFAULT CURRENT_TIMESTAMP\n" +
+                    ");");
+            connection.execute(
+                    "CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `employee_summary` AS SELECT CONCAT(first_name, ' ', last_name) AS full_name, department_id FROM employees");
+            connection.execute(
+                    "ALTER ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `employee_summary` AS SELECT CONCAT(first_name, ' ', last_name) AS full_name FROM employees");
+            connection.execute("DROP VIEW employee_summary");
+        }
+
+        // no DDLs other than create table should be received
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> ddlRecords = records.recordsForTopic(DATABASE.getServerName());
+        assertThat(ddlRecords).hasSize(1);
+        assertThat(((Struct) ddlRecords.get(0).value()).getString("ddl")).contains("CREATE TABLE employees");
+    }
+
+    @Test
+    public void shouldNotStoreFunction() throws SQLException, InterruptedException {
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
+                .build();
+
+        // Start the connector ...
+        start(getConnectorClass(), config);
+
+        Print.enable();
+        // SET + USE + Drop DB + create DB + CREATE/DROP for each table
+        consumeRecordsByTopic(1 + 1 + 1 + 1 + TABLE_COUNT * 2);
+
+        // Execute a TRUNCATE statement
+        try (BinlogTestConnection connection = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            connection.execute("CREATE DEFINER=`root`@`localhost` FUNCTION `square`(x INT) RETURNS int\n" +
+                    "    DETERMINISTIC\n" +
+                    "RETURN x * x");
+            connection.execute("DROP FUNCTION square");
+            connection.execute("CREATE TABLE employees (\n" +
+                    "    id INT PRIMARY KEY AUTO_INCREMENT,\n" +
+                    "    first_name VARCHAR(50),\n" +
+                    "    last_name VARCHAR(50),\n" +
+                    "    department_id INT,\n" +
+                    "    created_at DATETIME DEFAULT CURRENT_TIMESTAMP\n" +
+                    ");");
+        }
+
+        // no DDLs other than create table should be received
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> ddlRecords = records.recordsForTopic(DATABASE.getServerName());
+        assertThat(ddlRecords).hasSize(1);
+        assertThat(((Struct) ddlRecords.get(0).value()).getString("ddl")).contains("CREATE TABLE employees");
+    }
+
+    @Test
+    public void shouldNotStoreTrigger() throws SQLException, InterruptedException {
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
+                .build();
+
+        // Start the connector ...
+        start(getConnectorClass(), config);
+
+        Print.enable();
+        // SET + USE + Drop DB + create DB + CREATE/DROP for each table
+        consumeRecordsByTopic(1 + 1 + 1 + 1 + TABLE_COUNT * 2);
+
+        // Execute a TRUNCATE statement
+        try (BinlogTestConnection connection = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            connection.execute("CREATE TABLE employees (\n" +
+                    "    id INT PRIMARY KEY AUTO_INCREMENT,\n" +
+                    "    first_name VARCHAR(50),\n" +
+                    "    last_name VARCHAR(50),\n" +
+                    "    department_id INT,\n" +
+                    "    created_at DATETIME DEFAULT CURRENT_TIMESTAMP\n" +
+                    ");");
+            connection.execute("CREATE DEFINER=`root`@`localhost` TRIGGER trg_before_insert_employees\n" +
+                    "BEFORE INSERT ON employees\n" +
+                    "FOR EACH ROW\n" +
+                    "BEGIN\n" +
+                    "    IF NEW.department_id IS NULL THEN\n" +
+                    "        SET NEW.department_id = 999;\n" +
+                    "    END IF;\n" +
+                    "END");
+            connection.execute("DROP TRIGGER trg_before_insert_employees");
+        }
+
+        // no DDLs other than create table should be received
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> ddlRecords = records.recordsForTopic(DATABASE.getServerName());
+        assertThat(ddlRecords).hasSize(1);
+        assertThat(((Struct) ddlRecords.get(0).value()).getString("ddl")).contains("CREATE TABLE employees");
+    }
+
+    @Test
+    public void shouldNotStoreProcedure() throws SQLException, InterruptedException {
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
+                .build();
+
+        // Start the connector ...
+        start(getConnectorClass(), config);
+
+        Print.enable();
+        // SET + USE + Drop DB + create DB + CREATE/DROP for each table
+        consumeRecordsByTopic(1 + 1 + 1 + 1 + TABLE_COUNT * 2);
+
+        // Execute a TRUNCATE statement
+        try (BinlogTestConnection connection = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            connection.execute("CREATE TABLE employees (\n" +
+                    "    id INT PRIMARY KEY AUTO_INCREMENT,\n" +
+                    "    first_name VARCHAR(50),\n" +
+                    "    last_name VARCHAR(50),\n" +
+                    "    department_id INT,\n" +
+                    "    created_at DATETIME DEFAULT CURRENT_TIMESTAMP\n" +
+                    ");");
+            connection.execute("CREATE DEFINER=`root`@`localhost` PROCEDURE `promote_employee`(IN emp_id INT)\n" +
+                    "BEGIN\n" +
+                    "    UPDATE employees SET department_id = department_id + 1 WHERE id = emp_id;\n" +
+                    "END");
+            connection.execute("DROP PROCEDURE promote_employee");
+        }
+
+        // no DDLs other than create table should be received
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> ddlRecords = records.recordsForTopic(DATABASE.getServerName());
+        assertThat(ddlRecords).hasSize(1);
+        assertThat(((Struct) ddlRecords.get(0).value()).getString("ddl")).contains("CREATE TABLE employees");
+    }
+
+    @Test
+    public void shouldNotStoreTruncateIfSkipped() throws SQLException, InterruptedException {
         skipAvroValidation();
         config = DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
@@ -179,32 +325,54 @@ public abstract class BinlogSchemaHistoryIT<C extends SourceConnector> extends A
         Print.enable();
         // SET + USE + Drop DB + create DB + CREATE/DROP for each table
         SourceRecords records = consumeRecordsByTopic(1 + 1 + 1 + 1 + TABLE_COUNT * 2);
-        assertDdls(records);
 
         // By default, TRUNCATE operations are skipped (debezium.skipped.operations=t)
         try (BinlogTestConnection connection = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
             connection.execute("TRUNCATE table `t-1`");
+            connection.execute("CREATE TABLE employees (\n" +
+                    "    id INT PRIMARY KEY AUTO_INCREMENT,\n" +
+                    "    first_name VARCHAR(50),\n" +
+                    "    last_name VARCHAR(50),\n" +
+                    "    department_id INT,\n" +
+                    "    created_at DATETIME DEFAULT CURRENT_TIMESTAMP\n" +
+                    ");");
         }
 
-        // So no records should be received
+        // no DDLs corresponding to TRUNCATE should be received
         records = consumeRecordsByTopic(1);
-        assertThat(records.allRecordsInOrder()).isEmpty();
+        List<SourceRecord> ddlRecords = records.recordsForTopic(DATABASE.getServerName());
+        assertThat(ddlRecords).hasSize(1);
+        assertThat(((Struct) ddlRecords.get(0).value()).getString("ddl")).contains("CREATE TABLE employees");
+    }
 
-        stopConnector();
+    @Test
+    public void shouldStoreTruncateIfNotSkipped() throws SQLException, InterruptedException {
+        skipAvroValidation();
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
+                .with(BinlogConnectorConfig.SKIPPED_OPERATIONS, "none")
+                .build();
 
-        // Reconfigure the connector to NOT skip TRUNCATE operations
-        config = config.edit().with(BinlogConnectorConfig.SKIPPED_OPERATIONS, "none").build();
-
-        // Restart the connector with the new configuration
+        // Start the connector ...
         start(getConnectorClass(), config);
 
-        // Execute a TRUNCATE statement
+        Print.enable();
+        // SET + USE + Drop DB + create DB + CREATE/DROP for each table
+        SourceRecords records = consumeRecordsByTopic(1 + 1 + 1 + 1 + TABLE_COUNT * 2);
+
         try (BinlogTestConnection connection = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
             connection.execute("TRUNCATE table `t-1`");
+            connection.execute("CREATE TABLE employees (\n" +
+                    "    id INT PRIMARY KEY AUTO_INCREMENT,\n" +
+                    "    first_name VARCHAR(50),\n" +
+                    "    last_name VARCHAR(50),\n" +
+                    "    department_id INT,\n" +
+                    "    created_at DATETIME DEFAULT CURRENT_TIMESTAMP\n" +
+                    ");");
         }
 
         // Now we should receive a TRUNCATE record
-        records = consumeRecordsByTopic(1);
+        records = consumeRecordsByTopic(2);
         final List<SourceRecord> truncateRecords = records.recordsForTopic(DATABASE.topicForTable("t-1"));
         assertThat(truncateRecords).hasSize(1);
         final SourceRecord truncateRecord = truncateRecords.get(0);
@@ -212,7 +380,112 @@ public abstract class BinlogSchemaHistoryIT<C extends SourceConnector> extends A
         assertThat(value.getString("op")).isEqualTo("t");
 
         // but no DDLs should be received
-        assertThat(records.recordsForTopic(DATABASE.getDatabaseName())).isNull();
+        List<SourceRecord> ddlRecords = records.recordsForTopic(DATABASE.getServerName());
+        assertThat(ddlRecords).hasSize(1);
+        assertThat(((Struct) ddlRecords.get(0).value()).getString("ddl")).contains("CREATE TABLE employees");
+    }
+
+    @Test
+    public void shouldNotStoreAnalyzeOrOptimize() throws SQLException, InterruptedException {
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
+                .build();
+
+        // Start the connector ...
+        start(getConnectorClass(), config);
+
+        Print.enable();
+        // SET + USE + Drop DB + create DB + CREATE/DROP for each table
+        consumeRecordsByTopic(1 + 1 + 1 + 1 + TABLE_COUNT * 2);
+
+        // Execute ANALYZE and OPTIMIZE statements which should be filtered out
+        try (BinlogTestConnection connection = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            connection.execute("CREATE TABLE employees (\n" +
+                    "    id INT PRIMARY KEY AUTO_INCREMENT,\n" +
+                    "    first_name VARCHAR(50),\n" +
+                    "    last_name VARCHAR(50),\n" +
+                    "    department_id INT,\n" +
+                    "    created_at DATETIME DEFAULT CURRENT_TIMESTAMP\n" +
+                    ");");
+            connection.execute("ANALYZE TABLE employees");
+            connection.execute("OPTIMIZE TABLE employees");
+        }
+
+        // Only CREATE TABLE should be received, ANALYZE/OPTIMIZE should be filtered out
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> ddlRecords = records.recordsForTopic(DATABASE.getServerName());
+        assertThat(ddlRecords).hasSize(1);
+        assertThat(((Struct) ddlRecords.get(0).value()).getString("ddl")).contains("CREATE TABLE employees");
+    }
+
+    @Test
+    public void shouldNotStoreUserStatements() throws SQLException, InterruptedException {
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
+                .build();
+
+        // Start the connector ...
+        start(getConnectorClass(), config);
+
+        Print.enable();
+        // SET + USE + Drop DB + create DB + CREATE/DROP for each table
+        consumeRecordsByTopic(1 + 1 + 1 + 1 + TABLE_COUNT * 2);
+
+        // Execute CREATE/DROP USER statements which should be filtered out
+        try (BinlogTestConnection connection = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            connection.execute("CREATE USER 'test_user'@'localhost' IDENTIFIED BY 'password';");
+            connection.execute("DROP USER 'test_user'@'localhost';");
+            connection.execute("CREATE TABLE employees (\n" +
+                    "    id INT PRIMARY KEY AUTO_INCREMENT,\n" +
+                    "    first_name VARCHAR(50),\n" +
+                    "    last_name VARCHAR(50),\n" +
+                    "    department_id INT,\n" +
+                    "    created_at DATETIME DEFAULT CURRENT_TIMESTAMP\n" +
+                    ");");
+        }
+
+        // Only CREATE TABLE should be received, CREATE/DROP USER should be filtered out
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> ddlRecords = records.recordsForTopic(DATABASE.getServerName());
+        assertThat(ddlRecords).hasSize(1);
+        assertThat(((Struct) ddlRecords.get(0).value()).getString("ddl")).contains("CREATE TABLE employees");
+    }
+
+    @Test
+    public void shouldNotStoreRoleStatements() throws SQLException, InterruptedException {
+        config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, BinlogConnectorConfig.SnapshotMode.NO_DATA)
+                .build();
+
+        // Start the connector ...
+        start(getConnectorClass(), config);
+
+        Print.enable();
+        // SET + USE + Drop DB + create DB + CREATE/DROP for each table
+        consumeRecordsByTopic(1 + 1 + 1 + 1 + TABLE_COUNT * 2);
+
+        // Execute ROLE and GRANT/REVOKE statements which should be filtered out
+        try (BinlogTestConnection connection = getTestDatabaseConnection(DATABASE.getDatabaseName())) {
+            // Ensure a clean slate and exercise role and privilege statements.
+            connection.execute("DROP ROLE IF EXISTS app_role;");
+            connection.execute("CREATE ROLE app_role;");
+            connection.execute("DROP ROLE app_role;");
+
+            // Add a regular DDL that should be stored so we can assert exactly one DDL event.
+            connection.execute("CREATE TABLE employees (\n" +
+                    "    id INT PRIMARY KEY AUTO_INCREMENT,\n" +
+                    "    first_name VARCHAR(50),\n" +
+                    "    last_name VARCHAR(50),\n" +
+                    "    department_id INT,\n" +
+                    "    created_at DATETIME DEFAULT CURRENT_TIMESTAMP\n" +
+                    ");");
+        }
+
+        // Only CREATE TABLE should be received, ROLE and GRANT/REVOKE should be filtered out
+        SourceRecords records = consumeRecordsByTopic(1);
+        List<SourceRecord> ddlRecords = records.recordsForTopic(DATABASE.getServerName());
+        assertThat(ddlRecords).hasSize(1);
+        assertThat(((Struct) ddlRecords.get(0).value()).getString("ddl")).contains("CREATE TABLE employees");
     }
 
     private void assertDdls(SourceRecords records) {
