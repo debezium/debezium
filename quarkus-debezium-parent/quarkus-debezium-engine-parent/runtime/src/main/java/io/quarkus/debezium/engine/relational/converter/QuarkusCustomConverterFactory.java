@@ -41,7 +41,7 @@ public class QuarkusCustomConverterFactory implements CustomConverterFactory {
             @Override
             public void converterFor(ConvertedField field, ConverterRegistration<SchemaBuilder> registration) {
                 converters.forEach(converter -> {
-                    if (!converter.filter().test(field)) {
+                    if (!converter.filter(field)) {
                         return;
                     }
                     CustomConverterRegistry.ConverterDefinition<SchemaBuilder> definition = converter.bind(field);

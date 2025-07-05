@@ -39,6 +39,7 @@ import io.debezium.pipeline.signal.channels.jmx.JmxSignalChannel;
 import io.debezium.pipeline.signal.channels.process.InProcessSignalChannel;
 import io.debezium.pipeline.txmetadata.DefaultTransactionMetadataFactory;
 import io.debezium.processors.spi.PostProcessor;
+import io.debezium.runtime.FieldFilterStrategy;
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.snapshot.lock.NoLockingSupport;
@@ -241,6 +242,7 @@ public class EngineProcessor {
                 true));
 
         PostProcessorGenerator postProcessorGenerator = new PostProcessorGenerator(new GeneratedClassGizmoAdaptor(generatedClassBuildItemBuildProducer, true));
+        CustomConverterGenerator customConverterGenerator = new CustomConverterGenerator(new GeneratedClassGizmoAdaptor(generatedClassBuildItemBuildProducer, true));
 
         mediatorBuildItems.forEach(item -> {
             if (item.getDotName().equals(DebeziumDotNames.CAPTURING)) {
@@ -261,6 +263,13 @@ public class EngineProcessor {
 
                 reflectiveClassBuildItemBuildProducer.produce(ReflectiveClassBuildItem.builder(metaData.generatedClassName()).build());
             }
+
+            if (item.getDotName().equals(DebeziumDotNames.CUSTOM_CONVERTER)) {
+                GeneratedClassMetaData metaData = customConverterGenerator.generate(item.getMethodInfo(), item.getBean());
+
+                reflectiveClassBuildItemBuildProducer.produce(ReflectiveClassBuildItem.builder(metaData.generatedClassName()).build());
+            }
+
         });
     }
 
@@ -322,6 +331,13 @@ public class EngineProcessor {
                         .map(methodInfo -> new DebeziumMediatorBuildItem(beanInfo, methodInfo, dbz.get(methodInfo))))
                 .forEach(mediatorBuildItemBuildProducer::produce);
 
+        beanDiscoveryFinished
+                .beanStream()
+                .classBeans()
+                .filter(a -> a.getImplClazz().interfaceNames().contains(DebeziumDotNames.FIELD_FILTER_STRATEGY))
+                .stream()
+                .map(a -> new DebeziumMediatorBuildItem(a, null, DebeziumDotNames.FIELD_FILTER_STRATEGY))
+                .forEach(mediatorBuildItemBuildProducer::produce);
     }
 
     @BuildStep
@@ -330,5 +346,10 @@ public class EngineProcessor {
                 .stream()
                 .map(dotName -> new UnremovableBeanBuildItem(new BeanClassAnnotationExclusion(dotName)))
                 .toList();
+    }
+
+    @BuildStep
+    public UnremovableBeanBuildItem avoidRemovalIfNotReferenced() {
+        return UnremovableBeanBuildItem.beanTypes(FieldFilterStrategy.class);
     }
 }
