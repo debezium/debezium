@@ -12,6 +12,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import io.debezium.common.annotation.Incubating;
+import io.debezium.runtime.FieldFilterStrategy.DefaultFieldFilterStrategy;
 
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
@@ -19,7 +20,7 @@ import io.debezium.common.annotation.Incubating;
 public @interface CustomConverter {
 
     /**
-     * @return the bean name of {@link FieldFilterStrategy} instance
+     * @return the bean class instance that implements {@link FieldFilterStrategy}
      */
-    String filter();
+    Class<? extends FieldFilterStrategy> filter() default DefaultFieldFilterStrategy.class;
 }
