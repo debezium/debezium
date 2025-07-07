@@ -7,6 +7,7 @@ package io.debezium.connector.mariadb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Collections;
 import java.util.Set;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -69,7 +70,7 @@ public class DatabaseSchemaTest extends BinlogDatabaseSchemaTest<MariaDbConnecto
                         CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN),
                 (TopicNamingStrategy) DefaultTopicNamingStrategy.create(connectorConfig),
                 SchemaNameAdjuster.create(),
-                false, connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class));
+                false, new CustomConverterRegistry(Collections.emptyList()));
     }
 
     @Override
