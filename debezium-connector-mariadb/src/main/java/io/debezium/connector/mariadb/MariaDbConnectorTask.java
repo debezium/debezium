@@ -107,6 +107,9 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                 new MariaDbPartition.Provider(connectorConfig, config),
                 new MariaDbOffsetContext.Loader(connectorConfig));
 
+        // Service providers
+        registerServiceProviders(connectorConfig.getServiceRegistry());
+
         final boolean tableIdCaseInsensitive = connection.isTableIdCaseSensitive();
         CustomConverterRegistry converterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
 
@@ -122,9 +125,6 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
         connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CDC_SOURCE_TASK_CONTEXT, taskContext);
-
-        // Service providers
-        registerServiceProviders(connectorConfig.getServiceRegistry());
 
         final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
         final Snapshotter snapshotter = snapshotterService.getSnapshotter();
