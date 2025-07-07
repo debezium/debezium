@@ -18,6 +18,7 @@ import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.processors.spi.PostProcessor;
+import io.debezium.processors.spi.PostProcessorFactory;
 import io.debezium.service.spi.ServiceProvider;
 import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.util.Strings;

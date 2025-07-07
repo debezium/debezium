@@ -8,8 +8,8 @@ package io.quarkus.debezium.engine.post.processing;
 
 import java.util.List;
 
-import io.debezium.processors.PostProcessorFactory;
 import io.debezium.processors.spi.PostProcessor;
+import io.debezium.processors.spi.PostProcessorFactory;
 import io.quarkus.arc.Arc;
 
 public class ArcPostProcessorFactory implements PostProcessorFactory {
