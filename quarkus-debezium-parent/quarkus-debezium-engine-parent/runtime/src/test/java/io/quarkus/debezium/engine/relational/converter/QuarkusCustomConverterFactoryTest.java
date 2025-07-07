@@ -8,7 +8,9 @@ package io.quarkus.debezium.engine.relational.converter;
 
 import static org.apache.kafka.connect.data.Schema.Type.INT8;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;

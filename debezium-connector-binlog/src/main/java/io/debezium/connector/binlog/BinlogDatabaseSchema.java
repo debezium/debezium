@@ -16,8 +16,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.relational.*;
+import io.debezium.relational.CustomConverterRegistry;
+import io.debezium.relational.DefaultValueConverter;
+import io.debezium.relational.HistorizedRelationalDatabaseSchema;
+import io.debezium.relational.RelationalTableFilters;
+import io.debezium.relational.SystemVariables;
 import io.debezium.relational.SystemVariables.Scope;
+import io.debezium.relational.Table;
+import io.debezium.relational.TableId;
+import io.debezium.relational.TableSchema;
+import io.debezium.relational.TableSchemaBuilder;
+import io.debezium.relational.ValueConverterProvider;
 import io.debezium.relational.ddl.DdlChanges;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.ddl.DdlParserListener;

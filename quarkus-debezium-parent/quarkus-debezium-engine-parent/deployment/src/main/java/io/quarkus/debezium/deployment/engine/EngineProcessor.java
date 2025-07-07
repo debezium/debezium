@@ -69,7 +69,11 @@ import io.quarkus.arc.deployment.UnremovableBeanBuildItem.BeanClassAnnotationExc
 import io.quarkus.arc.processor.BeanInfo;
 import io.quarkus.arc.processor.DotNames;
 import io.quarkus.debezium.deployment.dotnames.DebeziumDotNames;
-import io.quarkus.debezium.deployment.items.*;
+import io.quarkus.debezium.deployment.items.DebeziumConnectorBuildItem;
+import io.quarkus.debezium.deployment.items.DebeziumGeneratedCustomConverterBuildItem;
+import io.quarkus.debezium.deployment.items.DebeziumGeneratedInvokerBuildItem;
+import io.quarkus.debezium.deployment.items.DebeziumGeneratedPostProcessorBuildItem;
+import io.quarkus.debezium.deployment.items.DebeziumMediatorBuildItem;
 import io.quarkus.debezium.engine.DebeziumRecorder;
 import io.quarkus.debezium.engine.DefaultStateHandler;
 import io.quarkus.debezium.engine.capture.CapturingInvoker;

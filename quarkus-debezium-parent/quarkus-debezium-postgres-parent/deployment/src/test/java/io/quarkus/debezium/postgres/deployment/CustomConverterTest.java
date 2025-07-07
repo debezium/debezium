@@ -22,7 +22,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.debezium.relational.CustomConverterRegistry.ConverterDefinition;
-import io.debezium.runtime.*;
+import io.debezium.runtime.CustomConverter;
+import io.debezium.runtime.Debezium;
+import io.debezium.runtime.DebeziumStatus;
+import io.debezium.runtime.FieldFilterStrategy;
 import io.debezium.spi.converter.ConvertedField;
 import io.quarkus.test.QuarkusUnitTest;
 import io.quarkus.test.common.QuarkusTestResource;
