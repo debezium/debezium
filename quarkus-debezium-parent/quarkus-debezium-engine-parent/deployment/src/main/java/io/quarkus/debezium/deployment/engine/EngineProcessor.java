@@ -13,6 +13,9 @@ import static io.quarkus.deployment.annotations.ExecutionTime.RUNTIME_INIT;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
 
@@ -21,7 +24,9 @@ import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 import org.apache.kafka.connect.transforms.predicates.TopicNameMatches;
+import org.jboss.jandex.AnnotationValue;
 import org.jboss.jandex.DotName;
+import org.jboss.jandex.Type;
 
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.embedded.async.ConvertingAsyncEngineBuilderFactory;
@@ -61,19 +66,19 @@ import io.quarkus.arc.deployment.BeanDiscoveryFinishedBuildItem;
 import io.quarkus.arc.deployment.SyntheticBeanBuildItem;
 import io.quarkus.arc.deployment.UnremovableBeanBuildItem;
 import io.quarkus.arc.deployment.UnremovableBeanBuildItem.BeanClassAnnotationExclusion;
+import io.quarkus.arc.processor.BeanInfo;
 import io.quarkus.arc.processor.DotNames;
 import io.quarkus.debezium.deployment.dotnames.DebeziumDotNames;
-import io.quarkus.debezium.deployment.items.DebeziumConnectorBuildItem;
-import io.quarkus.debezium.deployment.items.DebeziumGeneratedInvokerBuildItem;
-import io.quarkus.debezium.deployment.items.DebeziumGeneratedPostProcessorBuildItem;
-import io.quarkus.debezium.deployment.items.DebeziumMediatorBuildItem;
+import io.quarkus.debezium.deployment.items.*;
 import io.quarkus.debezium.engine.DebeziumRecorder;
 import io.quarkus.debezium.engine.DefaultStateHandler;
 import io.quarkus.debezium.engine.capture.CapturingInvoker;
 import io.quarkus.debezium.engine.capture.CapturingSourceRecordInvokerRegistryProducer;
 import io.quarkus.debezium.engine.capture.DynamicCapturingInvokerSupplier;
+import io.quarkus.debezium.engine.converter.custom.DynamicCustomConverterSupplier;
 import io.quarkus.debezium.engine.post.processing.ArcPostProcessorFactory;
 import io.quarkus.debezium.engine.post.processing.DynamicPostProcessingSupplier;
+import io.quarkus.debezium.engine.relational.converter.QuarkusCustomConverter;
 import io.quarkus.debezium.notification.DefaultNotificationHandler;
 import io.quarkus.debezium.notification.QuarkusNotificationChannel;
 import io.quarkus.debezium.notification.SnapshotHandler;
@@ -237,12 +242,17 @@ public class EngineProcessor {
                                  BuildProducer<GeneratedClassBuildItem> generatedClassBuildItemBuildProducer,
                                  BuildProducer<ReflectiveClassBuildItem> reflectiveClassBuildItemBuildProducer,
                                  BuildProducer<DebeziumGeneratedInvokerBuildItem> debeziumGeneratedInvokerBuildItemBuildProducer,
+                                 BuildProducer<DebeziumGeneratedCustomConverterBuildItem> debeziumGeneratedCustomConverterBuildItemBuildProducer,
                                  BuildProducer<DebeziumGeneratedPostProcessorBuildItem> debeziumGeneratedPostProcessorBuildItemmBuildProducer) {
         InvokerGenerator invokerGenerator = new InvokerGenerator(new GeneratedClassGizmoAdaptor(generatedClassBuildItemBuildProducer,
                 true));
 
         PostProcessorGenerator postProcessorGenerator = new PostProcessorGenerator(new GeneratedClassGizmoAdaptor(generatedClassBuildItemBuildProducer, true));
         CustomConverterGenerator customConverterGenerator = new CustomConverterGenerator(new GeneratedClassGizmoAdaptor(generatedClassBuildItemBuildProducer, true));
+
+        Map<Type, DebeziumMediatorBuildItem> fieldFilterStrategyByClassName = mediatorBuildItems.stream()
+                .filter(item -> item.getDotName().equals(DebeziumDotNames.FIELD_FILTER_STRATEGY))
+                .collect(Collectors.toMap(item -> item.getBean().getProviderType(), item -> item));
 
         mediatorBuildItems.forEach(item -> {
             if (item.getDotName().equals(DebeziumDotNames.CAPTURING)) {
@@ -265,7 +275,18 @@ public class EngineProcessor {
             }
 
             if (item.getDotName().equals(DebeziumDotNames.CUSTOM_CONVERTER)) {
-                GeneratedClassMetaData metaData = customConverterGenerator.generate(item.getMethodInfo(), item.getBean());
+                BeanInfo filter = Optional.ofNullable(item.getMethodInfo().annotation(DebeziumDotNames.CUSTOM_CONVERTER).value("filter"))
+                        .map(AnnotationValue::asClass)
+                        .map(fieldFilterStrategyByClassName::get)
+                        .map(DebeziumMediatorBuildItem::getBean)
+                        .orElse(null);
+
+                GeneratedConverterClassMetaData metaData = customConverterGenerator.generate(item.getMethodInfo(), item.getBean(), filter);
+                debeziumGeneratedCustomConverterBuildItemBuildProducer.produce(new DebeziumGeneratedCustomConverterBuildItem(
+                        metaData.generatedClassName(),
+                        metaData.binder(),
+                        metaData.getShortIdentifier(),
+                        metaData.filter()));
 
                 reflectiveClassBuildItemBuildProducer.produce(ReflectiveClassBuildItem.builder(metaData.generatedClassName()).build());
             }
@@ -312,6 +333,26 @@ public class EngineProcessor {
     }
 
     @BuildStep
+    @Record(RUNTIME_INIT)
+    public void injectCustomConverters(
+                                       RecorderContext recorderContext,
+                                       BuildProducer<SyntheticBeanBuildItem> syntheticBeanBuildItemBuildProducer,
+                                       DynamicCustomConverterSupplier dynamicCustomConverterSupplier,
+                                       List<DebeziumGeneratedCustomConverterBuildItem> debeziumGeneratedCustomConverterBuildItems) {
+        debeziumGeneratedCustomConverterBuildItems.forEach(item -> syntheticBeanBuildItemBuildProducer.produce(
+                SyntheticBeanBuildItem.configure(QuarkusCustomConverter.class)
+                        .setRuntimeInit()
+                        .scope(ApplicationScoped.class)
+                        .unremovable()
+                        .supplier(dynamicCustomConverterSupplier.createQuarkusCustomConverter(
+                                recorderContext.classProxy(item.getBinder().getImplClazz().name().toString()),
+                                item.getFilter() != null ? recorderContext.classProxy(item.getFilter().getImplClazz().name().toString()) : null,
+                                (Class<? extends QuarkusCustomConverter>) recorderContext.classProxy(item.getGeneratedClassName())))
+                        .named(DynamicCustomConverterSupplier.BASE_NAME + item.getBinder().getImplClazz().name() + item.getId())
+                        .done()));
+    }
+
+    @BuildStep
     public void extractMediators(BuildProducer<DebeziumMediatorBuildItem> mediatorBuildItemBuildProducer,
                                  BeanDiscoveryFinishedBuildItem beanDiscoveryFinished) {
 
@@ -334,9 +375,9 @@ public class EngineProcessor {
         beanDiscoveryFinished
                 .beanStream()
                 .classBeans()
-                .filter(a -> a.getImplClazz().interfaceNames().contains(DebeziumDotNames.FIELD_FILTER_STRATEGY))
+                .filter(info -> info.getImplClazz().interfaceNames().contains(DebeziumDotNames.FIELD_FILTER_STRATEGY))
                 .stream()
-                .map(a -> new DebeziumMediatorBuildItem(a, null, DebeziumDotNames.FIELD_FILTER_STRATEGY))
+                .map(info -> new DebeziumMediatorBuildItem(info, null, DebeziumDotNames.FIELD_FILTER_STRATEGY))
                 .forEach(mediatorBuildItemBuildProducer::produce);
     }
 
