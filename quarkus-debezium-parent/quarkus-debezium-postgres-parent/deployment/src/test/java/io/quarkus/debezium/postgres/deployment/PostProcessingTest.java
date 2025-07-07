@@ -48,7 +48,7 @@ public class PostProcessingTest {
     @RegisterExtension
     static final QuarkusUnitTest setup = new QuarkusUnitTest()
             .withApplicationRoot((jar) -> jar
-                    .addClasses(CapturingTest.CaptureProductsHandler.class))
+                    .addClasses(PostProcessingTest.PostProcessingHandler.class))
             .overrideConfigKey("quarkus.debezium.offset.storage", "org.apache.kafka.connect.storage.MemoryOffsetBackingStore")
             .overrideConfigKey("quarkus.debezium.name", "test")
             .overrideConfigKey("quarkus.debezium.topic.prefix", "dbserver1")
