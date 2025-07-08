@@ -263,7 +263,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
             return;
         }
 
-        if (previousOffset != null) {
+        if (previousOffset != null && !snapshotterService.getSnapshotter().shouldStreamEventsStartingFromSnapshot()) {
             ctx.offset = previousOffset;
             tryStartingSnapshot(ctx);
             return;

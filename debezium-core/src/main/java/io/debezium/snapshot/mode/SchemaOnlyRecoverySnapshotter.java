@@ -15,4 +15,8 @@ public class SchemaOnlyRecoverySnapshotter extends NoDataSnapshotter {
         return "schema_only_recovery";
     }
 
+    @Override
+    public boolean shouldStreamEventsStartingFromSnapshot() {
+        return false;
+    }
 }
