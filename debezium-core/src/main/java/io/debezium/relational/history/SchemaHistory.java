@@ -95,7 +95,7 @@ public interface SchemaHistory {
                             "^(?:SET STATEMENT\\s+.*?FOR\\s+)?(?:GRANT|REVOKE)\\s+.*," +
 
                             // ANALYZE or OPTIMIZE (all variants)
-                            "^(?:SET STATEMENT\\s+.*?FOR\\s+)?(?:ANALYZE|OPTIMIZE)\\s+"
+                            "^(?:SET STATEMENT\\s+.*?FOR\\s+)?(?:ANALYZE|OPTIMIZE|REPAIR)\\s+"
                             + "(?:NO_WRITE_TO_BINLOG\\s+|LOCAL\\s+)?TABLE\\s+.*," +
 
                             // CREATE | ALTER | DROP USER / ROLE
