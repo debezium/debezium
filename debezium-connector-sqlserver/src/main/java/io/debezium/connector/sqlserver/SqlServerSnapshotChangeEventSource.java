@@ -149,9 +149,7 @@ public class SqlServerSnapshotChangeEventSource extends RelationalSnapshotChange
                                            SqlServerOffsetContext previousOffset)
             throws Exception {
 
-        // Support the existence of the case when the previous offset.
-        // e.g., schema_only_recovery snapshot mode
-        if (connectorConfig.getSnapshotMode() != SqlServerConnectorConfig.SnapshotMode.ALWAYS && previousOffset != null) {
+        if (previousOffset != null && !snapshotterService.getSnapshotter().shouldStreamEventsStartingFromSnapshot()) {
             ctx.offset = previousOffset;
             tryStartingSnapshot(ctx);
             return;
