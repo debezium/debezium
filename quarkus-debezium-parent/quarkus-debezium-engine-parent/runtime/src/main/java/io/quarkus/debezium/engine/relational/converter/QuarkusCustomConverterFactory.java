@@ -18,6 +18,12 @@ import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.spi.converter.ConvertedField;
 import io.debezium.spi.converter.CustomConverter;
 
+/**
+ *
+ * Quarkus based {@link CustomConverterFactory}, it returns a {@link CustomConverter} based on Quarkus Arc
+ *
+ * @author Giovanni Panice
+ */
 public class QuarkusCustomConverterFactory implements CustomConverterFactory {
 
     private final List<QuarkusCustomConverter> converters;
