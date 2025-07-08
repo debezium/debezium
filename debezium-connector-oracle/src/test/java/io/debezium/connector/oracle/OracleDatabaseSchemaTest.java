@@ -7,6 +7,8 @@ package io.debezium.connector.oracle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -81,7 +83,7 @@ public class OracleDatabaseSchemaTest {
                 schemaNameAdjuster,
                 topicNamingStrategy,
                 sensitivity,
-                false, connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class));
+                false, new CustomConverterRegistry(List.of()));
 
         Table table = Table.editor()
                 .tableId(TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE"))

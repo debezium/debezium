@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Set;
@@ -68,7 +69,7 @@ public class MySqlDatabaseSchemaTest extends BinlogDatabaseSchemaTest<MySqlConne
                         CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN),
                 (TopicNamingStrategy) DefaultTopicNamingStrategy.create(connectorConfig),
                 SchemaNameAdjuster.create(),
-                false, connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class));
+                false, new CustomConverterRegistry(emptyList()));
     }
 
     @Override
