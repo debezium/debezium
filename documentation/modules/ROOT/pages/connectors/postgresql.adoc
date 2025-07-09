@@ -4022,7 +4022,7 @@ For more information, see xref:postgresql-transaction-metadata[Transaction metad
 
 |[[postgresql-property-publish-via-partition-root]]<<postgresql-property-publish-via-partition-root, `+publish.via.partition.root+`>>
 |`false`
-Specifies how the connector captures and emits events for changes that it captures from partitioned tables.
+|Specifies how the connector captures and emits events for changes that it captures from partitioned tables.
 This setting applies only if the xref:postgresql-publication-autocreate-mode[`publication.autocreate.mode`] property is set to `all_tables` or `filtered`, and {prodname} creates the publication for the captured tables.
  
 Set one of the following options:
