@@ -152,7 +152,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                 watch = Stopwatch.accumulating().start();
             }
 
-            if (startMiningSession(minLogScn, Scn.NULL, miningStartAttempts)) {
+            if (startMiningSession(minLogScn, Scn.NULL, miningStartAttempts, getConfig().getLogMiningPathToDictionary())) {
                 miningStartAttempts = 1;
                 minCommitScn = process(minCommitScn);
 

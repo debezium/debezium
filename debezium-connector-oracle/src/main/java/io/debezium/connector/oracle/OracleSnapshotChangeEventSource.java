@@ -25,7 +25,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.SnapshottingTask;
@@ -53,7 +52,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
     private final OracleConnection jdbcConnection;
     private final OracleDatabaseSchema databaseSchema;
 
-    public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, MainConnectionProvidingConnectionFactory<OracleConnection> connectionFactory,
+    public OracleSnapshotChangeEventSource(OracleConnectorConfig connectorConfig, DualOracleConnectionFactory<OracleConnection> connectionFactory,
                                            OracleDatabaseSchema schema, EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock,
                                            SnapshotProgressListener<OraclePartition> snapshotProgressListener,
                                            NotificationService<OraclePartition, OracleOffsetContext> notificationService, SnapshotterService snapshotterService) {
