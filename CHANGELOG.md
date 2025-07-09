@@ -2,6 +2,47 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.2.0.Final
+July 9th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12463706)
+
+### New features since 3.2.0.CR1
+
+* Add SnapshotSkipped status to metrics [DBZ-8610](https://issues.redhat.com/browse/DBZ-8610)
+* Introduce publish.via.partition.root flag in PostgresCDC Connector [DBZ-9158](https://issues.redhat.com/browse/DBZ-9158)
+* Support dynamic message key in Event Hub Sink [DBZ-9195](https://issues.redhat.com/browse/DBZ-9195)
+* Debezium Engine Quarkus Extension: expose Debezium Notification Events [DBZ-8964](https://issues.redhat.com/browse/DBZ-8964)
+* Provide a dedicate module for OpenLineage integration [DBZ-9110](https://issues.redhat.com/browse/DBZ-9110)
+* Add support for headers in NATS Jetstream sink [DBZ-9171](https://issues.redhat.com/browse/DBZ-9171)
+
+
+### Breaking changes since 3.2.0.CR1
+
+* Ibmi connector default to avro for SchemaNameAdjuster [DBZ-9183](https://issues.redhat.com/browse/DBZ-9183)
+
+
+### Fixes since 3.2.0.CR1
+
+* Events inserted during snapshot are being duplicated [DBZ-9006](https://issues.redhat.com/browse/DBZ-9006)
+* DmlParserException: DML statement couldn't be parsed [DBZ-9191](https://issues.redhat.com/browse/DBZ-9191)
+* OpenLineage - Postgres connector emits Lineage Event with incorrect dataset name [DBZ-9192](https://issues.redhat.com/browse/DBZ-9192)
+* Data structures for communicating to DB2 are static [DBZ-9196](https://issues.redhat.com/browse/DBZ-9196)
+* Add filtering for journal types and codes [DBZ-9197](https://issues.redhat.com/browse/DBZ-9197)
+* Oracle connector crashes on redo entry without SQL_REDO for temporary tables [DBZ-9199](https://issues.redhat.com/browse/DBZ-9199)
+* Fix test and noise in Vitess Connector [DBZ-9207](https://issues.redhat.com/browse/DBZ-9207)
+
+
+### Other changes since 3.2.0.CR1
+
+* Debezium Engine Quarkus Extension: Use Quarkus-style Configuration Properties [DBZ-8957](https://issues.redhat.com/browse/DBZ-8957)
+* ORA-00600: possible solutions to be added to the documentation FAQ [DBZ-9155](https://issues.redhat.com/browse/DBZ-9155)
+* Debezium uses deprecated JdbcConnection#quotedColumnIdString() [DBZ-9169](https://issues.redhat.com/browse/DBZ-9169)
+* Add documentation on running integration tests on Apple Silicon [DBZ-9173](https://issues.redhat.com/browse/DBZ-9173)
+* Upgrade PostgreSQL JDBC driver to 42.7.7 [DBZ-9200](https://issues.redhat.com/browse/DBZ-9200)
+* Fix OpenLineage tests [DBZ-9201](https://issues.redhat.com/browse/DBZ-9201)
+* Misleading wording in the WalPositionLocator JavaDoc [DBZ-9203](https://issues.redhat.com/browse/DBZ-9203)
+
+
+
 ## 3.2.0.CR1
 June 25th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12462697)
 

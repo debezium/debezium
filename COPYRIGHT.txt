@@ -19,6 +19,7 @@ Alex Soto
 Alexander Iskuskov
 Alexander Kovryga
 Alexander Schwartz
+Alexandre Colella
 Alexandru Cristu
 Alexey Loubyansky
 Alexey Miroshnikov
@@ -349,6 +350,7 @@ Laurent Broudoux
 Leo Mei
 Lev Zemlyanov
 Li Mo
+Liam Wu
 Linh Nguyen Hoang
 Listman Gamboa
 Liu Hanlin
@@ -492,6 +494,7 @@ Raúl Estrada
 Raúl Tovar
 Renato Mefi
 René Kerner
+René Rütter
 Robert Hana
 Robin Moffatt
 Rodolphe Quiedeville
@@ -542,6 +545,7 @@ Sherafudheen PM
 Sheldon Fuchs
 Shichao An
 Shivam Sharma
+Shubham Kalla
 Shubham Rawat
 Shuguang Xiang
 Shuran Zhang
