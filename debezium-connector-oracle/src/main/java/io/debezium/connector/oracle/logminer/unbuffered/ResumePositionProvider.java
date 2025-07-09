@@ -96,7 +96,7 @@ public class ResumePositionProvider implements AutoCloseable {
 
             sessionContext.addLogFiles(logFiles);
 
-            sessionContext.startSession(currentResumeScn, Scn.NULL, false);
+            sessionContext.startSession(currentResumeScn, Scn.NULL, false, null);
 
             final Scn resumeScn = connection.prepareQueryAndMap(
                     "SELECT * FROM V$LOGMNR_CONTENTS WHERE OPERATION_CODE IN (6,7,36) AND SCN <= ?",

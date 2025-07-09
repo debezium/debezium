@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import io.debezium.connector.oracle.OracleConnectorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -108,7 +109,7 @@ public class LogMinerSessionContext implements AutoCloseable {
      * @throws SQLException if a database exception occurred starting the mining session
      * @throws RetriableLogMinerException if the operation should be retried
      */
-    public void startSession(Scn startScn, Scn endScn, boolean committedDataOnly) throws SQLException {
+    public void startSession(Scn startScn, Scn endScn, boolean committedDataOnly, String dictionaryFilePath) throws SQLException {
         Objects.requireNonNull(startScn, "The start SCN must be provided, but can be Scn.NULL");
         Objects.requireNonNull(endScn, "The end SCN must be provided, but can be Scn.NULL");
 
@@ -122,6 +123,9 @@ public class LogMinerSessionContext implements AutoCloseable {
                 query.append("endScn => '").append(endScn).append("', ");
             }
             query.append("options => ").append(String.join(" + ", getMiningOptions(committedDataOnly)));
+            if (strategy == OracleConnectorConfig.LogMiningStrategy.DICTIONARY_FROM_FILE) {
+                query.append(", DICTFILENAME => '").append(dictionaryFilePath).append("'");
+            }
             query.append("); END;");
 
             Instant startTime = Instant.now();

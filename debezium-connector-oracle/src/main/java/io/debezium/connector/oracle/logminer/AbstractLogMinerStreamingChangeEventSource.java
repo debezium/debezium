@@ -1134,12 +1134,12 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @return {@code true} if the session was started successfully, {@code false} otherwise
      * @throws SQLException if a mining session failed to start
      */
-    protected boolean startMiningSession(Scn startScn, Scn endScn, int attempts) throws SQLException {
+    protected boolean startMiningSession(Scn startScn, Scn endScn, int attempts, String dictionaryFilePath) throws SQLException {
         try {
             LOGGER.debug("Starting mining session [startScn={}, endScn={}, strategy={}, attempts={}/{}]",
                     startScn, endScn, connectorConfig.getLogMiningStrategy(), attempts, MINING_START_RETRIES);
 
-            sessionContext.startSession(startScn, endScn, isUsingCommittedDataOnly());
+            sessionContext.startSession(startScn, endScn, isUsingCommittedDataOnly(), dictionaryFilePath);
             metrics.setLastMiningSessionStartDuration(sessionContext.getLastSessionStartTime());
 
             return true;
