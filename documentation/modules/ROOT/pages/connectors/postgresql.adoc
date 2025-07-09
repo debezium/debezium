@@ -4022,9 +4022,21 @@ For more information, see xref:postgresql-transaction-metadata[Transaction metad
 
 |[[postgresql-property-publish-via-partition-root]]<<postgresql-property-publish-via-partition-root, `+publish.via.partition.root+`>>
 |`false`
-|Determines whether streaming changes for partitioned tables are captured at the root partition level (`true`) or at the individual partition level (`false`).
-When `true`, publications will be created with `publish_via_partition_root = true` parameter for partitioned tables.
-When `false`, publications will be created without this parameter and it will not capture root level table changes.
+Specifies how the connector captures and emits events for changes that it captures from partitioned tables.
+This setting applies only if the xref:postgresql-publication-autocreate-mode[`publication.autocreate.mode`] property is set to `all_tables` or `filtered`, and {prodname} creates the publication for the captured tables.
+ 
+Set one of the following options:
+ 
+`true`::
+The connector emits change events for all partitions to a topic with the name of the base table.
+ +
+When the connector creates a publication, it submits a `CREATE PUBLICATION` statement in which the `publish_via_partition_root` parameter is set to `true`.
+As a result, the publication ignores the partition in which changes originate, and only records the name of the name of the source table. 
+
+`false`::
+The connector emits changes from each source partition to a topic that reflects the name of the partition.
+ +
+When the connector creates the publication, the `CREATE PUBLICATION` statement omits the `publish_via_partition_root` parameter so that the publication always uses the name of the source partition to publish change events.
 
 |[[postgresql-property-flush-lsn-source]]<<postgresql-property-flush-lsn-source, `+flush.lsn.source+`>>
 |`true`
