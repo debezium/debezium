@@ -90,12 +90,9 @@ public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHea
     }
 
     /**
-     * Create a heartbeat that can be scheduled with some delay
-     * @param connectorConfig
-     * @param connectionProvider
-     * @param errorHandler
-     * @param queue
-     * @return
+     *
+     * Create a heartbeat instance that can be scheduled with some delay based on {@link CommonConnectorConfig}
+     *
      */
     @Override
     public ScheduledHeartbeat getScheduledHeartbeat(CommonConnectorConfig connectorConfig,
