@@ -1821,13 +1821,7 @@ public abstract class CommonConnectorConfig {
     }
 
     /**
-     * This method is deprecated and replaced with {@link io.debezium.heartbeat.HeartbeatFactory}
-     *
-     * @param topicNamingStrategy
-     * @param schemaNameAdjuster
-     * @param connectionProvider
-     * @param errorHandler
-     * @return
+     * @deprecated Use {@link io.debezium.heartbeat.HeartbeatFactory} instead.
      */
     @Deprecated
     public Heartbeat createHeartbeat(TopicNamingStrategy topicNamingStrategy, SchemaNameAdjuster schemaNameAdjuster,
