@@ -42,7 +42,7 @@ public class SchemaHistoryTopicIT extends AbstractAsyncEngineConnectorTest {
     private SqlServerConnection connection;
 
     @Before
-    public void before() throws SQLException {
+    public void before() throws SQLException, InterruptedException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
         connection.execute(
@@ -54,6 +54,10 @@ public class SchemaHistoryTopicIT extends AbstractAsyncEngineConnectorTest {
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
+
+        // In some cases the max lsn from lsn_time_mapping table was coming out to be null, since
+        // the operations done above needed some time to be captured by the capture process.
+        Thread.sleep(1000);
     }
 
     @After
