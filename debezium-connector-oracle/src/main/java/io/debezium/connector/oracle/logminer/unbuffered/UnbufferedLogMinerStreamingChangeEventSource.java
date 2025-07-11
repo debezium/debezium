@@ -152,7 +152,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                 watch = Stopwatch.accumulating().start();
             }
 
-            if (startMiningSession(minLogScn, Scn.NULL, miningStartAttempts, getConfig().getLogMiningPathToDictionary())) {
+            if (startMiningSession(minLogScn, Scn.NULL, miningStartAttempts)) {
                 miningStartAttempts = 1;
                 minCommitScn = process(minCommitScn);
 
@@ -251,7 +251,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
      *
      * @param minCommitScn mining range lower bounds SCN, should not be {@code null}
      * @return the next iteration's lower bounds SCN, never {@code null}
-     * @throws SQLException if a database exception occurred
+     * @throws SQLException         if a database exception occurred
      * @throws InterruptedException if the thread is interrupted
      */
     private Scn process(Scn minCommitScn) throws SQLException, InterruptedException {
@@ -488,7 +488,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
     /**
      * Handles the dispatch of events added to the {@link #accumulator}.
      *
-     * @param event the event to be dispatched, never {@code null}
+     * @param event           the event to be dispatched, never {@code null}
      * @param eventsProcessed the number of events dispatched thus far
      * @throws InterruptedException if the thread is interrupted
      */

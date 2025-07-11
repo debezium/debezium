@@ -241,9 +241,9 @@ public abstract class AbstractLogMinerStreamingAdapter
         final Scn oldestScn = getOldestScnAvailableInLogs(connectorConfig, connection);
         final List<LogFile> logFiles = getOrderedLogsFromScn(connectorConfig, oldestScn, connection);
         if (!logFiles.isEmpty()) {
-            try (var context = new LogMinerSessionContext(connection, false, LogMiningStrategy.ONLINE_CATALOG)) {
+            try (var context = new LogMinerSessionContext(connection, false, LogMiningStrategy.ONLINE_CATALOG, connectorConfig.getLogMiningPathToDictionary())) {
                 context.addLogFiles(getMostRecentLogFilesForSearch(logFiles));
-                context.startSession(Scn.NULL, Scn.NULL, false, null);
+                context.startSession(Scn.NULL, Scn.NULL, false);
 
                 LOGGER.info("\tQuerying transaction logs, please wait...");
                 connection.query("SELECT START_SCN, XID FROM V$LOGMNR_CONTENTS WHERE OPERATION_CODE=7 AND SCN >= " + currentScn + " AND START_SCN <= " + currentScn,

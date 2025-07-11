@@ -152,7 +152,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                     watch = Stopwatch.accumulating().start();
                 }
 
-                if (startMiningSession(startScn, endScn, miningStartAttempts, getConfig().getLogMiningPathToDictionary())) {
+                if (startMiningSession(startScn, endScn, miningStartAttempts)) {
                     miningStartAttempts = 1;
                     startScn = process(startScn, endScn);
 

@@ -143,7 +143,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         this.jdbcConfiguration = JdbcConfiguration.adapt(jdbcConfig);
         this.useContinuousMining = connectorConfig.isLogMiningContinuousMining(jdbcConnection.getOracleVersion());
         this.logCollector = new LogFileCollector(connectorConfig, jdbcConnection);
-        this.sessionContext = new LogMinerSessionContext(jdbcConnection, useContinuousMining, connectorConfig.getLogMiningStrategy());
+        this.sessionContext = new LogMinerSessionContext(jdbcConnection, useContinuousMining, connectorConfig.getLogMiningStrategy(),
+                connectorConfig.getLogMiningPathToDictionary());
         this.dmlParser = new LogMinerDmlParser(connectorConfig);
         this.reconstructColumnDmlParser = new LogMinerColumnResolverDmlParser(connectorConfig);
         this.selectLobParser = new SelectLobParser();
@@ -229,7 +230,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     /**
      * Provides an adapter-specific way to process a specific event from the event handlers.
      *
-     * @param event the original LogMiner JDBC event row, should not be {@code null}
+     * @param event           the original LogMiner JDBC event row, should not be {@code null}
      * @param dispatchedEvent the constructed event to be dispatched, should not be {@code null}
      * @throws InterruptedException if the thread is interrupted
      */
@@ -379,7 +380,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * Executes the prepared statement's query and processes the result set.
      *
      * @param statement the prepared statement to execute, should not be {@code null}
-     * @throws SQLException if a database error occurs
+     * @throws SQLException         if a database error occurs
      * @throws InterruptedException if the thread is interrupted
      */
     protected void executeAndProcessQuery(PreparedStatement statement) throws SQLException, InterruptedException {
@@ -457,7 +458,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * Process a specific event.
      *
      * @param event the event, should not be {@code null}
-     * @throws SQLException if a database exception occurs
+     * @throws SQLException         if a database exception occurs
      * @throws InterruptedException if the thread is interrupted
      */
     protected void processEvent(LogMinerEventRow event) throws SQLException, InterruptedException {
@@ -565,7 +566,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * Handles processing {@code INSERT}, {@code UPDATE}, and {@code DELETE} operation events.
      *
      * @param event the event, should not be {@code null}
-     * @throws SQLException if a database exception is thrown
+     * @throws SQLException         if a database exception is thrown
      * @throws InterruptedException if the thread is interrupted
      */
     protected void handleDataChangeEvent(LogMinerEventRow event) throws SQLException, InterruptedException {
@@ -803,9 +804,9 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     /**
      * Calculates the mining session's upper boundary based on batch size limits.
      *
-     * @param lowerBoundsScn the current lower boundary
+     * @param lowerBoundsScn      the current lower boundary
      * @param previousUpperBounds the previous upper boundary
-     * @param currentScn the database current write position system change number
+     * @param currentScn          the database current write position system change number
      * @return the next iterations maximum upper boundary
      * @throws SQLException if a database exception is thrown
      */
@@ -934,8 +935,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      *
      * @param scn the system change number to check, should never be {@code null}
      * @return {@code true} if archive log only mode and scn is available, {@code false} if connector is
-     *         not in archive log only mode or the connector is requesting to be shutdown
-     * @throws SQLException if a database exception occurs
+     * not in archive log only mode or the connector is requesting to be shutdown
+     * @throws SQLException         if a database exception occurs
      * @throws InterruptedException if the thread is interrupted
      */
     protected boolean isArchiveLogOnlyModeAndScnIsNotAvailable(Scn scn) throws SQLException, InterruptedException {
@@ -1077,7 +1078,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * Adds the logs to the LogMiner session context and updates the metrics and internal state.
      *
      * @param postMiningSessionEnded {@code true} if a prior session just ended
-     * @param lowerBoundsScn the lower read system change number boundary, should never be {@code null}
+     * @param lowerBoundsScn         the lower read system change number boundary, should never be {@code null}
      * @throws SQLException if a database exception occurs
      */
     protected void prepareLogsForMining(boolean postMiningSessionEnded, Scn lowerBoundsScn) throws SQLException {
@@ -1129,17 +1130,17 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * Starts a mining session
      *
      * @param startScn starting system change number, may be {@link Scn#NULL} to leave unset
-     * @param endScn ending system change number, may be {@link Scn#NULL} to leave unset
+     * @param endScn   ending system change number, may be {@link Scn#NULL} to leave unset
      * @param attempts number of attempts at starting the mining session
      * @return {@code true} if the session was started successfully, {@code false} otherwise
      * @throws SQLException if a mining session failed to start
      */
-    protected boolean startMiningSession(Scn startScn, Scn endScn, int attempts, String dictionaryFilePath) throws SQLException {
+    protected boolean startMiningSession(Scn startScn, Scn endScn, int attempts) throws SQLException {
         try {
             LOGGER.debug("Starting mining session [startScn={}, endScn={}, strategy={}, attempts={}/{}]",
                     startScn, endScn, connectorConfig.getLogMiningStrategy(), attempts, MINING_START_RETRIES);
 
-            sessionContext.startSession(startScn, endScn, isUsingCommittedDataOnly(), dictionaryFilePath);
+            sessionContext.startSession(startScn, endScn, isUsingCommittedDataOnly());
             metrics.setLastMiningSessionStartDuration(sessionContext.getLastSessionStartTime());
 
             return true;
@@ -1455,7 +1456,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      *
      * @param event the event, should not be {@code null}
      * @return the resolved relational table, can be {@code null}
-     * @throws SQLException if a database exception occurred
+     * @throws SQLException         if a database exception occurred
      * @throws InterruptedException if the thread is interrupted while dispatching a schema change event
      */
     protected Table getTableForDataEvent(LogMinerEventRow event) throws SQLException, InterruptedException {
@@ -1576,7 +1577,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     /**
      * Update common metrics on {@code COMMIT} events.
      *
-     * @param event the event, should not be {@code null}
+     * @param event          the event, should not be {@code null}
      * @param commitDuration the duration of the commit operation, should not be {@code null}
      */
     protected void updateCommitMetrics(LogMinerEventRow event, Duration commitDuration) {
@@ -1612,7 +1613,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      *
      * @param tableId the table identifier, should not be {@code null}
      * @return the relational table model, may be {@code null}
-     * @throws SQLException if a database exception is thrown
+     * @throws SQLException         if a database exception is thrown
      * @throws InterruptedException if the thread is interrupted
      */
     @VisibleForTesting
@@ -1847,8 +1848,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * the snapshot was taken, we'd miss the events in those transactions that have an SCN smaller
      * than the snapshot SCN.
      *
-     * @param firstScn the oldest SCN still available in the REDO logs
-     * @param offsetScn the SCN from the offsets
+     * @param firstScn    the oldest SCN still available in the REDO logs
+     * @param offsetScn   the SCN from the offsets
      * @param snapshotScn the SCN used to take the snapshot
      */
     private Scn computeStartScnForFirstMiningSession(Scn firstScn, Scn offsetScn, Scn snapshotScn) {
@@ -1918,7 +1919,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      *
      * @param scn the system change number
      * @return {@code true} if the code should continue, {@code false} if the code should end.
-     * @throws SQLException if a database exception occurred
+     * @throws SQLException         if a database exception occurred
      * @throws InterruptedException if the pause between checks is interrupted
      */
     private boolean waitForScnInArchiveLogs(Scn scn) throws SQLException, InterruptedException {
@@ -1968,7 +1969,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      *
      * @param lowerboundsScn the mining range's lower bounds
      * @param upperboundsScn the mining range's upper bounds
-     * @param deviation the time deviation
+     * @param deviation      the time deviation
      * @return an optional that contains the deviated scn or empty if the operation should be performed again
      */
     private Optional<Scn> calculateDeviatedEndScn(Scn lowerboundsScn, Scn upperboundsScn, Duration deviation) {
@@ -2002,7 +2003,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * time based on Oracle's {@code TIMESTAMP_TO_SCN} and {@code SCN_TO_TIMESTAMP} functions.
      *
      * @param upperboundsScn the upper bound system change number, should not be {@code null}
-     * @param deviation the time deviation to be applied, should not be {@code null}
+     * @param deviation      the time deviation to be applied, should not be {@code null}
      * @return the newly calculated Scn
      */
     private Optional<Scn> getDeviatedMaxScn(Scn upperboundsScn, Duration deviation) {

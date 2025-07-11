@@ -89,14 +89,14 @@ public class ResumePositionProvider implements AutoCloseable {
                     connection.resetSessionToCdb();
                 }
 
-                sessionContext = new LogMinerSessionContext(connection, false, LogMiningStrategy.ONLINE_CATALOG);
+                sessionContext = new LogMinerSessionContext(connection, false, LogMiningStrategy.ONLINE_CATALOG, connectorConfig.getLogMiningPathToDictionary());
             }
 
             sessionContext.removeAllLogFilesFromSession();
 
             sessionContext.addLogFiles(logFiles);
 
-            sessionContext.startSession(currentResumeScn, Scn.NULL, false, null);
+            sessionContext.startSession(currentResumeScn, Scn.NULL, false);
 
             final Scn resumeScn = connection.prepareQueryAndMap(
                     "SELECT * FROM V$LOGMNR_CONTENTS WHERE OPERATION_CODE IN (6,7,36) AND SCN <= ?",

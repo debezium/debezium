@@ -15,14 +15,14 @@ import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
  * @param <T>
  * @author Lucas Gazire
  */
-public class DualOracleConnectionFactory<T extends JdbcConnection> implements MainConnectionProvidingConnectionFactory<T> {
+public class OracleConnectionFactory<T extends JdbcConnection> implements MainConnectionProvidingConnectionFactory<T> {
     private final ConnectionFactory<T> mainConnectionFactory;
     private final ConnectionFactory<T> readOnlyConnectionFactory;
     private final T mainConnection;
     private final T readOnlyConnection;
     private final boolean isLogMiningReadonly;
 
-    public DualOracleConnectionFactory(ConnectionFactory<T> mainConnectionFactory, ConnectionFactory<T> readOnlyConnectionFactory, OracleConnectorConfig config) {
+    public OracleConnectionFactory(ConnectionFactory<T> mainConnectionFactory, ConnectionFactory<T> readOnlyConnectionFactory, OracleConnectorConfig config) {
         this.mainConnectionFactory = mainConnectionFactory;
         this.readOnlyConnectionFactory = readOnlyConnectionFactory;
         this.mainConnection = mainConnectionFactory.newConnection();
@@ -42,9 +42,5 @@ public class DualOracleConnectionFactory<T extends JdbcConnection> implements Ma
     @Override
     public T newConnection() {
         return mainConnectionFactory.newConnection();
-    }
-
-    public T newReadonlyConnection() {
-        return readOnlyConnectionFactory.newConnection();
     }
 }
