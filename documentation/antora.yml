@@ -1,8 +1,8 @@
 name: reference
 title: Debezium Documentation
-version: 'master'
-display_version: 'nightly'
-prerelease: true
+version: '3.2'
+display_version: '3.2'
+prerelease: false
 nav:
   - modules/ROOT/nav.adoc
 
@@ -10,7 +10,7 @@ asciidoc:
   attributes:
     debezium-version: '3.2.0.Final'
     debezium-kafka-version: '4.0.0'
-    debezium-docker-label: '3.1'
+    debezium-docker-label: '3.2'
     DockerKafkaConnect: registry.redhat.io/amq7/amq-streams-kafka-28-rhel8:1.8.0
     groovy-version: '4.0.17'
     assemblies: '../assemblies'
