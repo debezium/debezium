@@ -5,7 +5,6 @@
  */
 package io.debezium.outbox.quarkus.internal;
 
-import static io.debezium.outbox.quarkus.internal.OutboxConstants.CONTRIBUTOR;
 import static io.debezium.outbox.quarkus.internal.OutboxConstants.OUTBOX_ENTITY_HBMXML;
 
 import java.io.BufferedInputStream;
@@ -20,50 +19,42 @@ import java.io.OutputStreamWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
-import java.util.Collection;
-import java.util.Collections;
 
 import jakarta.xml.bind.JAXBContext;
 import jakarta.xml.bind.JAXBException;
 import jakarta.xml.bind.Marshaller;
 
+import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.jaxb.Origin;
 import org.hibernate.boot.jaxb.SourceType;
 import org.hibernate.boot.jaxb.hbm.spi.JaxbHbmHibernateMapping;
 import org.hibernate.boot.jaxb.internal.MappingBinder;
 import org.hibernate.boot.jaxb.spi.Binding;
-import org.hibernate.boot.model.source.internal.hbm.MappingDocument;
-import org.hibernate.boot.spi.AdditionalJaxbMappingProducer;
-import org.hibernate.boot.spi.MetadataBuildingContext;
-import org.hibernate.boot.spi.MetadataImplementor;
-import org.jboss.jandex.IndexView;
+import org.hibernate.boot.spi.MetadataSourcesContributor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 
 /**
- * An {@link AdditionalJaxbMappingProducer} implementation that provides Hibernate ORM
+ * An {@link MetadataSourcesContributor} implementation that provides Hibernate ORM
  * with a HBM XML mapping for an map-mode entity configuration for the OutboxEvent
  * entity data type.
  *
  * @author Chris Cranford
  */
-public class AdditionalJaxbMappingProducerImpl implements AdditionalJaxbMappingProducer {
+public class DebeziumOutboxMetadataSourcesContributor implements MetadataSourcesContributor {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(AdditionalJaxbMappingProducerImpl.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumOutboxMetadataSourcesContributor.class);
 
     @Override
-    public Collection<MappingDocument> produceAdditionalMappings(MetadataImplementor metadata,
-                                                                 IndexView jandexIndex,
-                                                                 MappingBinder mappingBinder,
-                                                                 MetadataBuildingContext buildingContext) {
+    public void contribute(MetadataSources metadataSources) {
         final Origin origin = new Origin(SourceType.FILE, OUTBOX_ENTITY_HBMXML);
 
         try (InputStream stream = getOutboxHbmXmlStream()) {
             if (stream == null) {
                 LOGGER.error("Failed to locate OutboxEvent.hbm.xml on classpath");
-                return Collections.emptyList();
+                return;
             }
 
             try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
@@ -78,13 +69,14 @@ public class AdditionalJaxbMappingProducerImpl implements AdditionalJaxbMappingP
 
                 try (ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray())) {
                     try (BufferedInputStream bis = new BufferedInputStream(bais)) {
+                        final MappingBinder mappingBinder = metadataSources.getXmlMappingBinderAccess().getMappingBinder();
                         final Binding<?> jaxbBinding = mappingBinder.bind(bis, origin);
-                        final JaxbHbmHibernateMapping mapping = (JaxbHbmHibernateMapping) jaxbBinding.getRoot();
+                        metadataSources.addXmlBinding(jaxbBinding);
 
+                        final JaxbHbmHibernateMapping mapping = (JaxbHbmHibernateMapping) jaxbBinding.getRoot();
                         logOutboxMapping(mapping);
 
                         LOGGER.info("Contributed XML mapping for entity: {}", mapping.getClazz().get(0).getEntityName());
-                        return Collections.singletonList(new MappingDocument(CONTRIBUTOR, mapping, origin, buildingContext));
                     }
                 }
             }
