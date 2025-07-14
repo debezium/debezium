@@ -124,10 +124,6 @@ public class MySqlDatabaseDialect extends GeneralDatabaseDialect {
         registerType(DoubleVectorType.INSTANCE);
     }
 
-    protected void registerBasicTypes() {
-
-    }
-
     @Override
     public int getMaxVarcharLengthInKey() {
         return 255;
