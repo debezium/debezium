@@ -18,8 +18,8 @@ import io.debezium.connector.jdbc.JdbcSinkRecord;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectProvider;
 import io.debezium.connector.jdbc.dialect.SqlStatementBuilder;
-import io.debezium.connector.jdbc.dialect.mariadb.DoubleVectorType;
-import io.debezium.connector.jdbc.dialect.mariadb.FloatVectorType;
+import io.debezium.connector.jdbc.dialect.maria.DoubleVectorType;
+import io.debezium.connector.jdbc.dialect.maria.FloatVectorType;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 
 /**
