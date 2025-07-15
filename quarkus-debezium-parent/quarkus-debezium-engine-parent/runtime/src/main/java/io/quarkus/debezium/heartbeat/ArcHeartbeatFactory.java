@@ -10,7 +10,10 @@ import java.util.Optional;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.base.ChangeEventQueue;
-import io.debezium.heartbeat.*;
+import io.debezium.heartbeat.DebeziumHeartbeatFactory;
+import io.debezium.heartbeat.Heartbeat;
+import io.debezium.heartbeat.HeartbeatConnectionProvider;
+import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.pipeline.DataChangeEvent;
 import io.quarkus.arc.Arc;
 
