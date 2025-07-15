@@ -29,10 +29,10 @@ import io.quarkus.test.common.QuarkusTestResource;
 public class NotificationTest {
 
     @Inject
-    SnapshotNotificationsHandler snapshotNotificationsHandler;
+    private SnapshotNotificationsHandler snapshotNotificationsHandler;
 
     @Inject
-    DebeziumNotificationsHandler debeziumNotificationsHandler;
+    private DebeziumNotificationsHandler debeziumNotificationsHandler;
 
     @RegisterExtension
     static final QuarkusUnitTest setup = new QuarkusUnitTest()
