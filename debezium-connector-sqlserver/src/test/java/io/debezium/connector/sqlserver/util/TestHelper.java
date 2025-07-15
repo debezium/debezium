@@ -619,6 +619,10 @@ public class TestHelper {
         return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "log.waittime", "15"));
     }
 
+    public static int waitTimeForLsnTimeMapping() {
+        return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "lsn.time.mapping.waittime", "1"));
+    }
+
     /**
      * Utility method that will poll the CDC change tables and provide the record handler with the changes detected.
      * The record handler can then make a determination as to whether to return {@code true} if the expected outcome
