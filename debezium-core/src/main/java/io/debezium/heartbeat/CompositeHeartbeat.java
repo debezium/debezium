@@ -29,6 +29,11 @@ public class CompositeHeartbeat implements Heartbeat, Heartbeat.ScheduledHeartbe
         this.heartbeats = Arrays.stream(heartbeat).toList();
     }
 
+    public CompositeHeartbeat(ScheduledHeartbeat scheduledHeartbeat, List<Heartbeat> heartbeats) {
+        this.scheduledHeartbeat = scheduledHeartbeat;
+        this.heartbeats = heartbeats;
+    }
+
     @Override
     public void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
         for (Heartbeat heartbeat : heartbeats) {

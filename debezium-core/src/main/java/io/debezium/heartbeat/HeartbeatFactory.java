@@ -7,6 +7,12 @@ package io.debezium.heartbeat;
 
 import static io.debezium.config.CommonConnectorConfig.TOPIC_NAMING_STRATEGY;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.ServiceLoader;
+import java.util.stream.Collectors;
+
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.heartbeat.Heartbeat.ScheduledHeartbeat;
@@ -30,6 +36,8 @@ public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHea
     private final SchemaNameAdjuster schemaNameAdjuster;
     private final HeartbeatConnectionProvider connectionProvider;
     private final HeartbeatErrorHandler errorHandler;
+    private final ServiceLoader<DebeziumHeartbeatFactory> externalHeartbeatFactory = ServiceLoader.load(DebeziumHeartbeatFactory.class);
+    private final List<DebeziumHeartbeatFactory> heartbeatFactories;
 
     /**
      *  replaced by {@link #HeartbeatFactory()}
@@ -50,6 +58,11 @@ public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHea
         this.schemaNameAdjuster = schemaNameAdjuster;
         this.connectionProvider = connectionProvider;
         this.errorHandler = errorHandler;
+        this.heartbeatFactories = new ArrayList<>(externalHeartbeatFactory
+                .stream()
+                .map(ServiceLoader.Provider::get)
+                .toList());
+        this.heartbeatFactories.add(new DatabaseHeartbeatFactory());
     }
 
     public HeartbeatFactory() {
@@ -58,6 +71,11 @@ public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHea
         this.schemaNameAdjuster = null;
         this.connectionProvider = null;
         this.errorHandler = null;
+        this.heartbeatFactories = externalHeartbeatFactory
+                .stream()
+                .map(ServiceLoader.Provider::get)
+                .collect(Collectors.toList());
+        this.heartbeatFactories.add(new DatabaseHeartbeatFactory());
     }
 
     /**
@@ -103,23 +121,21 @@ public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHea
             return ScheduledHeartbeat.NOOP_HEARTBEAT;
         }
 
-        ScheduledHeartbeat scheduledHeartbeat = new HeartbeatImpl(
+        List<Heartbeat> heartbeats = heartbeatFactories
+                .stream()
+                .map(factory -> factory.getHeartbeat(
+                        connectorConfig,
+                        connectionProvider,
+                        errorHandler,
+                        queue))
+                .flatMap(Optional::stream)
+                .toList();
+
+        return new CompositeHeartbeat(new HeartbeatImpl(
                 connectorConfig.getHeartbeatInterval(),
                 connectorConfig.getTopicNamingStrategy(TOPIC_NAMING_STRATEGY).heartbeatTopic(),
                 connectorConfig.getLogicalName(),
-                connectorConfig.schemaNameAdjuster(), queue);
-
-        if (connectorConfig instanceof RelationalDatabaseConnectorConfig relConfig) {
-            if (!Strings.isNullOrBlank(relConfig.getHeartbeatActionQuery())) {
-
-                return new CompositeHeartbeat(scheduledHeartbeat, new DatabaseHeartbeatImpl(
-                        connectionProvider.get(),
-                        relConfig.getHeartbeatActionQuery(),
-                        errorHandler));
-            }
-        }
-
-        return scheduledHeartbeat;
+                connectorConfig.schemaNameAdjuster(), queue), heartbeats);
     }
 
 }
