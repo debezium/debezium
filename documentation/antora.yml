@@ -1,6 +1,6 @@
 name: reference
 title: Debezium Documentation
-version: 'stable'
+version: '3.2'
 display_version: '3.2'
 prerelease: false
 nav:
