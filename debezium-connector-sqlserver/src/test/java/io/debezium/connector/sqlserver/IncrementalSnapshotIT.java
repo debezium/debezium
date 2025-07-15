@@ -6,6 +6,7 @@
 package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
@@ -52,7 +53,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotWithSchema
 
         // In some cases the max lsn from lsn_time_mapping table was coming out to be null, since
         // the operations done above needed some time to be captured by the capture process.
-        Thread.sleep(2000);
+        Thread.sleep(Duration.ofSeconds(TestHelper.waitTimeForLsnTimeMapping()).toMillis() * 2);
     }
 
     @After
