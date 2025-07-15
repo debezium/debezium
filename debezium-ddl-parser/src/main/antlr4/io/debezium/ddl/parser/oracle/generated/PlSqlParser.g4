@@ -2651,7 +2651,7 @@ truncate_cluster
     ;
 
 drop_table
-    : DROP TABLE tableview_name (IF EXISTS)? (AS tableview_name)? (CASCADE CONSTRAINTS)? PURGE? (AS quoted_string)? FORCE?
+    : DROP TABLE tableview_name (IF EXISTS)? (AS tableview_name)? (CASCADE (CONSTRAINT | CONSTRAINTS))? PURGE? (AS quoted_string)? FORCE?
     ;
 
 drop_tablespace
