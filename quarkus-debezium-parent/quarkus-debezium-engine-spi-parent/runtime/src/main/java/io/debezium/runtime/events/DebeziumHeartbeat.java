@@ -8,10 +8,9 @@ package io.debezium.runtime.events;
 
 import java.util.Map;
 
-import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.runtime.Connector;
 import io.debezium.runtime.DebeziumStatus;
 
 public record DebeziumHeartbeat(Connector connector, DebeziumStatus status,
-        Map<String, ?> partition, OffsetContext offset) {
+        Map<String, ?> partition, Map<String, ?> offset) {
 }

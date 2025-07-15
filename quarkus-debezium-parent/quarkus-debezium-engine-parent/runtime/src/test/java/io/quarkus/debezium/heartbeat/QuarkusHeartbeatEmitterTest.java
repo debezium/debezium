@@ -47,13 +47,13 @@ class QuarkusHeartbeatEmitterTest {
 
         underTest.emit(PARTITION, OFFSET);
 
-        verify(event).fire(new DebeziumHeartbeat(CONNECTOR, DEBEZIUM_STATUS, PARTITION, OFFSET));
+        verify(event).fire(new DebeziumHeartbeat(CONNECTOR, DEBEZIUM_STATUS, PARTITION, Map.of("offset", "value")));
     }
 
     public static final OffsetContext OFFSET = new OffsetContext() {
         @Override
         public Map<String, ?> getOffset() {
-            return Map.of();
+            return Map.of("offset", "value");
         }
 
         @Override

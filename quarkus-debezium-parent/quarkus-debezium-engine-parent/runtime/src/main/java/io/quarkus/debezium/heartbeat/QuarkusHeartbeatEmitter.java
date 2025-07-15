@@ -35,7 +35,7 @@ public class QuarkusHeartbeatEmitter implements Heartbeat {
                 debezium.connector(),
                 debezium.status(),
                 partition,
-                offset));
+                offset.getOffset()));
     }
 
     @Override
