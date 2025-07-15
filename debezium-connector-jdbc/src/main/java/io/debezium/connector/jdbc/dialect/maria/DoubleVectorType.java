@@ -24,6 +24,9 @@ public class DoubleVectorType extends AbstractDoubleVectorType {
     @Override
     public String getTypeName(Schema schema, boolean isKey) {
         final Optional<String> size = getSourceColumnSize(schema);
+
+        // MariaDB requires an explicit vector length, which may be unspecified in source databases like MySQL or Postgres.
+        // Defaulting to 16383 to match MySQL’s vector default for double.
         return size.map(s -> String.format("vector(%s)", s)).orElse("vector(16383)");
     }
 

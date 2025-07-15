@@ -21,9 +21,13 @@ public class FloatVectorType extends AbstractFloatVectorType {
 
     public static FloatVectorType INSTANCE = new FloatVectorType();
 
+
     @Override
     public String getTypeName(Schema schema, boolean isKey) {
         final Optional<String> size = getSourceColumnSize(schema);
+
+        // MariaDB requires an explicit vector length, which may be unspecified in source databases like MySQL or Postgres.
+        // Defaulting to 2048 to match MySQL’s vector default for double.
         return size.map(s -> String.format("vector(%s)", s)).orElse("vector(2048)");
     }
 
