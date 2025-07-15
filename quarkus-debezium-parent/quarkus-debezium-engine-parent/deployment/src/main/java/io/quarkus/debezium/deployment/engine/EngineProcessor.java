@@ -83,6 +83,7 @@ import io.quarkus.debezium.engine.converter.custom.DynamicCustomConverterSupplie
 import io.quarkus.debezium.engine.post.processing.ArcPostProcessorFactory;
 import io.quarkus.debezium.engine.post.processing.DynamicPostProcessingSupplier;
 import io.quarkus.debezium.engine.relational.converter.QuarkusCustomConverter;
+import io.quarkus.debezium.heartbeat.QuarkusHeartbeatEmitter;
 import io.quarkus.debezium.notification.DefaultNotificationHandler;
 import io.quarkus.debezium.notification.QuarkusNotificationChannel;
 import io.quarkus.debezium.notification.SnapshotHandler;
@@ -131,7 +132,8 @@ public class EngineProcessor {
                 .addBeanClasses(
                         DefaultNotificationHandler.class,
                         SnapshotHandler.class,
-                        QuarkusNotificationChannel.class)
+                        QuarkusNotificationChannel.class,
+                        QuarkusHeartbeatEmitter.class)
                 .setUnremovable()
                 .build());
     }
