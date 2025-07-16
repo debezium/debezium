@@ -83,6 +83,7 @@ import io.quarkus.debezium.engine.converter.custom.DynamicCustomConverterSupplie
 import io.quarkus.debezium.engine.post.processing.ArcPostProcessorFactory;
 import io.quarkus.debezium.engine.post.processing.DynamicPostProcessingSupplier;
 import io.quarkus.debezium.engine.relational.converter.QuarkusCustomConverter;
+import io.quarkus.debezium.heartbeat.ArcHeartbeatFactory;
 import io.quarkus.debezium.heartbeat.QuarkusHeartbeatEmitter;
 import io.quarkus.debezium.notification.DefaultNotificationHandler;
 import io.quarkus.debezium.notification.QuarkusNotificationChannel;
@@ -167,6 +168,7 @@ public class EngineProcessor {
         resources.produce(new NativeImageResourceBuildItem("META-INF/services/io.debezium.pipeline.signal.channels.SignalChannelReader"));
         resources.produce(new NativeImageResourceBuildItem("META-INF/services/io.debezium.pipeline.notification.channels.NotificationChannel"));
         resources.produce(new NativeImageResourceBuildItem("META-INF/services/io.debezium.processors.PostProcessorProducer"));
+        resources.produce(new NativeImageResourceBuildItem("META-INF/services/io.debezium.heartbeat.DebeziumHeartbeatFactory"));
     }
 
     @BuildStep(onlyIf = NativeOrNativeSourcesBuild.class)
@@ -203,6 +205,7 @@ public class EngineProcessor {
                         .build()));
 
         reflectiveClasses.produce(ReflectiveClassBuildItem.builder(
+                ArcHeartbeatFactory.class,
                 ArcPostProcessorFactory.class,
                 DebeziumEngine.BuilderFactory.class,
                 ConvertingAsyncEngineBuilderFactory.class,
