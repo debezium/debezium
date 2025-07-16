@@ -26,7 +26,7 @@ import io.debezium.util.Strings;
 public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<OraclePartition, OracleOffsetContext> {
 
     private final OracleConnectorConfig configuration;
-    private final OracleConnectionFactory<OracleConnection> connectionFactory;
+    private final OracleConnectionFactory connectionFactory;
     private final ErrorHandler errorHandler;
     private final EventDispatcher<OraclePartition, TableId> dispatcher;
     private final Clock clock;
@@ -36,7 +36,7 @@ public class OracleChangeEventSourceFactory implements ChangeEventSourceFactory<
     private final AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics;
     private final SnapshotterService snapshotterService;
 
-    public OracleChangeEventSourceFactory(OracleConnectorConfig configuration, OracleConnectionFactory<OracleConnection> connectionFactory,
+    public OracleChangeEventSourceFactory(OracleConnectorConfig configuration, OracleConnectionFactory connectionFactory,
                                           ErrorHandler errorHandler, EventDispatcher<OraclePartition, TableId> dispatcher, Clock clock, OracleDatabaseSchema schema,
                                           Configuration jdbcConfig, OracleTaskContext taskContext,
                                           AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics, SnapshotterService snapshotterService) {

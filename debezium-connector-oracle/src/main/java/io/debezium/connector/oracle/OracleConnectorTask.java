@@ -66,13 +66,9 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
         SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
-        JdbcConfiguration jdbcConfig = connectorConfig.getJdbcConfig();
-        Configuration readonlyConfig = connectorConfig.isLogMiningReadOnly() ? buildReadonlyConfig(jdbcConfig.asMap(), connectorConfig) : null;
-        OracleConnection mainConnection = new OracleConnection(jdbcConfig);
-        OracleConnectionFactory<OracleConnection> connectionFactory = new OracleConnectionFactory<>(
-                () -> mainConnection,
-                () -> readonlyConfig != null ? new ReadOnlyOracleConnection(JdbcConfiguration.adapt(readonlyConfig)) : mainConnection,
-                connectorConfig);
+        final JdbcConfiguration jdbcConfig = connectorConfig.getJdbcConfig();
+        final OracleConnectionFactory connectionFactory = new OracleConnectionFactory(connectorConfig);
+
         jdbcConnection = connectionFactory.mainConnection();
 
         final boolean extendedStringsSupported = jdbcConnection.hasExtendedStringSupport();
@@ -187,14 +183,6 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         coordinator.start(taskContext, this.queue, metadataProvider);
 
         return coordinator;
-    }
-
-    private Configuration buildReadonlyConfig(Map<String, String> config, OracleConnectorConfig connectorConfig) {
-        config.put("hostname", connectorConfig.getReadonlyHostname());
-        Configuration.Builder builder = Configuration.create();
-        config.forEach(
-                (k, v) -> builder.with(k.toString(), v));
-        return builder.build();
     }
 
     @Override
