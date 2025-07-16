@@ -78,6 +78,8 @@ import io.debezium.util.Loggings;
 import io.debezium.util.Metronome;
 import io.debezium.util.Stopwatch;
 import io.debezium.util.Strings;
+import io.debezium.util.Threads;
+import io.debezium.util.Threads.Timer;
 
 /**
  * An abstract implementation of the {@link StreamingChangeEventSource} for Oracle LogMiner, that is the basis
@@ -390,10 +392,23 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             final Instant startProcessTime = Instant.now();
             final String catalogName = getConfig().getCatalogName();
 
+            Timer logSwitchTimer = Threads.timer(Clock.SYSTEM, Duration.ofSeconds(1));
+            Scn lastEventScn = Scn.NULL;
+
             while (getContext().isRunning() && hasNextWithMetricsUpdate(resultSet)) {
                 getBatchMetrics().rowObserved();
 
                 final LogMinerEventRow event = LogMinerEventRow.fromResultSet(resultSet, catalogName);
+
+                if (!lastEventScn.equals(event.getScn()) && logSwitchTimer.expired()) {
+                    if (checkLogSwitchOccurred()) {
+                        LOGGER.debug("A log switch was detected during data processing, restarting session.");
+                        break;
+                    }
+                    logSwitchTimer = Threads.timer(Clock.SYSTEM, Duration.ofSeconds(1));
+                    lastEventScn = event.getScn();
+                }
+
                 processEvent(event);
             }
 
@@ -1071,6 +1086,24 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             return true;
         }
         return false;
+    }
+
+    /**
+     * Checks whether a log switch occurred.
+     * @return {@code true} if a log switch occurred, {@code false} otherwise
+     * @throws SQLException if a database exception occurred
+     */
+    protected boolean checkLogSwitchOccurred() throws SQLException {
+        final List<BigInteger> sequences = jdbcConnection.queryAndMap(
+                SqlUtils.currentRedoLogSequenceQuery(), rs -> {
+                    List<BigInteger> results = new ArrayList<>();
+                    while (rs.next()) {
+                        results.add(new BigInteger(rs.getString(1)));
+                    }
+                    return results;
+                });
+
+        return !sequences.equals(currentRedoLogSequences);
     }
 
     /**
