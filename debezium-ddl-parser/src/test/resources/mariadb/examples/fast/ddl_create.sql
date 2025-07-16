@@ -222,6 +222,9 @@ CREATE TABLE `products_labels` (
   `description` text NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci `PAGE_COMPRESSED`= 0;
+
+-- Create Table with vector column
+CREATE TABLE VECTOR_TABLE (id INT AUTO_INCREMENT PRIMARY KEY, embedding1 VECTOR(3) DEFAULT NULL, embedding VECTOR(3));
 #end
 #begin
 -- Rename table
