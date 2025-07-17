@@ -5755,3 +5755,7 @@ ORA-00600: internal error code, arguments: [kdli_iread], ...
 ```
 +
 This exception can be avoided by upgrading the Oracle db to 19.25 and applying patch 32209850.
+
+*Debezium 2.7 introduced breaking changes with `decimal.handling.mode`, is there a way to use the legacy behavior?*::
+Yes, the legacy behavior can be enabled by setting the connector configuration property `legacy.decimal.handling.strategy` to a value of `true`.
+By setting this to `true`, the connector will no longer treat all zero scale numbers as `VariableScaleDecimal` types, and will continue to emit them as INT8, INT16, INT32, and INT64 based on the column's size.
