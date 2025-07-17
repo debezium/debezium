@@ -828,7 +828,7 @@ insertStatement
     : INSERT priority = (LOW_PRIORITY | DELAYED | HIGH_PRIORITY)? IGNORE? INTO? tableName (
         PARTITION '(' partitions = uidList? ')'
     )? (
-        ('(' columns = fullColumnNameList? ')')? insertStatementValue (AS? uid)?
+        ('(' columns = fullColumnNameList? ')')? withClause? insertStatementValue (AS? uid)?
         | SET setFirst = updatedElement (',' setElements += updatedElement)*
     ) (
         ON DUPLICATE KEY UPDATE duplicatedFirst = updatedElement (
