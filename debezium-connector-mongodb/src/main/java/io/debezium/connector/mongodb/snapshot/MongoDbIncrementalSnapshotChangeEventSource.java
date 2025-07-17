@@ -639,6 +639,10 @@ public class MongoDbIncrementalSnapshotChangeEventSource
                 predicate = new Document("$and", Arrays.asList(chunkEndPredicate, maxKeyPredicate));
             }
         }
+        else if (!additionalConditions.isEmpty()) {
+            Document additionalConditionsPredicate = Document.parse(additionalConditions);
+            predicate = new Document("$and", Arrays.asList(maxKeyPredicate, additionalConditionsPredicate));
+        }
         return predicate;
     }
 
