@@ -728,6 +728,14 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "true: transaction start events are not buffered; " +
                     "false: (the default) transaction start events are buffered");
 
+    public static final Field LEGACY_DECIMAL_HANDLING_STRATEGY = Field.create("legacy.decimal.handling.strategy")
+            .withDisplayName("Use legacy decimal handling strategy")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(false)
+            .withDescription("Uses the legacy decimal handling behavior before DBZ-7882");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -813,7 +821,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_RESUME_POSITION_INTERVAL_MS,
                     LOG_MINING_BUFFER_MEMORY_LEGACY_TRANSACTION_START,
                     LOG_MINING_PATH_DICTIONARY,
-                    LOG_MINING_READONLY_HOSTNAME)
+                    LOG_MINING_READONLY_HOSTNAME,
+                    LEGACY_DECIMAL_HANDLING_STRATEGY)
             .events(SOURCE_INFO_STRUCT_MAKER,
                     SIGNAL_DATA_COLLECTION)
             .create();
@@ -846,6 +855,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final int queryFetchSize;
     private final int snapshotRetryDatabaseErrorsMaxRetries;
     private final int objectIdToTableIdCacheSize;
+    private final boolean legacyDecimalHandlingStrategy;
 
     // LogMiner options
     private final LogMiningStrategy logMiningStrategy;
@@ -918,6 +928,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.snapshotLockingMode = SnapshotLockingMode.parse(config.getString(SNAPSHOT_LOCKING_MODE), SNAPSHOT_LOCKING_MODE.defaultValueAsString());
         this.lobEnabled = config.getBoolean(LOB_ENABLED);
         this.objectIdToTableIdCacheSize = config.getInteger(OBJECT_ID_CACHE_SIZE);
+        this.legacyDecimalHandlingStrategy = config.getBoolean(LEGACY_DECIMAL_HANDLING_STRATEGY);
 
         this.streamingAdapter = this.connectorAdapter.getInstance(this);
         if (this.streamingAdapter == null) {
@@ -1702,6 +1713,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public StreamingAdapter getAdapter() {
         return streamingAdapter;
+    }
+
+    /**
+     * @return {@code true} if the legacy decimal handling behavior is used, {@code false} otherwise
+     */
+    public boolean isUsingLegacyDecimalHandlingStrategy() {
+        return legacyDecimalHandlingStrategy;
     }
 
     /**
