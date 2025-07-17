@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.ServiceLoader;
-import java.util.stream.Collectors;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.base.ChangeEventQueue;
@@ -37,7 +36,7 @@ public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHea
     private final HeartbeatConnectionProvider connectionProvider;
     private final HeartbeatErrorHandler errorHandler;
     private final ServiceLoader<DebeziumHeartbeatFactory> externalHeartbeatFactory = ServiceLoader.load(DebeziumHeartbeatFactory.class);
-    private final List<DebeziumHeartbeatFactory> heartbeatFactories;
+    private final List<DebeziumHeartbeatFactory> heartbeatFactories = new ArrayList<>();
 
     /**
      *  replaced by {@link #HeartbeatFactory()}
@@ -58,11 +57,12 @@ public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHea
         this.schemaNameAdjuster = schemaNameAdjuster;
         this.connectionProvider = connectionProvider;
         this.errorHandler = errorHandler;
-        this.heartbeatFactories = new ArrayList<>(externalHeartbeatFactory
-                .stream()
-                .map(ServiceLoader.Provider::get)
-                .toList());
         this.heartbeatFactories.add(new DatabaseHeartbeatFactory());
+        this.heartbeatFactories.addAll(
+                externalHeartbeatFactory
+                        .stream()
+                        .map(ServiceLoader.Provider::get)
+                        .toList());
     }
 
     public HeartbeatFactory() {
@@ -71,11 +71,11 @@ public class HeartbeatFactory<T extends DataCollectionId> implements DebeziumHea
         this.schemaNameAdjuster = null;
         this.connectionProvider = null;
         this.errorHandler = null;
-        this.heartbeatFactories = externalHeartbeatFactory
+        this.heartbeatFactories.add(new DatabaseHeartbeatFactory());
+        this.heartbeatFactories.addAll(externalHeartbeatFactory
                 .stream()
                 .map(ServiceLoader.Provider::get)
-                .collect(Collectors.toList());
-        this.heartbeatFactories.add(new DatabaseHeartbeatFactory());
+                .toList());
     }
 
     /**
