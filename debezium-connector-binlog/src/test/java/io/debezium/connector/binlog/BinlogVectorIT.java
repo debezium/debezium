@@ -33,7 +33,7 @@ public abstract class BinlogVectorIT<C extends SourceConnector> extends Abstract
 
     private String databaseName;
 
-    public BinlogVectorIT(final String databaseName){
+    public BinlogVectorIT(final String databaseName) {
         this.databaseName = databaseName;
     }
 
