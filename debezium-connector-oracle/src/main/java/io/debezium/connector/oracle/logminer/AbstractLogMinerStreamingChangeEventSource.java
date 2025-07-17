@@ -904,7 +904,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             // LogMiner takes the range we provide and subtracts 1 from the start and adds 1 to the upper bounds
             // to create a non-inclusive range from our inclusive range. If we supply the last flushed SCN, the
             // non-inclusive range will specify an SCN beyond what is in the logs, leading to LogMiner failure.
-            minOpenRedoThreadLastScn = minOpenRedoThreadLastScn.subtract(Scn.ONE);
+            minOpenRedoThreadLastScn = minOpenRedoThreadLastScn.subtract(
+                    Scn.valueOf(connectorConfig.getLogMiningRedoThreadScnAdjustment()));
 
             if (minOpenRedoThreadLastScn.compareTo(result) < 0) {
                 // There are situations where on first start-up that the startScn may be higher

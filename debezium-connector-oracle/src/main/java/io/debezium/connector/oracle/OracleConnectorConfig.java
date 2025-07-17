@@ -713,6 +713,14 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "true: transaction start events are not buffered; " +
                     "false: (the default) transaction start events are buffered");
 
+    public static final Field LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT = Field.createInternal("log.mining.redo.thread.scn.adjustment")
+            .withDisplayName("SCN adjustment value")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(1)
+            .withDescription("Adjusts the LAST_REDO_SCN from V$THREAD by this value.");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -796,7 +804,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_CLIENTID_INCLUDE_LIST,
                     LOG_MINING_CLIENTID_EXCLUDE_LIST,
                     LOG_MINING_RESUME_POSITION_INTERVAL_MS,
-                    LOG_MINING_BUFFER_MEMORY_LEGACY_TRANSACTION_START)
+                    LOG_MINING_BUFFER_MEMORY_LEGACY_TRANSACTION_START,
+                    LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT)
             .events(SOURCE_INFO_STRUCT_MAKER,
                     SIGNAL_DATA_COLLECTION)
             .create();
@@ -872,6 +881,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final boolean logMiningUseSqlRelaxedQuoteDetection;
     private final Set<String> logMiningClientIdIncludes;
     private final Set<String> logMiningClientIdExcludes;
+    private final Integer logMiningRedoThreadScnAdjustment;
 
     private final String openLogReplicatorSource;
     private final String openLogReplicatorHostname;
@@ -948,6 +958,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningUseSqlRelaxedQuoteDetection = config.getBoolean(LOG_MINING_SQL_RELAXED_QUOTE_DETECTION);
         this.logMiningClientIdIncludes = Strings.setOfTrimmed(config.getString(LOG_MINING_CLIENTID_INCLUDE_LIST), String::new);
         this.logMiningClientIdExcludes = Strings.setOfTrimmed(config.getString(LOG_MINING_CLIENTID_EXCLUDE_LIST), String::new);
+        this.logMiningRedoThreadScnAdjustment = config.getInteger(LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT);
 
         this.logMiningEhCacheConfiguration = config.subset("log.mining.buffer.ehcache", false);
 
@@ -2066,6 +2077,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             return getConfig().getBoolean(LOG_MINING_BUFFER_MEMORY_LEGACY_TRANSACTION_START);
         }
         return false;
+    }
+
+    /**
+     * Adjustment to be subtracted from the {@code LAST_REDO_SCN} in {@code V$THREAD}.
+     */
+    public Integer getLogMiningRedoThreadScnAdjustment() {
+        return logMiningRedoThreadScnAdjustment;
     }
 
     @Override
