@@ -7,7 +7,6 @@
 package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -47,10 +46,6 @@ public class NotificationsIT extends AbstractNotificationsIT<SqlServerConnector>
         initializeConnectorTestFramework();
 
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
-
-        // In some cases the max lsn from lsn_time_mapping table was coming out to be null, since
-        // the operations done above needed some time to be captured by the capture process.
-        Thread.sleep(Duration.ofSeconds(TestHelper.waitTimeForLsnTimeMapping()).toMillis());
     }
 
     @After

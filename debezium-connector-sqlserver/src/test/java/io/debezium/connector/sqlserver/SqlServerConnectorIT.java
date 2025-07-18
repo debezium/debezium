@@ -22,7 +22,6 @@ import static org.junit.Assert.assertNull;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -119,10 +118,6 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
         initializeConnectorTestFramework();
         Testing.Files.delete(SCHEMA_HISTORY_PATH);
         // Testing.Print.enable();
-
-        // In some cases the max lsn from lsn_time_mapping table was coming out to be null, since
-        // the operations done above needed some time to be captured by the capture process.
-        Thread.sleep(Duration.ofSeconds(TestHelper.waitTimeForLsnTimeMapping()).toMillis());
     }
 
     @After
