@@ -505,6 +505,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     "after every detected log switch or if the log.mining.session.max.ms has been reached.");
 
     public static final Field LOG_MINING_TRANSACTION_SNAPSHOT_BOUNDARY_MODE = Field.createInternal("log.mining.transaction.snapshot.boundary.mode")
+            .withDisplayName("Transaction snapshot boundary mode")
             .withEnum(TransactionSnapshotBoundaryMode.class, TransactionSnapshotBoundaryMode.SKIP)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
