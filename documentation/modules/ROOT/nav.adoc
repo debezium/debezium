@@ -10,6 +10,7 @@
 ** xref:configuration/signalling.adoc[Sending Signals to Debezium]
 ** xref:configuration/notification.adoc[Receive notifications from Debezium]
 ** xref:configuration/storage.adoc[Store Debezium state]
+** xref:configuration/eos.adoc[Exactly-once delivery]
 * Source Connectors
 ** xref:connectors/index.adoc[Overview]
 ** xref:connectors/mysql.adoc[MySQL]
