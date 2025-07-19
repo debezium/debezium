@@ -6,6 +6,8 @@
 
 package io.debezium.heartbeat;
 
+import java.util.Optional;
+
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.heartbeat.Heartbeat.ScheduledHeartbeat;
@@ -17,7 +19,15 @@ import io.debezium.pipeline.DataChangeEvent;
  * and context
  */
 public interface DebeziumHeartbeatFactory {
-    ScheduledHeartbeat getScheduledHeartbeat(CommonConnectorConfig connectorConfig,
+    default Optional<Heartbeat> getHeartbeat(CommonConnectorConfig connectorConfig,
                                              HeartbeatConnectionProvider connectionProvider,
-                                             HeartbeatErrorHandler errorHandler, ChangeEventQueue<DataChangeEvent> queue);
+                                             HeartbeatErrorHandler errorHandler, ChangeEventQueue<DataChangeEvent> queue) {
+        return Optional.empty();
+    }
+
+    default ScheduledHeartbeat getScheduledHeartbeat(CommonConnectorConfig connectorConfig,
+                                                     HeartbeatConnectionProvider connectionProvider,
+                                                     HeartbeatErrorHandler errorHandler, ChangeEventQueue<DataChangeEvent> queue) {
+        return ScheduledHeartbeat.NOOP_HEARTBEAT;
+    }
 }

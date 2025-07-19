@@ -20,25 +20,22 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import io.quarkus.debezium.notification.DebeziumNotification;
-import io.quarkus.debezium.notification.SnapshotEvent;
+import io.debezium.runtime.events.DebeziumHeartbeat;
 import io.quarkus.test.QuarkusUnitTest;
 import io.quarkus.test.common.QuarkusTestResource;
 
 @QuarkusTestResource(value = DatabaseTestResource.class)
-public class NotificationTest {
+public class HeartbeatTest {
 
     @Inject
-    private SnapshotNotificationsHandler snapshotNotificationsHandler;
-
-    @Inject
-    private DebeziumNotificationsHandler debeziumNotificationsHandler;
+    private HeartbeatHandler heartbeatHandler;
 
     @RegisterExtension
     static final QuarkusUnitTest setup = new QuarkusUnitTest()
             .withApplicationRoot((jar) -> jar
                     .addClasses(CapturingTest.CaptureProductsHandler.class))
             .overrideConfigKey("quarkus.debezium.offset.storage", "org.apache.kafka.connect.storage.MemoryOffsetBackingStore")
+            .overrideConfigKey("quarkus.debezium.heartbeat.interval.ms", "5")
             .overrideConfigKey("quarkus.debezium.name", "test")
             .overrideConfigKey("quarkus.debezium.topic.prefix", "dbserver1")
             .overrideConfigKey("quarkus.debezium.plugin.name", "pgoutput")
@@ -46,41 +43,18 @@ public class NotificationTest {
             .overrideConfigKey("quarkus.datasource.devservices.enabled", "false");
 
     @Test
-    @DisplayName("should observe events for snapshot")
-    void shouldObserveSnapshotEvents() {
+    @DisplayName("should observe heartbeat events")
+    void shouldObserveHeartbeatEvents() {
         given().await()
                 .atMost(100, TimeUnit.SECONDS)
-                .untilAsserted(() -> assertThat(snapshotNotificationsHandler.isInvoked()).isTrue());
-
-    }
-
-    @Test
-    @DisplayName("should observe general events")
-    void shouldObserveDebeziumEvents() {
-        given().await()
-                .atMost(100, TimeUnit.SECONDS)
-                .untilAsserted(() -> assertThat(debeziumNotificationsHandler.isInvoked()).isTrue());
-
+                .untilAsserted(() -> assertThat(heartbeatHandler.isInvoked()).isTrue());
     }
 
     @ApplicationScoped
-    static class SnapshotNotificationsHandler {
+    public static class HeartbeatHandler {
         private final AtomicBoolean invoked = new AtomicBoolean(false);
 
-        public void observe(@Observes SnapshotEvent event) {
-            invoked.set(true);
-        }
-
-        public boolean isInvoked() {
-            return invoked.getAndSet(false);
-        }
-    }
-
-    @ApplicationScoped
-    static class DebeziumNotificationsHandler {
-        private final AtomicBoolean invoked = new AtomicBoolean(false);
-
-        public void observe(@Observes DebeziumNotification event) {
+        public void observe(@Observes DebeziumHeartbeat heartBeat) {
             invoked.set(true);
         }
 
