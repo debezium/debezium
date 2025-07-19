@@ -347,8 +347,6 @@ public class BinlogOffsetContext<T extends BinlogSourceInfo> extends CommonOffse
     @Override
     public String toString() {
         return "BinlogOffsetContext{" +
-                "sourceInfoSchema=" + sourceInfoSchema +
-                ", sourceInfo=" + sourceInfo +
                 ", snapshotCompleted=" + snapshotCompleted +
                 ", transactionContext=" + transactionContext +
                 ", restartGtidSet='" + restartGtidSet + '\'' +
