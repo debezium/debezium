@@ -758,11 +758,6 @@ public class SqlServerConnection extends JdbcConnection {
         try {
 
             final String oldestScn = singleOptionalValue(oldestFirstChangeQuery, rs -> rs.getString(1));
-
-            if (oldestScn == null) {
-                return false;
-            }
-
             LOGGER.info("Oldest SCN in logs is '{}'", oldestScn);
             LOGGER.info("Stored LSN is '{}'", storedLsn);
             return storedLsn == null || Lsn.NULL.equals(storedLsn) || Lsn.valueOf(oldestScn).compareTo(storedLsn) < 0;
