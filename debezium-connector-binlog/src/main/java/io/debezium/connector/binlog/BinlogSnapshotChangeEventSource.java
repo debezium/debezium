@@ -9,6 +9,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -27,6 +28,8 @@ import java.util.concurrent.CompletionService;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -58,6 +61,7 @@ import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
 import io.debezium.util.Collect;
 import io.debezium.util.Strings;
+import io.debezium.util.Threads;
 
 /**
  * An abstract implementation of {@link SnapshotChangeEventSource} for binlog-based connectors.
@@ -69,6 +73,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BinlogSnapshotChangeEventSource.class);
     private static final Logger ROW_ESTIMATE_LOGGER = LoggerFactory.getLogger(BinlogSnapshotChangeEventSource.class.getName() + ".RowEstimate");
+    private static final Duration LOCK_HEARTBEAT_INTERVAL = Duration.ofSeconds(30);
 
     private final BinlogConnectorConfig connectorConfig;
     private final BinlogConnectorConnection connection;
@@ -81,6 +86,12 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
     private Set<TableId> delayedSchemaSnapshotTables = Collections.emptySet();
     private long globalLockAcquiredAt = -1;
     private long tableLockAcquiredAt = -1;
+    private ScheduledExecutorService lockKeepAliveExecutor;
+    /**
+     * Guard object to serialize access to the not-thread-safe {@link #connection} between the
+     * snapshot thread and the keep-alive heartbeat task.
+     */
+    private final Object binlogConnectionMutex = new Object();
 
     public BinlogSnapshotChangeEventSource(BinlogConnectorConfig connectorConfig,
                                            MainConnectionProvidingConnectionFactory<BinlogConnectorConnection> connectionFactory,
@@ -508,16 +519,22 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         if (lockingStatement.isPresent()) {
             connection.executeWithoutCommitting(lockingStatement.get());
             globalLockAcquiredAt = clock.currentTimeInMillis();
+            startLockHeartbeat();
         }
     }
 
     private void globalUnlock() throws SQLException {
-        LOGGER.info("Releasing global read lock to enable MySQL writes");
-        connection.executeWithoutCommitting("UNLOCK TABLES");
+        // Stop the keep-alive first so that no other thread uses the connection while we release the lock.
+        stopLockHeartbeat();
+        synchronized (binlogConnectionMutex) {
+            LOGGER.info("Releasing global read lock to enable MySQL writes");
+            connection.executeWithoutCommitting("UNLOCK TABLES");
+        }
         long lockReleased = clock.currentTimeInMillis();
         metrics.setGlobalLockReleased();
         LOGGER.info("Writes to MySQL tables prevented for a total of {}", Strings.duration(lockReleased - globalLockAcquiredAt));
         globalLockAcquiredAt = -1;
+        stopLockHeartbeat();
     }
 
     private void tableLock(RelationalSnapshotContext<P, O> snapshotContext)
@@ -543,15 +560,21 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         }
         tableLockAcquiredAt = clock.currentTimeInMillis();
         metrics.setGlobalLockAcquired();
+        startLockHeartbeat();
     }
 
     private void tableUnlock() throws SQLException {
-        LOGGER.info("Releasing table read lock to enable MySQL writes");
-        connection.executeWithoutCommitting("UNLOCK TABLES");
+        // Stop keep-alive before unlocking tables.
+        stopLockHeartbeat();
+        synchronized (binlogConnectionMutex) {
+            LOGGER.info("Releasing table read lock to enable MySQL writes");
+            connection.executeWithoutCommitting("UNLOCK TABLES");
+        }
         long lockReleased = clock.currentTimeInMillis();
         metrics.setGlobalLockReleased();
         LOGGER.info("Writes to MySQL tables prevented for a total of {}", Strings.duration(lockReleased - tableLockAcquiredAt));
         tableLockAcquiredAt = -1;
+        stopLockHeartbeat();
     }
 
     @Override
@@ -671,5 +694,42 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         lastEventProcessor.accept(Function.identity());
 
         super.aborted(snapshotContext);
+    }
+
+    private void startLockHeartbeat() {
+        if (lockKeepAliveExecutor == null || lockKeepAliveExecutor.isShutdown()) {
+            LOGGER.info("Starting lock heartbeat");
+            lockKeepAliveExecutor = Threads.newSingleThreadScheduledExecutor(
+                    getClass(),
+                    connectorConfig.getLogicalName(),
+                    "lock-heartbeat",
+                    true);
+            Runnable task = () -> {
+                synchronized (binlogConnectionMutex) {
+                    try {
+                        connection.query("SELECT 1", rs -> {
+                        });
+                    }
+                    catch (SQLException e) {
+                        LOGGER.warn("Snapshot lock heartbeat query failed", e);
+                    }
+                }
+            };
+            lockKeepAliveExecutor.scheduleAtFixedRate(task, LOCK_HEARTBEAT_INTERVAL.toSeconds(), LOCK_HEARTBEAT_INTERVAL.toSeconds(), TimeUnit.SECONDS);
+        }
+    }
+
+    private void stopLockHeartbeat() {
+        if (lockKeepAliveExecutor != null) {
+            lockKeepAliveExecutor.shutdownNow();
+            try {
+                // Wait briefly to ensure any running task has completed/cancelled.
+                lockKeepAliveExecutor.awaitTermination(5, TimeUnit.SECONDS);
+            }
+            catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            lockKeepAliveExecutor = null;
+        }
     }
 }
