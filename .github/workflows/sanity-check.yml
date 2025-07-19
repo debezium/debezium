@@ -22,24 +22,35 @@ jobs:
           pull_request_number: ${{ github.event.pull_request.number }}
           github_repository: ${{ github.repository }}
         run: |
-          COMMIT_MSGS=$(curl --silent -X "GET" https://api.github.com/repos/$github_repository/pulls/$pull_request_number/commits | jq '.[] | {message: .commit.message}' | jq '.message' | cut -c 2-)
+          echo "PREFIX_COMMITS=false" >> $GITHUB_OUTPUT
+          
+          RESPONSE=$(curl --select -X "GET" https://api.github.com/repos/$github_repository/pulls/$pull_request_number/commits)
+          
+          MESSAGE=$(echo "$RESPONSE" | jq -r '.message // empty')
+          if [[ "$MESSAGE" == "API rate limit exceeded"* ]]; then
+            echo "::error::Github API rate limit exceeded. Skipping commit message check."
+            exit 1
+          fi
+          
           NON_PREFIX_COMMITS=""
-          while IFS= read -r line ;
+          echo "$RESPONSE" | jq -r '.[] | .commit_message' > COMMIT_MSGS.txt
+          
+          while IFS= read -r line; 
           do
-            line=${line%\"}
             echo "-> checking: $line"
             if [[ ! $line =~ (^DBZ-[[:digit:]]+)|(\[release\])|(\[jenkins-jobs\])|(\[docs\])|(\[maven-release-plugin\])|(\[ci\]) ]]; then
-              NON_PREFIX_COMMITS="${NON_PREFIX_COMMITS} -> ${line} \n"
+              NON_PREFIX_COMMITS="${NON_PREFIX_COMMITS} -> ${line}\n"
             fi
-          done <<< "$COMMIT_MSGS"
+          done < COMMIT_MSGS.txt        
 
-          if [[ $NON_PREFIX_COMMITS != "" ]]; then
+          if [[ -n $NON_PREFIX_COMMITS ]]; then
             echo "========================================================================"
             echo "              COMMIT MESSAGES WITH MISSING \"DBZ\" PREFIX"
             echo "========================================================================"
             echo -e "$NON_PREFIX_COMMITS"
             echo "PREFIX_COMMITS=false" >> $GITHUB_OUTPUT
           fi
+
       - name: Create Comment
         if: ${{ steps.check.outputs.PREFIX_COMMITS == 'false' }}
         uses: peter-evans/create-or-update-comment@v4
@@ -47,6 +58,7 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             Hi @${{ github.event.pull_request.user.login }}, thanks for your contribution. Please prefix the commit message(s) with the [DBZ-xxx JIRA issue key](https://github.com/debezium/debezium/blob/main/CONTRIBUTE.md#making-changes).
+
       - name: Check failure
         if: ${{ steps.check.outputs.PREFIX_COMMITS == 'false' }}
         uses: actions/github-script@v7
