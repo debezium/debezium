@@ -129,6 +129,7 @@ public class JdbcKafkaSinkRecord extends KafkaDebeziumSinkRecord implements Jdbc
                 ", configuredPrimaryKeyFields=" + configuredPrimaryKeyFields +
                 ", keyFieldNames=" + keyFieldNames() +
                 ", nonKeyFieldNames=" + nonKeyFieldNames() +
+                ", originalKafkaRecord=" + originalKafkaRecord +
                 '}';
     }
 }
