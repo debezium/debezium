@@ -116,8 +116,8 @@ public class SqlServerConnection extends JdbcConnection {
 
     private static final String GET_NEW_CHANGE_TABLES = "SELECT * FROM #db.cdc.change_tables WHERE start_lsn BETWEEN ? AND ?";
     private static final String GET_MIN_LSN_FROM_ALL_CHANGE_TABLES = "select min(start_lsn) from #db.cdc.change_tables";
-    private static final String OPENING_QUOTING_CHARACTER = "[";
-    private static final String CLOSING_QUOTING_CHARACTER = "]";
+    public static final String OPENING_QUOTING_CHARACTER = "[";
+    public static final String CLOSING_QUOTING_CHARACTER = "]";
 
     private static final String URL_PATTERN = "jdbc:sqlserver://${" + JdbcConfiguration.HOSTNAME + "}";
 
