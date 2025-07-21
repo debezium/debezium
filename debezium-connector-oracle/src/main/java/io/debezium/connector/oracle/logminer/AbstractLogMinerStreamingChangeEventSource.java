@@ -814,6 +814,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
         final Scn maximumBatchScn = lowerBoundsScn.add(Scn.valueOf(metrics.getBatchSize()));
         final Scn defaultBatchSizeScn = Scn.valueOf(connectorConfig.getLogMiningBatchSizeDefault());
+        final Scn maxBatchSizeScn = Scn.valueOf(connectorConfig.getLogMiningBatchSizeMax());
 
         // Initially set the upper bounds based on batch size
         // The following logic will alter this value as needed based on specific rules
@@ -844,9 +845,16 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         }
         else {
             if (!previousUpperBounds.isNull() && maximumBatchScn.compareTo(previousUpperBounds) <= 0) {
-                // Batch size is too small, make a large leap and use current SCN
-                LOGGER.debug("Batch size upper bounds {} too small, using maximum read position {} instead.", maximumBatchScn, maximumScn);
-                result = maximumScn;
+                // Batch size is too small, make a large leap
+                // This will always add the max batch size window rather than smaller increments
+                // This fits more closely to the same semantics as maximumScn, but for very large bursts, it
+                // keeps the window relatively capped.
+                Scn extendedUpperBounds = previousUpperBounds.add(maxBatchSizeScn);
+                if (extendedUpperBounds.compareTo(maximumScn) > 0) {
+                    extendedUpperBounds = maximumScn;
+                }
+                LOGGER.debug("Batch size upper bounds {} too small, using maximum read position {} instead.", maximumBatchScn, extendedUpperBounds);
+                result = extendedUpperBounds;
             }
             else {
                 decrementSleepTime();
