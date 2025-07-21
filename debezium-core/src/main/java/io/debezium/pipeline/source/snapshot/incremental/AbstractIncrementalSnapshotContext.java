@@ -136,6 +136,18 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         return paused.get();
     }
 
+    public boolean shouldUseCatalogBeforeSchema() {
+        return useCatalogBeforeSchema;
+    }
+
+    public TableId getPredicateBasedTableIdForId(TableId id) {
+        return id;
+    }
+
+    public TableId getPredicateBasedTableIdForString(String id) {
+        return TableId.parse(id, useCatalogBeforeSchema);
+    }
+
     /**
      * The snapshotting process can receive out-of-order windowing signals after connector restart
      * as depending on committed offset position some signals can be replayed.
@@ -190,13 +202,14 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         }
         offset.put(EVENT_PRIMARY_KEY, arrayToSerializedString(lastEventKeySent));
         offset.put(TABLE_MAXIMUM_KEY, arrayToSerializedString(maximumKey));
-        offset.put(SnapshotDataCollection.DATA_COLLECTIONS_TO_SNAPSHOT_KEY, snapshotDataCollection.dataCollectionsAsJsonString());
+        offset.put(SnapshotDataCollection.DATA_COLLECTIONS_TO_SNAPSHOT_KEY,
+                snapshotDataCollection.dataCollectionsAsJsonString(this));
         offset.put(CORRELATION_ID, correlationId);
         return offset;
     }
 
     private void addTablesIdsToSnapshot(List<DataCollection<T>> dataCollectionIds) {
-        snapshotDataCollection.add(dataCollectionIds);
+        snapshotDataCollection.add(dataCollectionIds, this);
     }
 
     @SuppressWarnings("unchecked")
@@ -248,7 +261,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     @SuppressWarnings("unchecked")
     public boolean removeDataCollectionFromSnapshot(String dataCollectionId) {
         final T collectionId = (T) TableId.parse(dataCollectionId, useCatalogBeforeSchema);
-        return snapshotDataCollection.remove(List.of(new DataCollection<>(collectionId)));
+        return snapshotDataCollection.remove(List.of(new DataCollection<>(collectionId)), this);
     }
 
     @Override
@@ -278,7 +291,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         final String dataCollectionsStr = (String) offsets.get(SnapshotDataCollection.DATA_COLLECTIONS_TO_SNAPSHOT_KEY);
         context.snapshotDataCollection.clear();
         if (dataCollectionsStr != null) {
-            context.addTablesIdsToSnapshot(context.snapshotDataCollection.stringToDataCollections(dataCollectionsStr, context.useCatalogBeforeSchema));
+            context.addTablesIdsToSnapshot(context.snapshotDataCollection.stringToDataCollections(dataCollectionsStr, context));
         }
         context.correlationId = (String) offsets.get(CORRELATION_ID);
         return context;
@@ -323,7 +336,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     public DataCollection<T> nextDataCollection() {
         resetChunk();
-        return snapshotDataCollection.getNext();
+        return snapshotDataCollection.getNext(this);
     }
 
     public void startNewChunk() {
@@ -392,14 +405,14 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         SnapshotDataCollection() {
         }
 
-        void add(List<DataCollection<T>> dataCollectionIds) {
+        void add(List<DataCollection<T>> dataCollectionIds, AbstractIncrementalSnapshotContext<T> context) {
             this.dataCollectionsToSnapshot.addAll(dataCollectionIds);
-            this.dataCollectionsToSnapshotJson = computeJsonString();
+            this.dataCollectionsToSnapshotJson = computeJsonString(context);
         }
 
-        DataCollection<T> getNext() {
+        DataCollection<T> getNext(AbstractIncrementalSnapshotContext<T> context) {
             DataCollection<T> nextDataCollection = this.dataCollectionsToSnapshot.poll();
-            this.dataCollectionsToSnapshotJson = computeJsonString();
+            this.dataCollectionsToSnapshotJson = computeJsonString(context);
             return nextDataCollection;
         }
 
@@ -420,13 +433,13 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
             return this.dataCollectionsToSnapshot.isEmpty();
         }
 
-        public boolean remove(List<DataCollection<T>> toRemove) {
+        public boolean remove(List<DataCollection<T>> toRemove, AbstractIncrementalSnapshotContext<T> context) {
             boolean removed = this.dataCollectionsToSnapshot.removeAll(toRemove);
-            this.dataCollectionsToSnapshotJson = computeJsonString();
+            this.dataCollectionsToSnapshotJson = computeJsonString(context);
             return removed;
         }
 
-        public String dataCollectionsAsJsonString() {
+        public String dataCollectionsAsJsonString(AbstractIncrementalSnapshotContext<T> context) {
 
             if (!Strings.isNullOrEmpty(dataCollectionsToSnapshotJson)) {
                 // A cached value to improve performance since this method is called in the "store"
@@ -434,21 +447,21 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
                 return dataCollectionsToSnapshotJson;
             }
 
-            return computeJsonString();
+            return computeJsonString(context);
         }
 
         public Queue<DataCollection<T>> getDataCollectionsToSnapshot() {
             return this.dataCollectionsToSnapshot;
         }
 
-        private String computeJsonString() {
+        private String computeJsonString(AbstractIncrementalSnapshotContext<T> context) {
             // TODO Handle non-standard table ids containing dots, commas etc.
 
             try {
                 List<LinkedHashMap<String, String>> dataCollectionsMap = dataCollectionsToSnapshot.stream()
                         .map(x -> {
                             LinkedHashMap<String, String> map = new LinkedHashMap<>();
-                            map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID, x.getId().toString());
+                            map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID, getStringFromId(x.getId(), context));
                             map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION, x.getAdditionalCondition().orElse(null));
                             map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY, x.getSurrogateKey().orElse(null));
                             return map;
@@ -462,11 +475,11 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
             }
         }
 
-        private List<DataCollection<T>> stringToDataCollections(String dataCollectionsStr, boolean useCatalogBeforeSchema) {
+        private List<DataCollection<T>> stringToDataCollections(String dataCollectionsStr, AbstractIncrementalSnapshotContext context) {
             try {
                 List<LinkedHashMap<String, String>> dataCollections = mapper.readValue(dataCollectionsStr, mapperTypeRef);
                 return dataCollections.stream()
-                        .map(x -> new DataCollection<>((T) TableId.parse(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID), useCatalogBeforeSchema),
+                        .map(x -> new DataCollection<>((T) context.getPredicateBasedTableIdForString(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID)),
                                 Optional.ofNullable(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION)).orElse(""),
                                 Optional.ofNullable(x.get(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY)).orElse("")))
                         .collect(Collectors.toList());
@@ -475,5 +488,13 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
                 throw new DebeziumException("Cannot de-serialize dataCollectionsToSnapshot information: " + dataCollectionsStr);
             }
         }
+
+        private String getStringFromId(T id, AbstractIncrementalSnapshotContext context) {
+            if (id instanceof TableId) {
+                return context.getPredicateBasedTableIdForId((TableId) id).toString();
+            }
+            return id.toString(); // Assuming T is not a TableId, return as is
+        }
+
     }
 }
