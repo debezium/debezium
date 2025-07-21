@@ -21,17 +21,17 @@ import io.debezium.runtime.events.DebeziumHeartbeat;
 public class QuarkusHeartbeatEmitter implements Heartbeat {
 
     private final Debezium debezium;
-    private final Event<DebeziumHeartbeat> heartBeat;
+    private final Event<DebeziumHeartbeat> heartbeat;
 
     @Inject
-    public QuarkusHeartbeatEmitter(Debezium debezium, Event<DebeziumHeartbeat> heartBeat) {
+    public QuarkusHeartbeatEmitter(Debezium debezium, Event<DebeziumHeartbeat> heartbeat) {
         this.debezium = debezium;
-        this.heartBeat = heartBeat;
+        this.heartbeat = heartbeat;
     }
 
     @Override
     public void emit(Map<String, ?> partition, OffsetContext offset) {
-        heartBeat.fire(new DebeziumHeartbeat(
+        heartbeat.fire(new DebeziumHeartbeat(
                 debezium.connector(),
                 debezium.status(),
                 partition,
