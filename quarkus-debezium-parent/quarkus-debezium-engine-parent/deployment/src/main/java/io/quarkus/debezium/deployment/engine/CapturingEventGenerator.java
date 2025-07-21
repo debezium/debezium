@@ -7,46 +7,44 @@
 package io.quarkus.debezium.deployment.engine;
 
 import java.lang.reflect.Modifier;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.apache.kafka.connect.source.SourceRecord;
+import org.jboss.jandex.AnnotationValue;
 import org.jboss.jandex.MethodInfo;
 import org.jboss.jandex.ParameterizedType;
 import org.jboss.jandex.Type;
 
-import io.debezium.engine.RecordChangeEvent;
+import io.debezium.runtime.Capturing;
+import io.debezium.runtime.CapturingEvent;
 import io.quarkus.arc.processor.BeanInfo;
 import io.quarkus.arc.processor.DotNames;
-import io.quarkus.debezium.engine.capture.CapturingSourceRecordInvoker;
-import io.quarkus.gizmo.ClassCreator;
-import io.quarkus.gizmo.ClassOutput;
-import io.quarkus.gizmo.FieldDescriptor;
-import io.quarkus.gizmo.MethodCreator;
-import io.quarkus.gizmo.MethodDescriptor;
-import io.quarkus.gizmo.ResultHandle;
+import io.quarkus.debezium.deployment.dotnames.DebeziumDotNames;
+import io.quarkus.debezium.engine.capture.CapturingEventInvoker;
+import io.quarkus.gizmo.*;
 import io.quarkus.runtime.util.HashUtil;
 
-@Deprecated
-public class InvokerGenerator implements CapturingInvokerGenerator {
+public class CapturingEventGenerator implements CapturingInvokerGenerator {
 
     private final ClassOutput output;
 
-    public InvokerGenerator(ClassOutput classOutput) {
-        this.output = classOutput;
+    public CapturingEventGenerator(ClassOutput output) {
+        this.output = output;
     }
 
     @Override
     public Type type() {
-        return ParameterizedType.create(RecordChangeEvent.class, Type.create(SourceRecord.class));
+        return ParameterizedType.create(CapturingEvent.class, Type.create(SourceRecord.class));
     }
 
     /**
-     * it generates concrete classes based on the CapturingInvoker interface using gizmo:
+     * it generates concrete classes based on the {@link io.quarkus.debezium.engine.capture.CapturingEventInvoker} interface using gizmo:
      * <p>
      * public class GeneratedCapturingInvoker {
      *     private final Object beanInstance;
      *
-     *     void capture(RecordChangeEvent<SourceRecord> event) {
+     *     void capture(CapturingEvent<SourceRecord> event) {
      *         beanInstance.method(event);
      *     }
      *
@@ -63,7 +61,7 @@ public class InvokerGenerator implements CapturingInvokerGenerator {
         try (ClassCreator invoker = ClassCreator.builder()
                 .classOutput(this.output)
                 .className(name)
-                .interfaces(CapturingSourceRecordInvoker.class)
+                .interfaces(CapturingEventInvoker.class)
                 .build()) {
 
             FieldDescriptor beanInstanceField = invoker.getFieldCreator("beanInstance", methodInfo
@@ -82,7 +80,7 @@ public class InvokerGenerator implements CapturingInvokerGenerator {
                 constructor.returnValue(null);
             }
 
-            try (MethodCreator capture = invoker.getMethodCreator("capture", void.class, RecordChangeEvent.class)) {
+            try (MethodCreator capture = invoker.getMethodCreator("capture", void.class, CapturingEvent.class)) {
                 ResultHandle captureThis = capture.getThis();
                 ResultHandle delegate = capture.readInstanceField(beanInstanceField, captureThis);
                 ResultHandle event = capture.getMethodParam(0);
@@ -97,7 +95,16 @@ public class InvokerGenerator implements CapturingInvokerGenerator {
                 capture.returnVoid();
             }
 
-            return new GeneratedClassMetaData(UUID.randomUUID(), name.replace('/', '.'), beanInfo, CapturingSourceRecordInvoker.class);
+            try (MethodCreator destination = invoker.getMethodCreator("destination", String.class)) {
+                Optional.ofNullable(methodInfo
+                        .annotation(DebeziumDotNames.CAPTURING)
+                        .value("destination"))
+                        .map(AnnotationValue::asString)
+                        .ifPresentOrElse(s -> destination.returnValue(destination.load(s)),
+                                () -> destination.returnValue(destination.load(Capturing.ALL)));
+            }
+
+            return new GeneratedClassMetaData(UUID.randomUUID(), name.replace('/', '.'), beanInfo, CapturingEventInvoker.class);
         }
     }
 

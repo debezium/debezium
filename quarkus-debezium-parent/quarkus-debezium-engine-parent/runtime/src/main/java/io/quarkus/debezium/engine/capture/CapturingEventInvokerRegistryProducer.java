@@ -17,6 +17,7 @@ import jakarta.inject.Singleton;
 
 import org.apache.kafka.connect.source.SourceRecord;
 
+import io.debezium.runtime.Capturing;
 import io.debezium.runtime.CapturingEvent;
 
 public class CapturingEventInvokerRegistryProducer implements CapturingInvokerRegistryProducer<CapturingEvent<SourceRecord>> {
@@ -32,6 +33,6 @@ public class CapturingEventInvokerRegistryProducer implements CapturingInvokerRe
                 .stream()
                 .collect(Collectors.toMap(CapturingEventInvoker::destination, Function.identity()));
 
-        return event -> invokers.get(event.destination());
+        return event -> invokers.getOrDefault(event.destination(), invokers.get(Capturing.ALL));
     }
 }

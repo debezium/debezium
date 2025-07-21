@@ -6,13 +6,13 @@
 
 package io.quarkus.debezium.deployment.engine;
 
-import java.util.UUID;
+import org.jboss.jandex.MethodInfo;
+import org.jboss.jandex.Type;
 
 import io.quarkus.arc.processor.BeanInfo;
 
-public record GeneratedClassMetaData(UUID id, String generatedClassName, BeanInfo mediator, Class<?> clazz) {
+public interface CapturingInvokerGenerator {
+    Type type();
 
-    public String getShortIdentifier() {
-        return id.toString().split("-")[0].replaceAll("\\D", "");
-    }
+    GeneratedClassMetaData generate(MethodInfo methodInfo, BeanInfo beanInfo);
 }
