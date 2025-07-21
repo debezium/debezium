@@ -105,7 +105,7 @@ public class PostProcessorGenerator {
             }
         }
 
-        return new GeneratedClassMetaData(UUID.randomUUID(), name.replace('/', '.'), beanInfo);
+        return new GeneratedClassMetaData(UUID.randomUUID(), name.replace('/', '.'), beanInfo, PostProcessor.class);
     }
 
     private String generateClassName(BeanInfo bean, MethodInfo methodInfo) {

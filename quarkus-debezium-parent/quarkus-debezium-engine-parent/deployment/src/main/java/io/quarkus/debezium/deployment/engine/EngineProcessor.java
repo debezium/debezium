@@ -249,11 +249,14 @@ public class EngineProcessor {
                                  BuildProducer<DebeziumGeneratedInvokerBuildItem> debeziumGeneratedInvokerBuildItemBuildProducer,
                                  BuildProducer<DebeziumGeneratedCustomConverterBuildItem> debeziumGeneratedCustomConverterBuildItemBuildProducer,
                                  BuildProducer<DebeziumGeneratedPostProcessorBuildItem> debeziumGeneratedPostProcessorBuildItemmBuildProducer) {
-        InvokerGenerator invokerGenerator = new InvokerGenerator(new GeneratedClassGizmoAdaptor(generatedClassBuildItemBuildProducer,
-                true));
+        GeneratedClassGizmoAdaptor classOutput = new GeneratedClassGizmoAdaptor(generatedClassBuildItemBuildProducer,
+                true);
 
-        PostProcessorGenerator postProcessorGenerator = new PostProcessorGenerator(new GeneratedClassGizmoAdaptor(generatedClassBuildItemBuildProducer, true));
-        CustomConverterGenerator customConverterGenerator = new CustomConverterGenerator(new GeneratedClassGizmoAdaptor(generatedClassBuildItemBuildProducer, true));
+        CapturingInvokerGenerator capturingInvokerGenerator = new DefaultCapturingInvokerGenerator(new CapturingEventGenerator(classOutput),
+                new InvokerGenerator(classOutput));
+
+        PostProcessorGenerator postProcessorGenerator = new PostProcessorGenerator(classOutput);
+        CustomConverterGenerator customConverterGenerator = new CustomConverterGenerator(classOutput);
 
         Map<Type, DebeziumMediatorBuildItem> fieldFilterStrategyByClassName = mediatorBuildItems.stream()
                 .filter(item -> item.getDotName().equals(DebeziumDotNames.FIELD_FILTER_STRATEGY))
@@ -261,10 +264,10 @@ public class EngineProcessor {
 
         mediatorBuildItems.forEach(item -> {
             if (item.getDotName().equals(DebeziumDotNames.CAPTURING)) {
-                GeneratedClassMetaData metadata = invokerGenerator.generate(item.getMethodInfo(),
+                GeneratedClassMetaData metadata = capturingInvokerGenerator.generate(item.getMethodInfo(),
                         item.getBean());
                 debeziumGeneratedInvokerBuildItemBuildProducer.produce(new DebeziumGeneratedInvokerBuildItem(metadata.generatedClassName(),
-                        metadata.mediator(), metadata.getShortIdentifier()));
+                        metadata.mediator(), metadata.getShortIdentifier(), metadata.clazz()));
                 reflectiveClassBuildItemBuildProducer.produce(ReflectiveClassBuildItem.builder(metadata.generatedClassName()).build());
             }
 
@@ -307,7 +310,7 @@ public class EngineProcessor {
                                List<DebeziumGeneratedInvokerBuildItem> debeziumGeneratedInvokerBuildItems,
                                BuildProducer<SyntheticBeanBuildItem> syntheticBeanBuildItemBuildProducer) {
         debeziumGeneratedInvokerBuildItems.forEach(item -> syntheticBeanBuildItemBuildProducer.produce(
-                SyntheticBeanBuildItem.configure(CapturingSourceRecordInvoker.class)
+                SyntheticBeanBuildItem.configure(item.getClazz())
                         .setRuntimeInit()
                         .scope(ApplicationScoped.class)
                         .unremovable()
