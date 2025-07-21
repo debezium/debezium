@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import io.debezium.engine.RecordChangeEvent;
+import io.debezium.runtime.CapturingEvent;
 import io.quarkus.debezium.configuration.PostgresDatasourceConfiguration;
 import io.quarkus.debezium.engine.capture.CapturingInvokerRegistry;
 import io.quarkus.debezium.notification.QuarkusNotificationChannel;
@@ -30,9 +31,12 @@ class PostgresEngineProducerTest {
 
     private final Instance<PostgresDatasourceConfiguration> instance = Mockito.mock(Instance.class);
     private final QuarkusNotificationChannel quarkusNotificationChannel = Mockito.mock(QuarkusNotificationChannel.class);
-    private final CapturingInvokerRegistry<RecordChangeEvent<SourceRecord>> registry = identifier -> event -> {
+    private final CapturingInvokerRegistry<RecordChangeEvent<SourceRecord>> recordChangeEventRegistry = identifier -> event -> {
     };
-    private final PostgresEngineProducer underTest = new PostgresEngineProducer(registry, Mockito.mock(DefaultStateHandler.class), instance, quarkusNotificationChannel);
+    private final CapturingInvokerRegistry<CapturingEvent<SourceRecord>> capturingEventRegistry = identifier -> event -> {
+    };
+    private final PostgresEngineProducer underTest = new PostgresEngineProducer(recordChangeEventRegistry, capturingEventRegistry,
+            Mockito.mock(DefaultStateHandler.class), instance, quarkusNotificationChannel);
 
     @BeforeEach
     void setUp() {

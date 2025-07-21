@@ -21,7 +21,7 @@ public class CapturingSourceRecordInvokerRegistryProducer implements CapturingIn
     private final Logger logger = LoggerFactory.getLogger(CapturingSourceRecordInvokerRegistryProducer.class);
 
     @Inject
-    Instance<CapturingInvoker> invokers;
+    Instance<CapturingSourceRecordInvoker> invokers;
 
     @Override
     @Produces

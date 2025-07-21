@@ -74,9 +74,7 @@ import io.quarkus.debezium.deployment.items.DebeziumGeneratedPostProcessorBuildI
 import io.quarkus.debezium.deployment.items.DebeziumMediatorBuildItem;
 import io.quarkus.debezium.engine.DebeziumRecorder;
 import io.quarkus.debezium.engine.DefaultStateHandler;
-import io.quarkus.debezium.engine.capture.CapturingInvoker;
-import io.quarkus.debezium.engine.capture.CapturingSourceRecordInvokerRegistryProducer;
-import io.quarkus.debezium.engine.capture.DynamicCapturingInvokerSupplier;
+import io.quarkus.debezium.engine.capture.*;
 import io.quarkus.debezium.engine.converter.custom.DynamicCustomConverterSupplier;
 import io.quarkus.debezium.engine.post.processing.ArcPostProcessorFactory;
 import io.quarkus.debezium.engine.post.processing.DynamicPostProcessingSupplier;
@@ -116,7 +114,9 @@ public class EngineProcessor {
 
         additionalBeanProducer.produce(AdditionalBeanBuildItem
                 .builder()
-                .addBeanClasses(CapturingSourceRecordInvokerRegistryProducer.class)
+                .addBeanClasses(
+                        CapturingSourceRecordInvokerRegistryProducer.class,
+                        CapturingEventInvokerRegistryProducer.class)
                 .setDefaultScope(DotNames.APPLICATION_SCOPED)
                 .setUnremovable()
                 .build());
@@ -307,7 +307,7 @@ public class EngineProcessor {
                                List<DebeziumGeneratedInvokerBuildItem> debeziumGeneratedInvokerBuildItems,
                                BuildProducer<SyntheticBeanBuildItem> syntheticBeanBuildItemBuildProducer) {
         debeziumGeneratedInvokerBuildItems.forEach(item -> syntheticBeanBuildItemBuildProducer.produce(
-                SyntheticBeanBuildItem.configure(CapturingInvoker.class)
+                SyntheticBeanBuildItem.configure(CapturingSourceRecordInvoker.class)
                         .setRuntimeInit()
                         .scope(ApplicationScoped.class)
                         .unremovable()
