@@ -761,7 +761,7 @@ The message contains a logical representation of the table schema.
 |`ts_ms`
 |Optional field that displays the time at which the connector processed the event. The time is based on the system clock in the JVM running the Kafka Connect task.
 
-In the source object, ts_ms indicates the time that the change was made in the database. By comparing the value for payload.source.ts_ms with the value for payload.ts_ms, you can determine the lag between the source database update and Debezium.
+In the source object, ts_ms indicates the time that the change was made in the database. By comparing the value for payload.source.ts_ms with the value for payload.ts_ms, you can determine the lag between the source database update and {prodname}.
 
 |2
 |`databaseName` +
@@ -1586,7 +1586,7 @@ The following table describes how the connector maps each Db2 data type to a _li
 
 |`BOOLEAN`
 |`BOOLEAN`
-|Only snapshots can be taken from tables with BOOLEAN type columns. Currently SQL Replication on Db2 does not support BOOLEAN, so Debezium can not perform CDC on those tables. Consider using a different type.
+|Only snapshots can be taken from tables with BOOLEAN type columns. Currently SQL Replication on Db2 does not support BOOLEAN, so {prodname} can not perform CDC on those tables. Consider using a different type.
 
 
 |`BIGINT`
@@ -1818,13 +1818,13 @@ endif::product[]
 To put tables into capture mode, {prodname} provides a set of user-defined functions (UDFs) for your convenience.
 The procedure here shows how to install and run these management UDFs.
 Alternatively, you can run Db2 control commands to put tables into capture mode.
-The administrator must then enable CDC for each table that you want Debezium to capture.
+The administrator must then enable CDC for each table that you want {prodname} to capture.
 
 .Prerequisites
 
 * You are logged in to Db2 as the `db2instl` user.
-* On the Db2 host, the Debezium management UDFs are available in the $HOME/asncdctools/src directory.
- UDFs are available from the link:https://github.com/debezium/debezium-examples/tree/main/tutorial/debezium-db2-init/db2server[Debezium examples repository].
+* On the Db2 host, the {prodname} management UDFs are available in the $HOME/asncdctools/src directory.
+ UDFs are available from the link:https://github.com/debezium/debezium-examples/tree/main/tutorial/debezium-db2-init/db2server[{prodname} examples repository].
 * The Db2 command `bldrtn` is on PATH, e.g. by running `export PATH=$PATH:/opt/ibm/db2/V11.5.0.0/samples/c/` with Db2 11.5
 
 .Procedure
@@ -2131,7 +2131,7 @@ For more information, see link:{LinkDeployManageStreamsOpenShift}[{NameDeployMan
 
 * The Kafka Connect server has access to Maven Central to download the required JDBC driver for Db2.
   You can also use a local copy of the driver, or one that is available from a local Maven repository or other HTTP server.
-* You have an account and permissions to create and manage containers in the container registry (such as `quay.io` or `docker.io`) to which you plan to add the container that will run your Debezium connector.
+* You have an account and permissions to create and manage containers in the container registry (such as `quay.io` or `docker.io`) to which you plan to add the container that will run your {prodname} connector.
 
 .Procedure
 
@@ -2231,7 +2231,7 @@ spec:
 |`metadata.annotations` indicates to the Cluster Operator that `KafkaConnector` resources are used to configure connectors in this Kafka Connect cluster.
 
 |2
-|`spec.image` specifies the name of the image that you created to run your Debezium connector.
+|`spec.image` specifies the name of the image that you created to run your {prodname} connector.
 This property overrides the `STRIMZI_DEFAULT_KAFKA_CONNECT_IMAGE` variable in the Cluster Operator.
 
 |===
