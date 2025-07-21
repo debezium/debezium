@@ -249,6 +249,27 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
     }
 
     /**
+     * Returns a new {@link TableId} with all parts of the identifier in user provided quoting
+     * characters
+     *
+     * @param openingQuote the string to be used to open the identifier.
+     * @param closingQuote the string to be used to close the identifier.
+     */
+    public TableId toUserQuote(String openingQuote, String closingQuote) {
+        String catalogName = null;
+        if (this.catalogName != null && !this.catalogName.isEmpty()) {
+            catalogName = quote(this.catalogName, openingQuote, closingQuote);
+        }
+
+        String schemaName = null;
+        if (this.schemaName != null && !this.schemaName.isEmpty()) {
+            schemaName = quote(this.schemaName, openingQuote, closingQuote);
+        }
+
+        return new TableId(catalogName, schemaName, quote(this.tableName, openingQuote, closingQuote));
+    }
+
+    /**
      * Returns a new {@link TableId} that has all parts of the identifier quoted.
      *
      * @param quotingChar the character to be used to quote the identifier parts.
@@ -315,6 +336,25 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
         if (identifierPart.charAt(0) != quotingChar && identifierPart.charAt(identifierPart.length() - 1) != quotingChar) {
             identifierPart = identifierPart.replace(quotingChar + "", repeat(quotingChar));
             identifierPart = quotingChar + identifierPart + quotingChar;
+        }
+
+        return identifierPart;
+    }
+
+    /**
+     * Quotes the given identifier part, e.g. schema or table name in openingQuote and closingQuote.
+     */
+    private static String quote(String identifierPart, String openingQuote, String closingQuote) {
+        if (identifierPart == null) {
+            return null;
+        }
+
+        if (identifierPart.isEmpty()) {
+            return openingQuote + closingQuote;
+        }
+
+        if (!identifierPart.startsWith(openingQuote) && !identifierPart.endsWith(closingQuote)) {
+            identifierPart = openingQuote + identifierPart + closingQuote;
         }
 
         return identifierPart;
