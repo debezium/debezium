@@ -15,7 +15,6 @@ import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.SnapshotType;
 import io.debezium.pipeline.CommonOffsetContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
-import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.relational.TableId;
@@ -55,7 +54,8 @@ public class SqlServerOffsetContext extends CommonOffsetContext<SourceInfo> {
     }
 
     public SqlServerOffsetContext(SqlServerConnectorConfig connectorConfig, TxLogPosition position, SnapshotType snapshot, boolean snapshotCompleted) {
-        this(connectorConfig, position, snapshot, snapshotCompleted, 1, new TransactionContext(), new SignalBasedIncrementalSnapshotContext<>());
+        this(connectorConfig, position, snapshot, snapshotCompleted, 1, new TransactionContext(),
+                new SqlServerIncrementalSnapshotContext<>());
     }
 
     @Override
@@ -126,7 +126,7 @@ public class SqlServerOffsetContext extends CommonOffsetContext<SourceInfo> {
             }
 
             return new SqlServerOffsetContext(connectorConfig, TxLogPosition.valueOf(commitLsn, changeLsn), snapshot, snapshotCompleted, eventSerialNo,
-                    TransactionContext.load(offset), SignalBasedIncrementalSnapshotContext.load(offset));
+                    TransactionContext.load(offset), SqlServerIncrementalSnapshotContext.load(offset));
         }
     }
 
