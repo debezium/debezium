@@ -16,3 +16,21 @@ def getDryRun() {
 
     return DRY_RUN
 }
+
+static String convertToSemver(String releaseTag) {
+
+    def baseVersionMatcher = releaseTag =~ /^(\d+\.\d+\.\d+)\..*$/
+    def baseVersion = baseVersionMatcher ? baseVersionMatcher[0][1] : releaseTag
+
+    if (releaseTag.endsWith(".Final")) {
+        return baseVersion
+    } else {
+
+        def prereleasePartMatcher = releaseTag =~ /^${baseVersion}\.(.*)$/
+        def prereleasePart = prereleasePartMatcher ? prereleasePartMatcher[0][1] : ""
+
+        def semverPrerelease = prereleasePart.toLowerCase().replace('.', '-')
+
+        return "${baseVersion}-${semverPrerelease}"
+    }
+}
