@@ -33,7 +33,7 @@ public class SqlServerIncrementalSnapshotContext<T> extends AbstractIncrementalS
 
     @Override
     public TableId getPredicateBasedTableIdForId(TableId id) {
-        return id.toUserQuote(SqlServerConnection.OPENING_QUOTING_CHARACTER, SqlServerConnection.CLOSING_QUOTING_CHARACTER);
+        return id.toBracketQuoted();
     }
 
     @Override
