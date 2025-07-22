@@ -1243,7 +1243,7 @@ ifdef::community[]
 To deploy a {prodname} MongoDB connector, you install the {prodname} MongoDB connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
 
 .Prerequisites
-* link:https://zookeeper.apache.org/[Apache Zookeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
 * MongoDB is installed and is xref:setting-up-mongodb[set up to work with the {prodname} connector].
 
 .Procedure
@@ -1258,7 +1258,7 @@ endif::[]
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 . Restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s Container images] for Apache Zookeeper, Apache Kafka, and Kafka Connect with the MongoDB connector already installed and ready to run.
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s Container images] for Apache Kafka, and Kafka Connect with the MongoDB connector already installed and ready to run.
 
 [IMPORTANT]
 ====
@@ -2285,7 +2285,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-s
 [[mongodb-monitoring]]
 == Monitoring
 
-The {prodname} MongoDB connector has two metric types in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect have.
+The {prodname} MongoDB connector has two metric types in addition to the built-in support for JMX metrics that Kafka and Kafka Connect have.
 
 * xref:mongodb-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
 * xref:mongodb-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.

@@ -7,22 +7,18 @@
 [id="starting-services"]
 = Starting the services
 
-Using {prodname} requires three separate services:
-http://zookeeper.apache.org[ZooKeeper], Kafka, and the {prodname} connector service.
+Using {prodname} requires two separate services: Kafka, and the {prodname} connector service.
 In this tutorial,
 you will set up a single instance of each service using http://docker.com[Docker] and https://quay.io/organization/debezium[the {prodname} container images].
 
 To start the services needed for this tutorial, you must:
 
-* xref:starting-zookeeper[Start Zookeeper]
 * xref:starting-kafka[Start Kafka]
 * xref:starting-mysql-database[Start a MySQL database]
 * xref:starting-mysql-command-line-client[Start a MySQL command line client]
 * xref:starting-kafka-connect[Start Kafka Connect]
 
 include::{partialsdir}/modules/tutorial/con-considerations-running-debezium-with-docker.adoc[leveloffset=+1]
-
-include::{partialsdir}/modules/tutorial/proc-starting-zookeeper.adoc[leveloffset=+1]
 
 include::{partialsdir}/modules/tutorial/proc-starting-kafka.adoc[leveloffset=+1]
 

@@ -5,7 +5,7 @@
 [id="considerations-running-debezium-docker"]
 = Considerations for running {prodname} with Docker
 
-This tutorial uses http://docker.com[Docker] and the https://hub.docker.com/u/debezium/[{prodname} container images] to run the ZooKeeper, Kafka, {prodname}, and MySQL services.
+This tutorial uses http://docker.com[Docker] and the https://hub.docker.com/u/debezium/[{prodname} container images] to run the Kafka, {prodname}, and MySQL services.
 Running each service in a separate container simplifies the setup so that you can see {prodname} in action.
 
 [NOTE]
@@ -18,9 +18,9 @@ or you would install on dedicated hardware.
 
 You should be aware of the following considerations for running {prodname} with Docker:
 
-* The containers for ZooKeeper and Kafka are ephemeral.
+* The containers for Kafka are ephemeral.
 +
-ZooKeeper and Kafka would typically store their data locally inside the containers,
+Kafka would typically store their data locally inside the containers,
 which would require you to mount directories on the host machine as volumes.
 That way, when the containers are stopped,
 the persisted data remains.

@@ -1852,7 +1852,7 @@ To deploy a {prodname} Informix connector, you install the {prodname} Informix c
 
 .Prerequisites
 
-* link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
 * Informix is installed and xref:setting-up-informix[capture mode is enabled for tables] to prepare the database to be used with the {prodname} connector.
 
 .Procedure
@@ -1869,7 +1869,7 @@ To enable the connector to access the database, you must add the driver and clie
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 . Restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Apache ZooKeeper, Apache Kafka and Kafka Connect with the Informix connector already installed and ready to run.
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Apache Kafka and Kafka Connect with the Informix connector already installed and ready to run.
 
 [IMPORTANT]
 ====
@@ -2748,7 +2748,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-databas
 [[informix-monitoring]]
 == Monitoring
 
-The {prodname} Informix connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Apache ZooKeeper, Apache Kafka, and Kafka Connect provide.
+The {prodname} Informix connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Apache Kafka, and Kafka Connect provide.
 
 * xref:informix-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
 * xref:informix-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.

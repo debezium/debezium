@@ -12,11 +12,11 @@
 
 toc::[]
 
-You can use the JMX metrics provided by link:https://zookeeper.apache.org/doc/r3.1.2/zookeeperJMX.html[Apache Zookeeper], link:https://kafka.apache.org/documentation/#monitoring[Apache Kafka], and https://kafka.apache.org/documentation/#connect_monitoring[Kafka Connect] to monitor {prodname}.
-To use these metrics, you must enable them when you start the Zookeeper, Kafka, and Kafka Connect services.
+You can use the JMX metrics provided by link:https://kafka.apache.org/documentation/#monitoring[Apache Kafka] and https://kafka.apache.org/documentation/#connect_monitoring[Kafka Connect] to monitor {prodname}.
+To use these metrics, you must enable them when you start the Kafka and Kafka Connect services.
 Enabling JMX involves setting the correct environment variables.
 ifdef::community[]
-The environment variables that you must set depend on whether you are running Zookeeper, Kafka, and Kafka Connect in a local installation or in Docker containers.
+The environment variables that you must set depend on whether you are running Kafka and Kafka Connect in a local installation or in Docker containers.
 endif::community[]
 
 [NOTE]
@@ -32,7 +32,7 @@ be sure to use distinct JMX ports for each service.
 [id="metrics-monitoring-connectors"]
 == Metrics for monitoring {prodname} connectors
 
-In addition to the built-in support for JMX metrics in Kafka, Zookeeper, and Kafka Connect,
+In addition to the built-in support for JMX metrics in Kafka and Kafka Connect,
 each connector provides additional metrics that you can use to monitor their activities.
 
 * {link-prefix}:{link-db2-connector}#db2-monitoring[Db2 connector metrics]
@@ -55,41 +55,8 @@ endif::community[]
 [id="enabling-jmx-local-installation"]
 == Enabling JMX in local installations
 
-With Zookeeper, Kafka, and Kafka Connect,
+With Kafka and Kafka Connect,
 you enable JMX by setting the appropriate environment variables when you start each service.
-
-// Category: debezium-using
-// Type: reference
-// ModuleID: debezium-zookeeper-jmx-environment-variables
-[id="zookeeper-jmx-environment-variables"]
-=== Zookeeper JMX environment variables
-
-Zookeeper has built-in support for JMX.
-When running Zookeeper using a local installation,
-the `zkServer.sh` script recognizes the following environment variables:
-
-`JMXPORT`::
-Enables JMX and specifies the port number that will be used for JMX.
-The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.port=$JMXPORT`.
-
-`JMXAUTH`::
-Whether JMX clients must use password authentication when connecting.
-Must be either `true` or `false`.
-The default is `false`.
-The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.authenticate=$JMXAUTH`.
-
-`JMXSSL`::
-Whether JMX clients connect using SSL/TLS.
-Must be either `true` or `false`.
-The default is `false`.
-The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.ssl=$JMXSSL`.
-
-`JMXLOG4J`::
-Whether the Log4J JMX MBeans should be disabled.
-Must be either `true` (default) or `false`.
-The default is `true`.
-The value is used to specify the JVM parameter `-Dzookeeper.jmx.log4j.disable=$JMXLOG4J`.
-
 
 // Category: debezium-using
 // Type: reference
@@ -152,61 +119,13 @@ ifdef::community[]
 [id="enabling-jmx-docker"]
 == Enabling JMX in Docker
 
-If you are running Apache Zookeeper, Kafka, and Kafka Connect in via the {prodname} container images,
+If you are running Kafka, and Kafka Connect in via the {prodname} container images,
 enabling JMX requires several additional environment variables that are not typically needed when running on a local machine.
 This is because the JVM requires the host name to which it will advertise itself to JMX clients.
-Thus, {prodname}'s container images for Zookeeper, Kafka, and Kafka Connect use several environment variables to enable and configure JMX.
+Thus, {prodname}'s container images for Kafka, and Kafka Connect use several environment variables to enable and configure JMX.
 Most of the environment variables are the same for all of the images,
 but there are some minor differences.
 
-
-[id="zookeeper-jmx-environment-variables-docker"]
-=== Zookeeper JMX environment variables in Docker
-
-The `debezium/zookeeper` image recognizes the following JMX-related environment variables:
-
-`JMXPORT` (Required)::
-The port number that will be used for JMX.
-The value is used to specify the following JVM parameters:
-+
-** `-Dcom.sun.management.jmxremote.port=$JMXPORT`
-** `-Dcom.sun.management.jmxremote.rmi.port=$JMXPORT`
-
-`JMXHOST` (Required)::
-The IP address or resolvable host name of the Docker host,
-which JMX uses to construct a URL sent to the JMX client.
-A value of `localhost` or `127.0.0.1` will not work.
-Typically, `0.0.0.0` can be used.
-The value is used to specify the JVM parameter `-Djava.rmi.server.hostname=$JMXHOST`.
-
-`JMXAUTH`::
-Whether JMX clients must use password authentication when connecting.
-Must be either `true` or `false`.
-The default is `false`.
-The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.authenticate=$JMXAUTH`.
-
-`JMXSSL`::
-Whether JMX clients connect using SSL/TLS.
-Must be either `true` or `false`.
-The default is `false`.
-The value is used to specify the JVM parameter `-Dcom.sun.management.jmxremote.ssl=$JMXSSL`.
-
-`JMXLOG4J`::
-Whether the Log4J JMX MBeans should be disabled.
-Must be either `true` or `false`.
-The default is `true`.
-The value is used to specify the JVM parameter `-Dzookeeper.jmx.log4j.disable=$JMXLOG4J`.
-
-.Enabling JMX in a Zookeeper Docker container
-====
-The following example Docker command starts a container using the `debezium/zookeeper` image with values for the `JMXPORT` and `JMXHOST` environment variables,
-and maps the Docker host's port 9010 to the container's JMX port:
-
-[source,shell,options="nowrap"]
-----
-$ docker run -it --rm --name zookeeper -p 2181:2181 -p 2888:2888 -p 3888:3888 -p 9010:9010 -e JMXPORT=9010 -e JMXHOST=10.0.1.10 quay.io/debezium/zookeeper:latest
-----
-====
 
 [id="kafka-jmx-environment-variables-docker"]
 === Kafka JMX environment variables in Docker
@@ -246,7 +165,17 @@ and maps the Docker host's port 9011 to the container's JMX port:
 
 [source,shell,options="nowrap"]
 ----
-$ docker run -it --rm --name kafka -p 9092:9092 -p 9011:9011 -e JMXPORT=9011 -e JMXHOST=10.0.1.10 --link zookeeper:zookeeper quay.io/debezium/kafka:latest
+$ docker run -it --rm --name kafka --hostname kafka \
+  -p 9092:9092 -p 9011:9011 \
+  -e CLUSTER_ID=<YOUR_UNIQUE_CLUSTER_IDENTIFIER> \
+  -e NODE_ID=1 \
+  -e NODE_ROLE=combined \
+  -e KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093 \
+  -e KAFKA_LISTENERS=PLAINTEXT://kafka:9092,CONTROLLER://kafka:9093 \
+  -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092 \
+  -e JMXPORT=9011 \
+  -e JMXHOST=10.0.1.10\
+  quay.io/debezium/kafka:{debezium-docker-label}
 ----
 ====
 
@@ -295,7 +224,6 @@ $ docker run -it --rm --name connect \
   -e CONFIG_STORAGE_TOPIC=my_connect_configs \
   -e OFFSET_STORAGE_TOPIC=my_connect_offsets \
   -e STATUS_STORAGE_TOPIC=my_connect_statuses \
-  --link zookeeper:zookeeper \
   --link kafka:kafka \
   --link mysql:mysql \
   quay.io/debezium/connect:latest
