@@ -11,6 +11,7 @@ import static org.awaitility.Awaitility.given;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -66,10 +67,21 @@ public class EnhancedCapturingTest {
         assertThat(captureProductsHandler.isRecordChangeInvoked()).isFalse();
     }
 
+    @Test
+    @DisplayName("should call the filtered by destination capture")
+    void shouldInvokeFilteredByDestinationCapture() {
+        given().await()
+                .atMost(100, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(captureProductsHandler.filteredEvent()).isEqualTo(2));
+
+        assertThat(captureProductsHandler.isRecordChangeInvoked()).isFalse();
+    }
+
     @ApplicationScoped
     static class CaptureProductsHandler {
         private final AtomicBoolean isRecordChangeInvoked = new AtomicBoolean(false);
         private final AtomicBoolean isCapturingEventInvoked = new AtomicBoolean(false);
+        private final AtomicInteger isCapturingFilteredEvent = new AtomicInteger(0);
 
         @Capturing()
         public void capture(RecordChangeEvent<SourceRecord> event) {
@@ -81,12 +93,21 @@ public class EnhancedCapturingTest {
             isCapturingEventInvoked.set(true);
         }
 
+        @Capturing(destination = "dbserver1.public.products")
+        public void anotherCapture(CapturingEvent<SourceRecord> event) {
+            isCapturingFilteredEvent.incrementAndGet();
+        }
+
         public boolean isRecordChangeInvoked() {
             return isRecordChangeInvoked.getAndSet(false);
         }
 
         public boolean isCapturingEventInvoked() {
             return isCapturingEventInvoked.getAndSet(false);
+        }
+
+        public int filteredEvent() {
+            return isCapturingFilteredEvent.getAndSet(0);
         }
     }
 }
