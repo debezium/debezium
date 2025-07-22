@@ -44,7 +44,6 @@
 ** xref:transformations/timezone-converter.adoc[Timezone Converter]
 ** xref:transformations/timescaledb.adoc[TimescaleDB Integration]
 ** xref:transformations/decode-logical-decoding-message-content.adoc[Decode Logical Decoding Message Content]
-** xref:transformations/convert-cloudevent-to-saveable-form.adoc[Convert CloudEvents to Saveable Form]
 ** xref:transformations/vector-to-json.adoc[Vector Data Types to JSON Types]
 * Post Processors
 ** xref:post-processors/index.adoc[Overview]
