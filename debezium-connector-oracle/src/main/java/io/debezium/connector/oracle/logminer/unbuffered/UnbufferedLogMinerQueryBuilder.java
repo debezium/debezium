@@ -23,7 +23,7 @@ public class UnbufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder
     }
 
     @Override
-    protected String getPredicates() {
+    protected String getPredicates(boolean isCteQuery) {
         final StringBuilder predicates = new StringBuilder(1024);
 
         // For DDL operations, the COMMIT_SCN column is NULL when using COMMITTED_DATA_ONLY mode,
@@ -36,11 +36,7 @@ public class UnbufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder
             predicates.append(" AND ").append(multiTenantPredicate);
         }
 
-        predicates.append(" AND OPERATION_CODE IN (")
-                .append(connectorConfig.isLobEnabled()
-                        ? "1,2,3,5,6,7,9,10,11,27,29,34,36,68,70,71,91,92,93,255"
-                        : "1,2,3,5,6,7,27,34,36,255")
-                .append(")");
+        predicates.append(" AND OPERATION_CODE IN (").append(getOperationCodes(isCteQuery)).append(")");
 
         final String userNamePredicate = getUserNamePredicate();
         if (!Strings.isNullOrEmpty(userNamePredicate)) {
@@ -63,6 +59,22 @@ public class UnbufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder
         }
 
         return predicates.toString();
+    }
+
+    private String getOperationCodes(boolean isCteQuery) {
+        // For CTE queries we exclude START=6,COMMIT=7,ROLLBACK=36 - only interested in non-transaction markers
+        if (connectorConfig.isLobEnabled()) {
+            if (isCteQuery) {
+                return "1,2,3,5,9,10,11,27,29,34,68,70,71,91,92,93,255";
+            }
+            return "1,2,3,5,6,7,9,10,11,27,29,34,36,68,70,71,91,92,93,255";
+        }
+        else {
+            if (isCteQuery) {
+                return "1,2,3,5,27,34,255";
+            }
+            return "1,2,3,5,6,7,27,34,36,255";
+        }
     }
 
 }

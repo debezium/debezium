@@ -228,6 +228,11 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             statement.setString(1, startScn.toString());
             statement.setString(2, endScn.toString());
 
+            if (getConfig().isLogMiningUseCteQuery()) {
+                statement.setString(3, startScn.toString());
+                statement.setString(4, endScn.toString());
+            }
+
             executeAndProcessQuery(statement);
 
             logActiveTransactions();

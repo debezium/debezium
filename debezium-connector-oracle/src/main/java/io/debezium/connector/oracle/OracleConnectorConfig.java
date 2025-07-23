@@ -737,6 +737,15 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDefault(false)
             .withDescription("Uses the legacy decimal handling behavior before DBZ-7882");
 
+    public static final Field LOG_MINING_USE_CTE_QUERY = Field.createInternal("log.mining.use.cte.query")
+            .withDisplayName("Use CTE-based query")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(false)
+            .withValidation(OracleConnectorConfig::validateLogMiningUseCteQuery)
+            .withDescription("Uses a CTE query to exclude non-relevant transaction markers");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("Oracle")
             .excluding(
@@ -823,7 +832,8 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     LOG_MINING_BUFFER_MEMORY_LEGACY_TRANSACTION_START,
                     LOG_MINING_PATH_DICTIONARY,
                     LOG_MINING_READONLY_HOSTNAME,
-                    LEGACY_DECIMAL_HANDLING_STRATEGY)
+                    LEGACY_DECIMAL_HANDLING_STRATEGY,
+                    LOG_MINING_USE_CTE_QUERY)
             .events(SOURCE_INFO_STRUCT_MAKER,
                     SIGNAL_DATA_COLLECTION)
             .create();
@@ -901,6 +911,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Set<String> logMiningClientIdIncludes;
     private final Set<String> logMiningClientIdExcludes;
     private final String logMiningPathToDictionary;
+    private final boolean logMiningUseCteQuery;
     private final String readonlyHostname;
 
     private final String openLogReplicatorSource;
@@ -980,6 +991,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningClientIdIncludes = Strings.setOfTrimmed(config.getString(LOG_MINING_CLIENTID_INCLUDE_LIST), String::new);
         this.logMiningClientIdExcludes = Strings.setOfTrimmed(config.getString(LOG_MINING_CLIENTID_EXCLUDE_LIST), String::new);
         this.logMiningPathToDictionary = config.getString(LOG_MINING_PATH_DICTIONARY);
+        this.logMiningUseCteQuery = config.getBoolean(LOG_MINING_USE_CTE_QUERY);
         this.readonlyHostname = config.getString(LOG_MINING_READONLY_HOSTNAME);
 
         this.logMiningEhCacheConfiguration = config.subset("log.mining.buffer.ehcache", false);
@@ -2097,6 +2109,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
+     * Get whether the mining session should use a CTE-based query.
+     */
+    public boolean isLogMiningUseCteQuery() {
+        return logMiningUseCteQuery;
+    }
+
+    /**
      * The interval that the unbuffered resume position is recalculated.
      */
     public Duration getResumePositionUpdateInterval() {
@@ -2384,6 +2403,20 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             if (!LogMiningBufferType.MEMORY.equals(bufferType)) {
                 LOGGER.warn("'{}' only applies to buffered LogMiner with buffer type 'memory', setting will be ignored.",
                         LOG_MINING_BUFFER_MEMORY_LEGACY_TRANSACTION_START.name());
+            }
+        }
+        return 0;
+    }
+
+    public static int validateLogMiningUseCteQuery(Configuration config, Field field, ValidationOutput problems) {
+        if (config.getBoolean(LOG_MINING_USE_CTE_QUERY)) {
+            // When using the CTE, the LogMiningQueryFilterMode must be set
+            final String queryFilterMode = config.getString(LOG_MINING_QUERY_FILTER_MODE);
+            final LogMiningQueryFilterMode filterMode = LogMiningQueryFilterMode.parse(queryFilterMode);
+            if (filterMode == null || filterMode == LogMiningQueryFilterMode.NONE) {
+                problems.accept(LOG_MINING_USE_CTE_QUERY, true,
+                        "To use CTE query mode, a value must be specified for `log.mining.query.filter.mode`");
+                return 1;
             }
         }
         return 0;
