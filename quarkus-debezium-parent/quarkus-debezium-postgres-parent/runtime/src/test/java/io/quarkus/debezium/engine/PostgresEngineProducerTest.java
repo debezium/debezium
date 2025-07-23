@@ -23,6 +23,7 @@ import org.mockito.Mockito;
 
 import io.debezium.engine.RecordChangeEvent;
 import io.debezium.runtime.CapturingEvent;
+import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
 import io.quarkus.debezium.configuration.PostgresDatasourceConfiguration;
 import io.quarkus.debezium.engine.capture.CapturingInvokerRegistry;
 import io.quarkus.debezium.notification.QuarkusNotificationChannel;
@@ -57,7 +58,17 @@ class PostgresEngineProducerTest {
         when(instance.iterator()).thenReturn(configurations.iterator());
         when(instance.stream()).thenReturn(configurations.stream());
 
-        assertThat(underTest.engine(() -> new HashMap<>(Map.of("name", "test")))
+        assertThat(underTest.engine(new DebeziumEngineConfiguration() {
+            @Override
+            public Map<String, String> configuration() {
+                return new HashMap<>(Map.of("name", "test"));
+            }
+
+            @Override
+            public Map<String, Capturing> capturing() {
+                return Map.of();
+            }
+        })
                 .configuration())
                 .isEqualTo(Map.of(
                         "connector.class", "io.debezium.connector.postgresql.PostgresConnector",
@@ -84,7 +95,17 @@ class PostgresEngineProducerTest {
         when(instance.iterator()).thenReturn(configurations.iterator());
         when(instance.stream()).thenReturn(configurations.stream());
 
-        assertThat(underTest.engine(() -> new HashMap<>(Map.of("name", "test", "database.hostname", "native")))
+        assertThat(underTest.engine(new DebeziumEngineConfiguration() {
+            @Override
+            public Map<String, String> configuration() {
+                return Map.of("name", "test", "database.hostname", "native");
+            }
+
+            @Override
+            public Map<String, Capturing> capturing() {
+                return Map.of();
+            }
+        })
                 .configuration())
                 .isEqualTo(Map.of(
                         "connector.class", "io.debezium.connector.postgresql.PostgresConnector",

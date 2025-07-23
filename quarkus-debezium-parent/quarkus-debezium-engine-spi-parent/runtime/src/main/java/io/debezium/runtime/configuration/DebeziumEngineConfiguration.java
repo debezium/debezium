@@ -23,4 +23,13 @@ public interface DebeziumEngineConfiguration {
      */
     @WithName("debezium")
     Map<String, String> configuration();
+
+    @WithName("debezium.capturing")
+    Map<String, Capturing> capturing();
+
+    interface Capturing {
+        String destination();
+
+        String deserializer();
+    }
 }
