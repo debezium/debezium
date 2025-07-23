@@ -39,32 +39,53 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
     public static final Integer IN_CLAUSE_MAX_ELEMENTS = 1000;
 
     protected final OracleConnectorConfig connectorConfig;
+    protected final boolean useCteQuery;
 
     public AbstractLogMinerQueryBuilder(OracleConnectorConfig connectorConfig) {
         this.connectorConfig = connectorConfig;
+        this.useCteQuery = connectorConfig.isLogMiningUseCteQuery();
     }
 
     @Override
     public String getQuery() {
-        final String whereClause = getPredicates();
+        final String whereClause = getPredicates(false);
 
         final StringBuilder query = new StringBuilder(1024);
-        return query.append("SELECT ")
-                .append("SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, ")
+        if (useCteQuery) {
+            final String cteWhereClause = getPredicates(true);
+            query.append("WITH relevant_xids AS (")
+                    .append("SELECT DISTINCT XID as RXID FROM V$LOGMNR_CONTENTS ")
+                    .append(!Strings.isNullOrBlank(cteWhereClause) ? "WHERE " + cteWhereClause : "")
+                    .append(") ");
+        }
+
+        query.append("SELECT ");
+
+        if (useCteQuery) {
+            // Preserves the join hash order based on LOGMNR_CONTENTS_VIEW and not the CTE
+            query.append("/*+ ORDERED USE_NL(R) */ ");
+        }
+
+        query.append("SCN, SQL_REDO, OPERATION_CODE, TIMESTAMP, XID, CSF, TABLE_NAME, SEG_OWNER, OPERATION, ")
                 .append("USERNAME, ROW_ID, ROLLBACK, RS_ID, STATUS, INFO, SSN, THREAD#, DATA_OBJ#, DATA_OBJV#, DATA_OBJD#, ")
                 .append("CLIENT_ID, START_SCN, COMMIT_SCN, START_TIMESTAMP, COMMIT_TIMESTAMP, SEQUENCE# ")
                 .append("FROM ")
-                .append(LOGMNR_CONTENTS_VIEW).append(" ")
-                .append(!Strings.isNullOrEmpty(whereClause) ? "WHERE " + whereClause : "")
-                .toString();
+                .append(LOGMNR_CONTENTS_VIEW).append(" ");
+
+        if (useCteQuery) {
+            query.append("V JOIN relevant_xids R ON R.RXID = V.XID ");
+        }
+
+        return query.append(!Strings.isNullOrEmpty(whereClause) ? "WHERE " + whereClause : "").toString();
     }
 
     /**
      * Provides a way for various implementations to create their query predicate clauses.
      *
+     * @param isCteQuery whether the predicates should be built for the CTE query
      * @return a series of predicates.
      */
-    protected abstract String getPredicates();
+    protected abstract String getPredicates(boolean isCteQuery);
 
     /**
      * Get the multi-tenant predicate based on the configured pluggable database name.

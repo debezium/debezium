@@ -263,6 +263,10 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             statement.setFetchDirection(ResultSet.FETCH_FORWARD);
             statement.setString(1, minCommitScn.toString());
 
+            if (getConfig().isLogMiningUseCteQuery()) {
+                statement.setString(2, minCommitScn.toString());
+            }
+
             lastCommitScn = minCommitScn;
 
             executeAndProcessQuery(statement);
