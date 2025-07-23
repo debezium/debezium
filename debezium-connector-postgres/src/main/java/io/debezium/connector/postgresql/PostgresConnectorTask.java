@@ -214,6 +214,9 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                                     case "57P03":
                                         // Postgres error cannot_connect_now, see https://www.postgresql.org/docs/12/errcodes-appendix.html
                                         throw new RetriableException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
+                                    case "42P01":
+                                        // Postgres error undefined_table, see https://www.postgresql.org/docs/12/errcodes-appendix.html
+                                        throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
                                     default:
                                         break;
                                 }
