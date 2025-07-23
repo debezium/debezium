@@ -135,7 +135,7 @@
                     <version>3.0.0</version>
                 </plugin>
                 <plugin>
-                    <groupId>org.jboss.jandex</groupId>
+                    <groupId>io.smallrye</groupId>
                     <artifactId>jandex-maven-plugin</artifactId>
                     <version>${version.jandex}</version>
                 </plugin>
