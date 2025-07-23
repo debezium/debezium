@@ -2134,7 +2134,7 @@ To deploy a {prodname} Db2 connector, you install the {prodname} Db2 connector a
 
 .Prerequisites
 
-* link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* link:http://kafka.apache.org/[Apache Kafka] and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
 * Db2 is installed and xref:setting-up-db2[capture mode is enabled for tables] to prepare the database to be used with the {prodname} connector.
 
 .Procedure
@@ -3335,7 +3335,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-databas
 [[db2-monitoring]]
 == Monitoring
 
-The {prodname} Db2 connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Apache Kafka, and Kafka Connect provide.
+The {prodname} Db2 connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Apache Kafka and Kafka Connect provide.
 
 * xref:db2-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
 * xref:db2-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.

@@ -119,10 +119,10 @@ ifdef::community[]
 [id="enabling-jmx-docker"]
 == Enabling JMX in Docker
 
-If you are running Kafka, and Kafka Connect in via the {prodname} container images,
+If you are running Kafka and Kafka Connect via the {prodname} container images,
 enabling JMX requires several additional environment variables that are not typically needed when running on a local machine.
 This is because the JVM requires the host name to which it will advertise itself to JMX clients.
-Thus, {prodname}'s container images for Kafka, and Kafka Connect use several environment variables to enable and configure JMX.
+Thus, {prodname}'s container images for Kafka and Kafka Connect use several environment variables to enable and configure JMX.
 Most of the environment variables are the same for all of the images,
 but there are some minor differences.
 

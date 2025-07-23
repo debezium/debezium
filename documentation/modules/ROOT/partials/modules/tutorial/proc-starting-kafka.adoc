@@ -47,13 +47,17 @@ $ docker run -it --rm -p 9092:9092 \
 which means the terminal's standard input and output are attached to the container.
 `--rm`:: The container will be removed when it is stopped.
 `--name kafka`:: The name of the container.
-`--hostname kafka`:: To ensure that the container is identified as kafka, for a correct listener function.
+`--hostname kafka`:: Label ensures that the correct Kafka listener is paired to the container.
 `-p 9092:9092`:: Maps port `9092` in the container to the same port on the Docker host so that applications outside of the container can communicate with Kafka.
-`-e CLUSTER_ID=<YOUR_UNIQUE_CLUSTER_IDENTIFIER>`:: Unique cluster identifier used in your cluster. All the nodes inside the cluster has to have the same value.
-`-e NODE_ID=1`:: Node identenfier used in Raft protocol. Must be unique inside the cluster.
-`-e NODE_ROLE=combined`:: Node role inside the cluster. Can be a controller, broker or combined,
-`-e KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093`:: Specifies which nodes act as votwers in the Kafka controller quorum.
-`-e KAFKA_LISTENERS=PLAINTEXT://kafka:9092,CONTROLLER://kafka:9093`:: Defines rthe internal endpoints and protocol for Kafka listeners.
+`-e CLUSTER_ID=<YOUR_UNIQUE_CLUSTER_IDENTIFIER>`:: Unique identifier in the cluster. 
+All the nodes within the cluster must have the same cluster ID.
+`-e NODE_ID=1`:: Node identifier used in Raft protocol. 
+Must be unique within the cluster.
+`-e NODE_ROLE=combined`:: Node role within the cluster. 
+Can be a controller, broker, or combined.
+`-e KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093`:: Specifies the nodes that act as voters in the Kafka controller quorum.
+If multiple values are required, use a comma-separated list in the format `nodeId@host:port`, for example: `1@kafka1:9093,2@kafka2:9093,3@kafka3:9093`.
+`-e KAFKA_LISTENERS=PLAINTEXT://kafka:9092,CONTROLLER://kafka:9093`:: Defines the internal endpoints and protocol for Kafka listeners.
 `-e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092`:: Specifies how the broker advertises itself to external clients.
 
 ifdef::community[]

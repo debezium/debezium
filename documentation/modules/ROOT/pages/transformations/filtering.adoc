@@ -102,7 +102,7 @@ IMPORTANT: After the filter SMT is present in a Kafka Connect instance, any user
 To ensure that scripting expressions can be run only by authorized users, be sure to secure the Kafka Connect instance and its configuration interface before you add the filter SMT.
 
 ifdef::community[]
-With http://kafka.apache.org/[Kafka], {link-kafka-docs}.html#connect[Kafka Connect], and one or more {prodname} connectors installed, the remaining tasks to install the filter SMT are:
+With http://kafka.apache.org/[Kafka], {link-kafka-docs}.html#connect[Kafka Connect] and one or more {prodname} connectors installed, the remaining tasks to install the filter SMT are:
 
 . Download the link:https://repo1.maven.org/maven2/io/debezium/debezium-scripting/{debezium-version}/debezium-scripting-{debezium-version}.tar.gz[scripting SMT archive]
 . Extract the contents of the archive into the {prodname} plug-in directories of your Kafka Connect environment.

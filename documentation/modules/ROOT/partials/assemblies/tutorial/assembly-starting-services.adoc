@@ -7,7 +7,7 @@
 [id="starting-services"]
 = Starting the services
 
-Using {prodname} requires two separate services: Kafka, and the {prodname} connector service.
+Using {prodname} requires two separate services: Kafka and the {prodname} connector service.
 In this tutorial,
 you will set up a single instance of each service using http://docker.com[Docker] and https://quay.io/organization/debezium[the {prodname} container images].
 

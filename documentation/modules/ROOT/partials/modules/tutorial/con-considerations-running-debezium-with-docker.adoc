@@ -5,7 +5,7 @@
 [id="considerations-running-debezium-docker"]
 = Considerations for running {prodname} with Docker
 
-This tutorial uses http://docker.com[Docker] and the https://hub.docker.com/u/debezium/[{prodname} container images] to run the Kafka, {prodname}, and MySQL services.
+This tutorial uses http://docker.com[Docker] and the https://hub.docker.com/u/debezium/[{prodname} container images] to run the Kafka, {prodname} and MySQL services.
 Running each service in a separate container simplifies the setup so that you can see {prodname} in action.
 
 [NOTE]

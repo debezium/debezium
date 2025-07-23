@@ -1852,7 +1852,7 @@ To deploy a {prodname} Informix connector, you install the {prodname} Informix c
 
 .Prerequisites
 
-* link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* link:http://kafka.apache.org/[Apache Kafka] and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
 * Informix is installed and xref:setting-up-informix[capture mode is enabled for tables] to prepare the database to be used with the {prodname} connector.
 
 .Procedure
@@ -2748,7 +2748,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-databas
 [[informix-monitoring]]
 == Monitoring
 
-The {prodname} Informix connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Apache Kafka, and Kafka Connect provide.
+The {prodname} Informix connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Apache Kafka and Kafka Connect provide.
 
 * xref:informix-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
 * xref:informix-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.
