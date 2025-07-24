@@ -52,6 +52,11 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
+            <groupId>com.github.luben</groupId>
+            <artifactId>zstd-jni</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
             <exclusions>
