@@ -557,6 +557,11 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     }
 
     private ConnectHeaders getExtendedHeaders(ConnectHeaders headers) {
+
+        if (!connectorConfig.isExtendedHeadersEnabled()) {
+            return headers;
+        }
+
         var extendedHeaders = new ConnectHeaders(headers);
         StreamSupport.stream(debeziumHeaderProducer.contextHeaders().spliterator(), false)
                 .forEach(extendedHeaders::add);

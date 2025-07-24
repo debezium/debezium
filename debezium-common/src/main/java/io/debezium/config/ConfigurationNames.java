@@ -13,4 +13,5 @@ public interface ConfigurationNames {
     String DATABASE_PORT_PROPERTY_NAME = "port";
     String MONGODB_CONNECTION_STRING_PROPERTY_NAME = "mongodb.connection.string";
     String TASK_ID_PROPERTY_NAME = "task.id";
+    String EXTENDED_HEADERS_ENABLED = "extended.headers.enabled";
 }
