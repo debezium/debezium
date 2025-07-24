@@ -2723,7 +2723,7 @@ To deploy a {prodname} PostgreSQL connector, you install the {prodname} PostgreS
 
 .Prerequisites
 
-* link:https://zookeeper.apache.org/[Zookeeper], link:http://kafka.apache.org/[Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* link:http://kafka.apache.org/[Kafka] and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
 * PostgreSQL is installed and is xref:setting-up-postgresql[set up to run the {prodname} connector].
 
 .Procedure
@@ -2733,7 +2733,8 @@ To deploy a {prodname} PostgreSQL connector, you install the {prodname} PostgreS
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 . Restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s Container images] for Zookeeper, Kafka, PostgreSQL and Kafka Connect with the PostgreSQL connector already installed and ready to run. You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Kafka, PostgreSQL and Kafka Connect with the PostgreSQL connector already installed and ready to run.
+You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
 
 [IMPORTANT]
 ====
@@ -4220,7 +4221,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-databas
 [[postgresql-monitoring]]
 == Monitoring
 
-The {prodname} PostgreSQL connector provides two types of metrics that are in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect provide.
+The {prodname} PostgreSQL connector provides two types of metrics that are in addition to the built-in support for JMX metrics that Kafka and Kafka Connect provide.
 
 * xref:postgresql-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
 * xref:postgresql-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.

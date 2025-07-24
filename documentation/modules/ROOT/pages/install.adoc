@@ -11,7 +11,7 @@ There are several ways to install and use {prodname} connectors, so we've docume
 
 == Installing a {prodname} Connector
 
-If you've already installed https://zookeeper.apache.org[Zookeeper], https://kafka.apache.org/[Kafka], and {link-kafka-docs}.html#connect[Kafka Connect], then using one of {prodname}'s connectors is easy.
+If you've already installed https://kafka.apache.org/[Kafka] and {link-kafka-docs}.html#connect[Kafka Connect], then using one of {prodname}'s connectors is easy.
 Simply download one or more connector plug-in archives (see below), extract their files into your Kafka Connect environment, and add the parent directory of the extracted plug-in(s) to Kafka Connect's plugin path.
 If not the case yet, specify the plugin path in your worker configuration (e.g. _connect-distributed.properties_) using the {link-kafka-docs}/#connectconfigs[plugin.path] configuration property.
 As an example, let's assume you have downloaded the {prodname} MySQL connector archive and extracted its contents to _/kafka/connect/debezium-connector-mysql_.
@@ -63,7 +63,8 @@ endif::[]
 
 NOTE: If you are interested in Debezium Server, please check the installation instructions xref:operations/debezium-server.adoc#_installation[here].
 
-If immutable containers are your thing, then check out https://quay.io/organization/debezium[{prodname}'s container images] (https://hub.docker.com/r/debezium/[alternative source] on DockerHub) for Apache Kafka, Kafka Connect and Apache Zookeeper, with the different {prodname} connectors already pre-installed and ready to go. Our xref:tutorial.adoc[tutorial] even walks you through using these images, and this is a great way to learn what {prodname} is all about.
+If immutable containers are your thing, then check out https://quay.io/organization/debezium[{prodname}'s container images] for Apache Kafka and Kafka Connect, with the different {prodname} connectors already pre-installed and ready to go.
+Our xref:tutorial.adoc[tutorial] even walks you through using these images, and this is a great way to learn what {prodname} is all about.
 
 [IMPORTANT]
 ====
@@ -142,4 +143,6 @@ endif::community[]
 
 Although {prodname} is intended to be used as turnkey services, all of JARs and other artifacts are available in https://search.maven.org/#search%7Cga%7C1%7Cg%3A%22io.debezium%22[Maven Central].
 
-We do provide a small library so applications can xref:development/engine.adoc[embed any Kafka Connect connector] and consume data change events read directly from the source system. This provides a light weight system (since Zookeeper, Kafka, and Kafka Connect services are not needed), but as a consequence it is not as fault tolerant or reliable since the application must manage and maintain all state normally kept inside Kafka's distributed and replicated logs. It's perfect for use in tests, and with careful consideration it may be useful in some applications.
+We do provide a small library so applications can xref:development/engine.adoc[embed any Kafka Connect connector] and consume data change events read directly from the source system.
+This provides a light weight system (since Kafka and Kafka Connect services are not needed), but as a consequence it is not as fault tolerant or reliable since the application must manage and maintain all state normally kept inside Kafka's distributed and replicated logs.
+It's perfect for use in tests, and with careful consideration it may be useful in some applications.

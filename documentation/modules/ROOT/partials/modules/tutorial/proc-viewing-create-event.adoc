@@ -19,7 +19,7 @@ This command runs the `watch-topic` utility in a new container using the {debezi
 
 [source,shell,options="nowrap",subs="+attributes"]
 ----
-$ docker run -it --rm --name watcher --link zookeeper:zookeeper --link kafka:kafka quay.io/debezium/kafka:{debezium-docker-label} watch-topic -a -k dbserver1.inventory.customers
+$ docker run -it --rm --name watcher --link kafka:kafka quay.io/debezium/kafka:{debezium-docker-label} watch-topic -a -k dbserver1.inventory.customers
 ----
 `-a`::
 Watches all events since the topic was created.
@@ -48,7 +48,6 @@ You should see output similar to the following:
 
 [source,shell,options="nowrap"]
 ----
-Using ZOOKEEPER_CONNECT=172.17.0.2:2181
 Using KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://172.17.0.7:9092
 Using KAFKA_BROKER=172.17.0.3:9092
 Contents of topic dbserver1.inventory.customers:

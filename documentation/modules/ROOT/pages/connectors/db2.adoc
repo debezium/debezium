@@ -2141,7 +2141,7 @@ To deploy a {prodname} Db2 connector, you install the {prodname} Db2 connector a
 
 .Prerequisites
 
-* link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* link:http://kafka.apache.org/[Apache Kafka] and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
 * Db2 is installed and xref:setting-up-db2[capture mode is enabled for tables] to prepare the database to be used with the {prodname} connector.
 
 .Procedure
@@ -2158,7 +2158,7 @@ To enable the connector to access the database, you must add the driver to your 
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 . Restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Apache ZooKeeper, Apache Kafka and Kafka Connect with the Db2 connector already installed and ready to run.
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Apache Kafka and Kafka Connect with the Db2 connector already installed and ready to run.
 
 [IMPORTANT]
 ====
@@ -3342,7 +3342,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-databas
 [[db2-monitoring]]
 == Monitoring
 
-The {prodname} Db2 connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Apache ZooKeeper, Apache Kafka, and Kafka Connect provide.
+The {prodname} Db2 connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Apache Kafka and Kafka Connect provide.
 
 * xref:db2-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
 * xref:db2-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.
