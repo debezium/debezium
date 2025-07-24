@@ -3285,6 +3285,20 @@ ifdef::community[]
 |Specifies the name of the database schema that stores CDC control structures.
 endif::community[]
 
+|[[db2-property-extended-headers-enabled]]<<db2-property-extended-headers-enabled, `extended.headers.enabled`>>
+|true
+|This configuration controls whether {prodname} includes additional context headers in emitted events.
+Those headers provide essential metadata for tracking and identifying the source of change data capture events in downstream processing systems and
+have the prefix **__debezium.context.** .
+
+
+Included headers are:
+
+* __debezium.context.connectorLogicalName: The logical name of the Debezium connector
+* __debezium.context.taskId: The unique identifier of the connector task
+* __debezium.context.connectorName:  The name of the Debezium connector
+
+*Note*: Those headers are required by the OpenLineage integration.
 |===
 
 [id="debezium-db2-connector-database-history-configuration-properties"]

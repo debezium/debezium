@@ -3347,6 +3347,20 @@ Set the value to `0` (zero) to remove the timeout limit.
 |Specifies the maximum number of rows that should be read in one go from each table while streaming.
 The connector will read the table contents in multiple batches of this size. Defaults to `0` which means no limit.
 
+|[[sqlserver-property-extended-headers-enabled]]<<sqlserver-property-extended-headers-enabled, `extended.headers.enabled`>>
+|true
+|This configuration controls whether {prodname} includes additional context headers in emitted events.
+Those headers provide essential metadata for tracking and identifying the source of change data capture events in downstream processing systems and
+have the prefix **__debezium.context.** .
+
+
+Included headers are:
+
+* __debezium.context.connectorLogicalName: The logical name of the Debezium connector
+* __debezium.context.taskId: The unique identifier of the connector task
+* __debezium.context.connectorName:  The name of the Debezium connector
+
+*Note*: Those headers are required by the OpenLineage integration.
 |===
 
 [id="debezium-sqlserver-connector-database-history-configuration-properties"]

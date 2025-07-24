@@ -713,3 +713,19 @@ Set the value to `true` if the connector experiences deadlocks in `SSLSocketImpl
 ifdef::community[]
 For more information, see https://github.com/osheroff/mysql-binlog-connector-java/issues/133[Issue 133] in the https://github.com/osheroff/mysql-binlog-connector-java[mysql-binlog-connector-java] GitHub repository.
 endif::community[]
+
+[id="{context}-property-extended-headers-enabled"]
+xref:{context}-property-extended-headers-enabled[`extended.headers.enabled`]::
+Default value: `true` +
+This configuration controls whether {prodname} includes additional context headers in emitted events.
+Those headers provide essential metadata for tracking and identifying the source of change data capture events in downstream processing systems and
+have the prefix **__debezium.context.** .
+
+
+Included headers are:
+
+* __debezium.context.connectorLogicalName: The logical name of the Debezium connector
+* __debezium.context.taskId: The unique identifier of the connector task
+* __debezium.context.connectorName:  The name of the Debezium connector
+
+*Note*: Those headers are required by the OpenLineage integration.

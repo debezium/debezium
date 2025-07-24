@@ -1285,6 +1285,20 @@ User intervention is required to restart the connector.
 `> 0`:: The connector restarts automatically until it reaches the specified maximum number of retries.
 After the next failure, the connector stops, and user intervention is required to restart it.
 
+|[[spanner-property-extended-headers-enabled]]<<spanner-property-extended-headers-enabled, `extended.headers.enabled`>>
+|true
+|This configuration controls whether {prodname} includes additional context headers in emitted events.
+Those headers provide essential metadata for tracking and identifying the source of change data capture events in downstream processing systems and
+have the prefix **__debezium.context.** .
+
+
+Included headers are:
+
+* __debezium.context.connectorLogicalName: The logical name of the Debezium connector
+* __debezium.context.taskId: The unique identifier of the connector task
+* __debezium.context.connectorName:  The name of the Debezium connector
+
+*Note*: Those headers are required by the OpenLineage integration.
 |===
 
 For a more complete list of advanced configuration, see link:https://github.com/debezium/debezium-connector-spanner/blob/main/src/main/java/io/debezium/connector/spanner/config/BaseSpannerConnectorConfig.java[Github code].
