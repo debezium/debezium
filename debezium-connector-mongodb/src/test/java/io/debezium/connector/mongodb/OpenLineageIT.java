@@ -169,7 +169,7 @@ public class OpenLineageIT extends AbstractMongoConnectorIT {
                 .with(MongoDbConnectorConfig.DATABASE_INCLUDE_LIST, "inc")
                 .with(MongoDbConnectorConfig.FILTERS_MATCH_MODE, LITERAL)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
-                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, "never")
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, "no_data")
                 .with("openlineage.integration.enabled", true)
                 .with("openlineage.integration.config.file.path", getClass().getClassLoader().getResource("openlineage/openlineage.yml").getPath())
                 .with("openlineage.integration.job.description", "This connector does cdc for products")

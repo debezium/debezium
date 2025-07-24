@@ -40,7 +40,7 @@ public class DebeziumLifeCycleTest {
             .overrideConfigKey("quarkus.debezium.topic.prefix", "dbserver1")
             .overrideConfigKey("quarkus.debezium.table.include.list", "inventory.products")
             .overrideConfigKey("quarkus.debezium.plugin.name", "pgoutput")
-            .overrideConfigKey("quarkus.debezium.snapshot.mode", "never")
+            .overrideConfigKey("quarkus.debezium.snapshot.mode", "no_data")
             .overrideConfigKey("quarkus.datasource.devservices.enabled", "false")
             .setLogRecordPredicate(record -> record.getLoggerName().equals("io.quarkus.debezium.engine.DebeziumRunner"))
             .assertLogRecords((records) -> {
