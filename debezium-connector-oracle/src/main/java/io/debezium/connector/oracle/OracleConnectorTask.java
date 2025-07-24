@@ -155,6 +155,10 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                         () -> getHeartbeatConnection(connectorConfig, jdbcConfig),
                         exception -> {
                             final String sqlErrorId = exception.getMessage();
+                            if (exception.getErrorCode() == 2396) {
+                                // ORA-02396 idle time expired
+                                return;
+                            }
                             throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
                         }),
                 schemaNameAdjuster,
