@@ -83,6 +83,7 @@ public abstract class CommonConnectorConfig {
     protected final boolean snapshotModeConfigurationBasedSnapshotOnDataError;
     protected final boolean isLogPositionCheckEnabled;
     protected final boolean isAdvancedMetricsEnabled;
+    private final boolean isExtendedHeadersEnabled;
 
     /**
      * The set of predefined versions e.g. for source struct maker version
@@ -1243,6 +1244,54 @@ public abstract class CommonConnectorConfig {
             .withValidation(Field::isListOfMap)
             .withDescription("The job's owners emitted by Debezium. A comma-separated list of key-value pairs.For example: k1=v1,k2=v2");
 
+    /**
+     * Configuration field for enabling or disabling extended Debezium context headers.
+     *
+     * <p>This field controls whether Debezium includes additional context headers in CDC events
+     * that provide essential metadata for tracking and identifying the source of change data
+     * capture events in downstream processing systems.</p>
+     *
+     * <p><strong>Configuration Details:</strong></p>
+     * <ul>
+     *   <li><strong>Type:</strong> Boolean</li>
+     *   <li><strong>Default:</strong> Not specified (implementation dependent)</li>
+     *   <li><strong>Importance:</strong> Low</li>
+     *   <li><strong>Group:</strong> Advanced (position 46)</li>
+     *   <li><strong>Width:</strong> Short</li>
+     * </ul>
+     *
+     * <p>When enabled, this configuration adds metadata headers that can be used by downstream
+     * systems for:</p>
+     * <ul>
+     *   <li>Event source tracking and lineage</li>
+     *   <li>Identifying the origin of CDC events</li>
+     *   <li>Enhanced monitoring and debugging capabilities</li>
+     * </ul>
+     *
+     * <p><strong>Usage Example:</strong></p>
+     * <pre>{@code
+     * // Enable extended headers
+     * config.put("extended.headers.enabled", true);
+     *
+     * // Disable extended headers (default behavior may vary)
+     * config.put("extended.headers.enabled", false);
+     * }</pre>
+     *
+     * @see ConfigurationNames#EXTENDED_HEADERS_ENABLED
+     * @see Field.Group#ADVANCED
+     * @since [3.2.1.Final, 3.3.0.Alpha1]
+     */
+    public static Field EXTENDED_HEADERS_ENABLED = Field.create(ConfigurationNames.EXTENDED_HEADERS_ENABLED)
+            .withDisplayName("Enable/Disable extended headers")
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 46))
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withDefault(true)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withValidation(Field::isBoolean)
+            .withDescription(
+                    "Enable/Disable Debezium context headers that provides essential metadata for tracking and identifying the source of CDC events in downstream processing systems.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -1276,7 +1325,8 @@ public abstract class CommonConnectorConfig {
                     OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE,
                     OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION,
                     OPEN_LINEAGE_INTEGRATION_JOB_TAGS,
-                    OPEN_LINEAGE_INTEGRATION_JOB_OWNERS)
+                    OPEN_LINEAGE_INTEGRATION_JOB_OWNERS,
+                    EXTENDED_HEADERS_ENABLED)
             .events(
                     CUSTOM_CONVERTERS,
                     CUSTOM_POST_PROCESSORS,
@@ -1391,6 +1441,7 @@ public abstract class CommonConnectorConfig {
         this.snapshotModeConfigurationBasedSnapshotOnDataError = config.getBoolean(SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_DATA_ERROR);
         this.isLogPositionCheckEnabled = config.getBoolean(LOG_POSITION_CHECK_ENABLED);
         this.isAdvancedMetricsEnabled = config.getBoolean(ADVANCED_METRICS_ENABLE);
+        this.isExtendedHeadersEnabled = config.getBoolean(EXTENDED_HEADERS_ENABLED);
 
         this.signalingDataCollectionId = !Strings.isNullOrBlank(this.signalingDataCollection)
                 ? TableId.parse(this.signalingDataCollection)
@@ -1760,6 +1811,10 @@ public abstract class CommonConnectorConfig {
 
     public boolean isAdvancedMetricsEnabled() {
         return isAdvancedMetricsEnabled;
+    }
+
+    public boolean isExtendedHeadersEnabled() {
+        return isExtendedHeadersEnabled;
     }
 
     public Duration getConnectionValidationTimeout() {
