@@ -2555,7 +2555,7 @@ ifdef::community[]
 To deploy a {prodname} {connector-name} connector, you install the {prodname} {connector-name} connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
 
 .Prerequisites
-* link:https://zookeeper.apache.org/[Apache Zookeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* link:http://kafka.apache.org/[Apache Kafka] and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
 * {connector-name} Server is installed and is xref:setting-up-{context}[set up to work with the {prodname} connector].
 
 .Procedure
@@ -2581,7 +2581,7 @@ endif::[]
 . xref:{context}-example-configuration[Configure the connector] and xref:{context}-adding-configuration[add the configuration to your Kafka Connect cluster.]
 . Restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s Container images] for Apache Zookeeper, Apache Kafka, {connector-name}, and Kafka Connect with the {connector-name} connector already installed and ready to run.
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Apache Kafka {connector-name} and Kafka Connect with the {connector-name} connector already installed and ready to run.
 
 [IMPORTANT]
 ====
@@ -2948,7 +2948,7 @@ end::connector-props-intro[]
 == Monitoring
 
 tag::monitoring-intro[]
-The {prodname} {connector-name} connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect provide.
+The {prodname} {connector-name} connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Kafka and Kafka Connect provide.
 
 * xref:{context}-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
 * xref:{context}-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is reading the binlog.

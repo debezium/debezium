@@ -2152,7 +2152,7 @@ ifdef::community[]
 To deploy a {prodname} SQL Server connector, you install the {prodname} SQL Server connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
 
 .Prerequisites
-* link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* link:http://kafka.apache.org/[Apache Kafka] and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
 * SQL Server is installed, is xref:setting-up-sqlserver[configured for CDC], and is ready to be used with the {prodname} connector.
 
 .Procedure
@@ -2162,7 +2162,7 @@ To deploy a {prodname} SQL Server connector, you install the {prodname} SQL Serv
 . xref:sqlserver-example-configuration[Configure the connector] and xref:sqlserver-adding-connector-configuration[add the configuration to your Kafka Connect cluster.]
 . Restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Åpache ZooKeeper, Apache Kafka, and Kafka Connect.
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Apache Kafka and Kafka Connect.
 You can pull the official link:https://hub.docker.com/_/microsoft-mssql-server[container images for Microsoft SQL Server on Linux] from Docker Hub.
 
 [IMPORTANT]
@@ -3573,7 +3573,7 @@ GO
 [[sqlserver-monitoring]]
 == Monitoring
 
-The {prodname} SQL Server connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect provide.
+The {prodname} SQL Server connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Kafka and Kafka Connect provide.
 The connector provides the following metrics:
 
 * xref:sqlserver-snapshot-metrics[Snapshot metrics] for monitoring the connector when performing snapshots.
