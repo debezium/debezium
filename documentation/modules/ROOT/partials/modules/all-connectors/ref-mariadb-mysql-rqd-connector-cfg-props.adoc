@@ -2,16 +2,19 @@ The following configuration properties are _required_ unless a default value is 
 
 [id="{context}-property-bigint-unsigned-handling-mode"]
 xref:{context}-property-bigint-unsigned-handling-mode[`bigint.unsigned.handling.mode`]::
- +
-Default value: `long` +
+
+Default value::: `long`
+
+Description:::
 Specifies how the connector represents BIGINT UNSIGNED columns in change events.
++
 Set one of the following options:
 
-`long`::: Uses Java `long` data types to represent BIGINT UNSIGNED column values.
+`long`:::: Uses Java `long` data types to represent BIGINT UNSIGNED column values.
 Although the `long` type does not offer the greatest precision, it is easy implement in most consumers.
 In most environments, this is the preferred setting.
 
-`precise`::: Uses `java.math.BigDecimal` data types to represent values.
+`precise`:::: Uses `java.math.BigDecimal` data types to represent values.
 The connector uses the Kafka Connect `org.apache.kafka.connect.data.Decimal` data type to represent values in encoded binary format.
 Set this option if the connector typically works with values larger than 2^63.
 The `long` data type cannot convey values of that size.
@@ -20,24 +23,33 @@ The `long` data type cannot convey values of that size.
 
 [id="{context}-property-binary-handling-mode"]
 xref:{context}-property-binary-handling-mode[`binary.handling.mode`]::
-Default value: `bytes` +
+
+
+Default value::: `bytes`
+
+Description:::
 Specifies how the connector represents values for binary columns, such as, `blob`, `binary`, `varbinary`, in change events. +
+
 Set one of the following options:
-`bytes`::: Represents binary data as a byte array.
 
-`base64`::: Represents binary data as a base64-encoded String.
+`bytes`:::: Represents binary data as a byte array.
 
-`base64-url-safe`::: Represents binary data as a base64-url-safe-encoded String.
+`base64`:::: Represents binary data as a base64-encoded String.
 
-`hex`::: Represents binary data as a hex-encoded (base16) String.
+`base64-url-safe`:::: Represents binary data as a base64-url-safe-encoded String.
+
+`hex`:::: Represents binary data as a hex-encoded (base16) String.
 
 
 [id="{context}-property-column-exclude-list"]
 xref:{context}-property-column-exclude-list[`column.exclude.list`]::
-Default value: _empty string_ +
+
+Default value::: _empty string_
+
+Description:::
 An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to exclude from change event record values.
 Other columns in the source record are captured as usual.
-Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_. +
+Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_.
 +
 To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the column; it does not match substrings that might be present in a column name.
@@ -47,32 +59,33 @@ If you include this property in the configuration, do not also set the `column.i
 
 [id="{context}-property-column-include-list"]
 xref:{context}-property-column-include-list[`column.include.list`]::
-Default value:  _empty string_ +
-An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to include in change event record values.
+
+Default value:::  _empty string_ +
+
+Description::: An optional, comma-separated list of regular expressions that match the fully-qualified names of columns to include in change event record values.
 Other columns are omitted from the event record.
-Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_. +
+Fully-qualified names for columns are of the form _databaseName_._tableName_._columnName_.
 +
 To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the column; it does not match substrings that might be present in a column name. +
 If you include this property in the configuration, do not set the `column.exclude.list` property.
 
-////
-[id="{context}-property-column-mask-hash"]
-[id="{context}-property-column-mask-hash-v2"]
-xref:{context}-property-column-mask-hash[`column.mask.hash._hashAlgorithm_.with.salt._salt_`] +
-xref:{context}-property-column-mask-hash-v2[`column.mask.hash.v2._hashAlgorithm_.with.salt._salt_`]::
-////
+
 [id="{context}-property-column-mask-hash"]
 xref:{context}-property-column-mask-hash[`column.mask.hash._hashAlgorithm_.with.salt._salt_`]::
 [id="{context}-property-column-mask-hash-v2"]
 xref:{context}-property-column-mask-hash-v2[`column.mask.hash.v2._hashAlgorithm_.with.salt._salt_`]::
-Default value: No default +
+
+Default value::: No default
+
+Description:::
 An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
-Fully-qualified names for columns are of the form `_<databaseName>_._<tableName>_._<columnName>_`. +
+Fully-qualified names for columns are of the form `_<databaseName>_._<tableName>_._<columnName>_`.
++
 To match the name of a column {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
 In the resulting change event record, the values for the specified columns are replaced with pseudonyms.
- +
++
 A pseudonym consists of the hashed value that results from applying the specified _hashAlgorithm_ and _salt_.
 Based on the hash function that is used, referential integrity is maintained, while column values are replaced with pseudonyms.
 Supported hash functions are described in the {link-java7-standard-names}[MessageDigest section] of the Java Cryptography Architecture Standard Algorithm Name Documentation. +
@@ -84,7 +97,7 @@ column.mask.hash.SHA-256.with.salt.CzQMA0cB5K = inventory.orders.customerName, i
 ----
 +
 If necessary, the pseudonym is automatically shortened to the length of the column.
-The connector configuration can include multiple properties that specify different hash algorithms and salts. +
+The connector configuration can include multiple properties that specify different hash algorithms and salts.
 +
 Depending on the _hashAlgorithm_ used, the _salt_ selected, and the actual data set, the resulting data set might not be completely masked. +
 +
@@ -94,7 +107,10 @@ Hashing strategy version 2 ensures fidelity of values that are hashed in differe
 
 [id="{context}-property-column-mask-with-length-chars"]
 xref:{context}-property-column-mask-with-length-chars[`column.mask.with._length_.chars`]::
-Default value: No default +
+
+Default value::: No default
+
+Description:::
 An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
 Set this property if you want the connector to mask the values for a set of columns, for example, if they contain sensitive data.
 Set `_length_` to a positive integer to replace data in the specified columns with the number of asterisk (`*`) characters specified by the _length_ in the property name.
@@ -110,18 +126,23 @@ You can specify multiple properties with different lengths in a single configura
 
 [id="{context}-property-column-propagate-source-type"]
 xref:{context}-property-column-propagate-source-type[`column.propagate.source.type`]::
-Default value: No default +
+
+Default value::: No default
+
+Description:::
 An optional, comma-separated list of regular expressions that match the fully-qualified names of columns for which you want the connector to emit extra parameters that represent column metadata.
 When this property is set, the connector adds the following fields to the schema of event records:
 
 * `pass:[_]pass:[_]debezium.source.column.type`
 * `pass:[_]pass:[_]debezium.source.column.length`
-* `pass:[_]pass:[_]debezium.source.column.scale` +
- +
-These parameters propagate a column's original type name and length (for variable-width types), respectively. +
-Enabling the connector to emit this extra data can assist in properly sizing specific numeric or character-based columns in sink databases. +
- +
-The fully-qualified name of a column observes one of the following formats: _databaseName_._tableName_._columnName_, or _databaseName_._schemaName_._tableName_._columnName_. +
+* `pass:[_]pass:[_]debezium.source.column.scale`
++
+These parameters propagate a column's original type name and length (for variable-width types), respectively.
++
+Enabling the connector to emit this extra data can assist in properly sizing specific numeric or character-based columns in sink databases.
++
+The fully-qualified name of a column observes one of the following formats: `_databaseName_._tableName_._columnName_`, or `_databaseName_._schemaName_._tableName_._columnName_`.
++
 To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
 That is, the specified expression is matched against the entire name string of the column; the expression does not match substrings that might be present in a column name.
 
@@ -129,7 +150,9 @@ That is, the specified expression is matched against the entire name string of t
 
 [id="{context}-property-column-truncate-to-length-chars"]
 xref:{context}-property-column-truncate-to-length-chars[`column.truncate.to._length_.chars`]::
-Default value: No default +
+
+Default value::: No default
+Description:::
 An optional, comma-separated list of regular expressions that match the fully-qualified names of character-based columns.
 Set this property if you want to truncate the data in a set of columns when it exceeds the number of characters specified by the _length_ in the property name.
 Set `length` to a positive integer value, for example, `column.truncate.to.20.chars`.
@@ -144,14 +167,18 @@ You can specify multiple properties with different lengths in a single configura
 
 [id="{context}-property-connect-timeout-ms"]
 xref:{context}-property-connect-timeout-ms[`connect.timeout.ms`]::
-Default value: `30000` (30 seconds) +
+
+Default value::: `30000` (30 seconds)
+Description:::
 A positive integer value that specifies the maximum time in milliseconds that the connector waits to establish a connection to the {connector-name} database server before the connection request times out.
 
 
 
 [id="{context}-property-connector-class"]
 xref:{context}-property-connector-class[`connector.class`]::
-Default value: No default +
+
+Default value::: No default
+Description:::
 The name of the Java class for the connector.
 Always specify
 ifdef::MARIADB[]
@@ -165,86 +192,113 @@ for the {connector-name} connector.
 
 [id="{context}-property-database-exclude-list"]
 xref:{context}-property-database-exclude-list[`database.exclude.list`]::
-Default value: _empty string_ +
-An optional, comma-separated list of regular expressions that match the names of databases from which you do not want the connector to capture changes.
-The connector captures changes in any database that is not named in the `database.exclude.list`. +
+
+Default value::: _empty string_
+Description::: An optional, comma-separated list of regular expressions that match the names of databases from which you do not want the connector to capture changes.
+The connector captures changes in any database that is not named in the `database.exclude.list`.
 +
 To match the name of a database, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
-That is, the specified expression is matched against the entire name string of the database; it does not match substrings that might be present in a database name. +
+That is, the specified expression is matched against the entire name string of the database; it does not match substrings that might be present in a database name.
++
 If you include this property in the configuration, do not also set the `database.include.list` property.
 
 
 [id="{context}-property-database-hostname"]
 xref:{context}-property-database-hostname[`database.hostname`]::
-Default value: No default +
-The IP address or hostname of the {connector-name} database server.
+
+Default value::: No default
+Description::: The IP address or hostname of the {connector-name} database server.
 
 
 
 [id="{context}-property-database-include-list"]
 xref:{context}-property-database-include-list[`database.include.list`]::
-Default value: _empty string_ +
-An optional, comma-separated list of regular expressions that match the names of the databases from which the connector captures changes.
+
+Default value::: _empty string_
+
+Description::: An optional, comma-separated list of regular expressions that match the names of the databases from which the connector captures changes.
 The connector does not capture changes in any database whose name is not in `database.include.list`.
-By default, the connector captures changes in all databases. +
+By default, the connector captures changes in all databases.
 +
 To match the name of a database, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
-That is, the specified expression is matched against the entire name string of the database; it does not match substrings that might be present in a database name. +
+That is, the specified expression is matched against the entire name string of the database; it does not match substrings that might be present in a database name.
++
 If you include this property in the configuration, do not also set the `database.exclude.list` property.
 
 
 ifdef::MYSQL[]
 [id="{context}-property-database-jdbc-driver"]
 xref:{context}-property-database-jdbc-driver[`database.jdbc.driver`]::
-Default value: `com.mysql.cj.jdbc.Driver` +
+
+Default value::: `com.mysql.cj.jdbc.Driver`
+
+Description:::
 Specifies the name of the driver class that the connector uses.
-You can use this setting to specify a driver other than the one that is packaged with the connector.
++
+Set this property to configure a driver other than the one that is packaged with the connector.
 endif::MYSQL[]
 
 
 [id="{context}-property-database-password"]
 xref:{context}-property-database-password[`database.password`]::
-Default value: No default +
+
+Default value::: No default
+
+Description:::
 The password of the {connector-name} user that the connector uses to connect to the {connector-name} database server.
 
 
 [id="{context}-property-database-port"]
 xref:{context}-property-database-port[`database.port`]::
-Default value: `3306` +
+
+Default value::: `3306`
+
+Description:::
 Integer port number of the {connector-name} database server.
 
 
 ifdef::MYSQL[]
 [id="{context}-property-database-protocol"]
 xref:{context}-property-database-protocol[`database.protocol`]::
-Default value: `jdbc:mysql` +
+
+Default value::: `jdbc:mysql`
+
+Description:::
 Specifies the JDBC protocol that the driver connection string uses to connect to the database.
 endif::MYSQL[]
 
 
 [id="{context}-property-database-server-id"]
 xref:{context}-property-database-server-id[`database.server.id`]::
-Default value: No default +
-The numeric ID of this database client.
+
+Default value::: No default
+
+Description::: The numeric ID of this database client.
 The specified ID must be unique across all currently running database processes in the {connector-name} cluster.
-To enable it to read the binlog, the connector uses this unique ID to join the {connector-name} database cluster as another server.
+To enable reading from the binlog, the connector uses this unique ID to join the {connector-name} database cluster as another server.
 
 
 
 [id="{context}-property-database-user"]
 xref:{context}-property-database-user[`database.user`]::
-Default value: No default +
+
+Default value::: No default
+Description:::
 The name of the {connector-name} user that the connector uses to connect to the {connector-name} database server.
 
 
 
 [id="{context}-property-decimal-handling-mode"]
 xref:{context}-property-decimal-handling-mode[`decimal.handling.mode`]::
-Default value: `precise` +
-Specifies how the connector handles values for `DECIMAL` and `NUMERIC` columns in change events. +
+
+Default value::: `precise`
+
+Description:::
+Specifies how the connector handles values for `DECIMAL` and `NUMERIC` columns in change events.
++
 Set one of the following options:
 
-`precise` (default)::: Uses `java.math.BigDecimal` values in binary form to represent values precisely.
+`precise`::: Uses `java.math.BigDecimal` values in binary form to represent values precisely.
 
 `double`::: Uses the `double` data type to represent values.
 This option can result in a loss of precision, but it is easier for most consumers to use.
@@ -256,28 +310,44 @@ This option is easy to consume, but can result in the loss of semantic informati
 
 
 [id="{context}-property-event-deserialization-failure-handling-mode"]
-xref:{context}-property-event-deserialization-failure-handling-mode[`event.deserialization.failure.handling.mode`]::
-Default value: `fail` +
+xref:{context}-property-event-deserialization-failure-handling-mode[`event.deserialization.failure.handling.mode`] _Deprecated_::
+
+Default value::: `fail`
+
+Description:::
 Specifies how the connector reacts after an exception occurs during deserialization of binlog events.
-This option is deprecated, please use xref:{context}-property-event-processing-failure-handling-mode[`event.processing.failure.handling.mode`] option instead.
++
+[NOTE]
+====
+This option is deprecated.
 
-`fail`::: Propagates the exception, which indicates the problematic event and its binlog offset, and causes the connector to stop.
+Use the xref:{context}-property-event-processing-failure-handling-mode[`event.processing.failure.handling.mode`] property instead.
+====
++
+This property accepts the following options:
 
-`warn`::: Logs the problematic event and its binlog offset and then skips the event.
+`fail`:::: Propagates the exception, which indicates the problematic event and its binlog offset, and causes the connector to stop.
 
-`ignore`::: Passes over the problematic event and does not log anything.
+`warn`:::: Logs the problematic event and its binlog offset and then skips the event.
+
+`ignore`:::: Passes over the problematic event and does not log anything.
+
 
 
 
 [id="{context}-property-field-name-adjustment-mode"]
 xref:{context}-property-field-name-adjustment-mode[`field.name.adjustment.mode`]::
-Default value: No default +
+
+Default value::: No default
+
+Description:::
 Specifies how field names should be adjusted for compatibility with the message converter used by the connector.
++
 Set one of the following options:
 
-`none`::: No adjustment.
-`avro`::: Replaces characters that are not valid in Avro names with underscore characters.
-`avro_unicode`::: Replaces underscore characters or characters that cannot be used in Avro names with corresponding unicode, such as `$$_$$uxxxx`. +
+`none`:::: No adjustment.
+`avro`:::: Replaces characters that are not valid in Avro names with underscore characters.
+`avro_unicode`:::: Replaces underscore characters or characters that cannot be used in Avro names with corresponding unicode, such as `$$_$$uxxxx`. +
 +
 [NOTE]
 ====
@@ -290,38 +360,50 @@ For more information, see: {link-prefix}:{link-avro-serialization}#avro-naming[A
 
 [id="{context}-property-gtid-source-excludes"]
 xref:{context}-property-gtid-source-excludes[`gtid.source.excludes`]::
-Default value: No default +
+
+Default value::: No default
+
+Description:::
 A comma-separated list of regular expressions that match source domain IDs in the GTID set that the connector uses to find the binlog position on the {connector-name} server.
-When this property is set, the connector uses only the GTID ranges that have source UUIDs that do not match any of the specified `exclude` patterns. +
- +
+When this property is set, the connector uses only the GTID ranges that have source UUIDs that do not match any of the specified `exclude` patterns.
++
 To match the value of a GTID, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
-That is, the specified expression is matched against the GTID's domain identifier. +
-If you include this property in the configuration, do not also set the `gtid.source.includes` property.
+That is, the specified expression is matched against the GTID's domain identifier.
++
+If you set this property, do not also set the `gtid.source.includes` property.
 
 
 
 [id="{context}-property-gtid-source-includes"]
 xref:{context}-property-gtid-source-includes[`gtid.source.includes`]::
-Default value: No default +
+
+Default value::: No default
+
+Description:::
 A comma-separated list of regular expressions that match source domain IDs in the GTID set used that the connector uses to find the binlog position on the {connector-name} server.
-When this property is set, the connector uses only the GTID ranges that have source UUIDs that match one of the specified `include` patterns. +
- +
+When this property is set, the connector uses only the GTID ranges that have source UUIDs that match one of the specified `include` patterns.
++
 To match the value of a GTID, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
-That is, the specified expression is matched against the GTID's domain identifier. +
-If you include this property in the configuration, do not also set the `gtid.source.excludes` property.
+That is, the specified expression is matched against the GTID's domain identifier.
++
+If you set this property, do not also set the `gtid.source.excludes` property.
 
 
 [id="{context}-property-include-query"]
 xref:{context}-property-include-query[`include.query`]::
-Default value: `false` +
-Boolean value that specifies whether the connector should include the original SQL query that generated the change event. +
- +
-If you set this option to `true` then you must also configure {connector-name} with the `binlog_annotate_row_events` option set to `ON`.
-When `include.query` is `true`, the query is not present for events that the snapshot process generates. +
- +
-Setting `include.query` to `true` might expose tables or fields that are explicitly excluded or masked by including the original SQL statement in the change event.
-For this reason, the default setting is `false`. +
- +
+
+Default value::: `false`
+
+Description:::
+Boolean value that specifies whether the change event that the connector emits includes the SQL query that generated the change.
++
+CAUTION: Setting this property to `true` might expose information about tables or fields that you explicitly excluded or masked via other settings.
++
+To enable this property, the database property `binlog_annotate_row_events` must be set to `ON`.
++
+Setting this property has no effect on events that the snapshot process generates.
+Snapshot events do not include the original SQL query.
++
 For more information about configuring the database to return the original `SQL` statement for each log event, see xref:enable-query-log-events[Enabling query log events].
 
 
@@ -329,7 +411,10 @@ For more information about configuring the database to return the original `SQL`
 
 [id="{context}-property-include-schema-changes"]
 xref:{context}-property-include-schema-changes[`include.schema.changes`]::
-Default value: `true` +
+
+Default value::: `true`
+
+Description:::
 Boolean value that specifies whether the connector publishes changes in the database schema to a Kafka topic with the same name as the topic prefix.
 The connector records each schema change with a key that contains the database name, and a value that is a JSON structure that describes the schema update.
 This mechanism for recording schema changes is independent of the connector's internal recording of changes to the database schema history.
@@ -338,8 +423,11 @@ This mechanism for recording schema changes is independent of the connector's in
 
 [id="{context}-property-include-schema-comments"]
 xref:{context}-property-include-schema-comments[`include.schema.comments`]::
-Default value: `false` +
-Boolean value that specifies whether the connector parses and publishes table and column comments on metadata objects. +
+
+Default value::: `false`
+
+Description:::
+Boolean value that specifies whether the connector parses and publishes table and column comments on metadata objects.
 +
 NOTE: When you set this option to `true`, the schema comments that the connector includes can add a significant amount of string data to each schema object.
 Increasing the number and size of logical schema objects increases the amount of memory that the connector uses.
@@ -348,48 +436,55 @@ Increasing the number and size of logical schema objects increases the amount of
 
 [id="{context}-property-inconsistent-schema-handling-mode"]
 xref:{context}-property-inconsistent-schema-handling-mode[`inconsistent.schema.handling.mode`]::
-Default value: `fail` +
+
+Default value::: `fail`
+
+Description:::
 Specifies how the connector responds to binlog events that refer to tables that are not present in the internal schema representation.
-That is, the internal representation is not consistent with the database. +
+That is, the internal representation is not consistent with the database.
++
 Set one of the following options:
 
-`fail`::: The connector throws an exception that reports the problematic event and its binlog offset.
+`fail`:::: The connector throws an exception that reports the problematic event and its binlog offset.
 The connector then stops.
 
-`warn`::: The connector logs the problematic event and its binlog offset, and then skips the event.
+`warn`:::: The connector logs the problematic event and its binlog offset, and then skips the event.
 
-`skip`::: The connector skips the problematic event and does not report it in the log.
+`skip`:::: The connector skips the problematic event and does not report it in the log.
 
 
 
 [id="{context}-property-message-key-columns"]
 xref:{context}-property-message-key-columns[`message.key.columns`]::
-Default value: No default +
-A list of expressions that specify the columns that the connector uses to form custom message keys for change event records that it publishes to the Kafka topics for specified tables. +
+
+Default value::: No default
+
+Description:::
+A list of expressions that specify the columns that the connector uses to form custom message keys for change event records that it publishes to the Kafka topics for specified tables.
 By default, {prodname} uses the primary key column of a table as the message key for records that it emits.
 In place of the default, or to specify a key for tables that lack a primary key, you can configure custom message keys based on one or more columns.
- +
++
 To establish a custom message key for a table, list the table, followed by the columns to use as the message key.
-Each list entry takes the following format: +
- +
-`_<fully-qualified_tableName>_:__<keyColumn>__,_<keyColumn>_` +
- +
+Each list entry takes the following format:
++
+`_<fully-qualified_tableName>_:__<keyColumn>__,_<keyColumn>_`
++
 To base a table key on multiple column names, insert commas between the column names.
- +
++
 Each fully-qualified table name is a regular expression in the following format:
- +
-`_<databaseName>_._<tableName>_` +
- +
++
+`_<databaseName>_._<tableName>_`
++
 The property can include entries for multiple tables.
-Use a semicolon to separate table entries in the list. +
- +
-The following example sets the message key for the tables `inventory.customers` and `purchase.orders`: +
- +
-`inventory.customers:pk1,pk2;(.*).purchaseorders:pk3,pk4` +
- +
+Use a semicolon to separate table entries in the list.
++
+The following example sets the message key for the tables `inventory.customers` and `purchase.orders`:
++
+`inventory.customers:pk1,pk2;(.*).purchaseorders:pk3,pk4`
++
 For the table `inventory.customer`, the columns `pk1` and `pk2` are specified as the message key.
 For the `purchaseorders` tables in any database, the columns `pk3` and `pk4` server as the message key.
- +
++
 There is no limit to the number of columns that you use to create custom message keys.
 However, it's best to use the minimum number that are required to specify a unique key.
 
@@ -397,29 +492,40 @@ However, it's best to use the minimum number that are required to specify a uniq
 
 [id="{context}-property-name"]
 xref:{context}-property-name[`name`]::
-Default value: No default +
+
+Default value::: No default
+
+Description:::
 Unique name for the connector.
-If you attempt to use the same name to register another connector, registration fails.
+If you attempt to use the same name to register multiple connectors, registration fails.
 This property is required by all Kafka Connect connectors.
 
 
 [id="{context}-property-schema-name-adjustment-mode"]
 xref:{context}-property-schema-name-adjustment-mode[`schema.name.adjustment.mode`]::
-Default value: No default +
-Specifies how the connector adjusts schema names for compatibility with the message converter used by the connector.
-Set one of the following options:
 
-`none`::: No adjustment.
-`avro`::: Replaces characters that are not valid in Avro names with underscore characters.
-`avro_unicode`::: Replaces underscore characters or characters that cannot be used in Avro names with corresponding unicode, such as `$$_$$uxxxx.` +
- +
+Default value::: No default
+
+Description:::
+Specifies how the connector adjusts schema names for compatibility with the message converter used by the connector.
++
+Set one of the following options:
++
+
+`none`:::: No adjustment.
+`avro`:::: Replaces characters that are not valid in Avro names with underscore characters.
+`avro_unicode`:::: Replaces underscore characters or characters that cannot be used in Avro names with corresponding unicode, such as `$$_$$uxxxx.`
++
 NOTE: `_` is an escape sequence, similar to a backslash in Java
 
 
 
 [id="{context}-property-skip-messages-without-change"]
 xref:{context}-property-skip-messages-without-change[`skip.messages.without.change`]::
-Default value: `false` +
+
+Default value::: `false`
+
+Description:::
 Specifies whether the connector emits messages for records when it does not detect a change in the included columns.
 Columns are considered to be included if they are listed in the `column.include.list`, or are not listed in the `column.exclude.list`.
 Set the value to `true` to prevent the connector from capturing records when no changes are present in the included columns.
@@ -427,75 +533,97 @@ Set the value to `true` to prevent the connector from capturing records when no 
 
 [id="{context}-property-table-exclude-list"]
 xref:{context}-property-table-exclude-list[`table.exclude.list`]::
-Default value: _empty string_ +
+
+Default value::: _empty string_
+
+Description:::
 An optional, comma-separated list of regular expressions that match fully-qualified table identifiers of tables from which you do not want the connector to capture changes.
 The connector captures changes in any table that is not included in `table.exclude.list`.
-Each identifier is of the form _databaseName_._tableName_. +
+Each identifier is of the form _databaseName_._tableName_.
 +
 To match the name of a column, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
-That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name. +
-If you include this property in the configuration, do not also set the `table.include.list` property.
+That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name.
++
+If you set this property, do not also set the `table.include.list` property.
 
 
 
 [id="{context}-property-table-include-list"]
 xref:{context}-property-table-include-list[`table.include.list`]::
-Default value: _empty string_ +
+
+Default value::: _empty string_
+
+Description:::
 An optional, comma-separated list of regular expressions that match fully-qualified table identifiers of tables whose changes you want to capture.
 The connector does not capture changes in any table that is not included in `table.include.list`.
 Each identifier is of the form _databaseName_._tableName_.
-By default, the connector captures changes in all non-system tables in every database from which it is configured to captures changes. +
+By default, the connector captures changes in all non-system tables in every database from which it is configured to captures changes.
 +
 To match the name of a table, {prodname} applies the regular expression that you specify as an _anchored_ regular expression.
-That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name. +
-If you include this property in the configuration, do not also set the `table.exclude.list` property.
+That is, the specified expression is matched against the entire name string of the table; it does not match substrings that might be present in a table name.
++
+If you set this property, do not also set the `table.exclude.list` property.
 
 
 
 [id="{context}-property-tasks-max"]
 xref:{context}-property-tasks-max[`tasks.max`]::
-Default value: `1` +
+
+Default value::: `1`
+
+Description:::
 The maximum number of tasks to create for this connector.
 Because the {connector-name} connector always uses a single task, changing the default value has no effect.
 
 
-
-
 [id="{context}-property-time-precision-mode"]
 xref:{context}-property-time-precision-mode[`time.precision.mode`]::
-Default value: `adaptive_time_microseconds` +
+
+Default value::: `adaptive_time_microseconds`
+
+Description:::
 Specifies the type of precision that the connector uses to represent time, date, and timestamps values.
-Set one of the following options: +
 +
-`adaptive_time_microseconds` (default)::: The connector captures the date, datetime and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type, with the exception of TIME type fields, which are always captured as microseconds. +
+Set one of the following options:
 +
+
+`adaptive_time_microseconds`:::: The connector captures the date, datetime and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the database column's type, with the exception of TIME type fields, which are always captured as microseconds.
 ifdef::community[]
-`adaptive` (deprecated)::: The connector captures time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the data type of the column. +
+`adaptive`::::  (deprecated) The connector captures time and timestamp values exactly as in the database using either millisecond, microsecond, or nanosecond precision values based on the data type of the column.
 endif::community[]
-+
-`connect`::: The connector always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which use millisecond precision regardless of the database columns' precision.
+`connect`:::: The connector always represents time and timestamp values using Kafka Connect's built-in representations for Time, Date, and Timestamp, which use millisecond precision regardless of the database columns' precision.
+
 
 
 
 [id="{context}-property-tombstones-on-delete"]
 xref:{context}-property-tombstones-on-delete[`tombstones.on.delete`]::
-Default value: `true` +
+
+Default value::: `true`
+
+Description:::
 Specifies whether a _delete_ event is followed by a tombstone event.
 After a source record is deleted, the connector can emit a tombstone event (the default behavior) to enable Kafka to completely delete all events that pertain to the key of the deleted row in case {link-kafka-docs}/#compaction[log compaction] is enabled for the topic.
-Set one of the following options: +
 +
-`true` (default)::: The connector represents delete operations by emitting a _delete_ event and a subsequent tombstone event. +
+Set one of the following options:
++
 
-`false`::: The connector emits only _delete_ events. +
+`true`::::
+The connector represents delete operations by emitting a _delete_ event and a subsequent tombstone event.
+
+`false`::::
+The connector emits only _delete_ events.
 
 
 
 [id="{context}-property-topic-prefix"]
 xref:{context}-property-topic-prefix[`topic.prefix`]::
-Default value: No default +
-Topic prefix that provides a namespace for the particular {connector-name} database server or cluster in which {prodname} is capturing changes.
+
+Default value::: No default
+Description:::
+A string that specifies the namespace for the {connector-name} database server or cluster from which {prodname} captures changes.
 Because the topic prefix is used to name all of the Kafka topics that receive events that this connector emits, it's important that the topic prefix is unique across all connectors.
-Values must contain only alphanumeric characters, hyphens, dots, and underscores. +
+Values must contain only alphanumeric characters, hyphens, dots, and underscores.
 +
 [WARNING]
 ====
