@@ -188,7 +188,8 @@ public class TypeRegistry {
         }
         else if (TYPE_NAME_SPARSE_VECTOR.equals(type.getName())) {
             sparseVectorOid = type.getOid();
-        } else if (TYPE_NAME_TSVECTOR.equals(type.getName())) {
+        }
+        else if (TYPE_NAME_TSVECTOR.equals(type.getName())) {
             tsVectorOid = type.getOid();
         }
     }
