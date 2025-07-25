@@ -1866,18 +1866,15 @@ After the next failure, the connector stops, and user intervention is required t
 
 |[[vitess-property-extended-headers-enabled]]<<vitess-property-extended-headers-enabled, `extended.headers.enabled`>>
 |true
-|This configuration controls whether {prodname} includes additional context headers in emitted events.
-Those headers provide essential metadata for tracking and identifying the source of change data capture events in downstream processing systems and
-have the prefix **__debezium.context.** .
+|This property specifies whether {prodname} adds context headers with the prefix `__debezium.context.` to the messages that it emits.
 
+These headers are required by the OpenLineage integration and provide metadata that enables downstream processing systems to track and identify the sources of change events.
 
-Included headers are:
+The property adds following headers:
 
-* __debezium.context.connectorLogicalName: The logical name of the Debezium connector
-* __debezium.context.taskId: The unique identifier of the connector task
-* __debezium.context.connectorName:  The name of the Debezium connector
-
-*Note*: Those headers are required by the OpenLineage integration.
+`__debezium.context.connectorLogicalName`:: The logical name of the {prodname} connector.
+`__debezium.context.taskId:`: The unique identifier of the connector task.
+`__debezium.context.connectorName`::  The name of the {prodname} connector.
 |===
 
 [id="vitess-pass-through-properties"]
