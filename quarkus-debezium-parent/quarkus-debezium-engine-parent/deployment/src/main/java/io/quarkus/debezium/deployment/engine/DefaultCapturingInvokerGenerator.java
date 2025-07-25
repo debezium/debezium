@@ -11,9 +11,12 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.apache.kafka.connect.source.SourceRecord;
 import org.jboss.jandex.MethodInfo;
+import org.jboss.jandex.ParameterizedType;
 import org.jboss.jandex.Type;
 
+import io.debezium.runtime.CapturingEvent;
 import io.quarkus.arc.processor.BeanInfo;
 
 public class DefaultCapturingInvokerGenerator implements CapturingInvokerGenerator {
@@ -31,7 +34,9 @@ public class DefaultCapturingInvokerGenerator implements CapturingInvokerGenerat
 
     @Override
     public GeneratedClassMetaData generate(MethodInfo methodInfo, BeanInfo beanInfo) {
-        return generatorMap.get(methodInfo.parameters().getFirst().type())
+        return generatorMap
+                .getOrDefault(methodInfo.parameters().getFirst().type(),
+                        generatorMap.get(ParameterizedType.create(CapturingEvent.class, Type.create(SourceRecord.class))))
                 .generate(methodInfo, beanInfo);
     }
 }
