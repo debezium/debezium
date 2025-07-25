@@ -75,6 +75,7 @@ import io.quarkus.debezium.deployment.items.DebeziumMediatorBuildItem;
 import io.quarkus.debezium.engine.DebeziumRecorder;
 import io.quarkus.debezium.engine.DefaultStateHandler;
 import io.quarkus.debezium.engine.capture.*;
+import io.quarkus.debezium.engine.capture.consumer.SourceRecordEventProducer;
 import io.quarkus.debezium.engine.converter.custom.DynamicCustomConverterSupplier;
 import io.quarkus.debezium.engine.post.processing.ArcPostProcessorFactory;
 import io.quarkus.debezium.engine.post.processing.DynamicPostProcessingSupplier;
@@ -117,6 +118,14 @@ public class EngineProcessor {
                 .addBeanClasses(
                         CapturingSourceRecordInvokerRegistryProducer.class,
                         CapturingEventInvokerRegistryProducer.class)
+                .setDefaultScope(DotNames.APPLICATION_SCOPED)
+                .setUnremovable()
+                .build());
+
+        additionalBeanProducer.produce(AdditionalBeanBuildItem
+                .builder()
+                .addBeanClasses(
+                        SourceRecordEventProducer.class)
                 .setDefaultScope(DotNames.APPLICATION_SCOPED)
                 .setUnremovable()
                 .build());

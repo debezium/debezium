@@ -18,9 +18,9 @@ import io.debezium.engine.Header;
  * @param <V>
  */
 @Incubating
-public interface CapturingEvent<V> {
+public sealed interface CapturingEvent<V> {
 
-    V value();
+    V record();
 
     default <H> List<Header<H>> headers() {
         return Collections.emptyList();
@@ -36,4 +36,34 @@ public interface CapturingEvent<V> {
      * @return logical source for which the event is intended
      */
     String source();
+
+    record Read<V>(V record, String destination, String source,
+            List<Header<Object>> headers) implements CapturingEvent<V> {
+
+    }
+
+    record Create<V>(V record, String destination, String source,
+            List<Header<Object>> headers) implements CapturingEvent<V> {
+
+    }
+
+    record Update<V>(V record, String destination, String source,
+            List<Header<Object>> headers) implements CapturingEvent<V> {
+
+    }
+
+    record Delete<V>(V record, String destination, String source,
+            List<Header<Object>> headers) implements CapturingEvent<V> {
+
+    }
+
+    record Truncate<V>(V record, String destination, String source,
+            List<Header<Object>> headers) implements CapturingEvent<V> {
+
+    }
+
+    record Message<V>(V record, String destination, String source,
+            List<Header<Object>> headers) implements CapturingEvent<V> {
+
+    }
 }

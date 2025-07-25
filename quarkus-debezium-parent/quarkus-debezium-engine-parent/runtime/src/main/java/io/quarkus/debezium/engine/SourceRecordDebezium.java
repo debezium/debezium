@@ -12,16 +12,13 @@ import java.util.function.Function;
 
 import jakarta.enterprise.context.ApplicationScoped;
 
-import org.apache.kafka.connect.source.SourceRecord;
-
 import io.debezium.config.Configuration;
 import io.debezium.embedded.Connect;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.Signaler;
-import io.debezium.runtime.CapturingEvent;
 import io.debezium.runtime.Connector;
 import io.debezium.runtime.DebeziumStatus;
-import io.quarkus.debezium.engine.capture.CapturingInvokerRegistry;
+import io.quarkus.debezium.engine.capture.consumer.SourceRecordEventConsumer;
 
 @ApplicationScoped
 class SourceRecordDebezium extends RunnableDebezium {
@@ -34,7 +31,7 @@ class SourceRecordDebezium extends RunnableDebezium {
     SourceRecordDebezium(Map<String, String> configuration,
                          StateHandler stateHandler,
                          Connector connector,
-                         CapturingInvokerRegistry<CapturingEvent<SourceRecord>> registry) {
+                         SourceRecordEventConsumer consumer) {
         this.configuration = configuration;
         this.stateHandler = stateHandler;
         this.engine = DebeziumEngine.create(Connect.class, Connect.class)
@@ -45,26 +42,7 @@ class SourceRecordDebezium extends RunnableDebezium {
                         .build().asProperties())
                 .using(this.stateHandler.connectorCallback())
                 .using(this.stateHandler.completionCallback())
-                .notifying(event -> {
-                    var capturingEvent = new CapturingEvent<SourceRecord>() {
-                        @Override
-                        public SourceRecord value() {
-                            return event.value();
-                        }
-
-                        @Override
-                        public String destination() {
-                            return event.destination();
-                        }
-
-                        @Override
-                        public String source() {
-                            return "NOT_AVAILABLE";
-                        }
-                    };
-
-                    registry.get(capturingEvent).capture(capturingEvent);
-                })
+                .notifying(consumer)
                 .build();
         this.stateHandler.setDebeziumEngine(this);
         this.connector = connector;
