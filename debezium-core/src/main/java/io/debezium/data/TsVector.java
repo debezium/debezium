@@ -2,7 +2,6 @@ package io.debezium.data;
 
 import org.apache.kafka.connect.data.SchemaBuilder;
 
-
 /**
  * @author Pranav Tiwari
  * A semantic type for a PostgreSQL tsvector value.
