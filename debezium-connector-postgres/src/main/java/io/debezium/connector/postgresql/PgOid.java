@@ -40,4 +40,5 @@ public final class PgOid extends Oid {
     public static final int NUM_RANGE_ARRAY = 3907;
     public static final int INT8RANGE_OID = 3926;
     public static final int INT8RANGE_ARRAY = 3927;
+    public static final int TSVECTOR_OID = 3614;
 }

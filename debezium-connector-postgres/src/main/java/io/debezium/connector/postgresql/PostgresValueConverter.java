@@ -64,6 +64,7 @@ import io.debezium.data.VariableScaleDecimal;
 import io.debezium.data.geometry.Geography;
 import io.debezium.data.geometry.Geometry;
 import io.debezium.data.geometry.Point;
+import io.debezium.data.TsVector;
 import io.debezium.data.vector.DoubleVector;
 import io.debezium.data.vector.FloatVector;
 import io.debezium.data.vector.SparseDoubleVector;
@@ -233,6 +234,8 @@ public class PostgresValueConverter extends JdbcValueConverters {
                 return numericSchema(column);
             case PgOid.BYTEA:
                 return binaryMode.getSchema();
+            case PgOid.TSVECTOR_OID:
+                return TsVector.builder();
             case PgOid.INT2_ARRAY:
                 return SchemaBuilder.array(SchemaBuilder.OPTIONAL_INT16_SCHEMA);
             case PgOid.INT4_ARRAY:
@@ -454,6 +457,7 @@ public class PostgresValueConverter extends JdbcValueConverters {
             case PgOid.INT4RANGE_OID:
             case PgOid.NUM_RANGE_OID:
             case PgOid.INT8RANGE_OID:
+            case PgOid.TSVECTOR_OID:
             case PgOid.BPCHAR:
                 return data -> convertString(column, fieldDefn, data);
             case PgOid.POINT:
