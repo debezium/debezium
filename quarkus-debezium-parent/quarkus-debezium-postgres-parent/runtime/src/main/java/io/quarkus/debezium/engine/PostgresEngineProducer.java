@@ -12,7 +12,6 @@ import static io.debezium.embedded.EmbeddedEngineConfig.CONNECTOR_CLASS;
 import static java.util.Collections.emptyMap;
 
 import java.util.Map;
-import java.util.Objects;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
@@ -20,20 +19,14 @@ import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
-import org.apache.kafka.connect.source.SourceRecord;
-
 import io.debezium.connector.postgresql.PostgresConnector;
-import io.debezium.engine.RecordChangeEvent;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.runtime.CapturingEvent;
 import io.debezium.runtime.Connector;
 import io.debezium.runtime.ConnectorProducer;
 import io.debezium.runtime.Debezium;
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
 import io.quarkus.debezium.configuration.PostgresDatasourceConfiguration;
-import io.quarkus.debezium.engine.capture.CapturingEventInvoker;
-import io.quarkus.debezium.engine.capture.CapturingInvoker;
-import io.quarkus.debezium.engine.capture.CapturingInvokerRegistry;
+import io.quarkus.debezium.engine.capture.consumer.SourceRecordEventConsumer;
 import io.quarkus.debezium.notification.QuarkusNotificationChannel;
 
 @ApplicationScoped
@@ -42,22 +35,20 @@ public class PostgresEngineProducer implements ConnectorProducer {
     public static final Connector POSTGRES = new Connector(PostgresConnector.class.getName());
     public static final String DEBEZIUM_DATASOURCE_HOSTNAME = DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME.name();
 
-    private final CapturingInvokerRegistry<RecordChangeEvent<SourceRecord>> recordChangeEventRegistry;
-    private final CapturingInvokerRegistry<CapturingEvent<SourceRecord>> capturingEventRegistry;
     private final StateHandler stateHandler;
     private final Instance<PostgresDatasourceConfiguration> configurations;
     private final QuarkusNotificationChannel channel;
+    private final SourceRecordEventConsumer sourceRecordEventConsumer;
 
     @Inject
-    public PostgresEngineProducer(CapturingInvokerRegistry<RecordChangeEvent<SourceRecord>> recordChangeEventRegistry,
-                                  CapturingInvokerRegistry<CapturingEvent<SourceRecord>> capturingEventRegistry,
-                                  StateHandler stateHandler,
-                                  Instance<PostgresDatasourceConfiguration> configurations, QuarkusNotificationChannel channel) {
-        this.recordChangeEventRegistry = recordChangeEventRegistry;
-        this.capturingEventRegistry = capturingEventRegistry;
+    public PostgresEngineProducer(StateHandler stateHandler,
+                                  Instance<PostgresDatasourceConfiguration> configurations,
+                                  QuarkusNotificationChannel channel,
+                                  SourceRecordEventConsumer sourceRecordEventConsumer) {
         this.stateHandler = stateHandler;
         this.configurations = configurations;
         this.channel = channel;
+        this.sourceRecordEventConsumer = sourceRecordEventConsumer;
     }
 
     @Produces
@@ -73,7 +64,7 @@ public class PostgresEngineProducer implements ConnectorProducer {
             return new SourceRecordDebezium(configurationMap,
                     stateHandler,
                     POSTGRES,
-                    this::registry);
+                    sourceRecordEventConsumer);
         }
 
         /**
@@ -90,20 +81,7 @@ public class PostgresEngineProducer implements ConnectorProducer {
         return new SourceRecordDebezium(configurationMap,
                 stateHandler,
                 POSTGRES,
-                this::registry);
+                sourceRecordEventConsumer);
     }
 
-    private CapturingInvoker<CapturingEvent<SourceRecord>> registry(CapturingEvent<SourceRecord> event) {
-        return Objects.requireNonNullElseGet(capturingEventRegistry.get(event), () -> new CapturingEventInvoker() {
-            @Override
-            public String destination() {
-                return event.destination();
-            }
-
-            @Override
-            public void capture(CapturingEvent<SourceRecord> innerEvent) {
-                recordChangeEventRegistry.get(event::value).capture(innerEvent::value);
-            }
-        });
-    }
 }

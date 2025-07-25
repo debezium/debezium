@@ -9,6 +9,8 @@ package io.quarkus.debezium.postgres.deployment;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.given;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -22,11 +24,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.debezium.engine.RecordChangeEvent;
 import io.debezium.runtime.Capturing;
 import io.debezium.runtime.CapturingEvent;
 import io.debezium.runtime.Debezium;
 import io.debezium.runtime.DebeziumStatus;
+import io.quarkus.debezium.engine.deserializer.ObjectMapperDeserializer;
 import io.quarkus.test.QuarkusUnitTest;
 import io.quarkus.test.common.QuarkusTestResource;
 
@@ -55,6 +60,8 @@ public class EnhancedCapturingTest {
             .overrideConfigKey("quarkus.debezium.topic.prefix", "dbserver1")
             .overrideConfigKey("quarkus.debezium.plugin.name", "pgoutput")
             .overrideConfigKey("quarkus.debezium.snapshot.mode", "initial")
+            .overrideConfigKey("quarkus.debezium.capturing.orders.destination", "dbserver1.public.orders")
+            .overrideConfigKey("quarkus.debezium.capturing.orders.deserializer", "io.quarkus.debezium.postgres.deployment.EnhancedCapturingTest.OrderDeserializer")
             .overrideConfigKey("quarkus.datasource.devservices.enabled", "false");
 
     @Test
@@ -77,11 +84,21 @@ public class EnhancedCapturingTest {
         assertThat(captureProductsHandler.isRecordChangeInvoked()).isFalse();
     }
 
+    @DisplayName("should map and capture orders filtered by destination")
+    void shouldMapAndCaptureOrdersFilteredByDestination() {
+        given().await()
+                .atMost(100, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(captureProductsHandler.getOrders()).containsExactlyInAnyOrder(
+                        new Order(1, "one"),
+                        new Order(1, "two")));
+    }
+
     @ApplicationScoped
     static class CaptureProductsHandler {
         private final AtomicBoolean isRecordChangeInvoked = new AtomicBoolean(false);
         private final AtomicBoolean isCapturingEventInvoked = new AtomicBoolean(false);
         private final AtomicInteger isCapturingFilteredEvent = new AtomicInteger(0);
+        private final List<Order> orders = new ArrayList<>();
 
         @Capturing()
         public void capture(RecordChangeEvent<SourceRecord> event) {
@@ -106,8 +123,27 @@ public class EnhancedCapturingTest {
             return isCapturingEventInvoked.getAndSet(false);
         }
 
+        public List<Order> getOrders() {
+            return orders;
+        }
+
         public int filteredEvent() {
             return isCapturingFilteredEvent.getAndSet(0);
+        }
+
+    }
+
+    public record Order(int id, String name) {
+    }
+
+    static class OrderDeserializer extends ObjectMapperDeserializer<Order> {
+
+        public OrderDeserializer() {
+            super(Order.class);
+        }
+
+        public OrderDeserializer(ObjectMapper objectMapper) {
+            super(Order.class, objectMapper);
         }
     }
 }

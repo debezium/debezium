@@ -15,29 +15,23 @@ import java.util.Map;
 
 import jakarta.enterprise.inject.Instance;
 
-import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-import io.debezium.engine.RecordChangeEvent;
-import io.debezium.runtime.CapturingEvent;
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
 import io.quarkus.debezium.configuration.PostgresDatasourceConfiguration;
-import io.quarkus.debezium.engine.capture.CapturingInvokerRegistry;
 import io.quarkus.debezium.notification.QuarkusNotificationChannel;
 
 class PostgresEngineProducerTest {
 
     private final Instance<PostgresDatasourceConfiguration> instance = Mockito.mock(Instance.class);
     private final QuarkusNotificationChannel quarkusNotificationChannel = Mockito.mock(QuarkusNotificationChannel.class);
-    private final CapturingInvokerRegistry<RecordChangeEvent<SourceRecord>> recordChangeEventRegistry = identifier -> event -> {
-    };
-    private final CapturingInvokerRegistry<CapturingEvent<SourceRecord>> capturingEventRegistry = identifier -> event -> {
-    };
-    private final PostgresEngineProducer underTest = new PostgresEngineProducer(recordChangeEventRegistry, capturingEventRegistry,
-            Mockito.mock(DefaultStateHandler.class), instance, quarkusNotificationChannel);
+    private final PostgresEngineProducer underTest = new PostgresEngineProducer(
+            Mockito.mock(DefaultStateHandler.class), instance, quarkusNotificationChannel, event -> {
+
+            });
 
     @BeforeEach
     void setUp() {
