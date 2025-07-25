@@ -79,12 +79,6 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
 
         /**
          * Never perform a snapshot and only receive new data changes.
-         * @deprecated to be removed in Debezium 3.0, replaced by {{@link #NO_DATA}}
-         */
-        NEVER("never"),
-
-        /**
-         * Never perform a snapshot and only receive new data changes.
          */
         NO_DATA("no_data"),
 

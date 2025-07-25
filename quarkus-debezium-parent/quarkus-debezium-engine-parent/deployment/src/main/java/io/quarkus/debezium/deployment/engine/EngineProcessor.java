@@ -55,8 +55,6 @@ import io.debezium.snapshot.mode.InitialSnapshotter;
 import io.debezium.snapshot.mode.NeverSnapshotter;
 import io.debezium.snapshot.mode.NoDataSnapshotter;
 import io.debezium.snapshot.mode.RecoverySnapshotter;
-import io.debezium.snapshot.mode.SchemaOnlyRecoverySnapshotter;
-import io.debezium.snapshot.mode.SchemaOnlySnapshotter;
 import io.debezium.snapshot.mode.WhenNeededSnapshotter;
 import io.debezium.snapshot.spi.SnapshotLock;
 import io.debezium.transforms.ExtractNewRecordState;
@@ -229,8 +227,6 @@ public class EngineProcessor {
                 NeverSnapshotter.class,
                 ExtractNewRecordState.class,
                 TopicNameMatches.class,
-                SchemaOnlySnapshotter.class,
-                SchemaOnlyRecoverySnapshotter.class,
                 ConfigurationBasedSnapshotter.class,
                 SourceSignalChannel.class,
                 KafkaSignalChannel.class,

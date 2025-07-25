@@ -370,7 +370,7 @@ public class IncrementalSnapshotCollationSortOrderMismatchIT extends AbstractSna
     protected Configuration.Builder config() {
         return TestHelper.defaultConfig()
                 .with(ConfigurationNames.DATABASE_CONFIG_PREFIX + "sendStringParametersAsUnicode", isSendStringParametersAsUnicode)
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SqlServerConnectorConfig.SnapshotMode.SCHEMA_ONLY)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(SqlServerConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.TEST_DATABASE_1 + ".dbo.debezium_signal")
                 .with(SqlServerConnectorConfig.INCREMENTAL_SNAPSHOT_CHUNK_SIZE, 250);
     }
