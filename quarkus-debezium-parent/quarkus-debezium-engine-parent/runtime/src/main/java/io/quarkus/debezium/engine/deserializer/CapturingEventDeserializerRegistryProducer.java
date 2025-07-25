@@ -16,8 +16,6 @@ import jakarta.inject.Singleton;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.source.SourceRecord;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
 import io.quarkus.debezium.engine.CapturingEventDeserializer;
 import io.quarkus.debezium.engine.SourceRecordDeserializer;
@@ -47,17 +45,4 @@ public class CapturingEventDeserializerRegistryProducer {
         }
     }
 
-    public record Order(int id, String name) {
-    }
-
-    public static class OrderDeserializer extends ObjectMapperDeserializer<Order> {
-
-        public OrderDeserializer() {
-            super(Order.class);
-        }
-
-        public OrderDeserializer(ObjectMapper objectMapper) {
-            super(Order.class, objectMapper);
-        }
-    }
 }

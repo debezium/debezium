@@ -29,7 +29,7 @@ import io.debezium.runtime.Capturing;
 import io.debezium.runtime.CapturingEvent;
 import io.debezium.runtime.Debezium;
 import io.debezium.runtime.DebeziumStatus;
-import io.quarkus.debezium.engine.deserializer.CapturingEventDeserializerRegistryProducer.Order;
+import io.quarkus.debezium.engine.deserializer.ObjectMapperDeserializer;
 import io.quarkus.test.QuarkusUnitTest;
 import io.quarkus.test.common.QuarkusTestResource;
 
@@ -60,7 +60,7 @@ public class EnhancedCapturingTest {
             .overrideConfigKey("quarkus.debezium.snapshot.mode", "initial")
             .overrideConfigKey("quarkus.debezium.capturing.orders.destination", "dbserver1.public.orders")
             .overrideConfigKey("quarkus.debezium.capturing.orders.deserializer",
-                    "io.quarkus.debezium.engine.deserializer.CapturingEventDeserializerRegistryProducer$OrderDeserializer")
+                    "io.quarkus.debezium.postgres.deployment.EnhancedCapturingTest$OrderDeserializer")
             .overrideConfigKey("quarkus.datasource.devservices.enabled", "false");
 
     @Test
@@ -134,6 +134,15 @@ public class EnhancedCapturingTest {
             return isCapturingFilteredEvent.getAndSet(0);
         }
 
+    }
+
+    public record Order(int id, String name) {
+    }
+
+    public static class OrderDeserializer extends ObjectMapperDeserializer<Order> {
+        public OrderDeserializer() {
+            super(Order.class);
+        }
     }
 
 }
