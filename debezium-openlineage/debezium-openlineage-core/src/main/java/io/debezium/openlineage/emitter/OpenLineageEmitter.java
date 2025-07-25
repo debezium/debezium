@@ -54,7 +54,8 @@ import io.openlineage.client.OpenLineage;
 public class OpenLineageEmitter implements LineageEmitter {
 
     private static final String JAVA = "Java";
-    public static final String DATASET_TYPE = "TABLE";
+    public static final String INPUT_DATASET_TYPE = "TABLE";
+    public static final String OUTPUT_DATASET_TYPE = "STREAM";
 
     private final ConnectorContext connectorContext;
     private final OpenLineageContext openLineageContext;
@@ -166,7 +167,7 @@ public class OpenLineageEmitter implements LineageEmitter {
                                 .schema(openLineageContext.getOpenLineage().newSchemaDatasetFacetBuilder()
                                         .fields(datasetFields)
                                         .build())
-                                .datasetType(openLineageContext.getOpenLineage().newDatasetTypeDatasetFacet(DATASET_TYPE, ""))
+                                .datasetType(openLineageContext.getOpenLineage().newDatasetTypeDatasetFacet(OUTPUT_DATASET_TYPE, ""))
                                 .build())
                 .build();
     }
@@ -216,7 +217,7 @@ public class OpenLineageEmitter implements LineageEmitter {
                                 .schema(openLineageContext.getOpenLineage().newSchemaDatasetFacetBuilder()
                                         .fields(datasetFields)
                                         .build())
-                                .datasetType(openLineageContext.getOpenLineage().newDatasetTypeDatasetFacet(DATASET_TYPE, ""))
+                                .datasetType(openLineageContext.getOpenLineage().newDatasetTypeDatasetFacet(INPUT_DATASET_TYPE, ""))
                                 .build())
                 .build();
     }
