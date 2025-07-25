@@ -77,6 +77,7 @@ import io.quarkus.debezium.engine.DefaultStateHandler;
 import io.quarkus.debezium.engine.capture.*;
 import io.quarkus.debezium.engine.capture.consumer.SourceRecordEventProducer;
 import io.quarkus.debezium.engine.converter.custom.DynamicCustomConverterSupplier;
+import io.quarkus.debezium.engine.deserializer.CapturingEventDeserializerRegistryProducer;
 import io.quarkus.debezium.engine.post.processing.ArcPostProcessorFactory;
 import io.quarkus.debezium.engine.post.processing.DynamicPostProcessingSupplier;
 import io.quarkus.debezium.engine.relational.converter.QuarkusCustomConverter;
@@ -112,6 +113,14 @@ public class EngineProcessor {
                                 .setUnremovable()
                                 .setDefaultScope(DotNames.APPLICATION_SCOPED)
                                 .build()));
+
+        additionalBeanProducer.produce(AdditionalBeanBuildItem
+                .builder()
+                .addBeanClasses(CapturingEventDeserializerRegistryProducer.class)
+                .setUnremovable()
+                .setDefaultScope(DotNames.APPLICATION_SCOPED)
+                .setUnremovable()
+                .build());
 
         additionalBeanProducer.produce(AdditionalBeanBuildItem
                 .builder()
@@ -210,6 +219,15 @@ public class EngineProcessor {
                         .builder(postProcessor)
                         .reason(getClass().getName())
                         .build()));
+
+        debeziumEngineConfiguration
+                .capturing()
+                .values()
+                .forEach(capturing -> reflectiveClasses.produce(
+                        ReflectiveClassBuildItem
+                                .builder(capturing.deserializer())
+                                .reason(getClass().getName())
+                                .build()));
 
         reflectiveClasses.produce(ReflectiveClassBuildItem.builder(
                 ArcHeartbeatFactory.class,

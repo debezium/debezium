@@ -29,7 +29,7 @@ CREATE TABLE convert_table(
 );
 
 INSERT INTO products (name) VALUES ('t-shirt'), ('smartphone');
-INSERT INTO orders (name) VALUES ('one'), ('two');
+INSERT INTO orders (id, name) VALUES (1, 'one'), (2,'two');
 INSERT INTO users (name) VALUES ('giovanni'), ('mario');
 INSERT INTO not_assigned (name) VALUES ('something'), ('should'), ('happens');
 INSERT INTO injected (name) VALUES ('called'), ('without'), ('injecting');
