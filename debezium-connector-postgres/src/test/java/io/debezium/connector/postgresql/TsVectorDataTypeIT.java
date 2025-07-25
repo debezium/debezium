@@ -45,9 +45,9 @@ public class TsVectorDataTypeIT extends AbstractRecordsProducerTest {
         TestHelper.executeDDL("init_tsvector.ddl");
         TestHelper.execute(
                 "DROP TABLE IF EXISTS tsvector.text_search_test;",
-                "CREATE TABLE tsvector.text_search_test (id SERIAL PRIMARY KEY, title TEXT, content TEXT, search_vector tsvector);"
-        );
-        TestHelper.execute("INSERT INTO tsvector.text_search_test (title, content, search_vector) VALUES ('TC1 - Direct TSV', 'This is a test for direct tsvector insert', to_tsvector('english', 'This is a test for direct tsvector insert'));");
+                "CREATE TABLE tsvector.text_search_test (id SERIAL PRIMARY KEY, title TEXT, content TEXT, search_vector tsvector);");
+        TestHelper.execute(
+                "INSERT INTO tsvector.text_search_test (title, content, search_vector) VALUES ('TC1 - Direct TSV', 'This is a test for direct tsvector insert', to_tsvector('english', 'This is a test for direct tsvector insert'));");
         initializeConnectorTestFramework();
     }
 
@@ -62,7 +62,8 @@ public class TsVectorDataTypeIT extends AbstractRecordsProducerTest {
 
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
 
-        TestHelper.execute("INSERT INTO tsvector.text_search_test (title, content, search_vector) VALUES ('TC1 - Direct TSV', 'This is a test for direct tsvector insert second case', to_tsvector('english', 'This is a test for direct tsvector insert second case'));");
+        TestHelper.execute(
+                "INSERT INTO tsvector.text_search_test (title, content, search_vector) VALUES ('TC1 - Direct TSV', 'This is a test for direct tsvector insert second case', to_tsvector('english', 'This is a test for direct tsvector insert second case'));");
 
         var actualRecords = consumeRecordsByTopic(2);
         var recs = actualRecords.recordsForTopic("test_server.tsvector.text_search_test");
@@ -86,7 +87,8 @@ public class TsVectorDataTypeIT extends AbstractRecordsProducerTest {
 
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
 
-        TestHelper.execute("INSERT INTO tsvector.text_search_test (title, content) VALUES ('TC2 - Post Update TSV', 'This is a test for updating tsvector after insert');");
+        TestHelper
+                .execute("INSERT INTO tsvector.text_search_test (title, content) VALUES ('TC2 - Post Update TSV', 'This is a test for updating tsvector after insert');");
         TestHelper.execute("UPDATE tsvector.text_search_test SET search_vector = to_tsvector('english', content) WHERE title = 'TC2 - Post Update TSV';");
 
         var actualRecords = consumeRecordsByTopic(2);
@@ -109,8 +111,10 @@ public class TsVectorDataTypeIT extends AbstractRecordsProducerTest {
 
         TestHelper.execute("DROP TABLE IF EXISTS tsvector.text_search_test;");
         TestHelper.execute("CREATE TABLE tsvector.text_search_test ( id SERIAL PRIMARY KEY, title TEXT, content TEXT,  search_vector tsvector);");
-        TestHelper.execute("CREATE OR REPLACE FUNCTION tsvector.trg_update_search_vector() RETURNS trigger AS $$ BEGIN NEW.search_vector := to_tsvector('english', NEW.content); RETURN NEW; END; $$ LANGUAGE plpgsql;");
-        TestHelper.execute("CREATE TRIGGER trg_set_tsvector BEFORE INSERT OR UPDATE ON tsvector.text_search_test FOR EACH ROW EXECUTE FUNCTION tsvector.trg_update_search_vector();");
+        TestHelper.execute(
+                "CREATE OR REPLACE FUNCTION tsvector.trg_update_search_vector() RETURNS trigger AS $$ BEGIN NEW.search_vector := to_tsvector('english', NEW.content); RETURN NEW; END; $$ LANGUAGE plpgsql;");
+        TestHelper.execute(
+                "CREATE TRIGGER trg_set_tsvector BEFORE INSERT OR UPDATE ON tsvector.text_search_test FOR EACH ROW EXECUTE FUNCTION tsvector.trg_update_search_vector();");
         TestHelper.execute("INSERT INTO tsvector.text_search_test (title, content) VALUES ('TC4 - Trigger TSV', 'This is a test for tsvector populated via trigger');");
 
         var actualRecords = consumeRecordsByTopic(1);
