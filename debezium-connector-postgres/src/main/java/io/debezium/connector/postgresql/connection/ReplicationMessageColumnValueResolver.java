@@ -177,13 +177,13 @@ public class ReplicationMessageColumnValueResolver {
             case "vector":
             case "halfvec":
             case "sparsevec":
+            case "tsvector":
                 return value.asString();
 
             // catch-all for other known/builtin PG types
             // TODO: improve with more specific/useful classes here?
             case "pg_lsn":
             case "tsquery":
-            case "tsvector":
             case "txid_snapshot":
                 // catch-all for unknown (extension module/custom) types
             default:
