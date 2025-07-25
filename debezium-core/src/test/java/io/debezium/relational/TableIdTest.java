@@ -39,7 +39,7 @@ public class TableIdTest {
         // Non-quoted quoted table-id
         TableId id = new TableId("catalog", "schema", "table");
 
-        TableId quoted = id.toQuoted('\'');
+        TableId quoted = id.toQuoted('\'', '\'');
         assertThat(quoted.catalog()).isEqualTo("'catalog'");
         assertThat(quoted.schema()).isEqualTo("'schema'");
         assertThat(quoted.table()).isEqualTo("'table'");
@@ -49,7 +49,27 @@ public class TableIdTest {
         // Quoted table-id
         id = new TableId("'catalog'", "'schema'", "'table'");
 
-        quoted = id.toQuoted('\'');
+        quoted = id.toQuoted('\'', '\'');
+        assertThat(quoted).isEqualTo(id);
+    }
+
+    @Test
+    public void shouldQuoteTableIdWithBracket() {
+        // Non-quoted quoted table-id
+        TableId id = new TableId("cata log", "sch ema", "ta b$le");
+
+        TableId quoted = id.toBracketQuoted();
+        assertThat(quoted.catalog()).isEqualTo("[cata log]");
+        assertThat(quoted.schema()).isEqualTo("[sch ema]");
+        assertThat(quoted.table()).isEqualTo("[ta b$le]");
+        assertThat(quoted.toString()).isEqualTo("[cata log].[sch ema].[ta b$le]");
+        assertThat(quoted.toDoubleQuotedString()).isEqualTo("\"[cata log]\".\"[sch ema]\".\"[ta "
+                + "b$le]\"");
+
+        // Quoted table-id
+        id = new TableId("[cata log]", "[sch ema]", "[ta b$le]");
+
+        quoted = id.toBracketQuoted();
         assertThat(quoted).isEqualTo(id);
     }
 }
