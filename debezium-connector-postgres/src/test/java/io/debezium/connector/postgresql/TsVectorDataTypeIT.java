@@ -23,11 +23,11 @@ import java.util.Map;
 import static io.debezium.junit.EqualityCheck.LESS_THAN;
 
 /**
- * Integration test to verify PgVector types.
+ * Integration test to verify tsvector data type.
  *
- * @author Jiri Pechanec
+ * @author Pranav Tiwari
  */
-@SkipWhenDatabaseVersion(check = LESS_THAN, major = 16, reason = "TsVector is tested only with PostgreSQL 16+")
+@SkipWhenDatabaseVersion(check = LESS_THAN, major = 16, reason = "tsvector is tested only with PostgreSQL 16+")
 public class TsVectorDataTypeIT extends AbstractRecordsProducerTest {
 
     @Rule
@@ -35,10 +35,9 @@ public class TsVectorDataTypeIT extends AbstractRecordsProducerTest {
 
     @Before
     public void before() throws Exception {
-        // Set pgoutput plugin for all tests in this class
+
         System.setProperty(PostgresConnectorConfig.PLUGIN_NAME.name(), PostgresConnectorConfig.LogicalDecoder.PGOUTPUT.name());
-        
-        // ensure the slot is deleted for each test
+
         try (PostgresConnection conn = TestHelper.create()) {
             conn.dropReplicationSlot(ReplicationConnection.Builder.DEFAULT_SLOT_NAME);
         }
@@ -54,7 +53,6 @@ public class TsVectorDataTypeIT extends AbstractRecordsProducerTest {
 
     @Test
     public void shouldSnapshotAndStreamTsvectorData() throws Exception {
-        // Testing.Print.enable();
 
         start(PostgresConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
@@ -81,7 +79,6 @@ public class TsVectorDataTypeIT extends AbstractRecordsProducerTest {
 
     @Test
     public void shouldStreamTsvectorDataAfterUpdate() throws Exception {
-        // Testing.Print.enable();
         start(PostgresConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build());
@@ -103,7 +100,6 @@ public class TsVectorDataTypeIT extends AbstractRecordsProducerTest {
 
     @Test
     public void shouldStreamTsvectorDataWithTriggerBasedUpdate() throws Exception {
-        // Testing.Print.enable();
         start(PostgresConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .build());
