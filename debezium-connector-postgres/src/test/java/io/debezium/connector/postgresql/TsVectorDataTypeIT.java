@@ -6,21 +6,19 @@
 
 package io.debezium.connector.postgresql;
 
-import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
-import io.debezium.connector.postgresql.connection.PostgresConnection;
-import io.debezium.connector.postgresql.connection.ReplicationConnection;
-import io.debezium.junit.SkipTestRule;
-import io.debezium.junit.SkipWhenDatabaseVersion;
+import static io.debezium.junit.EqualityCheck.LESS_THAN;
+
 import org.apache.kafka.connect.data.Struct;
 import org.assertj.core.api.Assertions;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
-import java.util.List;
-import java.util.Map;
-
-import static io.debezium.junit.EqualityCheck.LESS_THAN;
+import io.debezium.connector.postgresql.PostgresConnectorConfig.SnapshotMode;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.connection.ReplicationConnection;
+import io.debezium.junit.SkipTestRule;
+import io.debezium.junit.SkipWhenDatabaseVersion;
 
 /**
  * Integration test to verify tsvector data type.
