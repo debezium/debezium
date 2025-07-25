@@ -24,7 +24,7 @@ jobs:
         run: |
           echo "PREFIX_COMMITS=false" >> $GITHUB_OUTPUT
           
-          RESPONSE=$(curl --select -X "GET" https://api.github.com/repos/$github_repository/pulls/$pull_request_number/commits)
+          RESPONSE=$(curl --silent -X "GET" https://api.github.com/repos/$github_repository/pulls/$pull_request_number/commits)
           
           MESSAGE=$(echo "$RESPONSE" | jq -r '.message // empty')
           if [[ "$MESSAGE" == "API rate limit exceeded"* ]]; then
