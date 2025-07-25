@@ -177,7 +177,7 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
             LOGGER.info("No previous offset found");
         }
         else {
-            LOGGER.info("Found previous offset {}", previousOffset);
+            LOGGER.info("Found previous offset {}", previousOffset.getOffset());
         }
 
         // Set up the task record queue ...
