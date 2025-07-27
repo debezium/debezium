@@ -117,7 +117,6 @@ public class EngineProcessor {
         additionalBeanProducer.produce(AdditionalBeanBuildItem
                 .builder()
                 .addBeanClasses(CapturingEventDeserializerRegistryProducer.class)
-                .setUnremovable()
                 .setDefaultScope(DotNames.APPLICATION_SCOPED)
                 .setUnremovable()
                 .build());
@@ -223,11 +222,16 @@ public class EngineProcessor {
         debeziumEngineConfiguration
                 .capturing()
                 .values()
-                .forEach(capturing -> reflectiveClasses.produce(
-                        ReflectiveClassBuildItem
-                                .builder(capturing.deserializer())
-                                .reason(getClass().getName())
-                                .build()));
+                .stream()
+                .forEach(capturing -> {
+                    if (capturing.destination().isPresent() && capturing.deserializer().isPresent()) {
+                        reflectiveClasses.produce(
+                                ReflectiveClassBuildItem
+                                        .builder(capturing.deserializer().get())
+                                        .reason(getClass().getName())
+                                        .build());
+                    }
+                });
 
         reflectiveClasses.produce(ReflectiveClassBuildItem.builder(
                 ArcHeartbeatFactory.class,

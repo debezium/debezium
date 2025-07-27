@@ -28,7 +28,8 @@ import io.debezium.engine.RecordChangeEvent;
 import io.debezium.runtime.Capturing;
 import io.debezium.runtime.CapturingEvent;
 import io.debezium.runtime.Debezium;
-import io.debezium.runtime.DebeziumStatus;
+import io.quarkus.debezium.engine.deserializer.CapturingEventDeserializerRegistry;
+import io.quarkus.debezium.engine.deserializer.MutableCapturingEventDeserializerRegistry;
 import io.quarkus.debezium.engine.deserializer.ObjectMapperDeserializer;
 import io.quarkus.test.QuarkusUnitTest;
 import io.quarkus.test.common.QuarkusTestResource;
@@ -41,26 +42,24 @@ public class EnhancedCapturingTest {
     @Inject
     Debezium debezium;
 
+    @Inject
+    CapturingEventDeserializerRegistry<SourceRecord> registry;
+
     @BeforeEach
     void setUp() {
-        given().await()
-                .atMost(10, TimeUnit.SECONDS)
-                .untilAsserted(() -> assertThat(debezium.status())
-                        .isEqualTo(new DebeziumStatus(DebeziumStatus.State.POLLING)));
+        var mutableRegistry = (MutableCapturingEventDeserializerRegistry<SourceRecord>) registry;
+        mutableRegistry.register("dbserver1.public.orders", new OrderDeserializer());
     }
 
     @RegisterExtension
     static final QuarkusUnitTest setup = new QuarkusUnitTest()
-            .withApplicationRoot((jar) -> jar
-                    .addClasses(CaptureProductsHandler.class))
+            .withApplicationRoot((jar) -> jar.addClasses(CaptureProductsHandler.class))
             .overrideConfigKey("quarkus.debezium.offset.storage", "org.apache.kafka.connect.storage.MemoryOffsetBackingStore")
             .overrideConfigKey("quarkus.debezium.name", "test")
             .overrideConfigKey("quarkus.debezium.topic.prefix", "dbserver1")
             .overrideConfigKey("quarkus.debezium.plugin.name", "pgoutput")
             .overrideConfigKey("quarkus.debezium.snapshot.mode", "initial")
             .overrideConfigKey("quarkus.debezium.capturing.orders.destination", "dbserver1.public.orders")
-            .overrideConfigKey("quarkus.debezium.capturing.orders.deserializer",
-                    "io.quarkus.debezium.postgres.deployment.EnhancedCapturingTest$OrderDeserializer")
             .overrideConfigKey("quarkus.datasource.devservices.enabled", "false");
 
     @Test
@@ -78,7 +77,7 @@ public class EnhancedCapturingTest {
     void shouldInvokeFilteredByDestinationCapture() {
         given().await()
                 .atMost(100, TimeUnit.SECONDS)
-                .untilAsserted(() -> assertThat(captureProductsHandler.filteredEvent()).isEqualTo(2));
+                .untilAsserted(() -> assertThat(captureProductsHandler.filteredEvent()).isEqualTo(6));
     }
 
     @Test
@@ -108,7 +107,7 @@ public class EnhancedCapturingTest {
             isCapturingEventInvoked.set(true);
         }
 
-        @Capturing(destination = "dbserver1.public.products")
+        @Capturing(destination = "dbserver1.public.injected")
         public void anotherCapture(CapturingEvent<SourceRecord> event) {
             isCapturingFilteredEvent.incrementAndGet();
         }

@@ -6,6 +6,7 @@
 package io.debezium.runtime.configuration;
 
 import java.util.Map;
+import java.util.Optional;
 
 import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.annotations.ConfigRoot;
@@ -28,8 +29,8 @@ public interface DebeziumEngineConfiguration {
     Map<String, Capturing> capturing();
 
     interface Capturing {
-        String destination();
+        Optional<String> destination();
 
-        String deserializer();
+        Optional<String> deserializer();
     }
 }
