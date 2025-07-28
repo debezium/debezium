@@ -623,6 +623,11 @@
                 <version>${version.junit5}</version>
             </dependency>
             <dependency>
+                <groupId>org.junit.vintage</groupId>
+                <artifactId>junit-vintage-engine</artifactId>
+                <version>${version.junit5}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.junit.platform</groupId>
                 <artifactId>junit-platform-launcher</artifactId>
                 <version>${version.junit.platform.launcher}</version>
@@ -861,6 +866,11 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-connector-ibmi</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-connector-cockroachdb</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

@@ -5,7 +5,7 @@ return { parametersContext ->
         stringParam('DEBEZIUM_BRANCH', 'main', 'A branch from which Debezium is built')
         stringParam(
                 'DEBEZIUM_ADDITIONAL_REPOSITORIES',
-                'spanner#github.com/debezium/debezium-connector-spanner.git#main db2#github.com/debezium/debezium-connector-db2.git#main vitess#github.com/debezium/debezium-connector-vitess.git#main cassandra#github.com/debezium/debezium-connector-cassandra.git#main informix#github.com/debezium/debezium-connector-informix.git#main ibmi#github.com/debezium/debezium-connector-ibmi.git#main server#github.com/debezium/debezium-server.git#main operator#github.com/debezium/debezium-operator.git#main platform#github.com/debezium/debezium-platform.git#debezium-platform-conductor#main',
+                'spanner#github.com/debezium/debezium-connector-spanner.git#main db2#github.com/debezium/debezium-connector-db2.git#main vitess#github.com/debezium/debezium-connector-vitess.git#main cassandra#github.com/debezium/debezium-connector-cassandra.git#main informix#github.com/debezium/debezium-connector-informix.git#main ibmi#github.com/debezium/debezium-connector-ibmi.git#main cockroachdb#github.com/debezium/debezium-connector-cockroachdb.git#main server#github.com/debezium/debezium-server.git#main operator#github.com/debezium/debezium-operator.git#main platform#github.com/debezium/debezium-platform.git#debezium-platform-conductor#main',
                 'A space separated list of additional repositories from which Debezium incubating components are built (id#repo#branch)'
         )
         stringParam('POSTGRES_DECODER_REPOSITORY', 'github.com/debezium/postgres-decoderbufs.git', 'Repository from which PostgreSQL decoder plugin is built')
