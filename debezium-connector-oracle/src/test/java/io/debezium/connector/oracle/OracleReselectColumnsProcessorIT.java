@@ -375,4 +375,52 @@ public class OracleReselectColumnsProcessorIT extends AbstractReselectProcessorT
             TestHelper.dropTable(connection, "dbz4321");
         }
     }
+
+    @Test
+    @FixFor("DBZ-9293")
+    @SkipWhenLogMiningStrategyIs(value = SkipWhenLogMiningStrategyIs.Strategy.HYBRID, reason = "Cannot use lob.enabled with Hybrid")
+    public void testReselectWithVariableScaleDecimalPrimaryKeyColumn() throws Exception {
+        TestHelper.dropTable(connection, "dbz4321");
+        try {
+            final LogInterceptor logInterceptor = getReselectLogInterceptor();
+
+            connection.execute("CREATE TABLE dbz4321 (id number primary key, data blob, data2 numeric(9,0))");
+            TestHelper.streamTable(connection, "dbz4321");
+
+            Configuration config = getConfigurationBuilder()
+                    .with(OracleConnectorConfig.LOB_ENABLED, "true")
+                    .with("post.processors.reselector.reselect.columns.include.list", reselectColumnsList())
+                    .build();
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingStarted();
+
+            // Insert will always include the data
+            final byte[] blobData = RandomStringUtils.random(10000).getBytes(StandardCharsets.UTF_8);
+            final Blob blob = connection.connection().createBlob();
+            blob.setBytes(1, blobData);
+            connection.prepareQuery("INSERT INTO dbz4321 (id,data,data2) values (1,?,1)", ps -> ps.setBlob(1, blob), null);
+            connection.commit();
+
+            // Update row without changing clob
+            connection.execute("UPDATE dbz4321 set data2=10 where id = 1");
+
+            final SourceRecords sourceRecords = consumeRecordsByTopic(2);
+
+            final List<SourceRecord> tableRecords = sourceRecords.recordsForTopic("server1.DEBEZIUM.DBZ4321");
+            assertThat(tableRecords).hasSize(2);
+
+            SourceRecord update = tableRecords.get(1);
+
+            Struct after = ((Struct) update.value()).getStruct(Envelope.FieldName.AFTER);
+            assertThat(after.get("DATA")).isEqualTo(ByteBuffer.wrap(blobData));
+            assertThat(after.get("DATA2")).isEqualTo(10);
+
+            assertColumnReselectedForUnavailableValue(logInterceptor, TestHelper.getDatabaseName() + ".DEBEZIUM.DBZ4321", "DATA");
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz4321");
+        }
+    }
 }
