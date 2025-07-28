@@ -22,7 +22,7 @@ runs:
     - name: "Checkstyle, Formatting, and Import Order Checks"
       shell: ${{ inputs.shell }}
       run: >
-        ./mvnw -B -pl support/checkstyle,support/ide-configs/ clean install
+        ./mvnw -B -pl support/checkstyle,support/ide-configs/,debezium-common clean install
         -Dorg.slf4j.simpleLogger.showDateTime=true
         -Dorg.slf4j.simpleLogger.dateTimeFormat="YYYY-MM-dd HH:mm:ss,SSS"
         &&
