@@ -283,8 +283,10 @@ public class EngineProcessor {
         GeneratedClassGizmoAdaptor classOutput = new GeneratedClassGizmoAdaptor(generatedClassBuildItemBuildProducer,
                 true);
 
-        CapturingInvokerGenerator capturingInvokerGenerator = new DefaultCapturingInvokerGenerator(new CapturingEventGenerator(classOutput),
-                new InvokerGenerator(classOutput));
+        CapturingInvokerGenerator capturingInvokerGenerator = new MultipleCapturingInvokerGenerators(
+                new CapturingEventGenerator(classOutput),
+                new InvokerGenerator(classOutput),
+                new GeneralCapturingInvokerGenerator(classOutput));
 
         PostProcessorGenerator postProcessorGenerator = new PostProcessorGenerator(classOutput);
         CustomConverterGenerator customConverterGenerator = new CustomConverterGenerator(classOutput);
