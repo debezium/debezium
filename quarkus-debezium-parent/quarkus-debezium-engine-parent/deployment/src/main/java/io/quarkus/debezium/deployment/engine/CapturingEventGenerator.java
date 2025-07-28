@@ -34,8 +34,8 @@ public class CapturingEventGenerator implements CapturingInvokerGenerator {
     }
 
     @Override
-    public Type type() {
-        return ParameterizedType.create(CapturingEvent.class, Type.create(SourceRecord.class));
+    public boolean isCompatible(Type type) {
+        return ParameterizedType.create(CapturingEvent.class, Type.create(SourceRecord.class)).equals(type);
     }
 
     /**

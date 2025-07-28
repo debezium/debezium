@@ -26,6 +26,11 @@ import io.quarkus.gizmo.MethodDescriptor;
 import io.quarkus.gizmo.ResultHandle;
 import io.quarkus.runtime.util.HashUtil;
 
+/**
+ *
+ * this generator is substituted by {@link CapturingInvokerGenerator} which use {@link io.debezium.runtime.CapturingEvent}
+ *
+ */
 @Deprecated
 public class InvokerGenerator implements CapturingInvokerGenerator {
 
@@ -36,8 +41,8 @@ public class InvokerGenerator implements CapturingInvokerGenerator {
     }
 
     @Override
-    public Type type() {
-        return ParameterizedType.create(RecordChangeEvent.class, Type.create(SourceRecord.class));
+    public boolean isCompatible(Type type) {
+        return ParameterizedType.create(RecordChangeEvent.class, Type.create(SourceRecord.class)).equals(type);
     }
 
     /**

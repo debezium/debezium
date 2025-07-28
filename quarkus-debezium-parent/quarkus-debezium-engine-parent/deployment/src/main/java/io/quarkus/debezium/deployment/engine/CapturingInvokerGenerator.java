@@ -12,7 +12,10 @@ import org.jboss.jandex.Type;
 import io.quarkus.arc.processor.BeanInfo;
 
 public interface CapturingInvokerGenerator {
-    Type type();
+
+    default boolean isCompatible(Type type) {
+        return false;
+    }
 
     GeneratedClassMetaData generate(MethodInfo methodInfo, BeanInfo beanInfo);
 }
