@@ -3294,7 +3294,7 @@ These headers are required by the OpenLineage integration and provide metadata t
 The property adds following headers:
 
 `__debezium.context.connectorLogicalName`:: The logical name of the {prodname} connector.
-`__debezium.context.taskId:`: The unique identifier of the connector task.
+`__debezium.context.taskId`:: The unique identifier of the connector task.
 `__debezium.context.connectorName`::  The name of the {prodname} connector.
 |===
 
