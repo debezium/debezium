@@ -26,14 +26,14 @@ jobs:
           
           RESPONSE=$(curl --silent -X "GET" https://api.github.com/repos/$github_repository/pulls/$pull_request_number/commits)
           
-          MESSAGE=$(echo "$RESPONSE" | jq -r '.message // empty')
+          MESSAGE=$(echo "$RESPONSE" | jq -r '.[].commit.message // empty')
           if [[ "$MESSAGE" == "API rate limit exceeded"* ]]; then
             echo "::error::Github API rate limit exceeded. Skipping commit message check."
             exit 1
           fi
           
           NON_PREFIX_COMMITS=""
-          echo "$RESPONSE" | jq -r '.[] | .commit_message' > COMMIT_MSGS.txt
+          echo "$RESPONSE" | jq -r '.[] | .commit.message | split("\n")[0]' > COMMIT_MSGS.txt
           
           while IFS= read -r line; 
           do
