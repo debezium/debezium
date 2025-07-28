@@ -21,7 +21,7 @@ jobs:
         run: |
           echo "OCTOCAT_COMMIT_FOUND=false" >> $GITHUB_OUTPUT
           RESPONSE=$(curl --silent -X "GET" https://api.github.com/repos/debezium/debezium/pulls/$pull_request_number/commits)
-          MESSAGE=$(echo "$RESPONSE" | jq -r '.message // empty')
+          MESSAGE=$(echo "$RESPONSE" | jq -r '.[].commit.message // empty')
           
           echo "Response:\n$RESPONSE"
           echo "Message:\n$MESSAGE"
