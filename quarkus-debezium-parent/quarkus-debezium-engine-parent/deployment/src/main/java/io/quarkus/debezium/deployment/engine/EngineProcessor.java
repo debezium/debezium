@@ -72,7 +72,11 @@ import io.quarkus.debezium.deployment.items.DebeziumGeneratedPostProcessorBuildI
 import io.quarkus.debezium.deployment.items.DebeziumMediatorBuildItem;
 import io.quarkus.debezium.engine.DebeziumRecorder;
 import io.quarkus.debezium.engine.DefaultStateHandler;
-import io.quarkus.debezium.engine.capture.*;
+import io.quarkus.debezium.engine.capture.CapturingEventInvokerRegistryProducer;
+import io.quarkus.debezium.engine.capture.CapturingInvoker;
+import io.quarkus.debezium.engine.capture.CapturingObjectInvokerRegistryProducer;
+import io.quarkus.debezium.engine.capture.CapturingSourceRecordInvokerRegistryProducer;
+import io.quarkus.debezium.engine.capture.DynamicCapturingInvokerSupplier;
 import io.quarkus.debezium.engine.capture.consumer.SourceRecordEventProducer;
 import io.quarkus.debezium.engine.converter.custom.DynamicCustomConverterSupplier;
 import io.quarkus.debezium.engine.deserializer.CapturingEventDeserializerRegistryProducer;

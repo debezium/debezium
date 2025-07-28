@@ -12,7 +12,12 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.Converter;
 
 import io.debezium.runtime.CapturingEvent;
-import io.debezium.runtime.CapturingEvent.*;
+import io.debezium.runtime.CapturingEvent.Create;
+import io.debezium.runtime.CapturingEvent.Delete;
+import io.debezium.runtime.CapturingEvent.Message;
+import io.debezium.runtime.CapturingEvent.Read;
+import io.debezium.runtime.CapturingEvent.Truncate;
+import io.debezium.runtime.CapturingEvent.Update;
 import io.quarkus.debezium.engine.deserializer.Deserializer;
 
 public class SourceRecordDeserializer<T> implements CapturingEventDeserializer<T, SourceRecord> {
