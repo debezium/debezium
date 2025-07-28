@@ -5940,6 +5940,40 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
+    @Test
+    @FixFor("DBZ-9132")
+    public void shouldStreamMultibyteCharacterSequenceWithEmbeddedSqlConcatenationSequence() throws Exception {
+        TestHelper.dropTable(connection, "dbz9132");
+        try {
+            connection.execute("CREATE TABLE dbz9132 (id numeric(9,0) primary key, data nvarchar2(500))");
+            TestHelper.streamTable(connection, "dbz9132");
+
+            connection.execute("INSERT INTO dbz9132 values (1, '中国||武汉')");
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ9132")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz9132 values (2, '中国||武汉')");
+
+            final List<SourceRecord> records = consumeRecordsByTopic(2).recordsForTopic("server1.DEBEZIUM.DBZ9132");
+            assertThat(records).hasSize(2);
+
+            for (SourceRecord record : records) {
+                Struct after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
+                assertThat(after.get("DATA")).as("Record - " + record).isEqualTo("中国||武汉");
+            }
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz9132");
+        }
+    }
+
     private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
         try (OracleConnection admin = TestHelper.adminConnection(true)) {
             final Scn scn = admin.getCurrentScn();
