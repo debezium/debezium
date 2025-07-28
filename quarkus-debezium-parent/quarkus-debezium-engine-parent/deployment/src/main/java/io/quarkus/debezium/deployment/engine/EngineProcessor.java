@@ -21,7 +21,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 import org.apache.kafka.common.security.authenticator.SaslClientAuthenticator;
 import org.apache.kafka.connect.json.JsonConverter;
-import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.source.SourceTask;
 import org.apache.kafka.connect.transforms.predicates.TopicNameMatches;
 import org.jboss.jandex.AnnotationValue;
@@ -31,7 +30,6 @@ import org.jboss.jandex.Type;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.embedded.async.ConvertingAsyncEngineBuilderFactory;
 import io.debezium.engine.DebeziumEngine;
-import io.debezium.engine.RecordChangeEvent;
 import io.debezium.engine.spi.OffsetCommitPolicy;
 import io.debezium.pipeline.notification.channels.LogNotificationChannel;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
@@ -286,7 +284,7 @@ public class EngineProcessor {
         CapturingInvokerGenerator capturingInvokerGenerator = new MultipleCapturingInvokerGenerators(
                 new CapturingEventGenerator(classOutput),
                 new InvokerGenerator(classOutput),
-                new GeneralCapturingInvokerGenerator(classOutput));
+                new CapturingObjectInvokerGenerator(classOutput));
 
         PostProcessorGenerator postProcessorGenerator = new PostProcessorGenerator(classOutput);
         CustomConverterGenerator customConverterGenerator = new CustomConverterGenerator(classOutput);
@@ -349,7 +347,7 @@ public class EngineProcessor {
                         .unremovable()
                         .supplier(dynamicCapturingInvokerSupplier.createInvoker(
                                 recorderContext.classProxy(item.getMediator().getImplClazz().name().toString()),
-                                (Class<? extends CapturingInvoker<RecordChangeEvent<SourceRecord>>>) recorderContext.classProxy(item.getGeneratedClassName())))
+                                (Class<? extends CapturingInvoker<?>>) recorderContext.classProxy(item.getGeneratedClassName())))
                         .named(DynamicCapturingInvokerSupplier.BASE_NAME + item.getMediator().getImplClazz().name() + item.getId())
                         .done()));
     }
