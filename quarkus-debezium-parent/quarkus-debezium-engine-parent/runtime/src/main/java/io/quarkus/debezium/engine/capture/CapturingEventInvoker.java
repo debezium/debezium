@@ -6,8 +6,6 @@
 
 package io.quarkus.debezium.engine.capture;
 
-import org.apache.kafka.connect.source.SourceRecord;
-
 import io.debezium.runtime.Capturing;
 import io.debezium.runtime.CapturingEvent;
 
@@ -16,14 +14,8 @@ import io.debezium.runtime.CapturingEvent;
  * Invoker assigned to any annotated class with method {@link Capturing} and events {@link CapturingEvent} or serialized event
  *
  */
-public interface CapturingEventInvoker extends CapturingInvoker<CapturingEvent<SourceRecord>> {
-
-    /**
-     *
-     * @return the destination that triggers the handler
-     */
-    String destination();
+public interface CapturingEventInvoker extends FilteredCapturingInvoker<CapturingEvent<Object>> {
 
     @Override
-    void capture(CapturingEvent<SourceRecord> event);
+    void capture(CapturingEvent<Object> event);
 }
