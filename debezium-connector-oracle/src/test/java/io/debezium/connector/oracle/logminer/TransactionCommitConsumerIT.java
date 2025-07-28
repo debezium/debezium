@@ -78,7 +78,7 @@ public class TransactionCommitConsumerIT extends AbstractAsyncEngineConnectorTes
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.ADDRESSES,DEBEZIUM\\.EMAIL,DEBEZIUM\\.PHONE")
                     .with(OracleConnectorConfig.LOB_ENABLED, "true")
-                    .with(OracleConnectorConfig.SNAPSHOT_MODE, "schema_only")
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, "no_data")
                     .build();
 
             start(OracleConnector.class, config);
