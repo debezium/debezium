@@ -1061,7 +1061,7 @@ https://docs.microsoft.com/azure/event-hubs/event-hubs-about[Azure Event Hubs] i
 
 |[[hash-message-key-function]]<<hash-message-key-function, `debezium.sink.eventhubs.hashmessagekeyfunction`>>
 |
-|(Optional) If set, then message keys will be hashed with the specified hash function. Supported values are: java, md5, sha1, sha256
+|(Optional) If set, then message keys will be hashed with the specified hash function. Supported values are: `java`, `md5, `sha1, or `sha256`
 
 |===
 
