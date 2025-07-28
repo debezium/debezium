@@ -26,6 +26,8 @@ import org.apache.kafka.connect.transforms.predicates.TopicNameMatches;
 import org.jboss.jandex.AnnotationValue;
 import org.jboss.jandex.DotName;
 import org.jboss.jandex.Type;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.embedded.async.ConvertingAsyncEngineBuilderFactory;
@@ -80,6 +82,7 @@ import io.quarkus.debezium.engine.capture.DynamicCapturingInvokerSupplier;
 import io.quarkus.debezium.engine.capture.consumer.SourceRecordEventProducer;
 import io.quarkus.debezium.engine.converter.custom.DynamicCustomConverterSupplier;
 import io.quarkus.debezium.engine.deserializer.CapturingEventDeserializerRegistryProducer;
+import io.quarkus.debezium.engine.deserializer.ObjectMapperDeserializer;
 import io.quarkus.debezium.engine.post.processing.ArcPostProcessorFactory;
 import io.quarkus.debezium.engine.post.processing.DynamicPostProcessingSupplier;
 import io.quarkus.debezium.engine.relational.converter.QuarkusCustomConverter;
@@ -93,6 +96,7 @@ import io.quarkus.deployment.annotations.BuildProducer;
 import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.ExecutionTime;
 import io.quarkus.deployment.annotations.Record;
+import io.quarkus.deployment.builditem.CombinedIndexBuildItem;
 import io.quarkus.deployment.builditem.ExecutorBuildItem;
 import io.quarkus.deployment.builditem.GeneratedClassBuildItem;
 import io.quarkus.deployment.builditem.ShutdownContextBuildItem;
@@ -103,6 +107,8 @@ import io.quarkus.deployment.pkg.steps.NativeOrNativeSourcesBuild;
 import io.quarkus.deployment.recording.RecorderContext;
 
 public class EngineProcessor {
+
+    private final Logger logger = LoggerFactory.getLogger(EngineProcessor.class);
 
     @BuildStep
     void engine(BuildProducer<AdditionalBeanBuildItem> additionalBeanProducer,
@@ -191,6 +197,7 @@ public class EngineProcessor {
 
     @BuildStep(onlyIf = NativeOrNativeSourcesBuild.class)
     void registerClassesThatAreLoadedThroughReflection(
+                                                       CombinedIndexBuildItem indexBuildItem,
                                                        BuildProducer<ReflectiveClassBuildItem> reflectiveClasses,
                                                        DebeziumEngineConfiguration debeziumEngineConfiguration) {
 
@@ -222,10 +229,23 @@ public class EngineProcessor {
                         .reason(getClass().getName())
                         .build()));
 
+        indexBuildItem
+                .getIndex()
+                .getAllKnownSubclasses(DotName.createSimple(ObjectMapperDeserializer.class))
+                .stream()
+                .flatMap(clazz -> clazz.superClassType().asParameterizedType().arguments().stream())
+                .forEach(clazz -> reflectiveClasses.produce(
+                        ReflectiveClassBuildItem
+                                .builder(clazz.asClassType().toString())
+                                .reason(getClass().getName())
+                                .constructors(true)
+                                .methods(true)
+                                .fields(true)
+                                .build()));
+
         debeziumEngineConfiguration
                 .capturing()
                 .values()
-                .stream()
                 .forEach(capturing -> {
                     if (capturing.destination().isPresent() && capturing.deserializer().isPresent()) {
                         reflectiveClasses.produce(
