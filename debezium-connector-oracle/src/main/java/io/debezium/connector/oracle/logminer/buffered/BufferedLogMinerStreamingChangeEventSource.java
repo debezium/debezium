@@ -100,18 +100,20 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
         try (LogWriterFlushStrategy flushStrategy = resolveFlushStrategy()) {
 
-            Scn startScn = getOffsetContext().getScn();
-            Scn endScn = Scn.NULL;
+            boolean sessionStartScnChanged = false;
+            Scn sessionStartScn = getOffsetContext().getScn();
+            Scn sessionEndScn = Scn.NULL;
+            Scn readScn = sessionStartScn;
 
             Stopwatch watch = Stopwatch.accumulating().start();
             int miningStartAttempts = 1;
 
-            prepareLogsForMining(false, startScn);
+            prepareLogsForMining(false, sessionStartScn);
 
             while (getContext().isRunning()) {
 
                 // Check if we should break when using archive log only mode
-                if (isArchiveLogOnlyModeAndScnIsNotAvailable(startScn)) {
+                if (isArchiveLogOnlyModeAndScnIsNotAvailable(sessionStartScn)) {
                     break;
                 }
 
@@ -122,8 +124,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 Scn currentScn = getCurrentScn();
                 getMetrics().setCurrentScn(currentScn);
 
-                endScn = calculateUpperBounds(startScn, endScn, currentScn);
-                if (endScn.isNull()) {
+                sessionEndScn = calculateUpperBounds(readScn, sessionEndScn, currentScn);
+                if (sessionEndScn.isNull()) {
                     LOGGER.debug("Requested delay of mining by one iteration");
                     pauseBetweenMiningSessions();
                     continue;
@@ -132,29 +134,38 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 // This is a small window where when archive log only mode has completely caught up to the last
                 // record in the archive logs that both the lower and upper values are identical. In this use
                 // case we want to pause and restart the loop waiting for a new archive log before proceeding.
-                if (getConfig().isArchiveLogOnlyMode() && startScn.equals(endScn)) {
+                if (getConfig().isArchiveLogOnlyMode() && readScn.equals(sessionEndScn)) {
                     pauseBetweenMiningSessions();
                     continue;
                 }
 
                 flushStrategy.flush(getCurrentScn());
 
-                if (isMiningSessionRestartRequired(watch) || checkLogSwitchOccurredAndUpdate()) {
+                if (isMiningSessionRestartRequired(watch) || checkLogSwitchOccurredAndUpdate() || sessionStartScnChanged) {
                     // Mining session is active, so end the current session and restart if necessary
                     endMiningSession();
                     if (getConfig().isLogMiningRestartConnection()) {
                         prepareJdbcConnection(true);
                     }
 
-                    prepareLogsForMining(true, startScn);
+                    prepareLogsForMining(true, sessionStartScn);
+                    sessionStartScnChanged = false;
 
                     // Recreate the stop watch
                     watch = Stopwatch.accumulating().start();
                 }
 
-                if (startMiningSession(startScn, endScn, miningStartAttempts)) {
+                if (startMiningSession(sessionStartScn, sessionEndScn, miningStartAttempts)) {
                     miningStartAttempts = 1;
-                    startScn = process(startScn, endScn);
+
+                    final ProcessResult result = process(readScn, sessionEndScn);
+
+                    if (!result.miningSessionStartScn.equals(sessionStartScn)) {
+                        sessionStartScnChanged = true;
+                        sessionStartScn = result.miningSessionStartScn;
+                    }
+
+                    readScn = result.readStartScn();
 
                     getMetrics().setLastBatchProcessingDuration(Duration.between(batchStartTime, Instant.now()));
                 }
@@ -218,7 +229,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     }
 
     @VisibleForTesting
-    protected Scn process(Scn startScn, Scn endScn) throws SQLException, InterruptedException {
+    protected ProcessResult process(Scn startScn, Scn endScn) throws SQLException, InterruptedException {
         getBatchMetrics().reset();
 
         try (PreparedStatement statement = createQueryStatement()) {
@@ -608,11 +619,11 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
      * @return the new resume position change number for the next iteration
      * @throws InterruptedException if the thread is interrupted
      */
-    private Scn calculateNewStartScn(Scn startScn, Scn endScn, Scn maxCommittedScn) throws InterruptedException {
+    private ProcessResult calculateNewStartScn(Scn startScn, Scn endScn, Scn maxCommittedScn) throws InterruptedException {
 
         if (!getBatchMetrics().hasJdbcRows()) {
             // When no rows are processed, don't advance the SCN
-            return startScn;
+            return new ProcessResult(getLogMinerContext().getCurrentSessionStartScn(), startScn);
         }
 
         // Cleanup caches based on current state of the transaction cache
@@ -638,37 +649,38 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             getSchemaChangesCache().removeIf(e -> true);
         }
 
-        if (getConfig().isLobEnabled()) {
-            if (getTransactionCache().isEmpty() && !maxCommittedScn.isNull()) {
+        if (!lastProcessedScn.isNull() && lastProcessedScn.compareTo(endScn) < 0) {
+            // The last processed SCN is before the end SCN for this mining step, so the next read position
+            // should start at this SCN position.
+            endScn = lastProcessedScn;
+        }
+
+        getMetrics().setOldestScnDetails(minCacheScn, minCacheScnChangeTime);
+
+        final Scn miningSessionStartScn;
+        if (!minCacheScn.isNull()) {
+            // Cache have values
+            miningSessionStartScn = minCacheScn.subtract(Scn.ONE);
+
+            getOffsetContext().setScn(miningSessionStartScn);
+            getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
+
+            return new ProcessResult(miningSessionStartScn, endScn);
+        }
+        else {
+            // Cache has no values
+            miningSessionStartScn = endScn.subtract(Scn.ONE);
+
+            if (!maxCommittedScn.isNull()) {
+                // If transactions have been committed, advance to the max committed value
                 getOffsetContext().setScn(maxCommittedScn);
                 getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
             }
-            else {
-                if (!minCacheScn.isNull()) {
-                    getProcessedTransactionsCache().removeIf(entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) < 0);
-                    getOffsetContext().setScn(minCacheScn.subtract(Scn.valueOf(1)));
-                    getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
-                }
-            }
-            return getOffsetContext().getScn();
         }
-        else {
 
-            if (!lastProcessedScn.isNull() && lastProcessedScn.compareTo(endScn) < 0) {
-                // If the last processed SCN is before the endScn we need to use the last processed SCN as the
-                // next starting point as the LGWR buffer didn't flush all entries from memory to disk yet.
-                endScn = lastProcessedScn;
-            }
+        getMetrics().setOffsetScn(getOffsetContext().getScn());
 
-            getOffsetContext().setScn(minCacheScn.isNull() ? endScn : minCacheScn.subtract(Scn.valueOf(1)));
-            getMetrics().setOldestScnDetails(minCacheScn, minCacheScnChangeTime);
-            getMetrics().setOffsetScn(getOffsetContext().getScn());
-
-            // optionally dispatch a heartbeat event
-            getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
-
-            return endScn;
-        }
+        return new ProcessResult(miningSessionStartScn, endScn);
     }
 
     /**
@@ -1059,5 +1071,12 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                                 .collect(Collectors.joining(",")));
             });
         }
+    }
+
+    /**
+     * A helper records to return scn state after processing a batch.
+     */
+    @VisibleForTesting
+    public record ProcessResult(Scn miningSessionStartScn, Scn readStartScn) {
     }
 }
