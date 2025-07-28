@@ -4029,7 +4029,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             TestHelper.streamTable(connection, "heartbeat");
 
             Configuration config = TestHelper.defaultConfig()
-                    .with(OracleConnectorConfig.SNAPSHOT_MODE, "schema_only")
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, "no_data")
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ5119,DEBEZIUM\\.HEARTBEAT")
                     .with(DatabaseHeartbeatImpl.HEARTBEAT_ACTION_QUERY, "UPDATE debezium.heartbeat set data = sysdate WHERE ROWNUM = 1")
                     .with(DatabaseHeartbeatImpl.HEARTBEAT_INTERVAL, 1000)
