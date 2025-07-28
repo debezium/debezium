@@ -49,6 +49,9 @@ jobs:
             echo "========================================================================"
             echo -e "$NON_PREFIX_COMMITS"
             echo "PREFIX_COMMITS=false" >> $GITHUB_OUTPUT
+          else
+            echo "All commit messages are properly prefixed."
+            echo "PREFIX_COMMITS=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Create Comment
