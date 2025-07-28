@@ -247,6 +247,10 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         return context;
     }
 
+    protected LogMinerSessionContext getLogMinerContext() {
+        return sessionContext;
+    }
+
     protected OraclePartition getPartition() {
         return partition;
     }
