@@ -12,7 +12,12 @@ import org.apache.kafka.connect.source.SourceRecord;
 import io.debezium.data.Envelope.Operation;
 import io.debezium.engine.ChangeEvent;
 import io.debezium.runtime.CapturingEvent;
-import io.debezium.runtime.CapturingEvent.*;
+import io.debezium.runtime.CapturingEvent.Create;
+import io.debezium.runtime.CapturingEvent.Delete;
+import io.debezium.runtime.CapturingEvent.Message;
+import io.debezium.runtime.CapturingEvent.Read;
+import io.debezium.runtime.CapturingEvent.Truncate;
+import io.debezium.runtime.CapturingEvent.Update;
 
 public class OperationMapper {
 
@@ -20,6 +25,14 @@ public class OperationMapper {
 
     public static CapturingEvent<SourceRecord> from(ChangeEvent<SourceRecord, SourceRecord> record) {
         Struct payload = (Struct) record.value().value();
+
+        if (payload.schema().field("op") == null) {
+            return new Message<>(
+                    record.value(),
+                    record.destination(),
+                    NOT_AVAILABLE,
+                    record.headers());
+        }
 
         return switch (Operation.forCode(payload.getString("op"))) {
             case READ -> new Read<>(record.value(),
