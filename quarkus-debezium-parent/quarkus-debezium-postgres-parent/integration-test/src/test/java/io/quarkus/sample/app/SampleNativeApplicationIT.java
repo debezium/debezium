@@ -8,6 +8,8 @@ package io.quarkus.sample.app;
 
 import static io.restassured.RestAssured.get;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasSize;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 import org.junit.jupiter.api.DisplayName;
@@ -41,5 +43,27 @@ public class SampleNativeApplicationIT {
                 .get("/api/debezium/captured")
                 .then()
                 .statusCode(302));
+    }
+
+    @Test
+    @DisplayName("Debezium should capture deserialized events")
+    void name() {
+        await().untilAsserted(() -> RestAssured
+                .given()
+                .redirects().follow(false)
+                .when()
+                .get("/api/debezium/products")
+                .then()
+                .statusCode(200)
+                .body("$", hasSize(2))
+                .body("[0].id", equalTo(1))
+                .body("[0].name", equalTo("t-shirt"))
+                .body("[0].description", equalTo("red hat t-shirt"))
+                .body("[1].id", equalTo(2))
+                .body("[1].name", equalTo("sweatshirt"))
+                .body("[1].description", equalTo("blue ibm sweatshirt"))
+
+        );
+
     }
 }
