@@ -15,8 +15,8 @@ import org.apache.kafka.connect.source.SourceRecord;
 import io.debezium.engine.RecordChangeEvent;
 import io.debezium.runtime.CapturingEvent;
 import io.quarkus.debezium.engine.OperationMapper;
-import io.quarkus.debezium.engine.capture.CapturingEventInvoker;
 import io.quarkus.debezium.engine.capture.CapturingInvokerRegistry;
+import io.quarkus.debezium.engine.capture.FilteredCapturingInvoker;
 import io.quarkus.debezium.engine.deserializer.CapturingEventDeserializerRegistry;
 
 public class SourceRecordEventProducer {
@@ -54,7 +54,7 @@ public class SourceRecordEventProducer {
                 return;
             }
 
-            new CapturingEventInvoker() {
+            new FilteredCapturingInvoker<CapturingEvent<SourceRecord>>() {
                 @Override
                 public String destination() {
                     return capturingEvent.destination();
