@@ -6,8 +6,10 @@
 
 package io.quarkus.debezium.engine.deserializer;
 
+import static java.util.stream.Collectors.toMap;
+
 import java.lang.reflect.InvocationTargetException;
-import java.util.HashMap;
+import java.util.Map;
 
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
@@ -26,16 +28,14 @@ public class CapturingEventDeserializerRegistryProducer {
     @Produces
     @Singleton
     public CapturingEventDeserializerRegistry<SourceRecord> produce(DebeziumEngineConfiguration configuration) {
-        HashMap<String, CapturingEventDeserializer<?, SourceRecord>> registry = new HashMap<>();
-
-        configuration
-                .capturing()
-                .values()
-                .stream()
-                .filter(c -> c.deserializer().isPresent() && c.destination().isPresent())
-                .forEach(a -> registry.put(a.destination().get(), getDeserializer(a.deserializer().get())));
-
         return new MutableCapturingEventDeserializerRegistry<>() {
+            private final Map<String, CapturingEventDeserializer<?, SourceRecord>> registry = configuration
+                    .capturing()
+                    .values()
+                    .stream()
+                    .filter(config -> config.deserializer().isPresent() && config.destination().isPresent())
+                    .collect(toMap(config -> config.destination().get(), config -> getDeserializer(config.deserializer().get())));
+
             @Override
             public void register(String identifier, Deserializer<?> deserializer) {
                 registry.put(identifier, new SourceRecordDeserializer<>(deserializer, converter));
