@@ -46,6 +46,7 @@ import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.OffsetActivityMonitor;
+import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource.ProcessResult;
 import io.debezium.connector.oracle.logminer.events.EventType;
 import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.util.TestHelper;
@@ -352,8 +353,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
             final BufferedLogMinerStreamingChangeEventSource mock = Mockito.spy(source);
             Mockito.doReturn(ps).when(mock).createQueryStatement();
 
-            final Scn nextStartScn = mock.process(Scn.valueOf(100), Scn.valueOf(200));
-            assertThat(nextStartScn).isEqualTo(Scn.valueOf(100));
+            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
+            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(100));
         }
     }
 
@@ -393,8 +394,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                     .when(mock)
                     .dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(Mockito.any(TableId.class));
 
-            final Scn nextStartScn = mock.process(Scn.valueOf(100), Scn.valueOf(200));
-            assertThat(nextStartScn).isEqualTo(Scn.valueOf(101));
+            final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
+            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(101));
         }
     }
 
