@@ -133,6 +133,9 @@ public class LogMinerSessionContext implements AutoCloseable {
             if (e.getErrorCode() == 1291 || e.getMessage().startsWith("ORA-01291")) {
                 throw new RetriableLogMinerException(e);
             }
+            else if (e.getErrorCode() == 310 || e.getMessage().startsWith("ORA-00310")) {
+                throw new RetriableLogMinerException(e);
+            }
             throw e;
         }
     }
