@@ -43,11 +43,11 @@ public class SourceRecordEventProducer {
             var deserializer = capturingEventDeserializerRegistry.get(capturingEvent.destination());
 
             if (deserializer != null) {
-                capturingEventRegistry.get(capturingEvent).capture(deserializer.deserialize(capturingEvent));
+                capturingEventRegistry.get(capturingEvent.destination()).capture(deserializer.deserialize(capturingEvent));
                 return;
             }
 
-            var invoker = capturingEventRegistry.get(capturingEvent);
+            var invoker = capturingEventRegistry.get(capturingEvent.destination());
 
             if (invoker != null) {
                 invoker.capture(capturingEvent);
@@ -62,7 +62,7 @@ public class SourceRecordEventProducer {
 
                 @Override
                 public void capture(CapturingEvent<SourceRecord> innerEvent) {
-                    recordChangeEventRegistry.get(capturingEvent::record).capture(innerEvent::record);
+                    recordChangeEventRegistry.get(capturingEvent.record()).capture(innerEvent::record);
                 }
             }.capture(capturingEvent);
         };
