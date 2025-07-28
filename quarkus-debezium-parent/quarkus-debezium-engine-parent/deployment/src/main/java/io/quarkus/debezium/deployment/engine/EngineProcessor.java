@@ -123,7 +123,8 @@ public class EngineProcessor {
                 .builder()
                 .addBeanClasses(
                         CapturingSourceRecordInvokerRegistryProducer.class,
-                        CapturingEventInvokerRegistryProducer.class)
+                        CapturingEventInvokerRegistryProducer.class,
+                        CapturingObjectInvokerRegistryProducer.class)
                 .setDefaultScope(DotNames.APPLICATION_SCOPED)
                 .setUnremovable()
                 .build());

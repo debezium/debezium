@@ -31,6 +31,6 @@ public class CapturingEventInvokerRegistryProducer implements CapturingInvokerRe
                 .stream()
                 .collect(Collectors.toMap(CapturingEventInvoker::destination, Function.identity()));
 
-        return a -> invokers.getOrDefault(a, invokers.get(Capturing.ALL));
+        return identifier -> invokers.getOrDefault(identifier, invokers.get(Capturing.ALL));
     }
 }

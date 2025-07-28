@@ -20,7 +20,6 @@ import jakarta.inject.Inject;
 
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -50,7 +49,7 @@ public class EnhancedCapturingTest {
     void setUp() {
         var mutableRegistry = (MutableCapturingEventDeserializerRegistry<SourceRecord>) registry;
         mutableRegistry.register("dbserver1.public.orders", new OrderDeserializer());
-        // mutableRegistry.register("dbserver1.public.users", new UserDeserializer());
+        mutableRegistry.register("dbserver1.public.users", new UserDeserializer());
     }
 
     @RegisterExtension
@@ -94,7 +93,6 @@ public class EnhancedCapturingTest {
 
     @Test
     @DisplayName("should map and capture users filtered by destination")
-    @Disabled
     void shouldMapAndCaptureUsersFilteredByDestination() {
         given().await()
                 .atMost(100, TimeUnit.SECONDS)

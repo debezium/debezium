@@ -15,6 +15,7 @@ import org.apache.kafka.connect.source.SourceRecord;
 import io.debezium.engine.RecordChangeEvent;
 import io.debezium.runtime.CapturingEvent;
 import io.quarkus.debezium.engine.OperationMapper;
+import io.quarkus.debezium.engine.capture.CapturingInvoker;
 import io.quarkus.debezium.engine.capture.CapturingInvokerRegistry;
 import io.quarkus.debezium.engine.capture.FilteredCapturingInvoker;
 import io.quarkus.debezium.engine.deserializer.CapturingEventDeserializerRegistry;
@@ -24,14 +25,17 @@ public class SourceRecordEventProducer {
     private final CapturingInvokerRegistry<RecordChangeEvent<SourceRecord>> recordChangeEventRegistry;
     private final CapturingInvokerRegistry<CapturingEvent<?>> capturingEventRegistry;
     private final CapturingEventDeserializerRegistry<SourceRecord> capturingEventDeserializerRegistry;
+    private final CapturingInvokerRegistry<Object> capturingObjectInvokerRegistry;
 
     @Inject
     public SourceRecordEventProducer(CapturingInvokerRegistry<RecordChangeEvent<SourceRecord>> recordChangeEventRegistry,
                                      CapturingInvokerRegistry<CapturingEvent<?>> capturingEventRegistry,
-                                     CapturingEventDeserializerRegistry<SourceRecord> capturingEventDeserializerRegistry) {
+                                     CapturingEventDeserializerRegistry<SourceRecord> capturingEventDeserializerRegistry,
+                                     CapturingInvokerRegistry<Object> capturingObjectInvokerRegistry) {
         this.recordChangeEventRegistry = recordChangeEventRegistry;
         this.capturingEventRegistry = capturingEventRegistry;
         this.capturingEventDeserializerRegistry = capturingEventDeserializerRegistry;
+        this.capturingObjectInvokerRegistry = capturingObjectInvokerRegistry;
     }
 
     @Produces
@@ -41,6 +45,12 @@ public class SourceRecordEventProducer {
             CapturingEvent<SourceRecord> capturingEvent = OperationMapper.from(event);
 
             var deserializer = capturingEventDeserializerRegistry.get(capturingEvent.destination());
+            CapturingInvoker<Object> objectCapturingInvoker = capturingObjectInvokerRegistry.get(capturingEvent.destination());
+
+            if (deserializer != null && objectCapturingInvoker != null) {
+                objectCapturingInvoker.capture(deserializer.deserialize(capturingEvent).record());
+                return;
+            }
 
             if (deserializer != null) {
                 capturingEventRegistry.get(capturingEvent.destination()).capture(deserializer.deserialize(capturingEvent));
