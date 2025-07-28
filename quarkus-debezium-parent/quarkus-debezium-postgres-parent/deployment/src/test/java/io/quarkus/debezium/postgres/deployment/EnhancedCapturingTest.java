@@ -49,6 +49,7 @@ public class EnhancedCapturingTest {
     void setUp() {
         var mutableRegistry = (MutableCapturingEventDeserializerRegistry<SourceRecord>) registry;
         mutableRegistry.register("dbserver1.public.orders", new OrderDeserializer());
+        mutableRegistry.register("dbserver1.public.users", new UserDeserializer());
     }
 
     @RegisterExtension
@@ -81,7 +82,7 @@ public class EnhancedCapturingTest {
     }
 
     @Test
-    @DisplayName("should map and capture orders filtered by destination")
+    @DisplayName("should map and capture 'capturing' orders filtered by destination")
     void shouldMapAndCaptureOrdersFilteredByDestination() {
         given().await()
                 .atMost(100, TimeUnit.SECONDS)
@@ -90,12 +91,23 @@ public class EnhancedCapturingTest {
                         new Order(2, "two")));
     }
 
+    @Test
+    @DisplayName("should map and capture users filtered by destination")
+    void shouldMapAndCaptureUsersFilteredByDestination() {
+        given().await()
+                .atMost(100, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(captureProductsHandler.getUsers()).containsExactlyInAnyOrder(
+                        new User(1, "giovanni", "developer"),
+                        new User(2, "mario", "developer")));
+    }
+
     @ApplicationScoped
     static class CaptureProductsHandler {
         private final AtomicBoolean isRecordChangeInvoked = new AtomicBoolean(false);
         private final AtomicBoolean isCapturingEventInvoked = new AtomicBoolean(false);
         private final AtomicInteger isCapturingFilteredEvent = new AtomicInteger(0);
         private final List<Order> orders = new ArrayList<>();
+        private final List<User> users = new ArrayList<>();
 
         @Capturing()
         public void capture(RecordChangeEvent<SourceRecord> event) {
@@ -117,6 +129,11 @@ public class EnhancedCapturingTest {
             orders.add(event.record());
         }
 
+        @Capturing(destination = "dbserver1.public.users")
+        public void deserialized(User user) {
+            users.add(user);
+        }
+
         public boolean isRecordChangeInvoked() {
             return isRecordChangeInvoked.getAndSet(false);
         }
@@ -129,6 +146,10 @@ public class EnhancedCapturingTest {
             return orders;
         }
 
+        public List<User> getUsers() {
+            return users;
+        }
+
         public int filteredEvent() {
             return isCapturingFilteredEvent.getAndSet(0);
         }
@@ -138,9 +159,20 @@ public class EnhancedCapturingTest {
     public record Order(int id, String name) {
     }
 
+    public record User(int id, String name, String description) {
+
+    }
+
     public static class OrderDeserializer extends ObjectMapperDeserializer<Order> {
         public OrderDeserializer() {
             super(Order.class);
+        }
+    }
+
+    public static class UserDeserializer extends ObjectMapperDeserializer<User> {
+
+        public UserDeserializer() {
+            super(User.class);
         }
     }
 

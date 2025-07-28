@@ -10,7 +10,8 @@ CREATE TABLE orders(
 
 CREATE TABLE users(
     id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL
+    name TEXT NOT NULL,
+    description TEXT NOT NULL
 );
 
 CREATE TABLE not_assigned(
@@ -30,7 +31,7 @@ CREATE TABLE convert_table(
 
 INSERT INTO products (id, name) VALUES (1, 't-shirt'), (2, 'smartphone');
 INSERT INTO orders (id, name) VALUES (1, 'one'), (2,'two');
-INSERT INTO users (name) VALUES ('giovanni'), ('mario');
+INSERT INTO users (id, name, description) VALUES (1,'giovanni', 'developer'), (2,'mario', 'developer');
 INSERT INTO not_assigned (name) VALUES ('something'), ('should'), ('happens');
 INSERT INTO injected (name) VALUES ('called'), ('without'), ('injecting');
 INSERT INTO injected (name) VALUES ('called'), ('without'), ('injecting');
