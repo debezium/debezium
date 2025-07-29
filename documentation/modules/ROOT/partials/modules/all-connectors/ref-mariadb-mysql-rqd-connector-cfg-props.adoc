@@ -28,8 +28,8 @@ xref:{context}-property-binary-handling-mode[`binary.handling.mode`]::
 Default value::: `bytes`
 
 Description:::
-Specifies how the connector represents values for binary columns, such as, `blob`, `binary`, `varbinary`, in change events. +
-
+Specifies how the connector represents values for binary columns, such as, `blob`, `binary`, `varbinary`, in change events.
++
 Set one of the following options:
 
 `bytes`:::: Represents binary data as a byte array.
