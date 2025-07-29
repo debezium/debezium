@@ -1060,8 +1060,15 @@ https://docs.microsoft.com/azure/event-hubs/event-hubs-about[Azure Event Hubs] i
 |Sets the maximum size for the batch of events, in bytes.
 
 |[[hash-message-key-function]]<<hash-message-key-function, `debezium.sink.eventhubs.hashmessagekeyfunction`>>
-|
-|(Optional) If set, then message keys will be hashed with the specified hash function. Supported values are: `java`, `md5`, `sha1`, `sha256`
+|No default value
+|(Optional) Specifies the hash function that {prodname} uses to encrypt encrypt Azure Event Hubs message keys. 
+
+Specify one of the following values:
+
+ *  `java`
+ *  `md5`
+ *  `sha1`
+ * `sha256`
 
 |===
 
