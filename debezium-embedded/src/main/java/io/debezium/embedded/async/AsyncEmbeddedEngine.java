@@ -836,14 +836,15 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             return false;
         }
 
-        final Future<Void> flush = offsetWriter.doFlush((Throwable error, Void result) -> {
-        });
-        if (flush == null) {
-            LOGGER.warn("Flushing process probably failed, please check previous log for more details.");
-            return false;
-        }
-
         try {
+            final Future<Void> flush = offsetWriter.doFlush((Throwable error, Void result) -> {
+            });
+            if (flush == null) {
+                LOGGER.warn("Flushing process probably failed, please check previous log for more details.");
+                offsetWriter.cancelFlush();
+                return false;
+            }
+
             flush.get(Math.max(timeout - clock.currentTimeInMillis(), 0), TimeUnit.MILLISECONDS);
             task.commit();
         }
@@ -852,7 +853,7 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
             offsetWriter.cancelFlush();
             throw e;
         }
-        catch (ExecutionException | TimeoutException e) {
+        catch (Exception e) {
             LOGGER.warn("Flush of the offsets failed, canceling the flush.", e);
             offsetWriter.cancelFlush();
             return false;
