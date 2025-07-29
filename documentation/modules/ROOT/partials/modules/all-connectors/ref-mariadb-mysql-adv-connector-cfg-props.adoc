@@ -497,7 +497,7 @@ Default value::: Unset
 Description:::
 By default, during a snapshot, the connector reads table content in batches of rows.
 Set this property to specify the maximum number of rows in a batch.
-
++
 include::{snippetsdir}/frag-{context}-props-snippets.adoc[tags=snapshot-fetch-size-note]
 
 
