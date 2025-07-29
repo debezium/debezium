@@ -351,7 +351,7 @@ Set one of the following options:
 +
 [NOTE]
 ====
- `_` is an escape sequence, similar to a backslash in Java
+The underscore character (`_`) represents an escape sequence, similar to a backslash in Java
 ====
 +
 For more information, see: {link-prefix}:{link-avro-serialization}#avro-naming[Avro naming].
