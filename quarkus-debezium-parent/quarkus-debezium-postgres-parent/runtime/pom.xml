@@ -12,6 +12,11 @@
 
     <name>Quarkus Debezium :: Extension :: Postgres :: Runtime</name>
 
+    <properties>
+        <!-- The below override should be removed when kafka is upgraded to 4.0.0 and quarkus to 3.25.0 -->
+        <kafka.version.override>4.0.0</kafka.version.override>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
@@ -58,6 +63,7 @@
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>connect-runtime</artifactId>
+            <version>${kafka.version.override}</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.fasterxml.jackson.core</groupId>
@@ -120,6 +126,7 @@
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>connect-json</artifactId>
+            <version>${kafka.version.override}</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.fasterxml</groupId>
@@ -157,6 +164,13 @@
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>connect-transforms</artifactId>
+            <version>${kafka.version.override}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.kafka</groupId>
+                    <artifactId>kafka-clients</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
