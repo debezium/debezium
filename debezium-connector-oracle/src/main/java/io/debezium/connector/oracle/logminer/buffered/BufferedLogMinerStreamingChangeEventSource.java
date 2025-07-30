@@ -153,6 +153,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                     miningStartAttempts = 1;
 
                     final ProcessResult result = process(readScn, sessionEndScn);
+                    LOGGER.debug("ProcessResult MineStartScn={} ReadStartScn={}", result.miningSessionStartScn(), result.readStartScn());
 
                     if (!result.miningSessionStartScn.equals(sessionStartScn)) {
                         sessionStartScnChanged = true;
@@ -660,30 +661,29 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
         getMetrics().setOldestScnDetails(minCacheScn, minCacheScnChangeTime);
 
-        final Scn miningSessionStartScn;
         if (!minCacheScn.isNull()) {
             // Cache have values
-            miningSessionStartScn = minCacheScn.subtract(Scn.ONE);
+            final Scn miningSessionStartScn = minCacheScn.subtract(Scn.ONE);
 
             getOffsetContext().setScn(miningSessionStartScn);
             getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
 
-            return new ProcessResult(miningSessionStartScn, endScn);
+            getMetrics().setOffsetScn(getOffsetContext().getScn());
+            return new ProcessResult(miningSessionStartScn, miningSessionStartScn);
         }
         else {
             // Cache has no values
-            miningSessionStartScn = endScn.subtract(Scn.ONE);
+            final Scn miningSessionStartScn = endScn.subtract(Scn.ONE);
 
             if (!maxCommittedScn.isNull()) {
                 // If transactions have been committed, advance to the max committed value
                 getOffsetContext().setScn(maxCommittedScn);
                 getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
             }
+
+            getMetrics().setOffsetScn(getOffsetContext().getScn());
+            return new ProcessResult(miningSessionStartScn, endScn);
         }
-
-        getMetrics().setOffsetScn(getOffsetContext().getScn());
-
-        return new ProcessResult(miningSessionStartScn, endScn);
     }
 
     /**
