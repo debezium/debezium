@@ -1,0 +1,338 @@
+[id="quarkus-debezium-engine-extension"]
+= {prodname} Extensions for Quarkus
+
+:linkattrs:
+:icons: font
+:toc:
+:toclevels: 3
+:toc-placement: macro
+
+toc::[]
+
+The following documentation explores how your Quarkus application can integrate {prodname}.
+
+== Introduction
+
+*{prodname} Extensions for Quarkus* integrates the *Debezium Runtime* into *Quarkus* applications, enabling developers to consume *change data capture* (CDC) events from supported databases directly within a lightweight, cloud-native application.
+
+=== when use the extension
+
+- *CDC in Quarkus*: Seamlessly embeds Debezium into Quarkus apps, ideal for microservices use cases.
+- *Kafka-free Option*: Avoids the need for full Kafka infrastructure when only simple streaming or in-process processing is required.
+- *Lightweight & Fast*: Leverages native quarkus's fast startup time and low memory
+- *Developer Friendly*: Simplifies setup with Quarkus-native configuration and dependency management.
+
+=== Features
+
+The Extension supports well-established {prodname} features and much more! Here a list of new or revisited features:
+
+- {prodname} Capturing Listener
+- {prodname} Custom Deserializer
+- {prodname} Lifecycle events
+- {prodname} Heartbeat events
+- {prodname} Custom Data Converter
+- {prodname} Notification events
+- {prodname} PostProcess Consumer
+
+
+== Supported Connectors
+
+We support actually only *Postgres* connector.
+
+
+== Prerequisites
+
+- JDK 21+ installed with `JAVA_HOME` configured approriately
+- Apache maven 3.9.9
+- Docker or Podman
+- Optionally Mandrel or GraalVM installed and configured appropriately if you want to build a native executable
+
+== Working Example
+
+A fully functional example demonstrating the extension capabilities is available in the following repository. It can serve as a reference for setting up and testing your own integration.
+
+== Bootstrap a Quarkus Project
+
+This section can be skipped if you already have in place a quarkus application.
+
+The easiest way to create a new Quarkus Project is to open a terminal and run the following command:
+
+```shell
+mvn io.quarkus.platform:quarkus-maven-plugin:3.24.5:create \
+    -DprojectGroupId=org.acme \
+    -DprojectArtifactId=getting-started
+```
+
+it generates the following in `./getting-started`:
+
+- the quarkus boilerplate
+- the application configuration
+
+== Add the Extension to the project
+
+In the project, add the {prodname} Extension dependency to your application's `pom.xml`:
+
+```xml
+    <dependencies>
+        <!-- [...] -->
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>quarkus-debezium-postgres</artifactId>
+            <version>${version.debezium}</version>
+        </dependency>
+        <!-- [...] -->
+    </dependencies>
+```
+
+== Configuring {PRODNAME} Connector
+
+The {prodname} Extension is shipped with a *Connector* that listen CDC events from the datasource but a minimal configuration is mandatory.
+
+The Extension use Quarkus (the SmallRye Config API) to provide all mechanisms related with configuration. {prodname} configurations use the prefix `quarkus.debezium.*` and if we will use an application configuration file located in `src/main/resources/application.properties`, the result for a minimum setup is the following:
+
+```properties
+# Debezium CDC configuration
+quarkus.debezium.offset.storage=org.apache.kafka.connect.storage.MemoryOffsetBackingStore
+quarkus.debezium.name=native
+quarkus.debezium.topic.prefix=native
+quarkus.debezium.plugin.name=pgoutput
+quarkus.debezium.snapshot.mode=initial
+
+# datasource configuration
+quarkus.datasource.db-kind=postgresql
+quarkus.datasource.username=<your username>
+quarkus.datasource.password=<your password>
+quarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/hibernate_orm_test
+quarkus.datasource.jdbc.max-size=16
+```
+
+The configuration parameters available are in the https://debezium.io/documentation/reference/stable[Debezium documentation]. Additionally, you must specify the https://quarkus.io/guides/datasource#configure-a-jdbc-datasource[datasource configuration parameters] as required by {prodname} runtime.
+
+
+== Capturing events from {prodname}
+
+Continuing from the previous minimal configuration, your Quarkus application can receive CDC event payload directly:
+
+```java
+import io.debezium.runtime.CapturingEvent;
+import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.kafka.connect.source.SourceRecord;
+
+import io.debezium.runtime.Capturing;
+
+@ApplicationScoped
+public class ProductHandler {
+
+
+    @Capturing
+    public void capture(CapturingEvent<SourceRecord> record) {
+        // process your events
+    }
+
+}
+```
+
+The `CapturingEvent<T>` contains information related to the kind of database operation:
+
+```java
+    @Capturing
+    public void capture(CapturingEvent<SourceRecord> record) {
+        switch (record) {
+            case Create<SourceRecord> event -> {}
+            case Delete<SourceRecord> event -> {}
+            case Message<SourceRecord> event -> {}
+            case Read<SourceRecord> event -> {}
+            case Truncate<SourceRecord> event -> {}
+            case Update<SourceRecord> event -> {}
+        }
+    }
+```
+
+=== Filtering Change Data Capture Events
+
+It's possible to filter events by `destination`:
+
+```java
+    @Capturing(destination = "native.inventory.products")
+    public void capture(CapturingEvent<SourceRecord> record) {
+        // process your event
+    }
+```
+
+The default behavior is that a Debezium connector `destination` is formed from the name of the `prefix` defined in the configuration with the database name and the name of the table in which the change was made. In some cases the `destination` is redefined using an https://debezium.io/documentation/reference/stable/transformations/topic-routing.html[SMT].
+
+=== Deserializer via Jackson
+
+Quarkus has built-in support for JSON serialization and deserialization based on Jackson. There is an existing `ObjectMapperDeserializer` that can be used to deserialize all data objects via Jackson.
+
+The corresponding deserializer class needs to be subclassed. So, we have to create a `ProductDeserializer` that extends the `ObjectMapperDeserializer`.
+
+```java
+public class ProductDeserializer extends ObjectMapperDeserializer<Product> {
+    public ProductDeserializer() {
+        super(Product.class);
+    }
+}
+```
+
+Finally, configure your capture channel to use the Jackson deserializer for a particular destination:
+
+```properties
+quarkus.debezium.capturing.products.destination=native.inventory.products
+quarkus.debezium.capturing.products.deserializer=com.acme.product.jackson.ProductDeserializer
+```
+
+and use it in your code:
+
+```java
+import io.debezium.runtime.CapturingEvent;
+import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.kafka.connect.source.SourceRecord;
+
+import io.debezium.runtime.Capturing;
+
+@ApplicationScoped
+public class ProductHandler {
+
+
+    @Capturing(destination = "native.inventory.products")
+    public void capture(CapturingEvent<Product> record) {
+        // process your events
+    }
+
+}
+```
+
+or if you don't need information related to the database operation:
+
+```java
+import io.debezium.runtime.CapturingEvent;
+import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.kafka.connect.source.SourceRecord;
+
+import io.debezium.runtime.Capturing;
+
+@ApplicationScoped
+public class ProductHandler {
+
+
+    @Capturing(destination = "native.inventory.products")
+    public void capture(Product product) {
+        // process your events
+    }
+
+}
+```
+
+== Lifecycle events
+
+it's possible to get information related to the status of debezium listening lifecycle events:
+
+```java
+import io.debezium.runtime.events.*;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
+
+@ApplicationScoped
+public class LifecycleListener {
+
+    public void started(@Observes ConnectorStartedEvent event) {
+        // your logic
+    }
+
+    public void stopped(@Observes ConnectorStoppedEvent connectorStoppedEvent) {
+        // your logic
+    }
+    public void tasksStarted(@Observes TasksStartedEvent tasksStartedEvent) {
+        // your logic
+    }
+    public void tasksStopped(@Observes TasksStoppedEvent tasksStoppedEvent) {
+        // your logic
+    }
+    public void pollingStarted(@Observes PollingStartedEvent pollingStartedEvent) {
+        // your logic
+    }
+    public void pollingStopped(@Observes PollingStoppedEvent pollingStoppedEvent) {
+        // your logic
+    }
+    public void completed(@Observes DebeziumCompletionEvent debeziumCompletionEvent) {
+        // your logic
+    }
+
+}
+```
+
+the following events are available:
+
+- `ConnectorStartedEvent` is fired when the {prodname} starts a connector
+- `ConnectorStoppedEvent` is fired when {prodname} stops a connector.
+- `TasksStartedEvent` is fired when a connector task is started
+- `TasksStoppedEvent` is fired when the connector task is stopped
+- `PollingStartedEvent` is fired when the {prodname} engine begins polling for connector changes
+- `PollingStoppedEvent` is fired when {prodname} engine stops polling the connector for changes
+- `DebeziumCompletionEvent` is fired after the {prodname} engine completes it's shutdown. It includes all the information about whether the prior execution was successful or if it failed, the reason and error why.
+
+== Heartbeat events
+
+it's possible to listen heartbeat events in your quarkus application:
+
+```java
+import io.debezium.runtime.events.DebeziumHeartbeat;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
+
+@ApplicationScoped
+public class HeartbeatListener {
+
+    public void heartbeat(@Observes DebeziumHeartbeat heartbeat) {
+        //
+    }
+}
+```
+
+The `DebeziumHeartbeat` contains information related to:
+
+- Connector
+- {prodname} status
+- partition
+- offset
+
+== Notification events
+
+https://debezium.io/documentation/reference/stable/configuration/notification.html[{prodname} notifications] provide events about fine grain status (`snapshot` and `streaming`) always available as Jakarta event:
+
+```java
+import io.quarkus.debezium.notification.SnapshotEvent;
+import io.quarkus.debezium.notification.DebeziumNotification;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
+
+@ApplicationScoped
+public class NotificationListener {
+
+    public void snapshot(@Observes SnapshotEvent event) {
+        //
+    }
+
+    public void notification(@Observes DebeziumNotification event) {
+        //
+    }
+}
+```
+
+the following events are available:
+
+- `DebeziumNotification`
+- `SnapshotStarted`
+- `SnapshotInProgres`
+- `SnapshotTableScanCompleted`
+- `SnapshotAborted`
+- `SnapshotSkipped`
+- `SnapshotCompleted`
+- `SnapshotPaused`
+- `SnapshotResumed`
+
+== Custom Data Converter
+
+== PostProcess Consumer
+
