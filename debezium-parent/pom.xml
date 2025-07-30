@@ -42,7 +42,9 @@
         <!-- No test options by default -->
         <test.argline />
 
-        <mockito.argLine>-javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
+        <!-- No mockito agent configured by default. Just override this in the project that uses mockito -->
+        <mockito.argLine />
+
 
         <!-- Assembly configuration -->
         <assembly.descriptor>connector-distribution</assembly.descriptor>

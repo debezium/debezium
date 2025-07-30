@@ -148,6 +148,7 @@
     </dependencies>
 
     <properties>
+        <mockito.argLine>-javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
     </properties>
 
 </project>

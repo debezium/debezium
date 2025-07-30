@@ -191,6 +191,8 @@
         <publish.poll.interval>30</publish.poll.interval>
         <!-- For credentials -->
         <publish.repository.id>central</publish.repository.id>
+
+        <version.mockito>5.17.0</version.mockito>
     </properties>
 
     <modules>
