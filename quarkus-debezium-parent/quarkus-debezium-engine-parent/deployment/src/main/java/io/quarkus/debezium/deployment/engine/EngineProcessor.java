@@ -77,7 +77,6 @@ import io.quarkus.debezium.engine.DefaultStateHandler;
 import io.quarkus.debezium.engine.capture.CapturingEventInvokerRegistryProducer;
 import io.quarkus.debezium.engine.capture.CapturingInvoker;
 import io.quarkus.debezium.engine.capture.CapturingObjectInvokerRegistryProducer;
-import io.quarkus.debezium.engine.capture.CapturingSourceRecordInvokerRegistryProducer;
 import io.quarkus.debezium.engine.capture.DynamicCapturingInvokerSupplier;
 import io.quarkus.debezium.engine.capture.consumer.SourceRecordEventProducer;
 import io.quarkus.debezium.engine.converter.custom.DynamicCustomConverterSupplier;
@@ -132,7 +131,6 @@ public class EngineProcessor {
         additionalBeanProducer.produce(AdditionalBeanBuildItem
                 .builder()
                 .addBeanClasses(
-                        CapturingSourceRecordInvokerRegistryProducer.class,
                         CapturingEventInvokerRegistryProducer.class,
                         CapturingObjectInvokerRegistryProducer.class)
                 .setDefaultScope(DotNames.APPLICATION_SCOPED)
@@ -308,7 +306,6 @@ public class EngineProcessor {
 
         CapturingInvokerGenerator capturingInvokerGenerator = new MultipleCapturingInvokerGenerators(
                 new CapturingEventGenerator(classOutput),
-                new InvokerGenerator(classOutput),
                 new CapturingObjectInvokerGenerator(classOutput));
 
         PostProcessorGenerator postProcessorGenerator = new PostProcessorGenerator(classOutput);

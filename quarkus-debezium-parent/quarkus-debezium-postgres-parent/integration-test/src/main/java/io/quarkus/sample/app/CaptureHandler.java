@@ -12,7 +12,6 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.engine.RecordChangeEvent;
 import io.debezium.runtime.Capturing;
 import io.debezium.runtime.CapturingEvent;
 
@@ -27,7 +26,7 @@ public class CaptureHandler {
     }
 
     @Capturing
-    public void capture(RecordChangeEvent<SourceRecord> event) {
+    public void capture(CapturingEvent<SourceRecord> event) {
         captureService.capture();
     }
 
