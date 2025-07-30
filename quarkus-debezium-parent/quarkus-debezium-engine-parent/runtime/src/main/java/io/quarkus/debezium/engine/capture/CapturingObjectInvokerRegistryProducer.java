@@ -16,6 +16,8 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
 public class CapturingObjectInvokerRegistryProducer implements CapturingInvokerRegistryProducer<Object> {
+    private final CapturingInvokerValidator<CapturingObjectInvoker> validator = new CapturingInvokerValidator<>();
+
     @Inject
     Instance<CapturingObjectInvoker> invokers;
 
@@ -23,10 +25,15 @@ public class CapturingObjectInvokerRegistryProducer implements CapturingInvokerR
     @Produces
     @Singleton
     public CapturingInvokerRegistry<Object> produce() {
+        validator.validate(this.invokers
+                .stream()
+                .toList());
+
         Map<String, CapturingObjectInvoker> invokers = this.invokers
                 .stream()
                 .collect(Collectors.toMap(CapturingObjectInvoker::destination, Function.identity()));
 
         return invokers::get;
     }
+
 }
