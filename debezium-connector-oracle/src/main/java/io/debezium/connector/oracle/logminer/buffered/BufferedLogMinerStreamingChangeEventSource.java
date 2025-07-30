@@ -323,6 +323,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             if (transaction == null) {
                 getTransactionCache().addTransaction(transactionFactory.createTransaction(event));
                 getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
+                getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
             }
             else {
                 LOGGER.trace("Transaction {} is not yet committed and START event detected.", transactionId);
@@ -363,6 +364,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 }
                 cleanupAfterTransactionRemovedFromCache(transaction, false);
                 getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
+                getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
             }
             return;
         }
@@ -495,6 +497,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             cleanupAfterTransactionRemovedFromCache(transaction, false);
             getMetrics().calculateLagFromSource(row.getChangeTime());
             getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
+            getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
         }
 
         updateCommitMetrics(row, Duration.between(start, Instant.now()));
@@ -507,6 +510,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             LOGGER.debug("Transaction {} was rolled back.", transactionId);
             finalizeTransaction(transactionId, event.getScn(), true);
             getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
+            getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
         }
         else {
             LOGGER.debug("Transaction {} not found in cache, no events to rollback.", transactionId);
@@ -867,6 +871,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         // When using Infinispan, this extra put is required so that the state is properly synchronized
         getTransactionCache().syncTransaction(transaction);
         getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
+        getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
     }
 
     /**
@@ -935,6 +940,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                     }
 
                     getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
+                    getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
 
                     if (LOGGER.isDebugEnabled()) {
                         LOGGER.debug("List of transactions in the cache before transactions being abandoned: [{}]",
