@@ -396,7 +396,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                     .dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(Mockito.any(TableId.class));
 
             final ProcessResult result = mock.process(Scn.valueOf(100), Scn.valueOf(200));
-            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(101));
+            assertThat(result.readStartScn()).isEqualTo(Scn.valueOf(100));
         }
     }
 
