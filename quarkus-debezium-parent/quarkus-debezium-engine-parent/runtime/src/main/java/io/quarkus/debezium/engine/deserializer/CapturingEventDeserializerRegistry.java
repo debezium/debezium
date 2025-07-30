@@ -6,11 +6,10 @@
 
 package io.quarkus.debezium.engine.deserializer;
 
-import io.debezium.runtime.CapturingEvent;
 import io.quarkus.debezium.engine.CapturingEventDeserializer;
 
 /**
- * Registry that contains deserializers that maps V to type parameter for {@link CapturingEvent<>}
+ * Registry that contains deserializers that maps V to type parameter for {@link io.debezium.runtime.CapturingEvent<>}
  * @param <V>
  */
 public interface CapturingEventDeserializerRegistry<V> {
