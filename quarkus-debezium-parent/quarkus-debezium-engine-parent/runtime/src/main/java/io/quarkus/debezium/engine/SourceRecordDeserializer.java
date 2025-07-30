@@ -15,6 +15,7 @@ import java.util.Map;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.Converter;
 
+import io.debezium.data.Envelope;
 import io.debezium.runtime.CapturingEvent;
 import io.debezium.runtime.CapturingEvent.Create;
 import io.debezium.runtime.CapturingEvent.Delete;
@@ -41,6 +42,14 @@ public class SourceRecordDeserializer<T> implements CapturingEventDeserializer<T
                 event.record().topic(),
                 event.record().valueSchema(),
                 event.record().value());
+
+        if (!Envelope.isEnvelopeSchema(event.record().valueSchema())) {
+            return new Message<>(
+                    deserializer.deserialize(data, null),
+                    event.destination(),
+                    event.source(),
+                    event.headers());
+        }
 
         return switch (event) {
             case Create<SourceRecord> record -> new Create<>(

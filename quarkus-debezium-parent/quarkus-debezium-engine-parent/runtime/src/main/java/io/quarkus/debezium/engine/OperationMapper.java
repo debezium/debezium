@@ -28,6 +28,22 @@ public class OperationMapper {
     public static CapturingEvent<SourceRecord> from(ChangeEvent<SourceRecord, SourceRecord> record) {
         Struct payload = (Struct) record.value().value();
 
+        if (payload == null) {
+            return new Message<>(
+                    record.value(),
+                    record.destination(),
+                    NOT_AVAILABLE,
+                    record.headers());
+        }
+
+        if (payload.schema() == null) {
+            return new Message<>(
+                    record.value(),
+                    record.destination(),
+                    NOT_AVAILABLE,
+                    record.headers());
+        }
+
         if (payload.schema().field(OPERATION) == null) {
             return new Message<>(
                     record.value(),

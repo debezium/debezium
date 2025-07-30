@@ -38,6 +38,25 @@ public class ObjectMapperDeserializer<T> implements Deserializer<T> {
             return null;
         }
 
+        if (path == null) {
+            return deserializeFlattenEvent(data);
+        }
+
+        return deserializeDebeziumEvent(data, path);
+    }
+
+    private T deserializeFlattenEvent(byte[] data) {
+        try {
+            JsonNode root = objectMapper.readTree(data);
+
+            return objectMapper.treeToValue(root.path(PAYLOAD), type);
+        }
+        catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private T deserializeDebeziumEvent(byte[] data, String path) {
         try {
             JsonNode root = objectMapper.readTree(data);
             JsonNode afterNode = root.path(PAYLOAD).path(path);
