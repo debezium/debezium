@@ -6,6 +6,12 @@
 
 package io.quarkus.debezium.engine.capture;
 
+import io.debezium.runtime.Capturing;
+
+/**
+ * Interface used to generate Invokers that are assigned to methods annotated with {@link Capturing}
+ * that uses a mapped Object as event
+ */
 public interface CapturingObjectInvoker extends CapturingInvoker<Object> {
 
     @Override

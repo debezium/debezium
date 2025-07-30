@@ -11,8 +11,15 @@ import org.jboss.jandex.Type;
 
 import io.quarkus.arc.processor.BeanInfo;
 
+/**
+ * Generator interface for different {@link io.quarkus.debezium.engine.capture.CapturingInvoker}
+ */
 public interface CapturingInvokerGenerator {
 
+    /**
+     * Given the {@link Type} defined in the annotation returns if it's compatible with this generator
+     * @param type
+     */
     default boolean isCompatible(Type type) {
         return false;
     }

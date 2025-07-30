@@ -6,6 +6,10 @@
 
 package io.quarkus.debezium.engine.deserializer;
 
+/**
+ * Deserializer for a change data capture event
+ * @param <T>
+ */
 public interface Deserializer<T> extends AutoCloseable {
     T deserialize(byte[] data, String path);
 }

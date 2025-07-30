@@ -13,6 +13,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 
+/**
+ * Jackson deserializer for a change data capture event
+ * @param <T>
+ */
 public class ObjectMapperDeserializer<T> implements Deserializer<T> {
 
     public static final String PAYLOAD = "payload";

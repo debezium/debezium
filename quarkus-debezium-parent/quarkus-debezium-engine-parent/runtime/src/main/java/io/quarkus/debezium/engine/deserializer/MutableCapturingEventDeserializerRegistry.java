@@ -6,6 +6,10 @@
 
 package io.quarkus.debezium.engine.deserializer;
 
+/**
+ * Mutable Registry that should be used only for Testing purpose to avoid side effects
+ * @param <V>
+ */
 public interface MutableCapturingEventDeserializerRegistry<V> extends CapturingEventDeserializerRegistry<V> {
     void register(String identifier, Deserializer<?> deserializer);
 
