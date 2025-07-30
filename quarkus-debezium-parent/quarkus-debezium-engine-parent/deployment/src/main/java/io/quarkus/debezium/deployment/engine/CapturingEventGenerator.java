@@ -47,12 +47,12 @@ public class CapturingEventGenerator implements CapturingInvokerGenerator {
      * it generates concrete classes based on the {@link io.quarkus.debezium.engine.capture.CapturingEventInvoker} interface using gizmo:
      * <p>
      * public class GeneratedCapturingInvoker {
-     *     private final Object beanInstance;
-     *
-     *     void capture(CapturingEvent<SourceRecord> event) {
-     *         beanInstance.method(event);
-     *     }
-     *
+     * private final Object beanInstance;
+     * <p>
+     * void capture(CapturingEvent<SourceRecord> event) {
+     * beanInstance.method(event);
+     * }
+     * <p>
      * }
      *
      * @param methodInfo
@@ -105,7 +105,12 @@ public class CapturingEventGenerator implements CapturingInvokerGenerator {
                         .annotation(DebeziumDotNames.CAPTURING)
                         .value("destination"))
                         .map(AnnotationValue::asString)
-                        .ifPresentOrElse(s -> destination.returnValue(destination.load(s)),
+                        .ifPresentOrElse(s -> {
+                            if (s.isEmpty()) {
+                                throw new IllegalArgumentException("empty destination are not allowed for @Capturing annotation  " + methodInfo.declaringClass());
+                            }
+                            destination.returnValue(destination.load(s));
+                        },
                                 () -> destination.returnValue(destination.load(Capturing.ALL)));
             }
 
