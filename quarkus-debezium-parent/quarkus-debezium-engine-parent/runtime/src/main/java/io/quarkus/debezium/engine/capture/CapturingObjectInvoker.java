@@ -6,7 +6,7 @@
 
 package io.quarkus.debezium.engine.capture;
 
-public interface CapturingObjectInvoker extends FilteredCapturingInvoker<Object> {
+public interface CapturingObjectInvoker extends CapturingInvoker<Object> {
 
     @Override
     void capture(Object event);

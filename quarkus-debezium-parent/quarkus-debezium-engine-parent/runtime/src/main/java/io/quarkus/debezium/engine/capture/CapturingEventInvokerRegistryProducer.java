@@ -19,6 +19,7 @@ import io.debezium.runtime.Capturing;
 import io.debezium.runtime.CapturingEvent;
 
 public class CapturingEventInvokerRegistryProducer implements CapturingInvokerRegistryProducer<CapturingEvent<Object>> {
+    private final CapturingInvokerValidator<CapturingEventInvoker> validator = new CapturingInvokerValidator<>();
 
     @Inject
     Instance<CapturingEventInvoker> invokers;
@@ -27,6 +28,10 @@ public class CapturingEventInvokerRegistryProducer implements CapturingInvokerRe
     @Produces
     @Singleton
     public CapturingInvokerRegistry<CapturingEvent<Object>> produce() {
+        validator.validate(this.invokers
+                .stream()
+                .toList());
+
         Map<String, CapturingEventInvoker> invokers = this.invokers
                 .stream()
                 .collect(Collectors.toMap(CapturingEventInvoker::destination, Function.identity()));
