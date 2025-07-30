@@ -11,7 +11,10 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
 import org.apache.kafka.connect.source.SourceRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import io.debezium.engine.ChangeEvent;
 import io.debezium.runtime.CapturingEvent;
 import io.quarkus.debezium.engine.OperationMapper;
 import io.quarkus.debezium.engine.capture.CapturingInvoker;
@@ -36,23 +39,35 @@ public class SourceRecordEventProducer {
     @Produces
     @Singleton
     public SourceRecordEventConsumer produce() {
-        return event -> {
-            CapturingEvent<SourceRecord> capturingEvent = OperationMapper.from(event);
+        return new SourceRecordEventConsumer() {
+            private final Logger logger = LoggerFactory.getLogger(SourceRecordEventConsumer.class);
 
-            var deserializer = capturingEventDeserializerRegistry.get(capturingEvent.destination());
-            CapturingInvoker<Object> objectCapturingInvoker = capturingObjectInvokerRegistry.get(capturingEvent.destination());
+            @Override
+            public void accept(ChangeEvent<SourceRecord, SourceRecord> event) {
+                CapturingEvent<SourceRecord> capturingEvent = OperationMapper.from(event);
 
-            if (deserializer != null && objectCapturingInvoker != null) {
-                objectCapturingInvoker.capture(deserializer.deserialize(capturingEvent).record());
-                return;
+                var deserializer = capturingEventDeserializerRegistry.get(capturingEvent.destination());
+                CapturingInvoker<Object> objectCapturingInvoker = capturingObjectInvokerRegistry.get(capturingEvent.destination());
+
+                if (deserializer != null && objectCapturingInvoker != null) {
+                    objectCapturingInvoker.capture(deserializer.deserialize(capturingEvent).record());
+                    return;
+                }
+
+                var invoker = capturingEventRegistry.get(capturingEvent.destination());
+
+                if (invoker == null) {
+                    logger.debug("method annotated with @Capturing not found for destination: {}", capturingEvent.destination());
+                    return;
+                }
+
+                if (deserializer != null) {
+                    invoker.capture(deserializer.deserialize(capturingEvent));
+                    return;
+                }
+
+                invoker.capture(capturingEvent);
             }
-
-            if (deserializer != null) {
-                capturingEventRegistry.get(capturingEvent.destination()).capture(deserializer.deserialize(capturingEvent));
-                return;
-            }
-
-            capturingEventRegistry.get(capturingEvent.destination()).capture(capturingEvent);
         };
     }
 }
