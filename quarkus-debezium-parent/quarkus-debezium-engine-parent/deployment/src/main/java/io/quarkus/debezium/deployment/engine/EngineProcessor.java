@@ -227,11 +227,7 @@ public class EngineProcessor {
                         .reason(getClass().getName())
                         .build()));
 
-        indexBuildItem
-                .getIndex()
-                .getAllKnownSubclasses(DotName.createSimple(ObjectMapperDeserializer.class))
-                .stream()
-                .flatMap(clazz -> clazz.superClassType().asParameterizedType().arguments().stream())
+        extractClassToDeserialize(indexBuildItem)
                 .forEach(clazz -> reflectiveClasses.produce(
                         ReflectiveClassBuildItem
                                 .builder(clazz.asClassType().toString())
@@ -241,18 +237,12 @@ public class EngineProcessor {
                                 .fields(true)
                                 .build()));
 
-        debeziumEngineConfiguration
-                .capturing()
-                .values()
-                .forEach(capturing -> {
-                    if (capturing.destination().isPresent() && capturing.deserializer().isPresent()) {
-                        reflectiveClasses.produce(
-                                ReflectiveClassBuildItem
-                                        .builder(capturing.deserializer().get())
-                                        .reason(getClass().getName())
-                                        .build());
-                    }
-                });
+        extractDeserializers(debeziumEngineConfiguration)
+                .forEach(deserializer -> reflectiveClasses.produce(
+                        ReflectiveClassBuildItem
+                                .builder(deserializer)
+                                .reason(getClass().getName())
+                                .build()));
 
         reflectiveClasses.produce(ReflectiveClassBuildItem.builder(
                 ArcHeartbeatFactory.class,
@@ -292,6 +282,26 @@ public class EngineProcessor {
                 OffsetCommitPolicy.PeriodicCommitOffsetPolicy.class)
                 .reason(getClass().getName())
                 .build());
+    }
+
+    private List<Type> extractClassToDeserialize(CombinedIndexBuildItem indexBuildItem) {
+        return indexBuildItem
+                .getIndex()
+                .getAllKnownSubclasses(DotName.createSimple(ObjectMapperDeserializer.class))
+                .stream()
+                .flatMap(clazz -> clazz.superClassType().asParameterizedType().arguments().stream())
+                .toList();
+    }
+
+    private List<String> extractDeserializers(DebeziumEngineConfiguration debeziumEngineConfiguration) {
+        return debeziumEngineConfiguration
+                .capturing()
+                .values()
+                .stream()
+                .filter(capturing -> capturing.destination().isPresent() && capturing.deserializer().isPresent())
+                .map(DebeziumEngineConfiguration.Capturing::deserializer)
+                .flatMap(Optional::stream)
+                .toList();
     }
 
     @BuildStep
