@@ -42,8 +42,9 @@ We support actually only *Postgres* connector.
 
 == Prerequisites
 
-- JDK 21+ installed with `JAVA_HOME` configured approriately
+- JDK 21+ installed with `JAVA_HOME` configured appropriately
 - Apache maven 3.9.9
+- Quarkus version 3.25.0
 - Docker or Podman
 - Optionally Mandrel or GraalVM installed and configured appropriately if you want to build a native executable
 
@@ -58,7 +59,7 @@ This section can be skipped if you already have in place a quarkus application.
 The easiest way to create a new Quarkus Project is to open a terminal and run the following command:
 
 ```shell
-mvn io.quarkus.platform:quarkus-maven-plugin:3.24.5:create \
+mvn io.quarkus.platform:quarkus-maven-plugin:3.25.0:create \
     -DprojectGroupId=org.acme \
     -DprojectArtifactId=getting-started
 ```
@@ -403,4 +404,19 @@ public class PostProcessorHandler {
         // apply your logic
     }
 }
+```
+
+== DevService Support
+
+Quarkus automatically provisions unconfigured services in dev and test modes using Dev Services. When an extension is included without configuration, Quarkus starts the necessary service (via Testcontainers) and connects it to your app. For {prodname}, it's necessary https://debezium.io/documentation/reference/stable/postgres-plugins.html[a setup] that default images of Quarkus doesn't support. The Extension is already equipped with a dev service with an image configured for change data capture but the support is **experimental** and in case of errors or issue you can disable it with the following properties
+
+```properties
+quarkus.datasource.devservices.enabled=false
+```
+
+
+or override using an official {prodname} image
+
+```properties
+quarkus.datasource.devservices.image-name=quay.io/debezium/postgres:15
 ```
