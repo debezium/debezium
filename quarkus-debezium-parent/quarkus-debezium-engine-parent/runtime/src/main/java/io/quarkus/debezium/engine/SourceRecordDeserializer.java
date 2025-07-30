@@ -6,6 +6,10 @@
 
 package io.quarkus.debezium.engine;
 
+import static io.debezium.data.Envelope.FieldName.AFTER;
+import static io.debezium.data.Envelope.FieldName.BEFORE;
+import static org.apache.kafka.connect.json.JsonConverterConfig.SCHEMAS_ENABLE_CONFIG;
+
 import java.util.Map;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -28,7 +32,7 @@ public class SourceRecordDeserializer<T> implements CapturingEventDeserializer<T
     public SourceRecordDeserializer(Deserializer<T> deserializer, Converter converter) {
         this.deserializer = deserializer;
         this.converter = converter;
-        this.converter.configure(Map.of("schemas.enable", true), false);
+        this.converter.configure(Map.of(SCHEMAS_ENABLE_CONFIG, true), false);
     }
 
     @Override
@@ -40,32 +44,32 @@ public class SourceRecordDeserializer<T> implements CapturingEventDeserializer<T
 
         return switch (event) {
             case Create<SourceRecord> record -> new Create<>(
-                    deserializer.deserialize(data, "after"),
+                    deserializer.deserialize(data, AFTER),
                     record.destination(),
                     record.source(),
                     record.headers());
             case Delete<SourceRecord> record -> new Delete<>(
-                    deserializer.deserialize(data, "before"),
+                    deserializer.deserialize(data, BEFORE),
                     record.destination(),
                     record.source(),
                     record.headers());
             case Message<SourceRecord> record -> new Message<>(
-                    deserializer.deserialize(data, "after"),
+                    deserializer.deserialize(data, AFTER),
                     record.destination(),
                     record.source(),
                     record.headers());
             case Read<SourceRecord> record -> new Read<>(
-                    deserializer.deserialize(data, "after"),
+                    deserializer.deserialize(data, AFTER),
                     record.destination(),
                     record.source(),
                     record.headers());
             case Truncate<SourceRecord> record -> new Truncate<>(
-                    deserializer.deserialize(data, "after"),
+                    deserializer.deserialize(data, AFTER),
                     record.destination(),
                     record.source(),
                     record.headers());
             case CapturingEvent.Update<SourceRecord> record -> new Update<>(
-                    deserializer.deserialize(data, "after"),
+                    deserializer.deserialize(data, AFTER),
                     record.destination(),
                     record.source(),
                     record.headers());

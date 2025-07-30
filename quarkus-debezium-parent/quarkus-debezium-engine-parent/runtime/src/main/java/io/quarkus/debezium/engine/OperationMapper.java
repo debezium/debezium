@@ -6,6 +6,8 @@
 
 package io.quarkus.debezium.engine;
 
+import static io.debezium.data.Envelope.FieldName.OPERATION;
+
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 
@@ -26,7 +28,7 @@ public class OperationMapper {
     public static CapturingEvent<SourceRecord> from(ChangeEvent<SourceRecord, SourceRecord> record) {
         Struct payload = (Struct) record.value().value();
 
-        if (payload.schema().field("op") == null) {
+        if (payload.schema().field(OPERATION) == null) {
             return new Message<>(
                     record.value(),
                     record.destination(),
