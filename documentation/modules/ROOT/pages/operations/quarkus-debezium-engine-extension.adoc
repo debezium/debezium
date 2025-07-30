@@ -50,7 +50,7 @@ We support actually only *Postgres* connector.
 
 == Working Example
 
-A fully functional example demonstrating the extension capabilities is available in the following repository. It can serve as a reference for setting up and testing your own integration.
+A fully functional example demonstrating the extension capabilities is available in the https://github.com/debezium/debezium-examples/tree/main/debezium-quarkus-extension-service[following repository]. It can serve as a reference for setting up and testing your own Quarkus Application.
 
 == Bootstrap a Quarkus Project
 
