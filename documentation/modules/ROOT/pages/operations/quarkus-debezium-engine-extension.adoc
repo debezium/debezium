@@ -15,7 +15,7 @@ The following documentation explores how your Quarkus application can integrate 
 
 *{prodname} Extensions for Quarkus* integrates the *Debezium Runtime* into *Quarkus* applications, enabling developers to consume *change data capture* (CDC) events from supported databases directly within a lightweight, cloud-native application.
 
-=== when use the extension
+=== When use the extension
 
 - *CDC in Quarkus*: Seamlessly embeds Debezium into Quarkus apps, ideal for microservices use cases.
 - *Kafka-free Option*: Avoids the need for full Kafka infrastructure when only simple streaming or in-process processing is required.
@@ -30,9 +30,9 @@ The Extension supports well-established {prodname} features and much more! Here 
 - {prodname} Custom Deserializer
 - {prodname} Lifecycle events
 - {prodname} Heartbeat events
-- {prodname} Custom Data Converter
+- {prodname} Custom Data Type Converter
 - {prodname} Notification events
-- {prodname} PostProcess Consumer
+- {prodname} Post Processors
 
 
 == Supported Connectors
@@ -332,7 +332,75 @@ the following events are available:
 - `SnapshotPaused`
 - `SnapshotResumed`
 
-== Custom Data Converter
+== Data Type Converter
 
-== PostProcess Consumer
+It's possible to define a https://debezium.io/documentation/reference/stable/development/converters.html[{prodname} Custom Converter] in the Extension using the `@CustomConverter` annotation and instantiate a `ConverterDefinition` that defines the type conversation:
 
+```java
+import io.debezium.relational.CustomConverterRegistry.ConverterDefinition;
+import io.debezium.runtime.CustomConverter;
+import io.debezium.spi.converter.ConvertedField;
+import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.kafka.connect.data.SchemaBuilder;
+
+@ApplicationScoped
+public class StringConverter {
+
+    @CustomConverter
+    public ConverterDefinition<SchemaBuilder> bind(ConvertedField field) {
+        return new ConverterDefinition<>(SchemaBuilder.string(), String::valueOf);
+    }
+}
+```
+
+this kind of conversation is applied to all the fields that are in cdc events. To apply the conversion only to a subset of fields, it's possible to enrich the `CustomConverter` with a `FieldFilterStrategy` that filters only the interested fields:
+
+```java
+    @CustomConverter(filter = CustomFieldFilterStrategy.class)
+    public ConverterDefinition<SchemaBuilder> filteredBind(ConvertedField field) {
+        return new ConverterDefinition<>(SchemaBuilder.string(), String::valueOf);
+    }
+
+    @ApplicationScoped
+    public static class CustomFieldFilterStrategy implements FieldFilterStrategy {
+
+        @Override
+        public boolean filter(ConvertedField field) {
+            // your logic
+            return false;
+        }
+
+    }
+```
+
+== Post Processors
+
+https://debezium.io/documentation/reference/stable/post-processors/index.html[Post processors] apply lightweight, per-message changes earlier in the event flow than SMTs, allowing them to modify messages within {prodname}’s context. This makes them more efficient than transformations. It's possible to define a post processor in two ways: as configuration parameter or using the annotation `@PostProcessing`.
+
+For configuration, the official documentation outlines the available parameters, such as those for the https://debezium.io/documentation/reference/stable/post-processors/reselect-columns.html[`Reselect`] post-processor:
+
+```properties
+quarkus.debezium.post.processors=reselector
+quarkus.debezium.post.processors.reselector.type=io.debezium.processors.reselect.ReselectColumnsPostProcessor
+quarkus.debezium.post.processors.reselector.reselect.unavailable.values=true
+quarkus.debezium.post.processors.reselector.reselect.null.values=true
+quarkus.debezium.post.processors.reselector.reselect.use.event.key=false
+quarkus.debezium.post.processors.reselector.reselect.error.handling.mode=WARN
+```
+
+For the code, in the extension is available the annotation `@PostProcessing` that gives access to the `key` and the `Struct`:
+
+```java
+import io.debezium.runtime.PostProcessing;
+import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.kafka.connect.data.Struct;
+
+@ApplicationScoped
+public class PostProcessorHandler {
+
+    @PostProcessing
+    public void processing(Object key, Struct struct) {
+        // apply your logic
+    }
+}
+```
