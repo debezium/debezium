@@ -36,12 +36,14 @@ public class OperationMapper {
                     record.headers());
         }
 
-        return switch (Operation.forCode(payload.getString("op"))) {
-            case READ -> new Read<>(record.value(),
+        return switch (Operation.forCode(payload.getString(OPERATION))) {
+            case READ -> new Read<>(
+                    record.value(),
                     record.destination(),
                     NOT_AVAILABLE,
                     record.headers());
-            case CREATE -> new Create<>(record.value(),
+            case CREATE -> new Create<>(
+                    record.value(),
                     record.destination(),
                     NOT_AVAILABLE,
                     record.headers());
@@ -50,7 +52,6 @@ public class OperationMapper {
                     record.destination(),
                     NOT_AVAILABLE,
                     record.headers());
-
             case DELETE -> new Delete<>(
                     record.value(),
                     record.destination(),
