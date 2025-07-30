@@ -21,8 +21,8 @@ import io.quarkus.debezium.engine.deserializer.CapturingEventDeserializerRegistr
 public class SourceRecordEventProducer {
 
     private final CapturingInvokerRegistry<CapturingEvent<?>> capturingEventRegistry;
-    private final CapturingEventDeserializerRegistry<SourceRecord> capturingEventDeserializerRegistry;
     private final CapturingInvokerRegistry<Object> capturingObjectInvokerRegistry;
+    private final CapturingEventDeserializerRegistry<SourceRecord> capturingEventDeserializerRegistry;
 
     @Inject
     public SourceRecordEventProducer(CapturingInvokerRegistry<CapturingEvent<?>> capturingEventRegistry,
