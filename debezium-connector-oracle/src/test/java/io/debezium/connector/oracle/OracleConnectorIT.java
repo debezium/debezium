@@ -3951,6 +3951,10 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
 
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
+            // Start a transaction so that the low SCN never advances
+            // When no transactions are active, the session is closed and the positions are advanced
+            connection.executeWithoutCommitting("INSERT INTO dbz4963 values (1, 'test')");
+
             // Wait at most 60 seconds until we get notified in the logs that maximum session had exceeded.
             Awaitility.await()
                     .atMost(60, TimeUnit.SECONDS)
