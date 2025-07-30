@@ -12,27 +12,22 @@ import jakarta.inject.Singleton;
 
 import org.apache.kafka.connect.source.SourceRecord;
 
-import io.debezium.engine.RecordChangeEvent;
 import io.debezium.runtime.CapturingEvent;
 import io.quarkus.debezium.engine.OperationMapper;
 import io.quarkus.debezium.engine.capture.CapturingInvoker;
 import io.quarkus.debezium.engine.capture.CapturingInvokerRegistry;
-import io.quarkus.debezium.engine.capture.FilteredCapturingInvoker;
 import io.quarkus.debezium.engine.deserializer.CapturingEventDeserializerRegistry;
 
 public class SourceRecordEventProducer {
 
-    private final CapturingInvokerRegistry<RecordChangeEvent<SourceRecord>> recordChangeEventRegistry;
     private final CapturingInvokerRegistry<CapturingEvent<?>> capturingEventRegistry;
     private final CapturingEventDeserializerRegistry<SourceRecord> capturingEventDeserializerRegistry;
     private final CapturingInvokerRegistry<Object> capturingObjectInvokerRegistry;
 
     @Inject
-    public SourceRecordEventProducer(CapturingInvokerRegistry<RecordChangeEvent<SourceRecord>> recordChangeEventRegistry,
-                                     CapturingInvokerRegistry<CapturingEvent<?>> capturingEventRegistry,
+    public SourceRecordEventProducer(CapturingInvokerRegistry<CapturingEvent<?>> capturingEventRegistry,
                                      CapturingEventDeserializerRegistry<SourceRecord> capturingEventDeserializerRegistry,
                                      CapturingInvokerRegistry<Object> capturingObjectInvokerRegistry) {
-        this.recordChangeEventRegistry = recordChangeEventRegistry;
         this.capturingEventRegistry = capturingEventRegistry;
         this.capturingEventDeserializerRegistry = capturingEventDeserializerRegistry;
         this.capturingObjectInvokerRegistry = capturingObjectInvokerRegistry;
@@ -57,24 +52,7 @@ public class SourceRecordEventProducer {
                 return;
             }
 
-            var invoker = capturingEventRegistry.get(capturingEvent.destination());
-
-            if (invoker != null) {
-                invoker.capture(capturingEvent);
-                return;
-            }
-
-            new FilteredCapturingInvoker<CapturingEvent<SourceRecord>>() {
-                @Override
-                public String destination() {
-                    return capturingEvent.destination();
-                }
-
-                @Override
-                public void capture(CapturingEvent<SourceRecord> innerEvent) {
-                    recordChangeEventRegistry.get(capturingEvent.record()).capture(innerEvent::record);
-                }
-            }.capture(capturingEvent);
+            capturingEventRegistry.get(capturingEvent.destination()).capture(capturingEvent);
         };
     }
 }
