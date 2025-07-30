@@ -172,6 +172,8 @@
         <mongodb.replica.size>1</mongodb.replica.size>
         <mongodb.shard.size>2</mongodb.shard.size>
         <mongodb.shard.replica.size>${mongodb.replica.size}</mongodb.shard.replica.size>
+
+        <mockito.argLine>-javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
     </properties>
     <build>
         <plugins>
