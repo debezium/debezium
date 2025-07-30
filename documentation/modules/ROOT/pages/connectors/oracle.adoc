@@ -4661,6 +4661,10 @@ For more information, see xref:oracle-property-log-mining-transaction-retention-
 |`long`
 |The number of milliseconds the connector waits between LogMiner queries.
 
+|[[oracle-streaming-metrics-number-of-events-in-buffer]]<<oracle-streaming-metrics-number-of-events-in-buffer, `+NumberOfEventsInBuffer+`>>
+|`long`
+|The number of events in the transaction buffer.
+
 |[[oracle-streaming-metrics-number-of-active-transactions]]<<oracle-streaming-metrics-number-of-active-transactions, `+NumberOfActiveTransactions+`>>
 |`long`
 |The number of current active transactions in the transaction buffer.
