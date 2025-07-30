@@ -102,7 +102,12 @@ public class CapturingObjectInvokerGenerator implements CapturingInvokerGenerato
                         .annotation(DebeziumDotNames.CAPTURING)
                         .value("destination"))
                         .map(AnnotationValue::asString)
-                        .ifPresentOrElse(s -> destination.returnValue(destination.load(s)),
+                        .ifPresentOrElse(s -> {
+                            if (s.isEmpty()) {
+                                throw new IllegalArgumentException("empty destination are not allowed for @Capturing annotation  " + methodInfo.declaringClass());
+                            }
+                            destination.returnValue(destination.load(s));
+                        },
                                 () -> {
                                     throw new RuntimeException("trying to capture events without defining a destination for class " + methodInfo.declaringClass());
                                 });
