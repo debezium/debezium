@@ -55,7 +55,8 @@ public class CapturingEventDeserializerRegistryProducer {
 
     private CapturingEventDeserializer<?, SourceRecord> getDeserializer(String deserializer) {
         try {
-            return new SourceRecordDeserializer<>((Deserializer<?>) Class.forName(deserializer).getDeclaredConstructor().newInstance(), converter);
+            return new SourceRecordDeserializer<>((Deserializer<?>) Class
+                    .forName(deserializer, true, Thread.currentThread().getContextClassLoader()).getDeclaredConstructor().newInstance(), converter);
         }
         catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException | ClassNotFoundException e) {
             throw new RuntimeException(e);
