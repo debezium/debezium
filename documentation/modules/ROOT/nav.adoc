@@ -62,6 +62,7 @@
 ** xref:ai/embeddings.adoc[Embeddings Transformation]
 * Standalone Debezium
 ** xref:operations/debezium-server.adoc[Debezium Server]
+** xref:operations/debezium-operator.adoc[Debezium Operator]
 ** xref:operations/debezium-platform.adoc[Debezium Management Platform]
 * Operations
 ** xref:operations/logging.adoc[Logging]
