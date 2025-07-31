@@ -204,7 +204,13 @@ public class ProductHandler {
 }
 ```
 
-or if you don't need information related to the database operation:
+or only the deserialized object without `CapturingEvent<T>`:
+
+
+[NOTE]
+====
+keep in mind that in such case, you don't have information related to the database operation
+====
 
 ```java
 import io.debezium.runtime.CapturingEvent;
