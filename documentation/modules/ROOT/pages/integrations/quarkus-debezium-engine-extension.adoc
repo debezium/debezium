@@ -13,13 +13,13 @@ The following documentation explores how your Quarkus application can integrate 
 
 == Introduction
 
-*{prodname} Extensions for Quarkus* integrates the *Debezium Runtime* into *Quarkus* applications, enabling developers to consume *change data capture* (CDC) events from supported databases directly within a lightweight, cloud-native application.
+*{prodname} Extensions for Quarkus* integrates the *{prodname} Runtime* into *Quarkus* applications, enabling developers to consume *change data capture* (CDC) events from supported databases directly within a lightweight, cloud-native application.
 
 === When use the extension
 
-- *CDC in Quarkus*: Seamlessly embeds Debezium into Quarkus apps, ideal for microservices use cases.
+- *CDC in Quarkus*: Seamlessly embeds {prodname} into Quarkus apps, ideal for microservices use cases.
 - *Kafka-free Option*: Avoids the need for full Kafka infrastructure when only simple streaming or in-process processing is required.
-- *Lightweight & Fast*: Leverages native quarkus's fast startup time and low memory
+- *Lightweight & Fast*: Leverages native Quarkus' fast startup time and low memory
 - *Developer Friendly*: Simplifies setup with Quarkus-native configuration and dependency management.
 
 === Features
@@ -37,7 +37,7 @@ The Extension supports well-established {prodname} features and much more! Here 
 
 == Supported Connectors
 
-We support actually only *Postgres* connector.
+The *Postgres* connector is the only supported connector at this time.
 
 
 == Prerequisites
@@ -50,7 +50,7 @@ We support actually only *Postgres* connector.
 
 == Working Example
 
-A fully functional example demonstrating the extension capabilities is available in the https://github.com/debezium/debezium-examples/tree/main/debezium-quarkus-extension-service[following repository]. It can serve as a reference for setting up and testing your own Quarkus Application.
+A fully functional example demonstrating the extension capabilities is available in the https://github.com/debezium/debezium-examples/tree/main/debezium-quarkus-extension-service[debezium-example repository]. It can serve as a reference for setting up and testing your own Quarkus Application.
 
 == Bootstrap a Quarkus Project
 
@@ -71,7 +71,7 @@ it generates the following in `./getting-started`:
 
 == Add the Extension to the project
 
-In the project, add the {prodname} Extension dependency to your application's `pom.xml`:
+In the project, add the {prodname} extension dependency to your application's `pom.xml`:
 
 ```xml
     <dependencies>
@@ -85,9 +85,9 @@ In the project, add the {prodname} Extension dependency to your application's `p
     </dependencies>
 ```
 
-== Configuring {PRODNAME} Connector
+== Configuring {prodname} Connector
 
-The {prodname} Extension is shipped with a *Connector* that listen CDC events from the datasource but a minimal configuration is mandatory.
+The {prodname} extension is shipped with a *Connector* that listen CDC events from the datasource but a minimal configuration is mandatory.
 
 The Extension use Quarkus (the SmallRye Config API) to provide all mechanisms related with configuration. {prodname} configurations use the prefix `quarkus.debezium.*` and if we will use an application configuration file located in `src/main/resources/application.properties`, the result for a minimum setup is the following:
 
@@ -160,7 +160,7 @@ It's possible to filter events by `destination`:
     }
 ```
 
-The default behavior is that a Debezium connector `destination` is formed from the name of the `prefix` defined in the configuration with the database name and the name of the table in which the change was made. In some cases the `destination` is redefined using an https://debezium.io/documentation/reference/stable/transformations/topic-routing.html[SMT].
+The default behavior is that a {prodname} connector `destination` is formed from the name of the `prefix` defined in the configuration with the database name and the name of the table in which the change was made. In some cases the `destination` is redefined using an https://debezium.io/documentation/reference/stable/transformations/topic-routing.html[SMT].
 
 === Deserializer via Jackson
 
@@ -183,7 +183,7 @@ quarkus.debezium.capturing.products.destination=native.inventory.products
 quarkus.debezium.capturing.products.deserializer=com.acme.product.jackson.ProductDeserializer
 ```
 
-and use it in your code:
+and use it in your code adding the destination assigned to the deserializer:
 
 ```java
 import io.debezium.runtime.CapturingEvent;
@@ -335,7 +335,7 @@ the following events are available:
 
 == Data Type Converter
 
-It's possible to define a https://debezium.io/documentation/reference/stable/development/converters.html[{prodname} Custom Converter] in the Extension using the `@CustomConverter` annotation and instantiate a `ConverterDefinition` that defines the type conversation:
+It's possible to define a https://debezium.io/documentation/reference/stable/development/converters.html[{prodname} Custom Converter] in the extension using the `@CustomConverter` annotation and instantiate a `ConverterDefinition` that defines the type conversation:
 
 ```java
 import io.debezium.relational.CustomConverterRegistry.ConverterDefinition;
