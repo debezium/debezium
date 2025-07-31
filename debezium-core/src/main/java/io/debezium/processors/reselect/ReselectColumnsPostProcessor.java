@@ -276,8 +276,11 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
 
     private Object resolveKeyFieldValue(Struct key, org.apache.kafka.connect.data.Field field) {
         if (field.schema() != null && VariableScaleDecimal.LOGICAL_NAME.equals(field.schema().name())) {
-            SpecialValueDecimal decimal = VariableScaleDecimal.toLogical(key.getStruct(field.name()));
-            return decimal.getWrappedValue();
+            final Struct value = key.getStruct(field.name());
+            if (value != null) {
+                final SpecialValueDecimal decimal = VariableScaleDecimal.toLogical(key.getStruct(field.name()));
+                return decimal.getWrappedValue();
+            }
         }
         return key.get(field);
     }
