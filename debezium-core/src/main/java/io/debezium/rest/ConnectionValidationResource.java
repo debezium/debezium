@@ -7,8 +7,8 @@ package io.debezium.rest;
 
 import java.util.Map;
 
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
 
 import io.debezium.rest.model.ValidationResults;
 

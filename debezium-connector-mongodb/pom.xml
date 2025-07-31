@@ -48,6 +48,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.reflections</groupId>
+            <artifactId>reflections</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-embedded</artifactId>
             <type>test-jar</type>
