@@ -57,11 +57,11 @@
 ** xref:integrations/cloudevents.adoc[CloudEvents]
 ** xref:integrations/openlineage.adoc[OpenLineage]
 ** xref:integrations/tracing.adoc[OpenTelemetry]
+** xref:integrations/quarkus-debezium-engine-extension.adoc[Debezium Extensions for Quarkus]
 ** xref:integrations/testcontainers.adoc[Integration Testing with Testcontainers]
 * Debezium AI
 ** xref:ai/embeddings.adoc[Embeddings Transformation]
 * Standalone Debezium
-** xref:operations/quarkus-debezium-engine-extension.adoc[Debezium Extensions for Quarkus]
 ** xref:operations/debezium-server.adoc[Debezium Server]
 ** xref:operations/debezium-platform.adoc[Debezium Management Platform]
 * Operations
