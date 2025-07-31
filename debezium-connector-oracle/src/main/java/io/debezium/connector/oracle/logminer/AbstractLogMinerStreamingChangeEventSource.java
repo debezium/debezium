@@ -801,6 +801,17 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     }
 
     /**
+     * Waits for the range if it's not completely available in the archive logs yet.
+     *
+     * @param startScn the range starting SCN number
+     * @param endScn the range ending SCN number
+     * @return {@code true} if the connector loop should break, {@code false} otherwise
+     * @throws SQLException if a database exception occurs
+     * @throws InterruptedException if the thread is interrupted
+     */
+    protected abstract boolean waitForRangeAvailabilityInArchiveLogs(Scn startScn, Scn endScn) throws SQLException, InterruptedException;
+
+    /**
      * Calculates the mining session's upper boundary based on batch size limits.
      *
      * @param lowerBoundsScn the current lower boundary
