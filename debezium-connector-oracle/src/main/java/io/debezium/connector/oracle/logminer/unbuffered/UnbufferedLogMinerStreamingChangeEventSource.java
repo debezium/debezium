@@ -105,8 +105,10 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         while (getContext().isRunning()) {
 
             // Check if we should break when using archive log only mode
-            if (isArchiveLogOnlyModeAndScnIsNotAvailable(minLogScn)) {
-                break;
+            if (getConfig().isArchiveLogOnlyMode()) {
+                if (waitForRangeAvailabilityInArchiveLogs(minLogScn, upperBoundsScn)) {
+                    break;
+                }
             }
 
             final Instant batchStartTime = Instant.now();
@@ -127,14 +129,6 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             upperBoundsScn = calculateUpperBounds(minLogScn, upperBoundsScn, currentScn);
             if (upperBoundsScn.isNull()) {
                 LOGGER.debug("Delaying mining transaction logs by one iteration");
-                pauseBetweenMiningSessions();
-                continue;
-            }
-
-            // This is a small window where when archive log only mode has completely caught up to the last
-            // record in the archive logs that both the lower and upper values are identical. In this use
-            // case we want to pause and restart the loop waiting for a new archive log before proceeding.
-            if (getConfig().isArchiveLogOnlyMode() && minLogScn.equals(upperBoundsScn)) {
                 pauseBetweenMiningSessions();
                 continue;
             }
@@ -487,6 +481,27 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                 getOffsetContext().setRedoSql("");
             }
         }
+    }
+
+    @Override
+    protected boolean waitForRangeAvailabilityInArchiveLogs(Scn startScn, Scn endScn) throws SQLException, InterruptedException {
+        if (endScn.isNull()) {
+            // There was no prior iteration yet, sanity check to verify starting SCN
+            if (isArchiveLogOnlyModeAndScnIsNotAvailable(startScn)) {
+                LOGGER.error("Could not find the start SCN {} in the archive logs, stopping connector.", startScn);
+                return true;
+            }
+        }
+        else if (!getMetrics().getBatchMetrics().hasProcessedAnyTransactions()) {
+            if (endScn.compareTo(getMaximumArchiveLogsScn()) == 0) {
+                // Prior iteration mined up to the last entry in the archive logs and no data was returned.
+                return isArchiveLogOnlyModeAndScnIsNotAvailable(endScn.add(Scn.ONE));
+            }
+            // The endScn + 1 is now available
+        }
+
+        // Connector loop should continue to iterate
+        return false;
     }
 
     /**
