@@ -3514,34 +3514,42 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     @Test
     @FixFor("DBZ-9305")
     public void shouldStreamSuccessfullyWithSchemasWithUnderscores() throws Exception {
-        String setupStmt = "DROP SCHEMA IF EXISTS test_ CASCADE;" +
-                "DROP SCHEMA IF EXISTS test1 CASCADE;" +
-                "CREATE SCHEMA test_;" +
-                "CREATE SCHEMA test1;" +
-                "CREATE TABLE test_.tab (pk SERIAL, aa integer, bb integer, PRIMARY KEY(pk));" +
-                "CREATE TABLE test1.tab (pk SERIAL, aa integer, bb integer, PRIMARY KEY(pk));" +
-                "INSERT INTO test_.tab (aa, bb) VALUES (1, 1);" +
-                "INSERT INTO test1.tab (aa, bb) VALUES (2, 2);";
-        TestHelper.execute(setupStmt);
-        Configuration.Builder configBuilder = TestHelper.defaultConfig()
-                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.name())
-                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
-                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "test_.tab");
+        try {
+            String setupStmt = "DROP SCHEMA IF EXISTS test_ CASCADE;" +
+                    "DROP SCHEMA IF EXISTS test1 CASCADE;" +
+                    "CREATE SCHEMA test_;" +
+                    "CREATE SCHEMA test1;" +
+                    "CREATE TABLE test_.tab (pk SERIAL, aa integer, bb integer, PRIMARY KEY(pk));" +
+                    "CREATE TABLE test1.tab (pk SERIAL, aa integer, bb integer, PRIMARY KEY(pk));" +
+                    "INSERT INTO test_.tab (aa, bb) VALUES (1, 1);" +
+                    "INSERT INTO test1.tab (aa, bb) VALUES (2, 2);";
+            TestHelper.execute(setupStmt);
+            Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                    .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.name())
+                    .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                    .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "test_.tab");
 
-        start(PostgresConnector.class, configBuilder.build());
-        assertConnectorIsRunning();
+            start(PostgresConnector.class, configBuilder.build());
+            assertConnectorIsRunning();
 
-        TestHelper.execute("INSERT INTO test_.tab (aa, bb) VALUES (3, 3);");
-        TestHelper.execute("INSERT INTO test1.tab (aa, bb) VALUES (4, 4);");
+            TestHelper.execute("INSERT INTO test_.tab (aa, bb) VALUES (3, 3);");
+            TestHelper.execute("INSERT INTO test1.tab (aa, bb) VALUES (4, 4);");
 
-        final int EXPECTED_RECORDS = 2; // 1 from snapshot, 1 from streaming
-        SourceRecords actualRecords = consumeRecordsByTopic(EXPECTED_RECORDS);
-        List<SourceRecord> records = actualRecords.recordsForTopic(topicName("test_.tab"));
-        assertThat(records.size()).isEqualTo(EXPECTED_RECORDS);
-        AtomicInteger pkValue = new AtomicInteger(1);
-        records.forEach(System.out::println);
+            final int EXPECTED_RECORDS = 2; // 1 from snapshot, 1 from streaming
+            SourceRecords actualRecords = consumeRecordsByTopic(EXPECTED_RECORDS);
+            List<SourceRecord> records = actualRecords.recordsForTopic(topicName("test_.tab"));
+            assertThat(records.size()).isEqualTo(EXPECTED_RECORDS);
+            AtomicInteger pkValue = new AtomicInteger(1);
+            records.forEach(System.out::println);
 
-        assertNoRecordsToConsume();
+            assertNoRecordsToConsume();
+
+            stopConnector();
+        }
+        finally {
+            TestHelper.execute("DROP SCHEMA IF EXISTS test_ CASCADE;");
+            TestHelper.execute("DROP SCHEMA IF EXISTS test1 CASCADE;");
+        }
     }
 
     @Test
