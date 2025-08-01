@@ -487,7 +487,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * 4. actually start the streamer
      * <p>
      * This method takes care of all of these and this method queries for a default starting position
-     * If you know where you are starting from you should call {@link #startStreaming(Lsn, WalPositionLocator)}, this method
+     * If you know where you are starting from you should call {@link #startStreaming(Lsn, WalPositionLocator, boolean)}, this method
      * delegates to that method
      *
      * @return
@@ -495,13 +495,15 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @throws InterruptedException
      */
     @Override
-    public ReplicationStream startStreaming(WalPositionLocator walPosition) throws SQLException, InterruptedException {
-        return startStreaming(null, walPosition);
+    public ReplicationStream startStreaming(WalPositionLocator walPosition, boolean initialize) throws SQLException, InterruptedException {
+        return startStreaming(null, walPosition, initialize);
     }
 
     @Override
-    public ReplicationStream startStreaming(Lsn offset, WalPositionLocator walPosition) throws SQLException, InterruptedException {
-        initConnection();
+    public ReplicationStream startStreaming(Lsn offset, WalPositionLocator walPosition, boolean initialize) throws SQLException, InterruptedException {
+        if (initialize) {
+            initConnection();
+        }
 
         connect();
         if (offset == null || !offset.isValid()) {
@@ -517,7 +519,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         int tryCount = 0;
         while (true) {
             try {
-                if (connectorConfig.slotSeekToKnownOffsetOnStart()) {
+                if (initialize && connectorConfig.slotSeekToKnownOffsetOnStart()) {
                     validateSlotIsInExpectedState(walPosition);
                 }
                 return createReplicationStream(lsn, walPosition);
@@ -540,7 +542,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     }
 
     protected void validateSlotIsInExpectedState(WalPositionLocator walPosition) throws SQLException {
-        Lsn lsn = walPosition.getLastCommitStoredLsn() != null ? walPosition.getLastCommitStoredLsn() : walPosition.getLastEventStoredLsn();
+        Lsn lsn = walPosition.getLastEventStoredLsn() != null ? walPosition.getLastEventStoredLsn() : walPosition.getLastCommitStoredLsn();
         if (lsn == null || !connectorConfig.isFlushLsnOnSource()) {
             return;
         }
