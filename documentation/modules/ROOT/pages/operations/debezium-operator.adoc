@@ -17,50 +17,58 @@ This operator implements the standard Kubernetes operator pattern to transform u
 
 == Deploy {prodname} Operator using Helm
 
-Helm is the preferred way to install the operator releases. The operator is available in the https://charts.debezium.io[Debezium Helm Chart Repository].
+Helm is the preferred method for installing the operator. 
+The operator is available in the https://charts.debezium.io[{prodname} Helm Chart Repository].
+You can install the operator to an existing namespace, or to a new namespace.
 
-Create a dedicated namespace with (you can choose to install in an existing namespace)
-
+. Enter the following command to create a dedicated namespace:
++
 [source,bash]
 ----
 kubectl create namespace debezium
 ----
 
-then add the debezium charts repo and install the operator with
-
+. Add the {prodname} charts repository and install the operator by entering the following command:
++
 [source,bash]
 ----
 helm repo add debezium https://charts.debezium.io
 helm install my-debezium-operator debezium/debezium-operator --version 3.2.0-final -n debezium
 ----
++
+NOTE: 
+Due to a versioning problem, you must currently specify a version number, even if you just want to install the last stable version. 
++
+You can find the available versions of the operator in the https://charts.debezium.io/index.yaml[Debezium Helm Chart Repository].
 
-Note:: You need to specify a version, even if you want just the last stable one, due to an issue with versioning. We are working to solve this in future.
+== Tracking the progress of the operator deployment
 
-Available versions can be found in the https://charts.debezium.io/index.yaml[Debezium Helm Chart Repository].
+You can run commands to monitor the progress of the deployment and view the operator log.
 
-.Follow the deployment of the {prodname} operator:
+.Procedure
 
-To monitor the progress of the deployment you can run the following command
-
+* To monitor the progress of the deployment, run the following command:
++
 [source,bash]
 ----
 kubectl get pod -n debezium --watch
 ----
 
-You can also follow the operator’s log:
-
+* To monitor the operator log, enter the following command:
++
 [source,bash]
 ----
 kubectl logs deployment/debezium-operator -n debezium -f
 ----
 
-Once the operator is running it will watch for new custom resources and create the Debezium Server that correspond to those custom resources.
+After the operator is running, it watches for new custom resources and creates a {prodname} Server instance that is based on those custom resources.
 
 == DebeziumServer custom resource
 
 You specify the configuration for a {prodname} Server instance by declaring properties in a `DebeziumServer` custom resource.
 
-== Basic structure of the {prodname} Server custom resource
+.Basic structure of the {prodname} Server custom resource
+====
 [source,yaml]
 apiVersion: debezium.io/v1alpha1
 kind: DebeziumServer
@@ -136,6 +144,7 @@ spec:
     class: String
     config:
       # source connector properties
+====
 
 == DebeziumServer specification
 
@@ -150,12 +159,12 @@ spec:
 | [[debezium-operator-schema-reference-debeziumserver-spec]]<<debezium-operator-schema-reference-debeziumserver-spec, `+spec+`>>
 | <<debezium-operator-schema-reference-debeziumserverspec, `+DebeziumServerSpec+`>>
 | No default value
-| The specification of Debezium Server
+| The specification of {prodname} Server
 
 | [[debezium-operator-schema-reference-debeziumserver-status]]<<debezium-operator-schema-reference-debeziumserver-status, `+status+`>>
 | <<debezium-operator-schema-reference-debeziumserverstatus, `+DebeziumServerStatus+`>>
 | No default value
-| The status of Debezium
+| The status of the {prodname} Server instance.
 |===
 
 [#debezium-operator-schema-reference-debeziumserverstatus]
@@ -217,12 +226,12 @@ Used in: <<debezium-operator-schema-reference-debeziumserver, `+DebeziumServer+`
 | [[debezium-operator-schema-reference-debeziumserverspec-image]]<<debezium-operator-schema-reference-debeziumserverspec-image, `+image+`>>
 | String
 | No default value
-| Image used for Debezium Server container. This property takes precedence over version.
+| Image used for {prodname} Server container. This property takes precedence over version.
 
 | [[debezium-operator-schema-reference-debeziumserverspec-version]]<<debezium-operator-schema-reference-debeziumserverspec-version, `+version+`>>
 | String
 | same as operator
-| Version of Debezium Server to be used.
+| Version of {prodname} Server to be used.
 
 | [[debezium-operator-schema-reference-debeziumserverspec-sink]]<<debezium-operator-schema-reference-debeziumserverspec-sink, `+sink+`>>
 | <<debezium-operator-schema-reference-sink, `+Sink+`>>
@@ -232,7 +241,7 @@ Used in: <<debezium-operator-schema-reference-debeziumserver, `+DebeziumServer+`
 | [[debezium-operator-schema-reference-debeziumserverspec-source]]<<debezium-operator-schema-reference-debeziumserverspec-source, `+source+`>>
 | <<debezium-operator-schema-reference-source, `+Source+`>>
 | No default value
-| Debezium source connector configuration.
+| {prodname} source connector configuration.
 
 | [[debezium-operator-schema-reference-debeziumserverspec-format]]<<debezium-operator-schema-reference-debeziumserverspec-format, `+format+`>>
 | <<debezium-operator-schema-reference-format, `+Format+`>>
@@ -242,22 +251,22 @@ Used in: <<debezium-operator-schema-reference-debeziumserver, `+DebeziumServer+`
 | [[debezium-operator-schema-reference-debeziumserverspec-quarkus]]<<debezium-operator-schema-reference-debeziumserverspec-quarkus, `+quarkus+`>>
 | <<debezium-operator-schema-reference-quarkus, `+Quarkus+`>>
 | No default value
-| Quarkus configuration passed down to Debezium Server process.
+| Quarkus configuration passed to the {prodname} Server process.
 
 | [[debezium-operator-schema-reference-debeziumserverspec-runtime]]<<debezium-operator-schema-reference-debeziumserverspec-runtime, `+runtime+`>>
 | <<debezium-operator-schema-reference-runtime, `+Runtime+`>>
 | No default value
-| Configuration allowing the modification of various aspects of Debezium Server runtime.
+| Specifies whether you can modify various aspects of the {prodname} Server runtime.
 
 | [[debezium-operator-schema-reference-debeziumserverspec-transforms]]<<debezium-operator-schema-reference-debeziumserverspec-transforms, `+transforms+`>>
 | <<debezium-operator-schema-reference-transformation, `+List<Transformation>+`>>
 | No default value
-| Single Message Transformations employed by this instance of Debezium Server.
+| Single Message Transformations employed by this instance of {prodname} Server.
 
 | [[debezium-operator-schema-reference-debeziumserverspec-predicates]]<<debezium-operator-schema-reference-debeziumserverspec-predicates, `+predicates+`>>
 | <<debezium-operator-schema-reference-predicate, `+Map<String, Predicate>+`>>
 | No default value
-| Predicates employed by this instance of Debezium Server.
+| Predicates employed by this instance of {prodname} Server.
 |===
 
 
@@ -273,7 +282,7 @@ Used in: <<debezium-operator-schema-reference-debeziumserverspec, `+DebeziumServ
 | [[debezium-operator-schema-reference-sink-type]]<<debezium-operator-schema-reference-sink-type, `+type+`>>
 | String
 | No default value
-| Sink type recognised by Debezium Server.
+| Sink type recognized by this {prodname} Server instance.
 
 | [[debezium-operator-schema-reference-sink-config]]<<debezium-operator-schema-reference-sink-config, `+config+`>>
 | Map
@@ -351,7 +360,7 @@ Used in: <<debezium-operator-schema-reference-format, `+Format+`>>
 | [[debezium-operator-schema-reference-formattype-type]]<<debezium-operator-schema-reference-formattype-type, `+type+`>>
 | String
 | json
-| Format type recognised by Debezium Server.
+| Format type recognized by {prodname} Server.
 
 | [[debezium-operator-schema-reference-formattype-config]]<<debezium-operator-schema-reference-formattype-config, `+config+`>>
 | Map
@@ -399,7 +408,7 @@ Used in: <<debezium-operator-schema-reference-debeziumserverspec, `+DebeziumServ
 | [[debezium-operator-schema-reference-runtime-environment]]<<debezium-operator-schema-reference-runtime-environment, `+environment+`>>
 | <<debezium-operator-schema-reference-runtimeenvironment, `+RuntimeEnvironment+`>>
 | No default value
-| Additional environment variables used by this Debezium Server.
+| Additional environment variables used by this {prodname} Server instance.
 
 | [[debezium-operator-schema-reference-runtime-jmx]]<<debezium-operator-schema-reference-runtime-jmx, `+jmx+`>>
 | <<debezium-operator-schema-reference-jmxconfig, `+JmxConfig+`>>
@@ -409,7 +418,7 @@ Used in: <<debezium-operator-schema-reference-debeziumserverspec, `+DebeziumServ
 | [[debezium-operator-schema-reference-runtime-templates]]<<debezium-operator-schema-reference-runtime-templates, `+templates+`>>
 | <<debezium-operator-schema-reference-templates, `+Templates+`>>
 | No default value
-| Debezium Server resource templates.
+| {prodname} Server resource templates.
 
 | [[debezium-operator-schema-reference-runtime-serviceaccount]]<<debezium-operator-schema-reference-runtime-serviceaccount, `+serviceAccount+`>>
 | String
@@ -521,7 +530,9 @@ Used in: <<debezium-operator-schema-reference-jmxconfig, `+JmxConfig+`>>
 | Property | Type | Default | Description
 
 | [[debezium-operator-schema-reference-jmxauthentication-enabled]]<<debezium-operator-schema-reference-jmxauthentication-enabled, `+enabled+`>>
-| boolean | false | Whether JMX authentication should be enabled for this Debezium Server instance.
+| boolean 
+| false 
+| Whether JMX authentication should be enabled for this {prodname} Server instance.
 
 | [[debezium-operator-schema-reference-jmxauthentication-secret]]<<debezium-operator-schema-reference-jmxauthentication-secret, `+secret+`>>
 | String
@@ -1403,12 +1414,13 @@ Used in: <<debezium-operator-schema-reference-source, `+Source+`>>
 | Additional common schema history store configuration properties.
 |===
 
-== Example Configuration
+== Complete Debezium Server configuration example
 
-The following example shows a complete `DebeziumServerSpec` configuration:
+The following example shows a complete {prodname} Server custom resource that incorporates properties from the preceding tables. 
 
+.Complete {prodname} server custom resource
+====
 [source,yaml]
-----
 apiVersion: debezium.io/v1alpha1
 kind: DebeziumServer
 metadata:
@@ -1478,4 +1490,4 @@ spec:
     config:
       quarkus.log.level: INFO
       quarkus.http.port: 8080
-----
+====
