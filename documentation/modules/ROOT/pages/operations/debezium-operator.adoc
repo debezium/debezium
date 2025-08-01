@@ -215,7 +215,7 @@ Used in: <<debezium-operator-schema-reference-debeziumserverstatus, `+DebeziumSe
 |===
 
 [#debezium-operator-schema-reference-debeziumserverspec]
-=== DebeziumServer schema reference
+=== DebeziumServerSpec schema reference
 Used in: <<debezium-operator-schema-reference-debeziumserver, `+DebeziumServer+`>>
 
 .DebeziumServerSpec properties
@@ -1447,12 +1447,10 @@ spec:
       config:
         bootstrap.servers: kafka:9092
         topic: debezium-schema-history
-
   sink:
     type: kafka
     config:
       bootstrap.servers: kafka:9092
-
   format:
     key:
       type: json
@@ -1460,7 +1458,6 @@ spec:
       type: json
       config:
         schemas.enable: false
-
   runtime:
     jmx:
       enabled: true
@@ -1472,20 +1469,17 @@ spec:
     metrics:
       jmxExporter:
         enabled: true
-
   transforms:
     - type: io.debezium.transforms.UnwrapFromEnvelope
       config:
         drop.tombstones: false
       predicate: inventory-filter
       negate: false
-
   predicates:
     inventory-filter:
       type: org.apache.kafka.connect.transforms.predicates.TopicNameMatches
       config:
         pattern: "mysql.inventory.*"
-
   quarkus:
     config:
       quarkus.log.level: INFO
