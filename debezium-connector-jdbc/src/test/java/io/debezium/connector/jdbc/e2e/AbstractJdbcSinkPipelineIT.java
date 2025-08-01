@@ -3465,6 +3465,42 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         consumeAndAssert(sink, columnAssert, expectedValues, columnReader);
     }
 
+    protected <T, U> void assertDataTypes3(Source source, Sink sink, String typeName, List<T> values, List<U> expectedValues,
+                                           ConfigurationAdjuster configAdjuster, DataTypeColumnAssert columnAssert,
+                                           ColumnReader<U> columnReader)
+            throws Exception {
+        final String tableName = source.randomTableName();
+
+        final List<T> totalValues = new ArrayList<>();
+        totalValues.addAll(values);
+
+        final String createSql = String.format("CREATE TABLE %s ( id SERIAL PRIMARY KEY, data tsvector)", tableName);
+        final String insertSql = String.format("INSERT INTO %s (data) VALUES (to_tsvector('english', 'This is a test for PostgreSQL full-text search'))", tableName);
+
+        registerSourceConnector(source, List.of(typeName), tableName, configAdjuster);
+        source.execute(createSql);
+        source.streamTable(tableName);
+
+        source.execute(insertSql);
+
+        Properties sinkProperties = getDefaultSinkConfig(sink);
+        sinkProperties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
+        sinkProperties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.RECORD_KEY.getValue());
+        sinkProperties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.UPSERT.getValue());
+        startSink(source, sinkProperties, tableName);
+
+        consumeAndAssert(sink, columnAssert, expectedValues, columnReader);
+
+        source.execute(String.format("UPDATE %s SET data = to_tsvector('english', 'Updated text goes here') WHERE id = 1", tableName));
+
+        // Consume and verify update record
+        consumeAndAssert(sink,
+                (record) -> assertColumn(sink, record, "data", "tsvector"),
+                List.of("1", "'goe':3 'text':2 'updat':1"),
+                ResultSet::getString);
+
+    }
+
     protected boolean isLobTypeName(String typeName) {
         return typeName.equalsIgnoreCase("CLOB") || typeName.equalsIgnoreCase("NCLOB") || typeName.equalsIgnoreCase("BLOB");
     }

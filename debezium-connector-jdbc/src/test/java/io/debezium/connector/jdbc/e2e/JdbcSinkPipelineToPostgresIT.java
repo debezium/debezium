@@ -244,4 +244,45 @@ public class JdbcSinkPipelineToPostgresIT extends AbstractJdbcSinkPipelineIT {
                 ResultSet::getString);
     }
 
+    @TestTemplate
+    @ForSource(value = SourceType.POSTGRES, reason = "The tsvector data type only applies to PostgreSQL")
+    public void testTsvectorDataTypeWithStaticValue(Source source, Sink sink) throws Exception {
+        assertDataTypeNonKeyOnly(source,
+                sink,
+                "tsvector",
+                List.of("'full:3 postgre:1 search:5 support:2 text:4'"),
+                List.of("'full':3 'postgre':1 'search':5 'support':2 'text':4"),
+                (record) -> assertColumn(sink, record, "data", "tsvector"),
+                ResultSet::getString);
+    }
+
+    @TestTemplate
+    @ForSource(value = SourceType.POSTGRES, reason = "The tsvector data type only applies to PostgreSQL")
+    public void testTsvectorDataTypeWithDirectFunctionInsert(Source source, Sink sink) throws Exception {
+        assertDataTypeNonKeyOnly(source,
+                sink,
+                "tsvector",
+                List.of("to_tsvector('english', 'This is a test for direct tsvector insert')"),
+                List.of("'full':8 'full-text':7 'postgresql':6 'search':10 'test':4 'text':9"),
+                (record) -> assertColumn(sink, record, "data", "tsvector"),
+                ResultSet::getString);
+    }
+
+    @TestTemplate
+    @ForSource(value = SourceType.POSTGRES, reason = "The tsvector data type only applies to PostgreSQL")
+    public void testTsvectorDataTypeWithUpdate(Source source, Sink sink) throws Exception {
+
+
+        assertDataTypes3(source,
+                sink,
+                "tsvector",
+                List.of(1, "to_tsvector('english', 'This is a test for direct tsvector insert')"),
+                List.of("1", "'full':8 'full-text':7 'postgresql':6 'search':10 'test':4 'text':9"),
+                null,
+                (record) -> {
+                    assertColumn(sink, record, "data", "tsvector");
+                },
+                ResultSet::getString);
+    }
+
 }
