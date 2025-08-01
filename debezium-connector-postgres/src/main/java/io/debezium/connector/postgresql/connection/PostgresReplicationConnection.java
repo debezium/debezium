@@ -161,6 +161,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 String selectPublication = String.format("SELECT puballtables FROM pg_publication WHERE pubname = '%s'", publicationName);
                 try (Statement stmt = conn.createStatement()) {
                     boolean isOnlyRead = isReadOnlyDb();
+                    String message = "Creation of publication slot failed: " +
+                            "query to create/update publication timed out, please make sure that there are no maintenance activities going on the database end.";
                     try (ResultSet rs = stmt.executeQuery(selectPublication)) {
                         final boolean publicationExists = rs.next();
                         if (!publicationExists) {
@@ -176,7 +178,16 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                     LOGGER.info("Creating Publication with statement '{}'", createPublicationStmt);
                                     // Publication doesn't exist, create it.
                                     if (!isOnlyRead) {
-                                        stmt.execute(createPublicationStmt);
+                                        try {
+                                            stmt.setQueryTimeout(toIntExact(connectorConfig.createSlotCommandTimeout()));
+                                            stmt.execute(createPublicationStmt);
+                                        } catch (SQLException ex) {
+                                            if ("57014".equals(ex.getSQLState())) {
+                                                throw new DebeziumException(message, ex);
+                                            } else {
+                                                throw ex;
+                                            }
+                                        }
                                     }
                                     else {
                                         LOGGER.info("The Postgres server in stand by mode, skip create statement execution");
@@ -195,7 +206,16 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                             ? String.format("CREATE PUBLICATION %s WITH (publish_via_partition_root = true);", publicationName)
                                             : String.format("CREATE PUBLICATION %s;", publicationName);
                                     LOGGER.info("Creating publication with statement '{}'", createPublicationWithNoTablesStmt);
-                                    stmt.execute(createPublicationWithNoTablesStmt);
+                                    try {
+                                        stmt.setQueryTimeout(toIntExact(connectorConfig.createSlotCommandTimeout()));
+                                        stmt.execute(createPublicationWithNoTablesStmt);
+                                    } catch (SQLException ex) {
+                                        if ("57014".equals(ex.getSQLState())) {
+                                            throw new DebeziumException(message, ex);
+                                        } else {
+                                            throw ex;
+                                        }
+                                    }
                                     break;
                             }
                         }
@@ -236,7 +256,11 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                     conn.setAutoCommit(true);
                 }
                 catch (SQLException e) {
-                    throw new JdbcConnectionException(e);
+                    if ("57014".equals(e.getSQLState())) {
+                        throw new DebeziumException("Publication statement timed out", e);
+                    } else {
+                        throw new JdbcConnectionException(e);
+                    }
                 }
             }
             catch (SQLException e) {
@@ -312,7 +336,18 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                         : String.format("CREATE PUBLICATION %s FOR TABLE %s;", publicationName, tableFilterString);
             }
             LOGGER.info(isUpdate ? "Updating Publication with statement '{}'" : "Creating Publication with statement '{}'", createOrUpdatePublicationStmt);
-            stmt.execute(createOrUpdatePublicationStmt);
+            String message = "Creation of publication failed: " +
+                    "query to create/update publication timed out, please make sure that there are no maintenance activities going on the database end.";
+            try {
+                stmt.setQueryTimeout(toIntExact(connectorConfig.createSlotCommandTimeout()));
+                stmt.execute(createOrUpdatePublicationStmt);
+            } catch (SQLException ex) {
+                if ("57014".equals(ex.getSQLState())) {
+                    throw new DebeziumException(message, ex);
+                } else {
+                    throw ex;
+                }
+            }
         }
         catch (Exception e) {
             throw new ConnectException(String.format("Unable to %s filtered publication %s for %s", isUpdate ? "update" : "create", publicationName, tableFilterString),
