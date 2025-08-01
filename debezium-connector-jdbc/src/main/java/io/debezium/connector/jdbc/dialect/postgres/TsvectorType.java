@@ -5,14 +5,13 @@
  */
 package io.debezium.connector.jdbc.dialect.postgres;
 
-import io.debezium.sink.valuebinding.ValueBindDescriptor;
+import java.util.List;
+
 import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.connector.jdbc.type.AbstractType;
-import io.debezium.connector.jdbc.type.debezium.AbstractDoubleVectorType;
 import io.debezium.sink.column.ColumnDescriptor;
-
-import java.util.List;
+import io.debezium.sink.valuebinding.ValueBindDescriptor;
 
 /**
  * An implementation of {@link AbstractType} for the PostgreSQL {@code tsvector} data type.
