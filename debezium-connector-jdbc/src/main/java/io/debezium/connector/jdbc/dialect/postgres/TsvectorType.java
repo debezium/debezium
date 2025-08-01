@@ -15,14 +15,16 @@ import io.debezium.sink.column.ColumnDescriptor;
 import java.util.List;
 
 /**
- * An implementation of {@link AbstractDoubleVectorType} for PGVector's {@code vector} data type.
+ * An implementation of {@link AbstractType} for the PostgreSQL {@code tsvector} data type.
  *
- * A {@code vector} data type is a vector data type that supports storing full-precision vectors.
+ * A {@code tsvector} is a full-text search data type in PostgreSQL. It stores lexeme vectors—
+ * preprocessed, searchable representations of textual content—used to support efficient
+ * full-text search queries.
  *
- * The PostgreSQL connector serializes {@code vector} data types using the Debezium semantic type
- * {@link io.debezium.data.vector.DoubleVector|, which represents an arary of {@code FLOAT64} values.
+ * The PostgreSQL connector serializes {@code tsvector} data using the Debezium semantic type
+ * {@link io.debezium.data.TsVector}, which represents the structured content of a tsvector field.
  *
- * @author Chris Cranford
+ * @author Pranav Tiwari
  */
 public class TsvectorType extends AbstractType {
 
