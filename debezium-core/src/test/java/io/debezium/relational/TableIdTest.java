@@ -72,4 +72,19 @@ public class TableIdTest {
         quoted = id.toBracketQuoted();
         assertThat(quoted).isEqualTo(id);
     }
+
+    @Test
+    public void shouldQuoteTableWithApostrophe() {
+        TableId id = new TableId("special_characters_test_1vxxglz", "", "special\"[`]$']");
+
+        String quoted = id.toQuotedString('`');
+
+        assertThat(quoted).isEqualTo("`special_characters_test_1vxxglz`.`special\"[``]$']`");
+
+        // Quoted table-id
+        id = new TableId("`special_characters_test_1vxxglz`", "", "`special\"[``]$']`");
+
+        quoted = id.toQuotedString('`');
+        assertThat(quoted).isEqualTo(id.toString());
+    }
 }

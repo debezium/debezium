@@ -322,14 +322,17 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
         }
 
         if (identifierPart.charAt(0) != openingChar && identifierPart.charAt(identifierPart.length() - 1) != closingChar) {
-            identifierPart = identifierPart.replace(String.valueOf(openingChar), "");
-            if (openingChar != closingChar) {
-                identifierPart = identifierPart.replace(String.valueOf(closingChar), "");
+            if (openingChar == closingChar) {
+                identifierPart = identifierPart.replace(openingChar + "", repeat(openingChar));
             }
             identifierPart = openingChar + identifierPart + closingChar;
         }
 
         return identifierPart;
+    }
+
+    private static String repeat(char quotingChar) {
+        return new StringBuilder().append(quotingChar).append(quotingChar).toString();
     }
 
     public TableId toLowercase() {
