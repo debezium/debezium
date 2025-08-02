@@ -22,6 +22,8 @@ import org.mockito.Mockito;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.base.ChangeEventQueueConfig;
+import io.debezium.connector.base.DefaultChangeEventQueue;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.pipeline.DataChangeEvent;
@@ -47,11 +49,12 @@ public abstract class OracleStreamingMetricsTest<T extends AbstractOracleStreami
     protected void init(Configuration.Builder builder) {
         this.connectorConfig = new OracleConnectorConfig(builder.build());
 
-        final ChangeEventQueue<DataChangeEvent> queue = new ChangeEventQueue.Builder<DataChangeEvent>()
+        ChangeEventQueueConfig changeEventQueueConfig = ChangeEventQueueConfig.builder()
                 .pollInterval(Duration.of(DEFAULT_MAX_QUEUE_SIZE, ChronoUnit.MILLIS))
                 .maxBatchSize(DEFAULT_MAX_BATCH_SIZE)
                 .maxQueueSize(DEFAULT_MAX_QUEUE_SIZE)
                 .build();
+        final ChangeEventQueue<DataChangeEvent> queue = new DefaultChangeEventQueue<>(changeEventQueueConfig);
 
         final OracleTaskContext taskContext = mock(OracleTaskContext.class);
         Mockito.when(taskContext.getConnectorLogicalName()).thenReturn("connector name");
