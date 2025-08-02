@@ -41,6 +41,8 @@
         <apicurio.port>8080</apicurio.port>
         <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
         <apicurio.image>quay.io/apicurio/apicurio-registry-mem</apicurio.image>
+
+        <mockito.argLine>-javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
     </properties>
 
     <dependencies>

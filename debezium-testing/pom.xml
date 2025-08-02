@@ -16,6 +16,8 @@
     <maven.compiler.target>${debezium.java.specific.target}</maven.compiler.target>
     <maven.compiler.release>${debezium.java.specific.target}</maven.compiler.release>
     <maven.compiler.testRelease>${debezium.java.specific.target}</maven.compiler.testRelease>
+
+    <mockito.argLine>-javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
   </properties>
   <modules>
     <module>debezium-testing-testcontainers</module>

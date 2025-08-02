@@ -11,6 +11,10 @@
     <name>Debezium Storage Redis Module</name>
     <packaging>jar</packaging>
 
+    <properties>
+        <mockito.argLine>-javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
+    </properties>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -26,6 +30,12 @@
                 <groupId>org.apache.kafka</groupId>
                 <artifactId>kafka-clients</artifactId>
                 <version>${version.kafka}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.mockito</groupId>
+                <artifactId>mockito-core</artifactId>
+                <version>${version.mockito}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

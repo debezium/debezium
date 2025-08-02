@@ -11,6 +11,10 @@
     <artifactId>debezium-core</artifactId>
     <name>Debezium Core</name>
 
+    <properties>
+        <mockito.argLine>-javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>io.debezium</groupId>

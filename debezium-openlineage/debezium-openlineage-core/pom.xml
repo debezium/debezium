@@ -10,6 +10,10 @@
     <name>Debezium OpenLineage Core</name>
     <packaging>jar</packaging>
 
+    <properties>
+        <mockito.argLine>-javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>io.debezium</groupId>

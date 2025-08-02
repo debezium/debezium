@@ -12,6 +12,10 @@
 
     <name>Quarkus Debezium :: Extension :: Engine :: Runtime</name>
 
+    <properties>
+        <mockito.argLine>-javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>io.quarkus</groupId>
