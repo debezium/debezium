@@ -2918,6 +2918,48 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 });
     }
 
+    @TestTemplate
+    @ForSource(value = { SourceType.POSTGRES }, reason = "The tsvector data type only applies to PostgreSQL")
+    public void testTsvectorDataType(Source source, Sink sink) throws Exception {
+        assertDataTypeNonKeyOnly(source,
+                sink,
+                "tsvector",
+                List.of("to_tsvector('english', 'This is a test for direct tsvector insert')"),
+                List.of("'direct':6 'insert':8 'test':4 'tsvector':7"),
+                (record) -> {
+                    String actualDataType = resolveExpectedDataType(sink);
+                    assertColumn(sink, record, "data", actualDataType);
+                },
+                ResultSet::getString);
+    }
+
+    @TestTemplate
+    @ForSource(value = SourceType.POSTGRES, reason = "The tsvector data type only applies to PostgreSQL")
+    public void testTsvectorDataTypeWithStaticValue(Source source, Sink sink) throws Exception {
+        assertDataTypeNonKeyOnly(source,
+                sink,
+                "tsvector",
+                List.of("'full:3 postgre:1 search:5 support:2 text:4'"),
+                List.of("'full':3 'postgre':1 'search':5 'support':2 'text':4"),
+                (record) -> {
+                    String actualDataType = resolveExpectedDataType(sink);
+                    assertColumn(sink, record, "data", actualDataType);
+                },
+                ResultSet::getString);
+    }
+
+    private String resolveExpectedDataType(Sink sink) {
+        SinkType sinkType = sink.getType();
+
+        if (sinkType.is(SinkType.DB2)) return "CLOB";
+        if (sinkType.is(SinkType.SQLSERVER)) return "varchar";
+        if (sinkType.is(SinkType.MYSQL)) return "longtext";
+        if (sinkType.is(SinkType.POSTGRES)) return "tsvector";
+        if (sinkType.is(SinkType.ORACLE)) return "VARCHAR2";
+
+        return "text"; // Fallback
+    }
+
     private static List<ZonedDateTime> getExpectedZonedDateTimes(Sink sink) {
 
         List<ZonedDateTime> expectedValues = List.of();
