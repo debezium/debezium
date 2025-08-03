@@ -263,7 +263,7 @@ public class JdbcSinkPipelineToPostgresIT extends AbstractJdbcSinkPipelineIT {
                 sink,
                 "tsvector",
                 List.of("to_tsvector('english', 'This is a test for direct tsvector insert')"),
-                List.of("'full':8 'full-text':7 'postgresql':6 'search':10 'test':4 'text':9"),
+                List.of("'direct':6 'insert':8 'test':4 'tsvector':7"),
                 (record) -> assertColumn(sink, record, "data", "tsvector"),
                 ResultSet::getString);
     }
