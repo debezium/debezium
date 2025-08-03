@@ -2951,26 +2951,20 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     private String resolveExpectedDataType(Sink sink) {
         SinkType sinkType = sink.getType();
 
-        if (sinkType.is(SinkType.DB2)) {
-            return "CLOB";
+        switch (sinkType) {
+            case DB2:
+                return "CLOB";
+            case SQLSERVER:
+                return "varchar";
+            case MYSQL:
+                return "longtext";
+            case POSTGRES:
+                return "tsvector";
+            case ORACLE:
+                return "VARCHAR2";
+            default:
+                return "text";
         }
-        if (sinkType.is(SinkType.SQLSERVER)) {
-            return "varchar";
-        }
-
-        if (sinkType.is(SinkType.MYSQL)) {
-            return "longtext";
-        }
-
-        if (sinkType.is(SinkType.POSTGRES)) {
-            return "tsvector";
-        }
-
-        if (sinkType.is(SinkType.ORACLE)) {
-            return "VARCHAR2";
-        }
-
-        return "text";
     }
 
     private static List<ZonedDateTime> getExpectedZonedDateTimes(Sink sink) {
