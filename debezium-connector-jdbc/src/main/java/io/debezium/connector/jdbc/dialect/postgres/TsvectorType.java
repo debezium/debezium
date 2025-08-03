@@ -36,7 +36,7 @@ public class TsvectorType extends AbstractType {
 
     @Override
     public String[] getRegistrationKeys() {
-        return new String[]{ "io.debezium.data.Tsvector" };
+        return new String[]{ io.debezium.data.TsVector.LOGICAL_NAME };
     }
 
     @Override
