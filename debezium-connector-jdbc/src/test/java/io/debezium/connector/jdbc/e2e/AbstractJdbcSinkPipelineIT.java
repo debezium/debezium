@@ -2951,11 +2951,16 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     private String resolveExpectedDataType(Sink sink) {
         SinkType sinkType = sink.getType();
 
-        if (sinkType.is(SinkType.DB2)) return "CLOB";
-        if (sinkType.is(SinkType.SQLSERVER)) return "varchar";
-        if (sinkType.is(SinkType.MYSQL)) return "longtext";
-        if (sinkType.is(SinkType.POSTGRES)) return "tsvector";
-        if (sinkType.is(SinkType.ORACLE)) return "VARCHAR2";
+        if (sinkType.is(SinkType.DB2))
+            return "CLOB";
+        if (sinkType.is(SinkType.SQLSERVER))
+            return "varchar";
+        if (sinkType.is(SinkType.MYSQL))
+            return "longtext";
+        if (sinkType.is(SinkType.POSTGRES))
+            return "tsvector";
+        if (sinkType.is(SinkType.ORACLE))
+            return "VARCHAR2";
 
         return "text"; // Fallback
     }
