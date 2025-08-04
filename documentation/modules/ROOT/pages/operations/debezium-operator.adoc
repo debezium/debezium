@@ -36,8 +36,10 @@ helm repo add debezium https://charts.debezium.io
 helm install my-debezium-operator debezium/debezium-operator --version 3.2.0-final -n debezium
 ----
 +
-NOTE: 
-Due to a versioning problem, you must currently specify a version number, even if you just want to install the last stable version. 
+[NOTE]
+====
+Due to a versioning problem, you must currently specify a version number, even if you just want to install the last stable version.
+====
 +
 You can find the available versions of the operator in the https://charts.debezium.io/index.yaml[Debezium Helm Chart Repository].
 
@@ -148,7 +150,7 @@ spec:
 
 == DebeziumServer specification
 
-[#debezium-operator-schema-reference-debeziumserver]
+[id="debezium-operator-schema-reference-debeziumserver"]
 === DebeziumServer schema reference
 
 .DebeziumServer properties
@@ -167,7 +169,7 @@ spec:
 | The status of the {prodname} Server instance.
 |===
 
-[#debezium-operator-schema-reference-debeziumserverstatus]
+[id="debezium-operator-schema-reference-debeziumserverstatus"]
 === DebeziumServerStatus schema reference
 Used in: <<debezium-operator-schema-reference-debeziumserver, `+DebeziumServer+`>>
 
@@ -188,7 +190,7 @@ Used in: <<debezium-operator-schema-reference-debeziumserver, `+DebeziumServer+`
 | Latest observed generation
 |===
 
-[#debezium-operator-schema-reference-condition]
+[id="debezium-operator-schema-reference-condition"]
 === Condition schema reference
 Used in: <<debezium-operator-schema-reference-debeziumserverstatus, `+DebeziumServerStatus+`>>
 
@@ -214,7 +216,7 @@ Used in: <<debezium-operator-schema-reference-debeziumserverstatus, `+DebeziumSe
 | Unique identifier of a condition.
 |===
 
-[#debezium-operator-schema-reference-debeziumserverspec]
+[id="debezium-operator-schema-reference-debeziumserverspec"]
 === DebeziumServerSpec schema reference
 Used in: <<debezium-operator-schema-reference-debeziumserver, `+DebeziumServer+`>>
 
@@ -270,7 +272,7 @@ Used in: <<debezium-operator-schema-reference-debeziumserver, `+DebeziumServer+`
 |===
 
 
-[#debezium-operator-schema-reference-sink]
+[id="debezium-operator-schema-reference-sink"]
 === Sink schema reference
 Used in: <<debezium-operator-schema-reference-debeziumserverspec, `+DebeziumServerSpec+`>>
 
@@ -290,7 +292,7 @@ Used in: <<debezium-operator-schema-reference-debeziumserverspec, `+DebeziumServ
 | Sink configuration properties.
 |===
 
-[#debezium-operator-schema-reference-source]
+[id="debezium-operator-schema-reference-source"]
 === Source schema reference
 Used in: <<debezium-operator-schema-reference-debeziumserverspec, `+DebeziumServerSpec+`>>
 
@@ -321,7 +323,7 @@ Used in: <<debezium-operator-schema-reference-debeziumserverspec, `+DebeziumServ
 | Source connector configuration properties.
 |===
 
-[#debezium-operator-schema-reference-format]
+[id="debezium-operator-schema-reference-format"]
 === Format schema reference
 Used in: <<debezium-operator-schema-reference-debeziumserverspec, `+DebeziumServerSpec+`>>
 
@@ -347,7 +349,7 @@ Used in: <<debezium-operator-schema-reference-debeziumserverspec, `+DebeziumServ
 | Message header format configuration.
 |===
 
-[#debezium-operator-schema-reference-formattype]
+[id="debezium-operator-schema-reference-formattype"]
 === FormatType schema reference
 Used in: <<debezium-operator-schema-reference-format, `+Format+`>>
 
@@ -368,7 +370,7 @@ Used in: <<debezium-operator-schema-reference-format, `+Format+`>>
 | Format configuration properties.
 |===
 
-[#debezium-operator-schema-reference-quarkus]
+[id="debezium-operator-schema-reference-quarkus"]
 === Quarkus schema reference
 Used in: <<debezium-operator-schema-reference-debeziumserverspec, `+DebeziumServerSpec+`>>
 
@@ -385,7 +387,7 @@ Used in: <<debezium-operator-schema-reference-debeziumserverspec, `+DebeziumServ
 |===
 
 
-[#debezium-operator-schema-reference-runtime]
+[id="debezium-operator-schema-reference-runtime"]
 === Runtime schema reference
 Used in: <<debezium-operator-schema-reference-debeziumserverspec, `+DebeziumServerSpec+`>>
 
@@ -431,7 +433,7 @@ Used in: <<debezium-operator-schema-reference-debeziumserverspec, `+DebeziumServ
 | Metrics configuration
 |===
 
-[#debezium-operator-schema-reference-runtimeapi]
+[id="debezium-operator-schema-reference-runtimeapi"]
 === RuntimeApi schema reference
 Used in: <<debezium-operator-schema-reference-runtime, `+Runtime+`>>
 
@@ -452,7 +454,7 @@ Used in: <<debezium-operator-schema-reference-runtime, `+Runtime+`>>
 | Port number used by the k8s service exposing the API
 |===
 
-[#debezium-operator-schema-reference-runtimestorage]
+[id="debezium-operator-schema-reference-runtimestorage"]
 === RuntimeStorage schema reference
 Used in: <<debezium-operator-schema-reference-runtime, `+Runtime+`>>
 
@@ -473,7 +475,7 @@ Used in: <<debezium-operator-schema-reference-runtime, `+Runtime+`>>
 | Additional volumes mounted to /debezium/external
 |===
 
-[#debezium-operator-schema-reference-runtimeenvironment]
+[id="debezium-operator-schema-reference-runtimeenvironment"]
 === RuntimeEnvironment schema reference
 Used in: <<debezium-operator-schema-reference-runtime, `+Runtime+`>>
 
@@ -495,7 +497,7 @@ Used in: <<debezium-operator-schema-reference-runtime, `+Runtime+`>>
 |===
 
 
-[#debezium-operator-schema-reference-jmxconfig]
+[id="debezium-operator-schema-reference-jmxconfig"]
 === JmxConfig schema reference
 Used in: <<debezium-operator-schema-reference-runtime, `+Runtime+`>>
 
@@ -519,7 +521,7 @@ Used in: <<debezium-operator-schema-reference-runtime, `+Runtime+`>>
 | JMX authentication config.
 |===
 
-[#debezium-operator-schema-reference-jmxauthentication]
+[id="debezium-operator-schema-reference-jmxauthentication"]
 === JmxAuthentication schema reference
 Used in: <<debezium-operator-schema-reference-jmxconfig, `+JmxConfig+`>>
 
@@ -550,7 +552,7 @@ Used in: <<debezium-operator-schema-reference-jmxconfig, `+JmxConfig+`>>
 | JMX password file name and secret key
 |===
 
-[#debezium-operator-schema-reference-templates]
+[id="debezium-operator-schema-reference-templates"]
 === Templates schema reference
 Used in: <<debezium-operator-schema-reference-runtime, `+Runtime+`>>
 
@@ -576,7 +578,7 @@ Used in: <<debezium-operator-schema-reference-runtime, `+Runtime+`>>
 | PVC template for data volume if no explicit claim is specified.
 |===
 
-[#debezium-operator-schema-reference-metrics]
+[id="debezium-operator-schema-reference-metrics"]
 === Metrics schema reference
 Used in: <<debezium-operator-schema-reference-runtime, `+Runtime+`>>
 
@@ -592,7 +594,7 @@ Used in: <<debezium-operator-schema-reference-runtime, `+Runtime+`>>
 | Prometheus JMX exporter configuration
 |===
 
-[#debezium-operator-schema-reference-jmxexporter]
+[id="debezium-operator-schema-reference-jmxexporter"]
 === JmxExporter schema reference
 Used in: <<debezium-operator-schema-reference-metrics, `+Metrics+`>>
 
@@ -614,7 +616,7 @@ Used in: <<debezium-operator-schema-reference-metrics, `+Metrics+`>>
 |===
 
 
-[#debezium-operator-schema-reference-transformation]
+[id="debezium-operator-schema-reference-transformation"]
 === Transformation schema reference
 Used in: <<debezium-operator-schema-reference-debeziumserverspec, `+DebeziumServerSpec+`>>
 
@@ -645,7 +647,7 @@ Used in: <<debezium-operator-schema-reference-debeziumserverspec, `+DebeziumServ
 | Determines if the result of the applied predicate will be negated.
 |===
 
-[#debezium-operator-schema-reference-predicate]
+[id="debezium-operator-schema-reference-predicate"]
 === Predicate schema reference
 Used in: <<debezium-operator-schema-reference-debeziumserverspec, `+DebeziumServerSpec+`>>
 
@@ -666,7 +668,7 @@ Used in: <<debezium-operator-schema-reference-debeziumserverspec, `+DebeziumServ
 | Predicate configuration properties.
 |===
 
-[#debezium-operator-schema-reference-configmapoffsetstore]
+[id="debezium-operator-schema-reference-configmapoffsetstore"]
 === ConfigMapOffsetStore schema reference
 Used in: <<debezium-operator-schema-reference-offset, `+Offset+`>>
 
@@ -687,7 +689,7 @@ Used in: <<debezium-operator-schema-reference-offset, `+Offset+`>>
 | Additional store configuration properties.
 |===
 
-[#debezium-operator-schema-reference-containerenvvar]
+[id="debezium-operator-schema-reference-containerenvvar"]
 === ContainerEnvVar schema reference
 Used in: <<debezium-operator-schema-reference-runtimeenvironment, `+RuntimeEnvironment+`>>
 
@@ -708,7 +710,7 @@ Used in: <<debezium-operator-schema-reference-runtimeenvironment, `+RuntimeEnvir
 | The environment variable value.
 |===
 
-[#debezium-operator-schema-reference-containertemplate]
+[id="debezium-operator-schema-reference-containertemplate"]
 === ContainerTemplate schema reference
 Used in: <<debezium-operator-schema-reference-templates, `+Templates+`>>
 
@@ -734,7 +736,7 @@ Used in: <<debezium-operator-schema-reference-templates, `+Templates+`>>
 | Container probes configuration.
 |===
 
-[#debezium-operator-schema-reference-customstore]
+[id="debezium-operator-schema-reference-customstore"]
 === CustomStore schema reference
 Used in: <<debezium-operator-schema-reference-offset, `+Offset+`>>, <<debezium-operator-schema-reference-schemahistory, `+SchemaHistory+`>>
 
@@ -755,7 +757,7 @@ Used in: <<debezium-operator-schema-reference-offset, `+Offset+`>>, <<debezium-o
 | Store configuration properties.
 |===
 
-[#debezium-operator-schema-reference-datastorage]
+[id="debezium-operator-schema-reference-datastorage"]
 === DataStorage schema reference
 Used in: <<debezium-operator-schema-reference-runtimestorage, `+RuntimeStorage+`>>
 
@@ -775,7 +777,7 @@ Used in: <<debezium-operator-schema-reference-runtimestorage, `+RuntimeStorage+`
 |===
 
 
-[#debezium-operator-schema-reference-fileoffsetstore]
+[id="debezium-operator-schema-reference-fileoffsetstore"]
 === FileOffsetStore schema reference
 Used in: <<debezium-operator-schema-reference-offset, `+Offset+`>>
 
@@ -796,7 +798,7 @@ Used in: <<debezium-operator-schema-reference-offset, `+Offset+`>>
 | Additional store configuration properties.
 |===
 
-[#debezium-operator-schema-reference-fileschemahistorystore]
+[id="debezium-operator-schema-reference-fileschemahistorystore"]
 === FileSchemaHistoryStore schema reference
 Used in: <<debezium-operator-schema-reference-schemahistory, `+SchemaHistory+`>>
 
@@ -818,7 +820,7 @@ Used in: <<debezium-operator-schema-reference-schemahistory, `+SchemaHistory+`>>
 |===
 
 
-[#debezium-operator-schema-reference-inmemoryoffsetstore]
+[id="debezium-operator-schema-reference-inmemoryoffsetstore"]
 === InMemoryOffsetStore schema reference
 Used in: <<debezium-operator-schema-reference-offset, `+Offset+`>>
 
@@ -834,7 +836,7 @@ Used in: <<debezium-operator-schema-reference-offset, `+Offset+`>>
 | Additional store configuration properties.
 |===
 
-[#debezium-operator-schema-reference-inmemoryschemahistorystore]
+[id="debezium-operator-schema-reference-inmemoryschemahistorystore"]
 === InMemorySchemaHistoryStore schema reference
 Used in: <<debezium-operator-schema-reference-schemahistory, `+SchemaHistory+`>>
 
@@ -850,7 +852,7 @@ Used in: <<debezium-operator-schema-reference-schemahistory, `+SchemaHistory+`>>
 | Additional store configuration properties.
 |===
 
-[#debezium-operator-schema-reference-jdbcoffsetstore]
+[id="debezium-operator-schema-reference-jdbcoffsetstore"]
 === JdbcOffsetStore schema reference
 Used in: <<debezium-operator-schema-reference-offset, `+Offset+`>>
 
@@ -896,7 +898,7 @@ Used in: <<debezium-operator-schema-reference-offset, `+Offset+`>>
 | Additional store configuration properties.
 |===
 
-[#debezium-operator-schema-reference-jdbcoffsettableconfig]
+[id="debezium-operator-schema-reference-jdbcoffsettableconfig"]
 === JdbcOffsetTableConfig schema reference
 Used in: <<debezium-operator-schema-reference-jdbcoffsetstore, `+JdbcOffsetStore+`>>
 
@@ -932,7 +934,7 @@ Used in: <<debezium-operator-schema-reference-jdbcoffsetstore, `+JdbcOffsetStore
 | Statement used to update the offset table
 |===
 
-[#debezium-operator-schema-reference-jdbcschemahistorystore]
+[id="debezium-operator-schema-reference-jdbcschemahistorystore"]
 === JdbcSchemaHistoryStore schema reference
 Used in: <<debezium-operator-schema-reference-schemahistory, `+SchemaHistory+`>>
 
@@ -978,7 +980,7 @@ Used in: <<debezium-operator-schema-reference-schemahistory, `+SchemaHistory+`>>
 | Additional store configuration properties.
 |===
 
-[#debezium-operator-schema-reference-jdbcschemahistorytableconfig]
+[id="debezium-operator-schema-reference-jdbcschemahistorytableconfig"]
 === JdbcSchemaHistoryTableConfig schema reference
 Used in: <<debezium-operator-schema-reference-jdbcschemahistorystore, `+JdbcSchemaHistoryStore+`>>
 
@@ -1015,7 +1017,7 @@ Used in: <<debezium-operator-schema-reference-jdbcschemahistorystore, `+JdbcSche
 |===
 
 
-[#debezium-operator-schema-reference-kafkaoffsetstore]
+[id="debezium-operator-schema-reference-kafkaoffsetstore"]
 === KafkaOffsetStore schema reference
 Used in: <<debezium-operator-schema-reference-offset, `+Offset+`>>
 
@@ -1056,7 +1058,7 @@ Used in: <<debezium-operator-schema-reference-offset, `+Offset+`>>
 | Additional store configuration properties.
 |===
 
-[#debezium-operator-schema-reference-kafkaschemahistorystore]
+[id="debezium-operator-schema-reference-kafkaschemahistorystore"]
 === KafkaSchemaHistoryStore schema reference
 Used in: <<debezium-operator-schema-reference-schemahistory, `+SchemaHistory+`>>
 
@@ -1092,7 +1094,7 @@ Used in: <<debezium-operator-schema-reference-schemahistory, `+SchemaHistory+`>>
 | Additional store configuration properties.
 |===
 
-[#debezium-operator-schema-reference-metadatatemplate]
+[id="debezium-operator-schema-reference-metadatatemplate"]
 === MetadataTemplate schema reference
 Used in: <<debezium-operator-schema-reference-podtemplate, `+PodTemplate+`>>
 
@@ -1114,7 +1116,7 @@ Used in: <<debezium-operator-schema-reference-podtemplate, `+PodTemplate+`>>
 |===
 
 
-[#debezium-operator-schema-reference-offset]
+[id="debezium-operator-schema-reference-offset"]
 === Offset schema reference
 Used in: <<debezium-operator-schema-reference-source, `+Source+`>>
 
@@ -1164,7 +1166,7 @@ Used in: <<debezium-operator-schema-reference-source, `+Source+`>>
 | Interval at which to try commiting offsets
 |===
 
-[#debezium-operator-schema-reference-podtemplate]
+[id="debezium-operator-schema-reference-podtemplate"]
 === PodTemplate schema reference
 Used in: <<debezium-operator-schema-reference-templates, `+Templates+`>>
 
@@ -1195,7 +1197,7 @@ Used in: <<debezium-operator-schema-reference-templates, `+Templates+`>>
 |===
 
 
-[#debezium-operator-schema-reference-probe]
+[id="debezium-operator-schema-reference-probe"]
 === Probe schema reference
 Used in: <<debezium-operator-schema-reference-probes, `+Probes+`>>
 
@@ -1225,7 +1227,7 @@ Used in: <<debezium-operator-schema-reference-probes, `+Probes+`>>
 | Number of failures in a row before the overall check has failed.
 |===
 
-[#debezium-operator-schema-reference-probes]
+[id="debezium-operator-schema-reference-probes"]
 === Probes schema reference
 Used in: <<debezium-operator-schema-reference-containertemplate, `+ContainerTemplate+`>>
 
@@ -1247,7 +1249,7 @@ Used in: <<debezium-operator-schema-reference-containertemplate, `+ContainerTemp
 |===
 
 
-[#debezium-operator-schema-reference-redisoffsetstore]
+[id="debezium-operator-schema-reference-redisoffsetstore"]
 === RedisOffsetStore schema reference
 Used in: <<debezium-operator-schema-reference-offset, `+Offset+`>>
 
@@ -1292,7 +1294,7 @@ Used in: <<debezium-operator-schema-reference-offset, `+Offset+`>>
 | Additional store configuration properties.
 |===
 
-[#debezium-operator-schema-reference-redisschemahistorystore]
+[id="debezium-operator-schema-reference-redisschemahistorystore"]
 === RedisSchemaHistoryStore schema reference
 Used in: <<debezium-operator-schema-reference-schemahistory, `+SchemaHistory+`>>
 
@@ -1338,7 +1340,7 @@ Used in: <<debezium-operator-schema-reference-schemahistory, `+SchemaHistory+`>>
 | Additional store configuration properties.
 |===
 
-[#debezium-operator-schema-reference-redisstorewaitconfig]
+[id="debezium-operator-schema-reference-redisstorewaitconfig"]
 === RedisStoreWaitConfig schema reference
 Used in: <<debezium-operator-schema-reference-redisoffsetstore, `+RedisOffsetStore+`>>, <<debezium-operator-schema-reference-redisschemahistorystore, `+RedisSchemaHistoryStore+`>>
 
@@ -1368,7 +1370,7 @@ Used in: <<debezium-operator-schema-reference-redisoffsetstore, `+RedisOffsetSto
 |===
 
 
-[#debezium-operator-schema-reference-schemahistory]
+[id="debezium-operator-schema-reference-schemahistory"]
 === SchemaHistory schema reference
 Used in: <<debezium-operator-schema-reference-source, `+Source+`>>
 
