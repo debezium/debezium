@@ -104,6 +104,10 @@ public class SetBinlogPositionSignal<P extends Partition> implements SignalActio
             throw new DebeziumException("Binlog position changed via signal. Restarting connector to apply new position.");
 
         }
+        catch (DebeziumException e) {
+            // Re-throw DebeziumException without wrapping (includes our restart exception)
+            throw e;
+        }
         catch (Exception e) {
             LOGGER.error("Failed to process {} signal", NAME, e);
             throw new DebeziumException("Failed to set binlog position", e);
