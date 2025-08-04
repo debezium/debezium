@@ -19,26 +19,26 @@ import io.debezium.spi.schema.DataCollectionId;
 
 /**
  * Provider for MySQL-specific signal actions.
- * 
+ *
  * @author Debezium Authors
  */
 public class MySqlSignalActionProvider implements SignalActionProvider {
-    
+
     @Override
     public <P extends Partition> Map<String, SignalAction<P>> createActions(
-            EventDispatcher<P, ? extends DataCollectionId> dispatcher,
-            ChangeEventSourceCoordinator<P, ?> changeEventSourceCoordinator,
-            CommonConnectorConfig connectorConfig) {
-        
+                                                                            EventDispatcher<P, ? extends DataCollectionId> dispatcher,
+                                                                            ChangeEventSourceCoordinator<P, ?> changeEventSourceCoordinator,
+                                                                            CommonConnectorConfig connectorConfig) {
+
         Map<String, SignalAction<P>> actions = new HashMap<>();
-        
+
         // Add MySQL-specific signal actions
         if (connectorConfig instanceof MySqlConnectorConfig) {
-            actions.put(SetBinlogPositionSignal.NAME, 
-                        new SetBinlogPositionSignal<>(dispatcher, changeEventSourceCoordinator, 
-                                                      (MySqlConnectorConfig) connectorConfig));
+            actions.put(SetBinlogPositionSignal.NAME,
+                    new SetBinlogPositionSignal<>(dispatcher, changeEventSourceCoordinator,
+                            (MySqlConnectorConfig) connectorConfig));
         }
-        
+
         return actions;
     }
 }
