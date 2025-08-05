@@ -399,7 +399,7 @@ node('release-node') {
                 }
                 sh "git commit -a -m '[release] Stable $RELEASE_VERSION for testing module deps'"
             }
-            mvnRelease(DEBEZIUM_DIR, DEBEZIUM_REPOSITORY_URL, CANDIDATE_BRANCH, '-Poracle-all')
+            mvnRelease(DEBEZIUM_DIR, DEBEZIUM_REPOSITORY_URL, CANDIDATE_BRANCH, '-Poracle-all -Dmaven.wagon.http.retryHandler.count=5')
             dir(DEBEZIUM_DIR) {
                 modifyFile('debezium-testing/debezium-testing-system/pom.xml') {
                     it.replaceFirst('<version.debezium.connector>.+</version.debezium.connector>', '<version.debezium.connector>\\${project.version}</version.debezium.connector>')
@@ -416,7 +416,7 @@ node('release-node') {
             ADDITIONAL_REPOSITORIES.each { id, repo ->
                 // Additional repositories (like Debezium Server) can have their own BOM
                 def repoBom = "debezium-${id}-bom/pom.xml"
-                def buildArgs = "-Dversion.debezium=$RELEASE_VERSION"
+                def buildArgs = "-Dversion.debezium=$RELEASE_VERSION -Dmaven.wagon.http.retryHandler.count=5"
                 dir("$id/${repo.subDir}") {
                     sh "git checkout -b $CANDIDATE_BRANCH"
                     // Obtain dependecies not available in Maven Central (introduced for Cassandra Enerprise)
