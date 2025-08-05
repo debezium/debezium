@@ -20,6 +20,7 @@ import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.connect.data.Struct;
+import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -888,10 +889,20 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
                     + "'lookup' (the default) use separate lookup to get the updated document; "
                     + "'post_image' use MongoDB post images (requires Mongo 6.0 or newer");
 
+    public static final Field CAPTURE_START_OP_TIME = Field.create("capture.start.op.time")
+            .withDisplayName("Capture from operation time")
+            .withType(Type.LONG)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 3))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(-1L)
+            .withDescription("If no existing offset is detected,  "
+                    + "Debezium will start streaming from given timestamp");
+
     public static final Field CAPTURE_SCOPE = Field.create("capture.scope")
             .withDisplayName("Capture scope")
             .withEnum(CaptureScope.class, CaptureScope.DEPLOYMENT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 3))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 4))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription("The scope of captured changes. "
@@ -904,7 +915,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
             .withDisplayName("Capture target")
             .withType(Type.STRING)
             .withValidation(MongoDbConnectorConfig::validateCaptureTarget)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 4))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 5))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription("The target to capture changes from. "
@@ -948,7 +959,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     public static final Field CURSOR_PIPELINE = Field.create("cursor.pipeline")
             .withDisplayName("Pipeline stages applied to the change stream cursor")
             .withType(Type.STRING)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 5))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 6))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withValidation(MongoDbConnectorConfig::validateChangeStreamPipeline)
@@ -960,7 +971,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     public static final Field CURSOR_PIPELINE_ORDER = Field.create("cursor.pipeline.order")
             .withDisplayName("Change stream cursor pipeline order")
             .withEnum(CursorPipelineOrder.class, CursorPipelineOrder.INTERNAL_FIRST)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 6))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 7))
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription("The order used to construct the effective MongoDB aggregation stream pipeline "
@@ -972,7 +983,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     public static final Field CURSOR_OVERSIZE_HANDLING_MODE = Field.create("cursor.oversize.handling.mode")
             .withDisplayName("Oversize document handling mode")
             .withEnum(OversizeHandlingMode.class, OversizeHandlingMode.FAIL)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 7))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 8))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("The strategy used to handle change events for documents exceeding specified BSON size. "
@@ -984,7 +995,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     public static final Field CURSOR_OVERSIZE_SKIP_THRESHOLD = Field.create("cursor.oversize.skip.threshold")
             .withDisplayName("Oversize document skip threshold")
             .withType(Type.INT)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 8))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 9))
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDefault(0)
@@ -1047,6 +1058,7 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
     }
 
     private final SnapshotMode snapshotMode;
+    private final Long startOperationTime;
     private final CaptureMode captureMode;
     private final FullUpdateType captureModeFullUpdateType;
     private final CaptureScope captureScope;
@@ -1102,6 +1114,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
         // Other configuration
         String snapshotModeValue = config.getString(MongoDbConnectorConfig.SNAPSHOT_MODE);
         this.snapshotMode = SnapshotMode.parse(snapshotModeValue, MongoDbConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
+
+        this.startOperationTime = config.getLong(CAPTURE_START_OP_TIME);
 
         String captureModeValue = config.getString(MongoDbConnectorConfig.CAPTURE_MODE);
         this.captureMode = CaptureMode.parse(captureModeValue, MongoDbConnectorConfig.CAPTURE_MODE.defaultValueAsString());
@@ -1256,6 +1270,13 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig implements Sha
      */
     public CaptureMode getCaptureMode() {
         return captureMode;
+    }
+
+    public Optional<BsonTimestamp> startAtOperationTime() {
+        if (CAPTURE_START_OP_TIME.defaultValue().equals(startOperationTime)) {
+            return Optional.empty();
+        }
+        return Optional.of(new BsonTimestamp(startOperationTime));
     }
 
     public FullUpdateType getCaptureModeFullUpdateType() {
