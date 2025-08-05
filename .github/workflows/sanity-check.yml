@@ -23,17 +23,41 @@ jobs:
           github_repository: ${{ github.repository }}
         run: |
           echo "PREFIX_COMMITS=false" >> $GITHUB_OUTPUT
-          
-          RESPONSE=$(curl --silent -X "GET" https://api.github.com/repos/$github_repository/pulls/$pull_request_number/commits)
-          
-          MESSAGE=$(echo "$RESPONSE" | jq -r '.[].commit.message // empty')
+
+          MAX_RETRIES=3
+          SUCCESS=0
+          ATTEMPT=1
+          DELAY=2
+
+          while [ $ATTEMPT -le $MAX_RETRIES ]; do 
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "Attempt number $ATTEMPT out of $MAX_RETRIES"
+            RESPONSE=$(curl --silent -w "%{http_code}" -X "GET" https://api.github.com/repos/$github_repository/pulls/$pull_request_number/commits)
+            HTTP_CODE="${RESPONSE: -3}"
+            BODY="${RESPONSE:: -3}"
+
+            if [ "$HTTP_CODE" -eq 200 ]; then
+              MESSAGE=$(echo "$BODY" | jq -r '.[].commit.message // empty')
+              SUCCESS=1
+              break
+            else
+              sleep $DELAY
+              DELAY=$((DELAY * 2))
+            fi
+          done
+
+          if [ $SUCCESS -ne 1 ]; then
+            echo "::error::No luck getting the commit messages after $MAX_RETRIES retries."
+            exit 1
+          fi
+
           if [[ "$MESSAGE" == "API rate limit exceeded"* ]]; then
             echo "::error::Github API rate limit exceeded. Skipping commit message check."
             exit 1
           fi
           
           NON_PREFIX_COMMITS=""
-          echo "$RESPONSE" | jq -r '.[] | .commit.message | split("\n")[0]' > COMMIT_MSGS.txt
+          echo "$BODY" | jq -r '.[] | .commit.message | split("\n")[0]' > COMMIT_MSGS.txt
           
           while IFS= read -r line; 
           do
