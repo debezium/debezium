@@ -7,6 +7,7 @@
 :linkattrs:
 :icons: font
 :source-highlighter: highlight.js
+:mbean-name: cassandra
 
 toc::[]
 
@@ -1035,69 +1036,80 @@ cassandra.driver.config.file=/path/to/application/configuration.conf
 Cassandra connector has built-in support for JMX metrics.
 The Cassandra driver also publishes a number of metrics about the driver's activities that can be monitored through JMX.
 The connector has two types of metrics.
-Snapshot metrics help you monitor the snapshot activity and are available when the connector is performing a snapshot.
-Binlog metrics help you monitor the progress and activity while the connector reads the Cassandra commit logs.
+
+* xref:cassandra-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
+* xref:cassandra-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.
 
 [[cassandra-snapshot-metrics]]
 ==== Snapshot Metrics
 
-[cols="30%a,10%a,60%a"]
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-snapshot]
+
+Snapshot metrics are not exposed unless a snapshot operation is active, or if a snapshot has occurred since the last connector start.
+
+The following table lists the snapshot metrics that are available.
+
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Attribute Name
 |Type
 |Description
 
-|`total-table-count`
+|`TotalTableCount`
 |`int`
 |The total number of tables that are being included in the snapshot.
 
-|`remaining-table-count`
+|`RemainingTableCount`
 |`int`
 |The number of tables that the snapshot has yet to copy.
 
-|`snapshot-running`
+|`SnapshotRunning`
 |`boolean`
 |Whether the snapshot was started.
 
-|`snapshot-aborted`
+|`SnapshotAborted`
 |`boolean`
 |Whether the snapshot was aborted.
 
-|`snapshot-completed`
+|`SnapshotCompleted`
 |`boolean`
 |Whether the snapshot completed.
 
-|`snapshot-during-in-seconds`
+|`SnapshotDurationInSeconds`
 |`long`
 |The total number of seconds that the snapshot has taken so far, even if not complete.
 
-|`rows-scanned`
+|`RowsScanned`
 |`Map<String, Long>`
 |Map containing the number of rows scanned for each table in the snapshot. Tables are incrementally added to the Map during processing. Updates every 10,000 rows scanned and upon completing a table.
 |===
 
-[[cassandra-commitlog-metrics]]
-==== Commitlog Metrics
+[[cassandra-streaming-metrics]]
+==== Streaming Metrics
 
-[cols="30%a,10%a,60%a"]
+include::{partialsdir}/modules/all-connectors/frag-common-mbean-name.adoc[leveloffset=+1,tags=common-streaming]
+
+The following table lists the streaming metrics that are available.
+
+[cols="30%a,25%a,45%a",options="header"]
 |===
 |Attribute Name
 |Type
 |Description
 
-|`commitlog-filename`
+|`CommitLogFilename`
 |`string`
 |The name of the commit log filename that the connector has most recently read.
 
-|`commitlog-position`
+|`CommitLogPosition`
 |`long`
 |The most recent position (in bytes) within the commit log that the connector has read.
 
-|`number-of-processed-mutations`
+|`NumberOfProcessedMutations`
 |`long`
 |The number of mutations that have been processed.
 
-|`number-of-unrecoverable-errors`
+|`NumberOfUnrecoverableErrors`
 |`long`
 |The number of unrecoverable errors while processing commit logs.
 
