@@ -818,7 +818,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                 return true;
             }
         }
-        else if (!getMetrics().getBatchMetrics().hasProcessedAnyTransactions()) {
+        else if (isNoDataProcessedInBatchAndAtEndOfArchiveLogs()) {
             if (endScn.compareTo(getMaximumArchiveLogsScn()) == 0) {
                 // Prior iteration mined up to the last entry in the archive logs and no data was returned.
                 return isArchiveLogOnlyModeAndScnIsNotAvailable(endScn.add(Scn.ONE));
