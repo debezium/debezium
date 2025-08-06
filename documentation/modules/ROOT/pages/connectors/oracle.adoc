@@ -2573,7 +2573,7 @@ Because the retention policy that is configured for each destination might diffe
 // ModuleID: configuration-of-the-connectors-oracle-user-account
 // Title: Configuration of the connector's Oracle user account
 [id="creating-users-for-the-connector"]
-=== Creating users for the connector
+=== Creating a user account for the connector
 
 For the {prodname} Oracle connector to capture change events, it must run as an Oracle LogMiner user that has specific permissions.
 
