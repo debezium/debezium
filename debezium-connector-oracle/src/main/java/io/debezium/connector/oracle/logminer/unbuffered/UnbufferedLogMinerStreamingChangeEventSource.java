@@ -484,24 +484,8 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
     }
 
     @Override
-    protected boolean waitForRangeAvailabilityInArchiveLogs(Scn startScn, Scn endScn) throws SQLException, InterruptedException {
-        if (endScn.isNull()) {
-            // There was no prior iteration yet, sanity check to verify starting SCN
-            if (isArchiveLogOnlyModeAndScnIsNotAvailable(startScn)) {
-                LOGGER.error("Could not find the start SCN {} in the archive logs, stopping connector.", startScn);
-                return true;
-            }
-        }
-        else if (!getMetrics().getBatchMetrics().hasProcessedAnyTransactions()) {
-            if (endScn.compareTo(getMaximumArchiveLogsScn()) == 0) {
-                // Prior iteration mined up to the last entry in the archive logs and no data was returned.
-                return isArchiveLogOnlyModeAndScnIsNotAvailable(endScn.add(Scn.ONE));
-            }
-            // The endScn + 1 is now available
-        }
-
-        // Connector loop should continue to iterate
-        return false;
+    protected boolean isNoDataProcessedInBatchAndAtEndOfArchiveLogs() {
+        return !getMetrics().getBatchMetrics().hasProcessedAnyTransactions();
     }
 
     /**
