@@ -9,8 +9,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import java.time.Duration;
-
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.ConnectHeaders;
@@ -144,7 +142,6 @@ public class EventDispatcherTest {
         when(signalProcessor.getSignalChannel(any())).thenReturn(sourceSignalChannel);
         when(config.getTransactionMetadataFactory()).thenReturn(transactionMetadataFactory);
         when(config.getTransactionMetadataFactory().getTransactionStructMaker()).thenReturn(transactionStructMaker);
-        when(config.getHeartbeatInterval()).thenReturn(Duration.ZERO);
 
         when(config.isExtendedHeadersEnabled()).thenReturn(true);
         when(cdcSourceTaskContext.getTaskId()).thenReturn("0");
@@ -178,7 +175,6 @@ public class EventDispatcherTest {
         when(signalProcessor.getSignalChannel(any())).thenReturn(sourceSignalChannel);
         when(config.getTransactionMetadataFactory()).thenReturn(transactionMetadataFactory);
         when(config.getTransactionMetadataFactory().getTransactionStructMaker()).thenReturn(transactionStructMaker);
-        when(config.getHeartbeatInterval()).thenReturn(Duration.ZERO);
 
         when(config.isExtendedHeadersEnabled()).thenReturn(false);
 
