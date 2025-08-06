@@ -24,35 +24,45 @@ jobs:
         run: |
           echo "PREFIX_COMMITS=false" >> $GITHUB_OUTPUT
 
-          MAX_RETRIES=3
-          SUCCESS=0
-          ATTEMPT=1
-          DELAY=2
+          make_api_call_with_retries() {
+            local URL="$1"
+            local MAX_RETRIES="${2:-3}"
+            local DELAY="${3:-2}"
+            local ATTEMPT=1
 
-          while [ $ATTEMPT -le $MAX_RETRIES ]; do 
-            ATTEMPT=$((ATTEMPT + 1))
-            echo "Attempt number $ATTEMPT out of $MAX_RETRIES"
-            RESPONSE=$(curl --silent -w "%{http_code}" -X "GET" https://api.github.com/repos/$github_repository/pulls/$pull_request_number/commits)
-            HTTP_CODE="${RESPONSE: -3}"
-            BODY="${RESPONSE:: -3}"
-
-            if [ "$HTTP_CODE" -eq 200 ]; then
-              MESSAGE=$(echo "$BODY" | jq -r '.[].commit.message // empty')
-              SUCCESS=1
-              break
-            else
-              sleep $DELAY
-              DELAY=$((DELAY * 2))
+            if [[ -z "$URL" ]]; then
+              echo "::error:: No URL provided to call_api_with_retries." >&2
+              return 1
             fi
-          done
 
-          if [ $SUCCESS -ne 1 ]; then
-            echo "::error::No luck getting the commit messages after $MAX_RETRIES retries."
+            while [ $ATTEMPT -le $MAX_RETRIES ]; do
+              RESPONSE=$(curl --silent -w "%{http_code}" -X "GET" $URL)
+              HTTP_CODE="${RESPONSE: -3}"
+              BODY="${RESPONSE:: -3}"
+
+              if [ "$HTTP_CODE" -eq 200 ]; then
+                echo "$BODY"
+                return 0
+              else
+                sleep "$DELAY"
+                DELAY=$((DELAY * 2))
+              fi
+
+              ATTEMPT=$((ATTEMPT + 1))
+            done
+
+            echo "::error:: No luck getting a successful response after $MAX_RETRIES retries." >&2
+            return 1
+          }
+
+          if ! RESPONSE=$(make_api_call_with_retries "https://api.github.com/repos/$github_repository/pulls/$pull_request_number/commits"); then
+            echo "::error:: No luck getting the commit messages."
             exit 1
           fi
 
+          MESSAGE=$(echo "$RESPONSE" | jq -r '.[].commit.message // empty')
           if [[ "$MESSAGE" == "API rate limit exceeded"* ]]; then
-            echo "::error::Github API rate limit exceeded. Skipping commit message check."
+            echo "::error:: Github API rate limit exceeded. Skipping commit message check."
             exit 1
           fi
           
