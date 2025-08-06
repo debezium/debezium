@@ -1170,8 +1170,10 @@ The schema describes the structure of the payload, while the payload contains th
 
 [WARNING]
 ====
-Changes that are performed by the `SYS` or `SYSTEM` user accounts are not captured by the connector.
+The connector can capture both DDL and DML changes that result from user-initiated or application-level operations.
+It can also capture DML changes that originate from `SYS` or `SYSTEM` accounts.
 ====
+
 ifdef::product[]
 The following topics contain more details about data change events:
 
@@ -2567,23 +2569,41 @@ If your Oracle environment includes multiple destinations that satisfy that crit
 Because the retention policy that is configured for each destination might differ, this can lead to errors if the connector selects a path from which the requested log data was deleted.
 ====
 
-// Type: procedure
-// ModuleID: creating-an-oracle-user-for-the-debezium-oracle-connector
-// Title: Creating an Oracle user for the {prodname} Oracle connector
+// Type: concept
+// ModuleID: configuration-of-the-connectors-oracle-user-account
+// Title: Configuration of the connector's Oracle user account
 [id="creating-users-for-the-connector"]
 === Creating users for the connector
 
 For the {prodname} Oracle connector to capture change events, it must run as an Oracle LogMiner user that has specific permissions.
-The following example shows the SQL for creating an Oracle user account for the connector in a multi-tenant database model.
 
-[WARNING]
+Typically, when you create the Oracle account for the connector, you grant the account a level of access that permits the connector to detect changes from all tables in the database.
+However, in some environments, security policies might prohibit you from granting such a broad level of access.
+
+// I removed the admonition that duplicates the one in the Data change events topic on L1171
+
+The following example shows the SQL for creating an Oracle user account for the connector in a multi-tenant database model.
+The grant settings in the example permit the {prodname} user to access all user tables in the database.
+
+To comply with security policies, you can modify the `SELECT ANY TABLE` and `FLASHBACK ANY TABLE` grants so that the connector can access only those tables that you intend to capture.
+
+Do not modify other grants, such as the
+ifdef::community[]
+`SELECT ANY TRANSACTION` grant, or the
+endif::community[]
+set of `SELECT ON V_$` grants, which provide access to dynamic performance views (V$).
+These grants are required for the connector to function.
+
+[IMPORTANT]
 ====
-The connector captures database changes that are made by its own Oracle user account.
-However, it does not capture changes that are made by the `SYS` or `SYSTEM` user accounts.
+To prevent data loss, if you restrict the scope of the `SELECT` and `FLASHBACK` grants, be sure that the modified scope is compatible with the settings in the connector's `include` configuration.
+The grants must permit the connector to read from all tables that you want the connector to capture.
 ====
+
 
 [[oracle-create-users-logminer]]
 .Creating the connector's LogMiner user
+====
 [source,sql,indent=0]
 ----
 sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
@@ -2635,6 +2655,7 @@ sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
 
   exit;
 ----
+====
 
 .Descriptions of permissions / grants
 [cols="1,4,5",options="header"]
@@ -2674,9 +2695,16 @@ Optionally, rather than granting `SELECT` permission on all tables, you can gran
 
 |8
 |SELECT ANY TRANSACTION
-|Enables the snapshot process to perform a Flashback snapshot query against any transaction.
+|Enables the snapshot process to perform a Flashback snapshot query against any transaction so that the connector can read past changes from LogMiner.
 When `FLASHBACK ANY TABLE` is granted, this should also be granted.
-
+ifdef::product[]
+Setting this grant is optional.
+The connector obtains the required privileges through the `EXECUTE_CATALOG_ROLE` and `LOGMINING` grants.
+endif::product[]
+ifdef::community[]
+This grant is optional for Oracle 12c and later.
+The connector obtains the required privileges through the `EXECUTE_CATALOG_ROLE` and `LOGMINING` grants.
+endif::community[]
 |9
 |LOGMINING
 |This role was added in newer versions of Oracle as a way to grant full access to Oracle LogMiner and its
