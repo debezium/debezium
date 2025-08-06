@@ -2597,7 +2597,7 @@ These grants are required for the connector to function.
 [IMPORTANT]
 ====
 To prevent data loss, if you restrict the scope of the `SELECT` and `FLASHBACK` grants, be sure that the modified scope is compatible with the settings in the connector's `include` configuration.
-The grants must permit the connector to read from all tables that you want the connector to capture.
+The privileges that you set for the account must permit reading from all of the tables that you want the connector to capture.
 ====
 
 
@@ -2703,7 +2703,8 @@ The connector obtains the required privileges through the `EXECUTE_CATALOG_ROLE`
 endif::product[]
 ifdef::community[]
 This grant is optional for Oracle 12c and later.
-The connector obtains the required privileges through the `EXECUTE_CATALOG_ROLE` and `LOGMINING` grants.
+
+In those later releases, the connector obtains the required privileges through the `EXECUTE_CATALOG_ROLE` and `LOGMINING` grants.
 endif::community[]
 |9
 |LOGMINING
