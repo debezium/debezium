@@ -20,14 +20,50 @@ jobs:
           pull_request_number: ${{ github.event.pull_request.number }}
         run: |
           echo "OCTOCAT_COMMIT_FOUND=false" >> $GITHUB_OUTPUT
-          RESPONSE=$(curl --silent -X "GET" https://api.github.com/repos/debezium/debezium/pulls/$pull_request_number/commits)
+
+          make_api_call_with_retries() {
+            local URL="$1"
+            local MAX_RETRIES="${2:-3}"
+            local DELAY="${3:-2}"
+            local ATTEMPT=1
+
+            if [[ -z "$URL" ]]; then
+              echo "::error:: No URL provided to call_api_with_retries." >&2
+              return 1
+            fi
+
+            while [ $ATTEMPT -le $MAX_RETRIES ]; do
+              RESPONSE=$(curl --silent -w "%{http_code}" -X "GET" $URL)
+              HTTP_CODE="${RESPONSE: -3}"
+              BODY="${RESPONSE:: -3}"
+
+              if [ "$HTTP_CODE" -eq 200 ]; then
+                echo "$BODY"
+                return 0
+              else
+                sleep "$DELAY"
+                DELAY=$((DELAY * 2))
+              fi
+
+              ATTEMPT=$((ATTEMPT + 1))
+            done
+
+            echo "::error:: No luck getting a successful response after $MAX_RETRIES retries." >&2
+            return 1
+          }
+
+          if ! RESPONSE=$(make_api_call_with_retries "https://api.github.com/repos/debezium/debezium/pulls/$pull_request_number/commits"); then
+            echo "::error:: No luck getting the octocat commit messages."
+            exit 1
+          fi
+
           MESSAGE=$(echo "$RESPONSE" | jq -r '.[].commit.message // empty')
-          
+
           echo "Response:\n$RESPONSE"
           echo "Message:\n$MESSAGE"
           
           if [[ "$MESSAGE" == "API rate limit exceeded"* ]]; then
-            echo "::error::Github API rate limit exceeded. Skipping octocat check."
+            echo "::error:: Github API rate limit exceeded. Skipping octocat check."
             exit 1
           fi
           
