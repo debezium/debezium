@@ -23,6 +23,22 @@ import io.debezium.sink.valuebinding.ValueBindDescriptor;
  * The PostgreSQL connector serializes {@code tsvector} data using the Debezium semantic type
  * {@link io.debezium.data.TsVector}, which represents the structured content of a tsvector field.
  *
+ * Note: Since {@code tsvector} is specific to PostgreSQL and not natively supported by other databases,
+ * the JDBC sink connector maps this type to a compatible textual data type in other target systems.
+ *
+ * The mapping logic (as used in test cases) is as follows:
+ * <ul>
+ *     <li>PostgreSQL → {@code tsvector}</li>
+ *     <li>MySQL → {@code longtext}</li>
+ *     <li>SQL Server → {@code varchar}</li>
+ *     <li>Oracle → {@code VARCHAR2}</li>
+ *     <li>Db2 → {@code CLOB}</li>
+ *     <li>Default/others → {@code text}</li>
+ * </ul>
+ *
+ * This approach ensures compatibility across heterogeneous sink systems, enabling full-text
+ * content replication even when native support for {@code tsvector} is not available.
+ *
  * @author Pranav Tiwari
  */
 public class TsvectorType extends AbstractType {
