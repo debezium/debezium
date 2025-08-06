@@ -2927,8 +2927,12 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 List.of("to_tsvector('english', 'This is a test for direct tsvector insert')"),
                 List.of("'direct':6 'insert':8 'test':4 'tsvector':7"),
                 (record) -> {
-                    String actualDataType = resolveExpectedDataType(sink);
-                    assertColumn(sink, record, "data", actualDataType);
+                    if (sink.getType().is(SinkType.POSTGRES)) {
+                        assertColumn(sink, record, "data", "tsvector");
+                    }
+                    else {
+                        assertColumn(sink, record, "data", getTextType(false));
+                    }
                 },
                 ResultSet::getString);
     }
@@ -2942,29 +2946,14 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 List.of("'full:3 postgre:1 search:5 support:2 text:4'"),
                 List.of("'full':3 'postgre':1 'search':5 'support':2 'text':4"),
                 (record) -> {
-                    String actualDataType = resolveExpectedDataType(sink);
-                    assertColumn(sink, record, "data", actualDataType);
+                    if (sink.getType().is(SinkType.POSTGRES)) {
+                        assertColumn(sink, record, "data", "tsvector");
+                    }
+                    else {
+                        assertColumn(sink, record, "data", getTextType(false));
+                    }
                 },
                 ResultSet::getString);
-    }
-
-    private String resolveExpectedDataType(Sink sink) {
-        SinkType sinkType = sink.getType();
-
-        switch (sinkType) {
-            case DB2:
-                return "CLOB";
-            case SQLSERVER:
-                return "varchar";
-            case MYSQL:
-                return "longtext";
-            case POSTGRES:
-                return "tsvector";
-            case ORACLE:
-                return "VARCHAR2";
-            default:
-                return "text";
-        }
     }
 
     private static List<ZonedDateTime> getExpectedZonedDateTimes(Sink sink) {
