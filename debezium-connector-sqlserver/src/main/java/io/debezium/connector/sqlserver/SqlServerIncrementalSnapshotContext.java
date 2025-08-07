@@ -7,11 +7,11 @@ package io.debezium.connector.sqlserver;
 
 import java.util.Map;
 
-import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotContext;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotContext;
+import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.relational.TableId;
 
-public class SqlServerIncrementalSnapshotContext<T> extends AbstractIncrementalSnapshotContext<T> {
+public class SqlServerIncrementalSnapshotContext<T> extends SignalBasedIncrementalSnapshotContext<T> {
 
     public SqlServerIncrementalSnapshotContext() {
         this(true);

@@ -56,7 +56,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     public static final String EVENT_PRIMARY_KEY = INCREMENTAL_SNAPSHOT_KEY + "_primary_key";
     public static final String TABLE_MAXIMUM_KEY = INCREMENTAL_SNAPSHOT_KEY + "_maximum_key";
     public static final String CORRELATION_ID = INCREMENTAL_SNAPSHOT_KEY + "_correlation_id";
-    private final SnapshotDataCollection<T> snapshotDataCollection = new SnapshotDataCollection<>();
+    private final SnapshotDataCollection<T> snapshotDataCollection = new SnapshotDataCollection<>(this);
 
     /**
      * {@code true} if window is opened and deduplication should be executed
@@ -202,14 +202,13 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         }
         offset.put(EVENT_PRIMARY_KEY, arrayToSerializedString(lastEventKeySent));
         offset.put(TABLE_MAXIMUM_KEY, arrayToSerializedString(maximumKey));
-        offset.put(SnapshotDataCollection.DATA_COLLECTIONS_TO_SNAPSHOT_KEY,
-                snapshotDataCollection.dataCollectionsAsJsonString(this));
+        offset.put(SnapshotDataCollection.DATA_COLLECTIONS_TO_SNAPSHOT_KEY, snapshotDataCollection.dataCollectionsAsJsonString());
         offset.put(CORRELATION_ID, correlationId);
         return offset;
     }
 
     private void addTablesIdsToSnapshot(List<DataCollection<T>> dataCollectionIds) {
-        snapshotDataCollection.add(dataCollectionIds, this);
+        snapshotDataCollection.add(dataCollectionIds);
     }
 
     @SuppressWarnings("unchecked")
@@ -261,7 +260,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
     @SuppressWarnings("unchecked")
     public boolean removeDataCollectionFromSnapshot(String dataCollectionId) {
         final T collectionId = (T) TableId.parse(dataCollectionId, useCatalogBeforeSchema);
-        return snapshotDataCollection.remove(List.of(new DataCollection<>(collectionId)), this);
+        return snapshotDataCollection.remove(List.of(new DataCollection<>(collectionId)));
     }
 
     @Override
@@ -291,7 +290,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         final String dataCollectionsStr = (String) offsets.get(SnapshotDataCollection.DATA_COLLECTIONS_TO_SNAPSHOT_KEY);
         context.snapshotDataCollection.clear();
         if (dataCollectionsStr != null) {
-            context.addTablesIdsToSnapshot(context.snapshotDataCollection.stringToDataCollections(dataCollectionsStr, context));
+            context.addTablesIdsToSnapshot(context.snapshotDataCollection.stringToDataCollections(dataCollectionsStr));
         }
         context.correlationId = (String) offsets.get(CORRELATION_ID);
         return context;
@@ -336,7 +335,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
 
     public DataCollection<T> nextDataCollection() {
         resetChunk();
-        return snapshotDataCollection.getNext(this);
+        return snapshotDataCollection.getNext();
     }
 
     public void startNewChunk() {
@@ -400,19 +399,21 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
         private final TypeReference<List<LinkedHashMap<String, String>>> mapperTypeRef = new TypeReference<>() {
         };
         private final Queue<DataCollection<T>> dataCollectionsToSnapshot = new LinkedList<>();
+        private final AbstractIncrementalSnapshotContext<T> context;
         private String dataCollectionsToSnapshotJson;
 
-        SnapshotDataCollection() {
+        SnapshotDataCollection(AbstractIncrementalSnapshotContext<T> context) {
+            this.context = context;
         }
 
-        void add(List<DataCollection<T>> dataCollectionIds, AbstractIncrementalSnapshotContext<T> context) {
+        void add(List<DataCollection<T>> dataCollectionIds) {
             this.dataCollectionsToSnapshot.addAll(dataCollectionIds);
-            this.dataCollectionsToSnapshotJson = computeJsonString(context);
+            this.dataCollectionsToSnapshotJson = computeJsonString();
         }
 
-        DataCollection<T> getNext(AbstractIncrementalSnapshotContext<T> context) {
+        DataCollection<T> getNext() {
             DataCollection<T> nextDataCollection = this.dataCollectionsToSnapshot.poll();
-            this.dataCollectionsToSnapshotJson = computeJsonString(context);
+            this.dataCollectionsToSnapshotJson = computeJsonString();
             return nextDataCollection;
         }
 
@@ -433,13 +434,13 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
             return this.dataCollectionsToSnapshot.isEmpty();
         }
 
-        public boolean remove(List<DataCollection<T>> toRemove, AbstractIncrementalSnapshotContext<T> context) {
+        public boolean remove(List<DataCollection<T>> toRemove) {
             boolean removed = this.dataCollectionsToSnapshot.removeAll(toRemove);
-            this.dataCollectionsToSnapshotJson = computeJsonString(context);
+            this.dataCollectionsToSnapshotJson = computeJsonString();
             return removed;
         }
 
-        public String dataCollectionsAsJsonString(AbstractIncrementalSnapshotContext<T> context) {
+        public String dataCollectionsAsJsonString() {
 
             if (!Strings.isNullOrEmpty(dataCollectionsToSnapshotJson)) {
                 // A cached value to improve performance since this method is called in the "store"
@@ -447,21 +448,21 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
                 return dataCollectionsToSnapshotJson;
             }
 
-            return computeJsonString(context);
+            return computeJsonString();
         }
 
         public Queue<DataCollection<T>> getDataCollectionsToSnapshot() {
             return this.dataCollectionsToSnapshot;
         }
 
-        private String computeJsonString(AbstractIncrementalSnapshotContext<T> context) {
+        private String computeJsonString() {
             // TODO Handle non-standard table ids containing dots, commas etc.
 
             try {
                 List<LinkedHashMap<String, String>> dataCollectionsMap = dataCollectionsToSnapshot.stream()
                         .map(x -> {
                             LinkedHashMap<String, String> map = new LinkedHashMap<>();
-                            map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID, getStringFromId(x.getId(), context));
+                            map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ID, getStringFromId(x.getId()));
                             map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_ADDITIONAL_CONDITION, x.getAdditionalCondition().orElse(null));
                             map.put(DATA_COLLECTIONS_TO_SNAPSHOT_KEY_SURROGATE_KEY, x.getSurrogateKey().orElse(null));
                             return map;
@@ -475,7 +476,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
             }
         }
 
-        private List<DataCollection<T>> stringToDataCollections(String dataCollectionsStr, AbstractIncrementalSnapshotContext context) {
+        private List<DataCollection<T>> stringToDataCollections(String dataCollectionsStr) {
             try {
                 List<LinkedHashMap<String, String>> dataCollections = mapper.readValue(dataCollectionsStr, mapperTypeRef);
                 return dataCollections.stream()
@@ -489,7 +490,7 @@ public class AbstractIncrementalSnapshotContext<T> implements IncrementalSnapsho
             }
         }
 
-        private String getStringFromId(T id, AbstractIncrementalSnapshotContext context) {
+        private String getStringFromId(T id) {
             if (id instanceof TableId) {
                 return context.getPredicateBasedTableIdForId((TableId) id).toString();
             }
