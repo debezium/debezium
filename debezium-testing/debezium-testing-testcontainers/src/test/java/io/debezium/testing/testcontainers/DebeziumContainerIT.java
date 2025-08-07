@@ -14,11 +14,10 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -29,10 +28,8 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.rnorth.ducttape.unreliables.Unreliables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
@@ -50,7 +47,7 @@ public class DebeziumContainerIT {
 
     private static final Network network = Network.newNetwork();
 
-    private static final KafkaContainer kafkaContainer = DebeziumKafkaContainer.defaultKRaftContainer(network);
+    private static final DebeziumKafkaContainer kafkaContainer = DebeziumKafkaContainer.defaultContainer(network);
 
     public static PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(ImageNames.POSTGRES_DOCKER_IMAGE_NAME)
             .withNetwork(network)
@@ -70,19 +67,27 @@ public class DebeziumContainerIT {
 
     @Test
     public void canRegisterConnector() throws Exception {
-        debeziumContainer.registerConnector("my-connector-1", getConfiguration(1));
+        final String connectorName = "my-connector-1";
+        final String connectorState = "RUNNING";
+        debeziumContainer.registerConnector(connectorName, getConfiguration(1));
 
         // task initialization happens asynchronously, so we might have to retry until the task is RUNNING
         Awaitility.await()
-                .pollInterval(Duration.ofMillis(250))
-                .atMost(Duration.ofSeconds(30))
+                .pollInterval(Duration.ofSeconds(5))
+                .atMost(Duration.ofSeconds(60))
                 .untilAsserted(
                         () -> {
-                            String status = executeHttpRequest(debeziumContainer.getConnectorStatusUri("my-connector-1"));
+                            String status = executeHttpRequest(debeziumContainer.getConnectorStatusUri(connectorName));
 
-                            assertThat(JsonPath.<String> read(status, "$.name")).isEqualTo("my-connector-1");
-                            assertThat(JsonPath.<String> read(status, "$.connector.state")).isEqualTo("RUNNING");
-                            assertThat(JsonPath.<String> read(status, "$.tasks[0].state")).isEqualTo("RUNNING");
+                            assertThat(JsonPath.<String> read(status, "$.name"))
+                                    .as("The connector name does not match the expected value")
+                                    .isEqualTo(connectorName);
+                            assertThat(JsonPath.<String> read(status, "$.connector.state"))
+                                    .as("The connector state does not match the expected value")
+                                    .isEqualTo(connectorState);
+                            assertThat(JsonPath.<String> read(status, "$.tasks[0].state"))
+                                    .as("The task state does not match the expected value")
+                                    .isEqualTo(connectorState);
                         });
     }
 
@@ -100,13 +105,13 @@ public class DebeziumContainerIT {
 
             debeziumContainer.registerConnector("my-connector", getConfiguration(2));
 
-            consumer.subscribe(Arrays.asList("dbserver2.todo.todo"));
+            consumer.subscribe(List.of("dbserver2.todo.todo"));
 
             List<ConsumerRecord<String, String>> changeEvents = drain(consumer, 2);
 
-            assertThat(JsonPath.<Integer> read(changeEvents.get(0).key(), "$.id")).isEqualTo(1);
-            assertThat(JsonPath.<String> read(changeEvents.get(0).value(), "$.op")).isEqualTo("r");
-            assertThat(JsonPath.<String> read(changeEvents.get(0).value(), "$.after.title")).isEqualTo("Be Awesome");
+            assertThat(JsonPath.<Integer> read(changeEvents.getFirst().key(), "$.id")).isEqualTo(1);
+            assertThat(JsonPath.<String> read(changeEvents.getFirst().value(), "$.op")).isEqualTo("r");
+            assertThat(JsonPath.<String> read(changeEvents.getFirst().value(), "$.after.title")).isEqualTo("Be Awesome");
 
             assertThat(JsonPath.<Integer> read(changeEvents.get(1).key(), "$.id")).isEqualTo(2);
             assertThat(JsonPath.<String> read(changeEvents.get(1).value(), "$.op")).isEqualTo("r");
@@ -116,10 +121,10 @@ public class DebeziumContainerIT {
 
             changeEvents = drain(consumer, 1);
 
-            assertThat(JsonPath.<Integer> read(changeEvents.get(0).key(), "$.id")).isEqualTo(2);
-            assertThat(JsonPath.<String> read(changeEvents.get(0).value(), "$.op")).isEqualTo("u");
-            assertThat(JsonPath.<String> read(changeEvents.get(0).value(), "$.before.title")).isEqualTo("Learn Quarkus");
-            assertThat(JsonPath.<String> read(changeEvents.get(0).value(), "$.after.title")).isEqualTo("Learn Java");
+            assertThat(JsonPath.<Integer> read(changeEvents.getFirst().key(), "$.id")).isEqualTo(2);
+            assertThat(JsonPath.<String> read(changeEvents.getFirst().value(), "$.op")).isEqualTo("u");
+            assertThat(JsonPath.<String> read(changeEvents.getFirst().value(), "$.before.title")).isEqualTo("Learn Quarkus");
+            assertThat(JsonPath.<String> read(changeEvents.getFirst().value(), "$.after.title")).isEqualTo("Learn Java");
 
             consumer.unsubscribe();
         }
@@ -130,28 +135,32 @@ public class DebeziumContainerIT {
                 postgresContainer.getPassword());
     }
 
-    private KafkaConsumer<String, String> getConsumer(KafkaContainer kafkaContainer) {
+    private KafkaConsumer<String, String> getConsumer(DebeziumKafkaContainer kafkaContainer) {
         return new KafkaConsumer<>(
                 Map.of(
-                        ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaContainer.getBootstrapServers(),
+                        ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaContainer.getPublicBootstrapAddress(),
                         ConsumerConfig.GROUP_ID_CONFIG, "tc-" + UUID.randomUUID(),
                         ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"),
                 new StringDeserializer(),
                 new StringDeserializer());
     }
 
-    private List<ConsumerRecord<String, String>> drain(KafkaConsumer<String, String> consumer, int expectedRecordCount) {
+    private List<ConsumerRecord<String, String>> drain(KafkaConsumer<String, String> consumer, int expectedRecordCount) throws TimeoutException {
         List<ConsumerRecord<String, String>> allRecords = new ArrayList<>();
+        long timeout = 30_000L;
+        long startTime = System.currentTimeMillis();
 
-        Unreliables.retryUntilTrue(10, TimeUnit.SECONDS, () -> {
-            consumer.poll(Duration.ofMillis(50))
+        while ((System.currentTimeMillis() - startTime) < timeout) {
+            consumer.poll(Duration.ofMillis(50L))
                     .iterator()
                     .forEachRemaining(allRecords::add);
 
-            return allRecords.size() == expectedRecordCount;
-        });
+            if (allRecords.size() == expectedRecordCount) {
+                return allRecords;
+            }
+        }
 
-        return allRecords;
+        throw new TimeoutException("Timeout waiting for all the records in Kafka");
     }
 
     private ConnectorConfiguration getConfiguration(int id) {

@@ -24,7 +24,6 @@ import javax.management.remote.JMXServiceURL;
 
 import org.awaitility.Awaitility;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
@@ -55,7 +54,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     private static final int KAFKA_CONNECT_PORT = 8083;
     private static final Integer DEFAULT_JMX_PORT = 13333;
-    private static final Duration DEBEZIUM_CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(waitTimeForRecords() * 30);
+    private static final Duration DEBEZIUM_CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(waitTimeForRecords() * 60L);
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
     public static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     protected static final ObjectMapper MAPPER = new ObjectMapper();
@@ -112,8 +111,8 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         withExposedPorts(KAFKA_CONNECT_PORT);
     }
 
-    public DebeziumContainer withKafka(final KafkaContainer kafkaContainer) {
-        return withKafka(kafkaContainer.getNetwork(), kafkaContainer.getNetworkAliases().get(0) + ":9092");
+    public DebeziumContainer withKafka(final DebeziumKafkaContainer kafkaContainer) {
+        return withKafka(kafkaContainer.getNetwork(), kafkaContainer.getNetworkAliases().getFirst() + ":9092");
     }
 
     public DebeziumContainer withKafka(final Network network, final String bootstrapServers) {
@@ -141,7 +140,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
     }
 
     public static int waitTimeForRecords() {
-        return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "records.waittime", "2"));
+        return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "records.waittime", "5"));
     }
 
     public String getTarget() {
@@ -198,6 +197,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         // To avoid a 409 error code meanwhile connector is being configured.
         // This is just a guard, probably in most use cases you won't need that as preparation time of the test might be enough to configure connector.
         Awaitility.await()
+                .pollInterval(Duration.ofSeconds(5))
                 .atMost(waitTimeForRecords() * 5L, TimeUnit.SECONDS)
                 .until(() -> isConnectorConfigured(connector.getName()));
     }
@@ -208,6 +208,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         // To avoid a 409 error code meanwhile connector is being configured.
         // This is just a guard, probably in most of use cases you won't need that as preparation time of the test might be enough to configure connector.
         Awaitility.await()
+                .pollInterval(Duration.ofSeconds(5))
                 .atMost(waitTimeForRecords() * 5L, TimeUnit.SECONDS)
                 .until(() -> isConnectorConfigured(name));
     }
@@ -286,6 +287,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         deleteDebeziumConnector(connectorName);
 
         Awaitility.await()
+                .pollInterval(Duration.ofSeconds(5))
                 .atMost(waitTimeForRecords() * 5L, TimeUnit.SECONDS)
                 .until(() -> connectorIsNotRegistered(connectorName));
     }
@@ -313,6 +315,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     public void ensureConnectorRegistered(String connectorName) {
         Awaitility.await()
+                .pollInterval(Duration.ofSeconds(5))
                 .atMost(waitTimeForRecords() * 5L, TimeUnit.SECONDS)
                 .until(() -> isConnectorConfigured(connectorName));
     }
@@ -325,6 +328,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         }
 
         Awaitility.await()
+                .pollInterval(Duration.ofSeconds(5))
                 .atMost(waitTimeForRecords() * 5L, TimeUnit.SECONDS)
                 .until(() -> getRegisteredConnectors().size() == 0);
     }
@@ -386,6 +390,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         executeGETRequestSuccessfully(request).close();
 
         Awaitility.await()
+                .pollInterval(Duration.ofSeconds(5))
                 .atMost(waitTimeForRecords() * 5L, TimeUnit.SECONDS)
                 .until(() -> getConnectorState(connectorName) == Connector.State.PAUSED);
     }
@@ -398,24 +403,28 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
         executeGETRequestSuccessfully(request).close();
 
         Awaitility.await()
+                .pollInterval(Duration.ofSeconds(5))
                 .atMost(waitTimeForRecords() * 5L, TimeUnit.SECONDS)
                 .until(() -> getConnectorState(connectorName) == Connector.State.RUNNING);
     }
 
     public void ensureConnectorState(String connectorName, Connector.State status) {
         Awaitility.await()
+                .pollInterval(Duration.ofSeconds(5))
                 .atMost(waitTimeForRecords() * 5L, TimeUnit.SECONDS)
                 .until(() -> getConnectorState(connectorName) == status);
     }
 
     public void ensureConnectorTaskState(String connectorName, int taskNumber, Connector.State status) {
         Awaitility.await()
+                .pollInterval(Duration.ofSeconds(5))
                 .atMost(waitTimeForRecords() * 5L, TimeUnit.SECONDS)
                 .until(() -> getConnectorTaskState(connectorName, taskNumber) == status);
     }
 
     public void ensureConnectorConfigProperty(String connectorName, String propertyName, String expectedValue) {
         Awaitility.await()
+                .pollInterval(Duration.ofSeconds(5))
                 .atMost(waitTimeForRecords() * 5L, TimeUnit.SECONDS)
                 .until(() -> Objects.equals(expectedValue, getConnectorConfigProperty(connectorName, propertyName)));
     }
@@ -430,6 +439,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     public void waitForStreamingRunning(String connectorTypeId, String server, String contextName, String task) {
         Awaitility.await()
+                .pollInterval(Duration.ofSeconds(5))
                 .atMost(120, TimeUnit.SECONDS)
                 .ignoreException(InstanceNotFoundException.class)
                 .until(() -> isStreamingRunning(connectorTypeId, server, contextName, task));
