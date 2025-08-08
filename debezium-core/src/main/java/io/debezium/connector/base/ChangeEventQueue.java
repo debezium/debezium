@@ -35,6 +35,31 @@ import io.debezium.util.LoggingContext.PreviousContext;
 import io.debezium.util.Threads;
 import io.debezium.util.Threads.Timer;
 
+/**
+ * A queue which serves as handover point between producer threads (e.g. MySQL's
+ * binlog reader thread) and the Kafka Connect polling loop.
+ * <p>
+ * The queue is configurable in different aspects, e.g. its maximum size and the
+ * time to sleep (block) between two subsequent poll calls. See the
+ * {@link Builder} for the different options. The queue applies back-pressure
+ * semantics, i.e. if it holds the maximum number of elements, subsequent calls
+ * to {@link #enqueue(T)} will block until elements have been removed from
+ * the queue.
+ * <p>
+ * If an exception occurs on the producer side, the producer should make that
+ * exception known by calling {@link #producerException(RuntimeException)} before stopping its
+ * operation. Upon the next call to {@link #poll()}, that exception will be
+ * raised, causing Kafka Connect to stop the connector and mark it as
+ * {@code FAILED}.
+ *
+ * @author Gunnar Morling
+ *
+ * @param <T>
+ *            the type of events in this queue. Usually {@link Sizeable} is
+ *            used, but in cases where additional metadata must be passed from
+ *            producers to the consumer, a custom type extending source records
+ *            may be used.
+ */
 @ThreadSafe
 public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMetrics {
 
@@ -124,6 +149,15 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
             return this;
         }
 
+        /**
+         * Sets a custom {@link QueueProvider} implementation to be used by the {@link ChangeEventQueue}.
+         * <p>
+         * If not set, a default provider will be used internally based on the max queue size.
+         * This allows for custom queue behavior or instrumentation if needed.
+         *
+         * @param queueProvider the queue provider to use; may be {@code null}, in which case a default will be used
+         * @return this builder instance for method chaining
+         */
         public ChangeEventQueue.Builder<T> queueProvider(QueueProvider<T> queueProvider) {
             this.queueProvider = queueProvider;
             return this;
@@ -135,7 +169,9 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
         }
 
         public ChangeEventQueue<T> build() {
-            return new ChangeEventQueue<>(pollInterval, maxQueueSize, maxBatchSize, loggingContextSupplier, maxQueueSizeInBytes, buffering, queueProvider);
+            QueueProvider<T> effectiveQueueProvider =
+                    (queueProvider != null) ? queueProvider : new DefaultQueueProvider<>(maxQueueSize);
+            return new ChangeEventQueue<>(pollInterval, maxQueueSize, maxBatchSize, loggingContextSupplier, maxQueueSizeInBytes, buffering, effectiveQueueProvider);
         }
     }
 
