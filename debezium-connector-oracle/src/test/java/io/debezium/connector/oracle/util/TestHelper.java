@@ -219,6 +219,10 @@ public class TestHelper {
                 .with(OracleConnectorConfig.SNAPSHOT_DATABASE_ERRORS_MAX_RETRIES, 3);
     }
 
+    public static LogMiningBufferType getLogMiningBufferType(Configuration config) {
+        return LogMiningBufferType.parse(config.getString(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE));
+    }
+
     public static String getEhcacheGlobalCacheConfig() {
         return "<persistence directory=\"./target/data\"/>";
     }
