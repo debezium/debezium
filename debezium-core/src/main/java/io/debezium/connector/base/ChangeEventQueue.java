@@ -77,10 +77,15 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
         this.isNotFull = lock.newCondition();
 
         this.loggingContextSupplier = loggingContextSupplier;
-        this.sizeInBytesQueue = new ArrayDeque<>(maxQueueSize);
+        if (maxQueueSizeInBytes > 0) {
+            this.sizeInBytesQueue = new ArrayDeque<>(maxQueueSize);
+        }
+        else {
+            this.sizeInBytesQueue = new ArrayDeque<>(0);
+        }
+
         this.maxQueueSizeInBytes = maxQueueSizeInBytes;
         this.buffering = buffering;
-
         this.queue = queueProvider;
     }
 
