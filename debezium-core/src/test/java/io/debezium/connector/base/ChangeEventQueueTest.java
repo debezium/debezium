@@ -68,13 +68,13 @@ public class ChangeEventQueueTest {
 
     @Before
     public void setup() {
-        ChangeEventQueueConfig changeEventQueueConfig = new ChangeEventQueueConfig.Builder()
+        ChangeEventQueue<DataChangeEvent> queue = new ChangeEventQueue.Builder<DataChangeEvent>()
                 .maxBatchSize(8192)
                 .maxQueueSize(8192 * 2)
+                .queueProvider(new DefaultQueueProvider<>(8192 * 2))
                 .loggingContextSupplier(() -> LoggingContext.forConnector("a", "b", "c"))
                 .pollInterval(Duration.ofMillis(500))
                 .build();
-        ChangeEventQueue<DataChangeEvent> queue = new DefaultChangeEventQueue<>(changeEventQueueConfig);
 
         for (int i = 0; i < noOfWriters; i++) {
             writers[i] = getWriter(queue, noOfEventsPerWriter);

@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.postgresql;
 
+import static io.debezium.config.CommonConnectorConfig.DEFAULT_MAX_QUEUE_SIZE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.Test;
@@ -14,8 +15,8 @@ import org.postgresql.util.PSQLState;
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
-import io.debezium.connector.base.ChangeEventQueueConfig;
-import io.debezium.connector.base.DefaultChangeEventQueue;
+import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.pipeline.DataChangeEvent;
 
 public class PostgresErrorHandlerTest {
@@ -24,7 +25,7 @@ public class PostgresErrorHandlerTest {
             new PostgresConnectorConfig(Configuration.create()
                     .with(CommonConnectorConfig.TOPIC_PREFIX, "postgres")
                     .build()),
-            new DefaultChangeEventQueue<DataChangeEvent>(ChangeEventQueueConfig.builder().build()), null);
+            new ChangeEventQueue.Builder<DataChangeEvent>().queueProvider(new DefaultQueueProvider<>(DEFAULT_MAX_QUEUE_SIZE)).build(), null);
 
     @Test
     public void classifiedPSQLExceptionIsRetryable() {

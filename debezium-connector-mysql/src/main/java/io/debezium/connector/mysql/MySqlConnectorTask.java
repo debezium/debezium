@@ -20,8 +20,7 @@ import io.debezium.bean.StandardBeanNames;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
-import io.debezium.connector.base.ChangeEventQueueConfig;
-import io.debezium.connector.base.DefaultChangeEventQueue;
+import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.connector.binlog.BinlogEventMetadataProvider;
 import io.debezium.connector.binlog.BinlogSourceTask;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
@@ -175,15 +174,15 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
         }
 
         // Set up the task record queue ...
-        ChangeEventQueueConfig changeEventQueueConfig = ChangeEventQueueConfig.builder()
+        this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()
                 .pollInterval(connectorConfig.getPollInterval())
                 .maxBatchSize(connectorConfig.getMaxBatchSize())
                 .maxQueueSize(connectorConfig.getMaxQueueSize())
                 .maxQueueSizeInBytes(connectorConfig.getMaxQueueSizeInBytes())
+                .queueProvider(new DefaultQueueProvider<>(connectorConfig.getMaxQueueSize()))
                 .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                 .buffering()
                 .build();
-        this.queue = new DefaultChangeEventQueue<>(changeEventQueueConfig);
 
         errorHandler = new MySqlErrorHandler(connectorConfig, queue, errorHandler);
 

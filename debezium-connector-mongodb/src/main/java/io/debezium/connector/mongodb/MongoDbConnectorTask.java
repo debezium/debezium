@@ -25,8 +25,7 @@ import io.debezium.bean.StandardBeanNames;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
-import io.debezium.connector.base.ChangeEventQueueConfig;
-import io.debezium.connector.base.DefaultChangeEventQueue;
+import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.mongodb.connection.ConnectionStrings;
@@ -98,14 +97,14 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         PreviousContext previousLogContext = taskContext.configureLoggingContext(taskName);
 
         try {
-            ChangeEventQueueConfig changeEventQueueConfig = ChangeEventQueueConfig.builder()
+            this.queue = new ChangeEventQueue.Builder<DataChangeEvent>()
                     .pollInterval(connectorConfig.getPollInterval())
                     .maxBatchSize(connectorConfig.getMaxBatchSize())
                     .maxQueueSize(connectorConfig.getMaxQueueSize())
                     .maxQueueSizeInBytes(connectorConfig.getMaxQueueSizeInBytes())
+                    .queueProvider(new DefaultQueueProvider<>(connectorConfig.getMaxQueueSize()))
                     .loggingContextSupplier(() -> taskContext.configureLoggingContext(CONTEXT_NAME))
                     .build();
-            this.queue = new DefaultChangeEventQueue<>(changeEventQueueConfig);
 
             errorHandler = new MongoDbErrorHandler(connectorConfig, queue, errorHandler);
 
