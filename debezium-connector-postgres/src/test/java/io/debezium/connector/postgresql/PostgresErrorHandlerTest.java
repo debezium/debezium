@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.postgresql;
 
+import static io.debezium.config.CommonConnectorConfig.DEFAULT_MAX_QUEUE_SIZE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.Test;
@@ -15,16 +16,16 @@ import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.pipeline.DataChangeEvent;
 
 public class PostgresErrorHandlerTest {
     private static final String A_CLASSIFIED_EXCEPTION = "Database connection failed when writing to copy";
-
     private final PostgresErrorHandler errorHandler = new PostgresErrorHandler(
             new PostgresConnectorConfig(Configuration.create()
                     .with(CommonConnectorConfig.TOPIC_PREFIX, "postgres")
                     .build()),
-            new ChangeEventQueue.Builder<DataChangeEvent>().build(), null);
+            new ChangeEventQueue.Builder<DataChangeEvent>().queueProvider(new DefaultQueueProvider<>(DEFAULT_MAX_QUEUE_SIZE)).build(), null);
 
     @Test
     public void classifiedPSQLExceptionIsRetryable() {
