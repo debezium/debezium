@@ -154,12 +154,12 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 final Operation lastProcessedMessageType = this.effectiveOffset.lastProcessedMessageType();
                 LOGGER.info("Retrieved latest position from stored offset '{}'", lsn);
                 walPosition = new WalPositionLocator(this.effectiveOffset.lastCommitLsn(), lsn, lastProcessedMessageType);
-                replicationStream.compareAndSet(null, replicationConnection.startStreaming(lsn, walPosition));
+                replicationStream.compareAndSet(null, replicationConnection.startStreaming(lsn, walPosition, true));
             }
             else {
                 LOGGER.info("No previous LSN found in Kafka, streaming from the latest xlogpos or flushed LSN...");
                 walPosition = new WalPositionLocator();
-                replicationStream.compareAndSet(null, replicationConnection.startStreaming(walPosition));
+                replicationStream.compareAndSet(null, replicationConnection.startStreaming(walPosition, true));
             }
 
             // Start keep alive thread to prevent connection timeout during time-consuming operations the DB side.
@@ -187,7 +187,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 walPosition.enableFiltering();
                 stream.stopKeepAlive();
                 replicationConnection.reconnect();
-                replicationStream.set(replicationConnection.startStreaming(walPosition.getLastEventStoredLsn(), walPosition));
+                replicationStream.set(replicationConnection.startStreaming(walPosition.getLastEventStoredLsn(), walPosition, false));
                 stream = this.replicationStream.get();
                 stream.startKeepAlive(Threads.newSingleThreadExecutor(PostgresConnector.class, connectorConfig.getLogicalName(), KEEP_ALIVE_THREAD_NAME));
             }
@@ -444,7 +444,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         ReplicationStream replicationStream = this.replicationStream.get();
         final Lsn commitLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMMIT_LSN_KEY));
         final Lsn changeLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMPLETELY_PROCESSED_LSN_KEY));
-        final Lsn lsn = (commitLsn != null) ? commitLsn : changeLsn;
+        final Lsn lsn = (changeLsn != null) ? changeLsn : commitLsn;
 
         LOGGER.debug("Received offset commit request on commit LSN '{}' and change LSN '{}'", commitLsn, changeLsn);
         if (replicationStream != null && lsn != null) {
