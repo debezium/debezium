@@ -216,11 +216,15 @@ public class ChangeEventQueueShutdownTest {
                 .buffering()
                 .build();
 
-        // Fill queue to capacity
         DataChangeEvent testEvent = createTestEvent();
-        for (int i = 0; i < 2; i++) {
-            queue.enqueue(testEvent);
-        }
+
+        // Fill queue to capacity and ensure there's a buffered event
+        // First enqueue puts event in buffer
+        queue.enqueue(testEvent);
+        // Second enqueue moves first to queue and puts second in buffer
+        queue.enqueue(testEvent);
+        // Third enqueue moves second to queue (filling it to capacity) and puts third in buffer
+        queue.enqueue(testEvent);
 
         AtomicReference<Exception> flushException = new AtomicReference<>();
         CountDownLatch flushStarted = new CountDownLatch(1);
@@ -229,7 +233,7 @@ public class ChangeEventQueueShutdownTest {
         Thread flushThread = new Thread(() -> {
             try {
                 flushStarted.countDown();
-                // This should block because queue is full
+                // This should block because queue is full and there's a buffered event to flush
                 queue.flushBuffer(event -> event);
             }
             catch (Exception e) {

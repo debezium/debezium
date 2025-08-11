@@ -6,13 +6,12 @@
 package io.debezium.connector.mysql;
 
 import java.util.Optional;
-import java.util.function.Function;
 
-import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.binlog.BinlogChangeEventSourceFactory;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.DataChangeEvent;
@@ -21,7 +20,6 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotChangeEventSource;
-import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
@@ -32,7 +30,7 @@ import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.Strings;
 
-public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<MySqlPartition, MySqlOffsetContext> {
+public class MySqlChangeEventSourceFactory extends BinlogChangeEventSourceFactory<MySqlPartition, MySqlOffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MySqlChangeEventSourceFactory.class);
 
@@ -48,7 +46,6 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
     // impossible to detect it till the snapshot is ended. Mainly when the last snapshotted table is empty.
     // Based on the DBZ-3113 the code can change in the future and it will be handled not in MySQL
     // but in the core shared code.
-    private final ChangeEventQueue<DataChangeEvent> queue;
 
     private final SnapshotterService snapshotterService;
 
@@ -56,6 +53,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
                                          ErrorHandler errorHandler, EventDispatcher<MySqlPartition, TableId> dispatcher, Clock clock, MySqlDatabaseSchema schema,
                                          MySqlTaskContext taskContext, MySqlStreamingChangeEventSourceMetrics streamingMetrics,
                                          ChangeEventQueue<DataChangeEvent> queue, SnapshotterService snapshotterService) {
+        super(queue);
         this.configuration = configuration;
         this.connectionFactory = connectionFactory;
         this.errorHandler = errorHandler;
@@ -63,7 +61,6 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
         this.clock = clock;
         this.taskContext = taskContext;
         this.streamingMetrics = streamingMetrics;
-        this.queue = queue;
         this.schema = schema;
         this.snapshotterService = snapshotterService;
     }
@@ -82,42 +79,6 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
                 this::preSnapshot,
                 notificationService,
                 snapshotterService);
-    }
-
-    private void preSnapshot() {
-        queue.enableBuffering();
-    }
-
-    private void modifyAndFlushLastRecord(Function<SourceRecord, SourceRecord> modify) throws InterruptedException {
-        // Check if the current thread has been interrupted before attempting to flush
-        if (Thread.currentThread().isInterrupted()) {
-            LOGGER.info("Thread has been interrupted, skipping flush of buffered record");
-            queue.disableBuffering();
-            throw new InterruptedException("Thread interrupted during snapshot cleanup");
-        }
-
-        try {
-            // Attempt to flush the buffered record
-            // If queue is shut down, this will throw InterruptedException and we'll handle it gracefully
-            queue.flushBuffer(dataChange -> new DataChangeEvent(modify.apply(dataChange.getRecord())));
-            LOGGER.debug("Successfully flushed buffered record during snapshot cleanup");
-        }
-        catch (InterruptedException e) {
-            // Queue was shut down or thread was interrupted - this is expected during task shutdown
-            LOGGER.info("Buffered record flush interrupted during snapshot cleanup, likely due to task shutdown");
-            throw e;
-        }
-        finally {
-            // Always disable buffering to prevent memory leaks
-            try {
-                queue.disableBuffering();
-            }
-            catch (AssertionError e) {
-                // In rare cases, assertion may fail if buffer is not empty due to shutdown timing
-                // This is acceptable as the queue shutdown mechanism prevents the memory leak
-                LOGGER.debug("Buffer not empty during cleanup due to shutdown timing - this is expected");
-            }
-        }
     }
 
     @Override
