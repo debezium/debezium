@@ -214,13 +214,9 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
     public void flushBuffer(Function<T, T> recordModifier) throws InterruptedException {
         assert buffering : "Unsupported for queues with disabled buffering";
 
-        // Check if not running before attempting to flush
-        if (!running) {
-            throw new InterruptedException("Queue has been shut down");
-        }
-
         T record = bufferedEvent.getAndSet(null);
         if (record != null) {
+            // doEnqueue will check running state and throw InterruptedException if not running
             doEnqueue(recordModifier.apply(record));
         }
     }
@@ -392,12 +388,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
         return currentQueueSizeInBytes;
     }
 
-    /**
-     * Returns true if the queue is currently in buffering mode.
-     *
-     * @return true if buffering is enabled, false otherwise
-     */
-    public boolean isBuffering() {
+    public boolean isBuffered() {
         return buffering;
     }
 

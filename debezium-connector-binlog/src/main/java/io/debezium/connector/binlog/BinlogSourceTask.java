@@ -11,9 +11,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.heartbeat.HeartbeatErrorHandler;
+import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.spi.snapshot.Snapshotter;
@@ -94,4 +96,16 @@ public abstract class BinlogSourceTask<P extends Partition, O extends OffsetCont
             }
         }
     }
+
+    @Override
+    protected void doStop() {
+        // Get the queue field from the subclass to shut it down early
+        ChangeEventQueue<DataChangeEvent> queue = getChangeEventQueue();
+        if (queue != null) {
+            LOGGER.info("Shutting down queue to prevent thread leaks");
+            queue.shutdown();
+        }
+    }
+
+    protected abstract ChangeEventQueue<DataChangeEvent> getChangeEventQueue();
 }
