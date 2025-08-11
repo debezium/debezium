@@ -12,6 +12,10 @@
     <name>Debezium Testing Testcontainers</name>
     <packaging>jar</packaging>
 
+    <properties>
+        <mockito.argLine>-javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.testcontainers</groupId>
