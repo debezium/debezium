@@ -42,8 +42,8 @@ public class ActivateTracingSpan<R extends ConnectRecord<R>> implements Transfor
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ActivateTracingSpan.class);
 
-    private static final String DEFAULT_TRACING_SPAN_CONTEXT_FIELD = "tracingspancontext";
-    private static final String DEFAULT_TRACING_OPERATION_NAME = "debezium-read";
+    public static final String DEFAULT_TRACING_SPAN_CONTEXT_FIELD = "tracingspancontext";
+    public static final String DEFAULT_TRACING_OPERATION_NAME = "debezium-read";
 
     private static final boolean OPEN_TELEMETRY_AVAILABLE = resolveOpenTelemetryApiAvailable();
 
