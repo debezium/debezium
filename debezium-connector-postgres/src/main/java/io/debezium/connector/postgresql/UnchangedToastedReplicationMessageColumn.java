@@ -56,7 +56,11 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
     }
 
     public static boolean isUnchangedToastedValue(Object value) {
-        return UNCHANGED_TOAST_VALUES.contains(value);
+        // Using Set#contains triggers comparison by the value's hash. For some types, like a Java String, the
+        // hash is computed lazily and if the String is a reasonably large value, this can introduce non-negligible
+        // overhead costs to compute the hash. Ultimately all we need here is a simple equality check to identify
+        // if the supplied value is one of the marker objects.
+        return UNCHANGED_TOAST_VALUES.stream().anyMatch(marker -> marker == value);
     }
 
     @Override
