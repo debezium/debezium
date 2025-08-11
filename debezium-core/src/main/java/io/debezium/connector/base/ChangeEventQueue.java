@@ -90,7 +90,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
     private final AtomicReference<T> bufferedEvent = new AtomicReference<>();
 
     private volatile RuntimeException producerException;
-    private volatile boolean shutDown = false;
+    private volatile boolean running = true;
 
     private ChangeEventQueue(Duration pollInterval, int maxQueueSize, int maxBatchSize, Supplier<LoggingContext.PreviousContext> loggingContextSupplier,
                              long maxQueueSizeInBytes, boolean buffering) {
@@ -192,8 +192,8 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
     public void flushBuffer(Function<T, T> recordModifier) throws InterruptedException {
         assert buffering : "Unsupported for queues with disabled buffering";
 
-        // Check if shutdown before attempting to flush
-        if (shutDown) {
+        // Check if not running before attempting to flush
+        if (!running) {
             throw new InterruptedException("Queue has been shut down");
         }
 
@@ -226,15 +226,15 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
         try {
             this.lock.lock();
 
-            while (!shutDown && (queue.size() >= maxQueueSize || (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes >= maxQueueSizeInBytes))) {
+            while (running && (queue.size() >= maxQueueSize || (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes >= maxQueueSizeInBytes))) {
                 // signal poll() to drain queue
                 this.isFull.signalAll();
                 // queue size or queue sizeInBytes threshold reached, so wait a bit
                 this.isNotFull.await(pollInterval.toMillis(), TimeUnit.MILLISECONDS);
             }
 
-            // If shutDown, throw InterruptedException to allow graceful exit
-            if (shutDown) {
+            // If not running, throw InterruptedException to allow graceful exit
+            if (!running) {
                 throw new InterruptedException("Queue has been shut down");
             }
 
@@ -335,7 +335,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
     public void shutdown() {
         try {
             this.lock.lock();
-            this.shutDown = true;
+            running = false;
             // Wake up any threads waiting on conditions
             this.isFull.signalAll();
             this.isNotFull.signalAll();
@@ -371,10 +371,6 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
         return currentQueueSizeInBytes;
     }
 
-    public boolean isBuffered() {
-        return buffering;
-    }
-
     /**
      * Returns true if the queue is currently in buffering mode.
      *
@@ -382,5 +378,14 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
      */
     public boolean isBuffering() {
         return buffering;
+    }
+
+    /**
+     * Returns true if the queue is still running and accepting operations.
+     *
+     * @return true if the queue is running, false if it has been shut down
+     */
+    public boolean isRunning() {
+        return running;
     }
 }
