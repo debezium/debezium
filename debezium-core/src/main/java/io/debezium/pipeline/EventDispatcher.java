@@ -490,7 +490,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
         queue.enqueue(new DataChangeEvent(record));
 
-        if (queue.isBuffered()) {
+        if (queue.isBuffering()) {
             queue.flushBuffer(Function.identity());
         }
     }
