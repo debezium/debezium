@@ -9,6 +9,8 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import org.apache.kafka.connect.source.SourceRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
@@ -31,6 +33,8 @@ import io.debezium.util.Clock;
 import io.debezium.util.Strings;
 
 public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<MySqlPartition, MySqlOffsetContext> {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(MySqlChangeEventSourceFactory.class);
 
     private final MySqlConnectorConfig configuration;
     private final MainConnectionProvidingConnectionFactory<BinlogConnectorConnection> connectionFactory;
@@ -85,8 +89,21 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
     }
 
     private void modifyAndFlushLastRecord(Function<SourceRecord, SourceRecord> modify) throws InterruptedException {
-        queue.flushBuffer(dataChange -> new DataChangeEvent(modify.apply(dataChange.getRecord())));
-        queue.disableBuffering();
+        if (!queue.isBuffering()) {
+            return;
+        }
+
+        try {
+            // Attempt to flush the buffered record
+            // If queue is shut down, this will throw InterruptedException and we'll handle it gracefully
+            queue.flushBuffer(dataChange -> new DataChangeEvent(modify.apply(dataChange.getRecord())));
+            queue.disableBuffering();
+        }
+        catch (InterruptedException e) {
+            // Log the interruption but don't propagate it - this is expected during shutdown
+            LOGGER.debug("Queue flush interrupted during shutdown, completing gracefully");
+            throw e; // Re-throw to maintain the contract
+        }
     }
 
     @Override

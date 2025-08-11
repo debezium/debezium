@@ -276,6 +276,12 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
 
     @Override
     protected void doStop() {
+        // Shut down the queue early to prevent memory leaks from blocked threads
+        if (queue != null) {
+            LOGGER.info("Shutting down queue to prevent thread leaks");
+            queue.shutdown();
+        }
+
         try {
             if (connection != null) {
                 connection.close();
