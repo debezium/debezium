@@ -118,7 +118,7 @@ This feature is currently *incubating* and might change in future releases.
 endif::community[]
 
 ifdef::community[]
-OpenLogReplicator:::
+OpenLogReplicator::
 
 You can configure the {prodname} Oracle connector to use OpenLogReplicator, an open-source application that reads Oracle changes directly from the redo and archive logs with minimal impact on the database.
 +
@@ -126,7 +126,7 @@ Enable OpenLogReplicator by setting the xref:oracle-property-database-connection
 For more information, see the xref:oracle-openlogreplicator-support[] section.
 endif::community[]
 
-Oracle XStream:::
+Oracle XStream::
 
 The {prodname} Oracle connector can also use Oracle XStream, a commercial component of Oracle GoldenGate.
 +
