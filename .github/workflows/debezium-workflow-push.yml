@@ -34,12 +34,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: core
 
       - name: Checkout Action (Debezium Server)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: debezium/debezium-server
           path: server
@@ -101,7 +101,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - uses: ./.github/actions/checkstyle-format
         with:
@@ -150,7 +150,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - uses: ./.github/actions/build-debezium-sqlserver
         with:
@@ -172,7 +172,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - uses: ./.github/actions/build-debezium-outbox
         with:
@@ -184,7 +184,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - uses: ./.github/actions/build-quarkus-extensions
         with:
@@ -197,7 +197,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - uses: ./.github/actions/build-debezium-schema-generator
         with:
@@ -210,7 +210,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - uses: ./.github/actions/build-debezium-testing
         with:
@@ -223,7 +223,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - uses: ./.github/actions/build-debezium-storage
         with:
@@ -236,12 +236,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: core
 
       - name: Checkout Action (Cassandra)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: debezium/debezium-connector-cassandra
           path: cassandra
@@ -266,12 +266,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: core
 
       - name: Checkout Action (Db2)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: debezium/debezium-connector-db2
           path: db2
@@ -305,12 +305,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: core
 
       - name: Checkout Action (IBMi)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: debezium/debezium-connector-ibmi
           path: ibmi
@@ -335,12 +335,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: core
 
       - name: Checkout Action (Vitess)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: debezium/debezium-connector-vitess
           path: vitess
@@ -365,12 +365,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: core
 
       - name: Checkout Action (Spanner)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: debezium/debezium-connector-spanner
           path: spanner
@@ -403,12 +403,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Debezium Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: core
 
       - name: Checkout Action (Debezium Server)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: debezium/debezium-server
           path: server
@@ -432,7 +432,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - uses: ./.github/actions/build-debezium-ai
         with:
@@ -444,7 +444,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - uses: ./.github/actions/build-debezium-openlineage
         with:

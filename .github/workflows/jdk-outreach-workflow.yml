@@ -22,7 +22,7 @@ jobs:
       fail-fast: false
     name: SQL Server - Java ${{ matrix.feature.release }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
       - name: Setup OpenJDK
@@ -56,7 +56,7 @@ jobs:
       fail-fast: false
     name: MySQL - Java ${{ matrix.feature.release }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
       - name: Setup OpenJDK
@@ -90,7 +90,7 @@ jobs:
       fail-fast: false
     name: PostgreSQL Pgoutput - Java ${{ matrix.feature.release }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
       - name: Setup OpenJDK
@@ -125,7 +125,7 @@ jobs:
       fail-fast: false
     name: MongoDB 7.0 - Java ${{ matrix.feature.release }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
       - name: Setup OpenJDK
@@ -160,7 +160,7 @@ jobs:
       fail-fast: false
     name: Oracle - Java ${{ matrix.feature.release }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
       - name: Setup OpenJDK
@@ -194,11 +194,11 @@ jobs:
     name: Cassandra - Java ${{ matrix.feature.release }}
     steps:
       - name: Checkout Core
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: core
       - name: Checkout Cassandra
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: debezium/debezium-connector-cassandra
           path: cassandra
@@ -248,11 +248,11 @@ jobs:
     name: Db2 - Java ${{ matrix.feature.release }}
     steps:
       - name: Checkout Core
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: core
       - name: Checkout Db2
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: debezium/debezium-connector-db2
           path: db2
@@ -301,11 +301,11 @@ jobs:
     name: Spanner - Java ${{ matrix.feature.release }}
     steps:
       - name: Checkout Core
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: core
       - name: Checkout Spanner
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: debezium/debezium-connector-spanner
           path: spanner
@@ -351,11 +351,11 @@ jobs:
     name: Vitess - Java ${{ matrix.feature.release }}
     steps:
       - name: Checkout Core
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: core
       - name: Checkout Vitess
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: debezium/debezium-connector-vitess
           path: vitess
@@ -402,11 +402,11 @@ jobs:
     name: Informix - Java ${{ matrix.feature.release }}
     steps:
       - name: Checkout Core
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: core
       - name: Checkout Informix
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: debezium/debezium-connector-informix
           path: informix
@@ -455,11 +455,11 @@ jobs:
     name: IBMi - Java ${{ matrix.feature.release }}
     steps:
       - name: Checkout Core
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: core
       - name: Checkout IBMi
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: debezium/debezium-connector-ibmi
           path: ibmi
@@ -508,7 +508,7 @@ jobs:
       fail-fast: false
     name: Quarkus Outbox Extension - Java ${{ matrix.feature.release }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
       - name: Setup OpenJDK
@@ -552,7 +552,7 @@ jobs:
       fail-fast: false
     name: Testing - Java ${{ matrix.feature.release }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
       - name: Setup OpenJDK
@@ -587,11 +587,11 @@ jobs:
     name: Server - Java ${{ matrix.feature.release }}
     steps:
       - name: Checkout Core
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: core
       - name: Checkout Server
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: debezium/debezium-server
           path: server
