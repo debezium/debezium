@@ -75,60 +75,64 @@ endif::product[]
 [[oracle-adapter-modes]]
 == Adapter Modes
 
-The {prodname} Oracle connector supports multiple _adapters_ for capturing changes from the Oracle database’s transaction logs.
-You can configure the adapter by setting the xref:oracle-property-database-connection-adapter[`database.connection.adapter`] configuration property.
+The {prodname} Oracle connector supports multiple adapters for capturing changes from the Oracle database transaction logs.
+You can configure the connector to use a specific adapter by setting the xref:oracle-property-database-connection-adapter[`database.connection.adapter`] configuration property.
 
-=== LogMiner
+The connector supports the following adapters:
+
+LogMiner::
 
 By default, the {prodname} Oracle connector uses the native Oracle LogMiner API to read and stream changes from database transaction logs.
-LogMiner can operate in two distinct modes, both supported by {prodname}.
+You can configure {prodname} to use LogMiner in either of the following distinct modes:
 
-==== Uncommitted changes mode
+Uncommitted changes mode:::
 
 In uncommitted changes mode, the {prodname} Oracle connector receives a continuous stream of change events for both committed and in-flight uncommitted transactions.
 Because Oracle interleaves operations from multiple transactions, the connector must buffer events until a corresponding commit or rollback is detected.
-
-As this is the connector’s default mode, ensure that the connector runtime is allocated sufficient memory to handle your largest transactions and highest concurrency levels across all captured tables.
-
-This mode minimizes load on the source database by delegating most processing to the connector.
++
+Because this the default mode for the connector, it's important to allocate enough memory to the connector to handle the largest transactions and highest concurrency levels across all captured tables.
++
+Uncommitted changes mode minimizes the load on the source database by delegating most processing to the connector.
 Oracle LogMiner is responsible only for reading redo and archive logs from disk and streaming the raw changes.
-
++
 Enable this mode by setting the xref:oracle-property-database-connection-adapter[`database.connection.adapter`] property to `logminer` (default).
 
-==== Committed changes mode
+Committed changes mode:::
 
 In committed changes mode, the {prodname} Oracle connector instructs Oracle LogMiner to stream only committed changes.
 Because the connector receives only committed events, it can immediately forward them to destination topics without maintaining an internal transaction buffer.
-
++
 This mode requires significantly less connector memory, but shifts a much greater processing and memory burden to the source database.
 For large transactions, this can easily exceed the database’s available PGA memory, potentially leading to `PGA_AGGREGATE_LIMIT` errors.
-
++
 This mode is recommended only if you can guarantee that all transactions fit within the database’s PGA memory space.
 Otherwise, use the uncommitted changes mode.
-
++
 Enable this mode by setting the xref:oracle-property-database-connection-adapter[`database.connection.adapter`] property to `logminer_unbuffered`.
-
+ifdef::community[]
++
 [NOTE]
 ====
 This feature is currently *incubating* and might change in future releases.
 ====
+endif::community[]
 
 ifdef::community[]
-=== OpenLogReplicator
+OpenLogReplicator:::
 
-The {prodname} Oracle connector can be configured to use OpenLogReplicator, an open-source application that reads Oracle changes directly from redo and archive logs with minimal impact on the database.
-
+You can configure the {prodname} Oracle connector to use OpenLogReplicator, an open-source application that reads Oracle changes directly from the redo and archive logs with minimal impact on the database.
++
 Enable OpenLogReplicator by setting the xref:oracle-property-database-connection-adapter[`database.connection.adapter`] property to `olr`.
 For more information, see the xref:oracle-openlogreplicator-support[] section.
 endif::community[]
 
-=== Oracle XStream
+Oracle XStream:::
 
 The {prodname} Oracle connector can also use Oracle XStream, a commercial component of Oracle GoldenGate.
-
++
 Enable Oracle XStream by setting the xref:oracle-property-database-connection-adapter[`database.connection.adapter`] property to `xstream`.
-For more details, see the xref:oracle-xstreams-support[] section.
-
+For more details, see the xref:oracle-xstreams-support[XStream] section.
+w
 // Type: assembly
 // ModuleID: how-debezium-oracle-connectors-work
 // Title: How {prodname} Oracle connectors work
