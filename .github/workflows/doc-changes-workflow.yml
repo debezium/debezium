@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           # This is necessary as this script needs to examine all history and prepare an output
           # report that defines all changes made to the Documentation within the last number of
