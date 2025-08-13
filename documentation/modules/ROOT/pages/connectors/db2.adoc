@@ -23,7 +23,7 @@ ifdef::community[]
 toc::[]
 endif::community[]
 
-{prodname}'s Db2 connector can capture row-level changes in the tables of a Db2 database.
+The {prodname} Db2 connector can capture row-level changes in the tables of a Db2 database.
 ifdef::community[]
 For information about the Db2 Database versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
 endif::community[]
@@ -31,7 +31,8 @@ ifdef::product[]
 For information about the Db2 Database versions that are compatible with this connector, see the link:{LinkDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
 endif::product[]
 
-This connector is strongly inspired by the {prodname} implementation of SQL Server, which uses a SQL-based polling model that puts tables into "capture mode". When a table is in capture mode, the {prodname} Db2 connector generates and streams a change event for each row-level update to that table.
+This connector is strongly inspired by the {prodname} implementation of SQL Server, which uses a SQL-based polling model that puts tables into "capture mode".
+When a table is in capture mode, the {prodname} Db2 connector generates and streams a change event for each row-level update to that table.
 
 A table that is in capture mode has an associated change-data table, which Db2 creates.
 For each change to a table that is in capture mode, Db2 adds data about that change to the table's associated change-data table.
@@ -49,9 +50,10 @@ Applications and services consume change events from these topics.
 
 [NOTE]
 ====
-The connector requires the use of the abstract syntax notation (ASN) libraries, which are available as a standard part of Db2 for Linux.
-To use the ASN libraries, you must have a license for IBM InfoSphere Data Replication (IIDR).
-You do not have to install IIDR to use the ASN libraries.
+Use of the {prodname} connector for Db2 requires SQL replication to be enabled on the source database.
+Although the required replication tools are available in supported versions of Db2, use of SQL replication to support the {prodname} connector requires a separate license to IBM Infosphere Data replication (IIDR).
+Installation of the IIDR product is not required.
+Consult with your legal department to verify whether the licensing in your environment complies with the terms of use.
 ====
 
 ifdef::community[]
@@ -91,8 +93,9 @@ endif::product[]
 [[db2-overview]]
 == Overview
 
-The {prodname} Db2 connector is based on the link:https://www.ibm.com/support/pages/q-replication-and-sql-replication-product-documentation-pdf-format-version-101-linux-unix-and-windows[ASN Capture/Apply agents]
-that enable SQL Replication in Db2. A capture agent:
+The {prodname} Db2 connector is based on the link:https://www.ibm.com/docs/en/idr/11.4.0?topic=communicate-capture-program-apply-program[ASN Capture and Apply programs]
+that enable SQL Replication in Db2.
+The capture program performs the following tasks:
 
 * Generates change-data tables for tables that are in capture mode.
 * Monitors tables in capture mode and stores change events for updates to those tables in their corresponding change-data tables.
@@ -100,12 +103,12 @@ that enable SQL Replication in Db2. A capture agent:
 The {prodname} connector uses a SQL interface to query change-data tables for change events.
 
 The database administrator must put the tables for which you want to capture changes into capture mode.
-For convenience and for automating testing, there are xref:db2-management[{prodname} management user-defined functions (UDFs)] in C that you can compile and then use to do the following management tasks:
+For convenience and for automating testing, there are xref:db2-management[{prodname} management user-defined functions (UDFs)] written in the C language that you can compile and then use to do the following management tasks:
 
-* Start, stop, and reinitialize the ASN agent
-* Put tables into capture mode
-* Create the replication (ASN) schemas and change-data tables
-* Remove tables from capture mode
+* Start, stop, and reinitialize the ASN agent.
+* Put tables into capture mode.
+* Create the replication (ASN) schemas and change-data tables.
+* Remove tables from capture mode.
 
 Alternatively, you can use Db2 control commands to accomplish these tasks.
 
