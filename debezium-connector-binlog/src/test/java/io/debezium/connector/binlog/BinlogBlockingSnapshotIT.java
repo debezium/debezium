@@ -12,7 +12,6 @@ import java.sql.SQLException;
 import java.util.List;
 
 import org.apache.kafka.connect.source.SourceConnector;
-import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
 
@@ -181,26 +180,5 @@ public abstract class BinlogBlockingSnapshotIT<C extends SourceConnector>
         assertThat(schemaChangesDdls.get(schemaChangesDdls.size() - 1)).isEqualTo(getDdlString(databaseVersionResolver));
     }
 
-    @NotNull
-    private static String getDdlString(BinlogDatabaseVersionResolver databaseVersionResolver) {
-        boolean isMariaDB = databaseVersionResolver.isMariaDb();
-        if (isMariaDB || databaseVersionResolver.getVersion().getMajor() < MYSQL8) {
-            final StringBuilder sb = new StringBuilder("CREATE TABLE `b` (\n");
-            sb.append("  `pk` int(11) NOT NULL AUTO_INCREMENT,\n");
-            sb.append("  `aa` int(11) DEFAULT NULL,\n");
-            sb.append("  PRIMARY KEY (`pk`)\n");
-            sb.append(") ENGINE=InnoDB AUTO_INCREMENT=1001 DEFAULT CHARSET=latin1");
-            if (isMariaDB) {
-                sb.append(" COLLATE=latin1_swedish_ci");
-            }
-            return sb.toString();
-        }
-        else {
-            return "CREATE TABLE `b` (\n" +
-                    "  `pk` int NOT NULL AUTO_INCREMENT,\n" +
-                    "  `aa` int DEFAULT NULL,\n" +
-                    "  PRIMARY KEY (`pk`)\n" +
-                    ") ENGINE=InnoDB AUTO_INCREMENT=1001 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci";
-        }
-    }
+    protected abstract String getDdlString(BinlogDatabaseVersionResolver databaseVersionResolver);
 }

@@ -2733,7 +2733,7 @@ To deploy a {prodname} PostgreSQL connector, you install the {prodname} PostgreS
 
 .Prerequisites
 
-* link:https://zookeeper.apache.org/[Zookeeper], link:http://kafka.apache.org/[Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* link:http://kafka.apache.org/[Kafka] and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
 * PostgreSQL is installed and is xref:setting-up-postgresql[set up to run the {prodname} connector].
 
 .Procedure
@@ -2743,7 +2743,8 @@ To deploy a {prodname} PostgreSQL connector, you install the {prodname} PostgreS
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 . Restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s Container images] for Zookeeper, Kafka, PostgreSQL and Kafka Connect with the PostgreSQL connector already installed and ready to run. You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Kafka, PostgreSQL and Kafka Connect with the PostgreSQL connector already installed and ready to run.
+You can also xref:operations/openshift.adoc[run {prodname} on Kubernetes and OpenShift].
 
 [IMPORTANT]
 ====
@@ -4020,6 +4021,24 @@ For more information, see xref:postgresql-toasted-values[toasted values].
 |Determines whether the connector generates events with transaction boundaries and enriches change event envelopes with transaction metadata. Specify `true` if you want the connector to do this.
 For more information, see xref:postgresql-transaction-metadata[Transaction metadata].
 
+|[[postgresql-property-publish-via-partition-root]]<<postgresql-property-publish-via-partition-root, `+publish.via.partition.root+`>>
+|`false`
+|Specifies how the connector captures and emits events for changes that it captures from partitioned tables.
+This setting applies only if the xref:postgresql-publication-autocreate-mode[`publication.autocreate.mode`] property is set to `all_tables` or `filtered`, and {prodname} creates the publication for the captured tables.
+ 
+Set one of the following options:
+ 
+`true`::
+The connector emits change events for all partitions to a topic with the name of the base table.
+ +
+When the connector creates a publication, it submits a `CREATE PUBLICATION` statement in which the `publish_via_partition_root` parameter is set to `true`.
+As a result, the publication ignores the partition in which changes originate, and only records the name of the name of the source table. 
+
+`false`::
+The connector emits changes from each source partition to a topic that reflects the name of the partition.
+ +
+When the connector creates the publication, the `CREATE PUBLICATION` statement omits the `publish_via_partition_root` parameter so that the publication always uses the name of the source partition to publish change events.
+
 |[[postgresql-property-flush-lsn-source]]<<postgresql-property-flush-lsn-source, `+flush.lsn.source+`>>
 |`true`
 |Determines whether the connector should commit the LSN of the processed records in the source PostgreSQL database so that the WAL logs can be deleted.
@@ -4179,6 +4198,18 @@ After the next failure, the connector stops, and user intervention is required t
 |`600000` (10 minutes)
 |Specifies the time, in milliseconds, that the connector waits for a query to complete.
 Set the value to `0` (zero) to remove the timeout limit.
+
+|[[postgresql-property-extended-headers-enabled]]<<postgresql-property-extended-headers-enabled, `extended.headers.enabled`>>
+|true
+|This property specifies whether {prodname} adds context headers with the prefix `__debezium.context.` to the messages that it emits.
+
+These headers are required by the OpenLineage integration and provide metadata that enables downstream processing systems to track and identify the sources of change events.
+
+The property adds following headers:
+
+`__debezium.context.connectorLogicalName`:: The logical name of the {prodname} connector.
+`__debezium.context.taskId`:: The unique identifier of the connector task.
+`__debezium.context.connectorName`::  The name of the {prodname} connector.
 |===
 
 [id="debezium-postgresql-connector-pass-through-properties"]
@@ -4217,7 +4248,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-databas
 [[postgresql-monitoring]]
 == Monitoring
 
-The {prodname} PostgreSQL connector provides two types of metrics that are in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect provide.
+The {prodname} PostgreSQL connector provides two types of metrics that are in addition to the built-in support for JMX metrics that Kafka and Kafka Connect provide.
 
 * xref:postgresql-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
 * xref:postgresql-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.

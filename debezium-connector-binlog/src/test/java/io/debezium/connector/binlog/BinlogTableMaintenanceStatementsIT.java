@@ -67,7 +67,7 @@ public abstract class BinlogTableMaintenanceStatementsIT<C extends SourceConnect
         // Testing.Debug.enable();
         int numCreateDatabase = 1;
         int numCreateTables = 1;
-        int numTableMaintenanceStatements = 3;
+        int numTableMaintenanceStatements = 0; // Not storing table maintenance statements in the schema history table
         SourceRecords records = consumeRecordsByTopic(numCreateDatabase + numCreateTables + numTableMaintenanceStatements);
         System.out.println(records.allRecordsInOrder());
         stopConnector();

@@ -89,7 +89,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     private static final BigDecimal MICROSECONDS_PER_SECOND = new BigDecimal(1_000_000);
 
     private final OracleConnection connection;
-    private final boolean lobEnabled;
+    private final boolean legacyDecimalModeStrategy;
     private final OracleConnectorConfig.IntervalHandlingMode intervalHandlingMode;
     private final byte[] unavailableValuePlaceholderBinary;
     private final String unavailableValuePlaceholderString;
@@ -98,7 +98,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     public OracleValueConverters(OracleConnectorConfig config, OracleConnection connection) {
         super(config.getDecimalMode(), config.getTemporalPrecisionMode(), ZoneOffset.UTC, null, null, config.binaryHandlingMode());
         this.connection = connection;
-        this.lobEnabled = config.isLobEnabled();
+        this.legacyDecimalModeStrategy = config.isUsingLegacyDecimalHandlingStrategy();
         this.intervalHandlingMode = config.getIntervalHandlingMode();
         this.unavailableValuePlaceholderBinary = config.getUnavailableValuePlaceholder();
         this.unavailableValuePlaceholderString = new String(config.getUnavailableValuePlaceholder());
@@ -155,7 +155,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             // return sufficiently sized int schema for non-floating point types
             Integer scale = column.scale().get();
 
-            if (scale == 0 && decimalMode != DecimalMode.PRECISE) {
+            if (!legacyDecimalModeStrategy && scale == 0 && decimalMode != DecimalMode.PRECISE) {
                 return SpecialValueDecimal.builder(decimalMode, column.length(), 0);
             }
 
@@ -179,7 +179,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             // larger non-floating point types and floating point types use Decimal
             return super.schemaBuilder(column);
         }
-        else if (column.length() == 0) {
+        else if (!legacyDecimalModeStrategy && column.length() == 0) {
             // Defined as NUMBER without specifying a length and scale, treat as NUMBER(38,0)
             if (decimalMode != DecimalMode.PRECISE) {
                 return SpecialValueDecimal.builder(decimalMode, 38, 0);
@@ -236,7 +236,7 @@ public class OracleValueConverters extends JdbcValueConverters {
         if (column.scale().isPresent()) {
             Integer scale = column.scale().get();
 
-            if (scale == 0 && decimalMode != DecimalMode.PRECISE) {
+            if (!legacyDecimalModeStrategy && scale == 0 && decimalMode != DecimalMode.PRECISE) {
                 return data -> convertVariableScale(column, fieldDefn, data);
             }
 

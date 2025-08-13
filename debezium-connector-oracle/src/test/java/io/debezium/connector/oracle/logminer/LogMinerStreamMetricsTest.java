@@ -260,6 +260,9 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
         metrics.setActiveTransactionCount(5);
         assertThat(metrics.getNumberOfActiveTransactions()).isEqualTo(5);
 
+        metrics.setBufferedEventCount(2);
+        assertThat(metrics.getNumberOfEventsInBuffer()).isEqualTo(2);
+
         metrics.addRolledBackTransactionId("rolledback id");
         assertThat(metrics.getNumberOfRolledBackTransactions()).isEqualTo(1);
         assertThat(metrics.getRolledBackTransactionIds().contains("rolledback id")).isTrue();

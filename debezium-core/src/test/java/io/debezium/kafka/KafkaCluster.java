@@ -8,6 +8,7 @@ package io.debezium.kafka;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -48,6 +49,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.document.Document;
 import io.debezium.document.DocumentSerdes;
@@ -69,7 +71,6 @@ public class KafkaCluster {
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaCluster.class);
 
     private final ConcurrentMap<Integer, KafkaServer> kafkaServers = new ConcurrentHashMap<>();
-    private final ZookeeperServer zkServer = new ZookeeperServer();
     private volatile File dataDir = null;
     private volatile boolean deleteDataUponShutdown = DEFAULT_DELETE_DATA_UPON_SHUTDOWN;
     private volatile boolean deleteDataPriorToStartup = DEFAULT_DELETE_DATA_PRIOR_TO_STARTUP;
@@ -125,11 +126,15 @@ public class KafkaCluster {
         if (running) {
             throw new IllegalStateException("Unable to add a broker when the cluster is already running");
         }
+        if (count > 1) {
+            throw new DebeziumException("With switch to KRaft mode the cluster does not support multiple brokers yet");
+        }
         AtomicLong added = new AtomicLong();
+        // TODO: support multiple brokers, this would require support for distinct broker and controller nodes
         while (added.intValue() < count) {
             kafkaServers.computeIfAbsent(Integer.valueOf(added.intValue() + 1), id -> {
                 added.incrementAndGet();
-                KafkaServer server = new KafkaServer(zkServer::getConnection, id);
+                KafkaServer server = new KafkaServer(id);
                 if (dataDir != null) {
                     server.setStateDirectory(dataDir);
                 }
@@ -185,19 +190,17 @@ public class KafkaCluster {
     }
 
     /**
-     * Set the port numbers for Zookeeper and the Kafka brokers.
+     * Set the port numbers for the Kafka brokers.
      *
-     * @param zkPort the port number that Zookeeper should use; may be -1 if an available port should be discovered
      * @param firstKafkaPort the port number for the first Kafka broker (additional brokers will use subsequent port numbers);
      *            may be -1 if available ports should be discovered
      * @return this instance to allow chaining methods; never null
      * @throws IllegalStateException if the cluster is running
      */
-    public KafkaCluster withPorts(int zkPort, int firstKafkaPort) {
+    public KafkaCluster withPorts(int firstKafkaPort) {
         if (running) {
             throw new IllegalStateException("Unable to add a broker when the cluster is already running");
         }
-        this.zkServer.setPort(zkPort);
         this.startingKafkaPort = firstKafkaPort;
         if (this.startingKafkaPort >= 0) {
             this.nextKafkaPort.set(this.startingKafkaPort);
@@ -216,7 +219,7 @@ public class KafkaCluster {
     }
 
     /**
-     * Start the embedded Zookeeper server and the Kafka servers {@link #addBrokers(int) in the cluster}.
+     * Start the embedded Kafka servers {@link #addBrokers(int) in the cluster}.
      * This method does nothing if the cluster is already running.
      *
      * @return this instance to allow chaining methods; never null
@@ -239,13 +242,10 @@ public class KafkaCluster {
                 IoUtil.delete(dataDir);
                 dataDir.mkdirs();
             }
-            File zkDir = new File(dataDir, "zk");
-            zkServer.setStateDirectory(zkDir); // does error checking
             this.dataDir = dataDir;
             File kafkaDir = new File(dataDir, "kafka");
             kafkaServers.values().forEach(server -> server.setStateDirectory(new File(kafkaDir, "broker" + server.brokerId())));
 
-            zkServer.startup();
             LOGGER.debug("Starting {} brokers", kafkaServers.size());
             kafkaServers.values().forEach(KafkaServer::startup);
             running = true;
@@ -265,28 +265,20 @@ public class KafkaCluster {
                 kafkaServers.values().forEach(this::shutdownReliably);
             }
             finally {
-                try {
-                    zkServer.shutdown(deleteDataUponShutdown);
-                }
-                catch (Throwable t) {
-                    LOGGER.error("Error while shutting down {}", zkServer, t);
-                }
-                finally {
-                    if (deleteDataUponShutdown) {
+                if (deleteDataUponShutdown) {
+                    try {
+                        kafkaServers.values().forEach(KafkaServer::deleteData);
+                    }
+                    finally {
                         try {
-                            kafkaServers.values().forEach(KafkaServer::deleteData);
+                            IoUtil.delete(this.dataDir);
                         }
-                        finally {
-                            try {
-                                IoUtil.delete(this.dataDir);
-                            }
-                            catch (IOException e) {
-                                LOGGER.error("Error while deleting cluster data", e);
-                            }
+                        catch (IOException e) {
+                            LOGGER.error("Error while deleting cluster data", e);
                         }
                     }
-                    running = false;
                 }
+                running = false;
             }
         }
         return this;
@@ -368,8 +360,6 @@ public class KafkaCluster {
      * @param consumer the consumer function; may not be null
      */
     void onEachDirectory(java.util.function.Consumer<File> consumer) {
-        consumer.accept(zkServer.getSnapshotDirectory());
-        consumer.accept(zkServer.getLogDirectory());
         kafkaServers.values().forEach(server -> consumer.accept(server.getStateDirectory()));
     }
 
@@ -384,15 +374,6 @@ public class KafkaCluster {
             joiner.add(server.getConnection());
         });
         return joiner.toString();
-    }
-
-    /**
-     * Get the Zookeeper port.
-     *
-     * @return the Zookeeper port
-     */
-    public int zkPort() {
-        return zkServer.getPort();
     }
 
     private void shutdownReliably(KafkaServer server) {
@@ -925,7 +906,7 @@ public class KafkaCluster {
                 try (KafkaConsumer<K, V> consumer = new KafkaConsumer<>(props, keyDeserializer, valueDeserializer)) {
                     consumer.subscribe(new ArrayList<>(topics));
                     while (continuation.getAsBoolean()) {
-                        consumer.poll(10).forEach(record -> {
+                        consumer.poll(Duration.ofMillis(10)).forEach(record -> {
                             LOGGER.debug("Consumer {}: consuming message {}", clientId, record);
                             consumerFunction.accept(record);
                             if (offsetCommitCallback != null) {

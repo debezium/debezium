@@ -15,6 +15,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -863,6 +864,28 @@ public class PostgresConnection extends JdbcConnection {
         }
         catch (SQLException e) {
             throw new DebeziumException("Unable to get last available log position", e);
+        }
+    }
+
+    public List<Column> getTableColumnsForDecoder(TableId tableId, Tables.ColumnNameFilter columnFilter) throws SQLException {
+        try {
+            final List<Column> readColumns = new ArrayList<>();
+
+            final DatabaseMetaData databaseMetaData = connection().getMetaData();
+            final String schemaNamePattern = createPatternFromName(tableId.schema(), databaseMetaData.getSearchStringEscape());
+            final String tableNamePattern = createPatternFromName(tableId.table(), databaseMetaData.getSearchStringEscape());
+
+            try (ResultSet columnMetadata = databaseMetaData.getColumns(null, schemaNamePattern, tableNamePattern, null)) {
+                while (columnMetadata.next()) {
+                    readColumnForDecoder(columnMetadata, tableId, columnFilter).ifPresent(readColumns::add);
+                }
+            }
+
+            return readColumns;
+        }
+        catch (SQLException e) {
+            LOGGER.error("Failed to read column metadata for '{}.{}'", tableId.schema(), tableId.table());
+            throw e;
         }
     }
 

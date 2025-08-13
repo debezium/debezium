@@ -45,12 +45,9 @@ The following SMTs are provided by {prodname}:
 |xref:transformations/decode-logical-decoding-message-content.adoc[Decode Logical Decoding Message Content]
 |Converts the binary content of logical decoding messages captured by the {prodname} PostgreSQL connector into a structured form.
 
-|xref:transformations/convert-cloudevent-to-saveable-form.adoc[Convert CloudEvents to Saveable Form]
-|Converts values of records deserialized by {prodname} CloudEvents converter to a structure suitable for {prodname} JDBC sink connector.
-
 |xref:transformations/vitess-use-local-vgtid.adoc[Vitess Use Local VGTID]
 |A transformation that reduces the size of VGTIDs that the Vitess connector emits.
-To reduce the amount of data in the event message, the SMT writes only the VGTID for the shard in which a change occurs. 
+To reduce the amount of data in the event message, the SMT writes only the VGTID for the shard in which a change occurs.
 The VGTIDs for other shards are removed.
 This transformation is designed for use only with the {prodname} connector for Vitess.
 

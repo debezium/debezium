@@ -23,12 +23,16 @@ public class BufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder {
     private static final List<Integer> OPERATION_CODES_LOB = Arrays.asList(1, 2, 3, 6, 7, 9, 10, 11, 27, 29, 34, 36, 68, 70, 71, 91, 92, 93, 255);
     private static final List<Integer> OPERATION_CODES_NO_LOB = Arrays.asList(1, 2, 3, 6, 7, 27, 34, 36, 255);
 
+    // CTE query excludes START,COMMIT,ROLLBACK markers - only interested in non-transaction marker changes
+    private static final List<Integer> CTE_OPERATION_CODES_LOB = Arrays.asList(1, 2, 3, 9, 10, 11, 27, 29, 34, 68, 70, 71, 91, 92, 93, 255);
+    private static final List<Integer> CTE_OPERATION_CODES_NO_LOB = Arrays.asList(1, 2, 3, 27, 34, 255);
+
     public BufferedLogMinerQueryBuilder(OracleConnectorConfig connectorConfig) {
         super(connectorConfig);
     }
 
     @Override
-    protected String getPredicates() {
+    protected String getPredicates(boolean isCteQuery) {
         final StringBuilder query = new StringBuilder(1024);
 
         // These bind parameters will be bound when the query is executed by the caller.
@@ -49,7 +53,7 @@ public class BufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder {
 
         // Operations predicate
         // This predicate never returns EMPTY; so inline directly.
-        query.append(getOperationCodePredicate());
+        query.append(getOperationCodePredicate(isCteQuery));
 
         // Include/Exclude usernames
         final String userNamePredicate = getUserNamePredicate();
@@ -85,9 +89,10 @@ public class BufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder {
     /**
      * Get the redo entry operation code predicate.
      *
+     * @param isCteQuery whether to build the operation code predicate for CTE
      * @return operation code predicate, never {@code null} nor empty.
      */
-    private String getOperationCodePredicate() {
+    private String getOperationCodePredicate(boolean isCteQuery) {
         // This predicate excepts that if we are limiting data to a pluggable database (PDB) that another
         // predicate has been applied to restrict the operations to only that PDB. This predicate will be
         // generated to capture the following operations as a baseline:
@@ -105,7 +110,7 @@ public class BufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder {
 
         // Handle all operations except DDL changes
         final InClause operationInClause = InClause.builder().withField("OPERATION_CODE");
-        operationInClause.withValues(getOperationCodesList());
+        operationInClause.withValues(getOperationCodesList(isCteQuery));
         predicate.append("(").append(operationInClause.build());
 
         // Handle DDL operations
@@ -120,21 +125,23 @@ public class BufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder {
         return " OR (OPERATION_CODE = 5 AND INFO NOT LIKE 'INTERNAL DDL%')";
     }
 
-    private List<Integer> getOperationCodesList() {
+    private List<Integer> getOperationCodesList(boolean isCteQuery) {
         if (connectorConfig.isLobEnabled()) {
-            return OPERATION_CODES_LOB;
+            return isCteQuery ? CTE_OPERATION_CODES_LOB : OPERATION_CODES_LOB;
         }
+
+        final List<Integer> nonLobOperations = isCteQuery ? CTE_OPERATION_CODES_NO_LOB : OPERATION_CODES_NO_LOB;
 
         if (connectorConfig.isLegacyLogMinerHeapTransactionStartBehaviorEnabled()) {
             // The legacy behavior skipped START events as a performance optimization to avoid adding
             // extra objects to the transaction cache. Without these, the username and client id
             // filter options and source information block fields won't work in some corner cases if
             // the transaction start is in a prior archive log.
-            final List<Integer> operationCodes = new ArrayList<>(OPERATION_CODES_NO_LOB);
+            final List<Integer> operationCodes = new ArrayList<>(nonLobOperations);
             operationCodes.removeIf(operationCode -> operationCode == 6);
             return operationCodes;
         }
 
-        return OPERATION_CODES_NO_LOB;
+        return nonLobOperations;
     }
 }

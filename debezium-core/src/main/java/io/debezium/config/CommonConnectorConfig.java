@@ -49,14 +49,11 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.notification.channels.SinkNotificationChannel;
 import io.debezium.pipeline.txmetadata.DefaultTransactionMetadataFactory;
 import io.debezium.pipeline.txmetadata.spi.TransactionMetadataFactory;
-import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.service.DefaultServiceRegistry;
 import io.debezium.service.spi.ServiceRegistry;
-import io.debezium.spi.converter.ConvertedField;
-import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Strings;
@@ -83,6 +80,7 @@ public abstract class CommonConnectorConfig {
     protected final boolean snapshotModeConfigurationBasedSnapshotOnDataError;
     protected final boolean isLogPositionCheckEnabled;
     protected final boolean isAdvancedMetricsEnabled;
+    private final boolean isExtendedHeadersEnabled;
 
     /**
      * The set of predefined versions e.g. for source struct maker version
@@ -574,7 +572,6 @@ public abstract class CommonConnectorConfig {
     public static final long DEFAULT_POLL_INTERVAL_MILLIS = 500;
     public static final String DATABASE_CONFIG_PREFIX = ConfigurationNames.DATABASE_CONFIG_PREFIX;
     public static final String DRIVER_CONFIG_PREFIX = "driver.";
-    private static final String CONVERTER_TYPE_SUFFIX = ".type";
     public static final long DEFAULT_RETRIABLE_RESTART_WAIT = 10000L;
     public static final long DEFAULT_MAX_QUEUE_SIZE_IN_BYTES = 0; // In case we don't want to pass max.queue.size.in.bytes;
     public static final String NOTIFICATION_CONFIGURATION_FIELD_PREFIX_STRING = "notification.";
@@ -1243,6 +1240,54 @@ public abstract class CommonConnectorConfig {
             .withValidation(Field::isListOfMap)
             .withDescription("The job's owners emitted by Debezium. A comma-separated list of key-value pairs.For example: k1=v1,k2=v2");
 
+    /**
+     * Configuration field for enabling or disabling extended Debezium context headers.
+     *
+     * <p>This field controls whether Debezium includes additional context headers in CDC events
+     * that provide essential metadata for tracking and identifying the source of change data
+     * capture events in downstream processing systems.</p>
+     *
+     * <p><strong>Configuration Details:</strong></p>
+     * <ul>
+     *   <li><strong>Type:</strong> Boolean</li>
+     *   <li><strong>Default:</strong> Not specified (implementation dependent)</li>
+     *   <li><strong>Importance:</strong> Low</li>
+     *   <li><strong>Group:</strong> Advanced (position 46)</li>
+     *   <li><strong>Width:</strong> Short</li>
+     * </ul>
+     *
+     * <p>When enabled, this configuration adds metadata headers that can be used by downstream
+     * systems for:</p>
+     * <ul>
+     *   <li>Event source tracking and lineage</li>
+     *   <li>Identifying the origin of CDC events</li>
+     *   <li>Enhanced monitoring and debugging capabilities</li>
+     * </ul>
+     *
+     * <p><strong>Usage Example:</strong></p>
+     * <pre>{@code
+     * // Enable extended headers
+     * config.put("extended.headers.enabled", true);
+     *
+     * // Disable extended headers (default behavior may vary)
+     * config.put("extended.headers.enabled", false);
+     * }</pre>
+     *
+     * @see ConfigurationNames#EXTENDED_HEADERS_ENABLED
+     * @see Field.Group#ADVANCED
+     * @since [3.2.1.Final, 3.3.0.Alpha1]
+     */
+    public static Field EXTENDED_HEADERS_ENABLED = Field.create(ConfigurationNames.EXTENDED_HEADERS_ENABLED)
+            .withDisplayName("Enable/Disable extended headers")
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 46))
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withDefault(true)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withValidation(Field::isBoolean)
+            .withDescription(
+                    "Enable/Disable Debezium context headers that provides essential metadata for tracking and identifying the source of CDC events in downstream processing systems.");
+
     protected static final ConfigDefinition CONFIG_DEFINITION = ConfigDefinition.editor()
             .connector(
                     EVENT_PROCESSING_FAILURE_HANDLING_MODE,
@@ -1276,7 +1321,8 @@ public abstract class CommonConnectorConfig {
                     OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE,
                     OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION,
                     OPEN_LINEAGE_INTEGRATION_JOB_TAGS,
-                    OPEN_LINEAGE_INTEGRATION_JOB_OWNERS)
+                    OPEN_LINEAGE_INTEGRATION_JOB_OWNERS,
+                    EXTENDED_HEADERS_ENABLED)
             .events(
                     CUSTOM_CONVERTERS,
                     CUSTOM_POST_PROCESSORS,
@@ -1316,7 +1362,6 @@ public abstract class CommonConnectorConfig {
     private final TransactionMetadataFactory transactionMetadataFactory;
     private final boolean shouldProvideTransactionMetadata;
     private final EventProcessingFailureHandlingMode eventProcessingFailureHandlingMode;
-    private final CustomConverterRegistry customConverterRegistry;
     private final BinaryHandlingMode binaryHandlingMode;
     private final SchemaNameAdjustmentMode schemaNameAdjustmentMode;
     private final FieldNameAdjustmentMode fieldNameAdjustmentMode;
@@ -1368,7 +1413,6 @@ public abstract class CommonConnectorConfig {
         this.transactionMetadataFactory = getTransactionMetadataFactory();
         this.shouldProvideTransactionMetadata = config.getBoolean(PROVIDE_TRANSACTION_METADATA);
         this.eventProcessingFailureHandlingMode = EventProcessingFailureHandlingMode.parse(config.getString(EVENT_PROCESSING_FAILURE_HANDLING_MODE));
-        this.customConverterRegistry = new CustomConverterRegistry(getCustomConverters());
         this.binaryHandlingMode = BinaryHandlingMode.parse(config.getString(BINARY_HANDLING_MODE));
         this.signalingDataCollection = config.getString(SIGNAL_DATA_COLLECTION);
         this.signalPollInterval = Duration.ofMillis(config.getLong(SIGNAL_POLL_INTERVAL_MS));
@@ -1391,6 +1435,7 @@ public abstract class CommonConnectorConfig {
         this.snapshotModeConfigurationBasedSnapshotOnDataError = config.getBoolean(SNAPSHOT_MODE_CONFIGURATION_BASED_SNAPSHOT_ON_DATA_ERROR);
         this.isLogPositionCheckEnabled = config.getBoolean(LOG_POSITION_CHECK_ENABLED);
         this.isAdvancedMetricsEnabled = config.getBoolean(ADVANCED_METRICS_ENABLE);
+        this.isExtendedHeadersEnabled = config.getBoolean(EXTENDED_HEADERS_ENABLED);
 
         this.signalingDataCollectionId = !Strings.isNullOrBlank(this.signalingDataCollection)
                 ? TableId.parse(this.signalingDataCollection)
@@ -1530,10 +1575,6 @@ public abstract class CommonConnectorConfig {
         return eventProcessingFailureHandlingMode;
     }
 
-    public CustomConverterRegistry customConverterRegistry() {
-        return customConverterRegistry;
-    }
-
     /**
      * Whether a particular connector supports an optimized way for implementing operation skipping, or not.
      */
@@ -1565,20 +1606,6 @@ public abstract class CommonConnectorConfig {
         }
         LOGGER.info("Loading the custom topic naming strategy plugin: {}", strategyName);
         return topicNamingStrategy;
-    }
-
-    @SuppressWarnings("unchecked")
-    private List<CustomConverter<SchemaBuilder, ConvertedField>> getCustomConverters() {
-        final String converterNameList = config.getString(CUSTOM_CONVERTERS);
-        final List<String> converterNames = Strings.listOf(converterNameList, x -> x.split(","), String::trim);
-
-        return converterNames.stream()
-                .map(name -> {
-                    CustomConverter<SchemaBuilder, ConvertedField> converter = config.getInstance(name + CONVERTER_TYPE_SUFFIX, CustomConverter.class);
-                    converter.configure(config.subset(name, true).asProperties());
-                    return converter;
-                })
-                .collect(Collectors.toList());
     }
 
     @SuppressWarnings("unchecked")
@@ -1762,6 +1789,10 @@ public abstract class CommonConnectorConfig {
         return isAdvancedMetricsEnabled;
     }
 
+    public boolean isExtendedHeadersEnabled() {
+        return isExtendedHeadersEnabled;
+    }
+
     public Duration getConnectionValidationTimeout() {
         return Duration.ofMillis(config.getLong(CONNECTION_VALIDATION_TIMEOUT_MS));
     }
@@ -1844,12 +1875,17 @@ public abstract class CommonConnectorConfig {
         return taskId;
     }
 
+    /**
+     * @deprecated Use {@link io.debezium.heartbeat.HeartbeatFactory} instead.
+     */
+    @Deprecated
     public Heartbeat createHeartbeat(TopicNamingStrategy topicNamingStrategy, SchemaNameAdjuster schemaNameAdjuster,
                                      HeartbeatConnectionProvider connectionProvider, HeartbeatErrorHandler errorHandler) {
         if (getHeartbeatInterval().isZero()) {
             return Heartbeat.DEFAULT_NOOP_HEARTBEAT;
         }
         return new HeartbeatImpl(getHeartbeatInterval(), topicNamingStrategy.heartbeatTopic(), getLogicalName(), schemaNameAdjuster);
+
     }
 
     public static int validateTopicName(Configuration config, Field field, ValidationOutput problems) {

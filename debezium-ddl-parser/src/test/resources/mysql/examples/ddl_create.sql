@@ -974,4 +974,43 @@ BEGIN
 END
 #end
 
+#begin
+CREATE DEFINER=`ProcRunner`@`localhost` PROCEDURE `CreateDropGroup_v2`(
+  IN inName VARCHAR(45),
+  IN inSeriesID INT,
+  IN inQuality VARCHAR(20),
+  IN inWeight FLOAT,
+  IN inPaintedRate FLOAT,
+  IN inCertifiedRate FLOAT,
+  IN inRollCount INT,
+  IN inVersion INT
+)
+BEGIN
+  INSERT INTO DropGroups (
+    `ID`,
+    `Name`,
+    `SeriesID`,
+    `Quality`,
+    `Weight`,
+    `PaintedRate`,
+    `CertifiedRate`,
+    `RollCount`,
+    `Version`)
+  WITH DropMax AS (SELECT COALESCE(MAX(`ID`), 0) MaxID FROM DropGroups)
+  SELECT
+    LAST_INSERT_ID(MaxID + 1),
+    inName,
+    inSeriesID,
+    inQuality,
+    inWeight,
+    inPaintedRate,
+    inCertifiedRate,
+    inRollCount,
+    inVersion
+  FROM DropMax;
+
+  SELECT LAST_INSERT_ID() AS DropGroupID;
+END
+#end
+
 CREATE TABLE IF NOT EXISTS table_with_encrypted_column_name(uuid VARCHAR(40) NOT NULL PRIMARY KEY, encrypted VARCHAR(40) DEFAULT NULL)

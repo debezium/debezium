@@ -241,7 +241,7 @@ public abstract class AbstractLogMinerStreamingAdapter
         final Scn oldestScn = getOldestScnAvailableInLogs(connectorConfig, connection);
         final List<LogFile> logFiles = getOrderedLogsFromScn(connectorConfig, oldestScn, connection);
         if (!logFiles.isEmpty()) {
-            try (var context = new LogMinerSessionContext(connection, false, LogMiningStrategy.ONLINE_CATALOG)) {
+            try (var context = new LogMinerSessionContext(connection, false, LogMiningStrategy.ONLINE_CATALOG, connectorConfig.getLogMiningPathToDictionary())) {
                 context.addLogFiles(getMostRecentLogFilesForSearch(logFiles));
                 context.startSession(Scn.NULL, Scn.NULL, false);
 

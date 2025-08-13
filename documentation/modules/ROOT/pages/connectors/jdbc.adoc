@@ -689,7 +689,7 @@ ifdef::community[]
 To deploy a {prodname} JDBC connector, you install the {prodname} JDBC connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
 
 .Prerequisites
-* link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* link:http://kafka.apache.org/[Apache Kafka] and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
 * You have a Kafka topic from which the connector can read change event records.
 * A destination database is installed and is configured to accept JDBC connections.
 

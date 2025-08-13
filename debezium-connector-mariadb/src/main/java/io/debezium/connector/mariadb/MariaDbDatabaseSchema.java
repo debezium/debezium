@@ -11,6 +11,7 @@ import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
 import io.debezium.connector.mariadb.antlr.MariaDbAntlrDdlParser;
 import io.debezium.connector.mariadb.jdbc.MariaDbDefaultValueConverter;
 import io.debezium.connector.mariadb.jdbc.MariaDbValueConverters;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.TableId;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -25,13 +26,13 @@ public class MariaDbDatabaseSchema extends BinlogDatabaseSchema<MariaDbPartition
 
     public MariaDbDatabaseSchema(MariaDbConnectorConfig connectorConfig, MariaDbValueConverters valueConverter,
                                  TopicNamingStrategy<TableId> topicNamingStrategy, SchemaNameAdjuster schemaNameAdjuster,
-                                 boolean tableIdCaseInsensitive) {
+                                 boolean tableIdCaseInsensitive, CustomConverterRegistry converterRegistry) {
         super(connectorConfig,
                 valueConverter,
                 new MariaDbDefaultValueConverter(valueConverter),
                 topicNamingStrategy,
                 schemaNameAdjuster,
-                tableIdCaseInsensitive);
+                tableIdCaseInsensitive, converterRegistry);
     }
 
     @Override

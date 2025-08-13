@@ -14,10 +14,11 @@ import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.config.Field;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.pipeline.spi.OffsetContext;
 
 /**
- * A class that is able to generate periodic heartbeat messages based on a pre-configured interval. The clients are
- * supposed to call method {@link #heartbeat(Map, Map, BlockingConsumer)} from a main loop of a connector.
+ * A class that is able to emit heartbeat messages. The clients are
+ * supposed to call method {@link #emit(Map, OffsetContext)} from a main loop of a connector.
  *
  * @author Jiri Pechanec
  *
@@ -60,59 +61,76 @@ public interface Heartbeat extends AutoCloseable {
             .withDefault(HeartbeatImpl.DEFAULT_HEARTBEAT_TOPICS_PREFIX);
 
     /**
-     * No-op Heartbeat implementation
+     * No-op Heartbeat implementation (not enabled)
      */
-    Heartbeat DEFAULT_NOOP_HEARTBEAT = new Heartbeat() {
-
-        @Override
-        public void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
-        }
-
-        @Override
-        public void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer)
-                throws InterruptedException {
-        }
-
-        @Override
-        public void heartbeat(Map<String, ?> partition, OffsetProducer offsetProducer,
-                              BlockingConsumer<SourceRecord> consumer)
-                throws InterruptedException {
-        }
-
-        @Override
-        public boolean isEnabled() {
-            return false;
-        }
-    };
+    Heartbeat DEFAULT_NOOP_HEARTBEAT = () -> false;
 
     /**
      * Generates a heartbeat record if defined time has elapsed
+     * Replaced by {@link ScheduledHeartbeat#emitWithDelay(Map, OffsetContext)}
      *
      * @param partition partition for the heartbeat record
-     * @param offset offset for the heartbeat record
-     * @param consumer - a code to place record among others to be sent into Connect
+     * @param offset    offset for the heartbeat record
+     * @param consumer  - a code to place record among others to be sent into Connect
      */
-    // TODO would be nice to pass OffsetContext here; not doing it for now, though, until MySQL is using OffsetContext, too
-    void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException;
+    @Deprecated
+    default void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
+        // ignore
+    }
 
     /**
      * Generates a heartbeat record if defined time has elapsed
+     * Replaced by {@link ScheduledHeartbeat#emitWithDelay(Map, OffsetContext)}
      *
      * @param partition partition for the heartbeat record
      * @param offsetProducer lazily calculated offset for the heartbeat record
      * @param consumer - a code to place record among others to be sent into Connect
      */
-    void heartbeat(Map<String, ?> partition, OffsetProducer offsetProducer, BlockingConsumer<SourceRecord> consumer) throws InterruptedException;
+    @Deprecated
+    default void heartbeat(Map<String, ?> partition, OffsetProducer offsetProducer, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
+        // ignore
+    }
 
     /**
-     * Generates a heartbeat record unconditionaly
+     * A class that is able to generate periodic heartbeat messages based on a pre-configured interval. The clients are
+     * supposed to call method {@link #emitWithDelay(Map, OffsetContext)} from a main loop of a connector.
+     */
+    interface ScheduledHeartbeat extends Heartbeat {
+        ScheduledHeartbeat NOOP_HEARTBEAT = () -> false;
+
+        /**
+         * Generates a heartbeat record if defined time has elapsed
+         *
+         * @param partition partition for the heartbeat record
+         * @param offset    offset for the heartbeat record
+         */
+        default void emitWithDelay(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
+            // ignore
+        }
+    }
+
+    /**
+     * Generates a heartbeat record unconditionally
+     * Replaced by {@link #emit(Map, OffsetContext)}
      *
      * @param partition partition for the heartbeat record
-     * @param offset offset for the heartbeat record
-     * @param consumer - a code to place record among others to be sent into Connect
+     * @param offset    offset for the heartbeat record
+     * @param consumer  - a code to place record among others to be sent into Connect
      */
-    // TODO would be nice to pass OffsetContext here; not doing it for now, though, until MySQL is using OffsetContext, too
-    void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException;
+    @Deprecated
+    default void forcedBeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
+        // ignore
+    }
+
+    /**
+     * Generates a heartbeat record unconditionally
+     *
+     * @param partition partition for the heartbeat record
+     * @param offset    offset for the heartbeat record
+     */
+    default void emit(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
+        // ignore
+    }
 
     /**
      * Whether heartbeats are enabled or not.

@@ -211,6 +211,10 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             LOGGER.info("Resuming streaming from operation time '{}'", offsetContext.lastTimestamp());
             stream.startAtOperationTime(offsetContext.lastTimestamp());
         }
+        else if (connectorConfig.startAtOperationTime().isPresent()) {
+            LOGGER.info("Resuming streaming from explicit operation time '{}'", offsetContext.lastTimestamp());
+            stream.startAtOperationTime(connectorConfig.startAtOperationTime().get());
+        }
 
         if (connectorConfig.getCursorMaxAwaitTime() > 0) {
             stream.maxAwaitTime(connectorConfig.getCursorMaxAwaitTime(), TimeUnit.MILLISECONDS);

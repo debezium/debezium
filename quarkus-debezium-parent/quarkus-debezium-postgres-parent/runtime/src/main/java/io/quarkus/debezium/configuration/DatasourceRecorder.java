@@ -15,7 +15,7 @@ import io.quarkus.runtime.annotations.Recorder;
 @Recorder
 public class DatasourceRecorder {
 
-    public static final String PREFIX = "quarkus.datasource.";
+    public static final String PREFIX = "quarkus.datasource";
     public static final String JDBC_URL = ".jdbc.url";
     public static final String USERNAME = ".username";
     public static final String PASSWORD = ".password";

@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Run script
         run: |
           ./github-support/list-contributors.sh ${{ github.event.inputs.tag1 }} ${{ github.event.inputs.tag2 }}

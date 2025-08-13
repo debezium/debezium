@@ -23,6 +23,7 @@ ALTER TABLE S.PRODUCTS DROP PARTITION p0 UPDATE INDEXES NOPARALLEL;
 ALTER TABLE TEST001 MODIFY NAME DEFAULT NULL;
 ALTER TABLE REIMBURSE.T_CLAIM_BASE INMEMORY;
 ALTER TABLE "APPLSYS"."FND_SEC_GUIDELINES_TL" MODIFY PARTITION BY RANGE (CREATION_DATE) INTERVAL (NUMTODSINTERVAL (1, 'DAY')) (PARTITION VALUES LESS THAN (TO_DATE('2024-01-01', 'YYYY-MM-DD')));
+alter table test1 split partition p_MAXV AT (TO_DATE('01/01/2030', 'DD/MM/YYYY')) INTO (partition p_2029 TABLESPACE users, partition p_MAXV) online;
 -- Alter table add unique index
 alter table dbz1211 add constraint name unique (id,data) using index tablespace ts;
 alter table dbz1211_child add constraint name unique (id) using index tablespace ts;

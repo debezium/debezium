@@ -47,7 +47,7 @@ jobs:
       extensions-changed: ${{ steps.changed-files-extensions.outputs.any_changed }}
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -229,12 +229,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action (Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: core
 
       - name: Checkout Action (Debezium Server)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: debezium/debezium-server
           path: server
@@ -310,7 +310,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - uses: ./.github/actions/checkstyle-format
         with:
@@ -328,11 +328,11 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action (Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: core
       - name: Checkout Action (Cassandra)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: debezium/debezium-connector-cassandra
           path: cassandra
@@ -353,11 +353,11 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action (Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: core
       - name: Checkout Action (Db2)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: debezium/debezium-connector-db2
           path: db2
@@ -378,11 +378,11 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action (Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: core
       - name: Checkout Action (IBMi)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: debezium/debezium-connector-ibmi
           path: ibmi
@@ -461,7 +461,7 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.sqlserver-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     steps:
       - name: Checkout Action (Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - uses: ./.github/actions/build-debezium-sqlserver
         with:
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -473,11 +473,11 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action (Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: core
       - name: Checkout Action (Spanner)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: debezium/debezium-connector-spanner
           path: spanner
@@ -498,11 +498,11 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action (Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: core
       - name: Checkout Action (Vitess)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: debezium/debezium-connector-vitess
           path: vitess
@@ -536,7 +536,7 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.ai-changed == 'true' }}
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - uses: ./.github/actions/build-debezium-ai
         with:
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -548,7 +548,7 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.openlineage-changed == 'true' }}
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - uses: ./.github/actions/build-debezium-openlineage
         with:
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -560,7 +560,7 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.extensions-changed == 'true' }}
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - uses: ./.github/actions/build-quarkus-extensions
         with:
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -572,11 +572,11 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' }}
     steps:
       - name: Checkout Action (Core)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: core
       - name: Checkout Action (Debezium Server)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: debezium/debezium-server
           path: server
@@ -597,7 +597,7 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.outbox-changed == 'true' }}
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - uses: ./.github/actions/build-debezium-outbox
         with:
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -609,7 +609,7 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.schema-generator-changed == 'true' }}
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - uses: ./.github/actions/build-debezium-schema-generator
         with:
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -621,7 +621,7 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.mysql-changed == 'true' || needs.file_changes.outputs.mysql-ddl-parser-changed == 'true' || needs.file_changes.outputs.storage-only-changed == 'true' }}
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - uses: ./.github/actions/build-debezium-storage
         with:
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}
@@ -633,7 +633,7 @@ jobs:
     if: ${{ needs.file_changes.outputs.common-changed == 'true' || needs.file_changes.outputs.debezium-testing-changed == 'true' }}
     steps:
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - uses: ./.github/actions/build-debezium-testing
         with:
           maven-cache-key: maven-debezium-test-build-${{ hashFiles('**/pom.xml') }}

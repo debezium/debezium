@@ -589,4 +589,33 @@ public class MongoArrayConverterTest {
 
         assertThat(struct.toString()).isEqualToIgnoringWhitespace(expectedStruct);
     }
+
+    @Test
+    @FixFor("DBZ-9231")
+    public void shouldProcessNestedDocumentsInArray() {
+        final MongoDataConverter converter = new MongoDataConverter(ArrayEncoding.DOCUMENT);
+        final BsonDocument val = BsonDocument.parse("""
+                { foo: [{ bar: { baz: 'whatever' } }] }
+                """);
+        builder = SchemaBuilder.struct().name("nestedArray");
+        Map<String, Map<Object, BsonType>> entry = converter.parseBsonDocument(val);
+        converter.buildSchema(entry, builder);
+        final Schema finalSchema = builder.build();
+        final Struct struct = new Struct(finalSchema);
+        for (Map.Entry<String, BsonValue> bsonValueEntry : val.entrySet()) {
+            converter.buildStruct(bsonValueEntry, finalSchema, struct);
+        }
+
+        String expectedStruct = """
+                Struct{
+                    foo=Struct{
+                        _0=Struct{
+                            bar=Struct{
+                                baz=whatever
+                            }
+                        }
+                    }
+                }""";
+        assertThat(struct.toString()).isEqualToIgnoringWhitespace(expectedStruct);
+    }
 }

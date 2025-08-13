@@ -19,14 +19,69 @@ jobs:
         env:
           pull_request_number: ${{ github.event.pull_request.number }}
         run: |
-          curl --silent -X "GET" https://api.github.com/repos/debezium/debezium/pulls/$pull_request_number/commits | jq '.[] | {author: .author.login}' | jq -r '.author' >> SORTED_AUTHORS.txt
+          echo "OCTOCAT_COMMIT_FOUND=false" >> $GITHUB_OUTPUT
 
+          make_api_call_with_retries() {
+            local URL="$1"
+            local MAX_RETRIES="${2:-3}"
+            local DELAY="${3:-2}"
+            local ATTEMPT=1
+
+            if [[ -z "$URL" ]]; then
+              echo "::error:: No URL provided to call_api_with_retries." >&2
+              return 1
+            fi
+
+            while [ $ATTEMPT -le $MAX_RETRIES ]; do
+              RESPONSE=$(curl --silent -w "%{http_code}" -X "GET" $URL)
+              HTTP_CODE="${RESPONSE: -3}"
+              BODY="${RESPONSE:: -3}"
+
+              if [ "$HTTP_CODE" -eq 200 ]; then
+                echo "$BODY"
+                return 0
+              else
+                sleep "$DELAY"
+                DELAY=$((DELAY * 2))
+              fi
+
+              ATTEMPT=$((ATTEMPT + 1))
+            done
+
+            echo "::error:: No luck getting a successful response after $MAX_RETRIES retries." >&2
+            return 1
+          }
+
+          if ! RESPONSE=$(make_api_call_with_retries "https://api.github.com/repos/debezium/debezium/pulls/$pull_request_number/commits"); then
+            echo "::error:: No luck getting the octocat commit messages."
+            exit 1
+          fi
+
+          MESSAGE=$(echo "$RESPONSE" | jq -r '.[].commit.message // empty')
+
+          echo "Response:\n$RESPONSE"
+          echo "Message:\n$MESSAGE"
+          
+          if [[ "$MESSAGE" == "API rate limit exceeded"* ]]; then
+            echo "::error:: Github API rate limit exceeded. Skipping octocat check."
+            exit 1
+          fi
+          
+          echo "$RESPONSE" | jq -r '.[] | .author.login // "null"' >> SORTED_AUTHORS.txt
+
+          FOUND="false"
           while IFS=" " read -r AUTHOR;
           do
             if [[ $AUTHOR == *"null"* ]]; then
-              echo "OCTOCAT_COMMIT_FOUND=true" >> $GITHUB_OUTPUT
+              FOUND="true"
+              break
             fi
           done < SORTED_AUTHORS.txt
+          
+          if [[ "$FOUND" == "true" ]]; then
+            echo "OCTOCAT_COMMIT_FOUND=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create comment
         if: ${{ steps.octocat.outputs.OCTOCAT_COMMIT_FOUND == 'true' }}
         uses: peter-evans/create-or-update-comment@v4
@@ -35,8 +90,9 @@ jobs:
           body: |
             Hi @${{ github.event.pull_request.user.login }}. Thank you for your valuable contribution.
             Please author your commit(s) using an email [linked to your GitHub account](https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-github-profile/managing-contribution-graphs-on-your-profile/why-are-my-contributions-not-showing-up-on-my-profile).
+
       - name: Check failure
-        if: ${{ steps.check.outputs.OCTOCAT_COMMIT_FOUND == 'true' }}
+        if: ${{ steps.octocat.outputs.OCTOCAT_COMMIT_FOUND == 'true' }}
         uses: actions/github-script@v7
         continue-on-error: false
         with:

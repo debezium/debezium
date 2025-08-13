@@ -101,12 +101,15 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     @Override
     public void forEachEvent(EhcacheTransaction transaction, InterruptiblePredicate<LogMinerEvent> predicate) throws InterruptedException {
-        try (var stream = eventIdsByTransactionId.get(transaction.getTransactionId()).stream()) {
-            final Iterator<Integer> iterator = stream.iterator();
-            while (iterator.hasNext()) {
-                final LogMinerEvent event = getTransactionEvent(transaction, iterator.next());
-                if (event != null && !predicate.test(event)) {
-                    break;
+        final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
+        if (events != null) {
+            try (var stream = events.stream()) {
+                final Iterator<Integer> iterator = stream.iterator();
+                while (iterator.hasNext()) {
+                    final LogMinerEvent event = getTransactionEvent(transaction, iterator.next());
+                    if (event != null && !predicate.test(event)) {
+                        break;
+                    }
                 }
             }
         }
@@ -135,11 +138,13 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     @Override
     public void removeTransactionEvents(EhcacheTransaction transaction) {
-        eventCache.removeAll(eventIdsByTransactionId.get(transaction.getTransactionId())
-                .stream()
-                .map(transaction::getEventId)
-                .collect(Collectors.toSet()));
-
+        final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
+        if (events != null) {
+            eventCache.removeAll(events
+                    .stream()
+                    .map(transaction::getEventId)
+                    .collect(Collectors.toSet()));
+        }
         eventIdsByTransactionId.remove(transaction.getTransactionId());
     }
 
@@ -160,12 +165,20 @@ public class EhcacheLogMinerTransactionCache extends AbstractLogMinerTransaction
 
     @Override
     public boolean containsTransactionEvent(EhcacheTransaction transaction, int eventKey) {
-        return eventIdsByTransactionId.get(transaction.getTransactionId()).contains(eventKey);
+        final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
+        if (events != null) {
+            return events.contains(eventKey);
+        }
+        return false;
     }
 
     @Override
     public int getTransactionEventCount(EhcacheTransaction transaction) {
-        return eventIdsByTransactionId.get(transaction.getTransactionId()).size();
+        final var events = eventIdsByTransactionId.get(transaction.getTransactionId());
+        if (events != null) {
+            return events.size();
+        }
+        return 0;
     }
 
     @Override

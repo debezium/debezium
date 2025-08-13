@@ -5,6 +5,10 @@ inputs:
   maven-cache-key:
     description: "The maven build cache key"
     required: true
+  version-mariadb-server:
+    description: "The MariaDB server version to use"
+    required: false
+    default: "11.4.3"
   profile:
     description: "The MariaDB build profile to use"
     required: false
@@ -23,13 +27,14 @@ runs:
       with:
         key: ${{ inputs.maven-cache-key }}
 
-    - name: Build MariaDB connector (MariaDB - ${{ inputs.profile }})
+    - name: Build MariaDB connector (MariaDB ${{ inputs.version-mariadb-server }} - ${{ inputs.profile }})
       shell: ${{ inputs.shell }}
       run: >
         ./mvnw clean install -B -pl debezium-connector-mariadb -am
         -P${{ inputs.profile }}
         -Dcheckstyle.skip=true
         -Dformat.skip=true
+        -Dversion.mariadb.server=${{ inputs.version-mariadb-server }}
         -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
         -Dmaven.wagon.http.pool=false
         -Dmaven.wagon.httpconnectionManager.ttlSeconds=120

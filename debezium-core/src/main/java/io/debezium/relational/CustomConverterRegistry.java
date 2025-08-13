@@ -18,6 +18,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import io.debezium.annotation.GuardedBy;
 import io.debezium.annotation.Immutable;
 import io.debezium.annotation.ThreadSafe;
+import io.debezium.service.Service;
 import io.debezium.spi.converter.ConvertedField;
 import io.debezium.spi.converter.CustomConverter;
 import io.debezium.spi.converter.RelationalColumn;
@@ -29,7 +30,7 @@ import io.debezium.spi.converter.RelationalColumn;
  *
  */
 @ThreadSafe
-public class CustomConverterRegistry {
+public class CustomConverterRegistry implements Service {
 
     @Immutable
     private final List<CustomConverter<SchemaBuilder, ConvertedField>> converters;
@@ -163,7 +164,7 @@ public class CustomConverterRegistry {
      *
      * @param <S> schema describing the output type, usually {@link org.apache.kafka.connect.data.SchemaBuilder}
      */
-    public class ConverterDefinition<S> {
+    public static class ConverterDefinition<S> {
         public final S fieldSchema;
         public final CustomConverter.Converter converter;
 

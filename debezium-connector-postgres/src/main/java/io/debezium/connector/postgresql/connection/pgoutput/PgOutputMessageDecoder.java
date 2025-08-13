@@ -10,7 +10,6 @@ import static java.util.stream.Collectors.toMap;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.sql.DatabaseMetaData;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -304,7 +303,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         final DatabaseMetaData databaseMetadata = connection.connection().getMetaData();
         final TableId tableId = new TableId(null, schemaName, tableName);
 
-        final List<io.debezium.relational.Column> readColumns = getTableColumnsFromDatabase(connection, databaseMetadata, tableId);
+        final List<io.debezium.relational.Column> readColumns = connection.getTableColumnsForDecoder(
+                tableId, decoderContext.getConfig().getColumnFilter());
         columnDefaults = readColumns.stream()
                 .filter(io.debezium.relational.Column::hasDefaultValue)
                 .collect(toMap(io.debezium.relational.Column::name, io.debezium.relational.Column::defaultValueExpression));
@@ -361,25 +361,6 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
         Table table = resolveRelationFromMetadata(new PgOutputRelationMetaData(relationId, schemaName, tableName, columns, primaryKeyColumns));
         decoderContext.getSchema().applySchemaChangesForTable(relationId, table);
-    }
-
-    private List<io.debezium.relational.Column> getTableColumnsFromDatabase(PostgresConnection connection, DatabaseMetaData databaseMetadata, TableId tableId)
-            throws SQLException {
-        List<io.debezium.relational.Column> readColumns = new ArrayList<>();
-        try {
-            try (ResultSet columnMetadata = databaseMetadata.getColumns(null, tableId.schema(), tableId.table(), null)) {
-                while (columnMetadata.next()) {
-                    connection.readColumnForDecoder(columnMetadata, tableId, decoderContext.getConfig().getColumnFilter())
-                            .ifPresent(readColumns::add);
-                }
-            }
-        }
-        catch (SQLException e) {
-            LOGGER.error("Failed to read column metadata for '{}.{}'", tableId.schema(), tableId.table());
-            throw e;
-        }
-
-        return readColumns;
     }
 
     private boolean isColumnInPrimaryKey(String schemaName, String tableName, String columnName, List<String> primaryKeyColumns) {

@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.oracle.OracleConnection;
+import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.OracleConnectorConfig.LogMiningStrategy;
 import io.debezium.connector.oracle.Scn;
 
@@ -31,14 +32,16 @@ public class LogMinerSessionContext implements AutoCloseable {
     private final OracleConnection connection;
     private final boolean useContinuousMining;
     private final LogMiningStrategy strategy;
+    private final String dictionaryFilePath;
 
     private boolean sessionStarted = false;
     private Duration lastSessionStartTime = Duration.ZERO;
 
-    public LogMinerSessionContext(OracleConnection connection, boolean useContinuousMining, LogMiningStrategy strategy) {
+    public LogMinerSessionContext(OracleConnection connection, boolean useContinuousMining, LogMiningStrategy strategy, String dictionaryFilePath) {
         this.connection = connection;
         this.useContinuousMining = useContinuousMining;
         this.strategy = strategy;
+        this.dictionaryFilePath = dictionaryFilePath;
     }
 
     @Override
@@ -122,6 +125,9 @@ public class LogMinerSessionContext implements AutoCloseable {
                 query.append("endScn => '").append(endScn).append("', ");
             }
             query.append("options => ").append(String.join(" + ", getMiningOptions(committedDataOnly)));
+            if (strategy == OracleConnectorConfig.LogMiningStrategy.DICTIONARY_FROM_FILE) {
+                query.append(", DICTFILENAME => '").append(dictionaryFilePath).append("'");
+            }
             query.append("); END;");
 
             Instant startTime = Instant.now();
@@ -131,6 +137,9 @@ public class LogMinerSessionContext implements AutoCloseable {
         }
         catch (SQLException e) {
             if (e.getErrorCode() == 1291 || e.getMessage().startsWith("ORA-01291")) {
+                throw new RetriableLogMinerException(e);
+            }
+            else if (e.getErrorCode() == 310 || e.getMessage().startsWith("ORA-00310")) {
                 throw new RetriableLogMinerException(e);
             }
             throw e;

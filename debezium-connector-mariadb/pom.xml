@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>3.2.0-SNAPSHOT</version>
+        <version>3.3.0-SNAPSHOT</version>
         <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -44,6 +44,11 @@
             <groupId>io.debezium</groupId>
             <artifactId>debezium-core</artifactId>
             <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.reflections</groupId>
+            <artifactId>reflections</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -180,6 +185,8 @@
         <docker.filter>${docker.dbs}</docker.filter>
         <docker.skip>false</docker.skip>
         <docker.initimage>rm -f /etc/localtime; ln -s /usr/share/zoneinfo/Pacific/Samoa /etc/localtime</docker.initimage>
+
+        <mockito.argLine>-javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
     </properties>
     <build>
         <plugins>

@@ -11,5 +11,5 @@ package io.quarkus.debezium.engine.capture;
  * @param <T> the event
  */
 public interface CapturingInvokerRegistry<T> {
-    CapturingInvoker<T> get(T identifier);
+    CapturingInvoker<T> get(Object identifier);
 }

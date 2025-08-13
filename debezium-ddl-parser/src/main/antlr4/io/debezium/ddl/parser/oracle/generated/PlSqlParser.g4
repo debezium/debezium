@@ -2651,7 +2651,7 @@ truncate_cluster
     ;
 
 drop_table
-    : DROP TABLE tableview_name (IF EXISTS)? (AS tableview_name)? (CASCADE CONSTRAINTS)? PURGE? (AS quoted_string)? FORCE?
+    : DROP TABLE tableview_name (IF EXISTS)? (AS tableview_name)? (CASCADE (CONSTRAINT | CONSTRAINTS))? PURGE? (AS quoted_string)? FORCE?
     ;
 
 drop_tablespace
@@ -3102,7 +3102,7 @@ split_table_partition
     : SPLIT partition_extended_names (
             AT '(' literal (',' literal)* ')' INTO '(' range_partition_desc (',' range_partition_desc)*  ')'
             | INTO '(' (range_partition_desc (',' range_partition_desc)* | list_partition_desc (',' list_partition_desc)* ) ')'
-            ) (update_global_index_clause | update_index_clauses)?
+            ) (update_global_index_clause | update_index_clauses | ONLINE)?
     ;
 
 truncate_table_partition

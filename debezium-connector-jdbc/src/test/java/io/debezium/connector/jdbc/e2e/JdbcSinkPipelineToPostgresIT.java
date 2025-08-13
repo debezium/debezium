@@ -244,4 +244,28 @@ public class JdbcSinkPipelineToPostgresIT extends AbstractJdbcSinkPipelineIT {
                 ResultSet::getString);
     }
 
+    @TestTemplate
+    @ForSource(value = SourceType.POSTGRES, reason = "The tsvector data type only applies to PostgreSQL")
+    public void testTsvectorDataTypeWithStaticValue(Source source, Sink sink) throws Exception {
+        assertDataTypeNonKeyOnly(source,
+                sink,
+                "tsvector",
+                List.of("'full:3 postgre:1 search:5 support:2 text:4'"),
+                List.of("'full':3 'postgre':1 'search':5 'support':2 'text':4"),
+                (record) -> assertColumn(sink, record, "data", "tsvector"),
+                ResultSet::getString);
+    }
+
+    @TestTemplate
+    @ForSource(value = SourceType.POSTGRES, reason = "The tsvector data type only applies to PostgreSQL")
+    public void testTsvectorDataTypeWithDirectFunctionInsert(Source source, Sink sink) throws Exception {
+        assertDataTypeNonKeyOnly(source,
+                sink,
+                "tsvector",
+                List.of("to_tsvector('english', 'This is a test for direct tsvector insert')"),
+                List.of("'direct':6 'insert':8 'test':4 'tsvector':7"),
+                (record) -> assertColumn(sink, record, "data", "tsvector"),
+                ResultSet::getString);
+    }
+
 }

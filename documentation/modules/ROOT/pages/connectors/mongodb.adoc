@@ -1243,7 +1243,7 @@ ifdef::community[]
 To deploy a {prodname} MongoDB connector, you install the {prodname} MongoDB connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
 
 .Prerequisites
-* link:https://zookeeper.apache.org/[Apache Zookeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* link:http://kafka.apache.org/[Apache Kafka] and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
 * MongoDB is installed and is xref:setting-up-mongodb[set up to work with the {prodname} connector].
 
 .Procedure
@@ -1258,7 +1258,7 @@ endif::[]
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 . Restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s Container images] for Apache Zookeeper, Apache Kafka, and Kafka Connect with the MongoDB connector already installed and ready to run.
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Apache Kafka and Kafka Connect with the MongoDB connector already installed and ready to run.
 
 [IMPORTANT]
 ====
@@ -1763,6 +1763,10 @@ Set xref:mongodb-property-capture-mode-full-update-type[capture.mode.full.update
 `change_streams_with_pre_image`::
 `update` events do not include the full document, but include a field that represents the state of the document `before` the change.
 
+|[[mongodb-property-capture-start-op-time]]<<mongodb-property-capture-start-op-time, `+capture.start.op.time+`>>
+|
+|Specifies the https://www.mongodb.com/docs/manual/changeStreams/#ref-start-time-id1[startAtOperationTime] change stream parameter. The value ought to be a long representation of Bson timestamp.
+
 |[[mongodb-property-capture-scope]]<<mongodb-property-capture-scope, `+capture.scope+`>>
 |`deployment`
 |Specifies the https://www.mongodb.com/docs/manual/changeStreams/#watch-a-collection--database--or-deployment[scope of the change streams] that the connector opens.
@@ -2265,6 +2269,17 @@ User intervention is required to restart the connector.
 `> 0`:: The connector restarts automatically until it reaches the specified maximum number of retries.
 After the next failure, the connector stops, and user intervention is required to restart it.
 
+|[[mongodb-property-extended-headers-enabled]]<<mongodb-property-extended-headers-enabled, `extended.headers.enabled`>>
+|true
+|This property specifies whether {prodname} adds context headers with the prefix `__debezium.context.` to the messages that it emits.
+
+These headers are required by the OpenLineage integration and provide metadata that enables downstream processing systems to track and identify the sources of change events.
+
+The property adds following headers:
+
+`__debezium.context.connectorLogicalName`:: The logical name of the {prodname} connector.
+`__debezium.context.taskId`:: The unique identifier of the connector task.
+`__debezium.context.connectorName`::  The name of the {prodname} connector.
 |===
 
 
@@ -2285,7 +2300,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-kafka-s
 [[mongodb-monitoring]]
 == Monitoring
 
-The {prodname} MongoDB connector has two metric types in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect have.
+The {prodname} MongoDB connector has two metric types in addition to the built-in support for JMX metrics that Kafka and Kafka Connect have.
 
 * xref:mongodb-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
 * xref:mongodb-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.

@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -41,6 +42,7 @@ import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Throwables;
@@ -295,7 +297,7 @@ public final class TestHelper {
                 config,
                 TestHelper.getDefaultValueConverter(),
                 (TopicNamingStrategy) SchemaTopicNamingStrategy.create(config),
-                getPostgresValueConverter(typeRegistry, config));
+                getPostgresValueConverter(typeRegistry, config), new CustomConverterRegistry(Collections.emptyList()));
     }
 
     protected static Set<String> schemaNames() throws SQLException {

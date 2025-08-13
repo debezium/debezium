@@ -187,6 +187,8 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
                         .setDefaultLengthScaleDimension(10, 0),
                 new DataTypeResolver.DataTypeEntry(Types.BIT, MariaDBParser.BIT)
                         .setDefaultLengthDimension(1),
+                new DataTypeResolver.DataTypeEntry(Types.OTHER, MariaDBParser.VECTOR)
+                        .setDefaultLengthDimension(2048),
                 new DataTypeResolver.DataTypeEntry(Types.TIME, MariaDBParser.TIME),
                 new DataTypeResolver.DataTypeEntry(Types.TIMESTAMP_WITH_TIMEZONE, MariaDBParser.TIMESTAMP),
                 new DataTypeResolver.DataTypeEntry(Types.TIMESTAMP, MariaDBParser.DATETIME),

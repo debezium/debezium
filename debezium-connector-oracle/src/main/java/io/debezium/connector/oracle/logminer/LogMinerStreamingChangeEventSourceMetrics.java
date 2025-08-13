@@ -79,6 +79,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
     private final AtomicLong changesCount = new AtomicLong();
     private final AtomicLong scnFreezeCount = new AtomicLong();
     private final AtomicLong partialRollbackCount = new AtomicLong();
+    private final AtomicLong numberOfBufferedEvents = new AtomicLong();
 
     private final DurationHistogramMetric batchProcessingDuration = new DurationHistogramMetric();
     private final DurationHistogramMetric fetchQueryDuration = new DurationHistogramMetric();
@@ -128,6 +129,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
         oversizedTransactionCount.set(0);
         scnFreezeCount.set(0);
         partialRollbackCount.set(0);
+        numberOfBufferedEvents.set(0);
 
         fetchQueryDuration.reset();
         batchProcessingDuration.reset();
@@ -401,6 +403,11 @@ public class LogMinerStreamingChangeEventSourceMetrics
         return rolledBackTransactionIds.getAll();
     }
 
+    @Override
+    public long getNumberOfEventsInBuffer() {
+        return numberOfBufferedEvents.get();
+    }
+
     /**
      * @return database current zone offset
      */
@@ -528,6 +535,15 @@ public class LogMinerStreamingChangeEventSourceMetrics
      */
     public void setActiveTransactionCount(long activeTransactionCount) {
         this.activeTransactionCount.set(activeTransactionCount);
+    }
+
+    /**
+     * Sets the number of transaction events in the buffer.
+     *
+     * @param bufferedEventCount number of buffered events
+     */
+    public void setBufferedEventCount(long bufferedEventCount) {
+        this.numberOfBufferedEvents.set(bufferedEventCount);
     }
 
     /**

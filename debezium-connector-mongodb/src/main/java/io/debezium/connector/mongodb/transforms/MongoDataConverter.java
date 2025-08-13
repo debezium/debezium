@@ -395,6 +395,10 @@ public class MongoDataConverter {
                             schema(entryKey, (Entry<Object, BsonType>) subEntry, documentArrayBuilder);
                             documentMapBuilder.field(entryKey, documentArrayBuilder.build());
                         }
+                        else if (isNestedMapObject(subEntry.getKey()) && isSameType(subEntry.getValue(), BsonType.DOCUMENT)) {
+                            // parse nested documents
+                            schema(entryKey, (Entry<Object, BsonType>) subEntry, documentMapBuilder);
+                        }
                         else {
                             // parse default values
                             BsonValue bsonValue = (BsonValue) subEntry.getKey();

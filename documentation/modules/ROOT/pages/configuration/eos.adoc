@@ -1,0 +1,88 @@
+[id="exactly-once-delivery"]
+= Exactly once delivery
+ifdef::community[]
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+== Overview
+endif::community[]
+
+{prodname} provides at-least-once delivery guarantees.
+This means that no changes are missed; however, in some cases, a record may be delivered more than once.
+In certain scenarios, these duplicate records might be problematic, and exactly-once semantics may be required.
+
+Exactly-once delivery ensures that every change is delivered and appears in the change stream no more than once.
+This is a significantly stricter requirement than at-least-once delivery.
+
+Currently, {prodname} does not implement an internal deduplication layer to enforce exactly-once semantics.
+However, when {prodname} is deployed as a source connector in the Kafka Connect framework, it can take advantage of Kafka Connect’s support for exactly-once delivery.
+
+== Kafka Connect exactly-once support for source connector
+
+Kafka Connect introduced support for exactly-once delivery for source connectors in link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-618%3A+Exactly-Once+Support+for+Source+Connectors[KIP-618].
+This functionality builds upon Kafka’s transaction support and the exactly-once delivery mechanism introduced in link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-98+-+Exactly+Once+Delivery+and+Transactional+Messaging[KIP-98].
+
+=== Known issues and considerations
+
+Although exactly-once delivery has been available in Kafka and Kafka Connect for some time, it remains unclear whether the implementation is fully correct or if there are edge cases where exactly-once semantics might be violated.
+
+To date, no comprehensive study has analyzed the correctness of transaction and exactly-once implementations in recent Kafka releases.
+However, two link:https://jepsen.io[Jepsen] reports, one for link:https://jepsen.io/analyses/redpanda-21.10.1[Redpanda] and another for link:https://jepsen.io/analyses/bufstream-0.1.0[Bufstream], highlight potential issues with the Kafka protocol and its implementations.
+These reports raise concerns about correctness, particularly in the Bufstream case.
+
+As a result, several related issues in Apache Kafka remain open:
+
+* link:https://issues.apache.org/jira/browse/KAFKA-17734[KAFKA-17734]
+* link:https://issues.apache.org/jira/browse/KAFKA-17754[KAFKA-17754]
+* link:https://issues.apache.org/jira/browse/KAFKA-17582[KAFKA-17582]
+
+Because Kafka Connect exactly-once delivery relies on Kafka transactions, it’s reasonable to assume that these issues might also affect Kafka Connect’s exactly-once guarantees.
+
+[WARNING]
+====
+While there is no in-depth study which would analyse correctness of Kafka Connect exactly-once delivery, there are known issues in Kafka transaction protocol which may have impact also on the correctness of Kafka Connect exactly-once delivery.
+====
+
+
+==  {prodname} Connectors supporting exactly-once delivery
+
+The following {prodname} source connectors support participation in Kafka Connect’s exactly-once delivery:
+
+* MariaDB
+* MongoDB
+* MySQL
+* Oracle
+* PostgreSQL
+* SQL Server
+
+== Configuration
+
+=== Prerequisites
+
+Kafka must be running in distributed mode, and the Kafka Connect version must support exactly-once delivery (version 3.3.0 or higher).
+
+=== Configuration of the Kafka workers
+
+All Kafka Connect workers must have exactly-once delivery enabled by setting the following property in the worker configuration:
+
+```
+exactly.once.source.support=enabled
+```
+
+For more details (e.g., ACL configuration), refer to the official link:https://kafka.apache.org/documentation.html#connect_exactlyoncesource[Kafka documentation].
+
+=== Source connector configuration
+
+To enable exactly-once delivery for a specific source connector, add the following setting to the connector configuration:
+
+```
+exactly.once.support=required
+```
+
+An additional setting, `transaction.boundary`, must be set to `poll` for all {prodname} source connectors.
+However, since `poll` is the default value, this setting does not need to be explicitly included in the configuration unless being overridden.

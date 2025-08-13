@@ -5,7 +5,6 @@
  */
 package io.debezium.connector.binlog;
 
-import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Path;
@@ -23,25 +22,29 @@ import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.data.vector.FloatVector;
 import io.debezium.jdbc.JdbcConnection;
-import io.debezium.junit.SkipWhenDatabaseVersion;
 
 /**
  * @author Jiri Pechanec
  */
-@SkipWhenDatabaseVersion(check = LESS_THAN, major = 9, minor = 0, reason = "VECTOR datatype not added until MySQL 9.0")
 public abstract class BinlogVectorIT<C extends SourceConnector> extends AbstractBinlogConnectorIT<C> {
 
     private static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-json.txt")
             .toAbsolutePath();
-    private UniqueDatabase DATABASE;
 
-    private Configuration config;
+    private final String databaseName;
+
+    protected UniqueDatabase DATABASE;
+    protected Configuration config;
+
+    public BinlogVectorIT(final String databaseName) {
+        this.databaseName = databaseName;
+    }
 
     @Before
     public void beforeEach() {
         stopConnector();
 
-        DATABASE = TestHelper.getUniqueDatabase("vectorit", "vector_test")
+        DATABASE = TestHelper.getUniqueDatabase("vectorit", databaseName)
                 .withDbHistoryPath(SCHEMA_HISTORY_PATH);
         DATABASE.createAndInitialize();
 
@@ -159,11 +162,10 @@ public abstract class BinlogVectorIT<C extends SourceConnector> extends Abstract
 
         try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());) {
             try (JdbcConnection connection = db.connect()) {
-                connection.execute(
-                        "INSERT INTO dbz_8157 VALUES (default, string_to_vector('[10.1,10.2]'),string_to_vector('[20.1,20.2]'),string_to_vector('[30.1,30.2]'));");
+                connection.execute(getShouldConsumeAllEventsFromDatabaseUsingStreamingSql());
             }
+            records = consumeRecordsByTopic(1);
         }
-        records = consumeRecordsByTopic(1);
 
         assertThat(records).isNotNull();
         final var dataRecords = records.recordsForTopic(DATABASE.topicForTable("dbz_8157"));
@@ -177,4 +179,7 @@ public abstract class BinlogVectorIT<C extends SourceConnector> extends Abstract
 
         stopConnector();
     }
+
+    protected abstract String getShouldConsumeAllEventsFromDatabaseUsingStreamingSql();
+
 }

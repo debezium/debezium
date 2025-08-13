@@ -15,7 +15,7 @@ toc::[]
 {prodname} has extensive logging built into its connectors,
 and you can change the logging configuration to control which of these log statements appear in the logs
 and where those logs are sent.
-{prodname} (as well as Kafka, Kafka Connect, and Zookeeper) use the https://logging.apache.org/log4j/1.2/[Log4j] logging framework for Java.
+{prodname} (as well as Kafka and Kafka Connect) use the https://logging.apache.org/log4j/1.2/[Log4j] logging framework for Java.
 
 By default, the connectors produce a fair amount of useful information when they start up,
 but then produce very few logs when the connector is keeping up with the source databases.
@@ -336,7 +336,7 @@ ifdef::community[]
 [id="configuring-log-level-docker"]
 == Configuring the log level in the {prodname} container images
 
-The {prodname} container images for Zookeeper, Kafka, and Kafka Connect all set up their `log4j.properties` file to configure the Debezium-related loggers.
+The {prodname} container images for Kafka and Kafka Connect all set up their `log4j.properties` file to configure the Debezium-related loggers.
 All log messages are sent to the Docker container's console (and thus the Docker logs).
 The log messages are also written to files under the `/kafka/logs` directory.
 

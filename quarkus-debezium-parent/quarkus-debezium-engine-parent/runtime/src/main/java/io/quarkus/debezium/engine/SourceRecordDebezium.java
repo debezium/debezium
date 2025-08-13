@@ -12,17 +12,13 @@ import java.util.function.Function;
 
 import jakarta.enterprise.context.ApplicationScoped;
 
-import org.apache.kafka.connect.source.SourceRecord;
-
 import io.debezium.config.Configuration;
 import io.debezium.embedded.Connect;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.Signaler;
-import io.debezium.engine.RecordChangeEvent;
-import io.debezium.engine.format.ChangeEventFormat;
 import io.debezium.runtime.Connector;
 import io.debezium.runtime.DebeziumStatus;
-import io.quarkus.debezium.engine.capture.CapturingInvokerRegistry;
+import io.quarkus.debezium.engine.capture.consumer.SourceRecordEventConsumer;
 
 @ApplicationScoped
 class SourceRecordDebezium extends RunnableDebezium {
@@ -35,10 +31,10 @@ class SourceRecordDebezium extends RunnableDebezium {
     SourceRecordDebezium(Map<String, String> configuration,
                          StateHandler stateHandler,
                          Connector connector,
-                         CapturingInvokerRegistry<RecordChangeEvent<SourceRecord>> registry) {
+                         SourceRecordEventConsumer consumer) {
         this.configuration = configuration;
         this.stateHandler = stateHandler;
-        this.engine = DebeziumEngine.create(ChangeEventFormat.of(Connect.class))
+        this.engine = DebeziumEngine.create(Connect.class, Connect.class)
                 .using(Configuration.empty()
                         .withSystemProperties(Function.identity())
                         .edit()
@@ -46,7 +42,7 @@ class SourceRecordDebezium extends RunnableDebezium {
                         .build().asProperties())
                 .using(this.stateHandler.connectorCallback())
                 .using(this.stateHandler.completionCallback())
-                .notifying(event -> registry.get(event).capture(event))
+                .notifying(consumer)
                 .build();
         this.stateHandler.setDebeziumEngine(this);
         this.connector = connector;

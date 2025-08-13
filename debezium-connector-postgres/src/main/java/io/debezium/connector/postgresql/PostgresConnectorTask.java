@@ -37,6 +37,7 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
 import io.debezium.connector.postgresql.spi.SlotState;
 import io.debezium.document.DocumentReader;
+import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
@@ -48,6 +49,7 @@ import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -114,7 +116,12 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         final PostgresDefaultValueConverter defaultValueConverter = jdbcConnection.getDefaultValueConverter();
         final PostgresValueConverter valueConverter = valueConverterBuilder.build(typeRegistry);
 
-        schema = new PostgresSchema(connectorConfig, defaultValueConverter, topicNamingStrategy, valueConverter);
+        // Service providers
+        registerServiceProviders(connectorConfig.getServiceRegistry());
+
+        CustomConverterRegistry customConverterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
+
+        schema = new PostgresSchema(connectorConfig, defaultValueConverter, topicNamingStrategy, valueConverter, customConverterRegistry);
         this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicNamingStrategy);
         this.partitionProvider = new PostgresPartition.Provider(connectorConfig, config);
         this.offsetContextLoader = new PostgresOffsetContext.Loader(connectorConfig);
@@ -132,9 +139,6 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverter);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CDC_SOURCE_TASK_CONTEXT, taskContext);
-
-        // Service providers
-        registerServiceProviders(connectorConfig.getServiceRegistry());
 
         final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
         final Snapshotter snapshotter = snapshotterService.getSnapshotter();
@@ -198,9 +202,8 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                     DataChangeEvent::new,
                     PostgresChangeRecordEmitter::updateSchema,
                     metadataProvider,
-                    connectorConfig.createHeartbeat(
-                            topicNamingStrategy,
-                            schemaNameAdjuster,
+                    new HeartbeatFactory<>().getScheduledHeartbeat(
+                            connectorConfig,
                             () -> new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL),
                             exception -> {
                                 String sqlErrorId = exception.getSQLState();
@@ -211,10 +214,13 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
                                     case "57P03":
                                         // Postgres error cannot_connect_now, see https://www.postgresql.org/docs/12/errcodes-appendix.html
                                         throw new RetriableException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
+                                    case "42P01":
+                                        // Postgres error undefined_table, see https://www.postgresql.org/docs/12/errcodes-appendix.html
+                                        throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
                                     default:
                                         break;
                                 }
-                            }),
+                            }, queue),
                     schemaNameAdjuster,
                     signalProcessor,
                     connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));

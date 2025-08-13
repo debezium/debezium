@@ -34,7 +34,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Build MySQL ${{ matrix.version-mysql-server }} - ${{ matrix.profile }}
         uses: ./.github/actions/build-debezium-mysql

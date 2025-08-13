@@ -8,6 +8,7 @@ package io.debezium.connector.sqlserver;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -42,7 +43,7 @@ public class SchemaHistoryTopicIT extends AbstractAsyncEngineConnectorTest {
     private SqlServerConnection connection;
 
     @Before
-    public void before() throws SQLException {
+    public void before() throws SQLException, InterruptedException {
         TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
         connection.execute(
@@ -54,6 +55,10 @@ public class SchemaHistoryTopicIT extends AbstractAsyncEngineConnectorTest {
 
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
+
+        // In some cases the max lsn from lsn_time_mapping table was coming out to be null, since
+        // the operations done above needed some time to be captured by the capture process.
+        Thread.sleep(Duration.ofSeconds(TestHelper.waitTimeForLsnTimeMapping()).toMillis());
     }
 
     @After

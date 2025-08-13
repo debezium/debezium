@@ -34,6 +34,7 @@ import io.debezium.connector.mariadb.jdbc.MariaDbValueConverters;
 import io.debezium.connector.mariadb.metrics.MariaDbChangeEventSourceMetricsFactory;
 import io.debezium.connector.mariadb.metrics.MariaDbStreamingChangeEventSourceMetrics;
 import io.debezium.document.DocumentReader;
+import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
 import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
@@ -43,6 +44,7 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -106,8 +108,13 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                 new MariaDbPartition.Provider(connectorConfig, config),
                 new MariaDbOffsetContext.Loader(connectorConfig));
 
+        // Service providers
+        registerServiceProviders(connectorConfig.getServiceRegistry());
+
         final boolean tableIdCaseInsensitive = connection.isTableIdCaseSensitive();
-        this.schema = new MariaDbDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive);
+        CustomConverterRegistry converterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
+
+        this.schema = new MariaDbDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive, converterRegistry);
         taskContext = new MariaDbTaskContext(connectorConfig, schema);
 
         // Manual Bean Registration
@@ -119,9 +126,6 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
         connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CDC_SOURCE_TASK_CONTEXT, taskContext);
-
-        // Service providers
-        registerServiceProviders(connectorConfig.getServiceRegistry());
 
         final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
         final Snapshotter snapshotter = snapshotterService.getSnapshotter();
@@ -198,7 +202,6 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                 DocumentReader.defaultReader(),
                 previousOffsets);
 
-        final Configuration heartbeatConfig = config;
         final EventDispatcher<MariaDbPartition, TableId> dispatcher = new EventDispatcher<>(
                 connectorConfig,
                 topicNamingStrategy,
@@ -208,13 +211,12 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                 DataChangeEvent::new,
                 null,
                 metadataProvider,
-                connectorConfig.createHeartbeat(
-                        topicNamingStrategy,
-                        schemaNameAdjuster,
+                new HeartbeatFactory<>().getScheduledHeartbeat(connectorConfig,
                         () -> new MariaDbConnection(
-                                new MariaDbConnectionConfiguration(heartbeatConfig),
+                                new MariaDbConnectionConfiguration(config),
                                 getFieldReader(connectorConfig)),
-                        new BinlogHeartbeatErrorHandler()),
+                        new BinlogHeartbeatErrorHandler(),
+                        queue),
                 schemaNameAdjuster,
                 signalProcessor,
                 connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));

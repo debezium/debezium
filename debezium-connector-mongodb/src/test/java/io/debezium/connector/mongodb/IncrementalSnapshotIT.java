@@ -52,6 +52,7 @@ import io.debezium.doc.FixFor;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.signal.actions.snapshotting.StopSnapshot;
+import io.debezium.util.Testing;
 
 /**
  * Test to verify incremental snapshotting for MongoDB.
@@ -304,6 +305,7 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
                 continue;
             }
             dataRecords.forEach(record -> {
+                Testing.print(record);
                 final K id = idCalculator.apply((Struct) record.key());
                 final V value = valueConverter.apply(record);
                 dbChanges.put(id, value);
@@ -825,8 +827,9 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
     }
 
     @Test
+    @FixFor({ "DBZ-7138", "DBZ-9232" })
     public void executeIncrementalSnapshotWithAdditionalCondition() throws Exception {
-        // Testing.Print.enable();
+        Testing.Print.enable();
 
         final LogInterceptor interceptor = new LogInterceptor(MongoDbIncrementalSnapshotChangeEventSource.class);
         populateDataCollection(dataCollectionNames().get(1));
@@ -844,6 +847,29 @@ public class IncrementalSnapshotIT extends AbstractMongoConnectorIT {
         for (int i = 0; i < expectedRecordCount; i++) {
             assertThat(dbChanges).contains(entry(i + 1, i));
         }
+
+        assertThat(interceptor.containsMessage("No data returned by the query, incremental snapshotting of table 'dbA.c2' finished")).isTrue();
+        assertCloseEventCount(closeEventCount -> assertThat(closeEventCount).isNotZero());
+    }
+
+    @Test
+    @FixFor("DBZ-9232")
+    public void executeIncrementalSnapshotWithAdditionalCondition2() throws Exception {
+        // Testing.Print.enable();
+
+        final LogInterceptor interceptor = new LogInterceptor(MongoDbIncrementalSnapshotChangeEventSource.class);
+        populateDataCollection(dataCollectionNames().get(1));
+        startConnector();
+        waitForConnectorToStart();
+
+        waitForStreamingRunning("mongodb", "mongo1", getStreamingNamespace(), "0");
+
+        sendAdHocSnapshotSignalWithAdditionalConditions(
+                Map.of(fullDataCollectionNames().get(1), "{ aa: 250 }"),
+                fullDataCollectionNames().get(1));
+
+        final Map<Integer, Integer> dbChanges = consumeMixedWithIncrementalSnapshot(1, topicNames().get(1));
+        assertThat(dbChanges).contains(entry(251, 250));
 
         assertThat(interceptor.containsMessage("No data returned by the query, incremental snapshotting of table 'dbA.c2' finished")).isTrue();
         assertCloseEventCount(closeEventCount -> assertThat(closeEventCount).isNotZero());

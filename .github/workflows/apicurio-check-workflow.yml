@@ -17,7 +17,7 @@ jobs:
         server-version: [ "9.1" ]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: MySQL ${{ matrix.server-version }} - Apicurio
         uses: ./.github/actions/build-debezium-mysql
@@ -35,7 +35,7 @@ jobs:
         server-version: [ "17"]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: PostgreSQL ${{ matrix.server-version }} - Apicurio
         uses: ./.github/actions/build-debezium-postgres
@@ -52,7 +52,7 @@ jobs:
         server-version: [ "8.0" ]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: MongoDB ${{ matrix.server-version }} - Apicurio
         uses: ./.github/actions/build-debezium-mongodb

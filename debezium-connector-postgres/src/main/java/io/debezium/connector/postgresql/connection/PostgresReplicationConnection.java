@@ -62,6 +62,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
     private static final String SQL_STATE_INSUFFICIENT_PRIVILEGE = "42501";
 
+    private static final String SQL_LOCK_NOT_AVAILABLE = "55P03";
+
+    private static final String PUBLICATION_QUERY_FAILURE_MESSAGE = "Creation of publication slot failed: query to create/update publication timed out, please make sure that there are no maintenance activities going on the database end.";
+
     private static Logger LOGGER = LoggerFactory.getLogger(PostgresReplicationConnection.class);
 
     private final String slotName;
@@ -176,7 +180,18 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                     LOGGER.info("Creating Publication with statement '{}'", createPublicationStmt);
                                     // Publication doesn't exist, create it.
                                     if (!isOnlyRead) {
-                                        stmt.execute(createPublicationStmt);
+                                        try {
+                                            stmt.setQueryTimeout(toIntExact(connectorConfig.createSlotCommandTimeout()));
+                                            stmt.execute(createPublicationStmt);
+                                        }
+                                        catch (SQLException ex) {
+                                            if (PSQLState.QUERY_CANCELED.getState().equals(ex.getSQLState()) || SQL_LOCK_NOT_AVAILABLE.equals(ex.getSQLState())) {
+                                                throw new DebeziumException(PUBLICATION_QUERY_FAILURE_MESSAGE, ex);
+                                            }
+                                            else {
+                                                throw ex;
+                                            }
+                                        }
                                     }
                                     else {
                                         LOGGER.info("The Postgres server in stand by mode, skip create statement execution");
@@ -195,7 +210,18 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                             ? String.format("CREATE PUBLICATION %s WITH (publish_via_partition_root = true);", publicationName)
                                             : String.format("CREATE PUBLICATION %s;", publicationName);
                                     LOGGER.info("Creating publication with statement '{}'", createPublicationWithNoTablesStmt);
-                                    stmt.execute(createPublicationWithNoTablesStmt);
+                                    try {
+                                        stmt.setQueryTimeout(toIntExact(connectorConfig.createSlotCommandTimeout()));
+                                        stmt.execute(createPublicationWithNoTablesStmt);
+                                    }
+                                    catch (SQLException ex) {
+                                        if (PSQLState.QUERY_CANCELED.getState().equals(ex.getSQLState()) || SQL_LOCK_NOT_AVAILABLE.equals(ex.getSQLState())) {
+                                            throw new DebeziumException(PUBLICATION_QUERY_FAILURE_MESSAGE, ex);
+                                        }
+                                        else {
+                                            throw ex;
+                                        }
+                                    }
                                     break;
                             }
                         }
@@ -312,7 +338,18 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                         : String.format("CREATE PUBLICATION %s FOR TABLE %s;", publicationName, tableFilterString);
             }
             LOGGER.info(isUpdate ? "Updating Publication with statement '{}'" : "Creating Publication with statement '{}'", createOrUpdatePublicationStmt);
-            stmt.execute(createOrUpdatePublicationStmt);
+            try {
+                stmt.setQueryTimeout(toIntExact(connectorConfig.createSlotCommandTimeout()));
+                stmt.execute(createOrUpdatePublicationStmt);
+            }
+            catch (SQLException ex) {
+                if (PSQLState.QUERY_CANCELED.getState().equals(ex.getSQLState()) || SQL_LOCK_NOT_AVAILABLE.equals(ex.getSQLState())) {
+                    throw new DebeziumException(PUBLICATION_QUERY_FAILURE_MESSAGE, ex);
+                }
+                else {
+                    throw ex;
+                }
+            }
         }
         catch (Exception e) {
             throw new ConnectException(String.format("Unable to %s filtered publication %s for %s", isUpdate ? "update" : "create", publicationName, tableFilterString),

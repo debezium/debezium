@@ -18,7 +18,7 @@ jobs:
       # Checkout so that this contributor check passes if the contributor details are part of the pull request
       # If we don't do this, then we are only
       - name: Checkout Action
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Check if COPYRIGHT.txt has author name?
