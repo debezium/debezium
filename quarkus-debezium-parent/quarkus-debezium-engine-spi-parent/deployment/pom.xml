@@ -11,7 +11,7 @@
     <parent>
         <groupId>io.debezium.quarkus</groupId>
         <artifactId>quarkus-debezium-engine-spi-parent</artifactId>
-        <version>3.2.1.Final</version>
+        <version>3.2.2-SNAPSHOT</version>
     </parent>
 
     <artifactId>quarkus-debezium-engine-deployment-spi</artifactId>
