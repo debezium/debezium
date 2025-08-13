@@ -51,8 +51,10 @@ Applications and services consume change events from these topics.
 [NOTE]
 ====
 Use of the {prodname} connector for Db2 requires SQL replication to be enabled on the source database.
+
 Although the required replication tools are available in supported versions of Db2, use of SQL replication to support the {prodname} connector requires a separate license to IBM Infosphere Data replication (IIDR).
 Installation of the IIDR product is not required.
+
 Consult with your legal department to verify whether the licensing in your environment complies with the terms of use.
 ====
 
