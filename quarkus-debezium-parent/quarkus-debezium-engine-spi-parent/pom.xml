@@ -11,7 +11,7 @@
     <parent>
         <groupId>io.debezium.quarkus</groupId>
         <artifactId>quarkus-debezium-parent</artifactId>
-        <version>3.2.0.Final</version>
+        <version>3.2.0-SNAPSHOT</version>
     </parent>
 
     <name>Quarkus Debezium :: Extension :: SPI :: Build Aggregator</name>
