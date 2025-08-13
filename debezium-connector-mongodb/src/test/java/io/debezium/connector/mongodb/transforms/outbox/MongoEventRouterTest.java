@@ -989,7 +989,6 @@ public class MongoEventRouterTest {
 
         ActivateTracingSpan tracingSmt = (ActivateTracingSpan) tracingField.get(delegate);
 
-        
         Field spanContextField = tracingSmt.getClass().getDeclaredField("spanContextField");
         spanContextField.setAccessible(true);
         String actualSpanContextValue = (String) spanContextField.get(tracingSmt);
@@ -1026,7 +1025,6 @@ public class MongoEventRouterTest {
 
         ActivateTracingSpan tracingSmt = (ActivateTracingSpan) tracingField.get(delegate);
 
-        
         Field spanContextField = tracingSmt.getClass().getDeclaredField("spanContextField");
         spanContextField.setAccessible(true);
         String actualSpanContextValue = (String) spanContextField.get(tracingSmt);
@@ -1062,7 +1060,7 @@ public class MongoEventRouterTest {
         tracingField.setAccessible(true);
 
         ActivateTracingSpan tracingSmt = (ActivateTracingSpan) tracingField.get(delegate);
-        
+
         Field spanContextField = tracingSmt.getClass().getDeclaredField("spanContextField");
         spanContextField.setAccessible(true);
         String actualSpanContextValue = (String) spanContextField.get(tracingSmt);
