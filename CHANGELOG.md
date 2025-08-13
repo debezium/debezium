@@ -2,6 +2,64 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.2.1.Final
+August 13rd 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12464171)
+
+### New features since 3.2.0.Final
+
+* Support MariaDB 11.7+ vector data type [DBZ-8582](https://issues.redhat.com/browse/DBZ-8582)
+* During a mining session treat ORA-00310 redo logs being inconsistent [DBZ-8870](https://issues.redhat.com/browse/DBZ-8870)
+* Add JMX metrics/statistics for cached events [DBZ-8991](https://issues.redhat.com/browse/DBZ-8991)
+* Update Outbox Extension to Quarkus 3.23.4 & Align to Hibernate 7.x [DBZ-9219](https://issues.redhat.com/browse/DBZ-9219)
+* Add configuration to disable Context headers added with OpenLineage [DBZ-9248](https://issues.redhat.com/browse/DBZ-9248)
+* Add ability to specify whether to use a CTE-based query for LogMiner [DBZ-9272](https://issues.redhat.com/browse/DBZ-9272)
+* Allow Oracle heartbeat action query error handler to be resilient to ORA-02396 [DBZ-9280](https://issues.redhat.com/browse/DBZ-9280)
+* Uppdate Informix JDBC Driver to 4.50.12 [DBZ-9288](https://issues.redhat.com/browse/DBZ-9288)
+* Allow redo thread flush scn adjustment to be configurable [DBZ-9344](https://issues.redhat.com/browse/DBZ-9344)
+* Improve performance validation on whether a supplied value is a toast column [DBZ-9345](https://issues.redhat.com/browse/DBZ-9345)
+
+
+### Breaking changes since 3.2.0.Final
+
+None
+
+
+### Fixes since 3.2.0.Final
+
+* '||' in ORACLE NVARCHAR data will cause exception [DBZ-9132](https://issues.redhat.com/browse/DBZ-9132)
+* [ORACLE] DDL parsing failed [DBZ-9172](https://issues.redhat.com/browse/DBZ-9172)
+* When using non-recovery snapshot modes, offsets are not reset [DBZ-9208](https://issues.redhat.com/browse/DBZ-9208)
+* Possible regression with throwing DebeziumException rather than warning [DBZ-9217](https://issues.redhat.com/browse/DBZ-9217)
+* Double event publishing via NATS Jetstream sink [DBZ-9221](https://issues.redhat.com/browse/DBZ-9221)
+* NullPointerException is thrown because DebeziumHeaderProducer is not registered [DBZ-9225](https://issues.redhat.com/browse/DBZ-9225)
+* MongoDB ExtractNewDocumentState SMT crash with nested struct in array in 3.2 [DBZ-9231](https://issues.redhat.com/browse/DBZ-9231)
+* Mongodb incremental snapshot is not honoring additional conditions [DBZ-9232](https://issues.redhat.com/browse/DBZ-9232)
+* WithClause inside an INSERT statement throws DDL parser exception [DBZ-9233](https://issues.redhat.com/browse/DBZ-9233)
+* Oracle snapshot boundary mode does not have a field display name [DBZ-9236](https://issues.redhat.com/browse/DBZ-9236)
+* Request fix for muti-task CREATE TABLE collisions for jdbc postgres target causing task to crash [DBZ-9237](https://issues.redhat.com/browse/DBZ-9237)
+* Oracle split table partition does not support online mode [DBZ-9238](https://issues.redhat.com/browse/DBZ-9238)
+* Exceptionally large mining windows can lead unintended metrics/performance issues [DBZ-9241](https://issues.redhat.com/browse/DBZ-9241)
+* zstd-jni should not be included in connector package [DBZ-9273](https://issues.redhat.com/browse/DBZ-9273)
+* Unchecked exception from OffsetStorageWriter.doFlush() in AsyncEmbeddedEngine leaves semaphore in OffsetStorageWriter unreleased and probably causes engine to fail [DBZ-9292](https://issues.redhat.com/browse/DBZ-9292)
+* Reselect post processor does not work with VariableScaleDecimal primary keys [DBZ-9293](https://issues.redhat.com/browse/DBZ-9293)
+* Debezium Server Azure Event Hubs sink duplicates all previous events [DBZ-9304](https://issues.redhat.com/browse/DBZ-9304)
+* Duplicate key exception when using postgres connector based on pgoutput plugin [DBZ-9305](https://issues.redhat.com/browse/DBZ-9305)
+* Archive log only mode does not pause mining when no more data available [DBZ-9306](https://issues.redhat.com/browse/DBZ-9306)
+* Mockit error in EventDispatcherTest [DBZ-9332](https://issues.redhat.com/browse/DBZ-9332)
+* Events may be mistakenly processed multiple times using multiple tasks [DBZ-9338](https://issues.redhat.com/browse/DBZ-9338)
+* Fetching transaction event count can result in NullPointerException [DBZ-9349](https://issues.redhat.com/browse/DBZ-9349)
+
+
+### Other changes since 3.2.0.Final
+
+* Document more restrictive configuration for creating Oracle LogMiner user  [DBZ-9129](https://issues.redhat.com/browse/DBZ-9129)
+* Include the raw SinkRecord in the logged output of a JDBC sink record [DBZ-9239](https://issues.redhat.com/browse/DBZ-9239)
+* Remove hard line breaks from MariaDB and MySQL properties lists [DBZ-9286](https://issues.redhat.com/browse/DBZ-9286)
+* Log all rows from LogMiner session logs during LogMiner failures  [DBZ-9322](https://issues.redhat.com/browse/DBZ-9322)
+* Upgrade Kafka to 3.9.1 [DBZ-9331](https://issues.redhat.com/browse/DBZ-9331)
+
+
+
 ## 3.2.0.Final
 July 9th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12463706)
 
