@@ -156,7 +156,7 @@ The following `.properties` example sets several event flattening SMT options:
 ----
 transforms=unwrap,...
 transforms.unwrap.type=io.debezium.transforms.ExtractNewRecordState
-transforms.unwrap.delete.tombtone.handling.mode=rewrite
+transforms.unwrap.delete.tombstone.handling.mode=rewrite
 transforms.unwrap.add.fields=table,lsn
 ----
 
