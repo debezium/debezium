@@ -20,16 +20,16 @@ CONTRIBUTORS_FILTERS="$DIR/FilteredNames.txt"
 
 cp $ALIASES $FILTERS $DIR && cd $DIR
 
-declare -a DEBEZIUM_REPOS=("debezium" "debezium-server" "debezium-operator" "debezium-connector-db2" "debezium-connector-cassandra" "debezium-connector-vitess" "debezium-connector-spanner" "debezium-ui" "container-images")
+declare -a DEBEZIUM_REPOS=("debezium" "debezium-server" "debezium-operator" "debezium-connector-db2" "debezium-connector-cassandra" "debezium-connector-vitess" "debezium-connector-spanner" "debezium-ui" "container-images" "debezium-connector-informix" "debezium-connector-ibmi" "debezium-connector-cockroachdb" "debezium-operator" "debezium-examples"")
 
 for REPO in "${DEBEZIUM_REPOS[@]}";
 do
   page_count=$(curl --silent -I "https://api.github.com/repos/debezium/$REPO/compare/$1...$2?page=1&per_page=100" | tr "," $'\n' | grep 'rel="last"' | cut -f1 -d';' | tr "?&" $'\n' | grep -e "^page" | cut -f2 -d=)
   if [[ -z $page_count ]]; then
-    curl --silent -X "GET" "https://api.github.com/repos/debezium/$REPO/compare/$1...$2" | jq '.commits[] | {name: .commit.author.name, github_url: .author.html_url}' | jq -r '.github_url + " " + .name' >> "$CONTRIBUTORS_NAMES"
+    curl --silent -X "GET" "https://api.github.com/repos/debezium/$REPO/compare/$1...$2" | jq 'try(.commits[] | {name: .commit.author.name, github_url: .author.html_url}) catch empty' | jq -r '.github_url + " " + .name' >> "$CONTRIBUTORS_NAMES"
   else
     for (( i = 1; i < "$((page_count + 1))"; i++ )); do
-      curl --silent -X "GET" "https://api.github.com/repos/debezium/$REPO/compare/$1...$2?page=$i&per_page=100" | jq '.commits[] | {name: .commit.author.name, github_url: .author.html_url}' | jq -r '.github_url + " " + .name' >> "$CONTRIBUTORS_NAMES"
+      curl --silent -X "GET" "https://api.github.com/repos/debezium/$REPO/compare/$1...$2?page=$i&per_page=100" | jq 'try(.commits[] | {name: .commit.author.name, github_url: .author.html_url}) catch empty' | jq -r '.github_url + " " + .name' >> "$CONTRIBUTORS_NAMES"
     done
   fi
 done
