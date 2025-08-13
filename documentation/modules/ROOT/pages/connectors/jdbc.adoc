@@ -504,7 +504,7 @@ If the database does not support time or timestamps with time zones, the mapping
 |===
 
 [[jdbc-debezium-vector-logical-mappings]]
-.Mapings between Debezium Vector Types and Column Data Types
+.Mappings between Debezium Vector Types and Column Data Types
 |===
 |Logical Type |Db2 |MySQL |PostgreSQL |Oracle |SQL Server
 
