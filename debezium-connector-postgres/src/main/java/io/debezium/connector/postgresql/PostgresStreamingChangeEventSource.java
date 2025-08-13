@@ -5,10 +5,17 @@
  */
 package io.debezium.connector.postgresql;
 
+import static io.debezium.connector.postgresql.PostgresConnectorConfig.LsnFlushTimeoutAction;
+
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalLong;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.errors.ConnectException;
@@ -260,14 +267,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             if (context.isPaused()) {
                 LOGGER.info("Streaming will now pause");
                 context.streamingPaused();
-                context.waitSnapshotCompletion(() -> {
-                    try {
-                        probeConnectionIfNeeded();
-                    }
-                    catch (SQLException e) {
-                        throw new DebeziumException(e);
-                    }
-                });
+                context.waitSnapshotCompletion();
                 LOGGER.info("Streaming resumed");
             }
         }
@@ -441,33 +441,116 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
     @Override
     public void commitOffset(Map<String, ?> partition, Map<String, ?> offset) {
-        try {
-            ReplicationStream replicationStream = this.replicationStream.get();
-            final Lsn commitLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMMIT_LSN_KEY));
-            final Lsn changeLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMPLETELY_PROCESSED_LSN_KEY));
-            final Lsn lsn = (commitLsn != null) ? commitLsn : changeLsn;
+        ReplicationStream replicationStream = this.replicationStream.get();
+        final Lsn commitLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMMIT_LSN_KEY));
+        final Lsn changeLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMPLETELY_PROCESSED_LSN_KEY));
+        final Lsn lsn = (commitLsn != null) ? commitLsn : changeLsn;
 
-            LOGGER.debug("Received offset commit request on commit LSN '{}' and change LSN '{}'", commitLsn, changeLsn);
-            if (replicationStream != null && lsn != null) {
-                if (!lsnFlushingAllowed) {
-                    LOGGER.info("Received offset commit request on '{}', but ignoring it. LSN flushing is not allowed yet", lsn);
-                    return;
-                }
-
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Flushing LSN to server: {}", lsn);
-                }
-                // tell the server the point up to which we've processed data, so it can be free to recycle WAL segments
-                replicationStream.flushLsn(lsn);
+        LOGGER.debug("Received offset commit request on commit LSN '{}' and change LSN '{}'", commitLsn, changeLsn);
+        if (replicationStream != null && lsn != null) {
+            if (!lsnFlushingAllowed) {
+                LOGGER.info("Received offset commit request on '{}', but ignoring it. LSN flushing is not allowed yet", lsn);
+                return;
             }
-            else {
-                LOGGER.debug("Streaming has already stopped, ignoring commit callback...");
+
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Flushing LSN to server: {}", lsn);
+            }
+            // tell the server the point up to which we've processed data, so it can be free to recycle WAL segments
+            ExecutorService executor = Threads.newSingleThreadExecutor(PostgresStreamingChangeEventSource.class,
+                    connectorConfig.getLogicalName(), "lsn-flush");
+            Future<Void> future = executor.submit(() -> {
+                try {
+                    replicationStream.flushLsn(lsn);
+                    return null;
+                }
+                catch (SQLException e) {
+                    commitOffsetFailure = true;
+                    cleanUpStreamingOnStop(null);
+                    throw new ConnectException(e);
+                }
+            });
+            try {
+                future.get(connectorConfig.lsnFlushTimeout().toMillis(), TimeUnit.MILLISECONDS);
+            }
+            catch (TimeoutException e) {
+                future.cancel(true);
+                shutdownExecutorGracefully(executor);
+                // Handle the timeout according to configuration
+                handleTimeout(lsn);
+            }
+            catch (InterruptedException e) {
+                future.cancel(true);
+                shutdownExecutorGracefully(executor);
+                Thread.currentThread().interrupt();
+                LOGGER.warn("LSN flush operation for '{}' was interrupted. Continuing without waiting for flush completion.", lsn);
+            }
+            catch (ExecutionException e) {
+                shutdownExecutorGracefully(executor);
+                Throwable cause = e.getCause();
+                if (cause instanceof ConnectException) {
+                    throw (ConnectException) cause;
+                }
+                throw new ConnectException("LSN flush operation failed", cause);
+            }
+            finally {
+                // Ensure executor is always shut down
+                if (!executor.isShutdown()) {
+                    shutdownExecutorGracefully(executor);
+                }
             }
         }
-        catch (SQLException e) {
-            commitOffsetFailure = true;
-            cleanUpStreamingOnStop(null);
-            throw new ConnectException(e);
+        else {
+            LOGGER.debug("Streaming has already stopped, ignoring commit callback...");
+        }
+    }
+
+    /**
+     * Handles the scenario when an LSN flush timeout occurs.
+     *
+     * @param lsn the LSN that failed to flush
+     */
+    private void handleTimeout(Lsn lsn) {
+        LsnFlushTimeoutAction action = connectorConfig.lsnFlushTimeoutAction();
+        long timeoutMillis = connectorConfig.lsnFlushTimeout().toMillis();
+        switch (action) {
+            case FAIL:
+                LOGGER.error("LSN flush operation for LSN '{}' did not complete within the configured timeout of {} ms. ",
+                        lsn, timeoutMillis);
+                throw new ConnectException(String.format(
+                        "LSN flush operation timed out for LSN '%s'. " +
+                                "Task is configured to fail on timeout as configured by lsn.flush.timeout.action configuration.",
+                        lsn));
+            case WARN:
+                LOGGER.warn("LSN flush operation for LSN '{}' did not complete within the configured timeout of {} ms. " +
+                        "Continuing to process as configured by lsn.flush.timeout.action configuration.",
+                        lsn, timeoutMillis);
+                break;
+            case IGNORE:
+                LOGGER.debug("LSN flush operation for LSN '{}' did not complete within the configured timeout of {} ms. " +
+                        "Continuing to process as configured by lsn.flush.timeout.action configuration.",
+                        lsn, timeoutMillis);
+                break;
+        }
+    }
+
+    /**
+     * Gracefully shuts down an executor service.
+     *
+     * @param executor the executor to shut down
+     */
+    private void shutdownExecutorGracefully(ExecutorService executor) {
+        try {
+            executor.shutdown();
+            if (!executor.awaitTermination(1, TimeUnit.SECONDS)) {
+                LOGGER.warn("Executor did not terminate gracefully within 1 second, forcing shutdown");
+                executor.shutdownNow();
+            }
+        }
+        catch (InterruptedException e) {
+            LOGGER.warn("Interrupted while shutting down executor, forcing shutdown");
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
         }
     }
 

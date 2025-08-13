@@ -28,6 +28,7 @@ class ClassesInConfigurationHandler {
         }
 
         return Arrays.stream(elements.split(DELIMITER))
+                .map(String::trim)
                 .map(value -> config.get(type + "." + value + ".type"))
                 .toList();
     }
@@ -35,4 +36,6 @@ class ClassesInConfigurationHandler {
     public static ClassesInConfigurationHandler TRANSFORM = new ClassesInConfigurationHandler("transforms");
 
     public static ClassesInConfigurationHandler PREDICATE = new ClassesInConfigurationHandler("predicates");
+
+    public static ClassesInConfigurationHandler POST_PROCESSOR = new ClassesInConfigurationHandler("post.processors");
 }

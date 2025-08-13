@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.connect.data.Schema;
@@ -32,6 +33,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
+import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 
@@ -48,11 +50,11 @@ public class BaseSourceTaskTest {
     public void verifyTaskStartsAndStops() throws InterruptedException {
 
         baseSourceTask.start(new HashMap<>());
-        assertEquals(BaseSourceTask.State.RUNNING, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
         baseSourceTask.poll();
-        assertEquals(BaseSourceTask.State.RUNNING, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
         baseSourceTask.stop();
-        assertEquals(BaseSourceTask.State.STOPPED, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
 
         assertEquals(1, baseSourceTask.startCount.get());
         assertEquals(1, baseSourceTask.stopCount.get());
@@ -63,9 +65,9 @@ public class BaseSourceTaskTest {
     public void verifyStartAndStopWithoutPolling() {
         baseSourceTask.initialize(mock(SourceTaskContext.class));
         baseSourceTask.start(new HashMap<>());
-        assertEquals(BaseSourceTask.State.RUNNING, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
         baseSourceTask.stop();
-        assertEquals(BaseSourceTask.State.STOPPED, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
 
         assertEquals(1, baseSourceTask.startCount.get());
         assertEquals(1, baseSourceTask.stopCount.get());
@@ -90,13 +92,13 @@ public class BaseSourceTaskTest {
     public void verifyTaskCanBeStartedAfterStopped() throws InterruptedException {
 
         baseSourceTask.start(new HashMap<>());
-        assertEquals(BaseSourceTask.State.RUNNING, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
         baseSourceTask.stop();
-        assertEquals(BaseSourceTask.State.STOPPED, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
         baseSourceTask.start(new HashMap<>());
-        assertEquals(BaseSourceTask.State.RUNNING, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
         baseSourceTask.stop();
-        assertEquals(BaseSourceTask.State.STOPPED, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
 
         assertEquals(2, baseSourceTask.startCount.get());
         assertEquals(2, baseSourceTask.stopCount.get());
@@ -123,17 +125,17 @@ public class BaseSourceTaskTest {
         );
         baseSourceTask.start(config);
         sleep(1); // wait 1ms in order to satisfy retriable wait
-        assertEquals(BaseSourceTask.State.RESTARTING, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
         pollAndIgnoreRetryException(baseSourceTask);
-        assertEquals(BaseSourceTask.State.RESTARTING, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
         sleep(1); // wait 1ms in order to satisfy retriable wait
         pollAndIgnoreRetryException(baseSourceTask);
-        assertEquals(BaseSourceTask.State.RESTARTING, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.RESTARTING, baseSourceTask.getTaskState());
         sleep(1); // wait 1ms in order to satisfy retriable wait
         baseSourceTask.poll();
-        assertEquals(BaseSourceTask.State.RUNNING, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
         baseSourceTask.stop();
-        assertEquals(BaseSourceTask.State.STOPPED, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
 
         assertEquals(4, baseSourceTask.startCount.get());
         assertEquals(3, baseSourceTask.stopCount.get());
@@ -143,11 +145,11 @@ public class BaseSourceTaskTest {
     @Test
     public void verifyOutOfOrderPollDoesNotStartTask() throws InterruptedException {
         baseSourceTask.start(new HashMap<>());
-        assertEquals(BaseSourceTask.State.RUNNING, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.RUNNING, baseSourceTask.getTaskState());
         baseSourceTask.stop();
-        assertEquals(BaseSourceTask.State.STOPPED, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
         baseSourceTask.poll();
-        assertEquals(BaseSourceTask.State.STOPPED, baseSourceTask.getTaskState());
+        assertEquals(DebeziumTaskState.STOPPED, baseSourceTask.getTaskState());
 
         assertEquals(1, baseSourceTask.startCount.get());
         assertEquals(1, baseSourceTask.stopCount.get());
@@ -187,8 +189,18 @@ public class BaseSourceTaskTest {
         }
 
         @Override
+        protected String connectorName() {
+            return "";
+        }
+
+        @Override
         protected List<SourceRecord> doPoll() {
             return records;
+        }
+
+        @Override
+        protected Optional<ErrorHandler> getErrorHandler() {
+            return Optional.empty();
         }
 
         @Override

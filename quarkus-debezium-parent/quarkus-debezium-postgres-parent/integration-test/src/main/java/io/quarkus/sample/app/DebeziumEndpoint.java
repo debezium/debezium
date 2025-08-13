@@ -38,4 +38,13 @@ public class DebeziumEndpoint {
 
         return Response.status(Response.Status.NOT_FOUND).build();
     }
+
+    @GET
+    @Path("products")
+    public Response products() {
+        if (captureService.products().isEmpty()) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+        return Response.ok(captureService.products()).build();
+    }
 }

@@ -16,7 +16,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.AbstractSourceInfo;
+import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.function.BlockingConsumer;
+import io.debezium.pipeline.DataChangeEvent;
+import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.util.Clock;
@@ -27,7 +30,7 @@ import io.debezium.util.Threads.Timer;
  * Default implementation of Heartbeat
  *
  */
-public class HeartbeatImpl implements Heartbeat {
+public class HeartbeatImpl implements Heartbeat.ScheduledHeartbeat, Heartbeat {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(HeartbeatImpl.class);
 
@@ -50,6 +53,8 @@ public class HeartbeatImpl implements Heartbeat {
 
     private final Schema keySchema;
     private final Schema valueSchema;
+    private final Struct serverNameKey;
+    private final ChangeEventQueue<DataChangeEvent> queue;
 
     private volatile Timer heartbeatTimeout;
 
@@ -57,12 +62,22 @@ public class HeartbeatImpl implements Heartbeat {
         this.topicName = topicName;
         this.key = key;
         this.heartbeatInterval = heartbeatInterval;
+        this.keySchema = SchemaFactory.get().heartbeatKeySchema(schemaNameAdjuster);
+        this.valueSchema = SchemaFactory.get().heartbeatValueSchema(schemaNameAdjuster);
+        this.heartbeatTimeout = resetHeartbeat();
+        this.serverNameKey = serverNameKey();
+        this.queue = null;
+    }
 
-        keySchema = SchemaFactory.get().heartbeatKeySchema(schemaNameAdjuster);
-
-        valueSchema = SchemaFactory.get().heartbeatValueSchema(schemaNameAdjuster);
-
-        heartbeatTimeout = resetHeartbeat();
+    public HeartbeatImpl(Duration heartbeatInterval, String topicName, String key, SchemaNameAdjuster schemaNameAdjuster, ChangeEventQueue<DataChangeEvent> queue) {
+        this.topicName = topicName;
+        this.heartbeatInterval = heartbeatInterval;
+        this.key = key;
+        this.keySchema = SchemaFactory.get().heartbeatKeySchema(schemaNameAdjuster);
+        this.valueSchema = SchemaFactory.get().heartbeatValueSchema(schemaNameAdjuster);
+        this.serverNameKey = serverNameKey();
+        this.queue = queue;
+        this.heartbeatTimeout = resetHeartbeat();
     }
 
     @Override
@@ -93,17 +108,41 @@ public class HeartbeatImpl implements Heartbeat {
     }
 
     @Override
+    public void emitWithDelay(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
+        if (heartbeatTimeout.expired()) {
+            emit(partition, offset);
+            heartbeatTimeout = resetHeartbeat();
+        }
+    }
+
+    @Override
+    public void emit(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
+        if (queue == null) {
+            throw new IllegalArgumentException("new heartbeat API should be used with the recommended constructor");
+        }
+        LOGGER.debug("Generating heartbeat event");
+        if (offset == null || offset.getOffset() == null || offset.getOffset().isEmpty()) {
+            return;
+        }
+
+        this.queue.enqueue(new DataChangeEvent(new SourceRecord(partition,
+                offset.getOffset(),
+                topicName,
+                0,
+                keySchema,
+                serverNameKey,
+                valueSchema,
+                messageValue())));
+    }
+
+    @Override
     public boolean isEnabled() {
         return true;
     }
 
-    /**
-     * Produce a key struct based on the server name and KEY_SCHEMA
-     *
-     */
-    private Struct serverNameKey(String serverName) {
+    private Struct serverNameKey() {
         Struct result = new Struct(keySchema);
-        result.put(SERVER_NAME_KEY, serverName);
+        result.put(SERVER_NAME_KEY, key);
         return result;
     }
 
@@ -125,7 +164,7 @@ public class HeartbeatImpl implements Heartbeat {
         final Integer partition = 0;
 
         return new SourceRecord(sourcePartition, sourceOffset,
-                topicName, partition, keySchema, serverNameKey(key), valueSchema, messageValue());
+                topicName, partition, keySchema, serverNameKey, valueSchema, messageValue());
     }
 
     private Timer resetHeartbeat() {

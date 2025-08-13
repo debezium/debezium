@@ -5,7 +5,7 @@
  */
 package io.debezium.connector.sqlserver;
 
-import static io.debezium.config.CommonConnectorConfig.TASK_ID;
+import static io.debezium.config.ConfigurationNames.TASK_ID_PROPERTY_NAME;
 import static io.debezium.connector.sqlserver.SqlServerConnectorConfig.DATABASE_NAMES;
 
 import java.sql.SQLException;
@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigValue;
 import org.apache.kafka.connect.connector.Task;
+import org.apache.kafka.connect.source.ExactlyOnceSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,7 +99,7 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
             String taskDatabases = String.join(",", databasesByTask.get(taskIndex));
             Map<String, String> taskProperties = new HashMap<>(properties);
             taskProperties.put(SqlServerConnectorConfig.DATABASE_NAMES.name(), taskDatabases);
-            taskProperties.put(TASK_ID, String.valueOf(taskIndex));
+            taskProperties.put(TASK_ID_PROPERTY_NAME, String.valueOf(taskIndex));
             taskConfigs.add(Collections.unmodifiableMap(taskProperties));
         }
 
@@ -199,5 +200,10 @@ public class SqlServerConnector extends RelationalBaseSourceConnector {
         catch (SQLException e) {
             throw new RuntimeException("Could not retrieve real database name", e);
         }
+    }
+
+    @Override
+    public ExactlyOnceSupport exactlyOnceSupport(Map<String, String> connectorConfig) {
+        return ExactlyOnceSupport.SUPPORTED;
     }
 }

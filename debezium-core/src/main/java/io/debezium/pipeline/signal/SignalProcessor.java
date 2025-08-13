@@ -6,7 +6,6 @@
 package io.debezium.pipeline.signal;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -43,10 +42,6 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SignalProcessor.class);
 
-    /**
-     * Waiting period for the polling loop to finish. Will be applied twice, once gracefully, once forcefully.
-     */
-    public static final Duration SHUTDOWN_WAIT_TIMEOUT = Duration.ofSeconds(CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_SEC);
     public static final int SEMAPHORE_WAIT_TIME = 10;
 
     private final Map<String, SignalAction<P>> signalActions = new HashMap<>();
@@ -113,7 +108,7 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
                 .forEach(SignalChannelReader::close));
 
         signalProcessorExecutor.shutdown();
-        boolean isShutdown = signalProcessorExecutor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+        boolean isShutdown = signalProcessorExecutor.awaitTermination(connectorConfig.getExecutorShutdownTimeout().toMillis(), TimeUnit.MILLISECONDS);
 
         if (!isShutdown) {
             LOGGER.warn("SignalProcessor didn't stop in the expected time, shutting down executor now");
@@ -121,7 +116,7 @@ public class SignalProcessor<P extends Partition, O extends OffsetContext> {
             // Clear interrupt flag so the forced termination is always attempted
             Thread.interrupted();
             signalProcessorExecutor.shutdownNow();
-            signalProcessorExecutor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+            signalProcessorExecutor.awaitTermination(connectorConfig.getExecutorShutdownTimeout().toMillis(), TimeUnit.MILLISECONDS);
         }
 
         LOGGER.info("SignalProcessor stopped");

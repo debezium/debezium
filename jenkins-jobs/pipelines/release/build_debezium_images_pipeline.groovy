@@ -143,67 +143,69 @@ def initVersions(username, password) {
 
 node('Slave') {
     catchError {
-        stage('Initialize') {
-            dir('.') {
-                deleteDir()
+        timeout(time: 12, unit: 'HOURS') {
+            stage('Initialize') {
+                dir('.') {
+                    deleteDir()
+                }
+                checkout([$class                           : 'GitSCM',
+                        branches                         : [[name: params.IMAGES_BRANCH]],
+                        doGenerateSubmoduleConfigurations: false,
+                        extensions                       : [[$class: 'RelativeTargetDirectory', relativeTargetDir: IMAGES_DIR]],
+                        submoduleCfg                     : [],
+                        userRemoteConfigs                : [[url: "https://$params.IMAGES_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
+                ]
+                )
+                withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                    initVersions(GIT_USERNAME, GIT_PASSWORD)
+                }
+                withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
+                    sh """
+                        docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+                    """
+                }
+                withCredentials([string(credentialsId: QUAYIO_CREDENTIALS_ID, variable: 'USERNAME_PASSWORD')]) {
+                    def credentials = USERNAME_PASSWORD.split(':')
+                    sh """
+                        set +x
+                        docker login -u ${credentials[0]} -p ${credentials[1]} quay.io
+                    """
+                }
+                dir(IMAGES_DIR) {
+                    sh """
+                    ./setup-local-builder.sh
+                    docker run --privileged --rm mirror.gcr.io/tonistiigi/binfmt --install all
+                    """
+                }
+                sh ""
             }
-            checkout([$class                           : 'GitSCM',
-                      branches                         : [[name: params.IMAGES_BRANCH]],
-                      doGenerateSubmoduleConfigurations: false,
-                      extensions                       : [[$class: 'RelativeTargetDirectory', relativeTargetDir: IMAGES_DIR]],
-                      submoduleCfg                     : [],
-                      userRemoteConfigs                : [[url: "https://$params.IMAGES_REPOSITORY", credentialsId: GIT_CREDENTIALS_ID]]
-            ]
-            )
-            withCredentials([usernamePassword(credentialsId: GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
-                initVersions(GIT_USERNAME, GIT_PASSWORD)
+            stage('master') {
+                echo "Building images for streams $streamsToBuild"
+                dir(IMAGES_DIR) {
+                    sh """
+                    DRY_RUN=$DRY_RUN DEBEZIUM_VERSIONS=\"${streamsToBuild.join(' ')}\" LATEST_STREAM=\"$stableStream\" PLATFORM_CONDUCTOR_PLATFORM=linux/amd64 PLATFORM_STAGE_PLATFORM=linux/amd64 ./build-all-multiplatform.sh
+                    """
+                }
             }
-            withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, passwordVariable: 'DOCKER_PASSWORD', usernameVariable: 'DOCKER_USERNAME')]) {
-                sh """
-                    docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-                """
-            }
-            withCredentials([string(credentialsId: QUAYIO_CREDENTIALS_ID, variable: 'USERNAME_PASSWORD')]) {
-                def credentials = USERNAME_PASSWORD.split(':')
-                sh """
-                    set +x
-                    docker login -u ${credentials[0]} -p ${credentials[1]} quay.io
-                """
-            }
-            dir(IMAGES_DIR) {
-                sh """
-                ./setup-local-builder.sh
-                docker run --privileged --rm mirror.gcr.io/tonistiigi/binfmt --install all
-                """
-            }
-            sh ""
-        }
-        stage('master') {
-            echo "Building images for streams $streamsToBuild"
-            dir(IMAGES_DIR) {
-                sh """
-                DRY_RUN=$DRY_RUN DEBEZIUM_VERSIONS=\"${streamsToBuild.join(' ')}\" LATEST_STREAM=\"$stableStream\" PLATFORM_CONDUCTOR_PLATFORM=linux/amd64 PLATFORM_STAGE_PLATFORM=linux/amd64 ./build-all-multiplatform.sh
-                """
-            }
-        }
-        for (stream in streamsToBuild) {
-            for (tag in versions[stream].take(TAGS_PER_STREAM_COUNT)) {
-                echo "Building images for tag $tag"
-                stage(tag.toString()) {
-                    dir(IMAGES_DIR) {
-                        // Disable IPv6 as Node.js has problems downloading dependencies using it
-                        sh """
-                            sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1
-                            sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1
-                        """
-                        sh """
-                            git checkout v$tag
-                            git fetch origin $IMAGES_BRANCH:$IMAGES_BRANCH
-                            git checkout $IMAGES_BRANCH build-all-multiplatform.sh build-debezium-multiplatform.sh build-postgres-multiplatform.sh
-                            echo '========== Building UI only for linux/amd64, arm64 not working =========='
-                            DRY_RUN=$DRY_RUN PLATFORM_CONDUCTOR_PLATFORM=linux/amd64 PLATFORM_STAGE_PLATFORM=linux/amd64 RELEASE_TAG=$tag ./build-debezium-multiplatform.sh $stream $MULTIPLATFORM_PLATFORMS
-                            git reset --hard
-                        """
+            for (stream in streamsToBuild) {
+                for (tag in versions[stream].take(TAGS_PER_STREAM_COUNT)) {
+                    echo "Building images for tag $tag"
+                    stage(tag.toString()) {
+                        dir(IMAGES_DIR) {
+                            // Disable IPv6 as Node.js has problems downloading dependencies using it
+                            sh """
+                                sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1
+                                sudo sysctl -w net.ipv6.conf.default.disable_ipv6=1
+                            """
+                            sh """
+                                git checkout v$tag
+                                git fetch origin $IMAGES_BRANCH:$IMAGES_BRANCH
+                                git checkout $IMAGES_BRANCH build-all-multiplatform.sh build-debezium-multiplatform.sh build-postgres-multiplatform.sh script-functions/
+                                echo '========== Building UI only for linux/amd64, arm64 not working =========='
+                                DRY_RUN=$DRY_RUN PLATFORM_CONDUCTOR_PLATFORM=linux/amd64 PLATFORM_STAGE_PLATFORM=linux/amd64 RELEASE_TAG=$tag ./build-debezium-multiplatform.sh $stream $MULTIPLATFORM_PLATFORMS
+                                git reset --hard
+                            """
+                        }
                     }
                 }
             }

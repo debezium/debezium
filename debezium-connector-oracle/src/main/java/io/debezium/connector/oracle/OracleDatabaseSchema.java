@@ -20,6 +20,7 @@ import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.relational.Attribute;
 import io.debezium.relational.Column;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.HistorizedRelationalDatabaseSchema;
 import io.debezium.relational.Table;
@@ -57,14 +58,14 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     public OracleDatabaseSchema(OracleConnectorConfig connectorConfig, OracleValueConverters valueConverters,
                                 DefaultValueConverter defaultValueConverter, SchemaNameAdjuster schemaNameAdjuster,
                                 TopicNamingStrategy<TableId> topicNamingStrategy, TableNameCaseSensitivity tableNameCaseSensitivity,
-                                boolean extendedStringsSupported) {
+                                boolean extendedStringsSupported, CustomConverterRegistry customConverterRegistry) {
         super(connectorConfig, topicNamingStrategy, connectorConfig.getTableFilters().dataCollectionFilter(),
                 connectorConfig.getColumnFilter(),
                 new TableSchemaBuilder(
                         valueConverters,
                         defaultValueConverter,
                         schemaNameAdjuster,
-                        connectorConfig.customConverterRegistry(),
+                        customConverterRegistry,
                         connectorConfig.getSourceInfoStructMaker().schema(),
                         connectorConfig.getFieldNamer(),
                         false),

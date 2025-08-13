@@ -200,7 +200,6 @@ docker run -it --rm --name apicurio \
 [source,subs="attributes+"]
 ----
 docker run -it --rm --name connect \
-    --link zookeeper:zookeeper \
     --link kafka:kafka \
     --link mysql:mysql \
     --link apicurio:apicurio \
@@ -458,8 +457,8 @@ value.converter.schema.registry.url=http://localhost:8081
 [source]
 ----
 docker run -it --rm --name schema-registry \
-    --link zookeeper \
-    -e SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL=zookeeper:2181 \
+    --link kafka \
+    -e SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=kafka:9092
     -e SCHEMA_REGISTRY_HOST_NAME=schema-registry \
     -e SCHEMA_REGISTRY_LISTENERS=http://schema-registry:8081 \
     -p 8181:8181 confluentinc/cp-schema-registry
@@ -470,7 +469,6 @@ docker run -it --rm --name schema-registry \
 [source,subs="attributes+"]
 ----
 docker run -it --rm --name connect \
-    --link zookeeper:zookeeper \
     --link kafka:kafka \
     --link mysql:mysql \
     --link schema-registry:schema-registry \
@@ -489,7 +487,6 @@ docker run -it --rm --name connect \
 [source,subs="attributes+"]
 ----
 docker run -it --rm --name avro-consumer \
-    --link zookeeper:zookeeper \
     --link kafka:kafka \
     --link mysql:mysql \
     --link schema-registry:schema-registry \

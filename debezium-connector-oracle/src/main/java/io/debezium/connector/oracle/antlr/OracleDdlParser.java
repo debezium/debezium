@@ -33,6 +33,7 @@ public class OracleDdlParser extends AntlrDdlParser<PlSqlLexer, PlSqlParser> {
 
     private final TableFilter tableFilter;
     private final OracleValueConverters converters;
+    private final DataTypeResolver dataTypeResolver = initializeDataTypeResolver();
 
     private String catalogName;
     private String schemaName;
@@ -95,7 +96,11 @@ public class OracleDdlParser extends AntlrDdlParser<PlSqlLexer, PlSqlParser> {
     }
 
     @Override
-    protected DataTypeResolver initializeDataTypeResolver() {
+    public DataTypeResolver dataTypeResolver() {
+        return dataTypeResolver;
+    }
+
+    private DataTypeResolver initializeDataTypeResolver() {
         // todo, register all and use in ColumnDefinitionParserListener
         DataTypeResolver.Builder dataTypeResolverBuilder = new DataTypeResolver.Builder();
 

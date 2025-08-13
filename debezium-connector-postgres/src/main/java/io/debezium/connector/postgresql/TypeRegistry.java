@@ -56,6 +56,7 @@ public class TypeRegistry {
     public static final String TYPE_NAME_GEOMETRY_ARRAY = "_geometry";
     public static final String TYPE_NAME_CITEXT_ARRAY = "_citext";
     public static final String TYPE_NAME_LTREE_ARRAY = "_ltree";
+    public static final String TYPE_NAME_TSVECTOR = "tsvector";
 
     public static final int NO_TYPE_MODIFIER = -1;
     public static final int UNKNOWN_LENGTH = -1;
@@ -123,6 +124,7 @@ public class TypeRegistry {
     private int geographyArrayOid = Integer.MIN_VALUE;
     private int citextArrayOid = Integer.MIN_VALUE;
     private int ltreeArrayOid = Integer.MIN_VALUE;
+    private int tsVectorOid = Integer.MIN_VALUE;
 
     public TypeRegistry(PostgresConnection connection) {
         try {
@@ -186,6 +188,9 @@ public class TypeRegistry {
         }
         else if (TYPE_NAME_SPARSE_VECTOR.equals(type.getName())) {
             sparseVectorOid = type.getOid();
+        }
+        else if (TYPE_NAME_TSVECTOR.equals(type.getName())) {
+            tsVectorOid = type.getOid();
         }
     }
 
@@ -355,6 +360,10 @@ public class TypeRegistry {
     */
     public int sparseVectorOid() {
         return sparseVectorOid;
+    }
+
+    public int tsVectorOid() {
+        return tsVectorOid;
     }
 
     /**

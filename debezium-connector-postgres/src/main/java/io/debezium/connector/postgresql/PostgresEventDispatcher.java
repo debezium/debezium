@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.postgresql.connection.LogicalDecodingMessage;
 import io.debezium.connector.postgresql.pipeline.txmetadata.PostgresTransactionMonitor;
 import io.debezium.heartbeat.Heartbeat;
@@ -41,8 +42,8 @@ public class PostgresEventDispatcher<T extends DataCollectionId> extends EventDi
     public PostgresEventDispatcher(PostgresConnectorConfig connectorConfig, TopicNamingStrategy<T> topicNamingStrategy,
                                    DatabaseSchema<T> schema, ChangeEventQueue<DataChangeEvent> queue, DataCollectionFilters.DataCollectionFilter<T> filter,
                                    ChangeEventCreator changeEventCreator, InconsistentSchemaHandler<PostgresPartition, T> inconsistentSchemaHandler,
-                                   EventMetadataProvider metadataProvider, Heartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster,
-                                   SignalProcessor<PostgresPartition, PostgresOffsetContext> signalProcessor) {
+                                   EventMetadataProvider metadataProvider, Heartbeat.ScheduledHeartbeat heartbeat, SchemaNameAdjuster schemaNameAdjuster,
+                                   SignalProcessor<PostgresPartition, PostgresOffsetContext> signalProcessor, DebeziumHeaderProducer debeziumHeaderProducer) {
         super(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator, inconsistentSchemaHandler, heartbeat, schemaNameAdjuster,
                 new PostgresTransactionMonitor(
                         connectorConfig,
@@ -52,7 +53,8 @@ public class PostgresEventDispatcher<T extends DataCollectionId> extends EventDi
                             queue.enqueue(new DataChangeEvent(record));
                         },
                         topicNamingStrategy.transactionTopic()),
-                signalProcessor);
+                signalProcessor,
+                debeziumHeaderProducer);
         this.queue = queue;
         this.logicalDecodingMessageMonitor = new LogicalDecodingMessageMonitor(connectorConfig, this::enqueueLogicalDecodingMessage);
         this.messageFilter = connectorConfig.getMessageFilter();

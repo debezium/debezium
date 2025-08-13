@@ -1852,7 +1852,7 @@ To deploy a {prodname} Informix connector, you install the {prodname} Informix c
 
 .Prerequisites
 
-* link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* link:http://kafka.apache.org/[Apache Kafka] and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
 * Informix is installed and xref:setting-up-informix[capture mode is enabled for tables] to prepare the database to be used with the {prodname} connector.
 
 .Procedure
@@ -1869,7 +1869,7 @@ To enable the connector to access the database, you must add the driver and clie
 . Add the directory with the JAR files to {link-kafka-docs}/#connectconfigs[Kafka Connect's `plugin.path`].
 . Restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Apache ZooKeeper, Apache Kafka and Kafka Connect with the Informix connector already installed and ready to run.
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Apache Kafka and Kafka Connect with the Informix connector already installed and ready to run.
 
 [IMPORTANT]
 ====
@@ -2491,6 +2491,17 @@ Heartbeat messages are useful when there are many updates in a database that is 
 In such a situation, the connector has few opportunities to send the latest offset to Kafka.
 Enable the connector to send heartbeat messages to ensure that it sends the latest offset to Kafka even when few changes occur in monitored tables.
 
+|[[informix-property-heartbeat-action-query]]<<informix-property-heartbeat-action-query, `+heartbeat.action.query+`>>
+|No default
+|Specifies a query that the connector executes on the source database when the connector sends a heartbeat message. +
+ +
+This is useful for resolving the situation where capturing changes from a low-traffic database on the same host as a high-traffic database prevents {prodname} from updating its last commited/restart LSN before the physical log files rotate.
+To address this situation, create a heartbeat table in the low-traffic database, and set this property to a statement that inserts records into that table, for example:  +
+ +
+`INSERT INTO test_heartbeat_table (text) VALUES ('test_heartbeat')` +
+ +
+This allows the connector to receive changes from the low-traffic database and update its last committed/restart LSN before the physical log files rotate.
+
 |[[informix-property-snapshot-delay-ms]]<<informix-property-snapshot-delay-ms, `+snapshot.delay.ms+`>>
 |No default
 |An interval in milliseconds that the connector should wait before performing a snapshot when the connector starts.
@@ -2687,6 +2698,18 @@ For more information, see xref:customized-mbean-names[Customized MBean names].
 |Specifies the time, in milliseconds, that the connector waits for a query to complete.
 Set the value to `0` (zero) to remove the timeout limit.
 
+|[[informix-property-extended-headers-enabled]]<<informix-property-extended-headers-enabled, `extended.headers.enabled`>>
+|true
+|This property specifies whether {prodname} adds context headers with the prefix `__debezium.context.` to the messages that it emits.
+
+These headers are required by the OpenLineage integration and provide metadata that enables downstream processing systems to track and identify the sources of change events.
+
+The property adds following headers:
+
+`__debezium.context.connectorLogicalName`:: The logical name of the {prodname} connector.
+`__debezium.context.taskId`:: The unique identifier of the connector task.
+`__debezium.context.connectorName`::  The name of the {prodname} connector.
+
 |===
 
 [id="debezium-informix-connector-database-history-configuration-properties"]
@@ -2737,7 +2760,7 @@ include::{partialsdir}/modules/all-connectors/ref-connector-pass-through-databas
 [[informix-monitoring]]
 == Monitoring
 
-The {prodname} Informix connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Apache ZooKeeper, Apache Kafka, and Kafka Connect provide.
+The {prodname} Informix connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Apache Kafka and Kafka Connect provide.
 
 * xref:informix-snapshot-metrics[Snapshot metrics] provide information about connector operation while performing a snapshot.
 * xref:informix-streaming-metrics[Streaming metrics] provide information about connector operation when the connector is capturing changes and streaming change event records.

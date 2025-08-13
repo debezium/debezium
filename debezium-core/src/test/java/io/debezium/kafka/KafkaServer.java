@@ -7,27 +7,28 @@ package io.debezium.kafka;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Properties;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.coordinator.group.GroupCoordinatorConfig;
 import org.apache.kafka.network.SocketServerConfigs;
+import org.apache.kafka.raft.QuorumConfig;
+import org.apache.kafka.server.config.KRaftConfigs;
 import org.apache.kafka.server.config.ServerConfigs;
 import org.apache.kafka.server.config.ServerLogConfigs;
-import org.apache.kafka.server.config.ZkConfigs;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.util.IoUtil;
 
-import kafka.admin.RackAwareMode;
 import kafka.server.KafkaConfig;
-import kafka.zk.AdminZkClient;
-import scala.Option;
-import scala.collection.JavaConverters;
 
 /**
  * A small embedded Kafka server.
@@ -41,46 +42,36 @@ public class KafkaServer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaServer.class);
 
-    private final Supplier<String> zkConnection;
     private final int brokerId;
     private volatile File logsDir;
     private final Properties config;
     private volatile int desiredPort = -1;
     private volatile int port = -1;
-    private volatile kafka.server.KafkaServer server;
-    private volatile AdminZkClient adminZkClient;
+    private volatile kafka.server.KafkaRaftServer server;
 
     /**
      * Create a new server instance.
-     *
-     * @param zookeeperConnection the supplier of the Zookeeper connection string; may not be null
      */
-    public KafkaServer(Supplier<String> zookeeperConnection) {
-        this(zookeeperConnection, DEFAULT_BROKER_ID);
+    public KafkaServer() {
+        this(DEFAULT_BROKER_ID);
     }
 
     /**
      * Create a new server instance.
      *
-     * @param zookeeperConnection the supplier of the Zookeeper connection string; may not be null
      * @param brokerId the unique broker ID
      */
-    public KafkaServer(Supplier<String> zookeeperConnection, int brokerId) {
-        this(zookeeperConnection, brokerId, -1);
+    public KafkaServer(int brokerId) {
+        this(brokerId, -1);
     }
 
     /**
      * Create a new server instance.
      *
-     * @param zookeeperConnection the supplier of the Zookeeper connection string; may not be null
      * @param brokerId the unique broker ID
      * @param port the desired port
      */
-    public KafkaServer(Supplier<String> zookeeperConnection, int brokerId, int port) {
-        if (zookeeperConnection == null) {
-            throw new IllegalArgumentException("The Zookeeper connection string supplier may not be null");
-        }
-        this.zkConnection = zookeeperConnection;
+    public KafkaServer(int brokerId, int port) {
         this.brokerId = brokerId;
         this.config = new Properties();
         setPort(port);
@@ -89,10 +80,6 @@ public class KafkaServer {
 
     protected int brokerId() {
         return brokerId;
-    }
-
-    protected String zookeeperConnection() {
-        return this.zkConnection.get();
     }
 
     /**
@@ -164,8 +151,9 @@ public class KafkaServer {
     public Properties config() {
         Properties runningConfig = new Properties();
         runningConfig.putAll(config);
-        runningConfig.setProperty(ZkConfigs.ZK_CONNECT_CONFIG, zookeeperConnection());
         runningConfig.setProperty(ServerConfigs.BROKER_ID_CONFIG, Integer.toString(brokerId));
+        runningConfig.setProperty(KRaftConfigs.PROCESS_ROLES_CONFIG, "broker,controller");
+        runningConfig.setProperty(KRaftConfigs.CONTROLLER_LISTENER_NAMES_CONFIG, "CONTROLLER");
         runningConfig.setProperty(ServerLogConfigs.AUTO_CREATE_TOPICS_ENABLE_CONFIG,
                 String.valueOf(config.getOrDefault(ServerLogConfigs.AUTO_CREATE_TOPICS_ENABLE_CONFIG, Boolean.TRUE)));
         // 1 partition for the __consumer_offsets_ topic should be enough
@@ -213,18 +201,23 @@ public class KafkaServer {
 
         // Determine the port and adjust the configuration ...
         port = desiredPort > 0 ? desiredPort : IoUtil.getAvailablePort();
+        final var contollerPort = desiredPort > 0 ? desiredPort + 1 : IoUtil.getAvailablePort();
         config.setProperty(SocketServerConfigs.LISTENERS_CONFIG, "PLAINTEXT://localhost:" + port);
-        // config.setProperty("metadata.broker.list", getConnection());
+        config.setProperty(SocketServerConfigs.LISTENERS_CONFIG, "PLAINTEXT://:%s,CONTROLLER://:%s".formatted(port, contollerPort));
+        config.setProperty(QuorumConfig.QUORUM_BOOTSTRAP_SERVERS_CONFIG, getConnection());
+        LOGGER.debug("Using Kafka Server configuration: {}", config);
 
         // Start the server ...
         try {
             LOGGER.debug("Starting Kafka broker {} at {} with storage in {}", brokerId, getConnection(), logsDir.getAbsolutePath());
             final var kafkaConfig = new KafkaConfig(config);
-            server = new kafka.server.KafkaServer(kafkaConfig, Time.SYSTEM, scala.Option.apply(null),
-                    false);
+
+            final var formatter = new KafkaStorageFormatter(kafkaConfig);
+            formatter.format();
+
+            server = new kafka.server.KafkaRaftServer(kafkaConfig, Time.SYSTEM);
             server.startup();
             LOGGER.info("Started Kafka server {} at {} with storage in {}", brokerId, getConnection(), logsDir.getAbsolutePath());
-            adminZkClient = new AdminZkClient(server.zkClient(), Option.apply(kafkaConfig));
             return this;
         }
         catch (RuntimeException e) {
@@ -243,16 +236,14 @@ public class KafkaServer {
             try {
                 server.shutdown();
                 if (deleteLogs) {
-                    // as of 0.10.1.1 if logs are not deleted explicitly, there are open File Handles left on .timeindex files
-                    // at least on Windows courtesy of the TimeIndex.scala class
-                    // NOTE: specifically do not use method reference to ensure compatibility between Kafka 3.0.x and 3.1+
-                    JavaConverters.asJavaIterableConverter(server.logManager().allLogs()).asJava().forEach(l -> l.delete());
+                    // Kafka 4.x does not expose a method to delete the logs
+                    // At least on Linux it seems there are no open handles to the log files
+                    // so we don't delete them here.
                 }
                 LOGGER.info("Stopped Kafka server {} at {}", brokerId, getConnection());
             }
             finally {
                 server = null;
-                adminZkClient = null;
                 port = desiredPort;
             }
         }
@@ -271,15 +262,6 @@ public class KafkaServer {
                 LOGGER.error("Unable to delete directory '{}'", this.logsDir, e);
             }
         }
-    }
-
-    /**
-     * Get the Zookeeper admin client used by the running Kafka server.
-     *
-     * @return the Zookeeper admin client, or null if the Kafka server is not running
-     */
-    public AdminZkClient getAdminZkClient() {
-        return adminZkClient;
     }
 
     /**
@@ -314,8 +296,20 @@ public class KafkaServer {
      * @param replicationFactor the replication factor for the topic
      */
     public void createTopic(String topic, int numPartitions, int replicationFactor) {
-        RackAwareMode rackAwareMode = null;
-        getAdminZkClient().createTopic(topic, numPartitions, replicationFactor, new Properties(), rackAwareMode, false);
+        final var clientId = KafkaServer.class.getSimpleName() + "-" + brokerId + "-topic-create";
+        final var adminConfig = new Properties();
+        adminConfig.put(AdminClientConfig.CLIENT_ID_CONFIG, clientId);
+        adminConfig.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, getConnection());
+
+        try (AdminClient admin = AdminClient.create(adminConfig)) {
+            admin.createTopics(Collections.singletonList(new NewTopic(topic, numPartitions, (short) replicationFactor)))
+                    .all().get();
+            LOGGER.info("Created topic '{}' with {} partitions and replication factor {}", topic, numPartitions,
+                    replicationFactor);
+        }
+        catch (Exception e) {
+            throw new DebeziumException("Unable to create topic '" + topic + "'", e);
+        }
     }
 
     /**

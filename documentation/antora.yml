@@ -8,9 +8,9 @@ nav:
 
 asciidoc:
   attributes:
-    debezium-version: '3.2.0.Beta1'
+    debezium-version: '3.3.0.Alpha1'
     debezium-kafka-version: '4.0.0'
-    debezium-docker-label: '3.1'
+    debezium-docker-label: '3.2'
     DockerKafkaConnect: registry.redhat.io/amq7/amq-streams-kafka-28-rhel8:1.8.0
     groovy-version: '4.0.17'
     assemblies: '../assemblies'
@@ -78,6 +78,7 @@ asciidoc:
     link-spanner-plugin-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-spanner&v=LATEST&c=plugin&e=tar.gz'
     link-jdbc-plugin-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-jdbc&v=LATEST&c=plugin&e=tar.gz'
     link-informix-plugin-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-informix&v=LATEST&c=plugin&e=tar.gz'
+    link-cockroachdb-plugin-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-connector-cockroachdb&v=LATEST&c=plugin&e=tar.gz'
     link-server-snapshot: 'https://s01.oss.sonatype.org/service/local/artifact/maven/redirect?r=snapshots&g=io.debezium&a=debezium-server-dist&v=LATEST&e=tar.gz'
     link-kafka-docs: 'https://kafka.apache.org/documentation'
     link-java7-standard-names: 'https://docs.oracle.com/javase/7/docs/technotes/guides/security/StandardNames.html#MessageDigest'

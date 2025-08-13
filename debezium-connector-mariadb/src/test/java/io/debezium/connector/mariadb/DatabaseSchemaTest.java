@@ -7,6 +7,7 @@ package io.debezium.connector.mariadb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Collections;
 import java.util.Set;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -16,6 +17,7 @@ import io.debezium.connector.binlog.BinlogDatabaseSchemaTest;
 import io.debezium.connector.mariadb.jdbc.MariaDbValueConverters;
 import io.debezium.connector.mariadb.util.MariaDbValueConvertersFactory;
 import io.debezium.jdbc.TemporalPrecisionMode;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
 import io.debezium.relational.history.AbstractSchemaHistory;
 import io.debezium.schema.DefaultTopicNamingStrategy;
@@ -68,7 +70,7 @@ public class DatabaseSchemaTest extends BinlogDatabaseSchemaTest<MariaDbConnecto
                         CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN),
                 (TopicNamingStrategy) DefaultTopicNamingStrategy.create(connectorConfig),
                 SchemaNameAdjuster.create(),
-                false);
+                false, new CustomConverterRegistry(Collections.emptyList()));
     }
 
     @Override

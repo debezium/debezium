@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.ConfigurationNames;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -47,7 +48,7 @@ import io.debezium.util.Testing;
 public class TestHelper {
 
     private static final String PDB_NAME = "pdb.name";
-    private static final String DATABASE_PREFIX = CommonConnectorConfig.DATABASE_CONFIG_PREFIX;
+    private static final String DATABASE_PREFIX = ConfigurationNames.DATABASE_CONFIG_PREFIX;
     private static final String DATABASE_ADMIN_PREFIX = "database.admin.";
 
     public static final Path SCHEMA_HISTORY_PATH = Testing.Files.createTestingPath("file-schema-history-connect.txt").toAbsolutePath();
@@ -150,7 +151,7 @@ public class TestHelper {
         Configuration.Builder builder = Configuration.create();
 
         jdbcConfiguration.forEach(
-                (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
+                (field, value) -> builder.with(ConfigurationNames.DATABASE_CONFIG_PREFIX + field, value));
 
         if (isXStream()) {
             builder.withDefault(OracleConnectorConfig.XSTREAM_SERVER_NAME, "dbzxout");
@@ -291,7 +292,7 @@ public class TestHelper {
         Configuration.Builder builder = Configuration.create();
 
         jdbcConfiguration.forEach(
-                (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
+                (field, value) -> builder.with(ConfigurationNames.DATABASE_CONFIG_PREFIX + field, value));
 
         builder.with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME);
         return builder;
@@ -305,7 +306,7 @@ public class TestHelper {
         Configuration.Builder builder = Configuration.create();
 
         jdbcConfiguration.forEach(
-                (field, value) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
+                (field, value) -> builder.with(ConfigurationNames.DATABASE_CONFIG_PREFIX + field, value));
 
         builder.with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME);
         return builder;
@@ -784,7 +785,7 @@ public class TestHelper {
     // Below are test helper methods for integration tests using the Testcointainers based OracleContainer instance:
 
     private static Configuration getTestConnectionConfiguration(ConnectorConfiguration config) {
-        var connectionConfiguration = Configuration.from(config.asProperties()).subset(CommonConnectorConfig.DATABASE_CONFIG_PREFIX, true);
+        var connectionConfiguration = Configuration.from(config.asProperties()).subset(ConfigurationNames.DATABASE_CONFIG_PREFIX, true);
         var dbName = Strings.isNullOrEmpty(connectionConfiguration.getString(PDB_NAME))
                 ? connectionConfiguration.getString(JdbcConfiguration.DATABASE)
                 : connectionConfiguration.getString(PDB_NAME);

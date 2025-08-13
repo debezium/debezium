@@ -105,8 +105,10 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         while (getContext().isRunning()) {
 
             // Check if we should break when using archive log only mode
-            if (isArchiveLogOnlyModeAndScnIsNotAvailable(minLogScn)) {
-                break;
+            if (getConfig().isArchiveLogOnlyMode()) {
+                if (waitForRangeAvailabilityInArchiveLogs(minLogScn, upperBoundsScn)) {
+                    break;
+                }
             }
 
             final Instant batchStartTime = Instant.now();
@@ -127,14 +129,6 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             upperBoundsScn = calculateUpperBounds(minLogScn, upperBoundsScn, currentScn);
             if (upperBoundsScn.isNull()) {
                 LOGGER.debug("Delaying mining transaction logs by one iteration");
-                pauseBetweenMiningSessions();
-                continue;
-            }
-
-            // This is a small window where when archive log only mode has completely caught up to the last
-            // record in the archive logs that both the lower and upper values are identical. In this use
-            // case we want to pause and restart the loop waiting for a new archive log before proceeding.
-            if (getConfig().isArchiveLogOnlyMode() && minLogScn.equals(upperBoundsScn)) {
                 pauseBetweenMiningSessions();
                 continue;
             }
@@ -262,6 +256,10 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
             statement.setFetchSize(getConfig().getQueryFetchSize());
             statement.setFetchDirection(ResultSet.FETCH_FORWARD);
             statement.setString(1, minCommitScn.toString());
+
+            if (getConfig().isLogMiningUseCteQuery()) {
+                statement.setString(2, minCommitScn.toString());
+            }
 
             lastCommitScn = minCommitScn;
 
@@ -483,6 +481,11 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                 getOffsetContext().setRedoSql("");
             }
         }
+    }
+
+    @Override
+    protected boolean isNoDataProcessedInBatchAndAtEndOfArchiveLogs() {
+        return !getMetrics().getBatchMetrics().hasProcessedAnyTransactions();
     }
 
     /**

@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
@@ -91,7 +92,6 @@ import io.debezium.snapshot.mode.NeverSnapshotter;
 import io.debezium.time.Conversions;
 import io.debezium.util.Clock;
 import io.debezium.util.Metronome;
-import io.debezium.util.Strings;
 import io.debezium.util.Threads;
 
 /**
@@ -107,6 +107,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
 
     private static final String KEEPALIVE_THREAD_NAME = "blc-keepalive";
     private static final String SET_STATEMENT_REGEX = "SET STATEMENT .* FOR";
+    private static final Pattern TRUNCATE_STATEMENT_PATTERN = Pattern.compile("(SET STATEMENT .*)?TRUNCATE TABLE .*", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
     private final BinaryLogClient client;
     private final BinlogStreamingChangeEventSourceMetrics<?, P> metrics;
@@ -715,13 +716,13 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
             return;
         }
 
-        String upperCasedStatementBegin = Strings.getBegin(removeSetStatement(sql), 7).toUpperCase();
+        String upperCasedStatementBegin = removeSetStatement(sql).toUpperCase();
 
         if (upperCasedStatementBegin.startsWith("XA ")) {
             // This is an XA transaction, and we currently ignore these and do nothing ...
             return;
         }
-        if (schema.ddlFilter().test(sql)) {
+        if (!TRUNCATE_STATEMENT_PATTERN.matcher(sql).matches() && schema.ddlFilter().test(sql)) {
             LOGGER.debug("DDL '{}' was filtered out of processing", sql);
             return;
         }
@@ -746,10 +747,11 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 }
 
                 final TableId tableId = schemaChangeEvent.getTables().isEmpty() ? null : schemaChangeEvent.getTables().iterator().next().id();
-                if (tableId != null && !connectorConfig.getSkippedOperations().contains(Envelope.Operation.TRUNCATE)
-                        && schemaChangeEvent.getType().equals(SchemaChangeEvent.SchemaChangeEventType.TRUNCATE)) {
-                    eventDispatcher.dispatchDataChangeEvent(partition, tableId,
-                            new BinlogChangeRecordEmitter<>(partition, offsetContext, clock, Envelope.Operation.TRUNCATE, null, null, connectorConfig));
+                if (tableId != null && schemaChangeEvent.getType().equals(SchemaChangeEvent.SchemaChangeEventType.TRUNCATE)) {
+                    if (!connectorConfig.getSkippedOperations().contains(Envelope.Operation.TRUNCATE)) {
+                        eventDispatcher.dispatchDataChangeEvent(partition, tableId,
+                                new BinlogChangeRecordEmitter<>(partition, offsetContext, clock, Envelope.Operation.TRUNCATE, null, null, connectorConfig));
+                    }
                 }
                 else {
                     eventDispatcher.dispatchSchemaChangeEvent(partition, offsetContext, tableId, (receiver) -> {

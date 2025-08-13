@@ -8,6 +8,7 @@ package io.debezium.connector.oracle;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -21,11 +22,11 @@ import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.document.DocumentReader;
-import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
+import io.debezium.heartbeat.HeartbeatFactory;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.jdbc.MainConnectionProvidingConnectionFactory;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
@@ -33,6 +34,7 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.spi.Offsets;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaFactory;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -64,18 +66,24 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
         SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
-        JdbcConfiguration jdbcConfig = connectorConfig.getJdbcConfig();
-        MainConnectionProvidingConnectionFactory<OracleConnection> connectionFactory = new DefaultMainConnectionProvidingConnectionFactory<>(
-                () -> new OracleConnection(jdbcConfig));
+        final JdbcConfiguration jdbcConfig = connectorConfig.getJdbcConfig();
+        final OracleConnectionFactory connectionFactory = new OracleConnectionFactory(connectorConfig);
+
         jdbcConnection = connectionFactory.mainConnection();
 
         final boolean extendedStringsSupported = jdbcConnection.hasExtendedStringSupport();
 
+        // Service providers
+        registerServiceProviders(connectorConfig.getServiceRegistry());
+
         OracleValueConverters valueConverters = connectorConfig.getAdapter().getValueConverter(connectorConfig, jdbcConnection);
         OracleDefaultValueConverter defaultValueConverter = new OracleDefaultValueConverter(valueConverters, jdbcConnection);
         TableNameCaseSensitivity tableNameCaseSensitivity = connectorConfig.getAdapter().getTableNameCaseSensitivity(jdbcConnection);
+        CustomConverterRegistry customConverterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
+
         this.schema = new OracleDatabaseSchema(connectorConfig, valueConverters, defaultValueConverter, schemaNameAdjuster,
-                topicNamingStrategy, tableNameCaseSensitivity, extendedStringsSupported);
+                topicNamingStrategy, tableNameCaseSensitivity, extendedStringsSupported, customConverterRegistry);
+        taskContext = new OracleTaskContext(connectorConfig, schema);
 
         Offsets<OraclePartition, OracleOffsetContext> previousOffsets = getPreviousOffsets(new OraclePartition.Provider(connectorConfig),
                 connectorConfig.getAdapter().getOffsetContextLoader());
@@ -94,9 +102,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         connectorConfig.getBeanRegistry().add(StandardBeanNames.JDBC_CONNECTION, beanRegistryJdbcConnection);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.VALUE_CONVERTER, valueConverters);
         connectorConfig.getBeanRegistry().add(StandardBeanNames.OFFSETS, previousOffsets);
-
-        // Service providers
-        registerServiceProviders(connectorConfig.getServiceRegistry());
+        connectorConfig.getBeanRegistry().add(StandardBeanNames.CDC_SOURCE_TASK_CONTEXT, taskContext);
 
         final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
 
@@ -107,8 +113,6 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         OracleOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
         validateSchemaHistory(connectorConfig, jdbcConnection::validateLogPosition, previousOffsets, schema, snapshotterService.getSnapshotter());
-
-        taskContext = new OracleTaskContext(connectorConfig, schema);
 
         // If the redo log position is not available it is necessary to re-execute snapshot
         if (previousOffset == null) {
@@ -147,16 +151,20 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 connectorConfig.getTableFilters().dataCollectionFilter(),
                 DataChangeEvent::new,
                 metadataProvider,
-                connectorConfig.createHeartbeat(
-                        topicNamingStrategy,
-                        schemaNameAdjuster,
+                new HeartbeatFactory<>().getScheduledHeartbeat(
+                        connectorConfig,
                         () -> getHeartbeatConnection(connectorConfig, jdbcConfig),
                         exception -> {
                             final String sqlErrorId = exception.getMessage();
+                            if (exception.getErrorCode() == 2396) {
+                                // ORA-02396 idle time expired
+                                return;
+                            }
                             throw new DebeziumException("Could not execute heartbeat action query (Error: " + sqlErrorId + ")", exception);
-                        }),
+                        }, queue),
                 schemaNameAdjuster,
-                signalProcessor);
+                signalProcessor,
+                connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
 
         final AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics = connectorConfig.getAdapter()
                 .getStreamingMetrics(taskContext, queue, metadataProvider, connectorConfig);
@@ -179,6 +187,11 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         coordinator.start(taskContext, this.queue, metadataProvider);
 
         return coordinator;
+    }
+
+    @Override
+    protected String connectorName() {
+        return Module.name();
     }
 
     private void checkArchiveLogDestination(OracleConnection connection, String destinationName) {
@@ -217,6 +230,11 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         return records.stream()
                 .map(DataChangeEvent::getRecord)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    protected Optional<ErrorHandler> getErrorHandler() {
+        return Optional.of(errorHandler);
     }
 
     @Override

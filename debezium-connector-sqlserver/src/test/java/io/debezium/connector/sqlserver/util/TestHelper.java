@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.ConfigurationNames;
 import io.debezium.connector.sqlserver.Lsn;
 import io.debezium.connector.sqlserver.SqlServerChangeTable;
 import io.debezium.connector.sqlserver.SqlServerConnection;
@@ -106,7 +107,7 @@ public class TestHelper {
     }
 
     public static JdbcConfiguration defaultJdbcConfig() {
-        return JdbcConfiguration.copy(Configuration.fromSystemProperties(SqlServerConnectorConfig.DATABASE_CONFIG_PREFIX))
+        return JdbcConfiguration.copy(Configuration.fromSystemProperties(ConfigurationNames.DATABASE_CONFIG_PREFIX))
                 .withDefault(JdbcConfiguration.HOSTNAME, "localhost")
                 .withDefault(JdbcConfiguration.PORT, 1433)
                 .withDefault(JdbcConfiguration.USER, "sa")
@@ -126,7 +127,7 @@ public class TestHelper {
         Configuration.Builder builder = Configuration.create();
 
         jdbcConfiguration.forEach(
-                (field, value) -> builder.with(SqlServerConnectorConfig.DATABASE_CONFIG_PREFIX + field, value));
+                (field, value) -> builder.with(ConfigurationNames.DATABASE_CONFIG_PREFIX + field, value));
 
         return builder.with(CommonConnectorConfig.TOPIC_PREFIX, "server1")
                 .with(SqlServerConnectorConfig.SCHEMA_HISTORY, FileSchemaHistory.class)
@@ -258,7 +259,7 @@ public class TestHelper {
 
     public static SqlServerConnection testConnection(String databaseName) {
         Configuration config = defaultConnectorConfig()
-                .with(CommonConnectorConfig.DATABASE_CONFIG_PREFIX + JdbcConfiguration.ON_CONNECT_STATEMENTS, "USE [" + databaseName + "]")
+                .with(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.ON_CONNECT_STATEMENTS, "USE [" + databaseName + "]")
                 .build();
 
         return testConnection(config);
@@ -273,8 +274,8 @@ public class TestHelper {
 
     public static SqlServerConnection testConnection(String user, String password) {
         Configuration config = defaultConnectorConfig()
-                .with(CommonConnectorConfig.DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER, user)
-                .with(CommonConnectorConfig.DATABASE_CONFIG_PREFIX + JdbcConfiguration.PASSWORD, password)
+                .with(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER, user)
+                .with(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.PASSWORD, password)
                 .build();
 
         return testConnection(config);
@@ -282,7 +283,7 @@ public class TestHelper {
 
     public static SqlServerConnection testConnectionWithOptionRecompile() {
         SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(defaultConnectorConfig()
-                .with(CommonConnectorConfig.DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE, TEST_DATABASE_1)
+                .with(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE, TEST_DATABASE_1)
                 .build());
         return new SqlServerConnection(connectorConfig,
                 new SqlServerValueConverters(JdbcValueConverters.DecimalMode.PRECISE, TemporalPrecisionMode.ADAPTIVE, null),
@@ -493,9 +494,21 @@ public class TestHelper {
         waitForSnapshotToBeCompleted(getObjectName("snapshot", "server1", databaseName));
     }
 
+    public static void waitForDatabaseSnapshotToBeCompleted(String databaseName, String taskId) {
+        waitForSnapshotToBeCompleted(getObjectName("snapshot", "server1", databaseName, taskId));
+    }
+
     public static void waitForDatabaseSnapshotsToBeCompleted(String... databaseNames) {
         for (String databaseName : databaseNames) {
             waitForDatabaseSnapshotToBeCompleted(databaseName);
+        }
+    }
+
+    public static void waitForDatabaseSnapshotsToBeCompletedWithMultipleTasks(String... databaseNames) {
+        int taskId = 0;
+        for (String databaseName : databaseNames) {
+            waitForDatabaseSnapshotToBeCompleted(databaseName, Integer.toString(taskId));
+            taskId++;
         }
     }
 
@@ -577,6 +590,14 @@ public class TestHelper {
                 "database", databaseName));
     }
 
+    private static ObjectName getObjectName(String context, String serverName, String databaseName, String taskId) {
+        return getObjectName(Collect.linkMapOf(
+                "server", serverName,
+                "task", taskId,
+                "context", context,
+                "database", databaseName));
+    }
+
     private static ObjectName getObjectName(Map<String, String> tags) {
         final String metricName = "debezium.sql_server:type=connector-metrics,"
                 + tags.entrySet().stream()
@@ -596,6 +617,10 @@ public class TestHelper {
 
     public static int waitTimeForLogEntries() {
         return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "log.waittime", "15"));
+    }
+
+    public static int waitTimeForLsnTimeMapping() {
+        return Integer.parseInt(System.getProperty(TEST_PROPERTY_PREFIX + "lsn.time.mapping.waittime", "1"));
     }
 
     /**

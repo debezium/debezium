@@ -121,6 +121,28 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     }
 
     /**
+     * Set of predefined SnapshotLockingMode options or aliases.
+     */
+    public enum SnapshotLockingMode implements EnumeratedValue {
+        /**
+         * the connector holds the global read lock but does not set a transaction `START TRANSACTION WITH CONSISTENT SNAPSHOT` to ensure
+         * that the snapshot process will have a view from the mvcc. This mode is valid for myRocks engine that doesn't provide mvcc support
+         */
+        MINIMAL_AT_LEAST_ONCE("minimal_at_least_once");
+
+        private final String value;
+
+        SnapshotLockingMode(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+    }
+
+    /**
      * Set of predefined SnapshotMode options or aliases.
      */
     public enum SnapshotMode implements EnumeratedValue {
@@ -136,29 +158,14 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
          * Perform a snapshot only upon initial startup of a connector.
          */
         INITIAL("initial"),
-        /**
-         * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog.
-         * This should be used with care, but it is very useful when the change event consumers need only the changes
-         * from the point in time the snapshot is made (and doesn't care about any state or changes prior to this point).
-         *
-         * @deprecated to be removed in Debezium 3.0, replaced by {{@link #NO_DATA}}
-         */
-        SCHEMA_ONLY("schema_only"),
+
         /**
          * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog.
          * This should be used with care, but it is very useful when the change event consumers need only the changes
          * from the point in time the snapshot is made (and doesn't care about any state or changes prior to this point).
          */
         NO_DATA("no_data"),
-        /**
-         * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog at the current binlog position.
-         * This can be used for recovery only if the connector has existing offsets and the schema.history.internal.kafka.topic does not exist (deleted).
-         * This recovery option should be used with care as it assumes there have been no schema changes since the connector last stopped,
-         * otherwise some events during the gap may be processed with an incorrect schema and corrupted.
-         *
-         * @deprecated to be removed in Debezium 3.0, replaced by {{@link #RECOVERY}}
-         */
-        SCHEMA_ONLY_RECOVERY("schema_only_recovery"),
+
         /**
          * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog at the current binlog position.
          * This can be used for recovery only if the connector has existing offsets and the schema.history.internal.kafka.topic does not exist (deleted).
@@ -260,6 +267,10 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
          * @return whether table locks should be prevented
          */
         default boolean preventsTableLocks() {
+            return false;
+        }
+
+        default boolean useConsistentSnapshotTransaction() {
             return false;
         }
     }

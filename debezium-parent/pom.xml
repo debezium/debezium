@@ -4,7 +4,7 @@
   <parent>
     <groupId>io.debezium</groupId>
     <artifactId>debezium-build-parent</artifactId>
-    <version>3.2.0-SNAPSHOT</version>
+    <version>3.3.0-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -42,6 +42,10 @@
         <!-- No test options by default -->
         <test.argline />
 
+        <!-- No mockito agent configured by default. Just override this in the project that uses mockito -->
+        <mockito.argLine />
+
+
         <!-- Assembly configuration -->
         <assembly.descriptor>connector-distribution</assembly.descriptor>
 
@@ -54,6 +58,7 @@
         <!-- Order in which Maven Failsafe plugin runs integration tests, the default is in alphabetical order -->
         <runOrder>alphabetical</runOrder>
 
+        <version.openlineage>1.31.0</version.openlineage>
     </properties>
 
     <dependencyManagement>
@@ -76,7 +81,7 @@
                     <artifactId>maven-failsafe-plugin</artifactId>
                     <version>${version.failsafe.plugin}</version>
                     <configuration>
-                        <argLine>${debug.argline} ${modules.argline} ${test.argline}</argLine>
+                        <argLine>${debug.argline} ${modules.argline} ${test.argline} ${mockito.argLine}</argLine>
                         <useSystemClassLoader>${useSystemClassLoader}</useSystemClassLoader>
                         <systemPropertyVariables combine.children="append">
                             <project.basedir>${project.basedir}</project.basedir>
@@ -134,7 +139,7 @@
                     <version>3.0.0</version>
                 </plugin>
                 <plugin>
-                    <groupId>org.jboss.jandex</groupId>
+                    <groupId>io.smallrye</groupId>
                     <artifactId>jandex-maven-plugin</artifactId>
                     <version>${version.jandex}</version>
                 </plugin>
@@ -158,6 +163,16 @@
             </plugins>
         </pluginManagement>
         <plugins>
+            <plugin>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>properties</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
@@ -212,7 +227,7 @@
                         <failFlakyTests>${failFlakyTests}</failFlakyTests>
                         <dbz.test.data.dir>${project.build.directory}/data</dbz.test.data.dir>
                     </systemPropertyVariables>
-                    <argLine>-Djava.awt.headless=true ${debug.argline} ${modules.argline}</argLine>
+                    <argLine>-Djava.awt.headless=true ${debug.argline} ${modules.argline} ${mockito.argLine}</argLine>
                     <!--runOrder>alphabetical</runOrder-->
                     <useFile>false</useFile>
                     <enableAssertions>true</enableAssertions>

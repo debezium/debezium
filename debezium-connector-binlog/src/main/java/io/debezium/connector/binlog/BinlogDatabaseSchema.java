@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.HistorizedRelationalDatabaseSchema;
 import io.debezium.relational.RelationalTableFilters;
@@ -69,13 +70,14 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
      * @param topicNamingStrategy the topic naming strategy to be used, should not be null
      * @param schemaNameAdjuster the schema name adjuster, should not be null
      * @param tableIdCaseInsensitive whether table identifiers are case-insensitive
+     * @param converterRegistry
      */
     public BinlogDatabaseSchema(BinlogConnectorConfig connectorConfig,
                                 V valueConverter,
                                 D defaultValueConverter,
                                 TopicNamingStrategy<TableId> topicNamingStrategy,
                                 SchemaNameAdjuster schemaNameAdjuster,
-                                boolean tableIdCaseInsensitive) {
+                                boolean tableIdCaseInsensitive, CustomConverterRegistry converterRegistry) {
         super(connectorConfig,
                 topicNamingStrategy,
                 connectorConfig.getTableFilters().dataCollectionFilter(),
@@ -84,7 +86,7 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
                         valueConverter,
                         defaultValueConverter,
                         schemaNameAdjuster,
-                        connectorConfig.customConverterRegistry(),
+                        converterRegistry,
                         connectorConfig.getSourceInfoStructMaker().schema(),
                         connectorConfig.getFieldNamer(),
                         false,

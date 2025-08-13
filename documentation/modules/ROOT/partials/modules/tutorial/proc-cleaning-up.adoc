@@ -15,7 +15,7 @@ you can use Docker to stop all of the running containers.
 --
 [source,shell,options="nowrap"]
 ----
-$ docker stop mysqlterm watcher connect mysql kafka zookeeper
+$ docker stop mysqlterm watcher connect mysql kafka
 ----
 
 Docker stops each container.

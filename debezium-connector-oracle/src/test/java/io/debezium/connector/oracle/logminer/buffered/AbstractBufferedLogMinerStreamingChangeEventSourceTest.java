@@ -7,6 +7,7 @@ package io.debezium.connector.oracle.logminer.buffered;
 
 import static io.debezium.config.CommonConnectorConfig.DEFAULT_MAX_BATCH_SIZE;
 import static io.debezium.config.CommonConnectorConfig.DEFAULT_MAX_QUEUE_SIZE;
+import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -50,10 +51,12 @@ import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
+import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
 import io.debezium.relational.Column;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.schema.SchemaNameAdjuster;
@@ -90,6 +93,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     @Before
     @SuppressWarnings({ "unchecked" })
     public void before() throws Exception {
+        DebeziumOpenLineageEmitter.init(getConfig().build().asMap(), "oracle");
         this.context = Mockito.mock(ChangeEventSourceContext.class);
         Mockito.when(this.context.isRunning()).thenReturn(true);
 
@@ -561,7 +565,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                 schemaNameAdjuster,
                 topicNamingStrategy,
                 sensitivity,
-                false);
+                false, new CustomConverterRegistry(emptyList()));
 
         Table table = Table.editor()
                 .tableId(TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE"))

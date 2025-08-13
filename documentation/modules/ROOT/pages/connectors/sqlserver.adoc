@@ -2152,7 +2152,7 @@ ifdef::community[]
 To deploy a {prodname} SQL Server connector, you install the {prodname} SQL Server connector archive, configure the connector, and start the connector by adding its configuration to Kafka Connect.
 
 .Prerequisites
-* link:https://zookeeper.apache.org/[Apache ZooKeeper], link:http://kafka.apache.org/[Apache Kafka], and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
+* link:http://kafka.apache.org/[Apache Kafka] and link:{link-kafka-docs}.html#connect[Kafka Connect] are installed.
 * SQL Server is installed, is xref:setting-up-sqlserver[configured for CDC], and is ready to be used with the {prodname} connector.
 
 .Procedure
@@ -2162,7 +2162,7 @@ To deploy a {prodname} SQL Server connector, you install the {prodname} SQL Serv
 . xref:sqlserver-example-configuration[Configure the connector] and xref:sqlserver-adding-connector-configuration[add the configuration to your Kafka Connect cluster.]
 . Restart your Kafka Connect process to pick up the new JAR files.
 
-If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Åpache ZooKeeper, Apache Kafka, and Kafka Connect.
+If you are working with immutable containers, see link:https://quay.io/organization/debezium[{prodname}'s container images] for Apache Kafka and Kafka Connect.
 You can pull the official link:https://hub.docker.com/_/microsoft-mssql-server[container images for Microsoft SQL Server on Linux] from Docker Hub.
 
 [IMPORTANT]
@@ -3347,6 +3347,17 @@ Set the value to `0` (zero) to remove the timeout limit.
 |Specifies the maximum number of rows that should be read in one go from each table while streaming.
 The connector will read the table contents in multiple batches of this size. Defaults to `0` which means no limit.
 
+|[[sqlserver-property-extended-headers-enabled]]<<sqlserver-property-extended-headers-enabled, `extended.headers.enabled`>>
+|true
+|This property specifies whether {prodname} adds context headers with the prefix `__debezium.context.` to the messages that it emits.
+
+These headers are required by the OpenLineage integration and provide metadata that enables downstream processing systems to track and identify the sources of change events.
+
+The property adds following headers:
+
+`__debezium.context.connectorLogicalName`:: The logical name of the {prodname} connector.
+`__debezium.context.taskId`:: The unique identifier of the connector task.
+`__debezium.context.connectorName`::  The name of the {prodname} connector.
 |===
 
 [id="debezium-sqlserver-connector-database-history-configuration-properties"]
@@ -3573,7 +3584,7 @@ GO
 [[sqlserver-monitoring]]
 == Monitoring
 
-The {prodname} SQL Server connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Zookeeper, Kafka, and Kafka Connect provide.
+The {prodname} SQL Server connector provides three types of metrics that are in addition to the built-in support for JMX metrics that Kafka and Kafka Connect provide.
 The connector provides the following metrics:
 
 * xref:sqlserver-snapshot-metrics[Snapshot metrics] for monitoring the connector when performing snapshots.

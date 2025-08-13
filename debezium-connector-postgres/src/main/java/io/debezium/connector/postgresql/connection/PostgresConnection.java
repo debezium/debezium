@@ -15,6 +15,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -622,16 +623,6 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     @Override
-    @Deprecated
-    public String quotedColumnIdString(String columnName) {
-        if (columnName.contains("\"")) {
-            columnName = columnName.replace("\"", "\"\"");
-        }
-
-        return super.quotedColumnIdString(columnName);
-    }
-
-    @Override
     protected int resolveNativeType(String typeName) {
         return getTypeRegistry().get(typeName).getRootType().getOid();
     }
@@ -826,7 +817,7 @@ public class PostgresConnection extends JdbcConnection {
     public Map<String, Object> reselectColumns(Table table, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source)
             throws SQLException {
         final String query = String.format("SELECT %s FROM %s WHERE %s",
-                columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
+                columns.stream().map(this::quoteIdentifier).collect(Collectors.joining(",")),
                 quotedTableIdString(table.id()),
                 keyColumns.stream()
                         .map(key -> {
@@ -868,10 +859,33 @@ public class PostgresConnection extends JdbcConnection {
             if (slotState == null) {
                 return false;
             }
-            return storedLsn == null || slotState.slotRestartLsn().compareTo(storedLsn) < 0;
+            LOGGER.info("Slot '{}' has restart LSN '{}'", slotName, slotState.slotRestartLsn());
+            return storedLsn == null || slotState.slotRestartLsn().compareTo(storedLsn) <= 0;
         }
         catch (SQLException e) {
             throw new DebeziumException("Unable to get last available log position", e);
+        }
+    }
+
+    public List<Column> getTableColumnsForDecoder(TableId tableId, Tables.ColumnNameFilter columnFilter) throws SQLException {
+        try {
+            final List<Column> readColumns = new ArrayList<>();
+
+            final DatabaseMetaData databaseMetaData = connection().getMetaData();
+            final String schemaNamePattern = createPatternFromName(tableId.schema(), databaseMetaData.getSearchStringEscape());
+            final String tableNamePattern = createPatternFromName(tableId.table(), databaseMetaData.getSearchStringEscape());
+
+            try (ResultSet columnMetadata = databaseMetaData.getColumns(null, schemaNamePattern, tableNamePattern, null)) {
+                while (columnMetadata.next()) {
+                    readColumnForDecoder(columnMetadata, tableId, columnFilter).ifPresent(readColumns::add);
+                }
+            }
+
+            return readColumns;
+        }
+        catch (SQLException e) {
+            LOGGER.error("Failed to read column metadata for '{}.{}'", tableId.schema(), tableId.table());
+            throw e;
         }
     }
 

@@ -16,6 +16,8 @@ import io.fabric8.openshift.client.OpenShiftClient;
 import io.strimzi.api.kafka.Crds;
 import io.strimzi.api.kafka.model.kafka.Kafka;
 import io.strimzi.api.kafka.model.kafka.KafkaList;
+import io.strimzi.api.kafka.model.nodepool.KafkaNodePool;
+import io.strimzi.api.kafka.model.nodepool.KafkaNodePoolList;
 
 import okhttp3.OkHttpClient;
 
@@ -48,12 +50,22 @@ public final class OcpKafkaDeployer extends AbstractOcpDeployer<OcpKafkaControll
         Kafka kafka = kafkaOperation().createOrReplace(strimziBuilder.build());
 
         OcpKafkaController controller = new OcpKafkaController(kafka, operatorController, ocp);
-        controller.waitForCluster();
 
+        if (FabricKafkaBuilder.shouldKRaftBeUsed()) {
+            LOGGER.info("Deploying Kafka Node Pool");
+            KafkaNodePool nodePool = strimziBuilder.defaultKafkaNodePool();
+            nodePoolOperation().createOrReplace(nodePool);
+        }
+
+        controller.waitForCluster();
         return controller;
     }
 
     private NonNamespaceOperation<Kafka, KafkaList, Resource<Kafka>> kafkaOperation() {
         return Crds.kafkaOperation(ocp).inNamespace(project);
+    }
+
+    private NonNamespaceOperation<KafkaNodePool, KafkaNodePoolList, Resource<KafkaNodePool>> nodePoolOperation() {
+        return Crds.kafkaNodePoolOperation(ocp).inNamespace(project);
     }
 }

@@ -96,6 +96,7 @@ import io.debezium.junit.SkipWhenDatabaseVersion;
 import io.debezium.junit.SkipWhenKafkaVersion;
 import io.debezium.junit.SkipWhenKafkaVersion.KafkaVersion;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.pipeline.txmetadata.TransactionStructMaker;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
@@ -3033,12 +3034,12 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
         TestHelper.execute(setupStmt);
 
         TestHelper.dropPublication("cdc");
-        TestHelper.execute("CREATE PUBLICATION cdc FOR TABLE s1.part WITH (publish_via_partition_root = true);");
 
         Configuration.Builder configBuilder = TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.PUBLICATION_NAME, "cdc")
                 .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.part")
-                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue());
+                .with(PostgresConnectorConfig.PUBLICATION_AUTOCREATE_MODE, PostgresConnectorConfig.AutoCreateMode.FILTERED.getValue())
+                .with(PostgresConnectorConfig.PUBLISH_VIA_PARTITION_ROOT, "true");
 
         start(PostgresConnector.class, configBuilder.build());
         assertConnectorIsRunning();
@@ -3356,7 +3357,7 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         start(PostgresConnector.class, configBuilder.build());
         Awaitility.await().atMost(TestHelper.waitTimeForRecords() * 5, TimeUnit.SECONDS)
-                .until(() -> logInterceptor.containsStacktraceElement("Cannot seek to the last known offset "));
+                .until(() -> logInterceptor.containsErrorMessage("but this is no longer available on the server"));
         assertConnectorNotRunning();
     }
 
@@ -3511,6 +3512,47 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
     }
 
     @Test
+    @FixFor("DBZ-9305")
+    public void shouldStreamSuccessfullyWithSchemasWithUnderscores() throws Exception {
+        try {
+            String setupStmt = "DROP SCHEMA IF EXISTS test_ CASCADE;" +
+                    "DROP SCHEMA IF EXISTS test1 CASCADE;" +
+                    "CREATE SCHEMA test_;" +
+                    "CREATE SCHEMA test1;" +
+                    "CREATE TABLE test_.tab (pk SERIAL, aa integer, bb integer, PRIMARY KEY(pk));" +
+                    "CREATE TABLE test1.tab (pk SERIAL, aa integer, bb integer, PRIMARY KEY(pk));" +
+                    "INSERT INTO test_.tab (aa, bb) VALUES (1, 1);" +
+                    "INSERT INTO test1.tab (aa, bb) VALUES (2, 2);";
+            TestHelper.execute(setupStmt);
+            Configuration.Builder configBuilder = TestHelper.defaultConfig()
+                    .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL.name())
+                    .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, Boolean.TRUE)
+                    .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "test_.tab");
+
+            start(PostgresConnector.class, configBuilder.build());
+            assertConnectorIsRunning();
+
+            TestHelper.execute("INSERT INTO test_.tab (aa, bb) VALUES (3, 3);");
+            TestHelper.execute("INSERT INTO test1.tab (aa, bb) VALUES (4, 4);");
+
+            final int EXPECTED_RECORDS = 2; // 1 from snapshot, 1 from streaming
+            SourceRecords actualRecords = consumeRecordsByTopic(EXPECTED_RECORDS);
+            List<SourceRecord> records = actualRecords.recordsForTopic(topicName("test_.tab"));
+            assertThat(records.size()).isEqualTo(EXPECTED_RECORDS);
+            AtomicInteger pkValue = new AtomicInteger(1);
+            records.forEach(System.out::println);
+
+            assertNoRecordsToConsume();
+
+            stopConnector();
+        }
+        finally {
+            TestHelper.execute("DROP SCHEMA IF EXISTS test_ CASCADE;");
+            TestHelper.execute("DROP SCHEMA IF EXISTS test1 CASCADE;");
+        }
+    }
+
+    @Test
     @FixFor("DBZ-6076")
     public void shouldAddNewFieldToSourceInfo() throws InterruptedException {
         TestHelper.execute(
@@ -3622,6 +3664,15 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
             assertEquals("foo", message.getString("prefix"));
             assertEquals("{}", new String(message.getBytes("content")));
         });
+    }
+
+    /**
+     * Postgres override for getting TX ID, as due to DBZ-5329 Postgres TX ID is in form of {@code txId:LSN}.
+     */
+    @Override
+    protected String getTxId(Struct value) {
+        final String txId = value.getString(TransactionStructMaker.DEBEZIUM_TRANSACTION_ID_KEY);
+        return Arrays.stream(txId.split(":")).findFirst().get();
     }
 
     private Predicate<SourceRecord> stopOnPKPredicate(int pkValue) {

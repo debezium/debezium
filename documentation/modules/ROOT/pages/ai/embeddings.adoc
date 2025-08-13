@@ -1,4 +1,4 @@
-:page-aliases: ai/embeddings.adoc
+:page-aliases: transforms/embeddings.adoc
 // Category: debezium-using
 // Type: assembly
 // ModuleID: embeddings-transformation
@@ -25,6 +25,11 @@ Embedding inference is performed according to the embeddings model served by the
 
 {prodname} can use a link:{link-kafka-docs}/#connect_transforms[single message transformation] (SMT) to generate embeddings.
 To interact with different embeddings providers, this Embeddings transformation uses the link:https://docs.langchain4j.dev/[langchain4j] framework.
+
+[IMPORTANT]
+====
+Embeddings transformation requires Java 21 or higher.
+====
 
 == Behavior
 

@@ -871,6 +871,71 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     }
 
     @Test
+    /*
+     * Verifies that streaming starts from the specified timestamp.
+     *
+     * The following procedure is used:
+     * 1) Two documents are inserted,
+     * 2) Capture timestamp is retrieved (insert of the second doc)
+     * 3) Insert additional document
+     *
+     * Connector should capture only second and third insert
+     */
+    public void shouldConsumeEventsFromTimestamp() throws InterruptedException, IOException {
+        // Cleanup database
+        TestHelper.cleanDatabase(mongo, "dbit");
+
+        // insert some data
+        long startOpTime = -1;
+        var expectedDocs = List.of(
+                Document.parse("{\"_id\": 0}"),
+                Document.parse("{\"_id\": 1}"),
+                Document.parse("{\"_id\": 2}"));
+        try (var client = connect()) {
+            var db = client.getDatabase("dbit");
+            // insert two documents
+            db.getCollection("test").insertOne(expectedDocs.get(0));
+            db.getCollection("test").insertOne(expectedDocs.get(1));
+
+            // get capture start timestamps
+            var serverStatus = db.runCommand(new Document("serverStatus", 1), BsonDocument.class);
+            startOpTime = serverStatus.getTimestamp("operationTime").getValue();
+
+            // insert additional document
+            db.getCollection("test").insertOne(expectedDocs.get(2));
+        }
+
+        // Use the DB configuration to define the connector's configuration ...
+        config = TestHelper.getConfiguration(mongo).edit()
+                .with(MongoDbConnectorConfig.POLL_INTERVAL_MS, 10)
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NO_DATA)
+                .with(MongoDbConnectorConfig.CAPTURE_START_OP_TIME, startOpTime)
+                .build();
+
+        // Set up the replication context for connections ...
+        context = new MongoDbTaskContext(config);
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+        waitForStreamingRunning("mongodb", "mongo");
+
+        // Check consumed records
+        final SourceRecords records = consumeAvailableRecordsByTopic();
+        assertThat(records.allRecordsInOrder().size()).isEqualTo(2);
+        assertNoRecordsToConsume();
+
+        var actualDocs = records.allRecordsInOrder()
+                .stream()
+                .map(r -> ((Struct) r.value()).getString("after"))
+                .map(Document::parse)
+                .toList();
+        assertThat(actualDocs.get(0)).isEqualTo(expectedDocs.get(1));
+        assertThat(actualDocs.get(1)).isEqualTo(expectedDocs.get(2));
+    }
+
+    @Test
     @SkipWhenDatabaseVersion(check = LESS_THAN, major = 6, reason = "Pre-image support in Change Stream is officially released in Mongo 6.0.")
     public void shouldThrowErrorForOversizedEventsWithoutOversizeHandlingMode() throws InterruptedException {
         final LogInterceptor logInterceptor = new LogInterceptor(BufferingChangeStreamCursor.class);

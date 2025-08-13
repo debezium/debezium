@@ -18,16 +18,23 @@ jobs:
       fail-fast: false
       matrix:
         profile: [ 'mariadb-ci', 'mariadb-ci-gtids', 'mariadb-ci-ssl' ]
-    name: MariaDB - ${{ matrix.profile }}
+        version-mariadb-server: [ "11.4.3", "11.7" ]
+        exclude:
+          - profile: "mariadb-ci-gtids"
+            version-mariadb-server: "11.7"
+          - profile: "mariadb-ci-ssl"
+            version-mariadb-server: "11.7"
+    name: MariaDB ${{ matrix.version-mariadb-server }} - ${{ matrix.profile }}
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Build MariaDB - ${{ matrix.profile }}
+      - name: Build MariaDB ${{ matrix.version-mariadb-server }} - ${{ matrix.profile }}
         uses: ./.github/actions/build-debezium-mariadb
         with:
           maven-cache-key: ${{ inputs.maven-cache-key }}-${{ hashFiles('**/pom.xml') }}
+          version-mariadb-server: ${{ matrix.version-mariadb-server }}
           profile: ${{ matrix.profile }}
 

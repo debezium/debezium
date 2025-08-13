@@ -22,7 +22,20 @@ runs:
     - name: Build Quarkus Outbox Extension
       shell: ${{ inputs.shell }}
       run: >
-        ./mvnw clean install -B -pl :debezium-quarkus-outbox -am -amd 
+        ./mvnw clean install -B -pl :debezium-quarkus-outbox,:debezium-quarkus-outbox-common -am -amd 
+        -Passembly
+        -Dcheckstyle.skip=true
+        -Dformat.skip=true
+        -Drevapi.skip
+        -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+        -Dmaven.wagon.http.pool=false
+        -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+        -Ddebezium.test.mongo.replica.primary.startup.timeout.seconds=120
+
+    - name: Build Quarkus Outbox Reactive Extension
+      shell: ${{ inputs.shell }}
+      run: >
+        ./mvnw clean install -B -pl :debezium-quarkus-outbox-reactive,:debezium-quarkus-outbox-common -am -amd 
         -Passembly
         -Dcheckstyle.skip=true
         -Dformat.skip=true

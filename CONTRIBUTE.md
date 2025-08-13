@@ -107,6 +107,8 @@ or the following Docker commands:
 
     $ docker stop database; docker rm database
 
+See the [Configure your Docker environment](README.md#configure-your-docker-environment) section in the main README for more information about how to configure your Docker environment for use with Debezium.
+
 ## Making changes
 
 Everything the community does with the codebase -- fixing bugs, adding features, making improvements, adding tests, etc. -- should be described by an issue in our [Jira](https://issues.redhat.com/projects/DBZ/) project. If no such issue exists for what you want to do, please create an issue with a meaningful and easy-to-understand description.

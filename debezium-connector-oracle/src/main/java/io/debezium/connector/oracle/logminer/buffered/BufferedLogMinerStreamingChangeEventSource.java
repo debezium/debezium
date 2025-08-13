@@ -111,8 +111,10 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             while (getContext().isRunning()) {
 
                 // Check if we should break when using archive log only mode
-                if (isArchiveLogOnlyModeAndScnIsNotAvailable(startScn)) {
-                    break;
+                if (getConfig().isArchiveLogOnlyMode()) {
+                    if (waitForRangeAvailabilityInArchiveLogs(startScn, endScn)) {
+                        break;
+                    }
                 }
 
                 final Instant batchStartTime = Instant.now();
@@ -125,14 +127,6 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 endScn = calculateUpperBounds(startScn, endScn, currentScn);
                 if (endScn.isNull()) {
                     LOGGER.debug("Requested delay of mining by one iteration");
-                    pauseBetweenMiningSessions();
-                    continue;
-                }
-
-                // This is a small window where when archive log only mode has completely caught up to the last
-                // record in the archive logs that both the lower and upper values are identical. In this use
-                // case we want to pause and restart the loop waiting for a new archive log before proceeding.
-                if (getConfig().isArchiveLogOnlyMode() && startScn.equals(endScn)) {
                     pauseBetweenMiningSessions();
                     continue;
                 }
@@ -228,6 +222,11 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             statement.setString(1, startScn.toString());
             statement.setString(2, endScn.toString());
 
+            if (getConfig().isLogMiningUseCteQuery()) {
+                statement.setString(3, startScn.toString());
+                statement.setString(4, endScn.toString());
+            }
+
             executeAndProcessQuery(statement);
 
             logActiveTransactions();
@@ -318,6 +317,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             if (transaction == null) {
                 getTransactionCache().addTransaction(transactionFactory.createTransaction(event));
                 getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
+                getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
             }
             else {
                 LOGGER.trace("Transaction {} is not yet committed and START event detected.", transactionId);
@@ -358,6 +358,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 }
                 cleanupAfterTransactionRemovedFromCache(transaction, false);
                 getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
+                getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
             }
             return;
         }
@@ -490,6 +491,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             cleanupAfterTransactionRemovedFromCache(transaction, false);
             getMetrics().calculateLagFromSource(row.getChangeTime());
             getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
+            getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
         }
 
         updateCommitMetrics(row, Duration.between(start, Instant.now()));
@@ -502,6 +504,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             LOGGER.debug("Transaction {} was rolled back.", transactionId);
             finalizeTransaction(transactionId, event.getScn(), true);
             getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
+            getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
         }
         else {
             LOGGER.debug("Transaction {} not found in cache, no events to rollback.", transactionId);
@@ -592,6 +595,11 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         }
         // It should not exist in this cache, but in case.
         getTransactionCache().removeAbandonedTransaction(transactionId);
+    }
+
+    @Override
+    protected boolean isNoDataProcessedInBatchAndAtEndOfArchiveLogs() {
+        return !getMetrics().getBatchMetrics().hasJdbcRows();
     }
 
     /**
@@ -862,6 +870,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         // When using Infinispan, this extra put is required so that the state is properly synchronized
         getTransactionCache().syncTransaction(transaction);
         getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
+        getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
     }
 
     /**
@@ -930,6 +939,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                     }
 
                     getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
+                    getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
 
                     if (LOGGER.isDebugEnabled()) {
                         LOGGER.debug("List of transactions in the cache before transactions being abandoned: [{}]",

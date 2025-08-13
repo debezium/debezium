@@ -86,29 +86,21 @@ public class LogMinerDatabaseStateWriter {
     public static void writeLogMinerLogFailures(OracleConnection connection) {
         // Query fetches all logs that had problems when LogMiner started.
         final String query = "SELECT FILENAME, THREAD_ID, THREAD_SQN, LOW_SCN, NEXT_SCN, DICTIONARY_BEGIN, " +
-                "DICTIONARY_END, TYPE, INFO FROM V$LOGMNR_LOGS WHERE STATUS = 4 " +
-                "ORDER BY THREAD_ID, THREAD_SQN";
+                "DICTIONARY_END, TYPE, INFO FROM V$LOGMNR_LOGS ORDER BY THREAD_ID, THREAD_SQN";
         try {
             connection.query(query, rs -> {
                 if (rs.next()) {
+                    final String dictionaryBegin = rs.getString(6);
+                    final String dictionaryEnd = rs.getString(7);
+
                     final String dictionaryStatus;
-                    if ("YES".equals(rs.getString(6))) {
-                        // BEGIN detected
-                        if ("YES".equals(rs.getString(7))) {
-                            // END detected
-                            dictionaryStatus = "BEGIN+END";
-                        }
-                        else {
-                            dictionaryStatus = "BEGIN";
-                        }
-                    }
-                    else if ("YES".equals(rs.getString(7))) {
-                        // Only END detected
-                        dictionaryStatus = "END";
+                    if ("YES".equals(dictionaryBegin)) {
+                        dictionaryStatus = "YES".equals(dictionaryEnd) ? "BEGIN+END" : "BEGIN";
                     }
                     else {
-                        dictionaryStatus = "NONE";
+                        dictionaryStatus = "YES".equals(dictionaryEnd) ? "END" : "NONE";
                     }
+
                     LOGGER.error("The following logs triggered a LogMiner failure:");
                     do {
                         LOGGER.error("\t* File '{}', Thread {} (Seq {}), SCN [{} - {}], Type {}, Dictionary {}: {}",
@@ -123,7 +115,7 @@ public class LogMinerDatabaseStateWriter {
                     } while (rs.next());
                 }
                 else {
-                    LOGGER.error("No logs were found with a status code of 4.");
+                    LOGGER.error("No rows found in V$LOGMNR_LOGS");
                 }
             });
         }

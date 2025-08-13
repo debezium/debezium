@@ -23,13 +23,11 @@ import org.slf4j.LoggerFactory;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.ConfigDefinition;
 import io.debezium.config.Configuration;
+import io.debezium.config.ConfigurationNames;
 import io.debezium.config.EnumeratedValue;
 import io.debezium.config.Field;
 import io.debezium.config.Field.ValidationOutput;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
-import io.debezium.heartbeat.Heartbeat;
-import io.debezium.heartbeat.HeartbeatConnectionProvider;
-import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.jdbc.JdbcValueConverters.DecimalMode;
 import io.debezium.jdbc.TemporalPrecisionMode;
@@ -41,9 +39,7 @@ import io.debezium.relational.Tables.ColumnNameFilterFactory;
 import io.debezium.relational.Tables.TableFilter;
 import io.debezium.schema.FieldNameSelector;
 import io.debezium.schema.FieldNameSelector.FieldNamer;
-import io.debezium.schema.SchemaNameAdjuster;
 import io.debezium.spi.schema.DataCollectionId;
-import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Strings;
 
 /**
@@ -204,7 +200,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         }
     }
 
-    public static final Field HOSTNAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME)
+    public static final Field HOSTNAME = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME)
             .withDisplayName("Hostname")
             .withType(Type.STRING)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 2))
@@ -214,7 +210,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withValidation(RelationalDatabaseConnectorConfig::validateHostname)
             .withDescription("Resolvable hostname or IP address of the database server.");
 
-    public static final Field PORT = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT)
+    public static final Field PORT = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.PORT)
             .withDisplayName("Port")
             .withType(Type.INT)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 3))
@@ -223,7 +219,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withValidation(Field::isInteger)
             .withDescription("Port of the database server.");
 
-    public static final Field USER = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER)
+    public static final Field USER = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.USER)
             .withDisplayName("User")
             .withType(Type.STRING)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 4))
@@ -232,7 +228,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .required()
             .withDescription("Name of the database user to be used when connecting to the database.");
 
-    public static final Field PASSWORD = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.PASSWORD)
+    public static final Field PASSWORD = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.PASSWORD)
             .withDisplayName("Password")
             .withType(Type.PASSWORD)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 5))
@@ -240,7 +236,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .withImportance(Importance.HIGH)
             .withDescription("Password of the database user to be used when connecting to the database.");
 
-    public static final Field DATABASE_NAME = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE)
+    public static final Field DATABASE_NAME = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.DATABASE)
             .withDisplayName("Database")
             .withType(Type.STRING)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 6))
@@ -249,7 +245,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
             .required()
             .withDescription("The name of the database from which the connector should capture changes");
 
-    public static final Field QUERY_TIMEOUT_MS = Field.create(DATABASE_CONFIG_PREFIX + JdbcConfiguration.QUERY_TIMEOUT_MS)
+    public static final Field QUERY_TIMEOUT_MS = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + JdbcConfiguration.QUERY_TIMEOUT_MS)
             .withDisplayName("Query timeout")
             .withType(Type.INT)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 12))
@@ -592,7 +588,7 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         this.tableIdMapper = tableIdMapper;
 
         this.jdbcConfig = JdbcConfiguration.adapt(
-                config.subset(DATABASE_CONFIG_PREFIX, true).merge(config.subset(DRIVER_CONFIG_PREFIX, true)));
+                config.subset(ConfigurationNames.DATABASE_CONFIG_PREFIX, true).merge(config.subset(DRIVER_CONFIG_PREFIX, true)));
 
         if (systemTablesFilter != null && tableIdMapper != null) {
             this.tableFilters = new RelationalTableFilters(config, systemTablesFilter, tableIdMapper, useCatalogBeforeSchema);
@@ -774,22 +770,6 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
         }
 
         return Collections.unmodifiableMap(snapshotSelectOverridesByTable);
-    }
-
-    @Override
-    public Heartbeat createHeartbeat(TopicNamingStrategy topicNamingStrategy, SchemaNameAdjuster schemaNameAdjuster,
-                                     HeartbeatConnectionProvider connectionProvider, HeartbeatErrorHandler errorHandler) {
-        if (!Strings.isNullOrBlank(getHeartbeatActionQuery()) && !getHeartbeatInterval().isZero()) {
-            return new DatabaseHeartbeatImpl(
-                    getHeartbeatInterval(),
-                    topicNamingStrategy.heartbeatTopic(),
-                    getLogicalName(),
-                    connectionProvider.get(),
-                    getHeartbeatActionQuery(),
-                    errorHandler,
-                    schemaNameAdjuster);
-        }
-        return super.createHeartbeat(topicNamingStrategy, schemaNameAdjuster, connectionProvider, errorHandler);
     }
 
     private static int validateSchemaExcludeList(Configuration config, Field field, ValidationOutput problems) {

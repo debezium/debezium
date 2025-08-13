@@ -16,11 +16,18 @@ import io.debezium.DebeziumException;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 
 /**
- * This class is responsible for finding out a LSN from which Debezium should
- * resume streaming after connector restarts. The LSNs are not guaranteed to be
- * ordered in the WAL. LSN of commits are ordered and LSNs inside a transaction
- * are ordered. It is thus necessary to find out the beginning of the
- * unprocessed transaction and the LSN from which the streaming should start.
+ * This class is responsible for finding out the LSN from which Debezium should resume streaming after the connector
+ * restarts.
+ * <p>
+ * The order in which the changes appear in a logical replication connection may differ from the order in which they
+ * were appended to the WAL. The WAL sender serializes parallel transactions and sends them to the client in the order
+ * in which they were committed. Therefore, from the logical replication client's standpoint,
+ * <ul>
+ *     <li>Only the LSNs of transaction commits are ordered globally.</li>
+ *     <li>The LSNs of changes are ordered only within their respective transaction.</li>
+ * </ul>
+ * It is thus necessary to find out the beginning of the unprocessed transaction and the LSN from which the streaming
+ * should start.
  *
  * @author Jiri Pechanec
  *

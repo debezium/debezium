@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-parent</artifactId>
-        <version>3.2.0-SNAPSHOT</version>
+        <version>3.3.0-SNAPSHOT</version>
         <relativePath>../debezium-parent/pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -41,6 +41,8 @@
         <apicurio.port>8080</apicurio.port>
         <apicurio.init.timeout>60000</apicurio.init.timeout> <!-- 60 seconds -->
         <apicurio.image>quay.io/apicurio/apicurio-registry-mem</apicurio.image>
+
+        <mockito.argLine>-javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
     </properties>
 
     <dependencies>
@@ -72,6 +74,8 @@
             <scope>provided</scope>
         </dependency>
 
+
+
         <!-- Testing -->
         <dependency>
             <groupId>io.debezium</groupId>
@@ -83,6 +87,11 @@
             <groupId>io.debezium</groupId>
             <artifactId>debezium-core</artifactId>
             <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.reflections</groupId>
+            <artifactId>reflections</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -173,6 +182,20 @@
             <artifactId>kafka_${version.kafka.scala}</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-openlineage-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-openlineage-core</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>

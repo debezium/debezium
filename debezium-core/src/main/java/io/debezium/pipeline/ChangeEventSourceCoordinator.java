@@ -71,7 +71,6 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     /**
      * Waiting period for the polling loop to finish. Will be applied twice, once gracefully, once forcefully.
      */
-    public static final Duration SHUTDOWN_WAIT_TIMEOUT = Duration.ofSeconds(CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_SEC);
 
     protected final Offsets<P, O> previousOffsets;
     protected final ErrorHandler errorHandler;
@@ -372,8 +371,9 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
             Thread.interrupted();
             executor.shutdown();
             blockingSnapshotExecutor.shutdown();
-            boolean isShutdown = executor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
-            boolean isBlockingSnapshotShutdown = blockingSnapshotExecutor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+            final long shutdownWaitTimeout = connectorConfig.getExecutorShutdownTimeout().toMillis();
+            boolean isShutdown = executor.awaitTermination(shutdownWaitTimeout, TimeUnit.MILLISECONDS);
+            boolean isBlockingSnapshotShutdown = blockingSnapshotExecutor.awaitTermination(shutdownWaitTimeout, TimeUnit.MILLISECONDS);
 
             if (!isShutdown) {
                 LOGGER.warn("Coordinator didn't stop in the expected time, shutting down executor now");
@@ -381,7 +381,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                 // Clear interrupt flag so the forced termination is always attempted
                 Thread.interrupted();
                 executor.shutdownNow();
-                executor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+                executor.awaitTermination(shutdownWaitTimeout, TimeUnit.MILLISECONDS);
             }
 
             if (!isBlockingSnapshotShutdown) {
@@ -390,7 +390,7 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
                 // Clear interrupt flag so the forced termination is always attempted
                 Thread.interrupted();
                 blockingSnapshotExecutor.shutdownNow();
-                blockingSnapshotExecutor.awaitTermination(SHUTDOWN_WAIT_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
+                blockingSnapshotExecutor.awaitTermination(shutdownWaitTimeout, TimeUnit.MILLISECONDS);
             }
 
             Optional<SignalProcessor<P, O>> processor = getSignalProcessor(previousOffsets);
@@ -416,8 +416,6 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
     }
 
     public class ChangeEventSourceContextImpl implements ChangeEventSourceContext {
-
-        private static final Duration PAUSE_BETWEEN_HEARTBEAT_CALLBACKS = Duration.ofSeconds(1);
 
         private final Lock lock = new ReentrantLock();
         private final Condition snapshotFinished = lock.newCondition();
@@ -447,21 +445,13 @@ public class ChangeEventSourceCoordinator<P extends Partition, O extends OffsetC
 
         @Override
         public void waitSnapshotCompletion() throws InterruptedException {
-            waitSnapshotCompletion(() -> {
-            });
-        }
-
-        @Override
-        public void waitSnapshotCompletion(Runnable heartbeatCallback) throws InterruptedException {
             lock.lock();
             try {
                 while (paused) {
                     LOGGER.trace("Waiting for snapshot to be completed.");
-                    if (!snapshotFinished.await(PAUSE_BETWEEN_HEARTBEAT_CALLBACKS.toNanos(), TimeUnit.NANOSECONDS)) {
-                        heartbeatCallback.run();
-                    }
+                    snapshotFinished.await();
+                    streaming = true;
                 }
-                streaming = true;
             }
             finally {
                 lock.unlock();

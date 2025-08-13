@@ -46,6 +46,7 @@ import io.debezium.data.geometry.Point;
 import io.debezium.doc.FixFor;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
+import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.relational.Column;
 import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
@@ -81,6 +82,7 @@ public class PostgresSchemaIT {
 
     @Before
     public void before() throws SQLException {
+        DebeziumOpenLineageEmitter.init(TestHelper.defaultConfig().build().asMap(), "postgresql");
         TestHelper.dropAllSchemas();
     }
 

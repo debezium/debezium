@@ -62,6 +62,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
     private static final String SQL_STATE_INSUFFICIENT_PRIVILEGE = "42501";
 
+    private static final String SQL_LOCK_NOT_AVAILABLE = "55P03";
+
+    private static final String PUBLICATION_QUERY_FAILURE_MESSAGE = "Creation of publication slot failed: query to create/update publication timed out, please make sure that there are no maintenance activities going on the database end.";
+
     private static Logger LOGGER = LoggerFactory.getLogger(PostgresReplicationConnection.class);
 
     private final String slotName;
@@ -170,11 +174,24 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                 case DISABLED:
                                     throw new ConnectException("Publication autocreation is disabled, please create one and restart the connector.");
                                 case ALL_TABLES:
-                                    String createPublicationStmt = String.format("CREATE PUBLICATION %s FOR ALL TABLES;", publicationName);
+                                    String createPublicationStmt = connectorConfig.isPublishViaPartitionRoot()
+                                            ? String.format("CREATE PUBLICATION %s FOR ALL TABLES WITH (publish_via_partition_root = true);", publicationName)
+                                            : String.format("CREATE PUBLICATION %s FOR ALL TABLES;", publicationName);
                                     LOGGER.info("Creating Publication with statement '{}'", createPublicationStmt);
                                     // Publication doesn't exist, create it.
                                     if (!isOnlyRead) {
-                                        stmt.execute(createPublicationStmt);
+                                        try {
+                                            stmt.setQueryTimeout(toIntExact(connectorConfig.createSlotCommandTimeout()));
+                                            stmt.execute(createPublicationStmt);
+                                        }
+                                        catch (SQLException ex) {
+                                            if (PSQLState.QUERY_CANCELED.getState().equals(ex.getSQLState()) || SQL_LOCK_NOT_AVAILABLE.equals(ex.getSQLState())) {
+                                                throw new DebeziumException(PUBLICATION_QUERY_FAILURE_MESSAGE, ex);
+                                            }
+                                            else {
+                                                throw ex;
+                                            }
+                                        }
                                     }
                                     else {
                                         LOGGER.info("The Postgres server in stand by mode, skip create statement execution");
@@ -189,9 +206,22 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                     }
                                     break;
                                 case NO_TABLES:
-                                    final String createPublicationWithNoTablesStmt = String.format("CREATE PUBLICATION %s;", publicationName);
+                                    final String createPublicationWithNoTablesStmt = connectorConfig.isPublishViaPartitionRoot()
+                                            ? String.format("CREATE PUBLICATION %s WITH (publish_via_partition_root = true);", publicationName)
+                                            : String.format("CREATE PUBLICATION %s;", publicationName);
                                     LOGGER.info("Creating publication with statement '{}'", createPublicationWithNoTablesStmt);
-                                    stmt.execute(createPublicationWithNoTablesStmt);
+                                    try {
+                                        stmt.setQueryTimeout(toIntExact(connectorConfig.createSlotCommandTimeout()));
+                                        stmt.execute(createPublicationWithNoTablesStmt);
+                                    }
+                                    catch (SQLException ex) {
+                                        if (PSQLState.QUERY_CANCELED.getState().equals(ex.getSQLState()) || SQL_LOCK_NOT_AVAILABLE.equals(ex.getSQLState())) {
+                                            throw new DebeziumException(PUBLICATION_QUERY_FAILURE_MESSAGE, ex);
+                                        }
+                                        else {
+                                            throw ex;
+                                        }
+                                    }
                                     break;
                             }
                         }
@@ -299,10 +329,27 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             if (tableFilterString.isEmpty()) {
                 throw new DebeziumException(String.format("No table filters found for filtered publication %s", publicationName));
             }
-            createOrUpdatePublicationStmt = isUpdate ? String.format("ALTER PUBLICATION %s SET TABLE %s;", publicationName, tableFilterString)
-                    : String.format("CREATE PUBLICATION %s FOR TABLE %s;", publicationName, tableFilterString);
+            if (isUpdate) {
+                createOrUpdatePublicationStmt = String.format("ALTER PUBLICATION %s SET TABLE %s;", publicationName, tableFilterString);
+            }
+            else {
+                createOrUpdatePublicationStmt = connectorConfig.isPublishViaPartitionRoot()
+                        ? String.format("CREATE PUBLICATION %s FOR TABLE %s WITH (publish_via_partition_root = true);", publicationName, tableFilterString)
+                        : String.format("CREATE PUBLICATION %s FOR TABLE %s;", publicationName, tableFilterString);
+            }
             LOGGER.info(isUpdate ? "Updating Publication with statement '{}'" : "Creating Publication with statement '{}'", createOrUpdatePublicationStmt);
-            stmt.execute(createOrUpdatePublicationStmt);
+            try {
+                stmt.setQueryTimeout(toIntExact(connectorConfig.createSlotCommandTimeout()));
+                stmt.execute(createOrUpdatePublicationStmt);
+            }
+            catch (SQLException ex) {
+                if (PSQLState.QUERY_CANCELED.getState().equals(ex.getSQLState()) || SQL_LOCK_NOT_AVAILABLE.equals(ex.getSQLState())) {
+                    throw new DebeziumException(PUBLICATION_QUERY_FAILURE_MESSAGE, ex);
+                }
+                else {
+                    throw ex;
+                }
+            }
         }
         catch (Exception e) {
             throw new ConnectException(String.format("Unable to %s filtered publication %s for %s", isUpdate ? "update" : "create", publicationName, tableFilterString),
@@ -827,7 +874,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                 metronome.pause();
                             }
                             catch (Exception exp) {
-                                throw new RuntimeException("received unexpected exception will perform keep alive", exp);
+                                // Immediately log the error. Don't rethrow the exception, because it will
+                                // never be seen (or be seen in a timely manner).
+                                LOGGER.error("Unexpected exception while performing keepalive status update on the replication stream", exp);
+                                return;
                             }
                         }
                     });
@@ -871,6 +921,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 .logical()
                 .withSlotName("\"" + slotName + "\"")
                 .withStartPosition(lsn.asLogSequenceNumber())
+                .withAutomaticFlush(false)
                 .withSlotOptions(streamParams);
         streamBuilder = configurator.apply(streamBuilder, this::hasMinimumVersion);
 

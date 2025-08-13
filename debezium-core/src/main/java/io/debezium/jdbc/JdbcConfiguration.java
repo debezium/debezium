@@ -15,6 +15,7 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 
 import io.debezium.annotation.Immutable;
 import io.debezium.config.Configuration;
+import io.debezium.config.ConfigurationNames;
 import io.debezium.config.Field;
 import io.debezium.util.Collect;
 
@@ -45,12 +46,12 @@ public interface JdbcConfiguration extends Configuration {
     /**
      * A field for the hostname of the database server. This field has no default value.
      */
-    Field HOSTNAME = Field.create("hostname", "IP address of the database");
+    Field HOSTNAME = Field.create(ConfigurationNames.DATABASE_HOSTNAME_PROPERTY_NAME, "IP address of the database");
 
     /**
      * A field for the port of the database server. There is no default value.
      */
-    Field PORT = Field.create("port", "Port of the database");
+    Field PORT = Field.create(ConfigurationNames.DATABASE_PORT_PROPERTY_NAME, "Port of the database");
 
     /**
      * A semicolon separated list of SQL statements to be executed when the connection to database is established.

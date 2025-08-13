@@ -1356,6 +1356,19 @@ User intervention is required to restart the connector.
 `> 0`:: The connector restarts automatically until it reaches the specified maximum number of retries.
 After the next failure, the connector stops, and user intervention is required to restart it.
 
+|[[cassandra-property-extended-headers-enabled]]<<cassandra-property-extended-headers-enabled, `extended.headers.enabled`>>
+|true
+|This property specifies whether {prodname} adds context headers with the prefix `__debezium.context.` to the messages that it emits.
+These headers are required by the OpenLineage integration and provide metadata that enables downstream processing systems to track and identify the sources of change events.
+
+
+The property adds following headers:
+
+
+`__debezium.context.connectorLogicalName`:: The logical name of the {prodname} connector.
+`__debezium.context.taskId`:: The unique identifier of the connector task.
+`__debezium.context.connectorName`::  The name of the {prodname} connector.
+
 |===
 
 If the Cassandra agent use SSL to connect to Cassandra node, an SSL config file is required.

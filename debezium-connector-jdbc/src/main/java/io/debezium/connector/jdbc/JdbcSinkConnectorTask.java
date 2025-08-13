@@ -9,9 +9,12 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
@@ -55,6 +58,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
     private final ReentrantLock stateLock = new ReentrantLock();
 
     private JdbcChangeEventSink changeEventSink;
+    private final Set<TopicPartition> assignedPartitions = new HashSet<>();
     private final Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
     private Throwable previousPutException;
 
@@ -149,29 +153,39 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
     @Override
     public void open(Collection<TopicPartition> partitions) {
-        if (LOGGER.isTraceEnabled()) {
-            for (TopicPartition partition : partitions) {
-                LOGGER.trace("Requested open TopicPartition request for '{}'", partition);
-            }
+        for (TopicPartition partition : partitions) {
+            LOGGER.trace("Requested open TopicPartition request for '{}'", partition);
+            assignedPartitions.add(partition);
+
+            // Flush should have been called if this was previously assigned.
+            // In this case, we will let the first message for the partition or the current offsets
+            // from Kafka Connect dictate what the offset for this partition will be during flush.
+            offsets.remove(partition);
         }
     }
 
     @Override
     public void close(Collection<TopicPartition> partitions) {
         for (TopicPartition partition : partitions) {
-            if (offsets.containsKey(partition)) {
-                LOGGER.trace("Requested close TopicPartition request for '{}'", partition);
-                offsets.remove(partition);
-            }
+            LOGGER.trace("Requested close TopicPartition request for '{}'", partition);
+            assignedPartitions.remove(partition);
+            offsets.remove(partition);
         }
     }
 
     @Override
     public Map<TopicPartition, OffsetAndMetadata> preCommit(Map<TopicPartition, OffsetAndMetadata> currentOffsets) {
-        // Flush only up to the records processed by this sink
-        LOGGER.debug("Flushing offsets: {}", offsets);
-        flush(offsets);
-        return offsets;
+        // Check whether the sink task currently has any flushed offset data for the partition.
+        // If the sink has offset details, those will be used; otherwise use the ones provided by connect.
+        final Map<TopicPartition, OffsetAndMetadata> flushedOffsets = assignedPartitions.stream()
+                .collect(Collectors.toMap(
+                        partition -> partition,
+                        partition -> offsets.getOrDefault(partition, currentOffsets.get(partition))));
+
+        // Flush offsets
+        LOGGER.debug("Flushing offsets: {}", flushedOffsets);
+        flush(flushedOffsets);
+        return flushedOffsets;
     }
 
     @Override

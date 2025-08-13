@@ -5,8 +5,8 @@
  */
 package io.debezium.connector.binlog.jdbc;
 
-import static io.debezium.config.CommonConnectorConfig.DATABASE_CONFIG_PREFIX;
 import static io.debezium.config.CommonConnectorConfig.DRIVER_CONFIG_PREFIX;
+import static io.debezium.config.ConfigurationNames.DATABASE_CONFIG_PREFIX;
 
 import java.time.Duration;
 import java.util.Objects;

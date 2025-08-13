@@ -82,6 +82,7 @@ public abstract class AbstractSnapshotChangeEventSource<P extends Partition, O e
         Offsets<P, OffsetContext> offsets = getOffsets(ctx, previousOffset, snapshottingTask);
         if (snapshottingTask.shouldSkipSnapshot()) {
             LOGGER.debug("Skipping snapshotting");
+            snapshotProgressListener.snapshotSkipped(partition);
             notificationService.initialSnapshotNotificationService().notifySkipped(offsets.getTheOnlyPartition(), offsets.getTheOnlyOffset());
             return SnapshotResult.skipped(previousOffset);
         }

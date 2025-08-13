@@ -90,6 +90,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractLogMinerStreamingChangeEventSource.class);
 
+    private static final String NO_REDO_SQL_FOR_TEMPORARY_TABLES = "/* No SQL_REDO for temporary tables */";
+
     private static final int MINING_START_RETRIES = 5;
     private static final int MAXIMUM_NAME_LENGTH = 30;
     private static final int MAX_ITERATIONS_BEFORE_OFFSET_STALE = 25;
@@ -141,7 +143,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         this.jdbcConfiguration = JdbcConfiguration.adapt(jdbcConfig);
         this.useContinuousMining = connectorConfig.isLogMiningContinuousMining(jdbcConnection.getOracleVersion());
         this.logCollector = new LogFileCollector(connectorConfig, jdbcConnection);
-        this.sessionContext = new LogMinerSessionContext(jdbcConnection, useContinuousMining, connectorConfig.getLogMiningStrategy());
+        this.sessionContext = new LogMinerSessionContext(jdbcConnection, useContinuousMining, connectorConfig.getLogMiningStrategy(),
+                connectorConfig.getLogMiningPathToDictionary());
         this.dmlParser = new LogMinerDmlParser(connectorConfig);
         this.reconstructColumnDmlParser = new LogMinerColumnResolverDmlParser(connectorConfig);
         this.selectLobParser = new SelectLobParser();
@@ -587,6 +590,15 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             }
         }
 
+        // There are some obscure corner cases where Oracle may mistakenly introduce a redo entry provided
+        // by LogMiner for temporary tables, which should not happen as they're officially unsupported nor
+        // are supported to be tracked by supplemental logging. Should any of these show up in the event
+        // stream, they should be gracefully discarded.
+        if (isNoSqlRedoForTemporaryTable(event)) {
+            Loggings.logDebugAndTraceRecord(LOGGER, event, "Skipped a change for a temporary table.");
+            return;
+        }
+
         getBatchMetrics().dataChangeEventObserved(event.getEventType());
 
         executeDataChangeEventPreDispatchSteps(event);
@@ -790,6 +802,40 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     }
 
     /**
+     * Waits for the range if it's not completely available in the archive logs yet.
+     *
+     * @param startScn the range starting SCN number
+     * @param endScn the range ending SCN number
+     * @return {@code true} if the connector loop should break, {@code false} otherwise
+     * @throws SQLException if a database exception occurs
+     * @throws InterruptedException if the thread is interrupted
+     */
+    protected boolean waitForRangeAvailabilityInArchiveLogs(Scn startScn, Scn endScn) throws SQLException, InterruptedException {
+        if (endScn.isNull()) {
+            // There was no prior iteration yet, sanity check to verify starting SCN
+            if (isArchiveLogOnlyModeAndScnIsNotAvailable(startScn)) {
+                LOGGER.error("Could not find the start SCN {} in the archive logs, stopping connector.", startScn);
+                return true;
+            }
+        }
+        else if (isNoDataProcessedInBatchAndAtEndOfArchiveLogs()) {
+            if (endScn.compareTo(getMaximumArchiveLogsScn()) == 0) {
+                // Prior iteration mined up to the last entry in the archive logs and no data was returned.
+                return isArchiveLogOnlyModeAndScnIsNotAvailable(endScn.add(Scn.ONE));
+            }
+            // The endScn + 1 is now available
+        }
+
+        // Connector loop should continue to iterate
+        return false;
+    }
+
+    /**
+     * @return {@code true} if no data was processed, and we've reached end of the archive logs, {@code false} otherwise.
+     */
+    protected abstract boolean isNoDataProcessedInBatchAndAtEndOfArchiveLogs();
+
+    /**
      * Calculates the mining session's upper boundary based on batch size limits.
      *
      * @param lowerBoundsScn the current lower boundary
@@ -803,6 +849,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
 
         final Scn maximumBatchScn = lowerBoundsScn.add(Scn.valueOf(metrics.getBatchSize()));
         final Scn defaultBatchSizeScn = Scn.valueOf(connectorConfig.getLogMiningBatchSizeDefault());
+        final Scn maxBatchSizeScn = Scn.valueOf(connectorConfig.getLogMiningBatchSizeMax());
 
         // Initially set the upper bounds based on batch size
         // The following logic will alter this value as needed based on specific rules
@@ -833,9 +880,16 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         }
         else {
             if (!previousUpperBounds.isNull() && maximumBatchScn.compareTo(previousUpperBounds) <= 0) {
-                // Batch size is too small, make a large leap and use current SCN
-                LOGGER.debug("Batch size upper bounds {} too small, using maximum read position {} instead.", maximumBatchScn, maximumScn);
-                result = maximumScn;
+                // Batch size is too small, make a large leap
+                // This will always add the max batch size window rather than smaller increments
+                // This fits more closely to the same semantics as maximumScn, but for very large bursts, it
+                // keeps the window relatively capped.
+                Scn extendedUpperBounds = previousUpperBounds.add(maxBatchSizeScn);
+                if (extendedUpperBounds.compareTo(maximumScn) > 0) {
+                    extendedUpperBounds = maximumScn;
+                }
+                LOGGER.debug("Batch size upper bounds {} too small, using maximum read position {} instead.", maximumBatchScn, extendedUpperBounds);
+                result = extendedUpperBounds;
             }
             else {
                 decrementSleepTime();
@@ -893,7 +947,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             // LogMiner takes the range we provide and subtracts 1 from the start and adds 1 to the upper bounds
             // to create a non-inclusive range from our inclusive range. If we supply the last flushed SCN, the
             // non-inclusive range will specify an SCN beyond what is in the logs, leading to LogMiner failure.
-            minOpenRedoThreadLastScn = minOpenRedoThreadLastScn.subtract(Scn.ONE);
+            minOpenRedoThreadLastScn = minOpenRedoThreadLastScn.subtract(
+                    Scn.valueOf(connectorConfig.getLogMiningRedoThreadScnAdjustment()));
 
             if (minOpenRedoThreadLastScn.compareTo(result) < 0) {
                 // There are situations where on first start-up that the startScn may be higher
@@ -923,7 +978,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      *
      * @param scn the system change number to check, should never be {@code null}
      * @return {@code true} if archive log only mode and scn is available, {@code false} if connector is
-     *         not in archive log only mode or the connector is requesting to be shutdown
+     * not in archive log only mode or the connector is requesting to be shutdown
      * @throws SQLException if a database exception occurs
      * @throws InterruptedException if the thread is interrupted
      */
@@ -2092,6 +2147,10 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                 }
             }
         }
+    }
+
+    private boolean isNoSqlRedoForTemporaryTable(LogMinerEventRow event) {
+        return NO_REDO_SQL_FOR_TEMPORARY_TABLES.equals(event.getRedoSql());
     }
 
     private OracleOffsetContext emptyContext() {

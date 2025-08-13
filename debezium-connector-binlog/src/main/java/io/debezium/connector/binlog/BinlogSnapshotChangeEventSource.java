@@ -141,7 +141,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
             try {
                 // MySQL sometimes considers some local files as databases (see DBZ-164),
                 // so we will simply try each one and ignore the problematic ones ...
-                connection.query("SHOW FULL TABLES IN " + quote(dbName) + " where Table_Type = 'BASE TABLE'", rs -> {
+                connection.query("SHOW FULL TABLES IN " + connection.quoteIdentifier(dbName) + " where Table_Type = 'BASE TABLE'", rs -> {
                     while (rs.next()) {
                         TableId id = new TableId(dbName, null, rs.getString(1));
                         tableIds.add(id);
@@ -201,6 +201,17 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
             if (connectorConfig.getSnapshotLockingStrategy().isIsolationLevelResetOnFlush()) {
                 // FLUSH TABLES resets TX and isolation level
                 connection.executeWithoutCommitting("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
+            }
+
+            if (connectorConfig.getSnapshotLockingStrategy().useConsistentSnapshotTransaction()) {
+                try {
+                    connection.executeWithoutCommitting("START TRANSACTION WITH CONSISTENT SNAPSHOT");
+                }
+                catch (SQLException e) {
+                    LOGGER.error("It's possible to receive duplicated events between snapshot and streaming. It can be caused by an unsupported engine");
+
+                    throw e;
+                }
             }
         }
     }
@@ -274,7 +285,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
             return;
         }
 
-        if (previousOffset != null) {
+        if (previousOffset != null && !snapshotterService.getSnapshotter().shouldStreamEventsStartingFromSnapshot()) {
             ctx.offset = previousOffset;
             tryStartingSnapshot(ctx);
             return;
@@ -337,7 +348,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
             if (!sourceContext.isRunning()) {
                 throw new InterruptedException("Interrupted while emitting initial DROP TABLE events");
             }
-            addSchemaEvent(snapshotContext, tableId.catalog(), "DROP TABLE IF EXISTS " + quote(tableId));
+            addSchemaEvent(snapshotContext, tableId.catalog(), "DROP TABLE IF EXISTS " + connection.quotedTableIdString(tableId));
         }
 
         final Map<String, DatabaseLocales> databaseCharsets = connection.readDatabaseCollations();
@@ -357,14 +368,14 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
                 if (!snapshottingTask.isOnDemand()) {
                     // in case of blocking snapshot we want to read structures only for collections specified in the signal
                     LOGGER.info("Reading structure of database '{}'", database);
-                    addSchemaEvent(snapshotContext, database, "DROP DATABASE IF EXISTS " + quote(database));
-                    final StringBuilder createDatabaseDdl = new StringBuilder("CREATE DATABASE " + quote(database));
+                    addSchemaEvent(snapshotContext, database, "DROP DATABASE IF EXISTS " + connection.quoteIdentifier(database));
+                    final StringBuilder createDatabaseDdl = new StringBuilder("CREATE DATABASE " + connection.quoteIdentifier(database));
                     final DatabaseLocales defaultDatabaseLocales = databaseCharsets.get(database);
                     if (defaultDatabaseLocales != null) {
                         defaultDatabaseLocales.appendToDdlStatement(database, createDatabaseDdl);
                     }
                     addSchemaEvent(snapshotContext, database, createDatabaseDdl.toString());
-                    addSchemaEvent(snapshotContext, database, "USE " + quote(database));
+                    addSchemaEvent(snapshotContext, database, "USE " + connection.quoteIdentifier(database));
                 }
 
                 if (connectorConfig.getSnapshotLockingStrategy().isLockingEnabled()) {
@@ -394,7 +405,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
                     .collect(Collectors.toList());
         }
         for (TableId tableId : realTablesToRead) {
-            connection.query("SHOW CREATE TABLE " + quote(tableId), rs -> {
+            connection.query("SHOW CREATE TABLE " + connection.quotedTableIdString(tableId), rs -> {
                 if (rs.next()) {
                     addSchemaEvent(snapshotContext, tableId.catalog(), rs.getString(2));
                 }
@@ -435,7 +446,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
             assert connection != null;
             try {
                 Map<TableId, String> result = new HashMap<>();
-                connection.query("SHOW CREATE TABLE " + quote(tableId), rs -> {
+                connection.query("SHOW CREATE TABLE " + connection.quotedTableIdString(tableId), rs -> {
                     if (rs.next()) {
                         result.put(tableId, rs.getString(2));
                     }
@@ -543,7 +554,7 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         LOGGER.info("Flush and obtain read lock for {} tables (preventing writes)", snapshotContext.capturedTables);
         if (!snapshotContext.capturedTables.isEmpty()) {
             final String tableList = snapshotContext.capturedTables.stream()
-                    .map(this::quote)
+                    .map(connection::quotedTableIdString)
                     .collect(Collectors.joining(","));
             connection.executeWithoutCommitting("FLUSH TABLES " + tableList + " WITH READ LOCK");
         }
@@ -564,14 +575,6 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
         LOGGER.info("Writes to MySQL tables prevented for a total of {}", Strings.duration(lockReleased - tableLockAcquiredAt));
         tableLockAcquiredAt = -1;
         stopLockHeartbeat();
-    }
-
-    private String quote(String dbOrTableName) {
-        return "`" + dbOrTableName + "`";
-    }
-
-    private String quote(TableId id) {
-        return quote(id.catalog()) + "." + quote(id.table());
     }
 
     @Override

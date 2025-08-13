@@ -17,4 +17,7 @@ import io.debezium.common.annotation.Incubating;
 @Retention(RetentionPolicy.RUNTIME)
 @Incubating()
 public @interface Capturing {
+    String ALL = "*";
+
+    String destination() default ALL;
 }

@@ -58,6 +58,34 @@ public final class Tables {
         static TableFilter includeAll() {
             return t -> true;
         }
+
+        /**
+         * Creates a {@link TableFilter} that caches the results of the given filter.
+         *
+         * @param filter the filter to wrap; may not be null
+         * @return a caching filter
+         */
+        static TableFilter cached(TableFilter filter) {
+            return new CachingTableFilter(filter);
+        }
+    }
+
+    /**
+     * A {@link TableFilter} that caches the results of another filter.
+     */
+    private static final class CachingTableFilter implements TableFilter {
+
+        private final TableFilter delegate;
+        private final ConcurrentMap<TableId, Boolean> cache = new ConcurrentHashMap<>();
+
+        CachingTableFilter(TableFilter delegate) {
+            this.delegate = Objects.requireNonNull(delegate);
+        }
+
+        @Override
+        public boolean isIncluded(TableId tableId) {
+            return cache.computeIfAbsent(tableId, delegate::isIncluded);
+        }
     }
 
     public static class ColumnNameFilterFactory {

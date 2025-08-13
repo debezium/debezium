@@ -763,8 +763,9 @@ public class SqlServerConnection extends JdbcConnection {
                 return false;
             }
 
-            LOGGER.trace("Oldest SCN in logs is '{}'", oldestScn);
-            return storedLsn == null || Lsn.valueOf(oldestScn).compareTo(storedLsn) < 0;
+            LOGGER.info("Oldest SCN in logs is '{}'", oldestScn);
+            LOGGER.info("Stored LSN is '{}'", storedLsn);
+            return storedLsn == null || Lsn.NULL.equals(storedLsn) || Lsn.valueOf(oldestScn).compareTo(storedLsn) < 0;
         }
         catch (SQLException e) {
             throw new DebeziumException("Unable to get last available log position", e);

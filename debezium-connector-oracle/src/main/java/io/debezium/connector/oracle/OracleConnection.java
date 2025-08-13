@@ -201,14 +201,14 @@ public class OracleConnection extends JdbcConnection {
     }
 
     @Override
-    public Set<TableId> readTableNames(String databaseCatalog, String schemaNamePattern, String tableNamePattern,
+    public Set<TableId> readTableNames(String catalogName, String schemaNamePattern, String tableNamePattern,
                                        String[] tableTypes)
             throws SQLException {
 
         Set<TableId> tableIds = super.readTableNames(null, schemaNamePattern, tableNamePattern, tableTypes);
 
         return tableIds.stream()
-                .map(t -> new TableId(databaseCatalog, t.schema(), t.table()))
+                .map(t -> new TableId(catalogName, t.schema(), t.table()))
                 .collect(Collectors.toSet());
     }
 
@@ -614,8 +614,8 @@ public class OracleConnection extends JdbcConnection {
     }
 
     @Override
-    protected Map<TableId, List<Column>> getColumnsDetails(String databaseCatalog,
-                                                           String schemaNamePattern,
+    protected Map<TableId, List<Column>> getColumnsDetails(String catalogName,
+                                                           String schemaName,
                                                            String tableName,
                                                            Tables.TableFilter tableFilter,
                                                            ColumnNameFilter columnFilter,
@@ -628,7 +628,7 @@ public class OracleConnection extends JdbcConnection {
         if (tableName != null && tableName.contains("/")) {
             tableName = tableName.replace("/", "//");
         }
-        return super.getColumnsDetails(databaseCatalog, schemaNamePattern, tableName, tableFilter, columnFilter, metadata, viewIds);
+        return super.getColumnsDetails(catalogName, schemaName, tableName, tableFilter, columnFilter, metadata, viewIds);
     }
 
     /**
@@ -655,7 +655,7 @@ public class OracleConnection extends JdbcConnection {
             final String commitScn = source.getString(SourceInfo.COMMIT_SCN_KEY);
             if (!Strings.isNullOrEmpty(commitScn)) {
                 final String query = String.format("SELECT %s FROM (SELECT * FROM %s AS OF SCN ?) WHERE %s",
-                        columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
+                        columns.stream().map(this::quoteIdentifier).collect(Collectors.joining(",")),
                         quotedTableIdString(oracleTableId),
                         keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
                 final List<Object> bindValues = new ArrayList<>(keyValues.size() + 1);
@@ -676,7 +676,7 @@ public class OracleConnection extends JdbcConnection {
         }
 
         final String query = String.format("SELECT %s FROM %s WHERE %s",
-                columns.stream().map(this::quotedColumnIdString).collect(Collectors.joining(",")),
+                columns.stream().map(this::quoteIdentifier).collect(Collectors.joining(",")),
                 quotedTableIdString(oracleTableId),
                 keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
 

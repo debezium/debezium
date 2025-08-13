@@ -58,6 +58,10 @@ The following table lists the snapshot metrics that are available.
 |`boolean`
 |Whether the snapshot completed.
 
+|[[connectors-snaps-metric-snapshotskipped_{context}]]<<connectors-snaps-metric-snapshotskipped_{context}, `SnapshotSkipped`>>
+|`boolean`
+|Whether the snapshot was skipped.
+
 |[[connectors-snaps-metric-snapshotdurationinseconds_{context}]]<<connectors-snaps-metric-snapshotdurationinseconds_{context}, `SnapshotDurationInSeconds`>>
 |`long`
 |The total number of seconds that the snapshot has taken so far, even if not complete. Includes also time when snapshot was paused.

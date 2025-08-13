@@ -5,12 +5,19 @@
     <parent>
         <groupId>io.debezium.quarkus</groupId>
         <artifactId>quarkus-debezium-postgres-parent</artifactId>
-        <version>3.2.0-SNAPSHOT</version>
+        <version>3.3.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>quarkus-debezium-postgres</artifactId>
 
     <name>Quarkus Debezium :: Extension :: Postgres :: Runtime</name>
+
+    <properties>
+        <!-- The below override should be removed when kafka is upgraded to 4.0.0 and quarkus to 3.25.0 -->
+        <kafka.version.override>4.0.0</kafka.version.override>
+
+        <mockito.argLine>-javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -58,6 +65,7 @@
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>connect-runtime</artifactId>
+            <version>${kafka.version.override}</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.fasterxml.jackson.core</groupId>
@@ -120,6 +128,7 @@
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>connect-json</artifactId>
+            <version>${kafka.version.override}</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.fasterxml</groupId>
@@ -157,7 +166,30 @@
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>connect-transforms</artifactId>
+            <version>${kafka.version.override}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.kafka</groupId>
+                    <artifactId>kafka-clients</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
+
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>

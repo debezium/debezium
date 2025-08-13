@@ -3,7 +3,7 @@
     <parent>
         <groupId>io.debezium</groupId>
         <artifactId>debezium-build-parent</artifactId>
-        <version>3.2.0-SNAPSHOT</version>
+        <version>3.3.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -60,14 +60,16 @@
         <!-- Debezium AI -->
         <version.langchain4j>1.0.1</version.langchain4j>
 
+        <!-- Open Lineage -->
+        <version.openlineage>1.31.0</version.openlineage>
+
         <!-- Testing -->
         <version.junit>4.13.1</version.junit>
         <version.junit5>5.9.1</version.junit5>
         <version.junit.platform.launcher>1.9.3</version.junit.platform.launcher>
         <version.fest>1.4</version.fest>
-        <version.assertj>3.27.3</version.assertj>
+        <version.assertj>3.27.4</version.assertj>
         <version.jmh>1.21</version.jmh>
-        <version.mockito>5.17.0</version.mockito>
         <version.awaitility>4.0.1</version.awaitility>
         <version.testcontainers>1.20.6</version.testcontainers>
         <version.jsonpath>2.9.0</version.jsonpath>
@@ -105,6 +107,19 @@
             <dependency>
                 <groupId>com.fasterxml.jackson.datatype</groupId>
                 <artifactId>jackson-datatype-jsr310</artifactId>
+                <version>${version.jackson}</version>
+                <optional>true</optional>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-datatype-jdk8</artifactId>
+                <version>${version.jackson}</version>
+                <optional>true</optional>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
                 <version>${version.jackson}</version>
                 <optional>true</optional>
             </dependency>
@@ -354,6 +369,13 @@
                 <version>${version.opentelemetry}</version>
             </dependency>
 
+            <!-- OpenLineage Integration -->
+            <dependency>
+                <groupId>io.openlineage</groupId>
+                <artifactId>openlineage-java</artifactId>
+                <version>${version.openlineage}</version>
+            </dependency>
+
             <!-- Kafka runtime libs -->
             <dependency>
                 <groupId>io.netty</groupId>
@@ -600,6 +622,11 @@
                 <version>${version.junit5}</version>
             </dependency>
             <dependency>
+                <groupId>org.junit.vintage</groupId>
+                <artifactId>junit-vintage-engine</artifactId>
+                <version>${version.junit5}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.junit.platform</groupId>
                 <artifactId>junit-platform-launcher</artifactId>
                 <version>${version.junit.platform.launcher}</version>
@@ -842,6 +869,11 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium</groupId>
+                <artifactId>debezium-connector-cockroachdb</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
                 <artifactId>debezium-connector-cassandra-3</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -875,6 +907,22 @@
                 <artifactId>debezium-ai-embeddings</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-openlineage-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-openlineage-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
 
             <!-- Debezium test artifacts -->
             <dependency>
@@ -904,6 +952,18 @@
             <dependency>
                 <groupId>io.debezium</groupId>
                 <artifactId>debezium-ai-embeddings</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-openlineage-api</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium</groupId>
+                <artifactId>debezium-openlineage-core</artifactId>
                 <version>${project.version}</version>
                 <type>test-jar</type>
             </dependency>

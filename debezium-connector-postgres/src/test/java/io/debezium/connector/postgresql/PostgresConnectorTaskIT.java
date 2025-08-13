@@ -16,6 +16,7 @@ import org.junit.Test;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.doc.FixFor;
+import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.spi.topic.TopicNamingStrategy;
 
@@ -51,7 +52,8 @@ public class PostgresConnectorTaskIT {
         postgresConnectorTask.createReplicationConnection(new FakeContext(config, new PostgresSchema(
                 config,
                 null,
-                (TopicNamingStrategy) SchemaTopicNamingStrategy.create(config), null)), 3, Duration.ofSeconds(2));
+                (TopicNamingStrategy) SchemaTopicNamingStrategy.create(config), null, config.getServiceRegistry().tryGetService(CustomConverterRegistry.class))), 3,
+                Duration.ofSeconds(2));
 
         // Verify retry happened for 10 seconds
         long endTime = System.currentTimeMillis();

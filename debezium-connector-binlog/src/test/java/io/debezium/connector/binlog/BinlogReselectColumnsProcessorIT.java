@@ -64,7 +64,7 @@ public abstract class BinlogReselectColumnsProcessorIT<C extends SourceConnector
         return DATABASE.defaultConfig()
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, DATABASE.qualifiedTableName("dbz4321"))
                 .with(BinlogConnectorConfig.CUSTOM_POST_PROCESSORS, "reselector")
-                .with("reselector.type", ReselectColumnsPostProcessor.class.getName());
+                .with("post.processors.reselector.type", ReselectColumnsPostProcessor.class.getName());
     }
 
     @Override

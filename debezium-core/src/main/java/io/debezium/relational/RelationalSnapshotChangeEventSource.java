@@ -764,7 +764,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 .stream()
                 .filter(columnName -> additionalColumnFilter(partition, table.id(), columnName))
                 .filter(columnName -> connectorConfig.getColumnFilter().matches(table.id().catalog(), table.id().schema(), table.id().table(), columnName))
-                .map(jdbcConnection::quotedColumnIdString)
+                .map(jdbcConnection::quoteIdentifier)
                 .collect(Collectors.toList());
 
         if (columnNames.isEmpty()) {
@@ -772,7 +772,7 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
             columnNames = table.retrieveColumnNames()
                     .stream()
-                    .map(jdbcConnection::quotedColumnIdString)
+                    .map(jdbcConnection::quoteIdentifier)
                     .collect(Collectors.toList());
         }
 

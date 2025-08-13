@@ -20,6 +20,7 @@ import java.util.Set;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
+import org.hibernate.JDBCException;
 import org.hibernate.StatelessSession;
 import org.hibernate.Transaction;
 import org.hibernate.dialect.DatabaseVersion;
@@ -105,7 +106,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
                     writeTruncate(dialect.getTruncateStatement(table));
                     continue;
                 }
-                catch (SQLException e) {
+                catch (SQLException | JDBCException e) {
                     throw new ConnectException("Failed to process a sink record", e);
                 }
             }
@@ -187,7 +188,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             try {
                 tableDescriptor = checkAndApplyTableChangesIfNeeded(collectionId, record);
             }
-            catch (SQLException e) {
+            catch (SQLException | JDBCException e) {
                 throw new ConnectException("Error while checking and applying table changes for collection '" + collectionId + "'", e);
             }
             return createBuffer(config, tableDescriptor, record);
@@ -292,13 +293,13 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             try {
                 return createTable(collectionId, record);
             }
-            catch (SQLException ce) {
+            catch (SQLException | JDBCException ce) {
                 // It's possible the table may have been created in the interim, so try to alter.
                 LOGGER.warn("Table creation failed for '{}', attempting to alter the table", collectionId.toFullIdentiferString(), ce);
                 try {
                     return alterTableIfNeeded(collectionId, record);
                 }
-                catch (SQLException ae) {
+                catch (SQLException | JDBCException ae) {
                     // The alter failed, hard stop.
                     LOGGER.error("Failed to alter the table '{}'.", collectionId.toFullIdentiferString(), ae);
                     throw ae;
@@ -310,7 +311,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             try {
                 return alterTableIfNeeded(collectionId, record);
             }
-            catch (SQLException ae) {
+            catch (SQLException | JDBCException ae) {
                 LOGGER.error("Failed to alter the table '{}'.", collectionId.toFullIdentiferString(), ae);
                 throw ae;
             }

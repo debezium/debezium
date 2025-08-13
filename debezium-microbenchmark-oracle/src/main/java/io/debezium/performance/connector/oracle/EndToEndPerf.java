@@ -45,6 +45,7 @@ import org.openjdk.jmh.annotations.Warmup;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
+import io.debezium.config.ConfigurationNames;
 import io.debezium.connector.oracle.OracleConnection;
 import io.debezium.connector.oracle.OracleConnector;
 import io.debezium.connector.oracle.OracleConnectorConfig;
@@ -222,7 +223,7 @@ public class EndToEndPerf {
             JdbcConfiguration jdbcConfiguration = defaultJdbcConfig();
 
             Configuration.Builder builder = Configuration.create();
-            jdbcConfiguration.forEach((f, v) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + f, v));
+            jdbcConfiguration.forEach((f, v) -> builder.with(ConfigurationNames.DATABASE_CONFIG_PREFIX + f, v));
 
             return builder.with(CommonConnectorConfig.TOPIC_PREFIX, SERVER_NAME)
                     .with(OracleConnectorConfig.PDB_NAME, "ORCLPDB1")
@@ -235,7 +236,7 @@ public class EndToEndPerf {
         private Configuration.Builder testConfig() {
             JdbcConfiguration jdbcConfiguration = testJdbcConfig();
             Configuration.Builder builder = Configuration.create();
-            jdbcConfiguration.forEach((f, v) -> builder.with(OracleConnectorConfig.DATABASE_CONFIG_PREFIX + f, v));
+            jdbcConfiguration.forEach((f, v) -> builder.with(ConfigurationNames.DATABASE_CONFIG_PREFIX + f, v));
             return builder;
         }
 

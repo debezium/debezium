@@ -5,7 +5,7 @@
     <parent>
         <groupId>io.debezium.quarkus</groupId>
         <artifactId>quarkus-debezium-postgres-parent</artifactId>
-        <version>3.2.0-SNAPSHOT</version>
+        <version>3.3.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>quarkus-debezium-postgres-deployment</artifactId>
@@ -28,6 +28,10 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-jdbc-postgresql-deployment</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-agroal-deployment</artifactId>
         </dependency>
 
         <dependency>

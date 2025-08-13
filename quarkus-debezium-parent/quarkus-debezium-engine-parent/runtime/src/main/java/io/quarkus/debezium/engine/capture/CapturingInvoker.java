@@ -16,6 +16,12 @@ import io.debezium.runtime.Capturing;
 public interface CapturingInvoker<T> {
 
     /**
+     *
+     * @return the destination that triggers the handler
+     */
+    String destination();
+
+    /**
      * @param event captured by Debezium
      */
     void capture(T event);
