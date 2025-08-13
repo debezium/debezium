@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.JdbcDatabaseContainer;
-import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.MSSQLServerContainer;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.containers.Network;
@@ -92,7 +91,7 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
     private static final Network network = Network.newNetwork();
 
     private final RandomTableNameGenerator tableNameGenerator;
-    private final KafkaContainer kafkaContainer;
+    private final DebeziumKafkaContainer kafkaContainer;
     private final DebeziumContainer connectContainer;
     private final Map<SourceType, JdbcDatabaseContainer<?>> sourceContainers;
 
@@ -347,13 +346,12 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
         };
     }
 
-    @SuppressWarnings("resource")
-    private KafkaContainer getKafkaContainer() {
-        return DebeziumKafkaContainer.defaultKRaftContainer(network).withNetworkAliases("kafka");
+    private DebeziumKafkaContainer getKafkaContainer() {
+        return DebeziumKafkaContainer.defaultContainer(network).withNetworkAlias("kafka");
     }
 
     @SuppressWarnings("resource")
-    private DebeziumContainer getKafkaConnectContainer(KafkaContainer kafkaContainer) {
+    private DebeziumContainer getKafkaConnectContainer(DebeziumKafkaContainer kafkaContainer) {
         return DebeziumContainer.nightly()
                 .withKafka(kafkaContainer)
                 .withNetwork(network)

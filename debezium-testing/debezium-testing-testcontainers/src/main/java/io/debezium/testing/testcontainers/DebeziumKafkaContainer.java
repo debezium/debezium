@@ -47,7 +47,7 @@ public class DebeziumKafkaContainer extends GenericContainer<DebeziumKafkaContai
         withStartupTimeout(Duration.ofMinutes(3));
     }
 
-    public DebeziumKafkaContainer withNetworkAliases(String networkAlias) {
+    public DebeziumKafkaContainer withNetworkAlias(String networkAlias) {
         List<String> networkAliasList = getNetworkAliases();
         networkAliasList.add(networkAlias);
         setNetworkAliases(networkAliasList);

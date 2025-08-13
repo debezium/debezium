@@ -97,7 +97,7 @@ public abstract class AbstractJdbcSinkIT {
 
         // Consumer properties
         Properties consumerProperties = new Properties();
-        consumerProperties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, source.getKafka().getBootstrapServers());
+        consumerProperties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, source.getKafka().getBootstrapAddress());
         consumerProperties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         consumerProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
         consumerProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());

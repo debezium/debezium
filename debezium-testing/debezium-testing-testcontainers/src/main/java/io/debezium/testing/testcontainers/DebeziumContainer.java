@@ -54,7 +54,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     private static final int KAFKA_CONNECT_PORT = 8083;
     private static final Integer DEFAULT_JMX_PORT = 13333;
-    private static final Duration DEBEZIUM_CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(waitTimeForRecords() * 60L);
+    private static final Duration DEBEZIUM_CONTAINER_STARTUP_TIMEOUT = Duration.ofMinutes(waitTimeForRecords() * 2L);
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
     public static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     protected static final ObjectMapper MAPPER = new ObjectMapper();
