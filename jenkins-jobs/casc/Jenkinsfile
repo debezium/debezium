@@ -1,4 +1,6 @@
 pipeline {
+    agent any
+
     stages {
             stage('Checkout Job DSL definitions') {
                 steps {
