@@ -17,13 +17,6 @@ pipeline {
 
             stage("Invoke Job DSL") {
                 steps {
-                    dir("${env.WORKSPACE}/jenkins") {
-                        jobDsl targets: '**/**/*dsl.groovy',
-                        removedJobAction: 'DISABLE',
-                        removedViewAction: 'DELETE',
-                        additionalClasspath: 'src \n **/**/*.groovy',
-                        sandbox: true
-                    }
                     dir("${env.WORKSPACE}/debezium") {
                         jobDsl targets: 'jenkins-jobs/job-dsl/**/*.groovy',
                         removedJobAction: 'DELETE',
