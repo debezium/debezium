@@ -44,6 +44,7 @@ import io.debezium.relational.Table;
 import io.debezium.relational.TableId;
 import io.debezium.relational.ValueConverter;
 import io.debezium.relational.ValueConverterProvider;
+import io.debezium.util.ByteBuffers;
 import io.debezium.util.Strings;
 
 /**
@@ -331,7 +332,13 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
     private boolean isUnavailableValueHolder(Schema schema, Object value) {
         switch (schema.type()) {
             case BYTES:
-                return unavailableValuePlaceholderBytes.equals(value);
+                if (value instanceof byte[] valueArray) {
+                    return ByteBuffers.equals(unavailableValuePlaceholderBytes, valueArray);
+                }
+                else if (value instanceof ByteBuffer valueBuffer) {
+                    return unavailableValuePlaceholderBytes.equals(valueBuffer);
+                }
+                return false;
             case MAP:
                 return unavailableValuePlaceholderMap.equals(value);
             case STRING:
