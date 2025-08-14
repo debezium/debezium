@@ -253,20 +253,24 @@ return debezium.SetNull()
 |Description
 
 |[[content-based-router-topic-regex]]<<content-based-router-topic-regex, `topic.regex`>>
-|
+|No default value
 |An optional regular expression that evaluates the name of the destination topic for an event to determine whether to apply the condition logic.
 If the name of the destination topic matches the value in `topic.regex`, the transformation applies the condition logic before it passes the event to the topic.
 If the name of the topic does not match the value in `topic.regex`, the SMT passes the event to the topic unmodified.
 
 |[[content-based-router-language]]<<content-based-router-language, `language`>>
-|
-|The language in which the expression is written. For JSR223 must begin with `jsr223.`, for example, `jsr223.groovy`, or `jsr223.graal.js`. {prodname} supports bootstrapping through the https://jcp.org/en/jsr/detail?id=223[JSR 223 API ("Scripting for the Java (TM) Platform")].
-It should be either `wasm.chicory` or `wasm.chicory-interpreter` for Go based filters.
+|No default value
+|The language in which the expression is written. 
+For JSR223, prefix the value with `jsr223.`, for example, `jsr223.groovy`, or `jsr223.graal.js`.
+{prodname} supports bootstrapping through the https://jcp.org/en/jsr/detail?id=223[JSR 223 API ("Scripting for the Java (TM) Platform")].
+For Go-based filters, specify `wasm.chicory` or `wasm.chicory-interpreter`.
 
 |[[content-based-router-topic-expression]]<<content-based-router-topic-expression, `topic.expression`>>
-|
-|The expression to be evaluated for every message. Must evaluate to a `String` value where a result of non-null reroutes the message to a new topic, and a `null` value routes the message to the default topic.
-With Go specifies the filesystem location where the `wasm` expression is available to be evaluated for every message. The Go function must evaluate to a String value or Null.
+|No default value
+|The expression to be evaluated for every message.
+Must evaluate to a `String` value where a result of non-null reroutes the message to a new topic, and a `null` value routes the message to the default topic.
+With Go, the value of this property specifies the filesystem location where the `wasm` expression is available to be evaluated for every message.
+The Go function must evaluate to a String value or Null.
 
 |[[content-based-router-null-handling-mode]]<<content-based-router-null-handling-mode, `null.handling.mode`>>
 |`keep`
