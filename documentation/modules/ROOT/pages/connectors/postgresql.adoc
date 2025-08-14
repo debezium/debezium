@@ -2555,16 +2555,6 @@ PostgreSQL can automatically propagate the state of a failover slot to one or mo
 In environments where automatic replication is enabled, if a failure occurs, an available replica is automatically promoted to primary.
 {prodname} can continue to ingest changes from the new primary server, without requiring any configuration changes, thus helping to ensure that the connector does not miss any events.
 
-ifdef::product[]
-[IMPORTANT]
-====
-The use of {prodname} with PostgreSQL 17 and the ability to configure failover replication slots are Technology Preview features.
-Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
-Red Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
 
 // Type: concept
 // ModuleID: configuring-postgresql-to-manage-debezium-wal-disk-space-consumption
@@ -3154,11 +3144,6 @@ If you omit this setting, or if the primary server runs PostgreSQL 16 or earlier
 
 NOTE: PostgreSQL uses the https://www.postgresql.org/docs/current/runtime-config-replication.html#GUC-SYNCHRONIZED-STANDBY-SLOTS[`synchronized_standby_slots`] parameter to configure replication slot synchronization between primary and standby servers.
 Set this parameter on the primary server to specify the physical replication slots that it synchronizes with on standby servers.
-
-ifdef::product[]
-IMPORTANT: The use of {prodname} with PostgreSQL 17 and the ability to configure failover replication slots are Technology Preview features. +
-For more information, see xref:postgresql-supported-topologies-pg17[PostgreSQL supported topologies].
-endif::product[]
 
 |[[postgresql-property-publication-name]]<<postgresql-property-publication-name, `+publication.name+`>>
 |`dbz_publication`
@@ -4025,14 +4010,14 @@ For more information, see xref:postgresql-transaction-metadata[Transaction metad
 |`false`
 |Specifies how the connector captures and emits events for changes that it captures from partitioned tables.
 This setting applies only if the xref:postgresql-publication-autocreate-mode[`publication.autocreate.mode`] property is set to `all_tables` or `filtered`, and {prodname} creates the publication for the captured tables.
- 
+
 Set one of the following options:
- 
+
 `true`::
 The connector emits change events for all partitions to a topic with the name of the base table.
  +
 When the connector creates a publication, it submits a `CREATE PUBLICATION` statement in which the `publish_via_partition_root` parameter is set to `true`.
-As a result, the publication ignores the partition in which changes originate, and only records the name of the name of the source table. 
+As a result, the publication ignores the partition in which changes originate, and only records the name of the name of the source table.
 
 `false`::
 The connector emits changes from each source partition to a topic that reflects the name of the partition.
@@ -4294,20 +4279,18 @@ include::{partialsdir}/modules/all-connectors/ref-connector-monitoring-streaming
 
 {prodname} is a distributed system that captures all changes in multiple upstream databases; it never misses or loses an event.
 When the system is operating normally or being managed carefully then {prodname} provides _exactly once_ delivery of every change event record.
+
 ifdef::product[]
 [IMPORTANT]
 ====
-Exactly-once delivery of PostgreSQL change event records is a Developer Preview feature only.
-Developer Preview software is not supported by Red{nbsp}Hat in any way and is not functionally complete or production-ready.
-Do not use Developer Preview software for production or business-critical workloads.
-Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
-Customers can use this software to test functionality and provide feedback during the development process.
-This software might not have any documentation, is subject to change or removal at any time, and has received limited testing.
-Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
-
-For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
+Exactly-once delivery of PostgreSQL change event records is a Technology Preview feature only.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 ====
 endif::product[]
+
 If a fault does happen then the system does not lose any events.
 However, while it is recovering from the fault, it's possible that the connector might emit some duplicate change events.
 In these abnormal situations, {prodname}, like Kafka, provides _at least once_ delivery of change events.
@@ -4363,17 +4346,6 @@ Synchronization of replica slots is not automatic.
 .PostgreSQL 17 or later
 When you use {prodname} with PostgreSQL 17 or later, you can configure replication slots on a primary server for automatic failover, so that {prodname} does not miss any change events.
 When a replication slot is configured for failover, PostgreSQL automatically synchronizes the replication slot from the primary to the replica, enabling {prodname} to continue reading from the slot after the replica is promoted and becomes the new primary.
-
-ifdef::product[]
-[IMPORTANT]
-====
-The use of {prodname} with PostgreSQL 17 and the ability to configure failover replication slots are Technology Preview features.
-Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
-Red Hat does not recommend using them in production.
-These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
-For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
-====
-endif::product[]
 
 [NOTE]
 ====

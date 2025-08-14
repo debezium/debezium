@@ -197,14 +197,11 @@ Grant the user permission to read the collection specified by the connector's xr
 ifdef::product[]
 [IMPORTANT]
 ====
-The use of the {prodname} `collection` option for the `capture.scope` property is a Developer Preview feature.
-Developer Preview features are not supported by Red{nbsp}Hat in any way and are not functionally complete or production-ready.
-Do not use Developer Preview software for production or business-critical workloads.
-Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
-Customers can use this software to test functionality and provide feedback during the development process.
-Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
-
-For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
+The use of the {prodname} `collection` option for the `capture.scope` property is a Technology Preview feature.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 ====
 endif::product[]
 
@@ -1793,14 +1790,11 @@ endif::community[]
 ifdef::product[]
 [IMPORTANT]
 ====
-The use of the {prodname} `collection` option for the `capture.scope` property is a Developer Preview feature.
-Developer Preview features are not supported by Red{nbsp}Hat in any way and are not functionally complete or production-ready.
-Do not use Developer Preview software for production or business-critical workloads.
-Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
-Customers can use this software to test functionality and provide feedback during the development process.
-Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
-
-For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
+The use of the {prodname} `collection` option for the `capture.scope` property is a Technology Preview feature.
+Technology Preview features are not supported with Red Hat production service level agreements (SLAs) and might not be functionally complete.
+Red Hat does not recommend using them in production.
+These features provide early access to upcoming product features, enabling customers to test functionality and provide feedback during the development process.
+For more information about the support scope of Red Hat Technology Preview features, see link:https://access.redhat.com/support/offerings/techpreview/[Technology Preview Features Support Scope].
 ====
 endif::product[]
 +
