@@ -1,8 +1,4 @@
 pipeline {
-    agent {
-        label "jnlp-agent"
-    }
-
     stages {
             stage('Checkout Job DSL definitions') {
                 steps {
