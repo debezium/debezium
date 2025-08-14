@@ -72,6 +72,31 @@ Information and procedures for using a {prodname} Oracle connector are organized
   * xref:debezium-oracle-connector-frequently-asked-questions[]
 endif::product[]
 
+// Type: assembly
+// ModuleID: how-debezium-oracle-connectors-work
+// Title: How {prodname} Oracle connectors work
+[[how-the-oracle-connector-works]]
+== How the Oracle connector works
+
+To optimally configure and run a {prodname} Oracle connector, it is helpful to understand how the connector works.
+
+ifdef::product[]
+For more information, see the following topics:
+
+* xref:descriptions-of-debezium-oracle-connector-adapters[]
+* xref:how-debezium-oracle-connectors-perform-database-snapshots[]
+* xref:debezium-oracle-ad-hoc-snapshots[]
+* xref:debezium-oracle-incremental-snapshots[]
+* xref:default-names-of-kafka-topics-that-receive-debezium-oracle-change-event-records[]
+* xref:how-debezium-oracle-connectors-expose-database-schema-changes[]
+* xref:debezium-oracle-connector-generated-events-that-represent-transaction-boundaries[]
+* xref:how-the-debezium-oracle-connector-uses-event-buffering[]
+
+endif::product[]
+
+// Type: concept
+// ModuleID: descriptions-of-debezium-oracle-connector-adapters
+// Title: Descriptions of {prodname} Oracle connector adapters
 [[oracle-adapter-modes]]
 == Adapter Modes
 
@@ -143,27 +168,6 @@ The {prodname} Oracle connector can also use Oracle XStream, a commercial compon
 +
 Enable Oracle XStream by setting the xref:oracle-property-database-connection-adapter[`database.connection.adapter`] property to `xstream`.
 For more details, see the xref:oracle-xstreams-support[XStream] section.
-w
-// Type: assembly
-// ModuleID: how-debezium-oracle-connectors-work
-// Title: How {prodname} Oracle connectors work
-[[how-the-oracle-connector-works]]
-== How the Oracle connector works
-
-To optimally configure and run a {prodname} Oracle connector, it is helpful to understand how the connector performs snapshots, streams change events, determines Kafka topic names, uses metadata, and implements event buffering.
-
-ifdef::product[]
-For more information, see the following topics:
-
-* xref:how-debezium-oracle-connectors-perform-database-snapshots[]
-* xref:debezium-oracle-ad-hoc-snapshots[]
-* xref:debezium-oracle-incremental-snapshots[]
-* xref:default-names-of-kafka-topics-that-receive-debezium-oracle-change-event-records[]
-* xref:how-debezium-oracle-connectors-expose-database-schema-changes[]
-* xref:debezium-oracle-connector-generated-events-that-represent-transaction-boundaries[]
-* xref:how-the-debezium-oracle-connector-uses-event-buffering[]
-
-endif::product[]
 
 // Type: concept
 // Title: How {prodname} Oracle connectors perform database snapshots
