@@ -6,8 +6,8 @@ pipeline {
                 steps {
                     checkout([
                             $class           : 'GitSCM',
-                            branches         : [[name: "${JOB_REPO_URL}"]],
-                            userRemoteConfigs: [[url: "${JOB_REPO_BRANCH}"]],
+                            branches         : [[name: "${JOB_REPO_BRANCH}"]],
+                            userRemoteConfigs: [[url: "${JOB_REPO_URL}"]],
                             extensions       : [[$class           : 'RelativeTargetDirectory',
                                                  relativeTargetDir: 'debezium'],
                                                  [$class: 'CloneOption', noTags: false, depth: 1, reference: '', shallow: true, timeout: 60]],
