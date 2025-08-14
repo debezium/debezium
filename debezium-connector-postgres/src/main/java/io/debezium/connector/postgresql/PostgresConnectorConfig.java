@@ -658,11 +658,11 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     "Whether or not to create a failover slot. This is only supported when connecting to a primary server of a Postgres cluster, version 17 or newer. " +
                             "When not specified, or when not connecting to a Postgres 17+ primary, no failover slot will be created.");
 
-    public static final Field SLOT_SEEK_TO_KNOWN_OFFSET = Field.createInternal("slot.seek.to.known.offset.on.start")
+    public static final Field SLOT_SEEK_TO_KNOWN_OFFSET = Field.create("slot.seek.to.known.offset.on.start")
             .withDisplayName("Seek to last known offset on the replication slot")
             .withType(Type.BOOLEAN)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 3))
-            .withDefault(false)
+            .withDefault(true)
             .withImportance(Importance.LOW)
             .withInvisibleRecommender()
             .withDescription(
@@ -1378,6 +1378,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
                     REPLICA_IDENTITY_AUTOSET_VALUES,
                     DROP_SLOT_ON_STOP,
                     CREATE_FAIL_OVER_SLOT,
+                    SLOT_SEEK_TO_KNOWN_OFFSET,
                     STREAM_PARAMS,
                     ON_CONNECT_STATEMENTS,
                     SSL_MODE,

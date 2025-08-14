@@ -150,7 +150,7 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
         return sourceInfo.lsn();
     }
 
-    Lsn lastCompletelyProcessedLsn() {
+    public Lsn lastCompletelyProcessedLsn() {
         return lastCompletelyProcessedLsn;
     }
 
@@ -200,9 +200,6 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
             final Lsn lsn = Lsn.valueOf(readOptionalLong(offset, SourceInfo.LSN_KEY));
             final Lsn lastCompletelyProcessedLsn = Lsn.valueOf(readOptionalLong(offset, LAST_COMPLETELY_PROCESSED_LSN_KEY));
             Lsn lastCommitLsn = Lsn.valueOf(readOptionalLong(offset, LAST_COMMIT_LSN_KEY));
-            if (lastCommitLsn == null) {
-                lastCommitLsn = lastCompletelyProcessedLsn;
-            }
             final Long txId = readOptionalLong(offset, SourceInfo.TXID_KEY);
             final String msgType = (String) offset.getOrDefault(SourceInfo.MSG_TYPE_KEY, null);
             final Operation messageType = msgType == null ? null : Operation.valueOf(msgType);
