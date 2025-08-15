@@ -733,7 +733,7 @@ alterSpecification
     | ALTER COLUMN? uid (SET DEFAULT defaultValue | DROP DEFAULT)            # alterByChangeDefault
     | CHANGE COLUMN? ifExists? oldColumn = uid // here ifExists is MariaDB-specific only
     newColumn = uid columnDefinition (FIRST | AFTER afterColumn = uid)? # alterByChangeColumn
-    | RENAME COLUMN oldColumn = uid TO newColumn = uid                  # alterByRenameColumn
+    | RENAME COLUMN ifExists? oldColumn = uid TO newColumn = uid        # alterByRenameColumn
     | LOCK '='? lockType = (DEFAULT | NONE | SHARED | EXCLUSIVE)        # alterByLock
     | MODIFY COLUMN? ifExists? // here ifExists is MariaDB-specific only
     uid columnDefinition (FIRST | AFTER uid)?                             # alterByModifyColumn
