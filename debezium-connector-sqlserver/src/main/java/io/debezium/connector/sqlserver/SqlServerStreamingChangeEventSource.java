@@ -245,6 +245,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         changeTables[i].next();
                     }
 
+                    boolean anyData = false;
                     for (;;) {
                         SqlServerChangeTablePointer tableWithSmallestLsn = null;
                         for (SqlServerChangeTablePointer changeTable : changeTables) {
@@ -302,6 +303,7 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                             continue;
                         }
                         LOGGER.trace("Processing change {}", tableWithSmallestLsn);
+                        anyData = true;
                         LOGGER.trace("Schema change checkpoints {}", schemaChangeCheckpoints);
                         if (!schemaChangeCheckpoints.isEmpty()) {
                             if (tableWithSmallestLsn.getChangePosition().getCommitLsn().compareTo(schemaChangeCheckpoints.peek().getStartLsn()) >= 0) {
@@ -346,6 +348,10 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         tableWithSmallestLsn.next();
                     }
                     streamingExecutionContext.setLastProcessedPosition(TxLogPosition.valueOf(toLsn));
+                    if (!anyData) {
+                        offsetContext.setChangePosition(TxLogPosition.valueOf(toLsn), 0);
+                        dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
+                    }
                     // Terminate the transaction otherwise CDC could not be disabled for tables
                     dataConnection.rollback();
                 }
