@@ -1,0 +1,125 @@
+services:
+  redis-node-1:
+#    container_name: redis-node-1
+    image: redis:7.0-alpine
+    volumes:
+      - redis-node-1-data:/data
+    command: >
+      redis-server
+      --port 7001
+      --cluster-enabled yes
+      --cluster-config-file nodes-7001.conf
+      --cluster-node-timeout 5000
+      --cluster-announce-ip 127.0.0.1
+      --cluster-announce-port 7001
+      --appendonly yes
+      --appendfsync everysec
+      --requirepass password
+      --masterauth password
+      --protected-mode no
+      --bind 0.0.0.0
+      --dir /data
+    ports:
+      - "7001:7001"
+      - "7002:7002"
+      - "7003:7003"
+      - "17001:17001"
+      - "17002:17002"
+      - "17003:17003"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-p", "7001", "-a", "password", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - study-network
+
+  redis-node-2:
+#    container_name: redis-node-2
+    image: redis:7.0-alpine
+    volumes:
+      - redis-node-2-data:/data
+    command: >
+      redis-server
+      --port 7002
+      --cluster-enabled yes
+      --cluster-config-file nodes-7002.conf
+      --cluster-node-timeout 5000
+      --cluster-announce-ip 127.0.0.1
+      --cluster-announce-port 7002
+      --appendonly yes
+      --appendfsync everysec
+      --requirepass password
+      --masterauth password
+      --protected-mode no
+      --bind 0.0.0.0
+      --dir /data
+    network_mode: "service:redis-node-1"
+    depends_on:
+      redis-node-1:
+        condition: service_healthy
+
+  redis-node-3:
+#    container_name: redis-node-3
+    image: redis:7.0-alpine
+    volumes:
+      - redis-node-3-data:/data
+    command: >
+      redis-server
+      --port 7003
+      --cluster-enabled yes
+      --cluster-config-file nodes-7003.conf
+      --cluster-node-timeout 5000
+      --cluster-announce-ip 127.0.0.1
+      --cluster-announce-port 7003
+      --appendonly yes
+      --appendfsync everysec
+      --requirepass password
+      --masterauth password
+      --protected-mode no
+      --bind 0.0.0.0
+      --dir /data
+    network_mode: "service:redis-node-1"
+    depends_on:
+      redis-node-1:
+        condition: service_healthy
+
+  redis-cluster-init:
+    image: alpine:3.22
+    container_name: redis-cluster-init
+    command: >
+      sh -c "
+        echo 'Installing redis-cli...' &&
+        apk add --no-cache redis &&
+        echo 'Waiting for Redis nodes to be ready...' &&
+        sleep 15 &&
+        echo 'Creating Redis cluster...' &&
+        redis-cli --cluster create 127.0.0.1:7001 127.0.0.1:7002 127.0.0.1:7003 --cluster-replicas 0 --cluster-yes -a password &&
+        echo 'Redis cluster created successfully!' &&
+        tail -f /dev/null
+      "
+    network_mode: "service:redis-node-1"
+    depends_on:
+      redis-node-1:
+        condition: service_healthy
+      redis-node-2:
+        condition: service_started
+      redis-node-3:
+        condition: service_started
+
+volumes:
+  redis-node-1-data:
+    driver: local
+  redis-node-2-data:
+    driver: local
+  redis-node-3-data:
+    driver: local
+
+networks:
+  study-network:
+    driver: bridge
+    name: study-network
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
