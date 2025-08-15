@@ -274,6 +274,9 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
 
     @Override
     protected void doStop() {
+        // Call parent to shut down queue first
+        super.doStop();
+
         try {
             if (connection != null) {
                 connection.close();
@@ -300,6 +303,11 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
     @Override
     protected Iterable<Field> getAllConfigurationFields() {
         return MySqlConnectorConfig.ALL_FIELDS;
+    }
+
+    @Override
+    protected ChangeEventQueue<DataChangeEvent> getChangeEventQueue() {
+        return queue;
     }
 
 }
