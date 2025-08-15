@@ -51,7 +51,7 @@ public class JedisClusterClientIT {
     private static final int PORT_1 = 7001;
     private static final int PORT_2 = 7002;
     private static final int PORT_3 = 7003;
-    private static final int[] PORTS = new int[]{PORT_1, PORT_2, PORT_3};
+    private static final int[] PORTS = new int[]{ PORT_1, PORT_2, PORT_3 };
     private static final int CLUSTER_INIT_WAIT_MS = 30000;
     private static final int CONNECTION_TIMEOUT_MS = 300;
     private static final int CLUSTER_TIMEOUT_SECONDS = 5;
