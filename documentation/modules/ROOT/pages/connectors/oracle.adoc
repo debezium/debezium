@@ -5423,7 +5423,7 @@ exit;
 ----
 
 In addition, supplemental logging must be enabled for captured tables or the database in order for data changes to capture the _before_ state of changed database rows.
-The following illustrates how to configure this on a specific table, which is the ideal choice to minimize the amount of information captured in the Oracle redo logs.
+The following example illustrates how to configure this on a specific table, which is the ideal choice to minimize the amount of information captured in the Oracle redo logs.
 
 [source,indent=0]
 ----
@@ -5444,6 +5444,7 @@ The following examples provide information about how to create user configuratio
 // Title: Creating an XStream administrator for the {prodname} Oracle connector
 [[oracle-create-users-xstream]]
 ==== Creating an XStream Administrator user
+
 [source,indent=0]
 ----
 sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
@@ -5481,6 +5482,7 @@ sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba
 // ModuleID: creating-an-xstream-user-for-the-debezium-oracle-connector
 // Title: Creating an XStream user for the {prodname} Oracle connector
 ==== Creating the connector's XStream user
+
 [source,indent=0]
 ----
 sqlplus sys/top_secret@//localhost:1521/ORCLCDB as sysdba

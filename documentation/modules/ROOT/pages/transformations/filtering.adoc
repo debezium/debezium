@@ -24,7 +24,25 @@ For example:
 * It is necessary to compile the transformation up front and deploy it to Kafka Connect.
 * Every change needs code recompilation and redeployment, leading to inflexible operations.
 
-The filter SMT supports scripting languages that integrate with https://jcp.org/en/jsr/detail?id=223[JSR 223] (Scripting for the Java(TM) Platform) and incubating support for Go (https://tinygo.org/[TinyGo] + https://webassembly.org/[WebAssembly]).
+The filter SMT supports scripting languages that integrate with https://jcp.org/en/jsr/detail?id=223[JSR 223] (Scripting for the Java(TM) Platform).
+ifdef::community[]
+Support for using Go to write SMTs is currently incubating (https://tinygo.org/[TinyGo] and https://webassembly.org/[WebAssembly]).
+endif::community[]
+
+ifdef::product[]
+[IMPORTANT]
+====
+Using Go to write SMT filters is a Developer Preview feature only.
+Developer Preview software is not supported by Red{nbsp}Hat in any way and is not functionally complete or production-ready.
+Do not use Developer Preview software for production or business-critical workloads.
+Developer Preview software provides early access to upcoming product software in advance of its possible inclusion in a Red{nbsp}Hat product offering.
+Customers can use this software to test functionality and provide feedback during the development process.
+This software might not have any documentation, is subject to change or removal at any time, and has received limited testing.
+Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software without an associated SLA.
+
+For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
+====
+endif::product[]
 
 == JSR 223
 
@@ -42,14 +60,17 @@ endif::product[]
 
 == Go
 
-{prodname} offers a community maintained helper PDK(Plugin Development Kit) to ease the use with Go, you can get it with:
+{prodname} offers a community-maintained helper PDK(Plugin Development Kit) to facilitate use with Go.
+
+ifdef::community[]
+You can obtain the {prodname} SMT Go PDK by entering the following command:
 
 [source]
 ----
 go get github.com/debezium/debezium-smt-go-pdk
 ----
-
-A minimal filtering logic would look like:
+endif::community[]
+The following example shows how you might use Go to implement minimal filtering logic:
 
 [source,go]
 ----
@@ -67,9 +88,10 @@ func process(proxyPtr uint32) uint32 {
 func main() {}
 ----
 
-The `main` function is required by the Wasm compilation target and the `process` function is the entrypoint to execute the actual filtering logic.
+In the preceding example, the `main` function is required by the Wasm compilation target.
+The `process` function is the entry point for executing the actual filtering logic.
 
-To compile the filter we suggest to use a recent version of TinyGo, for example:
+To compile the filter code to Wasm, use a recent version of TinyGo, as in the following example:
 
 [source,bash]
 ----
@@ -80,7 +102,7 @@ docker run --rm \
     myfilter.wasm
 ----
 
-You can find more details in the PDK repository: https://github.com/debezium/debezium-smt-go-pdk[Debezium SMT Go PDK].
+For more information about using Go to develop {prodname} single message transformations, see the PDK repository: https://github.com/debezium/debezium-smt-go-pdk[Debezium SMT Go PDK].
 
 // Type: procedure
 // Title: Setting up the {prodname} filter SMT
