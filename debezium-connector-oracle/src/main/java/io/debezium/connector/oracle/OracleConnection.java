@@ -665,12 +665,13 @@ public class OracleConnection extends JdbcConnection {
                     return reselectColumns(query, oracleTableId, columns, bindValues);
                 }
                 catch (SQLException e) {
-                    // Check if the exception is about a flashback area error with an aged SCN
-                    if (!(e.getErrorCode() == 1555 || e.getMessage().startsWith("ORA-01555"))) {
+                    if (shouldReselectFallbackToNonFlashbackQuery(e)) {
+                        LOGGER.warn("Failed to re-select row for table {} and key columns {} with values {}. " +
+                                "Trying to perform re-selection without flashback.", table.id(), keyColumns, keyValues);
+                    }
+                    else {
                         throw e;
                     }
-                    LOGGER.warn("Failed to re-select row for table {} and key columns {} with values {}. " +
-                            "Trying to perform re-selection without flashback.", table.id(), keyColumns, keyValues);
                 }
             }
         }
@@ -681,6 +682,19 @@ public class OracleConnection extends JdbcConnection {
                 keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
 
         return reselectColumns(query, oracleTableId, columns, keyValues);
+    }
+
+    private static final Set<Integer> ORACLE_RESELECT_ERROR_CODE_FALLBACK = Set.of(
+            1555, // About flashback area error with an aged SCN
+            1466); // About table structure has changed since flashback SCN
+
+    private static final Set<String> ORACLE_RESELECT_ERROR_PREFIX_FALLBACK = Set.of(
+            "ORA-01555",
+            "ORA-01466");
+
+    private static boolean shouldReselectFallbackToNonFlashbackQuery(SQLException exception) {
+        return ORACLE_RESELECT_ERROR_CODE_FALLBACK.contains(exception.getErrorCode()) ||
+                ORACLE_RESELECT_ERROR_PREFIX_FALLBACK.stream().anyMatch(exception.getMessage()::startsWith);
     }
 
     @Override
