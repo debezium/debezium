@@ -13,13 +13,12 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -32,10 +31,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.rnorth.ducttape.unreliables.Unreliables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.output.OutputFrame;
@@ -63,7 +60,7 @@ public class ApicurioRegistryTestIT {
 
     private static final ApicurioRegistryContainer apicurioContainer = new ApicurioRegistryContainer().withNetwork(network);
 
-    private static final KafkaContainer kafkaContainer = DebeziumKafkaContainer.defaultKRaftContainer(network);
+    private static final DebeziumKafkaContainer kafkaContainer = DebeziumKafkaContainer.defaultContainer(network);
 
     public static final PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(ImageNames.POSTGRES_DOCKER_IMAGE_NAME)
             .withNetwork(network)
@@ -106,14 +103,14 @@ public class ApicurioRegistryTestIT {
 
             debeziumContainer.registerConnector("my-connector-json", getConfiguration(1, "io.apicurio.registry.utils.converter.ExtJsonConverter"));
 
-            consumer.subscribe(Arrays.asList("dbserver1.todo.todo"));
+            consumer.subscribe(List.of("dbserver1.todo.todo"));
 
             List<ConsumerRecord<String, String>> changeEvents = drain(consumer, 2);
 
-            assertThat(JsonPath.<Integer> read(changeEvents.get(0).key(), "$.payload.id")).isEqualTo(1);
-            assertThat(JsonPath.<Integer> read(changeEvents.get(0).key(), "$.schemaId")).isNotNull();
-            assertThat(JsonPath.<String> read(changeEvents.get(0).value(), "$.payload.op")).isEqualTo("r");
-            assertThat(JsonPath.<String> read(changeEvents.get(0).value(), "$.payload.after.title")).isEqualTo("Be Awesome");
+            assertThat(JsonPath.<Integer> read(changeEvents.getFirst().key(), "$.payload.id")).isEqualTo(1);
+            assertThat(JsonPath.<Integer> read(changeEvents.getFirst().key(), "$.schemaId")).isNotNull();
+            assertThat(JsonPath.<String> read(changeEvents.getFirst().value(), "$.payload.op")).isEqualTo("r");
+            assertThat(JsonPath.<String> read(changeEvents.getFirst().value(), "$.payload.after.title")).isEqualTo("Be Awesome");
 
             assertThat(JsonPath.<Integer> read(changeEvents.get(1).key(), "$.payload.id")).isEqualTo(2);
             assertThat(JsonPath.<String> read(changeEvents.get(1).value(), "$.payload.op")).isEqualTo("r");
@@ -123,10 +120,10 @@ public class ApicurioRegistryTestIT {
 
             changeEvents = drain(consumer, 1);
 
-            assertThat(JsonPath.<Integer> read(changeEvents.get(0).key(), "$.payload.id")).isEqualTo(2);
-            assertThat(JsonPath.<String> read(changeEvents.get(0).value(), "$.payload.op")).isEqualTo("u");
-            assertThat(JsonPath.<String> read(changeEvents.get(0).value(), "$.payload.before.title")).isEqualTo("Learn Quarkus");
-            assertThat(JsonPath.<String> read(changeEvents.get(0).value(), "$.payload.after.title")).isEqualTo("Learn Java");
+            assertThat(JsonPath.<Integer> read(changeEvents.getFirst().key(), "$.payload.id")).isEqualTo(2);
+            assertThat(JsonPath.<String> read(changeEvents.getFirst().value(), "$.payload.op")).isEqualTo("u");
+            assertThat(JsonPath.<String> read(changeEvents.getFirst().value(), "$.payload.before.title")).isEqualTo("Learn Quarkus");
+            assertThat(JsonPath.<String> read(changeEvents.getFirst().value(), "$.payload.after.title")).isEqualTo("Learn Java");
 
             consumer.unsubscribe();
         }
@@ -149,13 +146,13 @@ public class ApicurioRegistryTestIT {
                     "schema.name.adjustment.mode", "avro",
                     "key.converter.apicurio.registry.headers.enabled", "false"));
 
-            consumer.subscribe(Arrays.asList("dbserver2.todo.todo"));
+            consumer.subscribe(List.of("dbserver2.todo.todo"));
 
             List<ConsumerRecord<byte[], byte[]>> changeEvents = drain(consumer, 1);
 
             // Verify magic byte of Avro messages
-            assertThat(changeEvents.get(0).key()[0]).isZero();
-            assertThat(changeEvents.get(0).value()[0]).isZero();
+            assertThat(changeEvents.getFirst().key()[0]).isZero();
+            assertThat(changeEvents.getFirst().value()[0]).isZero();
 
             consumer.unsubscribe();
         }
@@ -189,18 +186,18 @@ public class ApicurioRegistryTestIT {
 
             debeziumContainer.registerConnector("my-connector-cloudevents-avro", config);
 
-            consumer.subscribe(Arrays.asList("dbserver3.todo.todo"));
+            consumer.subscribe(List.of("dbserver3.todo.todo"));
 
             List<ConsumerRecord<String, String>> changeEvents = drain(consumer, 1);
 
-            assertThat(JsonPath.<Integer> read(changeEvents.get(0).key(), "$.payload.id")).isEqualTo(3);
-            assertThat(JsonPath.<String> read(changeEvents.get(0).value(), "$.iodebeziumop")).isEqualTo("r");
-            assertThat(JsonPath.<String> read(changeEvents.get(0).value(), "$.iodebeziumname")).isEqualTo("dbserver3");
-            assertThat(JsonPath.<String> read(changeEvents.get(0).value(), "$.datacontenttype")).isEqualTo("application/avro");
-            assertThat(JsonPath.<String> read(changeEvents.get(0).value(), "$.iodebeziumtable")).isEqualTo("todo");
+            assertThat(JsonPath.<Integer> read(changeEvents.getFirst().key(), "$.payload.id")).isEqualTo(3);
+            assertThat(JsonPath.<String> read(changeEvents.getFirst().value(), "$.iodebeziumop")).isEqualTo("r");
+            assertThat(JsonPath.<String> read(changeEvents.getFirst().value(), "$.iodebeziumname")).isEqualTo("dbserver3");
+            assertThat(JsonPath.<String> read(changeEvents.getFirst().value(), "$.datacontenttype")).isEqualTo("application/avro");
+            assertThat(JsonPath.<String> read(changeEvents.getFirst().value(), "$.iodebeziumtable")).isEqualTo("todo");
 
             // Verify magic byte of Avro messages
-            byte[] decodedBytes = Base64.getDecoder().decode(JsonPath.<String> read(changeEvents.get(0).value(), "$.data"));
+            byte[] decodedBytes = Base64.getDecoder().decode(JsonPath.<String> read(changeEvents.getFirst().value(), "$.data"));
             assertThat(decodedBytes[0]).isZero();
 
             consumer.unsubscribe();
@@ -243,38 +240,42 @@ public class ApicurioRegistryTestIT {
                 postgresContainer.getPassword());
     }
 
-    private KafkaConsumer<String, String> getConsumerString(KafkaContainer kafkaContainer) {
+    private KafkaConsumer<String, String> getConsumerString(DebeziumKafkaContainer kafkaContainer) {
         return new KafkaConsumer<>(
                 Map.of(
-                        ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaContainer.getBootstrapServers(),
+                        ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaContainer.getPublicBootstrapAddress(),
                         ConsumerConfig.GROUP_ID_CONFIG, "tc-" + UUID.randomUUID(),
                         ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"),
                 new StringDeserializer(),
                 new StringDeserializer());
     }
 
-    private KafkaConsumer<byte[], byte[]> getConsumerBytes(KafkaContainer kafkaContainer) {
+    private KafkaConsumer<byte[], byte[]> getConsumerBytes(DebeziumKafkaContainer kafkaContainer) {
         return new KafkaConsumer<>(
                 Map.of(
-                        ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaContainer.getBootstrapServers(),
+                        ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaContainer.getPublicBootstrapAddress(),
                         ConsumerConfig.GROUP_ID_CONFIG, "tc-" + UUID.randomUUID(),
                         ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"),
                 new ByteArrayDeserializer(),
                 new ByteArrayDeserializer());
     }
 
-    private <T> List<ConsumerRecord<T, T>> drain(KafkaConsumer<T, T> consumer, int expectedRecordCount) {
+    private <T> List<ConsumerRecord<T, T>> drain(KafkaConsumer<T, T> consumer, int expectedRecordCount) throws TimeoutException {
         List<ConsumerRecord<T, T>> allRecords = new ArrayList<>();
+        long timeout = 30_000L;
+        long startTime = System.currentTimeMillis();
 
-        Unreliables.retryUntilTrue(10, TimeUnit.SECONDS, () -> {
-            consumer.poll(Duration.ofMillis(50))
+        while ((System.currentTimeMillis() - startTime) < timeout) {
+            consumer.poll(Duration.ofMillis(50L))
                     .iterator()
                     .forEachRemaining(allRecords::add);
 
-            return allRecords.size() == expectedRecordCount;
-        });
+            if (allRecords.size() == expectedRecordCount) {
+                return allRecords;
+            }
+        }
 
-        return allRecords;
+        throw new TimeoutException("Timeout waiting for all the records in Kafka");
     }
 
     private ConnectorConfiguration getConfiguration(int id, String converter, String... options) {
@@ -303,9 +304,8 @@ public class ApicurioRegistryTestIT {
 
     private String getApicurioUrl() {
         final String host = apicurioContainer.getContainerInfo().getConfig().getHostName();
-        final int port = apicurioContainer.getExposedPorts().get(0);
-        final String apicurioUrl = "http://" + host + ":" + port + "/apis/registry/v2";
-        return apicurioUrl;
+        final int port = apicurioContainer.getExposedPorts().getFirst();
+        return "http://" + host + ":" + port + "/apis/registry/v2";
     }
 
     private static void captureMatchingLog(OutputFrame outputFrame) {
