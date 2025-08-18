@@ -1061,7 +1061,7 @@ https://docs.microsoft.com/azure/event-hubs/event-hubs-about[Azure Event Hubs] i
 
 |[[hash-message-key-function]]<<hash-message-key-function, `debezium.sink.eventhubs.hashmessagekeyfunction`>>
 |No default value
-|(Optional) Specifies the hash function that {prodname} uses to encrypt encrypt Azure Event Hubs message keys. 
+|(Optional) Specifies the hash function that {prodname} uses to encrypt encrypt Azure Event Hubs message keys.
 
 Specify one of the following values:
 
@@ -1356,7 +1356,11 @@ NATS has a built-in distributed persistence system called https://docs.nats.io/n
 
 |[[nats-jetstream-subjects]]<<nats-jetstream-subjects, `debezium.sink.nats-jetstream.subjects`>>
 | \*.*.*
-|A comma separated list of subjects, messaging channel names. Can contain wildcards like test.inventory.*
+|A comma separated list of subjects, messaging channel names. Can contain wildcards like test.inventory.* +
+*Important:* To capture both schema change events and data change events, you must specify both the topic prefix and a wildcard pattern. For example, if your `debezium.source.topic.prefix` is `myapp`, configure subjects as `myapp,myapp.>` or `myapp,myapp.*.*`. +
+- Schema change events (DDL) are published to the exact topic prefix (e.g., `myapp`) and this is rejected by any subject that has a subtopic wildcard +
+- Data change events are published to table-specific subjects (e.g., `myapp.database.table`) +
+- Use `myapp.>` to match any number of subject levels, or `myapp.*.*` to match exactly two levels after the prefix
 
 |[[nats-jetstream-storage]]<<nats-jetstream-storage, `debezium.sink.nats-jetstream.storage`>>
 | memory
