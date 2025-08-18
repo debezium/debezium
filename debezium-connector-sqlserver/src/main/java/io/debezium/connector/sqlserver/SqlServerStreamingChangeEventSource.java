@@ -348,12 +348,12 @@ public class SqlServerStreamingChangeEventSource implements StreamingChangeEvent
                         tableWithSmallestLsn.next();
                     }
                     streamingExecutionContext.setLastProcessedPosition(TxLogPosition.valueOf(toLsn));
+                    // Terminate the transaction otherwise CDC could not be disabled for tables
+                    dataConnection.rollback();
                     if (!anyData) {
                         offsetContext.setChangePosition(TxLogPosition.valueOf(toLsn), 0);
                         dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
                     }
-                    // Terminate the transaction otherwise CDC could not be disabled for tables
-                    dataConnection.rollback();
                 }
                 catch (SQLException e) {
                     tablesSlot.set(processErrorFromChangeTableQuery(databaseName, e, tablesSlot.get()));
