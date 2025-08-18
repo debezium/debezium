@@ -323,7 +323,7 @@ public final class TableId implements DataCollectionId, Comparable<TableId> {
 
         if (identifierPart.charAt(0) != openingChar && identifierPart.charAt(identifierPart.length() - 1) != closingChar) {
             if (openingChar == closingChar) {
-                identifierPart = identifierPart.replace(openingChar + "", repeat(openingChar));
+                identifierPart = identifierPart.replace(String.valueOf(openingChar), repeat(openingChar));
             }
             identifierPart = openingChar + identifierPart + closingChar;
         }
