@@ -67,7 +67,7 @@ jobs:
           fi
           
           NON_PREFIX_COMMITS=""
-          echo "$BODY" | jq -r '.[] | .commit.message | split("\n")[0]' > COMMIT_MSGS.txt
+          echo "$RESPONSE" | jq -r '.[] | .commit.message | split("\n")[0]' > COMMIT_MSGS.txt
           
           while IFS= read -r line; 
           do
