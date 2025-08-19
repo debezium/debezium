@@ -193,6 +193,7 @@
         -->
         <mariadb.server.image.source>quay.io/debezium/official-mariadb</mariadb.server.image.source>
         <version.mariadb.server>11.4.3</version.mariadb.server>
+        <version.mariadb.server.innodb>12.3.2</version.mariadb.server.innodb>
         <mariadb.user>mysqluser</mariadb.user>
         <mariadb.password>mysqlpw</mariadb.password>
         <mariadb.replica.user>mysqlreplica</mariadb.replica.user>
@@ -202,6 +203,7 @@
         <mariadb.gtid.port>3306</mariadb.gtid.port>
         <mariadb.gtid.replica.port>3306</mariadb.gtid.replica.port>
         <mariadb.ssl.port>3306</mariadb.ssl.port>
+        <mariadb.innodb.port>3306</mariadb.innodb.port>
         <mariadb.replica.port>3306</mariadb.replica.port> <!-- by default use primary as 'replica' -->
         <mariadb.init.timeout>60000</mariadb.init.timeout> <!-- 60 seconds -->
         <mariadb.replica.fileset.path>${project.basedir}/src/test/docker/init-replica</mariadb.replica.fileset.path>
@@ -336,6 +338,60 @@
                                             </fileSet>
                                             <fileSet>
                                                 <directory>${project.basedir}/src/test/docker/init-ssl</directory>
+                                                <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
+                                            </fileSet>
+                                        </fileSets>
+                                    </inline>
+                                    <targetDir>/</targetDir>
+                                </assembly>
+                            </build>
+                            <external>
+                                <type>properties</type>
+                                <mode>override</mode>
+                            </external>
+                        </image>
+                        <image>
+                            <!-- A Docker image using MariaDB 12.3 with InnoDB-based binary log. -->
+                            <name>debezium/mariadb-server-innodb-binlog-test-database</name>
+                            <run>
+                                <namingStrategy>none</namingStrategy>
+                                <env>
+                                    <MARIADB_ROOT_PASSWORD>debezium-rocks</MARIADB_ROOT_PASSWORD>
+                                    <MARIADB_DATABASE>mysql</MARIADB_DATABASE>
+                                    <MARIADB_USER>${mariadb.user}</MARIADB_USER>
+                                    <MARIADB_PASSWORD>${mariadb.password}</MARIADB_PASSWORD>
+                                    <TZ>UTC</TZ>
+                                </env>
+                                <ports>
+                                    <port>${mariadb.innodb.port}:3306</port>
+                                </ports>
+                                <log>
+                                    <prefix>mariadb-innodb-binlog</prefix>
+                                    <enabled>true</enabled>
+                                    <color>cyan</color>
+                                </log>
+                                <wait>
+                                    <log>(MariaDB) init process done. Ready for start up.(?s)(.*)(mariadbd): ready for connections.</log>
+                                    <time>${mariadb.init.timeout}</time>
+                                </wait>
+                            </run>
+                            <build>
+                                <from>mariadb:12.3</from>
+                                <runCmds>
+                                    <run>${docker.initimage}</run>
+                                </runCmds>
+                                <assembly>
+                                    <inline>
+                                        <fileSets>
+                                            <fileSet>
+                                                <directory>${project.basedir}/src/test/docker/server-innodb-binlog</directory>
+                                                <includes>
+                                                    <include>my.cnf</include>
+                                                </includes>
+                                                <outputDirectory>etc/mysql</outputDirectory>
+                                            </fileSet>
+                                            <fileSet>
+                                                <directory>${project.basedir}/src/test/docker/init</directory>
                                                 <outputDirectory>docker-entrypoint-initdb.d</outputDirectory>
                                             </fileSet>
                                         </fileSets>
@@ -600,13 +656,14 @@
             <properties>
                 <!-- Run multiple images at the same time, but use different ports for all MariaDB servers -->
                 <docker.dbs>
-                    debezium/mariadb-server-test-database,debezium/mariadb-server-gtids-test-database,debezium/mariadb-server-gtids-test-database-replica,debezium/mariadb-server-test-database-ssl
+                    debezium/mariadb-server-test-database,debezium/mariadb-server-innodb-binlog-test-database,debezium/mariadb-server-gtids-test-database,debezium/mariadb-server-gtids-test-database-replica,debezium/mariadb-server-test-database-ssl
                 </docker.dbs>
                 <mariadb.port>4301</mariadb.port>
                 <mariadb.gtid.port>4302</mariadb.gtid.port>
                 <mariadb.gtid.replica.port>4303</mariadb.gtid.replica.port>
                 <mariadb.percona.port>4304</mariadb.percona.port>
                 <mariadb.ssl.port>4305</mariadb.ssl.port>
+                <mariadb.innodb.port>4306</mariadb.innodb.port>
             </properties>
             <build>
                 <plugins>
@@ -846,6 +903,37 @@
                             <systemPropertyVariables>
                                 <database.port>${mariadb.ssl.port}</database.port>
                                 <database.replica.port>${mariadb.ssl.port}</database.replica.port>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!--  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        Use the Docker image for MariaDB 12.3+ with InnoDB-based binary log.
+        To use, specify "-Dmariadb-innodb-binlog" or -Pmariadb-innodb-binlog on the Maven command line.
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+        <profile>
+            <id>mariadb-innodb-binlog</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>mariadb-innodb-binlog</name>
+                </property>
+            </activation>
+            <properties>
+                <!-- Docker properties -->
+                <docker.dbs>debezium/mariadb-server-innodb-binlog-test-database</docker.dbs>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <database.port>${mariadb.innodb.port}</database.port>
+                                <database.replica.port>${mariadb.innodb.port}</database.replica.port>
                             </systemPropertyVariables>
                         </configuration>
                     </plugin>
