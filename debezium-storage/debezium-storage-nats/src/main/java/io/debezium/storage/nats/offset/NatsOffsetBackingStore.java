@@ -1,0 +1,311 @@
+/*
+ * Copyright Debezium Authors.
+ *
+ * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
+ */
+package io.debezium.storage.nats.offset;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
+import org.apache.kafka.connect.runtime.WorkerConfig;
+import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
+import org.apache.kafka.connect.util.Callback;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.debezium.annotation.VisibleForTesting;
+import io.debezium.config.Configuration;
+import io.debezium.storage.nats.NatsConnection;
+import io.nats.client.ObjectStore;
+import io.nats.client.api.ObjectInfo;
+
+/**
+ * Implementation of OffsetBackingStore that saves to NATS Object Store.
+ * Uses Java serialization to store all offsets in a single Object Store entry.
+ *
+ * @author Nick Chomey
+ */
+public class NatsOffsetBackingStore extends MemoryOffsetBackingStore {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(NatsOffsetBackingStore.class);
+    private static final String OFFSET_OBJECT_NAME = "debezium-offsets";
+
+    private NatsOffsetBackingStoreConfig config;
+    private NatsConnection natsConnection;
+    private ObjectStore objectStore;
+    private ExecutorService executor;
+
+    private void connect() {
+        try {
+            natsConnection = NatsConnection.getInstance(config, config.instanceScope());
+            objectStore = natsConnection.getOrCreateObjectStore(config.getBucketName());
+            LOGGER.info("Connected to NATS Object Store bucket: {}", config.getBucketName());
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Failed to connect to NATS Object Store", e);
+        }
+    }
+
+    @Override
+    public void configure(WorkerConfig config) {
+        super.configure(config);
+        Configuration configuration = Configuration.from(config.originalsStrings());
+        this.config = new NatsOffsetBackingStoreConfig(configuration);
+        this.executor = Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "nats-offset-backing-store");
+            t.setDaemon(true);
+            return t;
+        });
+    }
+
+    @VisibleForTesting
+    public void configure(NatsOffsetBackingStoreConfig config) {
+        this.config = config;
+        this.executor = Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "nats-offset-backing-store");
+            t.setDaemon(true);
+            return t;
+        });
+    }
+
+    @Override
+    public synchronized void start() {
+        super.start();
+        LOGGER.info("Starting NatsOffsetBackingStore");
+        connect();
+        load();
+    }
+
+    @VisibleForTesting
+    synchronized void startNoLoad() {
+        super.start();
+        connect();
+    }
+
+    @Override
+    public synchronized void stop() {
+        LOGGER.info("Stopping NatsOffsetBackingStore");
+        if (executor != null) {
+            executor.shutdown();
+        }
+        if (natsConnection != null) {
+            natsConnection.close();
+        }
+        super.stop();
+    }
+
+    /**
+     * Load offsets from NATS Object Store
+     */
+    @VisibleForTesting
+    void load() {
+        try {
+            LOGGER.debug("Loading offsets from NATS Object Store bucket: {}", config.getBucketName());
+
+            try {
+                // Try to get the serialized offset data from Object Store
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                ObjectInfo info = objectStore.get(OFFSET_OBJECT_NAME, baos);
+
+                if (info != null && baos.size() > 0) {
+                    // Deserialize the offset map using Java serialization
+                    byte[] offsetData = baos.toByteArray();
+                    deserializeOffsets(offsetData);
+                    LOGGER.debug("Loaded {} offsets from NATS Object Store", data.size());
+                }
+                else {
+                    LOGGER.debug("No existing offsets found in NATS Object Store");
+                }
+            }
+            catch (Exception e) {
+                // Object doesn't exist yet - this is normal for first run
+                LOGGER.debug("No existing offsets found in NATS Object Store (object not found)");
+            }
+
+            LOGGER.info("Loaded {} offsets from NATS Object Store", data.size());
+        }
+        catch (Exception e) {
+            LOGGER.error("Failed to load offsets from NATS Object Store", e);
+            throw new RuntimeException("Failed to load offsets", e);
+        }
+    }
+
+    /**
+     * Save offsets to NATS Object Store
+     */
+    @Override
+    protected void save() {
+        try {
+            // Serialize the entire offset map using Java serialization
+            byte[] offsetData = serializeOffsets();
+
+            executeWithRetry(() -> {
+                // Ensure the underlying ObjectStore stream exists (OBJ_<bucket>)
+                try {
+                    String objStreamName = "OBJ_" + config.getBucketName();
+                    natsConnection.getJetStreamManagement().getStreamInfo(objStreamName);
+                    // Also ensure the ObjectStore handle is alive
+                    objectStore.getStatus();
+                }
+                catch (Exception probeEx) {
+                    // (Re)create the object store bucket if probe fails
+                    LOGGER.debug("ObjectStore probe failed before put, attempting (re)create: {}", probeEx.toString());
+                    objectStore = natsConnection.getOrCreateObjectStore(config.getBucketName());
+                    try {
+                        objectStore.getStatus();
+                    }
+                    catch (Exception statusEx) {
+                        LOGGER.debug("ObjectStore status still failing after (re)create: {}", statusEx.toString());
+                    }
+                }
+
+                ByteArrayInputStream bais = new ByteArrayInputStream(offsetData);
+                LOGGER.debug("Putting offsets object to NATS Object Store bucket='{}'", config.getBucketName());
+                objectStore.put(OFFSET_OBJECT_NAME, bais);
+                LOGGER.trace("Stored {} bytes of offset data to NATS Object Store", offsetData.length);
+            });
+
+            LOGGER.debug("Successfully saved {} offsets to NATS Object Store", data.size());
+        }
+        catch (Exception e) {
+            LOGGER.error("Failed to save offsets to NATS Object Store", e);
+            throw new RuntimeException("Failed to save offsets", e);
+        }
+    }
+
+    @Override
+    public Future<Map<ByteBuffer, ByteBuffer>> get(Collection<ByteBuffer> keys) {
+        return executor.submit(() -> {
+            Map<ByteBuffer, ByteBuffer> result = new HashMap<>();
+            for (ByteBuffer key : keys) {
+                result.put(key, data.get(key));
+            }
+            return result;
+        });
+    }
+
+    @Override
+    public Future<Void> set(Map<ByteBuffer, ByteBuffer> values, Callback<Void> callback) {
+        return executor.submit(() -> {
+            for (Map.Entry<ByteBuffer, ByteBuffer> entry : values.entrySet()) {
+                if (entry.getKey() == null) {
+                    continue;
+                }
+                LOGGER.debug("Setting offset with key {} and value {}",
+                        fromByteBuffer(entry.getKey()), fromByteBuffer(entry.getValue()));
+                data.put(entry.getKey(), entry.getValue());
+            }
+            save();
+            if (callback != null) {
+                callback.onCompletion(null, null);
+            }
+            return null;
+        });
+    }
+
+    @Override
+    public Set<Map<String, Object>> connectorPartitions(String connectorName) {
+        return null;
+    }
+
+    private String fromByteBuffer(ByteBuffer data) {
+        return (data != null) ? String.valueOf(StandardCharsets.UTF_8.decode(data.asReadOnlyBuffer())) : null;
+    }
+
+    /**
+     * Serialize all offsets using Java serialization for storage in NATS Object
+     * Store.
+     * This is much simpler than JSON and handles ByteBuffers natively.
+     */
+    private byte[] serializeOffsets() throws Exception {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(baos);
+
+        // Create a serializable map from the data
+        Map<byte[], byte[]> serializableMap = new HashMap<>();
+        for (Map.Entry<ByteBuffer, ByteBuffer> entry : data.entrySet()) {
+            if (entry.getKey() != null) {
+                byte[] key = entry.getKey().array();
+                byte[] value = entry.getValue() != null ? entry.getValue().array() : null;
+                serializableMap.put(key, value);
+            }
+        }
+
+        oos.writeObject(serializableMap);
+        oos.close();
+
+        return baos.toByteArray();
+    }
+
+    /**
+     * Deserialize offsets from Java serialization and populate the data map.
+     */
+    @SuppressWarnings("unchecked")
+    private void deserializeOffsets(byte[] offsetData) throws Exception {
+        ByteArrayInputStream bais = new ByteArrayInputStream(offsetData);
+        ObjectInputStream ois = new ObjectInputStream(bais);
+
+        Map<byte[], byte[]> serializableMap = (Map<byte[], byte[]>) ois.readObject();
+        ois.close();
+
+        // Convert back to ByteBuffer map
+        data.clear();
+        for (Map.Entry<byte[], byte[]> entry : serializableMap.entrySet()) {
+            ByteBuffer key = ByteBuffer.wrap(entry.getKey());
+            ByteBuffer value = entry.getValue() != null ? ByteBuffer.wrap(entry.getValue()) : null;
+            data.put(key, value);
+        }
+    }
+
+    private void executeWithRetry(NatsOperation operation) throws Exception {
+        Exception lastException = null;
+        int attempts = 0;
+        int maxRetries = config.isRetryEnabled() ? config.getMaxRetries() : 0;
+
+        while (attempts <= maxRetries) {
+            try {
+                operation.execute();
+                return;
+            }
+            catch (Exception e) {
+                lastException = e;
+                attempts++;
+
+                if (attempts <= maxRetries) {
+                    LOGGER.warn("NATS operation failed (attempt {}/{}), retrying in {}ms",
+                            attempts, maxRetries + 1, config.getRetryDelayMs(), e);
+
+                    try {
+                        Thread.sleep(config.getRetryDelayMs());
+                    }
+                    catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException("Interrupted during retry delay", ie);
+                    }
+                }
+                else {
+                    LOGGER.error("NATS operation failed after {} attempts", attempts, e);
+                }
+            }
+        }
+
+        throw lastException;
+    }
+
+    @FunctionalInterface
+    private interface NatsOperation {
+        void execute() throws Exception;
+    }
+}
