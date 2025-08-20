@@ -1180,6 +1180,15 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      */
     protected boolean startMiningSession(Scn startScn, Scn endScn, int attempts) throws SQLException {
         try {
+
+            if (connectorConfig.isArchiveLogOnlyMode()) {
+                final Scn newEndScn = getMinNextScnAcrossAllThreadMaxNextScnValues();
+                if (!newEndScn.equals(endScn)) {
+                    LOGGER.debug("Adjusted archive log only mode upper bounds from {} to {}.", endScn, newEndScn);
+                    endScn = newEndScn;
+                }
+            }
+
             LOGGER.debug("Starting mining session [startScn={}, endScn={}, strategy={}, attempts={}/{}]",
                     startScn, endScn, connectorConfig.getLogMiningStrategy(), attempts, MINING_START_RETRIES);
 
@@ -2158,5 +2167,18 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
                 .snapshotPendingTransactions(Collections.emptyMap())
                 .transactionContext(new TransactionContext())
                 .incrementalSnapshotContext(new SignalBasedIncrementalSnapshotContext<>()).build();
+    }
+
+    private Scn getMinNextScnAcrossAllThreadMaxNextScnValues() {
+        return getCurrentLogFiles().stream()
+                .filter(LogFile::isArchive)
+                .collect(Collectors.groupingBy(
+                        LogFile::getThread,
+                        Collectors.mapping(LogFile::getNextScn, Collectors.maxBy(Scn::compareTo))))
+                .values()
+                .stream()
+                .flatMap(Optional::stream)
+                .min(Scn::compareTo)
+                .orElseThrow(() -> new DebeziumException("Failed to resolve archive logs upper bounds"));
     }
 }
