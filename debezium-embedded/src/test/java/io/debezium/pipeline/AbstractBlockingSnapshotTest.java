@@ -39,12 +39,15 @@ import org.junit.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
+import io.debezium.embedded.EmbeddedEngineConfig;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenConnectorUnderTest;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.pipeline.source.AbstractSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractSnapshotTest;
+import io.debezium.relational.RelationalDatabaseConnectorConfig;
+import io.debezium.util.Testing;
 
 public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> extends AbstractSnapshotTest<T> {
     private int signalingRecords;
@@ -330,6 +333,90 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
 
     }
 
+    @FixFor("DBZ-9337")
+    @Test
+    public void blockingSnapshotMustReuseExistingOffsetAsSnapshotOffset() throws Exception {
+
+        // Testing.Print.enable();
+
+        populateTable();
+        insertRecords(200, 0, tableNames().get(1));
+
+        startConnectorWithSnapshot(x -> mutableConfig(false, false)
+                .with(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST, "[A-z].*a")
+                .with(CommonConnectorConfig.SNAPSHOT_MODE_TABLES, "[A-z].*a")
+                .with(CommonConnectorConfig.MAX_BATCH_SIZE, 2)
+                .with(CommonConnectorConfig.MAX_QUEUE_SIZE, 3)
+                .with(EmbeddedEngineConfig.OFFSET_FLUSH_INTERVAL_MS, 0));
+
+        waitForSnapshotToBeCompleted(connector(), server(), task(), database());
+
+        SourceRecords consumedRecordsByTopic = consumeRecordsByTopic(ROW_COUNT, 10);
+        List<Integer> expectedValues = IntStream.rangeClosed(0, 999).boxed().collect(Collectors.toList());
+
+        assertRecordsWithValuesPresent(ROW_COUNT, expectedValues, topicName(), consumedRecordsByTopic);
+
+        stopConnector();
+        assertConnectorNotRunning();
+
+        insertRecords(1000, ROW_COUNT, tableNames().get(0));
+        sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("", "", BLOCKING, "[A-z].*b");
+        insertRecords(1000, ROW_COUNT + 1000, tableNames().get(0));
+
+        start(connectorClass(), mutableConfig(false, false)
+                .with(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST, "[A-z].*[ab]")
+                .with(CommonConnectorConfig.MAX_BATCH_SIZE, 2)
+                .with(CommonConnectorConfig.MAX_QUEUE_SIZE, 3)
+                .with(EmbeddedEngineConfig.OFFSET_FLUSH_INTERVAL_MS, 0)
+                .build(), null, (record) -> {
+
+                    if (record.key() != null) {
+                        Testing.print("Consuming record with key {" + ((Struct) record.key()).get(pkFieldName()) + "} from topic {" + record.topic() + "} "
+                                + ((Struct) record.value()).get("source"));
+                    }
+                    else {
+                        Testing.print("Consuming record with key {} from topic {" + record.topic() + "} " + ((Struct) record.value()).get("source"));
+                    }
+                    if (record.topic().equals(topicNames().get(1))) {
+                        Struct key = (Struct) record.key();
+                        Number id = (Number) key.get(pkFieldName());
+                        return id.intValue() == 100;
+                    }
+
+                    return false;
+                });
+
+        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+
+        Awaitility.await()
+                .pollInterval(200, TimeUnit.MILLISECONDS)
+                .atMost(60, TimeUnit.SECONDS)
+                .until(() -> !isEngineRunning.get());
+
+        try {
+            stopConnector();
+        }
+        catch (IllegalStateException e) {
+            // ignoring since it is already stopped.
+        }
+
+        startConnectorWithSnapshot(x -> mutableConfig(false, false)
+                .with(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST, "[A-z].*[ab]")
+                .with(CommonConnectorConfig.MAX_BATCH_SIZE, 2)
+                .with(CommonConnectorConfig.MAX_QUEUE_SIZE, 3)
+                .with(EmbeddedEngineConfig.OFFSET_FLUSH_INTERVAL_MS, 0));
+
+        waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
+
+        insertRecords(1, ROW_COUNT + 2000, tableName());
+
+        waitForAvailableRecords();
+
+        assertRecordsWithValuesPresent(2001, IntStream.rangeClosed(1000, 2000).boxed().collect(Collectors.toList()), topicName(), consumeRecordsByTopic(2101, 20));
+
+        stopConnector();
+    }
+
     protected int expectedDdlsCount() {
         return 0;
     };
@@ -445,19 +532,24 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
         assertThat(actual).containsAll(expectedValues);
     }
 
-    protected void insertRecords(int rowCount, int startingPkId) throws SQLException {
+    protected void insertRecords(int rowCount, int startingPkId, String tableName) throws SQLException {
 
         try (JdbcConnection connection = databaseConnection()) {
             connection.setAutoCommit(false);
             for (int i = 0; i < rowCount; i++) {
                 connection.executeWithoutCommitting(String.format("INSERT INTO %s (%s, aa) VALUES (%s, %s)",
-                        tableName(),
+                        tableName,
                         connection.quoteIdentifier(pkFieldName()),
                         i + startingPkId + 1,
                         i + startingPkId));
             }
             connection.commit();
         }
+    }
+
+    protected void insertRecords(int rowCount, int startingPkId) throws SQLException {
+
+        insertRecords(rowCount, startingPkId, tableName());
     }
 
     private void insertRecordsWithRandomSleep(int rowCount, int startingPkId, int maxSleep, Runnable actionOnInsert) throws SQLException {
