@@ -78,6 +78,15 @@ public class BlockingSnapshotIT extends AbstractBlockingSnapshotTest {
         return "testDB1.dbo.a";
     }
 
+    protected String tableDataCollectionId() {
+        return "dbo.a";
+    }
+
+    @Override
+    protected List<String> tableDataCollectionIds() {
+        return List.of("dbo.a", "dbo.b");
+    }
+
     @Override
     protected List<String> tableNames() {
         return List.of("testDB1.dbo.a", "testDB1.dbo.b");

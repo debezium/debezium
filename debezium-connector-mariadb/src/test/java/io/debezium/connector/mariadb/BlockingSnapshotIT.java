@@ -12,6 +12,7 @@ import io.debezium.connector.binlog.junit.BinlogDatabaseVersionResolver;
  * @author Chris Cranford
  */
 public class BlockingSnapshotIT extends BinlogBlockingSnapshotIT<MariaDbConnector> implements MariaDbCommon {
+
     @Override
     protected String getDdlString(BinlogDatabaseVersionResolver databaseVersionResolver) {
         String charSetClause = "DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci";
