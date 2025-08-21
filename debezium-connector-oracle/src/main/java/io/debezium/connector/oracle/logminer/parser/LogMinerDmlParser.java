@@ -297,6 +297,11 @@ public class LogMinerDmlParser implements DmlParser {
                 if (c != '\'') {
                     collectedValue.append(c);
                 }
+                else if (lookAhead == '\'') {
+                    collectedValue.append('\'');
+                    index = index + 1;
+                    continue;
+                }
                 else if (useRelaxedQuotes && (lookAhead != ',' && lookAhead != ')')) {
                     // When using extended strings, LogMiner may provide the inserted column value without escaping
                     // apostrophes, which will lead to parsing issues. This rule attempts to isolate that use case
@@ -305,11 +310,6 @@ public class LogMinerDmlParser implements DmlParser {
                     // Obviously if the text has "'," or "')" as the text sequence, this rule will fail, but there
                     // really is no other way to identify this.
                     collectedValue.append(c);
-                    continue;
-                }
-                else if (lookAhead == '\'') {
-                    collectedValue.append('\'');
-                    index = index + 1;
                     continue;
                 }
             }
