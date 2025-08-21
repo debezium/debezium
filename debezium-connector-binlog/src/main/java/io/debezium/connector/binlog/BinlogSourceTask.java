@@ -30,9 +30,6 @@ public abstract class BinlogSourceTask<P extends Partition, O extends OffsetCont
     /**
      * Validates the feasibility of snapshot.
      *
-     * Default implementation for binlog-based connectors. Subclasses can override for
-     * connector-specific behavior while still calling super.validateSnapshotFeasibility().
-     *
      * @param snapshotter the snapshotter, should not be null
      * @param offsetContext the offset context, may be null
      * @param connection the database connection, should not be null
@@ -80,9 +77,6 @@ public abstract class BinlogSourceTask<P extends Partition, O extends OffsetCont
 
     /**
      * Common heartbeat error handler for binlog-based connectors.
-     *
-     * This implementation handles the standard MySQL/MariaDB error codes that
-     * typically occur during heartbeat processing.
      */
     public static class BinlogHeartbeatErrorHandler implements HeartbeatErrorHandler {
         @Override
