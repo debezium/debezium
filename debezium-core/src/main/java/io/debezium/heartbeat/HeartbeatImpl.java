@@ -116,6 +116,16 @@ public class HeartbeatImpl implements Heartbeat.ScheduledHeartbeat, Heartbeat {
     }
 
     @Override
+    public boolean expired() {
+        return heartbeatTimeout.expired();
+    }
+
+    @Override
+    public void reset() {
+        heartbeatTimeout = resetHeartbeat();
+    }
+
+    @Override
     public void emit(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
         if (queue == null) {
             throw new IllegalArgumentException("new heartbeat API should be used with the recommended constructor");
