@@ -697,13 +697,13 @@
             <dependency>
                 <groupId>io.opentelemetry.javaagent</groupId>
                 <artifactId>opentelemetry-testing-common</artifactId>
-                <version>${version.opentelemetry.testing}-alpha</version>
+                <version>${version.opentelemetry.testing}</version>
                 <scope>test</scope>
             </dependency>
             <dependency>
                 <groupId>io.opentelemetry.javaagent</groupId>
                 <artifactId>opentelemetry-agent-for-testing</artifactId>
-                <version>${version.opentelemetry.testing}-alpha</version>
+                <version>${version.opentelemetry.testing}</version>
                 <scope>test</scope>
             </dependency>
 
