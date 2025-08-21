@@ -726,4 +726,37 @@ public class LogMinerDmlParserTest {
         assertThat(entry.getNewValues()[1]).isEqualTo(
                 "M. Antoine a coupé le circuit de refroidissement de la pompe d'aspiration, puis a démonté le flexible. À ce moment-là, de l’eau a violemment jailli depuis la base de l’installation, atteignant ses pieds jusqu’au plafond, soit une hauteur de 4 à 5 mètres. Le jet, vertical, l’a entièrement aspergé d’un produit dangereux pour la santé. Il en a ingéré une partie. Il s’est rincé abondamment les yeux, a pris une douche et s'est rincé la bouche. Il souffrait de nausées et de maux de tête.");
     }
+
+    @Test
+    @FixFor("DBZ-9366")
+    public void shouldEmitInsertUpdateRelaxedQuoteDetectionValuesUsingSameLengths() throws Exception {
+        final Properties properties = new Properties();
+        properties.put("internal.log.mining.sql.relaxed.quote.detection", "true");
+
+        final LogMinerDmlParser parser = new LogMinerDmlParser(new OracleConnectorConfig(Configuration.from(properties)));
+        final Table table = Table.editor()
+                .tableId(TableId.parse("SCHEMA.TAB"))
+                .addColumn(Column.editor().name("NAME").create())
+                .addColumn(Column.editor().name("DATA").create())
+                .create();
+
+        String sql = "insert into \"SCHEMA\".\"TAB\"(\"NAME\",\"DATA\") values ('Test','Hypersignal du LCA probablement séquellaire d''une ancienne entorse ou d''une dégénérescence mucoïde. Présence d'un kyste arthrosynovial à développement postéro-latéral en arrière du condyle fémoral externe polylobulé et aussi un 2ème kyste arthrosynovial');";
+
+        LogMinerDmlEntry entry = parser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.INSERT);
+        assertThat(entry.getOldValues()).isEmpty();
+        assertThat(entry.getNewValues()[0]).isEqualTo("Test");
+        assertThat(entry.getNewValues()[1]).isEqualTo(
+                "Hypersignal du LCA probablement séquellaire d'une ancienne entorse ou d'une dégénérescence mucoïde. Présence d'un kyste arthrosynovial à développement postéro-latéral en arrière du condyle fémoral externe polylobulé et aussi un 2ème kyste arthrosynovial");
+
+        sql = "update \"SCHEMA\".\"TAB\" set \"DATA\" = 'Hypersignal du LCA probablement séquellaire d''une ancienne entorse ou d'une dégénérescence mucoïde. Présence d'un kyste arthrosynovial à développement postéro-latéral en arrière du condyle fémoral externe polylobulé et aussi un 2ème kyste arthrosynovial' where \"NAME\" = 'Test' and \"DATA\" = 'Hypersignal du LCA probablement séquellaire d''une ancienne entorse';";
+
+        entry = parser.parse(sql, table);
+        assertThat(entry.getEventType()).isEqualTo(EventType.UPDATE);
+        assertThat(entry.getOldValues()[0]).isEqualTo("Test");
+        assertThat(entry.getOldValues()[1]).isEqualTo("Hypersignal du LCA probablement séquellaire d'une ancienne entorse");
+        assertThat(entry.getNewValues()[0]).isEqualTo("Test");
+        assertThat(entry.getNewValues()[1]).isEqualTo(
+                "Hypersignal du LCA probablement séquellaire d'une ancienne entorse ou d'une dégénérescence mucoïde. Présence d'un kyste arthrosynovial à développement postéro-latéral en arrière du condyle fémoral externe polylobulé et aussi un 2ème kyste arthrosynovial");
+    }
 }
