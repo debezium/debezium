@@ -179,7 +179,7 @@
         <version.opentelemetry.testing>2.10.0-alpha</version.opentelemetry.testing>
 
         <!-- Testing -->
-        <opentelemetry.agent.for.testing.artifact.relative.path>/io/opentelemetry/javaagent/opentelemetry-agent-for-testing/${version.opentelemetry.testing}-alpha/opentelemetry-agent-for-testing-${version.opentelemetry.testing}-alpha.jar</opentelemetry.agent.for.testing.artifact.relative.path>
+        <opentelemetry.agent.for.testing.artifact.relative.path>io/opentelemetry/javaagent/opentelemetry-agent-for-testing/${version.opentelemetry.testing}/opentelemetry-agent-for-testing-${version.opentelemetry.testing}.jar</opentelemetry.agent.for.testing.artifact.relative.path>
 
         <!-- Publishing -->
         <publish.snapshot.url>https://central.sonatype.com/repository/maven-snapshots/</publish.snapshot.url>
