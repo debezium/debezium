@@ -176,7 +176,7 @@
         <version.rocketmq>5.2.0</version.rocketmq>
 
         <!-- OpenTelemetry version to use for the attached test agent-->
-        <version.opentelemetry.testing>2.10.0</version.opentelemetry.testing>
+        <version.opentelemetry.testing>2.10.0-alpha</version.opentelemetry.testing>
 
         <!-- Testing -->
         <opentelemetry.agent.for.testing.artifact.relative.path>/io/opentelemetry/javaagent/opentelemetry-agent-for-testing/${version.opentelemetry.testing}-alpha/opentelemetry-agent-for-testing-${version.opentelemetry.testing}-alpha.jar</opentelemetry.agent.for.testing.artifact.relative.path>
