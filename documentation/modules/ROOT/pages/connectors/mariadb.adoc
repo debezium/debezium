@@ -324,7 +324,71 @@ include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloff
 [[enable-mariadb-binlog]]
 === Enabling the binlog
 
-include::{partialsdir}/modules/all-connectors/shared-mariadb-mysql.adoc[leveloffset=+1,tags=enabling-binlog]
+You must enable binary logging for {connector-name} replication.
+The binary logs record transaction updates in a way that enables replicas to propagate those changes.
+
+.Prerequisites
+
+* A {connector-name} server.
+* Appropriate {connector-name} user privileges.
+
+.Procedure
+
+. Check whether the `log-bin` option is enabled:
++
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=setting-up-the-db-enabling-binlog]
+
+. If the binlog is `OFF`, add the properties in the following table to the configuration file for the {connector-name} server:
++
+[source,properties,subs="+attributes"]
+----
+server-id         = 223344 # Querying variable is called server_id, e.g. SELECT variable_value FROM information_schema.global_variables WHERE variable_name='server_id';
+log_bin                     = {context}-bin
+binlog_format               = ROW
+binlog_row_image            = FULL
+binlog_expire_logs_seconds  = 864000
+log_bin_compress            = 0
+----
+
+. Confirm your changes by checking the binlog status once more:
++
+include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=setting-up-the-db-enabling-binlog]
+
+. If you run {connector-name} on Amazon RDS, you must enable automated backups for your database instance for binary logging to occur.
+If the database instance is not configured to perform automated backups, the binlog is disabled, even if you apply the settings described in the previous steps.
+
++
+[id="binlog-configuration-properties-{context}-connector"]
+.Descriptions of {connector-name} binlog configuration properties
+[cols="1,4",options="header",subs="+attributes"]
+|===
+|Property |Description
+
+|`server-id`
+|The value for the `server-id` must be unique for each server and replication client in the {connector-name} cluster.
+
+|`log_bin`
+|The value of `log_bin` is the base name of the sequence of binlog files.
+
+|`binlog_format`
+|The `binlog-format` must be set to `ROW` or `row`.
+
+|`binlog_row_image`
+|The `binlog_row_image` must be set to `FULL` or `full`.
+
+|`binlog_expire_logs_seconds`
+|The `binlog_expire_logs_seconds` corresponds to deprecated system variable `expire_logs_days`.
+This is the number of seconds for automatic binlog file removal.
+The default value is `2592000`, which equals 30 days.
+Set the value to match the needs of your environment.
+For more information, see xref:{context}-purges-binlog-files-used-by-debezium[{connector-name} purges binlog files].
+
+|`log_bin_compress`
+|Whether or not the binary log can be compressed. The {prodname}
+{connector-name} connector does not support compressed binary log entries, so
+`log_bin_compress` must be set to `0` (the default), which means no compression.
+
+|===
 
 [IMPORTANT]
 ====
@@ -332,7 +396,7 @@ A new binary log format was introduced in MariaDB 11.4.
 When you use {prodname} with MariaDB 11.4 or later, you must set the MariaDB server variable https://mariadb.com/kb/en/replication-and-binary-log-system-variables/#binlog_legacy_event_pos[`binlog_legacy_event_pos`] to `1` (ON) to ensure that the connector can consume events in the new format.
 If you leave this variable at its default setting (`0`, or OFF), after a connector restart, {prodname} might not be able to find the resume point.
 
-The {prodname} MariaDB connector currently does not support
+The {prodname} {connector-name} connector currently does not support
 link:https://mariadb.com/docs/server/server-management/server-monitoring-logs/binary-log/compressing-events-to-reduce-size-of-the-binary-log[binary
 log compression]. Make sure to set the MariaDB server configuration option `log_bin_compress` to `0` to ensure the connector can consume all events.
 ====
