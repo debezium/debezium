@@ -34,6 +34,7 @@ import io.debezium.time.Timestamp;
 import io.debezium.transforms.ConnectRecordUtil;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition;
 import io.debezium.transforms.outbox.EventRouterDelegate;
+import io.debezium.transforms.tracing.ActivateTracingSpan;
 
 /**
  * Debezium MongoDB Outbox Event Router SMT
@@ -334,6 +335,20 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
         fieldNameConverter.put(
                 MongoEventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR.name(),
                 EventRouterConfigDefinition.OPERATION_INVALID_BEHAVIOR.name());
+
+        // Add tracing config
+
+        fieldNameConverter.put(
+                MongoEventRouterConfigDefinition.TRACING_SPAN_CONTEXT_FIELD.name(),
+                ActivateTracingSpan.TRACING_SPAN_CONTEXT_FIELD.name());
+
+        fieldNameConverter.put(
+                MongoEventRouterConfigDefinition.TRACING_OPERATION_NAME.name(),
+                ActivateTracingSpan.TRACING_OPERATION_NAME.name());
+
+        fieldNameConverter.put(
+                MongoEventRouterConfigDefinition.TRACING_CONTEXT_FIELD_REQUIRED.name(),
+                ActivateTracingSpan.TRACING_CONTEXT_FIELD_REQUIRED.name());
 
         return fieldNameConverter;
     }
