@@ -5,7 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
-import java.util.ArrayList;
+import java.nio.ByteBuffer;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -14,7 +15,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -48,6 +48,7 @@ import io.debezium.spi.topic.TopicNamingStrategy;
 public class MysqlEventDispatcher<P extends Partition, T extends DataCollectionId> extends EventDispatcher {
     private static final Logger LOGGER = LoggerFactory.getLogger(MysqlEventDispatcher.class);
     private final MySqlDatabaseSchema schema;
+    private final MySqlConnectorConfig mySqlConnectorConfig;
 
     public MysqlEventDispatcher(CommonConnectorConfig connectorConfig, TopicNamingStrategy topicNamingStrategy,
                                 MySqlDatabaseSchema schema, ChangeEventQueue queue, DataCollectionFilter filter,
@@ -59,6 +60,7 @@ public class MysqlEventDispatcher<P extends Partition, T extends DataCollectionI
         super(connectorConfig, topicNamingStrategy, schema, queue, filter, changeEventCreator,
                 inconsistentSchemaHandler, metadataProvider, heartbeat, schemaNameAdjuster, signalProcessor, debeziumHeaderProducer);
         this.schema = schema;
+        mySqlConnectorConfig = (MySqlConnectorConfig) connectorConfig;
     }
 
     @Override
@@ -144,9 +146,7 @@ public class MysqlEventDispatcher<P extends Partition, T extends DataCollectionI
 
             doPostProcessing(key, value);
 
-            // if (enabledNoblobMode) {
-            // removeTextBlobColumn(value, schema);
-            // }
+            applyUnavailablePlaceholdersForNoblobColumns(value, schema);
 
             SourceRecord record = new SourceRecord(
                     partition.getSourcePartition(),
@@ -201,11 +201,40 @@ public class MysqlEventDispatcher<P extends Partition, T extends DataCollectionI
         }
     }
 
-    private void removeTextBlobColumn(Struct value, MySqlDatabaseSchema schema) {
+    private Struct applyUnavailablePlaceholders(Struct original, Set<String> fieldsToPlaceholder) {
+        final String unavailableValuePlaceholderString = new String(mySqlConnectorConfig.getUnavailableValuePlaceholder());
+        final ByteBuffer unavailableValuePlaceholderByteBuffer = ByteBuffer.wrap(mySqlConnectorConfig.getUnavailableValuePlaceholder());
+        final Schema schema = original.schema();
+        final Struct updated = new Struct(schema);
+        for (Field field : schema.fields()) {
+            final String fieldName = field.name();
+            final Object originalValue = original.get(field);
+            if (fieldsToPlaceholder.contains(fieldName)) {
+                switch (field.schema().type()) {
+                    case STRING:
+                        updated.put(fieldName, unavailableValuePlaceholderString);
+                        break;
+                    case BYTES:
+                        updated.put(fieldName, unavailableValuePlaceholderByteBuffer);
+                        break;
+                    default:
+                        // For non-text/binary types, leave as-is (or extend as needed)
+                        updated.put(fieldName, originalValue);
+                        break;
+                }
+            }
+            else  {
+                updated.put(fieldName, originalValue);
+            }
+        }
+        return updated;
+    }
+
+    private void applyUnavailablePlaceholdersForNoblobColumns(Struct value, MySqlDatabaseSchema schema) {
         final Set<TableId> tableIds = schema.tableIds();
         final Table table = schema.tableFor(tableIds.stream().findFirst().get());
         final List<Column> columns = table.columns();
-        final List<String> shouldSkip = new ArrayList<>();
+        final Set<String> shouldSkip = new HashSet<>();
         for (Column column : columns) {
             final String typeName = column.typeName();
             final String name = column.name();
@@ -216,56 +245,12 @@ public class MysqlEventDispatcher<P extends Partition, T extends DataCollectionI
 
         final Struct after = value.getStruct("after");
         if (after != null) {
-            List<Field> fields = after.schema().fields();
-            List<Field> newFields = new ArrayList<>();
-            for (Field field : fields) {
-                String fieldName = field.name();
-                if (shouldSkip.contains(fieldName)) {
-                    continue;
-                }
-                newFields.add(field);
-            }
-
-            SchemaBuilder schemaBuilder = SchemaBuilder.struct()
-                    .name(after.schema().name());
-            // Create a new one without the fields want to exclude
-            for (Field field : newFields) {
-                schemaBuilder.field(field.name(), field.schema());
-            }
-
-            // build new schema, which do not cotains blob/text
-            Schema newAfterSchema = schemaBuilder.build();
-            Struct struct = new Struct(newAfterSchema);
-
-            // update struct
-            value.put("after", struct);
+            value.put("after", applyUnavailablePlaceholders(after, shouldSkip));
         }
 
         final Struct before = value.getStruct("before");
         if (before != null) {
-            List<Field> fields = before.schema().fields();
-            List<Field> newFields = new ArrayList<>();
-            for (Field field : fields) {
-                String fieldName = field.name();
-                if (shouldSkip.contains(fieldName)) {
-                    continue;
-                }
-                newFields.add(field);
-            }
-
-            SchemaBuilder schemaBuilder = SchemaBuilder.struct()
-                    .name(before.schema().name());
-            // Create a new one without the fields want to exclude
-            for (Field field : newFields) {
-                schemaBuilder.field(field.name(), field.schema());
-            }
-
-            // build new schema, which do not cotains blob/text
-            Schema newAfterSchema = schemaBuilder.build();
-            Struct struct = new Struct(newAfterSchema);
-
-            // update struct
-            value.put("before", struct);
+            value.put("before", applyUnavailablePlaceholders(before, shouldSkip));
         }
     }
 }
