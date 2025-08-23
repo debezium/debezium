@@ -88,7 +88,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     private DataChangeEventListener<P> eventListener = DataChangeEventListener.NO_OP();
     private final boolean emitTombstonesOnDelete;
     private final InconsistentSchemaHandler<P, T> inconsistentSchemaHandler;
-    private final CommonConnectorConfig connectorConfig;
+    protected final CommonConnectorConfig connectorConfig;
     private final EnumSet<Operation> skippedOperations;
     private final boolean neverSkip;
 
