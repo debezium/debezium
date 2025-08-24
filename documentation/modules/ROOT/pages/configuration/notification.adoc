@@ -75,6 +75,7 @@ The value represents the number of milliseconds since the UNIX epoch.
 == Available notifications
 
 {prodname} notifications deliver information about the progress of xref:debezium-notifications-about-the-status-of-an-initial-snapshot[initial snapshots] or xref:debezium-notifications-about-the-progress-of-incremental-snapshots[incremental snapshots].
+For connector specific notifications see the documentation of the respective connector.
 
 // Title: Example: {prodname} notification that reports on the status of an initial snapshot
 [id="debezium-notifications-about-the-status-of-an-initial-snapshot"]
