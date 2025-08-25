@@ -292,7 +292,7 @@ You might still be able to capture data from the table, but you must perform add
 
 * You want to capture data from a table with a schema that the connector did not capture during the initial snapshot.
 * No schema changes were applied to the table between the LSNs of the earliest and latest change table entry that the connector reads.
-For information about capturing data from a new table that has undergone structural changes, see xref:db2-capturing-data-from-new-tables-with-schema-changes[].
+For information about capturing data from a new table that has undergone structural changes, see xref:sqlserver-capturing-data-from-new-tables-with-schema-changes[].
 
 .Procedure
 
@@ -576,9 +576,9 @@ The connector uses the stored schema representation to produce change events tha
 When the connector restarts after either a crash or a graceful stop, it resumes reading entries in the SQL Server CDC tables from the last position that it read.
 Based on the schema information that the connector reads from the database schema history topic, the connector applies the table structures that existed at the position where the connector restarts.
 
-If you update the schema of a Db2 table that is in capture mode, it's important that you also update the schema of the corresponding change table.
+If you update the schema of a SQL Server table that is in capture mode, it's important that you also update the schema of the corresponding change table.
 You must be a SQL Server database administrator with elevated privileges to update database schema.
-For more information about updating SQL Server database schema in {prodname} environmenbts, see xref:sqlserver-schema-evolution[Database schema evolution].
+For more information about updating SQL Server database schema in {prodname} environments, see xref:sqlserver-schema-evolution[Database schema evolution].
 
 The database schema history topic is for internal connector use only.
 Optionally, the connector can also xref:about-the-debezium-sqlserver-connector-schema-change-topic[emit schema change events to a different topic that is intended for consumer applications].
