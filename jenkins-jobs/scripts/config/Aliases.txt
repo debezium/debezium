@@ -313,3 +313,5 @@ IFIG LE PENNEC,Ifig Le Pennec
 pranavt84,Pranav Tiwari
 Zica,Lucas Gazire
 silan0176,Aleksei Silantev
+jtanza,John Tanza
+matt.bayley,Matt Bayley

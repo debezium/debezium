@@ -2,6 +2,62 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.3.0.Alpha2
+August 26th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12465252)
+
+### New features since 3.3.0.Alpha1
+
+* Support for TSVECTOR data types for postgres Sink connector [DBZ-8471](https://issues.redhat.com/browse/DBZ-8471)
+* Improve error management and messages on Debezium Platform backend [DBZ-8836](https://issues.redhat.com/browse/DBZ-8836)
+* Add UI support for Fine-grained logging configuration [DBZ-8890](https://issues.redhat.com/browse/DBZ-8890)
+* Update tutorial to use KRaft mode [DBZ-9184](https://issues.redhat.com/browse/DBZ-9184)
+* Add support for MongoDB Source Connector to start CDC from a specified point [DBZ-9240](https://issues.redhat.com/browse/DBZ-9240)
+* Introduce timeout for ALTER/CREATE Publication statment [DBZ-9310](https://issues.redhat.com/browse/DBZ-9310)
+* Allow redo thread flush scn adjustment to be configurable [DBZ-9344](https://issues.redhat.com/browse/DBZ-9344)
+* Improve performance validation on whether a supplied value is a toast column [DBZ-9345](https://issues.redhat.com/browse/DBZ-9345)
+* SQL Server emits heartbeats while catching up [DBZ-9364](https://issues.redhat.com/browse/DBZ-9364)
+* Add detail pages to source and destination [DBZ-9373](https://issues.redhat.com/browse/DBZ-9373)
+
+
+### Breaking changes since 3.3.0.Alpha1
+
+None
+
+
+### Fixes since 3.3.0.Alpha1
+
+* Incremental snapshot offset failing to load on task restart [DBZ-9209](https://issues.redhat.com/browse/DBZ-9209)
+* Update kafka.version  to 4.0.0 in parent pom [DBZ-9300](https://issues.redhat.com/browse/DBZ-9300)
+* Debezium Server Azure Event Hubs sink duplicates all previous events [DBZ-9304](https://issues.redhat.com/browse/DBZ-9304)
+* Archive log only mode does not pause mining when no more data available [DBZ-9306](https://issues.redhat.com/browse/DBZ-9306)
+* Mockit error in EventDispatcherTest [DBZ-9332](https://issues.redhat.com/browse/DBZ-9332)
+* Events may be mistakenly processed multiple times using multiple tasks [DBZ-9338](https://issues.redhat.com/browse/DBZ-9338)
+* Debezium constatly performs heartbeat.action.query instead of honoring heartbeat.interval.ms [DBZ-9340](https://issues.redhat.com/browse/DBZ-9340)
+* OCP tests fails to start [DBZ-9342](https://issues.redhat.com/browse/DBZ-9342)
+* Fetching transaction event count can result in NullPointerException [DBZ-9349](https://issues.redhat.com/browse/DBZ-9349)
+* Ensure JAVA_OPTS env var is correct on dbz server startup [DBZ-9352](https://issues.redhat.com/browse/DBZ-9352)
+* Issue in ReselectColumnsPostProcessor when field's schema type is BYTES [DBZ-9356](https://issues.redhat.com/browse/DBZ-9356)
+* MariaDB fails to parse ALTER TABLE using RENAME COLUMN IF EXISTS syntax [DBZ-9358](https://issues.redhat.com/browse/DBZ-9358)
+* Oracle fails to reselect columns when table structure changes and throws ORA-01466 [DBZ-9359](https://issues.redhat.com/browse/DBZ-9359)
+* Single quotes getting double quotes in a create operation [DBZ-9366](https://issues.redhat.com/browse/DBZ-9366)
+* Mining upper boundary is miscalculated when using archive log only mode [DBZ-9370](https://issues.redhat.com/browse/DBZ-9370)
+* Proper Kafka producer exception not logged due to record.key serialisation error [DBZ-9378](https://issues.redhat.com/browse/DBZ-9378)
+
+
+### Other changes since 3.3.0.Alpha1
+
+* Include XStream classes in downstream builds [DBZ-8828](https://issues.redhat.com/browse/DBZ-8828)
+* Remove any dummy value that are are using from showing them in UI [DBZ-9106](https://issues.redhat.com/browse/DBZ-9106)
+* Clarify IBM DB2 IIDR licensing requirement in Db2 connector documentation [DBZ-9121](https://issues.redhat.com/browse/DBZ-9121)
+* Document more restrictive configuration for creating Oracle LogMiner user  [DBZ-9129](https://issues.redhat.com/browse/DBZ-9129)
+* Create rest resource for the connection [DBZ-9313](https://issues.redhat.com/browse/DBZ-9313)
+* Improve the Github Action that checks the commit messages [DBZ-9327](https://issues.redhat.com/browse/DBZ-9327)
+* Update assertj to 3.27.4 [DBZ-9343](https://issues.redhat.com/browse/DBZ-9343)
+* Add, remove, or convert Dev Preview and Tech Preview notes [DBZ-9347](https://issues.redhat.com/browse/DBZ-9347)
+* Add documentation for the LogMiner unbuffered mode [DBZ-9351](https://issues.redhat.com/browse/DBZ-9351)
+
+
+
 ## 3.3.0.Alpha1
 August 5th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12464154)
 

@@ -307,6 +307,7 @@ Johan Venant
 John Graf
 John Martin
 John Psoroulas
+John Tanza
 John Wu
 Jon Casstevens
 Jonas Lins
@@ -369,6 +370,7 @@ Lukas Krejci
 Lukas Langegger
 Lukasz Korzeniowski
 Lukasz Selwa
+Luke Alexander
 lyidataminr
 M Sazzadul Hoque
 Maciej Bryński
@@ -376,6 +378,7 @@ Mans Singh
 MaoXiang Pan
 Marc Zbyszynski
 Marcelo Avancini
+Marci
 Marek Winkler
 Mario Fiore Vitale
 Mario Mueller
@@ -393,6 +396,7 @@ Martin Vlk
 Martin Walsh
 Masazumi Kobayashi
 Mathijs van den Worm
+Matt Bayley
 Matt Beary
 Matt Hejnas
 Matt Vance
@@ -439,6 +443,7 @@ Navdeep Agarwal
 Naveen Kumar KR
 Nayana Hettiarachchi
 Nenad Stojanovikj
+Nick Chomey
 Nick Murray
 Niels Pardon
 Nikhil Benesch
@@ -556,6 +561,7 @@ Shubham Rawat
 Shuguang Xiang
 Shuran Zhang
 Shushant Kumar
+Shyama Praveena S
 SiuFay
 Siddhant Agnihotry
 Stanislav Deviatov
