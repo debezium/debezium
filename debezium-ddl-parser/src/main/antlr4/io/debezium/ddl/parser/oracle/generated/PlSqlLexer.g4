@@ -1520,6 +1520,7 @@ RELIES_ON:                    'RELIES_ON';
 RELOCATE:                     'RELOCATE';
 RELY:                         'RELY';
 REMAINDER:                    'REMAINDER';
+REMOTE:                       'REMOTE';
 REMOTE_MAPPED:                'REMOTE_MAPPED';
 REMOVE:                       'REMOVE';
 RENAME:                       'RENAME';
