@@ -3590,6 +3590,7 @@ GO
 
 If you enable notifications for the connector, after you make a schema change, the connector emits a notification to report the status of the change. 
 For more information about notifications and how to enable them, see the {link-prefix}:{link-notification}#debezium-notification[{prodname} notifications documentation].
+
 The following example shows a status notification that {prodname} might emit after a schema evolution change.
 
 [source, json]
