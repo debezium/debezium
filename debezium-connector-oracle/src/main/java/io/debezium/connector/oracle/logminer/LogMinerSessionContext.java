@@ -36,6 +36,8 @@ public class LogMinerSessionContext implements AutoCloseable {
 
     private boolean sessionStarted = false;
     private Duration lastSessionStartTime = Duration.ZERO;
+    private Scn currentSessionStartScn = Scn.NULL;
+    private Scn currentSessionEndScn = Scn.NULL;
 
     public LogMinerSessionContext(OracleConnection connection, boolean useContinuousMining, LogMiningStrategy strategy, String dictionaryFilePath) {
         this.connection = connection;
@@ -47,6 +49,24 @@ public class LogMinerSessionContext implements AutoCloseable {
     @Override
     public void close() throws Exception {
         endMiningSession();
+    }
+
+    /**
+     * Get the current session starting system change number.
+     *
+     * @return the current starting system change number or {@link Scn#NULL} if not started
+     */
+    public Scn getCurrentSessionStartScn() {
+        return currentSessionStartScn;
+    }
+
+    /**
+     * Get the current session ending system change number.
+     *
+     * @return the current ending system change number or {@link Scn#NULL} if not started
+     */
+    public Scn getCurrentSessionEndScn() {
+        return currentSessionEndScn;
     }
 
     /**
@@ -134,6 +154,9 @@ public class LogMinerSessionContext implements AutoCloseable {
             connection.executeWithoutCommitting(query.toString());
             lastSessionStartTime = Duration.between(startTime, Instant.now());
             sessionStarted = true;
+
+            currentSessionStartScn = startScn;
+            currentSessionEndScn = endScn;
         }
         catch (SQLException e) {
             if (e.getErrorCode() == 1291 || e.getMessage().startsWith("ORA-01291")) {
@@ -154,6 +177,10 @@ public class LogMinerSessionContext implements AutoCloseable {
     public void endMiningSession() throws SQLException {
         try {
             LOGGER.trace("Ending log mining session");
+
+            currentSessionStartScn = Scn.NULL;
+            currentSessionEndScn = Scn.NULL;
+
             connection.executeWithoutCommitting("BEGIN SYS.DBMS_LOGMNR.END_LOGMNR(); END;");
             sessionStarted = false;
         }
