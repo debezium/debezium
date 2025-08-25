@@ -100,7 +100,7 @@ DEBEZIUM_ADDITIONAL_REPOSITORIES.split().each { item ->
     }
 }
 
-IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/mysql-replication/master', 'examples/mysql-replication/replica', 'examples/mariadb', 'examples/postgres', 'examples/mongodb', 'kafka', 'server', 'zookeeper', 'operator', 'platform-conductor', 'platform-stage']
+IMAGES = ['connect', 'connect-base', 'examples/mysql', 'examples/mysql-gtids', 'examples/mysql-replication/master', 'examples/mysql-replication/replica', 'examples/mariadb', 'examples/postgres', 'examples/mongodb', 'kafka', 'server', 'operator', 'platform-conductor', 'platform-stage']
 MAVEN_CENTRAL = 'https://repo1.maven.org/maven2'
 LOCAL_MAVEN_REPO = "$HOME_DIR/.m2/repository"
 STAGING_REPO = 'http://%s'
@@ -610,13 +610,12 @@ node('release-node') {
                 """
             }
             sh """
-                docker rm -f connect zookeeper kafka mysql || true
+                docker rm -f connect kafka mysql || true
                 docker run -it -d --name mysql -p 53306:3306 -e MYSQL_ROOT_PASSWORD=debezium -e MYSQL_USER=mysqluser -e MYSQL_PASSWORD=mysqlpw $DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/example-mysql:$IMAGE_TAG
-                docker run -it -d --name zookeeper -p 2181:2181 -p 2888:2888 -p 3888:3888 $DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/zookeeper:$IMAGE_TAG
                 sleep 10
-                docker run -it -d --name kafka -p 9092:9092 --link zookeeper:zookeeper $DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/kafka:$IMAGE_TAG
+                docker run -it -d --name kafka -p 9092:9092 $DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/kafka:$IMAGE_TAG
                 sleep 10
-                docker run -it -d --name connect -p 8083:8083 -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets --link zookeeper:zookeeper --link kafka:kafka --link mysql:mysql $DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/connect:$IMAGE_TAG
+                docker run -it -d --name connect -p 8083:8083 -e GROUP_ID=1 -e CONFIG_STORAGE_TOPIC=my_connect_configs -e OFFSET_STORAGE_TOPIC=my_connect_offsets --link kafka:kafka --link mysql:mysql $DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/connect:$IMAGE_TAG
                 sleep 30
     
                 curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" localhost:8083/connectors/ -d '
@@ -641,9 +640,9 @@ node('release-node') {
                 sleep 10
             """
             timeout(time: 2, unit: java.util.concurrent.TimeUnit.MINUTES) {
-                def watcherlog = sh(script: "docker run --name watcher --rm --link zookeeper:zookeeper --link kafka:kafka $DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/kafka:$IMAGE_TAG watch-topic -a -k dbserver1.inventory.customers --max-messages 2 2>&1", returnStdout: true).trim()
+                def watcherlog = sh(script: "docker run --name watcher --rm --link kafka:kafka $DEBEZIUM_DOCKER_REGISTRY_PRIMARY_NAME/kafka:$IMAGE_TAG watch-topic -a -k dbserver1.inventory.customers --max-messages 2 2>&1", returnStdout: true).trim()
                 echo watcherlog
-                sh 'docker rm -f connect zookeeper kafka mysql maven'
+                sh 'docker rm -f connect kafka mysql maven'
                 if (!watcherlog.contains('Processed a total of 2 messages')) {
                     error 'Tutorial watcher did not reported messages'
                 }
