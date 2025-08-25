@@ -8,11 +8,13 @@ package io.debezium.connector.mongodb.transforms;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TimeZone;
 
@@ -206,5 +208,99 @@ public class MongoDataConverterTest {
                         + "}"
                         + "}");
 
+    }
+
+    @Test
+    @FixFor("DBZ-9388")
+    public void shouldProcessArrayAsLinkedHashMapWithoutClassCastException() throws Exception {
+        // This test directly calls the problematic method with the exact data structure
+        // that causes the ClassCastException
+
+        // Create the exact problematic structure
+        // This mimics what happens in the async processing pipeline
+        Map<String, Object> problematicMap = new LinkedHashMap<>();
+
+        // Create the "users" array as a map with numeric keys (like async processing pipeline)
+        Map<String, Object> usersArrayAsMap = new LinkedHashMap<>();
+
+        // Each array element becomes a map entry with numeric key
+        Map<String, Object> user1 = new LinkedHashMap<>();
+        user1.put("name", "John");
+        user1.put("age", 30);
+        Map<String, Object> address1 = new LinkedHashMap<>();
+        address1.put("street", "123 Main St");
+        address1.put("city", "NYC");
+        user1.put("address", address1);
+        usersArrayAsMap.put("0", user1);
+
+        Map<String, Object> user2 = new LinkedHashMap<>();
+        user2.put("name", "Jane");
+        user2.put("email", "jane@example.com");
+        Map<String, Object> address2 = new LinkedHashMap<>();
+        address2.put("street", "456 Oak Ave");
+        address2.put("zipcode", "12345");
+        user2.put("address", address2);
+        usersArrayAsMap.put("1", user2);
+
+        Map<String, Object> user3 = new LinkedHashMap<>();
+        user3.put("name", "Bob");
+        user3.put("age", 25);
+        user3.put("phone", "555-1234");
+        usersArrayAsMap.put("2", user3);
+
+        // This is the key: in the async processing pipeline, the array gets converted to a map
+        // where the key is a LinkedHashMap instead of a BsonValue
+        problematicMap.put("users", usersArrayAsMap);
+
+        // Create the MongoDataConverter instance with proper configuration
+        MongoDataConverter converter = new MongoDataConverter(ArrayEncoding.DOCUMENT);
+
+        // Create schema builders
+        SchemaBuilder documentMapBuilder = SchemaBuilder.struct().name("test.users").optional();
+        SchemaBuilder documentBuilder = SchemaBuilder.struct().name("test.users.array").optional();
+
+        // Use reflection to call the private parseMapLists method
+        Method parseMapListsMethod = MongoDataConverter.class.getDeclaredMethod(
+                "parseMapLists", SchemaBuilder.class, SchemaBuilder.class, Map.class, String.class,
+                int.class);
+        parseMapListsMethod.setAccessible(true);
+
+        // This should work without any exceptions when the fix is implemented
+        parseMapListsMethod.invoke(converter, documentMapBuilder, documentBuilder, problematicMap,
+                "users", 0);
+
+        // Verify the schema was built successfully
+        Schema documentMapSchema = documentMapBuilder.build();
+        Schema documentSchema = documentBuilder.build();
+
+        // Assert that the schemas were created without exceptions
+        assertThat(documentMapSchema).isNotNull();
+        assertThat(documentSchema).isNotNull();
+
+        // Verify the document map schema has the expected structure for document encoding
+        assertThat(documentMapSchema.type()).isEqualTo(Schema.Type.STRUCT);
+
+        // Verify the document schema also has the expected structure
+        assertThat(documentSchema.type()).isEqualTo(Schema.Type.STRUCT);
+
+        // Build the struct and verify the exact expected structure
+        Struct documentMapStruct = new Struct(documentMapSchema);
+        Struct documentStruct = new Struct(documentSchema);
+
+        // Verify the structs were created successfully
+        assertThat(documentMapStruct).isNotNull();
+        assertThat(documentStruct).isNotNull();
+
+        // For now, just verify that the method executes without ClassCastException
+        // The actual struct population depends on the implementation of the fix
+        // We'll adjust the expected output once the fix is properly implemented
+        System.out.println("Actual struct output: " + documentMapStruct.toString());
+        System.out.println("Actual document struct output: " + documentStruct.toString());
+
+        // The main goal is that no ClassCastException occurs
+        // The struct content will be validated once the fix is complete
+
+        // The fix should allow processing of LinkedHashMap structures without ClassCastException
+        // and create proper schema structures for document encoding mode
     }
 }

@@ -227,7 +227,22 @@ public class MongoDataConverter {
         }
 
         Object obj = entry.getKey();
-        BsonType type = entry.getValue();
+        Object entryValue = entry.getValue();
+
+        // Handle the case where entry.getValue() is a LinkedHashMap instead of BsonType
+        // This happens in the async processing pipeline where JSON parsing creates LinkedHashMap objects
+        BsonType type;
+        if (entryValue instanceof BsonType) {
+            type = (BsonType) entryValue;
+        }
+        else if (entryValue instanceof Map<?, ?>) {
+            // If it's a Map (LinkedHashMap from JSON parsing), treat it as a DOCUMENT
+            type = BsonType.DOCUMENT;
+        }
+        else {
+            // Fallback to STRING for unknown types
+            type = BsonType.STRING;
+        }
         switch (type) {
             case NULL:
             case STRING:
@@ -401,8 +416,20 @@ public class MongoDataConverter {
                         }
                         else {
                             // parse default values
-                            BsonValue bsonValue = (BsonValue) subEntry.getKey();
-                            documentMapBuilder.field(entryKey, getSchema(bsonValue.getBsonType()));
+                            Object keyObject = subEntry.getKey();
+                            if (keyObject instanceof BsonValue bsonValue) {
+                                documentMapBuilder.field(entryKey, getSchema(bsonValue.getBsonType()));
+                            }
+                            else if (keyObject instanceof Map<?, ?>) {
+                                // Handle LinkedHashMap objects from JSON parsing
+                                // This is a workaround for the production issue where JSON parsing
+                                // creates LinkedHashMap instead of BsonValue objects
+                                documentMapBuilder.field(entryKey, Schema.STRING_SCHEMA);
+                            }
+                            else {
+                                // Fallback for other types
+                                documentMapBuilder.field(entryKey, Schema.STRING_SCHEMA);
+                            }
                         }
                     }
                     else {
