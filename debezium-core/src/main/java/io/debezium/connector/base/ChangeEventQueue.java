@@ -256,7 +256,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
                 throw new InterruptedException("Queue has been shut down");
             }
 
-            queue.enqueue(record);            // If we pass a positiveLong max.queue.size.in.bytes to enable handling queue size in bytes feature
+            queue.enqueue(record); // If we pass a positiveLong max.queue.size.in.bytes to enable handling queue size in bytes feature
             if (maxQueueSizeInBytes > 0) {
                 long messageSize = record.objectSize();
                 sizeInBytesQueue.add(messageSize);
