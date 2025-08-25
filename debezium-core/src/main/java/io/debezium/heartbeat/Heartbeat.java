@@ -107,6 +107,20 @@ public interface Heartbeat extends AutoCloseable {
         default void emitWithDelay(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
             // ignore
         }
+
+        /**
+         * @return if the timeout for the scheduled heartbeat is expired
+         */
+        default boolean expired() {
+            return false;
+        }
+
+        /**
+         * reset the timer for the heartbeat
+         */
+        default void reset() {
+            // ignore
+        }
     }
 
     /**

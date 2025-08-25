@@ -453,6 +453,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
     public void dispatchHeartbeatEvent(P partition, OffsetContext offset) throws InterruptedException {
         if (heartbeat instanceof ScheduledHeartbeat scheduledHeartbeat) {
             scheduledHeartbeat.emitWithDelay(partition.getSourcePartition(), offset);
+            return;
         }
         heartbeat.heartbeat(partition.getSourcePartition(), offset.getOffset(), record -> queue.enqueue(new DataChangeEvent(record)));
     }

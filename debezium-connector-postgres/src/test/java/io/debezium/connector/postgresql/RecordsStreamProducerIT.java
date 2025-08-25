@@ -18,12 +18,14 @@ import static junit.framework.TestCase.assertTrue;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 import static org.assertj.core.api.Assertions.fail;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
@@ -55,7 +57,6 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.apache.kafka.connect.storage.MemoryOffsetBackingStore;
-import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.Before;
@@ -76,6 +77,7 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.junit.SkipTestDependingOnDecoderPluginNameRule;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIs;
 import io.debezium.connector.postgresql.junit.SkipWhenDecoderPluginNameIsNot;
+import io.debezium.custom.heartbeat.TestHeartbeatFactory;
 import io.debezium.data.Bits;
 import io.debezium.data.Enum;
 import io.debezium.data.Envelope;
@@ -1855,9 +1857,9 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
                 Envelope.FieldName.AFTER);
         final var after = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
         final var byteaArray = after.getArray("bytea_array");
-        Assertions.assertThat(byteaArray).hasSize(1);
-        Assertions.assertThat(byteaArray.get(0)).isEqualTo(DecoderDifferences.mandatoryToastedValueBinaryPlaceholder());
-        Assertions.assertThat(after.schema().field("bytea_array").schema())
+        assertThat(byteaArray).hasSize(1);
+        assertThat(byteaArray.get(0)).isEqualTo(DecoderDifferences.mandatoryToastedValueBinaryPlaceholder());
+        assertThat(after.schema().field("bytea_array").schema())
                 .isEqualTo(SchemaBuilder.array(Schema.OPTIONAL_BYTES_SCHEMA).optional().build());
     }
 
@@ -3843,6 +3845,46 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         record = consumer.remove();
         assertEquals(topicName, record.topic());
         VerifyRecord.isValidTombstone(record, PK_FIELD, 1);
+    }
+
+    @Test
+    @FixFor("DBZ-9340")
+    public void shouldSendHeartbeatBasedOnDefinedInterval() throws InterruptedException {
+        LogInterceptor logInterceptor = new LogInterceptor(TestHeartbeatFactory.class);
+
+        Function<Configuration.Builder, Configuration.Builder> configMapper = config -> config
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(Heartbeat.HEARTBEAT_INTERVAL, "100")
+                .with(PostgresConnectorConfig.DROP_SLOT_ON_STOP, false);
+
+        startConnector(configMapper);
+        waitForStreamingToStart();
+        final AtomicInteger heartbeatCount = new AtomicInteger();
+
+        Awaitility
+                .await()
+                .with()
+                .pollDelay(Duration.ZERO)
+                .pollInterval(10, TimeUnit.MILLISECONDS)
+                .timeout(1000, TimeUnit.MILLISECONDS)
+                .atMost(1000, TimeUnit.MILLISECONDS)
+                .until(() -> {
+                    final SourceRecord record = consumeRecord();
+                    if (record != null) {
+                        if (record.topic().equalsIgnoreCase("__debezium-heartbeat.test_server")) {
+                            assertHeartBeatRecord(record);
+                            heartbeatCount.incrementAndGet();
+                        }
+                    }
+                    return heartbeatCount.get();
+                }, equalTo(1));
+
+        stopConnector();
+        consumeAvailableRecords(null);
+        TestHelper.dropDefaultReplicationSlot();
+        TestHelper.dropPublication();
+
+        assertThat(logInterceptor.countOccurrences("emitting heartbeat")).isLessThanOrEqualTo(4);
     }
 
     @Test()

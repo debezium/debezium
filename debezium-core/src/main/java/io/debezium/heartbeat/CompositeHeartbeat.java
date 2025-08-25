@@ -36,15 +36,21 @@ public class CompositeHeartbeat implements Heartbeat, Heartbeat.ScheduledHeartbe
 
     @Override
     public void heartbeat(Map<String, ?> partition, Map<String, ?> offset, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
-        for (Heartbeat heartbeat : heartbeats) {
-            heartbeat.heartbeat(partition, offset, consumer);
+        if (scheduledHeartbeat.expired()) {
+            scheduledHeartbeat.heartbeat(partition, offset, consumer);
+            for (Heartbeat heartbeat : heartbeats) {
+                heartbeat.heartbeat(partition, offset, consumer);
+            }
         }
     }
 
     @Override
     public void heartbeat(Map<String, ?> partition, OffsetProducer offsetProducer, BlockingConsumer<SourceRecord> consumer) throws InterruptedException {
-        for (Heartbeat heartbeat : heartbeats) {
-            heartbeat.heartbeat(partition, offsetProducer, consumer);
+        if (scheduledHeartbeat.expired()) {
+            scheduledHeartbeat.heartbeat(partition, offsetProducer, consumer);
+            for (Heartbeat heartbeat : heartbeats) {
+                heartbeat.heartbeat(partition, offsetProducer, consumer);
+            }
         }
     }
 
@@ -57,10 +63,12 @@ public class CompositeHeartbeat implements Heartbeat, Heartbeat.ScheduledHeartbe
 
     @Override
     public void emitWithDelay(Map<String, ?> partition, OffsetContext offset) throws InterruptedException {
-        scheduledHeartbeat.emitWithDelay(partition, offset);
-
-        for (Heartbeat heartbeat : heartbeats) {
-            heartbeat.emit(partition, offset);
+        if (scheduledHeartbeat.expired()) {
+            scheduledHeartbeat.emit(partition, offset);
+            for (Heartbeat heartbeat : heartbeats) {
+                heartbeat.emit(partition, offset);
+            }
+            scheduledHeartbeat.reset();
         }
     }
 
