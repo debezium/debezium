@@ -90,6 +90,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
     private final AtomicReference<T> bufferedEvent = new AtomicReference<>();
 
     private volatile RuntimeException producerException;
+    private volatile boolean running = true;
 
     private ChangeEventQueue(Duration pollInterval, int maxQueueSize, int maxBatchSize, Supplier<LoggingContext.PreviousContext> loggingContextSupplier,
                              long maxQueueSizeInBytes, boolean buffering, QueueProvider<T> queueProvider) {
@@ -212,8 +213,10 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
      */
     public void flushBuffer(Function<T, T> recordModifier) throws InterruptedException {
         assert buffering : "Unsupported for queues with disabled buffering";
+
         T record = bufferedEvent.getAndSet(null);
         if (record != null) {
+            // doEnqueue will check running state and throw InterruptedException if not running
             doEnqueue(recordModifier.apply(record));
         }
     }
@@ -241,15 +244,19 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
         try {
             this.lock.lock();
 
-            while (queue.size() >= maxQueueSize || (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes >= maxQueueSizeInBytes)) {
+            while (running && (queue.size() >= maxQueueSize || (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes >= maxQueueSizeInBytes))) {
                 // signal poll() to drain queue
                 this.isFull.signalAll();
                 // queue size or queue sizeInBytes threshold reached, so wait a bit
                 this.isNotFull.await(pollInterval.toMillis(), TimeUnit.MILLISECONDS);
             }
 
-            queue.enqueue(record);
-            // If we pass a positiveLong max.queue.size.in.bytes to enable handling queue size in bytes feature
+            // If not running, throw InterruptedException to allow graceful exit
+            if (!running) {
+                throw new InterruptedException("Queue has been shut down");
+            }
+
+            queue.enqueue(record); // If we pass a positiveLong max.queue.size.in.bytes to enable handling queue size in bytes feature
             if (maxQueueSizeInBytes > 0) {
                 long messageSize = record.objectSize();
                 sizeInBytesQueue.add(messageSize);
@@ -338,6 +345,23 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
         this.producerException = producerException;
     }
 
+    /**
+     * Shuts down the queue, interrupting any blocked operations.
+     * This prevents memory leaks by allowing blocked threads to exit gracefully.
+     */
+    public void shutdown() {
+        try {
+            this.lock.lock();
+            running = false;
+            // Wake up any threads waiting on conditions
+            this.isFull.signalAll();
+            this.isNotFull.signalAll();
+        }
+        finally {
+            this.lock.unlock();
+        }
+    }
+
     private void throwProducerExceptionIfPresent() {
         if (producerException != null) {
             throw producerException;
@@ -366,5 +390,14 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
 
     public boolean isBuffered() {
         return buffering;
+    }
+
+    /**
+     * Returns true if the queue is still running and accepting operations.
+     *
+     * @return true if the queue is running, false if it has been shut down
+     */
+    public boolean isRunning() {
+        return running;
     }
 }
