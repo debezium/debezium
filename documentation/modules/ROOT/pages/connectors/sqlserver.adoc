@@ -3471,7 +3471,9 @@ However, offline updates might not be feasible for use with applications that re
 5. Create a new capture table for the update source table using `sys.sp_cdc_enable_table` procedure with a unique value for parameter `@capture_instance`.
 6. Resume the application that you suspended in Step 1.
 7. Start the {prodname} connector.
-8. After the {prodname} connector starts streaming from the new capture table, drop the old capture table by running the stored procedure `sys.sp_cdc_disable_table` with the parameter `@capture_instance` set to the old capture instance name. The connector emits a notification when it has completed reading from the old capture instance, see xref:sqlserver-notifications[Notifications].
+8. After the {prodname} connector starts streaming from the new capture table, drop the old capture table by running the stored procedure `sys.sp_cdc_disable_table` with the parameter `@capture_instance` set to the old capture instance name. 
+The connector emits a notification after it finishes reading from the old capture instance.
+For more information, see xref:sqlserver-notifications[Notifications].
 
 // Type: procedure
 // ModuleID: debezium-sql-server-connector-running-an-online-update-after-a-schema-change
@@ -3495,7 +3497,9 @@ If your application does not tolerate such a transition period, it is best to us
 .Procedure
 1. Apply all changes to the source table schema.
 2. Create a new capture table for the update source table by running the `sys.sp_cdc_enable_table` stored procedure with a unique value for the parameter `@capture_instance`.
-3. When {prodname} starts streaming from the new capture table, you can drop the old capture table by running the `sys.sp_cdc_disable_table` stored procedure with the parameter `@capture_instance` set to the old capture instance name. The connector emits a notification when it has completed reading from the old capture instance, see xref:sqlserver-notifications[Notifications].
+3. After {prodname} starts streaming from the new capture table, you can drop the old capture table by running the `sys.sp_cdc_disable_table` stored procedure with the parameter `@capture_instance` set to the old capture instance name.
+The connector emits a notification after it finishes reading from the old capture instance. 
+For more information, see xref:sqlserver-notifications[Notifications].
 
 
 .Example: Running an online schema update after a database schema change
@@ -3578,15 +3582,15 @@ EXEC sys.sp_cdc_disable_table @source_schema = 'dbo', @source_name = 'dbo_custom
 GO
 ----
 
-// Type: assembly
-// ModuleID: notifications-debezium-sql-server-connector-performance
-// Title: Notifications for {prodname} SQL Server connector
+// Type: concept
+// ModuleID: debezium-sql-server-connector-status-notification-after-a-schema-change
+// Title: Status notifications that the {prodname} SQL Server connector emits after a schema change.
 [[sqlserver-notifications]]
 == Notifications
 
-Apart form the snapshot related notifications, {prodname} SQL Server connector provides notifications related to schema evolution.
-For information about notifications and how to enable them, see the {link-prefix}:{link-notification}#debezium-notification[{prodname} notification documentation].
-
+If you enable notifications for the connector, after you make a schema change, the connector emits a notification to report the status of the change. 
+For more information about notifications and how to enable them, see the {link-prefix}:{link-notification}#debezium-notification[{prodname} notifications documentation].
+The following example shows a status notification that {prodname} might emit after a schema evolution change.
 
 [source, json]
 ----
