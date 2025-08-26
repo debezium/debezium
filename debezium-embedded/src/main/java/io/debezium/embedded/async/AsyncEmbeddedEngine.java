@@ -363,19 +363,27 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
      */
     private Map<String, String> initializeConnector() throws Exception {
         LOGGER.debug("Preparing connector initialization");
-        final String engineName = config.getString(AsyncEngineConfig.ENGINE_NAME);
-        final String connectorClassName = config.getString(AsyncEngineConfig.CONNECTOR_CLASS);
-        final Map<String, String> connectorConfig = validateAndGetConnectorConfig(connector.connectConnector(), connectorClassName);
+        // Set the TCCL to the classloader used by engine. This is needed e.g. for Kafka classloaer which uses TCCL.
+        final ClassLoader originalTccl = Thread.currentThread().getContextClassLoader();
+        Thread.currentThread().setContextClassLoader(this.classLoader);
+        try {
+            final String engineName = config.getString(AsyncEngineConfig.ENGINE_NAME);
+            final String connectorClassName = config.getString(AsyncEngineConfig.CONNECTOR_CLASS);
+            final Map<String, String> connectorConfig = validateAndGetConnectorConfig(connector.connectConnector(), connectorClassName);
 
-        LOGGER.debug("Initializing offset store, offset reader and writer");
-        final OffsetBackingStore offsetStore = createAndStartOffsetStore(connectorConfig);
-        final OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName, offsetKeyConverter, offsetValueConverter);
-        final OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetStore, engineName, offsetKeyConverter, offsetValueConverter);
+            LOGGER.debug("Initializing offset store, offset reader and writer");
+            final OffsetBackingStore offsetStore = createAndStartOffsetStore(connectorConfig);
+            final OffsetStorageReader offsetReader = new OffsetStorageReaderImpl(offsetStore, engineName, offsetKeyConverter, offsetValueConverter);
+            final OffsetStorageWriter offsetWriter = new OffsetStorageWriter(offsetStore, engineName, offsetKeyConverter, offsetValueConverter);
 
-        LOGGER.debug("Initializing Connect connector itself");
-        connector.initialize(new EngineSourceConnectorContext(this, offsetStore, offsetReader, offsetWriter));
+            LOGGER.debug("Initializing Connect connector itself");
+            connector.initialize(new EngineSourceConnectorContext(this, offsetStore, offsetReader, offsetWriter));
 
-        return connectorConfig;
+            return connectorConfig;
+        }
+        finally {
+            Thread.currentThread().setContextClassLoader(originalTccl);
+        }
     }
 
     /**
@@ -401,17 +409,25 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
         else {
             LOGGER.debug("Creating {} instance(s) of source task(s)", taskConfigs.size());
         }
-        for (Map<String, String> taskConfig : taskConfigs) {
-            final SourceTask task = (SourceTask) taskClass.getDeclaredConstructor().newInstance();
-            final EngineSourceTaskContext taskContext = new EngineSourceTaskContext(
-                    taskConfig,
-                    connector.context().offsetStorageReader(),
-                    connector.context().offsetStorageWriter(),
-                    offsetCommitPolicy,
-                    clock,
-                    transformations);
-            task.initialize(taskContext); // Initialize Kafka Connect source task
-            tasks.add(new EngineSourceTask(task, taskContext)); // Create new DebeziumSourceTask
+        // Set the TCCL while creating source tasks to properly load other service like e.g. Snapshot service.
+        final ClassLoader originalTccl = Thread.currentThread().getContextClassLoader();
+        Thread.currentThread().setContextClassLoader(this.classLoader);
+        try {
+            for (Map<String, String> taskConfig : taskConfigs) {
+                final SourceTask task = (SourceTask) taskClass.getDeclaredConstructor().newInstance();
+                final EngineSourceTaskContext taskContext = new EngineSourceTaskContext(
+                        taskConfig,
+                        connector.context().offsetStorageReader(),
+                        connector.context().offsetStorageWriter(),
+                        offsetCommitPolicy,
+                        clock,
+                        transformations);
+                task.initialize(taskContext); // Initialize Kafka Connect source task
+                tasks.add(new EngineSourceTask(task, taskContext)); // Create new DebeziumSourceTask
+            }
+        }
+        finally {
+            Thread.currentThread().setContextClassLoader(originalTccl);
         }
     }
 
@@ -425,9 +441,17 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
     private void startSourceTasks(final List<EngineSourceTask> tasks) throws Exception {
         LOGGER.debug("Starting source connector tasks.");
         final ExecutorCompletionService<Void> taskCompletionService = new ExecutorCompletionService(taskService);
+        // Set the TCCL for the threads while starting the tasks.
+        final ClassLoader originalTccl = Thread.currentThread().getContextClassLoader();
         for (EngineSourceTask task : tasks) {
             taskCompletionService.submit(() -> {
-                task.connectTask().start(task.context().config());
+                try {
+                    Thread.currentThread().setContextClassLoader(this.classLoader);
+                    task.connectTask().start(task.context().config());
+                }
+                finally {
+                    Thread.currentThread().setContextClassLoader(originalTccl);
+                }
                 return null;
             });
         }
