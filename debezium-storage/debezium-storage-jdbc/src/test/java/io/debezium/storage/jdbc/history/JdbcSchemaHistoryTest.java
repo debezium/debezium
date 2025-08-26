@@ -14,18 +14,19 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.Types;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.StreamSupport;
 
+import io.debezium.relational.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
-import io.debezium.relational.Column;
-import io.debezium.relational.Table;
-import io.debezium.relational.TableId;
-import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.relational.history.SchemaHistory;
@@ -43,12 +44,18 @@ public class JdbcSchemaHistoryTest {
     static String databaseName = "db";
     static String schemaName = "myschema";
     static String ddl = "CREATE TABLE foo ( first VARCHAR(22) NOT NULL );";
+    static String ddlLarge = buildDdlLargeTable();
     static Map<String, Object> source;
     static Map<String, Object> position;
     static TableId tableId;
     static Table table;
     static TableChanges tableChanges;
     static HistoryRecord historyRecord;
+    static Map<String, Object> positionLarge;
+    static TableId tableIdLarge;
+    static Table tableLarge;
+    static TableChanges tableChangesLarge;
+    static HistoryRecord historyRecordLarge;
     static Map<String, Object> position2;
     static TableId tableId2;
     static Table table2;
@@ -56,6 +63,19 @@ public class JdbcSchemaHistoryTest {
     static HistoryRecord historyRecord2;
     static DdlParser ddlParser = new TestingAntlrDdlParser();
     static Instant currentInstant = Instant.now();
+
+    private static String buildDdlLargeTable() {
+        StringBuilder sb = new StringBuilder("CREATE TABLE large (id INT PRIMARY KEY");
+        for (String columnName: getColumnsForLargeTable()) {
+            sb.append(", ").append(columnName).append(" INT");
+        }
+        sb.append(");");
+        return sb.toString();
+    }
+
+    private static List<String> getColumnsForLargeTable() {
+        return IntStream.range(0, 400).mapToObj(i -> "thisColumn" + i).collect(Collectors.toList());
+    }
 
     @BeforeClass
     public static void beforeClass() {
@@ -75,6 +95,28 @@ public class JdbcSchemaHistoryTest {
                 .create();
         tableChanges = new TableChanges().create(table);
         historyRecord = new HistoryRecord(source, position, databaseName, schemaName, ddl, tableChanges, currentInstant);
+        //
+        positionLarge = Collect.linkMapOf("file", "x.log", "positionInt", 100, "positionLong", Long.MAX_VALUE, "entry", 2);
+        tableIdLarge = new TableId(databaseName, schemaName, "large");
+        TableEditor tableEditorLarge = Table.editor()
+                .tableId(tableIdLarge)
+                .addColumn(Column.editor()
+                        .name("id")
+                        .jdbcType(Types.INTEGER)
+                        .type("INTEGER")
+                        .optional(false)
+                        .create());
+        getColumnsForLargeTable().forEach(c -> tableEditorLarge.addColumn(Column.editor()
+                .name(c)
+                .jdbcType(Types.INTEGER)
+                .type("INTEGER")
+                .optional(false)
+                .create()));
+        tableLarge = tableEditorLarge
+                .setPrimaryKeyNames("id")
+                .create();
+        tableChangesLarge = new TableChanges().create(tableLarge);
+        historyRecordLarge = new HistoryRecord(source, position, databaseName, schemaName, ddlLarge, tableChangesLarge, currentInstant);
         //
         position2 = Collect.linkMapOf("file", "x.log", "positionInt", 100, "positionLong", Long.MAX_VALUE, "entry", 2);
         tableId2 = new TableId(databaseName, schemaName, "bar");
@@ -142,6 +184,8 @@ public class JdbcSchemaHistoryTest {
         history.recover(source, position, tables, ddlParser);
         assertEquals(tables.size(), 1);
         assertEquals(tables.forTable(tableId), table);
+        history.record(source, positionLarge, databaseName, schemaName, ddlLarge, tableChangesLarge, currentInstant);
+        history.record(source, positionLarge, databaseName, schemaName, ddlLarge, tableChangesLarge, currentInstant);
         history.record(source, position2, databaseName, schemaName, ddl, tableChanges2, currentInstant);
         history.record(source, position2, databaseName, schemaName, ddl, tableChanges2, currentInstant);
         history.stop();
@@ -157,7 +201,8 @@ public class JdbcSchemaHistoryTest {
         assertTrue(history2.exists());
         Tables tables2 = new Tables();
         history2.recover(source, position2, tables2, ddlParser);
-        assertEquals(tables2.size(), 2);
+        assertEquals(tables2.size(), 3);
+        assertEquals(tables2.forTable(tableIdLarge), tableLarge);
         assertEquals(tables2.forTable(tableId2), table2);
     }
 

@@ -5,23 +5,6 @@
  */
 package io.debezium.storage.jdbc.history;
 
-import java.io.IOException;
-import java.sql.DatabaseMetaData;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.debezium.DebeziumException;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.annotation.VisibleForTesting;
@@ -29,14 +12,20 @@ import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.debezium.document.DocumentReader;
 import io.debezium.document.DocumentWriter;
-import io.debezium.relational.history.AbstractSchemaHistory;
-import io.debezium.relational.history.HistoryRecord;
-import io.debezium.relational.history.HistoryRecordComparator;
-import io.debezium.relational.history.SchemaHistory;
-import io.debezium.relational.history.SchemaHistoryException;
-import io.debezium.relational.history.SchemaHistoryListener;
+import io.debezium.relational.history.*;
 import io.debezium.storage.jdbc.RetriableConnection;
 import io.debezium.util.FunctionalReadWriteLock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 /**
  * A {@link SchemaHistory} implementation that stores the schema history to database table
@@ -104,6 +93,9 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                 throw new IllegalStateException("The history has been stopped and will not accept more records");
             }
 
+            String id = UUID.randomUUID().toString();
+            Timestamp currentTs = new Timestamp(System.currentTimeMillis());
+            int recordSeq = recordInsertSeq.incrementAndGet();
             try {
                 conn.executeWithRetry(conn -> {
                     String line = null;
@@ -113,16 +105,15 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                     catch (IOException e) {
                         throw new DebeziumException(e);
                     }
-                    Timestamp currentTs = new Timestamp(System.currentTimeMillis());
                     List<String> substrings = split(line, 65000);
                     int partSeq = 0;
                     for (String dataPart : substrings) {
                         try (PreparedStatement sql = conn.prepareStatement(config.getTableInsert())) {
-                            sql.setString(1, UUID.randomUUID().toString());
+                            sql.setString(1, id);
                             sql.setString(2, dataPart);
                             sql.setInt(3, partSeq);
                             sql.setTimestamp(4, currentTs);
-                            sql.setInt(5, recordInsertSeq.incrementAndGet());
+                            sql.setInt(5, recordSeq);
                             sql.executeUpdate();
                             partSeq++;
                         }
@@ -165,34 +156,27 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                 if (exists()) {
                     conn.executeWithRetry(conn -> {
                         try (
-                                Statement stmt = conn.createStatement();
-                                ResultSet rs = stmt.executeQuery(config.getTableSelect())) {
-                            StringBuilder historyDataStrBuilder = new StringBuilder();
-                            boolean isNotFirst = false;
+                            Statement stmt = conn.createStatement();
+                            ResultSet rs = stmt.executeQuery(config.getTableSelect())) {
+                            StringBuilder sb = new StringBuilder();
+                            int currentRecordSeq = Integer.MAX_VALUE;
                             while (rs.next()) {
-
-                                int insertSeq = rs.getInt("history_data_seq");
-                                String historyDataSpc = rs.getString("history_data");
-
-                                if (isNotFirst) {
-                                    if (insertSeq == 0) {
-                                        try {
-                                            records.accept(new HistoryRecord(reader.read(historyDataStrBuilder.toString())));
-                                        } catch (IOException e) {
-                                            throw new DebeziumException(e);
-                                        }
-                                        historyDataStrBuilder.setLength(0);
+                                int recordSeq = rs.getInt("record_insert_seq");
+                                String historyData = rs.getString("history_data");
+                                if (recordSeq != currentRecordSeq && !sb.isEmpty()) {
+                                    try {
+                                        records.accept(new HistoryRecord(reader.read(sb.toString())));
+                                    } catch (IOException e) {
+                                        throw new DebeziumException(e);
                                     }
-                                    historyDataStrBuilder.append(historyDataSpc);
-                                } else {
-                                    historyDataStrBuilder.append(historyDataSpc);
-                                    isNotFirst = true;
+                                    sb = new StringBuilder();
                                 }
+                                sb.append(historyData);
+                                currentRecordSeq = recordSeq;
                             }
-
-                            if (!historyDataStrBuilder.isEmpty()) {
+                            if (!sb.isEmpty()) {
                                 try {
-                                    records.accept(new HistoryRecord(reader.read(historyDataStrBuilder.toString())));
+                                    records.accept(new HistoryRecord(reader.read(sb.toString())));
                                 } catch (IOException e) {
                                     throw new DebeziumException(e);
                                 }
