@@ -86,7 +86,8 @@ import io.debezium.util.DelayStrategy;
 /**
  * Implementation of {@link DebeziumEngine} which allows to run multiple tasks in parallel and also
  * allows to process part or whole record processing pipeline in parallel.
- * For more detail see DDD-7 (TODO link).
+ *
+ * @see <a href="https://github.com/debezium/debezium-design-documents/blob/main/DDD-7.md">DDD-7</a>
  *
  * @author vjuranek
  */
