@@ -396,9 +396,9 @@ A new binary log format was introduced in MariaDB 11.4.
 When you use {prodname} with MariaDB 11.4 or later, you must set the MariaDB server variable https://mariadb.com/kb/en/replication-and-binary-log-system-variables/#binlog_legacy_event_pos[`binlog_legacy_event_pos`] to `1` (ON) to ensure that the connector can consume events in the new format.
 If you leave this variable at its default setting (`0`, or OFF), after a connector restart, {prodname} might not be able to find the resume point.
 
-The {prodname} {connector-name} connector currently does not support link:https://mariadb.com/docs/server/server-management/server-monitoring-logs/binary-log/compressing-events-to-reduce-size-of-the-binary-log[binary
-log compression]. 
-To enable the connector to consume all events, you must set the MariaDB server configuration option `log_bin_compress` to `0`.
+The {prodname} {connector-name} connector currently does not support
+link:https://mariadb.com/docs/server/server-management/server-monitoring-logs/binary-log/compressing-events-to-reduce-size-of-the-binary-log[binary
+log compression]. Make sure to set the MariaDB server configuration option `log_bin_compress` to `0` to ensure the connector can consume all events.
 ====
 
 // Type: procedure
