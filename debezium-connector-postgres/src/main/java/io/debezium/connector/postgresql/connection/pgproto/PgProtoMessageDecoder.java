@@ -11,9 +11,6 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.function.Function;
 
-import io.debezium.connector.postgresql.connection.Lsn;
-import io.debezium.connector.postgresql.connection.PositionLocator;
-import io.debezium.connector.postgresql.connection.WalPositionLocator;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 import org.slf4j.Logger;
@@ -23,6 +20,8 @@ import com.google.protobuf.InvalidProtocolBufferException;
 
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
+import io.debezium.connector.postgresql.connection.Lsn;
+import io.debezium.connector.postgresql.connection.PositionLocator;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
 import io.debezium.connector.postgresql.proto.PgProto;
 import io.debezium.connector.postgresql.proto.PgProto.Op;

@@ -5,6 +5,15 @@
  */
 package io.debezium.connector.postgresql.connection.pgoutput;
 
+import java.nio.ByteBuffer;
+import java.sql.SQLException;
+import java.time.Instant;
+import java.util.function.Function;
+
+import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.Lsn;
 import io.debezium.connector.postgresql.connection.MessageDecoderContext;
@@ -15,16 +24,6 @@ import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
 import io.debezium.connector.postgresql.connection.TransactionMessage;
 import io.debezium.data.Envelope;
-import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.nio.ByteBuffer;
-import java.sql.SQLException;
-import java.time.Instant;
-import java.util.function.Function;
-
-import static java.util.stream.Collectors.toMap;
 
 /**
  * Decodes messages from the PG logical replication plug-in ("pgoutput").

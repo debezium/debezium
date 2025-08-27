@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import io.debezium.connector.postgresql.connection.pgoutput.PgOutputStreamingMessageDecoder;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
 import org.apache.kafka.common.config.ConfigDef.Type;
@@ -33,6 +32,7 @@ import io.debezium.connector.postgresql.connection.MessageDecoderContext;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.pgoutput.PgOutputMessageDecoder;
+import io.debezium.connector.postgresql.connection.pgoutput.PgOutputStreamingMessageDecoder;
 import io.debezium.connector.postgresql.connection.pgproto.PgProtoMessageDecoder;
 import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.relational.ColumnFilterMode;

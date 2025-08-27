@@ -1,14 +1,14 @@
 package io.debezium.connector.postgresql.connection.pgoutput;
 
-import io.debezium.connector.postgresql.connection.ReplicationMessage;
-import io.debezium.connector.postgresql.connection.ReplicationStream;
-
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import io.debezium.connector.postgresql.connection.ReplicationMessage;
+import io.debezium.connector.postgresql.connection.ReplicationStream;
 
 public class BufferTransactions {
     private final Map<Long, LinkedHashMap<Long, List<ReplicationMessage>>> bufferedTransactions;
