@@ -464,14 +464,14 @@ public class SqlServerConnectorConfig extends HistorizedRelationalDatabaseConnec
 
     public static final Field DATA_QUERY_MODE = Field.create("data.query.mode")
             .withDisplayName("Data query mode")
-            .withEnum(DataQueryMode.class, DataQueryMode.FUNCTION)
+            .withEnum(DataQueryMode.class, DataQueryMode.DIRECT)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
             .withDescription("Controls how the connector queries CDC data. "
-                    + "The default is '" + DataQueryMode.FUNCTION.getValue()
-                    + "', which means the data is queried by means of calling cdc.[fn_cdc_get_all_changes_#] function. "
-                    + "The value of '" + DataQueryMode.DIRECT.getValue()
-                    + "' makes the connector to query the change tables directly.");
+                    + "The default is '" + DataQueryMode.DIRECT.getValue()
+                    + "', which makes the connector to query the change tables directly. "
+                    + "The value of '" + DataQueryMode.FUNCTION.getValue()
+                    + "' means the data is queried by means of calling cdc.[fn_cdc_get_all_changes_#] function.");
 
     public static final Field STREAMING_FETCH_SIZE = Field.create("streaming.fetch.size")
             .withDisplayName("Streaming fetch size")
