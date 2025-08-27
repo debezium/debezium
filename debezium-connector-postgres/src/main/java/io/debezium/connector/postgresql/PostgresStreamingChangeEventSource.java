@@ -243,7 +243,6 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 && !commitOffsetFailure) {
             boolean receivedMessage = stream.readPending((message, beginMessageTransactionId) -> processReplicationMessages(partition, offsetContext, stream, message), false);
 
-            // Thread.sleep(1000);
             probeConnectionIfNeeded();
 
             if (receivedMessage) {
@@ -283,8 +282,6 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         if (message.isLastEventForLsn()) {
             lastCompletelyProcessedLsn = lsn;
         }
-
-        // Thread.sleep(1000);
 
         // Tx BEGIN/END event
         if (message.isTransactionalMessage()) {
