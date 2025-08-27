@@ -5,6 +5,23 @@
  */
 package io.debezium.storage.jdbc.history;
 
+import java.io.IOException;
+import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.DebeziumException;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.annotation.VisibleForTesting;
@@ -12,20 +29,14 @@ import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.debezium.document.DocumentReader;
 import io.debezium.document.DocumentWriter;
-import io.debezium.relational.history.*;
+import io.debezium.relational.history.AbstractSchemaHistory;
+import io.debezium.relational.history.HistoryRecord;
+import io.debezium.relational.history.HistoryRecordComparator;
+import io.debezium.relational.history.SchemaHistory;
+import io.debezium.relational.history.SchemaHistoryException;
+import io.debezium.relational.history.SchemaHistoryListener;
 import io.debezium.storage.jdbc.RetriableConnection;
 import io.debezium.util.FunctionalReadWriteLock;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
 
 /**
  * A {@link SchemaHistory} implementation that stores the schema history to database table
@@ -156,8 +167,8 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                 if (exists()) {
                     conn.executeWithRetry(conn -> {
                         try (
-                            Statement stmt = conn.createStatement();
-                            ResultSet rs = stmt.executeQuery(config.getTableSelect())) {
+                                Statement stmt = conn.createStatement();
+                                ResultSet rs = stmt.executeQuery(config.getTableSelect())) {
                             StringBuilder sb = new StringBuilder();
                             int currentRecordSeq = Integer.MAX_VALUE;
                             while (rs.next()) {
@@ -166,7 +177,8 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                                 if (recordSeq != currentRecordSeq && !sb.isEmpty()) {
                                     try {
                                         records.accept(new HistoryRecord(reader.read(sb.toString())));
-                                    } catch (IOException e) {
+                                    }
+                                    catch (IOException e) {
                                         throw new DebeziumException(e);
                                     }
                                     sb = new StringBuilder();
@@ -177,7 +189,8 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                             if (!sb.isEmpty()) {
                                 try {
                                     records.accept(new HistoryRecord(reader.read(sb.toString())));
-                                } catch (IOException e) {
+                                }
+                                catch (IOException e) {
                                     throw new DebeziumException(e);
                                 }
                             }

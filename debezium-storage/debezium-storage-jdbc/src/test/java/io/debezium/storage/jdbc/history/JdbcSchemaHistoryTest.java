@@ -18,15 +18,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.StreamSupport;
 
-import io.debezium.relational.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import io.debezium.config.Configuration;
+import io.debezium.relational.Column;
+import io.debezium.relational.Table;
+import io.debezium.relational.TableEditor;
+import io.debezium.relational.TableId;
+import io.debezium.relational.Tables;
 import io.debezium.relational.ddl.DdlParser;
 import io.debezium.relational.history.HistoryRecord;
 import io.debezium.relational.history.SchemaHistory;
@@ -66,7 +69,7 @@ public class JdbcSchemaHistoryTest {
 
     private static String buildDdlLargeTable() {
         StringBuilder sb = new StringBuilder("CREATE TABLE large (id INT PRIMARY KEY");
-        for (String columnName: getColumnsForLargeTable()) {
+        for (String columnName : getColumnsForLargeTable()) {
             sb.append(", ").append(columnName).append(" INT");
         }
         sb.append(");");
