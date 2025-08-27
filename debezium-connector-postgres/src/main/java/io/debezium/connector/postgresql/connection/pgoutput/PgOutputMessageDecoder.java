@@ -68,59 +68,39 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * Will be null for a non-transactional decoding message
      */
     private Long transactionId;
-
-    public enum MessageType {
-        RELATION,
-        BEGIN,
-        COMMIT,
-        INSERT,
-        UPDATE,
-        DELETE,
-        TYPE,
-        ORIGIN,
-        TRUNCATE,
-        LOGICAL_DECODING_MESSAGE;
-
-        public static MessageType forType(char type) {
-            switch (type) {
-                case 'R':
-                    return RELATION;
-                case 'B':
-                    return BEGIN;
-                case 'C':
-                    return COMMIT;
-                case 'I':
-                    return INSERT;
-                case 'U':
-                    return UPDATE;
-                case 'D':
-                    return DELETE;
-                case 'Y':
-                    return TYPE;
-                case 'O':
-                    return ORIGIN;
-                case 'T':
-                    return TRUNCATE;
-                case 'M':
-                    return LOGICAL_DECODING_MESSAGE;
-                default:
-                    throw new IllegalArgumentException("Unsupported message type: " + type);
-            }
-        }
-    }
+    private boolean isSearchingWAL;
 
     public PgOutputMessageDecoder(MessageDecoderContext decoderContext, PostgresConnection connection) {
         this.decoderContext = decoderContext;
         this.connection = connection;
     }
 
+    protected void logBufferDataIfTraceIsEnabled(ByteBuffer buffer) {
+        if (LOGGER.isTraceEnabled()) {
+            if (!buffer.hasArray()) {
+                throw new IllegalStateException("Invalid buffer received from PG server during streaming replication");
+            }
+            final byte[] source = buffer.array();
+            // Extend the array by two as we might need to append two chars and set them to space by default
+            final byte[] content = Arrays.copyOfRange(source, buffer.arrayOffset(), source.length + 2);
+            final int lastPos = content.length - 1;
+            content[lastPos - 1] = SPACE;
+            content[lastPos] = SPACE;
+            LOGGER.trace("Message arrived from database {}", HexConverter.convertToHexString(content));
+        }
+    }
+
+    /*
+    * at the time of buffering - message should be processed
+    * */
     @Override
-    public boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, WalPositionLocator walPosition) {
+    public boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, PositionLocator walPosition) {
         // Cache position as we're going to peak at the first byte to determine message type
         // We need to reprocess all BEGIN/COMMIT messages regardless.
         int position = buffer.position();
         try {
             MessageType type = MessageType.forType((char) buffer.get());
+
             LOGGER.trace("Message Type: {}", type);
             switch (type) {
                 case TYPE:
@@ -139,7 +119,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                 default:
                     // call super.shouldMessageBeSkipped for rest of the types
             }
-            final boolean candidateForSkipping = super.shouldMessageBeSkipped(buffer, lastReceivedLsn, startLsn, walPosition);
+            final boolean candidateForSkipping = super.isMessageAlreadyProcessed(buffer, lastReceivedLsn, startLsn, walPosition, transactionId);
             switch (type) {
                 case COMMIT:
                 case BEGIN:
@@ -158,6 +138,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                 default:
                     // INSERT/UPDATE/DELETE/TRUNCATE/LOGICAL_DECODING_MESSAGE
                     // These should be excluded based on the normal behavior, delegating to default method
+
                     return candidateForSkipping;
             }
         }
@@ -169,18 +150,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
     @Override
     public void processNotEmptyMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {
-        if (LOGGER.isTraceEnabled()) {
-            if (!buffer.hasArray()) {
-                throw new IllegalStateException("Invalid buffer received from PG server during streaming replication");
-            }
-            final byte[] source = buffer.array();
-            // Extend the array by two as we might need to append two chars and set them to space by default
-            final byte[] content = Arrays.copyOfRange(source, buffer.arrayOffset(), source.length + 2);
-            final int lastPos = content.length - 1;
-            content[lastPos - 1] = SPACE;
-            content[lastPos] = SPACE;
-            LOGGER.trace("Message arrived from database {}", HexConverter.convertToHexString(content));
-        }
+        logBufferDataIfTraceIsEnabled(buffer);
 
         final MessageType messageType = MessageType.forType((char) buffer.get());
         switch (messageType) {
@@ -230,6 +200,15 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         }
 
         return builder;
+    }
+
+    @Override
+    public void isSearchingWAL(boolean isSearchingWAL) {
+        this.isSearchingWAL = isSearchingWAL;
+    }
+
+    protected boolean isSearchingWAL() {
+        return isSearchingWAL;
     }
 
     private boolean isTruncateEventsIncluded() {
@@ -778,7 +757,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     }
 
     protected void processMessage(ReplicationMessage replicationMessage, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
-        processor.process(replicationMessage);
+        processor.process(replicationMessage, transactionId);
     }
 
     protected void setTransactionId(Long transactionId) {

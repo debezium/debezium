@@ -35,7 +35,7 @@ public abstract class AbstractMessageDecoder implements MessageDecoder {
     public void processMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {
         // if message is empty pass control right to ReplicationMessageProcessor to update WAL position info
         if (buffer == null) {
-            processor.process(null);
+            processor.process(null, null);
         }
         else {
             processNotEmptyMessage(buffer, processor, typeRegistry);
@@ -45,19 +45,20 @@ public abstract class AbstractMessageDecoder implements MessageDecoder {
     protected abstract void processNotEmptyMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry)
             throws SQLException, InterruptedException;
 
-    @Override
-    public boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, WalPositionLocator walPosition) {
+
+    public abstract boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, PositionLocator walPosition);
+
+    public boolean isMessageAlreadyProcessed(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, PositionLocator walPosition, Long beginMessageTransactionId) {
         // the lsn we started from is inclusive, so we need to avoid sending back the same message twice
         // but for the first record seen ever it is possible we received the same LSN as the one obtained from replication slot
-        if (walPosition.skipMessage(lastReceivedLsn)) {
-            if (timerPermitsLogging()) {
+        if (walPosition.skipMessage(lastReceivedLsn, beginMessageTransactionId)) {
+            // if (timerPermitsLogging()) {
                 LOGGER.info("Streaming requested from LSN {}, received LSN {} identified as already processed", startLsn, lastReceivedLsn);
-            }
+            //}
             return true;
         }
         return false;
     }
-
     @Override
     public void close() {
     }

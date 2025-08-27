@@ -32,7 +32,7 @@ import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
  * @author Jiri Pechanec
  *
  */
-public class WalPositionLocator {
+public class WalPositionLocator implements PositionLocator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(WalPositionLocator.class);
 
@@ -47,7 +47,7 @@ public class WalPositionLocator {
     private boolean storeLsnAfterLastEventStoredLsn = false;
     private Set<Lsn> lsnSeen = new HashSet<>(1_000);
 
-    public WalPositionLocator(Lsn lastCommitStoredLsn, Lsn lastEventStoredLsn, Operation lastProcessedMessageType) {
+    public WalPositionLocator(Lsn lastCommitStoredLsn, Lsn lastEventStoredLsn, Operation lastProcessedMessageType, Long lastCommitTransactionId) {
         this.lastCommitStoredLsn = lastCommitStoredLsn;
         this.lastEventStoredLsn = lastEventStoredLsn;
         this.lastProcessedMessageType = lastProcessedMessageType;
@@ -68,7 +68,7 @@ public class WalPositionLocator {
      * @return the first LSN from which processing should be started or empty if
      *         the position has not been found yet
      */
-    public Optional<Lsn> resumeFromLsn(Lsn currentLsn, ReplicationMessage message) {
+    public Optional<Lsn> resumeFromLsn(Lsn currentLsn, ReplicationMessage message, Long beginMessageTransactionId) {
         LOGGER.trace("Processing LSN '{}', operation '{}'", currentLsn, message.getOperation());
 
         lsnSeen.add(currentLsn);
@@ -151,7 +151,7 @@ public class WalPositionLocator {
      * @param lsn
      * @return true if the message should be skipped, false otherwise
      */
-    public boolean skipMessage(Lsn lsn) {
+    public boolean skipMessage(Lsn lsn, Long beginMessageTransactionId) {
         if (passMessages) {
             return false;
         }

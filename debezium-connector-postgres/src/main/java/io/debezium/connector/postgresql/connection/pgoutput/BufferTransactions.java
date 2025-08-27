@@ -12,29 +12,37 @@ public class BufferTransactions {
     public BufferTransactions() {
         this.bufferedTransactions = new HashMap<>();
     }
+
+    public void beginMessage(Long transactionId, Long subTransactionId, ReplicationMessage message) {
+        List<ReplicationMessage> messages = new ArrayList<>();
+        messages.add(message);
+        LinkedHashMap<Long, List<ReplicationMessage>> subTransactions = new LinkedHashMap<>();
+        subTransactions.put(subTransactionId, messages);
+        this.bufferedTransactions.put(transactionId, subTransactions);
+    }
+
+    public void commitMessage(Long transactionId, Long subTransactionId, ReplicationMessage message) {
+        List<ReplicationMessage> messages = new ArrayList<>();
+        messages.add(message);
+        LinkedHashMap<Long, List<ReplicationMessage>> subTransactions = this.bufferedTransactions.get(transactionId);
+        subTransactions.put(subTransactionId, messages);
+    }
+
     public void addToBuffer(Long transactionId, Long subTransactionId, ReplicationMessage message) {
-        LinkedHashMap<Long, List<ReplicationMessage>> subTransactions =
-                bufferedTransactions.computeIfAbsent(transactionId, id -> new LinkedHashMap<>());
+        LinkedHashMap<Long, List<ReplicationMessage>> subTransactions = bufferedTransactions.get(transactionId);
 
         subTransactions.computeIfAbsent(subTransactionId, id -> new ArrayList<>())
                 .add(message);
     }
+
     public void flushOnCommit(Long transactionId, ReplicationStream.ReplicationMessageProcessor processor)
             throws SQLException, InterruptedException {
 
         LinkedHashMap<Long, List<ReplicationMessage>> subTransactions = bufferedTransactions.get(transactionId);
-        /*Optional<ReplicationMessage> maybeCommit = subTransactions.get(transactionId).stream()
-                .filter(replicationMessage -> replicationMessage.getOperation().equals(ReplicationMessage.Operation.COMMIT))
-                .findFirst();
-
-        Instant commitTimeStamp = maybeCommit
-                .map(ReplicationMessage::getCommitTime)
-                .orElse(Instant.now());*/
-
 
         for (List<ReplicationMessage> messages : subTransactions.values()) {
             for (ReplicationMessage message : messages) {
-                processor.process(message);
+                processor.process(message, transactionId);
             }
         }
 
