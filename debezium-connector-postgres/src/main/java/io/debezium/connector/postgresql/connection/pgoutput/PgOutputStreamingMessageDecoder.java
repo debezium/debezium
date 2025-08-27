@@ -5,37 +5,20 @@
  */
 package io.debezium.connector.postgresql.connection.pgoutput;
 
-import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
-import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.TypeRegistry;
-import io.debezium.connector.postgresql.UnchangedToastedReplicationMessageColumn;
 import io.debezium.connector.postgresql.connection.*;
-import io.debezium.connector.postgresql.connection.ReplicationMessage.Column;
-import io.debezium.connector.postgresql.connection.ReplicationMessage.NoopMessage;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
 import io.debezium.data.Envelope;
-import io.debezium.relational.ColumnEditor;
-import io.debezium.relational.Table;
-import io.debezium.relational.TableId;
-import io.debezium.util.HexConverter;
-import io.debezium.util.Strings;
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
-import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
-import java.util.*;
 import java.util.function.Function;
 
-import static java.lang.System.Logger.Level.TRACE;
 import static java.util.stream.Collectors.toMap;
 
 /**
@@ -52,60 +35,10 @@ public class PgOutputStreamingMessageDecoder extends PgOutputMessageDecoder {
     private final MessageDecoderContext decoderContext;
     private Instant commitTimestamp;
     private boolean isStreaming;
+    private boolean isBeingMessage;
+    private boolean isCommitMessage;
     private BufferTransactions bufferTransactions;
     private Long subTransactionId;
-
-    public enum MessageType {
-        RELATION,
-        BEGIN,
-        COMMIT,
-        INSERT,
-        UPDATE,
-        DELETE,
-        TYPE,
-        ORIGIN,
-        TRUNCATE,
-        LOGICAL_DECODING_MESSAGE,
-        STREAM_START,
-        STREAM_STOP,
-        STREAM_COMMIT,
-        STREAM_ABORT;
-
-        public static MessageType forType(char type) {
-            switch (type) {
-                case 'R':
-                    return RELATION;
-                case 'B':
-                    return BEGIN;
-                case 'C':
-                    return COMMIT;
-                case 'I':
-                    return INSERT;
-                case 'U':
-                    return UPDATE;
-                case 'D':
-                    return DELETE;
-                case 'Y':
-                    return TYPE;
-                case 'O':
-                    return ORIGIN;
-                case 'T':
-                    return TRUNCATE;
-                case 'M':
-                    return LOGICAL_DECODING_MESSAGE;
-                case 'S':
-                    return STREAM_START;
-                case 'E':
-                    return STREAM_STOP;
-                case 'c':
-                    return STREAM_COMMIT;
-                case 'A':
-                    return STREAM_ABORT;
-                default:
-                    throw new IllegalArgumentException("Unsupported message type: " + type);
-            }
-        }
-    }
 
     public PgOutputStreamingMessageDecoder(MessageDecoderContext decoderContext, PostgresConnection connection) {
         super(decoderContext, connection);
@@ -114,54 +47,26 @@ public class PgOutputStreamingMessageDecoder extends PgOutputMessageDecoder {
     }
 
     @Override
-    public boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, WalPositionLocator walPosition) {
+    public boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, PositionLocator walPosition) {
         // Cache position as we're going to peak at the first byte to determine message type
         // We need to reprocess all BEGIN/COMMIT messages regardless.
         int position = buffer.position();
         try {
             MessageType type = MessageType.forType((char) buffer.get());
-            // LOGGER.info("Message Type: {}", type);
+
             switch (type) {
-                case TYPE:
-                case ORIGIN:
-                    // TYPE/ORIGIN
-                    // These should be skipped without calling shouldMessageBeSkipped. DBZ-5792
-                    LOGGER.info("{} messages are always skipped without calling shouldMessageBeSkipped", type);
-                    return true;
-                case TRUNCATE:
-                    if (!isTruncateEventsIncluded()) {
-                        LOGGER.info("{} messages are being skipped without calling shouldMessageBeSkipped", type);
-                        return true;
-                    }
-                    // else delegate to super.shouldMessageBeSkipped
-                    break;
-                default:
-                    // call super.shouldMessageBeSkipped for rest of the types
-            }
-            final boolean candidateForSkipping = false;
-            switch (type) {
-                case COMMIT:
-                case BEGIN:
-                case RELATION:
                 case STREAM_START:
+                    long xId = Integer.toUnsignedLong(buffer.getInt());
+                    super.setTransactionId(xId);
+                    return false;
                 case STREAM_STOP:
                 case STREAM_COMMIT:
                 case STREAM_ABORT:
-                    // BEGIN
-                    // These types should always be processed due to the nature that they provide
-                    // the stream with pertinent per-transaction boundary state we will need to
-                    // always cache as we potentially might reprocess the stream from an earlier
-                    // LSN point.
-                    //
-                    // RELATION
-                    // These messages are always sent with a lastReceivedLSN=0; and we need to
-                    // always accept these to keep per-stream table state cached properly.
                     LOGGER.info("{} messages are always reprocessed", type);
                     return false;
                 default:
-                    // INSERT/UPDATE/DELETE/TRUNCATE/LOGICAL_DECODING_MESSAGE
-                    // These should be excluded based on the normal behavior, delegating to default method
-                    return candidateForSkipping;
+                    buffer.position(position);
+                    return super.shouldMessageBeSkipped(buffer, lastReceivedLsn, startLsn, walPosition);
             }
         }
         finally {
@@ -172,50 +77,10 @@ public class PgOutputStreamingMessageDecoder extends PgOutputMessageDecoder {
 
     @Override
     public void processNotEmptyMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {
-        if (LOGGER.isTraceEnabled()) {
-            if (!buffer.hasArray()) {
-                throw new IllegalStateException("Invalid buffer received from PG server during streaming replication");
-            }
-            final byte[] source = buffer.array();
-            // Extend the array by two as we might need to append two chars and set them to space by default
-            final byte[] content = Arrays.copyOfRange(source, buffer.arrayOffset(), source.length + 2);
-            final int lastPos = content.length - 1;
-            content[lastPos - 1] = SPACE;
-            content[lastPos] = SPACE;
-            LOGGER.info("Message arrived from database {}", HexConverter.convertToHexString(content));
-        }
 
+        buffer.mark();
         final MessageType messageType = MessageType.forType((char) buffer.get());
         switch (messageType) {
-            case BEGIN:
-                super.handleBeginMessage(buffer, processor);
-                break;
-            case COMMIT:
-                super.handleCommitMessage(buffer, processor);
-                break;
-            case RELATION:
-                handleRelationMessage(buffer, typeRegistry);
-                break;
-            case LOGICAL_DECODING_MESSAGE:
-                handleLogicalDecodingMessage(buffer, processor);
-                break;
-            case INSERT:
-                decodeInsert(buffer, typeRegistry, processor);
-                break;
-            case UPDATE:
-                decodeUpdate(buffer, typeRegistry, processor);
-                break;
-            case DELETE:
-                decodeDelete(buffer, typeRegistry, processor);
-                break;
-            case TRUNCATE:
-                if (isTruncateEventsIncluded()) {
-                    decodeTruncate(buffer, typeRegistry, processor);
-                }
-                else {
-                    LOGGER.info("Message Type {} skipped, not processed.", messageType);
-                }
-                break;
             case STREAM_START:
                 decodeStreamStart(buffer, processor);
                 break;
@@ -229,42 +94,28 @@ public class PgOutputStreamingMessageDecoder extends PgOutputMessageDecoder {
                 decodeStreamAbort(buffer);
                 break;
             default:
-                LOGGER.info("Message Type {} skipped, not processed.", messageType);
-                break;
+                buffer.reset();
+                super.processNotEmptyMessage(buffer, processor, typeRegistry);
         }
     }
 
     @Override
     public ChainedLogicalStreamBuilder defaultOptions(ChainedLogicalStreamBuilder builder, Function<Integer, Boolean> hasMinimumServerVersion) {
-        builder = builder.withSlotOption("proto_version", 2)
-                .withSlotOption("streaming", "on")
-                .withSlotOption("publication_names", decoderContext.getConfig().publicationName());
 
-        // DBZ-4374 Use enum once the driver got updated
-        if (hasMinimumServerVersion.apply(140000)) {
-            builder = builder.withSlotOption("messages", true);
-        }
-
-        return builder;
+        return super.defaultOptions(builder, hasMinimumServerVersion)
+                .withSlotOption("proto_version", 2)
+                .withSlotOption("streaming", "on");
     }
-
-    private boolean isTruncateEventsIncluded() {
-        return !decoderContext.getConfig().getSkippedOperations().contains(Envelope.Operation.TRUNCATE);
-    }
-
     /**
      * Callback handler for the 'R' relation replication message.
      *
      * @param buffer The replication stream buffer
      * @param typeRegistry The postgres type registry
      */
+    @Override
     protected void handleRelationMessage(ByteBuffer buffer, TypeRegistry typeRegistry) throws SQLException {
-        long xId = 0;
-        if (isStreaming) {
-            xId = Integer.toUnsignedLong(buffer.getInt());
-            LOGGER.trace("XID of transaction: {}", xId);
-        }
-
+        long xId = extractTransactionIdFromBuffer(buffer);
+        LOGGER.info("handleRelationMessage {}", xId);
         super.handleRelationMessage(buffer, typeRegistry);
     }
 
@@ -275,13 +126,10 @@ public class PgOutputStreamingMessageDecoder extends PgOutputMessageDecoder {
      * @param typeRegistry The postgres type registry
      * @param processor The replication message processor
      */
+    @Override
     protected void decodeInsert(ByteBuffer buffer, TypeRegistry typeRegistry, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
-        long xId = 0;
-        if (isStreaming) {
-            xId = Integer.toUnsignedLong(buffer.getInt());
-            subTransactionId = xId;
-            LOGGER.trace("XID of transaction: {}", xId);
-        }
+        long xId = extractTransactionIdFromBuffer(buffer);
+        LOGGER.info("decodeInsert {}", xId);
         super.decodeInsert(buffer, typeRegistry, processor);
     }
     /**
@@ -291,14 +139,10 @@ public class PgOutputStreamingMessageDecoder extends PgOutputMessageDecoder {
      * @param typeRegistry The postgres type registry
      * @param processor The replication message processor
      */
+    @Override
     protected void decodeUpdate(ByteBuffer buffer, TypeRegistry typeRegistry, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
-        long xId = 0;
-        if (isStreaming) {
-            xId = Integer.toUnsignedLong(buffer.getInt());
-            subTransactionId = xId;
-            LOGGER.trace("XID of transaction: {}", xId);
-        }
-
+        long xId = extractTransactionIdFromBuffer(buffer);
+        LOGGER.info("decodeUpdate {}", xId);
         super.decodeUpdate(buffer, typeRegistry, processor);
     }
 
@@ -309,14 +153,10 @@ public class PgOutputStreamingMessageDecoder extends PgOutputMessageDecoder {
      * @param typeRegistry The postgres type registry
      * @param processor The replication message processor
      */
+    @Override
     protected void decodeDelete(ByteBuffer buffer, TypeRegistry typeRegistry, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
-        long xId = 0;
-        if (isStreaming) {
-            xId = Integer.toUnsignedLong(buffer.getInt());
-            subTransactionId = xId;
-            LOGGER.trace("XID of transaction: {}", xId);
-        }
-
+        long xId = extractTransactionIdFromBuffer(buffer);
+        LOGGER.info("decodeDelete {}", xId);
         super.decodeDelete(buffer, typeRegistry, processor);
     }
 
@@ -327,16 +167,30 @@ public class PgOutputStreamingMessageDecoder extends PgOutputMessageDecoder {
      * @param typeRegistry The postgres type registry
      * @param processor    The replication message processor
      */
+    @Override
     protected void decodeTruncate(ByteBuffer buffer, TypeRegistry typeRegistry, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
-
-        long xId = 0;
-        if (isStreaming) {
-            xId = Integer.toUnsignedLong(buffer.getInt());
-            subTransactionId = xId;
-            LOGGER.trace("XID of transaction: {}", xId);
-        }
-
+        long xId = extractTransactionIdFromBuffer(buffer);
+        LOGGER.info("decodeTruncate {}", xId);
         super.decodeTruncate(buffer, typeRegistry, processor);
+    }
+
+    /**
+     * Callback handler for the 'M' logical decoding message
+     *
+     * @param buffer       The replication stream buffer
+     * @param processor    The replication message processor
+     */
+    @Override
+    protected void handleLogicalDecodingMessage(ByteBuffer buffer, ReplicationMessageProcessor processor)
+            throws SQLException, InterruptedException {
+        long xId = extractTransactionIdFromBuffer(buffer);
+        LOGGER.info("handleLogicalDecodingMessage {}", xId);
+        super.handleLogicalDecodingMessage(buffer, processor);
+    }
+
+    @Override
+    protected void processMessage(ReplicationMessage replicationMessage, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
+        immediatelyProcessMessageOrBuffer(replicationMessage, processor);
     }
 
     /**
@@ -346,33 +200,33 @@ public class PgOutputStreamingMessageDecoder extends PgOutputMessageDecoder {
      * @param processor The replication message processor
      */
     private void decodeStreamStart(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
+        logBufferDataIfTraceIsEnabled(buffer);
         isStreaming = true;
         long xId = Integer.toUnsignedLong(buffer.getInt());
         int firstStreamSegment = buffer.get();
-
         super.setTransactionId(xId);
-        subTransactionId = xId;
-
-        LOGGER.info("TransactionId: {}, firstSegment: {}", xId, firstStreamSegment == 1);
-
+        LOGGER.info("decodeStreamStart TransactionId: {}, firstSegment: {}", xId, firstStreamSegment == 1);
         commitTimestamp = Instant.now();
-
         LOGGER.trace("Event: {}", MessageType.STREAM_START);
         LOGGER.trace("XID of transaction: {}", xId);
         LOGGER.trace("First Segment: {}", firstStreamSegment);
-
-        if (firstStreamSegment == 1) {
+        if (firstStreamSegment == 1 || isSearchingWAL()) {
+            isBeingMessage = true;
+            subTransactionId = xId; // For the first stream xId will be subTransactionId
             TransactionMessage transactionMessage = new TransactionMessage(Operation.BEGIN, super.getTransactionId(), commitTimestamp);
             immediatelyProcessMessageOrBuffer(transactionMessage, processor);
         }
-    }
 
+        isBeingMessage = false;
+    }
 
     /**
      * Callback handler for the 'I' insert replication stream message.
      */
     private void decodeStreamStop() throws SQLException, InterruptedException {
+        LOGGER.info(" decodeStreamStop Stream has stopped");
         LOGGER.trace("Stream has stopped");
+        resetValuesForNextStream();
     }
 
     /**
@@ -382,13 +236,18 @@ public class PgOutputStreamingMessageDecoder extends PgOutputMessageDecoder {
      * @param processor The replication message processor
      */
     private void decodeStreamCommit(ByteBuffer buffer, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
+        logBufferDataIfTraceIsEnabled(buffer);
+        isCommitMessage = true;
+        isStreaming = true;
         long xId = Integer.toUnsignedLong(buffer.getInt());
+        setTransactionId(xId);
+        LOGGER.info("decodeStreamCommit XID of transaction: {}", xId);
         LOGGER.trace("XID of transaction: {}", xId);
-
         handleCommitMessage(buffer, processor);
-        bufferTransactions.flushOnCommit(xId, processor);
-        isStreaming = false;
-        subTransactionId = null;
+        if (!isSearchingWAL()) {
+            bufferTransactions.flushOnCommit(xId, processor);
+        }
+        resetValuesForNextStream();
     }
 
     /**
@@ -397,50 +256,53 @@ public class PgOutputStreamingMessageDecoder extends PgOutputMessageDecoder {
      * @param buffer The replication stream buffer
      */
     private void decodeStreamAbort(ByteBuffer buffer) {
-
+        logBufferDataIfTraceIsEnabled(buffer);
+        isStreaming = true;
         long xId = Integer.toUnsignedLong(buffer.getInt());
-        long subXId = Integer.toUnsignedLong(buffer.getInt());
-
-        LOGGER.trace("XID of transaction: {}", xId);
-        LOGGER.trace("XID of sub-transaction: {}", subXId);
-
-        bufferTransactions.discardSubTransaction(xId, subXId);
-
-        subTransactionId = null;
-        isStreaming = false;
+        setTransactionId(xId);
+        subTransactionId = Integer.toUnsignedLong(buffer.getInt());
+        LOGGER.info("decodeStreamAbort XID of transaction: {}", getTransactionId());
+        LOGGER.trace("XID of transaction: {}", getTransactionId());
+        LOGGER.info("XID of sub-transaction: {}", subTransactionId);
+        LOGGER.trace("XID of sub-transaction: {}", subTransactionId);
+        bufferTransactions.discardSubTransaction(getTransactionId(), subTransactionId);
+        resetValuesForNextStream();
     }
 
-
-
-    /**
-     * Callback handler for the 'M' logical decoding message
-     *
-     * @param buffer       The replication stream buffer
-     * @param processor    The replication message processor
-     */
-    protected void handleLogicalDecodingMessage(ByteBuffer buffer, ReplicationMessageProcessor processor)
-            throws SQLException, InterruptedException {
-
+    private long extractTransactionIdFromBuffer(ByteBuffer buffer) {
         long xId = 0;
         if (isStreaming) {
             xId = Integer.toUnsignedLong(buffer.getInt());
             subTransactionId = xId;
             LOGGER.trace("XID of transaction: {}", xId);
         }
-
-        super.handleLogicalDecodingMessage(buffer, processor);
-    }
-
-    @Override
-    protected void processMessage(ReplicationMessage replicationMessage, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
-        immediatelyProcessMessageOrBuffer(replicationMessage, processor);
+        return xId;
     }
 
     private void immediatelyProcessMessageOrBuffer(ReplicationMessage replicationMessage, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
-        if (isStreaming) {
-            this.bufferTransactions.addToBuffer(super.getTransactionId(), subTransactionId, replicationMessage);
+        if (isStreaming && !isSearchingWAL()) {
+            if (isBeingMessage) {
+                this.bufferTransactions.beginMessage(super.getTransactionId(), subTransactionId, replicationMessage);
+            } else if (isCommitMessage) {
+                long subTransactionId = this.subTransactionId != null ? this.subTransactionId : -1;
+                this.bufferTransactions.commitMessage(super.getTransactionId(), subTransactionId, replicationMessage);
+            } else {
+                this.bufferTransactions.addToBuffer(super.getTransactionId(), subTransactionId, replicationMessage);
+            }
         } else {
-            processor.process(replicationMessage);
+            processor.process(replicationMessage, super.getTransactionId());
         }
+    }
+
+    private void resetValuesForNextStream() {
+        setTransactionId(null);
+        subTransactionId = null;
+        isStreaming = false;
+        isBeingMessage = false;
+        isCommitMessage = false;
+    }
+
+    private boolean isTruncateEventsIncluded() {
+        return !decoderContext.getConfig().getSkippedOperations().contains(Envelope.Operation.TRUNCATE);
     }
 }
