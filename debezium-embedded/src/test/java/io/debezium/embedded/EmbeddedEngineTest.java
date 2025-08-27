@@ -847,6 +847,8 @@ public class EmbeddedEngineTest extends AbstractAsyncEngineConnectorTest {
         final Properties props = new Properties();
         props.put(EmbeddedEngineConfig.ENGINE_NAME.name(), "testing-connector");
         props.put(EmbeddedEngineConfig.CONNECTOR_CLASS.name(), SimpleSourceConnector.class.getName());
+        props.put(SimpleSourceConnector.RECORD_COUNT_PER_BATCH, "1");
+        props.put(SimpleSourceConnector.BATCH_COUNT, "1");
         props.put(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH.toAbsolutePath().toString());
         props.put(EmbeddedEngineConfig.WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_MS.name(), "10");
 
