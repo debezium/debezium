@@ -536,6 +536,8 @@ public final class AsyncEmbeddedEngine<R> implements DebeziumEngine<R>, AsyncEng
                 taskCompletionService.take().get();
             }
             catch (InterruptedException | CancellationException e) {
+                // We may hit here also RejectedExecutionException when the is another batch submitted for processing,
+                // but for now we don't catch it and let pass it to the user in CompletionCallback so the user can react to it.
                 LOGGER.info("Task interrupted while polling.");
             }
             LOGGER.debug("Task #{} out of {} tasks has stopped polling.", i, tasks.size());
