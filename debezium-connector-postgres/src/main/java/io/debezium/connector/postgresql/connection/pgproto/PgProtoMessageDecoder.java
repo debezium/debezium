@@ -89,7 +89,8 @@ public class PgProtoMessageDecoder extends AbstractMessageDecoder {
             LOGGER.trace("Received protobuf message from the server {}", message);
 
             return super.isMessageAlreadyProcessed(buffer, lastReceivedLsn, startLsn, walPosition, Integer.toUnsignedLong(message.getTransactionId()));
-        } catch (InvalidProtocolBufferException e) {
+        }
+        catch (InvalidProtocolBufferException e) {
             throw new ConnectException(e);
         }
     }

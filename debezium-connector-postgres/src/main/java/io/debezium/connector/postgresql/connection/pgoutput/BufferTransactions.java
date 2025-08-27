@@ -12,6 +12,7 @@ import java.util.Map;
 
 public class BufferTransactions {
     private final Map<Long, LinkedHashMap<Long, List<ReplicationMessage>>> bufferedTransactions;
+
     public BufferTransactions() {
         this.bufferedTransactions = new HashMap<>();
     }
@@ -55,7 +56,8 @@ public class BufferTransactions {
     public void discardSubTransaction(Long transactionId, Long subTransactionId) {
         if (transactionId.equals(subTransactionId)) {
             bufferedTransactions.remove(transactionId);
-        } else {
+        }
+        else {
             Map<Long, List<ReplicationMessage>> subTransactions = bufferedTransactions.get(transactionId);
             subTransactions.remove(subTransactionId);
         }

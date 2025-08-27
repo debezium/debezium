@@ -4,7 +4,8 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig;
 
 public class WALPositionLocatorFactory {
 
-    public static PositionLocator create(PostgresConnectorConfig connectorConfig, Lsn lastCommitLsn, Lsn lsn, ReplicationMessage.Operation operation, Long lastCommitTransactionId) {
+    public static PositionLocator create(PostgresConnectorConfig connectorConfig, Lsn lastCommitLsn, Lsn lsn, ReplicationMessage.Operation operation,
+                                         Long lastCommitTransactionId) {
         PostgresConnectorConfig.LogicalReplicationMode logicalReplicationMode = connectorConfig.logicalReplicationMode();
 
         if (logicalReplicationMode.equals(PostgresConnectorConfig.LogicalReplicationMode.STREAMING)) {

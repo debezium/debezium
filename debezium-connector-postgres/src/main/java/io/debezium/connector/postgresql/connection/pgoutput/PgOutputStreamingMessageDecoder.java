@@ -111,6 +111,7 @@ public class PgOutputStreamingMessageDecoder extends PgOutputMessageDecoder {
                 .withSlotOption("proto_version", 2)
                 .withSlotOption("streaming", "on");
     }
+
     /**
      * Callback handler for the 'R' relation replication message.
      *
@@ -137,6 +138,7 @@ public class PgOutputStreamingMessageDecoder extends PgOutputMessageDecoder {
         LOGGER.info("decodeInsert {}", xId);
         super.decodeInsert(buffer, typeRegistry, processor);
     }
+
     /**
      * Callback handler for the 'U' update replication stream message.
      *
@@ -284,17 +286,21 @@ public class PgOutputStreamingMessageDecoder extends PgOutputMessageDecoder {
         return xId;
     }
 
-    private void immediatelyProcessMessageOrBuffer(ReplicationMessage replicationMessage, ReplicationMessageProcessor processor) throws SQLException, InterruptedException {
+    private void immediatelyProcessMessageOrBuffer(ReplicationMessage replicationMessage, ReplicationMessageProcessor processor)
+            throws SQLException, InterruptedException {
         if (isStreaming && !isSearchingWAL()) {
             if (isBeingMessage) {
                 this.bufferTransactions.beginMessage(super.getTransactionId(), subTransactionId, replicationMessage);
-            } else if (isCommitMessage) {
+            }
+            else if (isCommitMessage) {
                 long subTransactionId = this.subTransactionId != null ? this.subTransactionId : -1;
                 this.bufferTransactions.commitMessage(super.getTransactionId(), subTransactionId, replicationMessage);
-            } else {
+            }
+            else {
                 this.bufferTransactions.addToBuffer(super.getTransactionId(), subTransactionId, replicationMessage);
             }
-        } else {
+        }
+        else {
             processor.process(replicationMessage, super.getTransactionId());
         }
     }
