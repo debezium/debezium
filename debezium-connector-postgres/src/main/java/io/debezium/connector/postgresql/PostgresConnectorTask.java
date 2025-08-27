@@ -94,8 +94,8 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         final Charset databaseCharset;
         try (PostgresConnection tempConnection = new PostgresConnection(connectorConfig.getJdbcConfig(), PostgresConnection.CONNECTION_GENERAL)) {
             databaseCharset = tempConnection.getDatabaseCharset();
-        } 
-        catch (Exception e)  {
+        }
+        catch (DebeziumException e) {
             throw new RetriableException("Couldn't obtain encoding for database", e);
         }
 
