@@ -52,9 +52,9 @@ public abstract class AbstractMessageDecoder implements MessageDecoder {
         // the lsn we started from is inclusive, so we need to avoid sending back the same message twice
         // but for the first record seen ever it is possible we received the same LSN as the one obtained from replication slot
         if (walPosition.skipMessage(lastReceivedLsn, beginMessageTransactionId)) {
-            // if (timerPermitsLogging()) {
+            if (timerPermitsLogging()) {
                 LOGGER.info("Streaming requested from LSN {}, received LSN {} identified as already processed", startLsn, lastReceivedLsn);
-            //}
+            }
             return true;
         }
         return false;

@@ -822,7 +822,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                     return false;
                 }
 
-                LOGGER.info(">>>>>>>>> received LSN {}", lastReceiveLsn);
                 if (messageDecoder.shouldMessageBeSkipped(read, lastReceiveLsn, startLsn, walPosition)) {
                     return true;
                 }
@@ -916,7 +915,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
     private PGReplicationStream startPgReplicationStream(final Lsn lsn,
                                                          BiFunction<ChainedLogicalStreamBuilder, Function<Integer, Boolean>, ChainedLogicalStreamBuilder> configurator)
             throws SQLException {
-        LOGGER.info("lsn while stream builder {} ", lsn);
         assert lsn != null;
         ChainedLogicalStreamBuilder streamBuilder = pgConnection()
                 .getReplicationAPI()
