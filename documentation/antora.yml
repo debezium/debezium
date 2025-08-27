@@ -26,7 +26,7 @@ asciidoc:
     community: true
     registry: 'Apicurio Registry'
     registry-name-full: Apicurio API and Schema Registry
-    snippetsdir: ../snippets
+    snippetsdir: '../snippets'
     link-avro-serialization: 'configuration/avro.adoc'
     link-cassandra-connector: 'connectors/cassandra.adoc'
     link-cloud-events: 'integrations/cloudevents.adoc'
