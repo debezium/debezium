@@ -92,6 +92,7 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     private static final Pattern TO_TIMESTAMP_TZ = Pattern.compile("TO_TIMESTAMP_TZ\\('(.*)'\\)", Pattern.CASE_INSENSITIVE);
     private static final BigDecimal MICROSECONDS_PER_SECOND = new BigDecimal(1_000_000);
+    private static final long BLOB_SIZE_2GB = 2L * 1024 * 1024 * 1024;
 
     private final OracleConnection connection;
     private final boolean legacyDecimalModeStrategy;
@@ -285,12 +286,23 @@ public class OracleValueConverters extends JdbcValueConverters {
         if (data instanceof Clob) {
             Clob clob = (Clob) data;
 
-            // use buffered read to support large CLOB values
-            try (
-                    BufferedReader reader = new BufferedReader(clob.getCharacterStream());
-                    StringWriter writer = new StringWriter()) {
-                reader.transferTo(writer);
-                return writer.toString();
+            try {
+                // use buffered read for large CLOB values
+                if (clob.length() >= BLOB_SIZE_2GB) {
+                    try (
+                            BufferedReader reader = new BufferedReader(clob.getCharacterStream());
+                            StringWriter writer = new StringWriter()) {
+                        reader.transferTo(writer);
+                        return writer.toString();
+                    }
+                }
+                else {
+                    // use non-buffered read for smaller values
+                    // Note that java.sql.Clob specifies that the first character starts at 1
+                    // and that length must be greater-than or equal to 0. So for an empty
+                    // clob field, a call to getSubString(1, 0) is perfectly valid.
+                    return clob.getSubString(1, (int) clob.length());
+                }
             }
             catch (SQLException | IOException e) {
                 throw new DebeziumException("Couldn't read binary data for column " + column.name(), e);
@@ -334,15 +346,21 @@ public class OracleValueConverters extends JdbcValueConverters {
             else if (data instanceof Blob) {
                 Blob blob = (Blob) data;
 
-                // use buffered read to support large BLOB values
-                try (
-                        BufferedInputStream inputStream = new BufferedInputStream(blob.getBinaryStream());
-                        ByteArrayOutputStream writer = new ByteArrayOutputStream()) {
-                    inputStream.transferTo(writer);
-                    data = writer.toByteArray();
+                if (blob.length() >= BLOB_SIZE_2GB) {
+                    // use buffered read to support large BLOB values
+                    try (
+                            BufferedInputStream inputStream = new BufferedInputStream(blob.getBinaryStream());
+                            ByteArrayOutputStream writer = new ByteArrayOutputStream()) {
+                        inputStream.transferTo(writer);
+                        data = writer.toByteArray();
+                    }
+                    catch (SQLException | IOException e) {
+                        throw new DebeziumException("Couldn't read binary data for column " + column.name(), e);
+                    }
                 }
-                catch (SQLException | IOException e) {
-                    throw new DebeziumException("Couldn't read binary data for column " + column.name(), e);
+                else {
+                    // use non-buffered read for smaller BLOB values
+                    data = blob.getBytes(1, Long.valueOf(blob.length()).intValue());
                 }
             }
             else if (data instanceof RAW) {
