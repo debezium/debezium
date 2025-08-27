@@ -25,7 +25,15 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
-import io.debezium.connector.postgresql.connection.*;
+import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
+import io.debezium.connector.postgresql.connection.AbstractReplicationMessageColumn;
+import io.debezium.connector.postgresql.connection.LogicalDecodingMessage;
+import io.debezium.connector.postgresql.connection.Lsn;
+import io.debezium.connector.postgresql.connection.MessageDecoderContext;
+import io.debezium.connector.postgresql.connection.PositionLocator;
+import io.debezium.connector.postgresql.connection.PostgresConnection;
+import io.debezium.connector.postgresql.connection.ReplicationMessage;
+import io.debezium.connector.postgresql.connection.TransactionMessage;
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
