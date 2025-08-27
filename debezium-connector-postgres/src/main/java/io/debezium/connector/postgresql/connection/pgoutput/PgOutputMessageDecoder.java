@@ -99,8 +99,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     }
 
     /*
-    * at the time of buffering - message should be processed
-    * */
+     * at the time of buffering - message should be processed
+     */
     @Override
     public boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, PositionLocator walPosition) {
         // Cache position as we're going to peak at the first byte to determine message type

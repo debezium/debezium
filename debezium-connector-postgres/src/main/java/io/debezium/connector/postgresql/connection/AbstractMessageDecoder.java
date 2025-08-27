@@ -45,7 +45,6 @@ public abstract class AbstractMessageDecoder implements MessageDecoder {
     protected abstract void processNotEmptyMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry)
             throws SQLException, InterruptedException;
 
-
     public abstract boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, PositionLocator walPosition);
 
     public boolean isMessageAlreadyProcessed(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, PositionLocator walPosition, Long beginMessageTransactionId) {
@@ -59,6 +58,7 @@ public abstract class AbstractMessageDecoder implements MessageDecoder {
         }
         return false;
     }
+
     @Override
     public void close() {
     }

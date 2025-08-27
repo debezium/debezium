@@ -154,7 +154,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                         : this.effectiveOffset.lsn();
                 final Operation lastProcessedMessageType = this.effectiveOffset.lastProcessedMessageType();
                 LOGGER.info("Retrieved latest position from stored offset '{}'", lsn);
-                walPosition = WALPositionLocatorFactory.create(connectorConfig, this.effectiveOffset.lastCommitLsn(), lsn, lastProcessedMessageType, this.effectiveOffset.lastCommitTransactionId());
+                walPosition = WALPositionLocatorFactory.create(connectorConfig, this.effectiveOffset.lastCommitLsn(), lsn, lastProcessedMessageType,
+                        this.effectiveOffset.lastCommitTransactionId());
                 replicationStream.compareAndSet(null, replicationConnection.startStreaming(lsn, walPosition));
             }
             else {
@@ -241,7 +242,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         while (context.isRunning()
                 && haveNotReceivedStreamingStoppingLsn(offsetContext, lastCompletelyProcessedLsn)
                 && !commitOffsetFailure) {
-            boolean receivedMessage = stream.readPending((message, beginMessageTransactionId) -> processReplicationMessages(partition, offsetContext, stream, message), false);
+            boolean receivedMessage = stream.readPending((message, beginMessageTransactionId) -> processReplicationMessages(partition, offsetContext, stream, message),
+                    false);
 
             probeConnectionIfNeeded();
 

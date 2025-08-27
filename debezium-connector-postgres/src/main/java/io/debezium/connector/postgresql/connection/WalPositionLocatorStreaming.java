@@ -118,7 +118,7 @@ public class WalPositionLocatorStreaming implements PositionLocator {
     @Override
     public boolean skipMessage(Lsn lsn, Long beginMessageTransactionId) {
         LOGGER.info("LSN in skip message is {}", lsn);
-        if (passMessages ) {
+        if (passMessages) {
             return false;
         }
         if (lastEventStoredLsn == null) {

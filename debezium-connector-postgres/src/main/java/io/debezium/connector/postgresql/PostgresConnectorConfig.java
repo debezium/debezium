@@ -672,7 +672,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         }
     }
 
-
     protected static final String DATABASE_CONFIG_PREFIX = "database.";
     protected static final int DEFAULT_PORT = 5_432;
     protected static final int DEFAULT_SNAPSHOT_FETCH_SIZE = 10_240;
@@ -702,7 +701,6 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             .withDescription("Specifies the mode of logical replication used by the connector. "
                     + "'committed' (default): Only fully committed transactions are replicated. "
                     + "'streaming': Enables streaming of large in-progress transactions before they are committed. Requires protocol version 2.");
-
 
     public static final Field SLOT_NAME = Field.create("slot.name")
             .withDisplayName("Slot")
