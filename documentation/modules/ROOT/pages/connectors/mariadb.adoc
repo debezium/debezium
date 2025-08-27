@@ -336,7 +336,7 @@ The binary logs record transaction updates in a way that enables replicas to pro
 
 . Check whether the `log-bin` option is enabled:
 +
-include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=setting-up-the-db-enabling-binlog]
+include::{partialsdir}/modules/snippets/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=setting-up-the-db-enabling-binlog]
 
 . If the binlog is `OFF`, add the properties in the following table to the configuration file for the {connector-name} server:
 +
@@ -352,7 +352,7 @@ log_bin_compress            = 0
 
 . Confirm your changes by checking the binlog status once more:
 +
-include::{snippetsdir}/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=setting-up-the-db-enabling-binlog]
+include::{partialsdir}/modules/snippets/frag-{context}-props-snippets.adoc[leveloffset=+1,tags=setting-up-the-db-enabling-binlog]
 
 . If you run {connector-name} on Amazon RDS, you must enable automated backups for your database instance for binary logging to occur.
 If the database instance is not configured to perform automated backups, the binlog is disabled, even if you apply the settings described in the previous steps.
