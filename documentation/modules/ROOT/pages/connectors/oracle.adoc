@@ -3470,15 +3470,15 @@ Unlike the `database.host` property, the `database.url` property permits you to 
 ==== Oracle Wallet
 
 .Prerequisites
-* Verify Oracle Wallet is configured on the Oracle database server with your database administrators
-* Locate the `oraclepki.jar` inside the Oracle JDBC driver archive
+* Verify with your database administrators that Oracle Wallet is configured on the Oracle database server. 
+* Locate the `oraclepki.jar` inside the Oracle JDBC driver archive.
 
 .Procedure
-* Install `oraclepki.jar` in the same location where ${prodname} Debezium Oracle connector jars exist.
-If you have downloaded and installed the Oracle JDBC driver, the same location is where you would also place `oraclepki.jar`.
-* Use the `database.url` configuration property rather than `database.hostname` to configure the connector.
-By using `database.url`, a TNS-based configuration is provided to interact with Oracle Wallet.
-A sample configuration is shown below.
+* Install `oraclepki.jar` in the location that contains the {prodname} Oracle connector JAR files.
+This is the same location that contains the Oracle JDBC driver `oraclepki.jar`.
+* In the connector configuration, set the `database.url` property, rather than `database.hostname` property, to specify how {prodname} connects to the database.
+The `database.url` property defines an Oracle TNS-based connection string that is required to interact with Oracle Wallet. 
+For an example of a TNS connection string, see the sample mTLS configuration that appears after this list.
 * Set the Oracle JDBC driver property `oracle.net.wallet_location` to explicitly set the Oracle Wallet configuration to be used by the Oracle JDBC driver.
 
 .Example mTLS configuration
