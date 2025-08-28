@@ -66,6 +66,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
     private final AtomicInteger batchSize = new AtomicInteger();
     private final AtomicInteger logSwitchCount = new AtomicInteger();
     private final AtomicInteger logMinerQueryCount = new AtomicInteger();
+    private final AtomicInteger jdbcRows = new AtomicInteger();
 
     private final AtomicLong sleepTime = new AtomicLong();
     private final AtomicLong minimumLogsMined = new AtomicLong();
@@ -121,6 +122,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
     public void reset() {
         super.reset();
 
+        jdbcRows.set(0);
         changesCount.set(0);
         processedRowsCount.set(0);
         logMinerQueryCount.set(0);
@@ -296,7 +298,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
         if (lastBatchProcessingDuration.isZero()) {
             return 0L;
         }
-        return Math.round(((float) getLastCapturedDmlCount() / lastBatchProcessingDuration.toMillis()) * 1000);
+        return Math.round(((float) jdbcRows.get() / lastBatchProcessingDuration.toMillis()) * 1000);
     }
 
     @Override
@@ -609,9 +611,20 @@ public class LogMinerStreamingChangeEventSourceMetrics
      */
     public void setLastBatchProcessingDuration(Duration duration) {
         batchProcessingDuration.set(duration);
-        if (getLastBatchProcessingThroughput() > getMaxBatchProcessingThroughput()) {
-            maxBatchProcessingThroughput.set(getLastBatchProcessingThroughput());
+
+        final long lastBatchProcessingThroughput = getLastBatchProcessingThroughput();
+        if (lastBatchProcessingThroughput > getMaxBatchProcessingThroughput()) {
+            maxBatchProcessingThroughput.set(lastBatchProcessingThroughput);
         }
+    }
+
+    /**
+     * Sets last number of JDBC rows read from Oracle in the last LogMiner query result-set.
+     *
+     * @param jdbcRows the number of JDBC rows read in the last LogMiner query result-set
+     */
+    public void setLastBatchJdbcRows(int jdbcRows) {
+        this.jdbcRows.set(jdbcRows);
     }
 
     /**
@@ -987,6 +1000,7 @@ public class LogMinerStreamingChangeEventSourceMetrics
         public void updateStreamingMetrics() {
             metrics.setLastCapturedDmlCount(dataChangeCount);
             metrics.setLastProcessedRowsCount(processedRows);
+            metrics.setLastBatchJdbcRows(jdbcRows);
         }
 
         public boolean hasProcessedAnyTransactions() {
