@@ -14,6 +14,7 @@ import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serializer;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -42,7 +43,14 @@ public class JsonSerde<T> implements Serde<T> {
     private JsonSerdeConfig config;
 
     public JsonSerde(Class<T> objectType) {
-        this(objectType, new ObjectMapper());
+        mapper = new ObjectMapper();
+
+        final StreamReadConstraints constraints = StreamReadConstraints.builder().maxStringLength(Integer.MAX_VALUE).build();
+        mapper.getFactory().setStreamReadConstraints(constraints);
+
+        mapper.registerModule(new JavaTimeModule());
+
+        this.reader = mapper.readerFor(objectType);
     }
 
     public JsonSerde(Class<T> objectType, ObjectMapper mapper) {
