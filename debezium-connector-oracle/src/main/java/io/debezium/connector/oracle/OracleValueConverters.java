@@ -92,7 +92,6 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     private static final Pattern TO_TIMESTAMP_TZ = Pattern.compile("TO_TIMESTAMP_TZ\\('(.*)'\\)", Pattern.CASE_INSENSITIVE);
     private static final BigDecimal MICROSECONDS_PER_SECOND = new BigDecimal(1_000_000);
-    private static final long BLOB_SIZE_2GB = 2000000000L;
 
     private final OracleConnection connection;
     private final boolean legacyDecimalModeStrategy;
@@ -288,7 +287,7 @@ public class OracleValueConverters extends JdbcValueConverters {
 
             try {
                 // use buffered read for large CLOB values
-                if (clob.length() >= BLOB_SIZE_2GB) {
+                if (clob.length() >= Integer.MAX_VALUE) {
                     try (
                             BufferedReader reader = new BufferedReader(clob.getCharacterStream());
                             StringWriter writer = new StringWriter()) {
@@ -346,7 +345,7 @@ public class OracleValueConverters extends JdbcValueConverters {
             else if (data instanceof Blob) {
                 Blob blob = (Blob) data;
 
-                if (blob.length() >= BLOB_SIZE_2GB) {
+                if (blob.length() >= Integer.MAX_VALUE) {
                     // use buffered read to support large BLOB values
                     try (
                             BufferedInputStream inputStream = new BufferedInputStream(blob.getBinaryStream());
