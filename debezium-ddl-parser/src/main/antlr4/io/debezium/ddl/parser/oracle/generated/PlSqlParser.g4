@@ -93,6 +93,8 @@ unit_statement
     | data_manipulation_language_statements
     | truncate_table
     | truncate_cluster
+    | drop_materialized_view
+    | drop_materialized_view_log
     | drop_table
     | drop_tablespace
     | drop_tablespace_set
@@ -1873,6 +1875,14 @@ create_mv_refresh
          | USING (ENFORCED | TRUSTED) CONSTRAINTS
          )+
       )
+    ;
+
+drop_materialized_view
+    : DROP MATERIALIZED VIEW tableview_name (PRESERVE TABLE)?
+    ;
+
+drop_materialized_view_log
+    : DROP MATERIALIZED VIEW LOG (IF EXISTS)? ON tableview_name
     ;
 
 create_context
