@@ -340,7 +340,7 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
         // Testing.Print.enable();
 
         populateTable();
-        insertRecords(200, 0, tableNames().get(1));
+        insertRecords(ROW_COUNT, 0, tableNames().get(1));
 
         startConnectorWithSnapshot(x -> mutableConfig(false, false)
                 .with(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST, "[A-z].*a")
@@ -351,17 +351,17 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
 
         waitForSnapshotToBeCompleted(connector(), server(), task(), database());
 
-        SourceRecords consumedRecordsByTopic = consumeRecordsByTopic(ROW_COUNT, 10);
-        List<Integer> expectedValues = IntStream.rangeClosed(0, 999).boxed().collect(Collectors.toList());
+        SourceRecords consumedRecordsByTopic = consumeRecordsByTopic(ROW_COUNT, 100);
+        List<Integer> expectedValues = IntStream.range(0, ROW_COUNT).boxed().collect(Collectors.toList());
 
         assertRecordsWithValuesPresent(ROW_COUNT, expectedValues, topicName(), consumedRecordsByTopic);
 
         stopConnector();
         assertConnectorNotRunning();
 
-        insertRecords(1000, ROW_COUNT, tableNames().get(0));
+        insertRecords(ROW_COUNT, ROW_COUNT, tableNames().get(0));
         sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("", "", BLOCKING, "[A-z].*b");
-        insertRecords(1000, ROW_COUNT + 1000, tableNames().get(0));
+        insertRecords(ROW_COUNT, 2 * ROW_COUNT, tableNames().get(0));
 
         start(connectorClass(), mutableConfig(false, false)
                 .with(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST, "[A-z].*[ab]")
@@ -389,9 +389,9 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
         waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
 
         Awaitility.await()
-                .pollInterval(200, TimeUnit.MILLISECONDS)
+                .pollInterval(1, TimeUnit.SECONDS)
                 .atMost(60, TimeUnit.SECONDS)
-                .until(() -> !isEngineRunning.get());
+                .until(() -> isEngineRunning.get());
 
         try {
             stopConnector();
@@ -408,11 +408,14 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
 
         waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
 
-        insertRecords(1, ROW_COUNT + 2000, tableName());
+        insertRecords(1, 3 * ROW_COUNT, tableName());
 
         waitForAvailableRecords();
 
-        assertRecordsWithValuesPresent(2001, IntStream.rangeClosed(1000, 2000).boxed().collect(Collectors.toList()), topicName(), consumeRecordsByTopic(2101, 20));
+        consumedRecordsByTopic = consumeRecordsByTopic(3 * ROW_COUNT, 100);
+        expectedValues = IntStream.rangeClosed(ROW_COUNT, 2 * ROW_COUNT).boxed().collect(Collectors.toList());
+
+        assertRecordsWithValuesPresent(2 * ROW_COUNT + 1, expectedValues, topicName(), consumedRecordsByTopic);
 
         stopConnector();
     }
