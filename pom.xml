@@ -124,7 +124,7 @@
 
         <!-- Quarkus -->
         <!-- Version used for Outbox extension development, changes frequently to align with latest Quarkus -->
-        <quarkus.version.extension>3.23.4</quarkus.version.extension>
+        <quarkus.version.extension>3.25.4</quarkus.version.extension>
 
         <!-- Version used in Debezium Server, Operator, etc., usually a LTS version -->
         <!-- Must be aligned with Apicurio version below -->

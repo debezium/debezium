@@ -11,8 +11,8 @@ import java.util.Map;
 
 import jakarta.inject.Inject;
 
+import org.hibernate.metamodel.internal.AbstractDynamicMapInstantiator;
 import org.hibernate.reactive.mutiny.Mutiny;
-import org.hibernate.tuple.DynamicMapInstantiator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,7 +61,7 @@ public abstract class AbstractEventDispatcher extends AbstractEventWriter<Uni<Vo
     @Override
     protected Map<String, Object> createDataMap(ExportedEvent<?, ?> event) {
         final Map<String, Object> dataMap = super.createDataMap(event);
-        dataMap.put(DynamicMapInstantiator.KEY, OUTBOX_ENTITY_FULLNAME);
+        dataMap.put(AbstractDynamicMapInstantiator.TYPE_KEY, OUTBOX_ENTITY_FULLNAME);
         return dataMap;
     }
 
