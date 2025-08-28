@@ -1696,7 +1696,12 @@ parallel_clause
     // the CREATE TABLE parallel_clause text indicating that some older, legacy syntax variants
     // are supported.  This specific variant isn't in the syntax diagrams and looking all the way
     // back to Oracle 10, I couldn't find a reference to this syntax.
-    | PARALLEL (parallel_count=UNSIGNED_INTEGER | '(' DEGREE parallel_degree=UNSIGNED_INTEGER ')')?
+    //
+    // In addition, the instances portion of this clause is Oracle RAC specific. In modern Oracle,
+    // parallelism is controlled by the database initialization parameter PARALLEL_DEGREE_POLICY,
+    // however, the database continues to accept this legacy syntax, even if its ignored.
+    | PARALLEL (parallel_count=UNSIGNED_INTEGER (INSTANCES (UNSIGNED_INTEGER|DEFAULT))?
+    | '(' DEGREE parallel_degree=UNSIGNED_INTEGER (INSTANCES (UNSIGNED_INTEGER|DEFAULT))? ')')?
     ;
 
 alter_materialized_view
