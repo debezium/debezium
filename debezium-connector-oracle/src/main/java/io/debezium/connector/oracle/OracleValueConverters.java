@@ -359,7 +359,7 @@ public class OracleValueConverters extends JdbcValueConverters {
                 }
                 else {
                     // use non-buffered read for smaller BLOB values
-                    data = blob.getBytes(1, Long.valueOf(blob.length()).intValue());
+                    data = blob.getBytes(1, (int) blob.length());
                 }
             }
             else if (data instanceof RAW) {
