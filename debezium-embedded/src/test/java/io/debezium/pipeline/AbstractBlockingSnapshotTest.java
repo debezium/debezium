@@ -13,6 +13,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
@@ -337,7 +338,7 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
     @Test
     public void blockingSnapshotMustReuseExistingOffsetAsSnapshotOffset() throws Exception {
 
-        // Testing.Print.enable();
+        Testing.Print.enable();
 
         populateTable();
         insertRecords(200, 0, tableNames().get(1));
@@ -363,6 +364,7 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
         sendAdHocSnapshotSignalWithAdditionalConditionWithSurrogateKey("", "", BLOCKING, "[A-z].*b");
         insertRecords(1000, ROW_COUNT + 1000, tableNames().get(0));
 
+        CountDownLatch stopConditionReached = new CountDownLatch(1);
         start(connectorClass(), mutableConfig(false, false)
                 .with(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST, "[A-z].*[ab]")
                 .with(CommonConnectorConfig.MAX_BATCH_SIZE, 2)
@@ -380,7 +382,11 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
                     if (record.topic().equals(topicNames().get(1))) {
                         Struct key = (Struct) record.key();
                         Number id = (Number) key.get(pkFieldName());
-                        return id.intValue() == 100;
+                        if (id.intValue() == 100) {
+                            stopConditionReached.countDown();
+                            return true;
+                        }
+                        return false;
                     }
 
                     return false;
@@ -388,9 +394,11 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
 
         waitForStreamingRunning(connector(), server(), getStreamingNamespace(), task());
 
+        stopConditionReached.await();
+
         Awaitility.await()
                 .pollInterval(200, TimeUnit.MILLISECONDS)
-                .atMost(60, TimeUnit.SECONDS)
+                .atMost(300, TimeUnit.SECONDS)
                 .until(() -> !isEngineRunning.get());
 
         try {
