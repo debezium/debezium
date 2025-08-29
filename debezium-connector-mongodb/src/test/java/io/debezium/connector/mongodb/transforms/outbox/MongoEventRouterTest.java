@@ -973,9 +973,9 @@ public class MongoEventRouterTest {
     @Test
     public void tracingCustomConfigParsing() throws Exception {
         final Map<String, String> config = new HashMap<>();
-        config.put(MongoEventRouterConfigDefinition.TRACING_SPAN_CONTEXT_FIELD.name(), "myField");
-        config.put(MongoEventRouterConfigDefinition.TRACING_CONTEXT_FIELD_REQUIRED.name(), "false");
-        config.put(MongoEventRouterConfigDefinition.TRACING_OPERATION_NAME.name(), "customOperation");
+        config.put(ActivateTracingSpan.TRACING_SPAN_CONTEXT_FIELD.name(), "myField");
+        config.put(ActivateTracingSpan.TRACING_CONTEXT_FIELD_REQUIRED.name(), "false");
+        config.put(ActivateTracingSpan.TRACING_OPERATION_NAME.name(), "customOperation");
         router.configure(config);
 
         // Access the private 'eventRouterDelegate' field
@@ -1010,8 +1010,8 @@ public class MongoEventRouterTest {
     @Test
     public void tracingCustomConfigParsing_default_TRACING_SPAN_CONTEXT_FIELD() throws Exception {
         final Map<String, String> config = new HashMap<>();
-        config.put(MongoEventRouterConfigDefinition.TRACING_CONTEXT_FIELD_REQUIRED.name(), "true");
-        config.put(MongoEventRouterConfigDefinition.TRACING_OPERATION_NAME.name(), "customOperation");
+        config.put(ActivateTracingSpan.TRACING_CONTEXT_FIELD_REQUIRED.name(), "true");
+        config.put(ActivateTracingSpan.TRACING_OPERATION_NAME.name(), "customOperation");
         router.configure(config);
 
         // Access the private 'eventRouterDelegate' field
@@ -1046,8 +1046,8 @@ public class MongoEventRouterTest {
     @Test
     public void tracingCustomConfigParsing_default_TRACING_CONTEXT_FIELD_REQUIRED() throws Exception {
         final Map<String, String> config = new HashMap<>();
-        config.put(MongoEventRouterConfigDefinition.TRACING_SPAN_CONTEXT_FIELD.name(), "myField");
-        config.put(MongoEventRouterConfigDefinition.TRACING_OPERATION_NAME.name(), "customOperation");
+        config.put(ActivateTracingSpan.TRACING_SPAN_CONTEXT_FIELD.name(), "myField");
+        config.put(ActivateTracingSpan.TRACING_OPERATION_NAME.name(), "customOperation");
         router.configure(config);
 
         // Access the private 'eventRouterDelegate' field
@@ -1082,8 +1082,8 @@ public class MongoEventRouterTest {
     @Test
     public void tracingCustomConfigParsing_default_TRACING_OPERATION_NAME() throws Exception {
         final Map<String, String> config = new HashMap<>();
-        config.put(MongoEventRouterConfigDefinition.TRACING_SPAN_CONTEXT_FIELD.name(), "myField");
-        config.put(MongoEventRouterConfigDefinition.TRACING_CONTEXT_FIELD_REQUIRED.name(), "false");
+        config.put(ActivateTracingSpan.TRACING_SPAN_CONTEXT_FIELD.name(), "myField");
+        config.put(ActivateTracingSpan.TRACING_CONTEXT_FIELD_REQUIRED.name(), "false");
         router.configure(config);
 
         // Access the private 'eventRouterDelegate' field

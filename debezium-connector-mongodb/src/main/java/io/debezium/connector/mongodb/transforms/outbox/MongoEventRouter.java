@@ -25,6 +25,7 @@ import org.bson.json.JsonWriterSettings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.common.annotation.Incubating;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.Module;
@@ -339,17 +340,22 @@ public class MongoEventRouter<R extends ConnectRecord<R>> implements Transformat
         // Add tracing config
 
         fieldNameConverter.put(
-                MongoEventRouterConfigDefinition.TRACING_SPAN_CONTEXT_FIELD.name(),
+                ActivateTracingSpan.TRACING_SPAN_CONTEXT_FIELD.name(),
                 ActivateTracingSpan.TRACING_SPAN_CONTEXT_FIELD.name());
 
         fieldNameConverter.put(
-                MongoEventRouterConfigDefinition.TRACING_OPERATION_NAME.name(),
+                ActivateTracingSpan.TRACING_OPERATION_NAME.name(),
                 ActivateTracingSpan.TRACING_OPERATION_NAME.name());
 
         fieldNameConverter.put(
-                MongoEventRouterConfigDefinition.TRACING_CONTEXT_FIELD_REQUIRED.name(),
+                ActivateTracingSpan.TRACING_CONTEXT_FIELD_REQUIRED.name(),
                 ActivateTracingSpan.TRACING_CONTEXT_FIELD_REQUIRED.name());
 
         return fieldNameConverter;
+    }
+
+    @VisibleForTesting
+    EventRouterDelegate<R> getEventRouterDelegate() {
+        return eventRouterDelegate;
     }
 }
