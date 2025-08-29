@@ -970,6 +970,17 @@ public class MongoEventRouterTest {
         return new SourceRecord(new HashMap<>(), new HashMap<>(), "db.outbox", envelope.schema(), body);
     }
 
+    protected ActivateTracingSpan<SourceRecord> getTracingSmt() throws NoSuchFieldException, IllegalAccessException {
+        // Access the 'tracingSmt' field inside the delegate
+        Field tracingField = router.getEventRouterDelegate().getClass().getDeclaredField("tracingSmt");
+        tracingField.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        ActivateTracingSpan<SourceRecord> tracingSmt = (ActivateTracingSpan<SourceRecord>) tracingField
+                .get(router.getEventRouterDelegate());
+        return tracingSmt;
+    }
+
     @Test
     public void tracingCustomConfigParsing() throws Exception {
         final Map<String, String> config = new HashMap<>();
@@ -978,16 +989,7 @@ public class MongoEventRouterTest {
         config.put(ActivateTracingSpan.TRACING_OPERATION_NAME.name(), "customOperation");
         router.configure(config);
 
-        // Access the private 'eventRouterDelegate' field
-        Field delegateField = MongoEventRouter.class.getDeclaredField("eventRouterDelegate");
-        delegateField.setAccessible(true);
-        Object delegate = delegateField.get(router);
-
-        // Access the 'tracingSmt' field inside the delegate
-        Field tracingField = delegate.getClass().getDeclaredField("tracingSmt");
-        tracingField.setAccessible(true);
-
-        ActivateTracingSpan tracingSmt = (ActivateTracingSpan) tracingField.get(delegate);
+        final var tracingSmt = getTracingSmt();
 
         Field spanContextField = tracingSmt.getClass().getDeclaredField("spanContextField");
         spanContextField.setAccessible(true);
@@ -1014,16 +1016,7 @@ public class MongoEventRouterTest {
         config.put(ActivateTracingSpan.TRACING_OPERATION_NAME.name(), "customOperation");
         router.configure(config);
 
-        // Access the private 'eventRouterDelegate' field
-        Field delegateField = MongoEventRouter.class.getDeclaredField("eventRouterDelegate");
-        delegateField.setAccessible(true);
-        Object delegate = delegateField.get(router);
-
-        // Access the 'tracingSmt' field inside the delegate
-        Field tracingField = delegate.getClass().getDeclaredField("tracingSmt");
-        tracingField.setAccessible(true);
-
-        ActivateTracingSpan tracingSmt = (ActivateTracingSpan) tracingField.get(delegate);
+        final var tracingSmt = getTracingSmt();
 
         Field spanContextField = tracingSmt.getClass().getDeclaredField("spanContextField");
         spanContextField.setAccessible(true);
@@ -1050,16 +1043,7 @@ public class MongoEventRouterTest {
         config.put(ActivateTracingSpan.TRACING_OPERATION_NAME.name(), "customOperation");
         router.configure(config);
 
-        // Access the private 'eventRouterDelegate' field
-        Field delegateField = MongoEventRouter.class.getDeclaredField("eventRouterDelegate");
-        delegateField.setAccessible(true);
-        Object delegate = delegateField.get(router);
-
-        // Access the 'tracingSmt' field inside the delegate
-        Field tracingField = delegate.getClass().getDeclaredField("tracingSmt");
-        tracingField.setAccessible(true);
-
-        ActivateTracingSpan tracingSmt = (ActivateTracingSpan) tracingField.get(delegate);
+        final var tracingSmt = getTracingSmt();
 
         Field spanContextField = tracingSmt.getClass().getDeclaredField("spanContextField");
         spanContextField.setAccessible(true);
@@ -1086,16 +1070,7 @@ public class MongoEventRouterTest {
         config.put(ActivateTracingSpan.TRACING_CONTEXT_FIELD_REQUIRED.name(), "false");
         router.configure(config);
 
-        // Access the private 'eventRouterDelegate' field
-        Field delegateField = MongoEventRouter.class.getDeclaredField("eventRouterDelegate");
-        delegateField.setAccessible(true);
-        Object delegate = delegateField.get(router);
-
-        // Access the 'tracingSmt' field inside the delegate
-        Field tracingField = delegate.getClass().getDeclaredField("tracingSmt");
-        tracingField.setAccessible(true);
-
-        ActivateTracingSpan tracingSmt = (ActivateTracingSpan) tracingField.get(delegate);
+        final var tracingSmt = getTracingSmt();
 
         Field spanContextField = tracingSmt.getClass().getDeclaredField("spanContextField");
         spanContextField.setAccessible(true);
