@@ -2470,7 +2470,7 @@ For details about setting up Oracle for use with the {prodname} connector, see t
 * xref:schemas-that-the-debezium-oracle-connector-excludes-when-capturing-change-events[]
 * xref:preparing-oracle-databases-for-use-with-debezium[]
 * xref:resizing-oracle-redo-logs-to-accommodate-the-data-dictionary[]
-* xref:creating-an-oracle-user-for-the-debezium-oracle-connector[]
+* xref:configuration-of-the-connectors-oracle-user-account[]
 * xref:running-the-connector-with-an-oracle-standby-database[]
 * xref:using-oracle-xstream-databases-with-debezium[]
 
