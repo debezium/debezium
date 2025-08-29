@@ -273,7 +273,7 @@ By default, the connector uses the names of the source topic and the event field
 The constructed SQL does not automatically delimit identifiers with quotes to preserve the case of the original strings.
 As a result, by default, the text case of table or column names in the destination database depends entirely on how the database handles name strings when the case is not specified.
 
-For example, if the destination database dialect is Oracle and the event's topic is `orders`, the destination table will be created as `ORDERS` because Oracle defaults to upper-case names when the name is not quoted.
+For example, if the destination database dialect is Oracle and the event's topic is `orders`, the destination table will be created as `ORDERS` because Oracle defaults to uppercase names when the name is not quoted.
 Similarly, if the destination database dialect is PostgreSQL and the event's topic is `ORDERS`, the destination table will be created as `orders` because PostgreSQL defaults to lower-case names when the name is not quoted.
 
 To explicitly preserve the case of the table and field names that are present in a Kafka event, in the connector configuration, set the value of the `quote.identifiers` property to `true`.
@@ -574,33 +574,38 @@ If you find a mapping could be improved, please let us know.
 endif::community[]
 ====
 
+
+// Type: concept
+// ModuleID: debezium-jdbc-connector-transformations-for-modifying-the-format-of-events-before-processing
+// Title: Transformations for modifying the format of events before processing
 [[jdbc-transformations]]
 == Transformations
 
 The {prodname} JDBC connector provides several transformations that can be added to the connector configuration to modify the consumed events in-flight before they're processed by the connector.
 
-=== Naming transformations
+Naming transformations::
 
 The {prodname} provides two naming transformations that are specifically designed to change either the topic or field names within the event to the configured naming style.
 The naming transformations can be configured with one of the following naming styles:
 
 `camel_case`::
-Removes all `.` and `_` characters, and makes the immediate next character uppercase.
-For example, the value `inventory.customers` would be changed to `inventoryCustomers`.
+Removes all period (`.`) and underscore (`_`) characters, and converts the immediate next character to uppercase.
+For example, the value `inventory.customers` is changed to `inventoryCustomers`.
 `snake_case`::
-Removes all `.` and replaces them with an `_` character. Additionally, any numeric sequences will be prefixed with an `_` while any capitalized character will be converted to lower case and prepended with an `_` character, too.
-For example, the value `public.inventory` would become `public_inventory`, while `TopicWith123Numbers` would become `topic_with_123_numbers`.
+Removes all period (`.`) characters and replaces them with underscore (`_`) characters.
+Additionally, all numeric sequences are prefixed with an underscore (`_`), and all uppercase characters are converted to lowercase and then prefixed with an underscore (`_`) character.
+For example, the value `public.inventory` becomes `public_inventory`, while `TopicWith123Numbers` becomes `topic_with_123_numbers`.
 `upper_case`::
-Converts to upper case.
+Converts to uppercase.
 For example, the value `public.inventory` would become `PUBLIC.INVENTORY`.
 `lower_case`::
-Converts to lower case.
+Converts to lowercase.
 For example, the value `PUBLIC.INVENTORY` would become `public.inventory`.
 
 In addition, these transformations optionally provide a way to apply a prefix or a suffix to the transformed name, too.
 
 
-==== CollectionNameTransformation
+CollectionNameTransformation:::
 
 The `CollectionNameTransformation` aims to provide a way to change the case of the topic names before the event is consumed.
 
@@ -638,7 +643,7 @@ For example, given a topic called `public.inventory`, the topic name would becom
 }
 ----
 
-==== FieldNameTransformation
+FieldNameTransformation:::
 
 The `FieldNameTransformation` aims to provide a way to change the case of the field names before the event is consumed.
 If the event is a {prodname} source connector event, only the fields within the `before` and `after` sections are changed.
