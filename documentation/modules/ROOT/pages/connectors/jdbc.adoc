@@ -575,25 +575,31 @@ endif::community[]
 ====
 
 
-// Type: concept
-// ModuleID: debezium-jdbc-connector-transformations-for-modifying-the-format-of-events-before-processing
-// Title: Transformations for modifying the format of events before processing
+// Type: assembly
+// ModuleID: debezium-jdbc-connector-transformations-that-modify-the-format-of-events-before-processing
+// Title: Transformations that modify the format of events before processing
 [[jdbc-transformations]]
 == Transformations
 
 The {prodname} JDBC connector provides several transformations that can be added to the connector configuration to modify the consumed events in-flight before they're processed by the connector.
 
-Naming transformations::
 
-The {prodname} provides two naming transformations that are specifically designed to change either the topic or field names within the event to the configured naming style.
-The naming transformations can be configured with one of the following naming styles:
+// Type: assembly
+// ModuleID: debezium-jdbc-connector-naming-transformations
+// Title: Transformation that alter topic names
+=== Naming transformations
+
+The {prodname} JDBC connector provides two naming transformations that you can apply to change the naming styles of topic or field names within an event.
+Optionally, you can also use the naming transformations to apply a prefix or suffix to the transformed name.
+
+You can configure naming transformations to use one of the following naming styles:
 
 `camel_case`::
-Removes all period (`.`) and underscore (`_`) characters, and converts the immediate next character to uppercase.
+Removes all period (`.`) and underscore (`+_+`) characters, and converts the immediate next character to uppercase.
 For example, the value `inventory.customers` is changed to `inventoryCustomers`.
 `snake_case`::
-Removes all period (`.`) characters and replaces them with underscore (`_`) characters.
-Additionally, all numeric sequences are prefixed with an underscore (`_`), and all uppercase characters are converted to lowercase and then prefixed with an underscore (`_`) character.
+Removes all period (`.`) characters and replaces them with underscore (`+_+`) characters.
+Additionally, all numeric sequences are prefixed with an underscore (`+_+`), and all uppercase characters are converted to lowercase and then prefixed with an underscore (`+_+`) character.
 For example, the value `public.inventory` becomes `public_inventory`, while `TopicWith123Numbers` becomes `topic_with_123_numbers`.
 `upper_case`::
 Converts to uppercase.
@@ -602,15 +608,13 @@ For example, the value `public.inventory` would become `PUBLIC.INVENTORY`.
 Converts to lowercase.
 For example, the value `PUBLIC.INVENTORY` would become `public.inventory`.
 
-In addition, these transformations optionally provide a way to apply a prefix or a suffix to the transformed name, too.
 
+The connector provides the following naming transformations:
 
-CollectionNameTransformation:::
-
-The `CollectionNameTransformation` aims to provide a way to change the case of the topic names before the event is consumed.
-
+CollectionNameTransformation::
+The `CollectionNameTransformation` provides a way to change the case of the topic names before the event is consumed.
 This transformation has the following configuration properties:
-
++
 [cols="30%a,25%a,45%a"]
 |===
 |Property |Default |Description
@@ -628,10 +632,10 @@ This transformation has the following configuration properties:
 |Specifies the suffix that is applied to the topic name after transformation.
 
 |===
-
-The following configuration example illustrates using the `CollectionNameTransformation` SMT to set the topic name to uppercase and prefixes the topic name with `ADT_`.
-For example, given a topic called `public.inventory`, the topic name would become `ADT_PUBLIC.INVENTORY`.
-
++
+The following configuration example illustrates using the `CollectionNameTransformation` SMT to set the topic name to uppercase and prefix the topic name with `ADT_`.
+For example, given a topic called `public.inventory`, the topic name becomes `ADT_PUBLIC.INVENTORY`.
++
 .Example CollectionNameTransformation configuration
 [source,json]
 ----
@@ -643,14 +647,15 @@ For example, given a topic called `public.inventory`, the topic name would becom
 }
 ----
 
-FieldNameTransformation:::
 
-The `FieldNameTransformation` aims to provide a way to change the case of the field names before the event is consumed.
+
+FieldNameTransformation::
+The `FieldNameTransformation` provides a way to change the case of field names before the event is consumed.
 If the event is a {prodname} source connector event, only the fields within the `before` and `after` sections are changed.
-When the event is not a {prodname} source connector event, all top-level field names will be changed.
-
+When the event is not a {prodname} source connector event, all top-level field names are changed.
++
 This transformation has the following configuration properties:
-
++
 [cols="30%a,25%a,45%a"]
 |===
 |Property |Default |Description
@@ -668,10 +673,10 @@ This transformation has the following configuration properties:
 |Specifies the suffix that is applied to the field name after transformation.
 
 |===
-
-The following configuration example illustrates using the `FieldNameTransformation` SMT to set the field names name to lowercase and prefixes them with `adt_`.
-For example, should the event contain the field `ID`, the field will become `adt_id`.
-
++
+The following example shows how to configure the `FieldNameTransformation` SMT to convert field names name to lowercase and prefix the names with the string `adt_`.
+After you apply the SMT to an event that includes a field with the name `ID`, the field is renamed to `adt_id`.
++
 .Example FieldNameTransformation configuration
 [source,json]
 ----
