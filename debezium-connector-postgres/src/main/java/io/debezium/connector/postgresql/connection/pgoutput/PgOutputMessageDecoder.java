@@ -772,6 +772,10 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         this.transactionId = transactionId;
     }
 
+    protected void setCommitTimestamp(Instant commitTimestamp) {
+        this.commitTimestamp = commitTimestamp;
+    }
+
     protected Long getTransactionId() {
         return transactionId;
     }
