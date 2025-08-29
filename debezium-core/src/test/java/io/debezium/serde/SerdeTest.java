@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.common.serialization.Serde;
 import org.junit.Test;
 
@@ -216,4 +217,21 @@ public class SerdeTest implements Testing {
         assertThat(valueSerde.deserializer().deserialize("xx", content.getBytes()))
                 .isEqualTo(new Customer(1004, "Anne-Marie", "Kretchmar", "annek@noanswer.org"));
     }
+
+    @Test
+    public void largeValue() {
+        final var valueSerde = DebeziumSerdes.payloadJson(String.class);
+        valueSerde.configure(Collections.emptyMap(), true);
+
+        final var longStringButAcceptableByDefault = RandomStringUtils.randomAlphanumeric(19_000_000);
+        final var longStringButNotAcceptableByDefault = RandomStringUtils.randomAlphanumeric(64_000_000);
+        assertThat(valueSerde.deserializer().deserialize("xx", "{\"payload\": {\"a\": \"mystring\"}}".getBytes())).isEqualTo("mystring");
+        assertThat(valueSerde.deserializer().deserialize("xx",
+                "{\"payload\": {\"a\": \"%s\"}}".formatted(longStringButAcceptableByDefault).getBytes()))
+                .isEqualTo(longStringButAcceptableByDefault);
+        assertThat(valueSerde.deserializer().deserialize("xx",
+                "{\"payload\": {\"a\": \"%s\"}}".formatted(longStringButNotAcceptableByDefault).getBytes()))
+                .isEqualTo(longStringButNotAcceptableByDefault);
+    }
+
 }
