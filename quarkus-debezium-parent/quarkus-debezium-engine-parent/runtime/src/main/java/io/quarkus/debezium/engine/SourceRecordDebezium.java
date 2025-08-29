@@ -16,6 +16,7 @@ import io.debezium.config.Configuration;
 import io.debezium.embedded.Connect;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.Signaler;
+import io.debezium.runtime.CaptureGroup;
 import io.debezium.runtime.Connector;
 import io.debezium.runtime.DebeziumStatus;
 import io.quarkus.debezium.engine.capture.consumer.SourceRecordEventConsumer;
@@ -66,6 +67,11 @@ class SourceRecordDebezium extends RunnableDebezium {
     @Override
     public Connector connector() {
         return connector;
+    }
+
+    @Override
+    public CaptureGroup captureGroup() {
+        return new CaptureGroup("default");
     }
 
     protected void run() {

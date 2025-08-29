@@ -209,19 +209,19 @@ public class EngineProcessor {
                 .reason(DebeziumDotNames.DEBEZIUM_ENGINE_PROCESSOR.toString())
                 .constructors(false).methods().build());
 
-        TRANSFORM.extract(debeziumEngineConfiguration.configuration())
+        TRANSFORM.extract(debeziumEngineConfiguration.defaultConfiguration())
                 .forEach(transform -> reflectiveClasses.produce(ReflectiveClassBuildItem
                         .builder(transform)
                         .reason(getClass().getName())
                         .build()));
 
-        PREDICATE.extract(debeziumEngineConfiguration.configuration())
+        PREDICATE.extract(debeziumEngineConfiguration.defaultConfiguration())
                 .forEach(predicate -> reflectiveClasses.produce(ReflectiveClassBuildItem
                         .builder(predicate)
                         .reason(getClass().getName())
                         .build()));
 
-        POST_PROCESSOR.extract(debeziumEngineConfiguration.configuration())
+        POST_PROCESSOR.extract(debeziumEngineConfiguration.defaultConfiguration())
                 .forEach(postProcessor -> reflectiveClasses.produce(ReflectiveClassBuildItem
                         .builder(postProcessor)
                         .reason(getClass().getName())
