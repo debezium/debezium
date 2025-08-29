@@ -54,7 +54,7 @@ public class PostgresEngineProducer implements ConnectorProducer {
     @Produces
     @Singleton
     public Debezium engine(DebeziumEngineConfiguration debeziumEngineConfiguration) {
-        Map<String, String> configurationMap = debeziumEngineConfiguration.configuration();
+        Map<String, String> configurationMap = debeziumEngineConfiguration.defaultConfiguration();
 
         configurationMap.compute(NOTIFICATION_ENABLED_CHANNELS.name(),
                 (key, value) -> value == null ? channel.name() : value.concat("," + channel.name()));
