@@ -54,7 +54,7 @@ class PostgresEngineProducerTest {
 
         assertThat(underTest.engine(new DebeziumEngineConfiguration() {
             @Override
-            public Map<String, String> configuration() {
+            public Map<String, String> defaultConfiguration() {
                 return new HashMap<>(Map.of("name", "test"));
             }
 
@@ -91,7 +91,7 @@ class PostgresEngineProducerTest {
 
         assertThat(underTest.engine(new DebeziumEngineConfiguration() {
             @Override
-            public Map<String, String> configuration() {
+            public Map<String, String> defaultConfiguration() {
                 return new HashMap<>(Map.of("name", "test", "database.hostname", "native"));
             }
 

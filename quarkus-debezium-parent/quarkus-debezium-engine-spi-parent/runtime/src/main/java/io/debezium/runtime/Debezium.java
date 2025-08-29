@@ -40,4 +40,10 @@ public interface Debezium {
      * @return engine's connector
      */
     Connector connector();
+
+    /**
+     *
+     * @return engine's capture group
+     */
+    CaptureGroup captureGroup();
 }
