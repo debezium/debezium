@@ -53,8 +53,8 @@ public class WalPositionLocatorStreaming implements PositionLocator {
         this.lastProcessedMessageType = lastProcessedMessageType;
         this.transactionId = transactionId;
 
-        LOGGER.info("Looking for WAL restart position for last commit LSN '{}' and last change LSN '{}' and transaction id '{}'",
-                lastCommitStoredLsn, lastEventStoredLsn, transactionId);
+        LOGGER.info("Looking for WAL restart position for last commit LSN '{}' and last change LSN '{}' and transaction id '{}' and lastProcessedMessageType '{}'",
+                lastCommitStoredLsn, lastEventStoredLsn, transactionId, lastProcessedMessageType);
     }
 
     public WalPositionLocatorStreaming() {
@@ -67,12 +67,22 @@ public class WalPositionLocatorStreaming implements PositionLocator {
     }
 
     /**
-     * @return the first LSN from which processing should be started or empty if
-     *         the position has not been found yet
+     * Determines the appropriate Log Sequence Number (LSN) to resume streaming replication from,
+     * based on the current LSN, the incoming replication message, and the transaction ID of a BEGIN message.
+     * <p>
+     * The method maintains internal state about the first LSN received and the last processed event,
+     * and uses this information to decide whether to continue from the current LSN,
+     * start from a previously stored position, or skip processing.
+     * </p>
+     *
+     * @param currentLsn              the current LSN from the replication stream; must not be null.
+     * @param message                 the replication message associated with the current LSN; must not be null.
+     * @param beginMessageTransactionId the transaction ID associated with the BEGIN message; may be null.
+     * @return an {@link Optional} containing the LSN to resume from, or empty if no resumption is appropriate at this point.
      */
     @Override
     public Optional<Lsn> resumeFromLsn(Lsn currentLsn, ReplicationMessage message, Long beginMessageTransactionId) {
-        LOGGER.info("Processing LSN '{}', operation '{}', lastCommitStoredLsn '{}', lastEventStoredLsn '{}', lastProcessedMessageType '{}'",
+        LOGGER.trace("Processing LSN '{}', operation '{}', lastCommitStoredLsn '{}', lastEventStoredLsn '{}', lastProcessedMessageType '{}'",
                 currentLsn, message.getOperation(), lastCommitStoredLsn, lastEventStoredLsn, lastProcessedMessageType);
 
         if (firstLsnReceived == null) {
@@ -87,13 +97,12 @@ public class WalPositionLocatorStreaming implements PositionLocator {
         }
 
         if (lastProcessedMessageType.equals(ReplicationMessage.Operation.COMMIT)) {
-            // In case we are polling for LSN that is of commit, then we will always get a record that is of next batch.
+            // In case we are polling for LSN that is of commit, then we will always get a record that is of next batch, if available.
             return Optional.of(currentLsn);
         }
 
         if (!transactionId.equals(beginMessageTransactionId)) {
-            // this means we are getting message of different transaction and we do not care about this.
-            // We will process these messages while streaming.
+            LOGGER.trace("While looking for lastProcessedLSN '{}', we are getting messages of different concurrent transaction due to protocol version 2 and all these messages will be processed after current un-processed messages of the transaction. ", lastEventStoredLsn);
             return Optional.empty();
         }
 
@@ -101,7 +110,9 @@ public class WalPositionLocatorStreaming implements PositionLocator {
         lsnSeen.add(currentLsn);
 
         if (currentLsn.equals(lastEventStoredLsn)) {
-            startStreamingLsn = currentLsn; // Since we are adding this to lsnSeen, we will skip this lsn while checking and will process from next LSN.
+            // Since we are adding this to lsnSeen, we will skip this lsn while checking and will process from next LSN.
+            LOGGER.trace("Found the last processed LSN, processing will resume after this LSN.");
+            startStreamingLsn = currentLsn;
             return Optional.of(startStreamingLsn);
         }
 
@@ -117,16 +128,16 @@ public class WalPositionLocatorStreaming implements PositionLocator {
      */
     @Override
     public boolean skipMessage(Lsn lsn, Long beginMessageTransactionId) {
-        LOGGER.info("LSN in skip message is {}", lsn);
         if (passMessages) {
             return false;
         }
         if (lastEventStoredLsn == null) {
-            LOGGER.info("We have not processed any message, processing will start from LSN '{}', switching off the filtering", lsn);
+            LOGGER.trace("We have not processed any message, processing will start from LSN '{}', switching off the filtering", lsn);
             passMessages = true;
             return false;
         }
         if (!transactionId.equals(beginMessageTransactionId)) {
+            LOGGER.trace("While looking for lastProcessedLSN '{}', we got a different transaction-id '{}' which will be processed.", lastCommitStoredLsn, beginMessageTransactionId);
             return false;
         }
         if (startStreamingLsn.equals(lsn)) {
@@ -170,10 +181,18 @@ public class WalPositionLocatorStreaming implements PositionLocator {
 
     @Override
     public String toString() {
-        return "WalPositionLocator [lastCommitStoredLsn=" + lastCommitStoredLsn + ", lastEventStoredLsn="
-                + lastEventStoredLsn + ", lastProcessedMessageType=" + lastProcessedMessageType + ", txStartLsn="
-                + txStartLsn + ", lsnAfterLastEventStoredLsn=" + lsnAfterLastEventStoredLsn + ", firstLsnReceived="
-                + firstLsnReceived + ", passMessages=" + passMessages + ", startStreamingLsn=" + startStreamingLsn
-                + ", storeLsnAfterLastEventStoredLsn=" + storeLsnAfterLastEventStoredLsn + "]";
+        return "WalPositionLocatorStreaming{" +
+                "lastCommitStoredLsn=" + lastCommitStoredLsn +
+                ", lastEventStoredLsn=" + lastEventStoredLsn +
+                ", lastProcessedMessageType=" + lastProcessedMessageType +
+                ", transactionId=" + transactionId +
+                ", txStartLsn=" + txStartLsn +
+                ", lsnAfterLastEventStoredLsn=" + lsnAfterLastEventStoredLsn +
+                ", firstLsnReceived=" + firstLsnReceived +
+                ", passMessages=" + passMessages +
+                ", startStreamingLsn=" + startStreamingLsn +
+                ", storeLsnAfterLastEventStoredLsn=" + storeLsnAfterLastEventStoredLsn +
+                ", lsnSeen=" + lsnSeen +
+                '}';
     }
 }
