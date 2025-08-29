@@ -101,32 +101,6 @@ public class MongoEventRouterConfigDefinition {
             .withDescription("Whether or not to try unescaping a JSON string and make it real JSON. It will infer schema information" +
                     " from payload and update the record schema accordingly. If content is not JSON, it just produces a warning" +
                     " and emits the record unchanged");
-    // Tracing config
-
-    public static final Field TRACING_SPAN_CONTEXT_FIELD = Field.create("tracing.span.context.field")
-            .withDisplayName("Serialized tracing span context field")
-            .withType(ConfigDef.Type.STRING)
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.HIGH)
-            .withDefault(ActivateTracingSpan.DEFAULT_TRACING_SPAN_CONTEXT_FIELD)
-            .withDescription("The name of the field containing java.util.Properties representation of serialized span context. Defaults to '"
-                    + ActivateTracingSpan.DEFAULT_TRACING_SPAN_CONTEXT_FIELD + "'");
-
-    public static final Field TRACING_OPERATION_NAME = Field.create("tracing.operation.name")
-            .withDisplayName("Tracing operation name")
-            .withType(ConfigDef.Type.STRING)
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.HIGH)
-            .withDefault(ActivateTracingSpan.DEFAULT_TRACING_OPERATION_NAME)
-            .withDescription("The operation name representing Debezium processing span. Default is '" + ActivateTracingSpan.DEFAULT_TRACING_OPERATION_NAME + "'");
-
-    public static final Field TRACING_CONTEXT_FIELD_REQUIRED = Field.create("tracing.with.context.field.only")
-            .withDisplayName("Trace only events with context field present")
-            .withType(ConfigDef.Type.BOOLEAN)
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.HIGH)
-            .withDefault(false)
-            .withDescription("Set to `true` when only events that have serialized context field should be traced.");
 
     /**
      * There are 3 configuration groups available:
