@@ -60,14 +60,8 @@ public abstract class BinlogChangeEventSourceFactory<P extends Partition, O exte
         }
         finally {
             // Always disable buffering to prevent memory leaks
-            try {
-                queue.disableBuffering();
-            }
-            catch (AssertionError e) {
-                // In rare cases, assertion may fail if buffer is not empty due to shutdown timing
-                // This is acceptable as the queue shutdown mechanism prevents the memory leak
-                LOGGER.debug("Buffer not empty during cleanup due to shutdown timing - this is expected");
-            }
+            // Use the safe version that handles non-empty buffers gracefully during shutdown
+            queue.disableBufferingSafely();
         }
     }
 }

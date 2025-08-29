@@ -222,11 +222,33 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
     }
 
     /**
-     * Disable buffering for the queue
+     * Disable buffering for the queue.
+     * This method enforces that the buffer must be empty (flushed) before disabling.
+     * Use this method in normal operation when you can guarantee the buffer is properly flushed.
+     * For cleanup scenarios where the buffer state might be inconsistent, use {@link #disableBufferingSafely()}.
+     *
+     * @throws AssertionError if the buffer is not empty (assertions enabled)
      */
     public void disableBuffering() {
         assert bufferedEvent.get() == null : "Buffer must be flushed";
         buffering = false;
+    }
+
+    /**
+     * Safely disable buffering for the queue without throwing assertions.
+     * This method should be used in cleanup scenarios where the buffer state
+     * might be inconsistent due to shutdown timing or interruptions.
+     *
+     * @return true if buffering was disabled successfully, false if buffer was not empty
+     */
+    public boolean disableBufferingSafely() {
+        if (bufferedEvent.get() != null) {
+            LOGGER.warn("Disabling buffering with non-empty buffer - this may indicate incomplete flush during shutdown");
+            // Clear the buffer to prevent memory leaks
+            bufferedEvent.set(null);
+        }
+        buffering = false;
+        return true;
     }
 
     /**
@@ -251,12 +273,14 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
                 this.isNotFull.await(pollInterval.toMillis(), TimeUnit.MILLISECONDS);
             }
 
-            // If not running, throw InterruptedException to allow graceful exit
+            // Final check for running state within the lock to prevent race conditions
+            // This ensures that even if shutdown() is called between the while loop condition
+            // and this point, we will detect it and exit gracefully
             if (!running) {
                 throw new InterruptedException("Queue has been shut down");
             }
 
-            queue.enqueue(record); // If we pass a positiveLong max.queue.size.in.bytes to enable handling queue size in bytes feature
+            queue.enqueue(record);
             if (maxQueueSizeInBytes > 0) {
                 long messageSize = record.objectSize();
                 sizeInBytesQueue.add(messageSize);

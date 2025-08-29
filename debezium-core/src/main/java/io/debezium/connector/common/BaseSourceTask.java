@@ -492,11 +492,10 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
             }
 
             // Shutdown the change event queue to prevent thread leaks
-            ChangeEventQueue<DataChangeEvent> queue = getChangeEventQueue();
-            if (queue != null) {
+            getChangeEventQueue().ifPresent(queue -> {
                 LOGGER.info("Shutting down queue to prevent thread leaks");
                 queue.shutdown();
-            }
+            });
 
             doStop();
 
@@ -520,12 +519,12 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
      * Override this method to provide access to the connector's ChangeEventQueue.
      * If the connector uses a ChangeEventQueue, this should return it to enable
      * automatic queue shutdown during connector stop to prevent thread leaks.
-     * If the connector doesn't use a ChangeEventQueue, return null.
+     * If the connector doesn't use a ChangeEventQueue, return empty Optional.
      *
-     * @return the ChangeEventQueue instance or null if not applicable
+     * @return Optional containing the ChangeEventQueue instance, or empty if not applicable
      */
-    protected ChangeEventQueue<DataChangeEvent> getChangeEventQueue() {
-        return null; // Default implementation - connectors override if they have a queue
+    protected Optional<ChangeEventQueue<DataChangeEvent>> getChangeEventQueue() {
+        return Optional.empty(); // Default implementation - connectors override if they have a queue
     }
 
     protected abstract void doStop();

@@ -320,7 +320,7 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
     }
 
     @Override
-    protected ChangeEventQueue<DataChangeEvent> getChangeEventQueue() {
-        return queue;
+    protected Optional<ChangeEventQueue<DataChangeEvent>> getChangeEventQueue() {
+        return Optional.ofNullable(queue);
     }
 }

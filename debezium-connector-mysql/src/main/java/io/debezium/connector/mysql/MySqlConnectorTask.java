@@ -306,7 +306,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
     }
 
     @Override
-    protected ChangeEventQueue<DataChangeEvent> getChangeEventQueue() {
-        return queue;
+    protected Optional<ChangeEventQueue<DataChangeEvent>> getChangeEventQueue() {
+        return Optional.ofNullable(queue);
     }
 }
