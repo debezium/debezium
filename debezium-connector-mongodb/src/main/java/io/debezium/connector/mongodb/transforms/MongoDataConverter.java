@@ -420,12 +420,6 @@ public class MongoDataConverter {
                             if (keyObject instanceof BsonValue bsonValue) {
                                 documentMapBuilder.field(entryKey, getSchema(bsonValue.getBsonType()));
                             }
-                            else if (keyObject instanceof Map<?, ?>) {
-                                // Handle LinkedHashMap objects from JSON parsing
-                                // This is a workaround for the production issue where JSON parsing
-                                // creates LinkedHashMap instead of BsonValue objects
-                                documentMapBuilder.field(entryKey, Schema.STRING_SCHEMA);
-                            }
                             else {
                                 // Fallback for other types
                                 documentMapBuilder.field(entryKey, Schema.STRING_SCHEMA);

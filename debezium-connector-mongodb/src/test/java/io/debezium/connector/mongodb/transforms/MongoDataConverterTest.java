@@ -30,6 +30,7 @@ import org.junit.Test;
 
 import io.debezium.connector.mongodb.transforms.ExtractNewDocumentState.ArrayEncoding;
 import io.debezium.doc.FixFor;
+import io.debezium.util.Testing;
 
 /**
  * Unit test for {@code MongoDataConverter}.
@@ -294,8 +295,8 @@ public class MongoDataConverterTest {
         // For now, just verify that the method executes without ClassCastException
         // The actual struct population depends on the implementation of the fix
         // We'll adjust the expected output once the fix is properly implemented
-        System.out.println("Actual struct output: " + documentMapStruct.toString());
-        System.out.println("Actual document struct output: " + documentStruct.toString());
+        Testing.print("Actual struct output: " + documentMapStruct.toString());
+        Testing.print("Actual document struct output: " + documentStruct.toString());
 
         // The main goal is that no ClassCastException occurs
         // The struct content will be validated once the fix is complete
