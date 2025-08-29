@@ -156,11 +156,14 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
                 lockTablesForSchemaSnapshot(context, ctx);
             }
 
-            LOGGER.info("Snapshot step 4 - Determining snapshot offset");
             // In case of a bocking snapshot the offsets of snapshot context must be the set to avoid reinitialization
             // to an empty one during the determineSnapshotOffset function
             if (!snapshottingTask.isOnDemand()) {
+                LOGGER.info("Snapshot step 4 - Determining snapshot offset");
                 determineSnapshotOffset(ctx, previousOffset);
+            }
+            else {
+                LOGGER.info("Snapshot step 4 - Determining snapshot offset (SKIPPED)");
             }
 
             LOGGER.info("Snapshot step 5 - Reading structure of captured tables");

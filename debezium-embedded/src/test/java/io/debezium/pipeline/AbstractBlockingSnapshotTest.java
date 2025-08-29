@@ -398,7 +398,7 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
 
         Awaitility.await()
                 .pollInterval(200, TimeUnit.MILLISECONDS)
-                .atMost(300, TimeUnit.SECONDS)
+                .atMost(waitTimeForEngine() * 60L, TimeUnit.SECONDS)
                 .until(() -> !isEngineRunning.get());
 
         try {
