@@ -14,7 +14,6 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Schema;
 
-import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.SnapshotType;
 import io.debezium.pipeline.CommonOffsetContext;
