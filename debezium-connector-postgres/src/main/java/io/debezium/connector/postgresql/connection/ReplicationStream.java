@@ -25,7 +25,7 @@ public interface ReplicationStream extends AutoCloseable {
          * Processes the given replication message.
          * @param message The replication message, never {@code null}.
          */
-        void process(ReplicationMessage message) throws SQLException, InterruptedException;
+        void process(ReplicationMessage message, Long transactionId) throws SQLException, InterruptedException;
     }
 
     /**
@@ -48,7 +48,7 @@ public interface ReplicationStream extends AutoCloseable {
      * @throws SQLException if anything unexpected fails
      * @see PGReplicationStream#readPending()
      */
-    boolean readPending(ReplicationMessageProcessor processor) throws SQLException, InterruptedException;
+    boolean readPending(ReplicationMessageProcessor processor, boolean isWALPositionLocator) throws SQLException, InterruptedException;
 
     /**
      * Sends a message to the server informing it about that latest position in the WAL that has successfully been

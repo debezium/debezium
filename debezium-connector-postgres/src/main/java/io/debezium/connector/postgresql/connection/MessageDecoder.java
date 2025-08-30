@@ -52,7 +52,9 @@ public interface MessageDecoder {
      * @param walPosition wal position from which the streaming should resume
      * @return {@code true} if the incoming message should be skipped, {@code false} otherwise
      */
-    boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, WalPositionLocator walPosition);
+    boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, PositionLocator positionLocator);
+
+    void isSearchingWAL(boolean isSearchingWAL);
 
     /**
      * Closes this decoder, freeing and/or closing all resources it may potentially hold.
