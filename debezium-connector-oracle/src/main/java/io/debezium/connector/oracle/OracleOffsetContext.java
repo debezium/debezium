@@ -183,10 +183,6 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
             result.put(SourceInfo.SNAPSHOT_KEY, getSnapshot().get().toString());
             result.put(SNAPSHOT_COMPLETED_KEY, snapshotCompleted);
 
-            if (snapshotScn != null && !snapshotScn.isNull()) {
-                result.put(SNAPSHOT_SCN_KEY, snapshotScn.toString());
-            }
-
             final String encodedPendingTransactions = getEncodedSnapshotPendingTransactions();
             if (!Strings.isNullOrEmpty(encodedPendingTransactions)) {
                 result.put(SNAPSHOT_PENDING_TRANSACTIONS_KEY, encodedPendingTransactions);
@@ -205,6 +201,10 @@ public class OracleOffsetContext extends CommonOffsetContext<SourceInfo> {
             if (sourceInfo.getScnIndex() != null) {
                 result.put(SourceInfo.SCN_INDEX_KEY, sourceInfo.getScnIndex());
             }
+        }
+
+        if (snapshotScn != null && !snapshotScn.isNull()) {
+            result.put(SNAPSHOT_SCN_KEY, snapshotScn.toString());
         }
 
         if (sourceInfo.getCommitScn() != null) {
