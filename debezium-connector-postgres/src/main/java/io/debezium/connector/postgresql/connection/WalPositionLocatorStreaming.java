@@ -102,7 +102,9 @@ public class WalPositionLocatorStreaming implements PositionLocator {
         }
 
         if (!transactionId.equals(beginMessageTransactionId)) {
-            LOGGER.trace("While looking for lastProcessedLSN '{}', we are getting messages of different concurrent transaction due to protocol version 2 and all these messages will be processed after current un-processed messages of the transaction. ", lastEventStoredLsn);
+            LOGGER.trace(
+                    "While looking for lastProcessedLSN '{}', we are getting messages of different concurrent transaction due to protocol version 2 and all these messages will be processed after current un-processed messages of the transaction. ",
+                    lastEventStoredLsn);
             return Optional.empty();
         }
 
@@ -137,7 +139,8 @@ public class WalPositionLocatorStreaming implements PositionLocator {
             return false;
         }
         if (!transactionId.equals(beginMessageTransactionId)) {
-            LOGGER.trace("While looking for lastProcessedLSN '{}', we got a different transaction-id '{}' which will be processed.", lastCommitStoredLsn, beginMessageTransactionId);
+            LOGGER.trace("While looking for lastProcessedLSN '{}', we got a different transaction-id '{}' which will be processed.", lastCommitStoredLsn,
+                    beginMessageTransactionId);
             return false;
         }
         if (startStreamingLsn.equals(lsn)) {

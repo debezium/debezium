@@ -361,7 +361,8 @@ public class PgOutputStreamingMessageDecoder extends PgOutputMessageDecoder {
         subTransactionId = Integer.toUnsignedLong(buffer.getInt());
         LOGGER.trace("XID of transaction: {}", getTransactionId());
         LOGGER.trace("XID of sub-transaction: {}", subTransactionId);
-        LOGGER.trace("Received stream abort event for sub-transaction: {} of transaction id: {}. Removing all messages of the sub-transaction id.", subTransactionId, getTransactionId());
+        LOGGER.trace("Received stream abort event for sub-transaction: {} of transaction id: {}. Removing all messages of the sub-transaction id.", subTransactionId,
+                getTransactionId());
         bufferTransactions.discardSubTransaction(getTransactionId(), subTransactionId);
         resetValuesForNextStream();
     }
