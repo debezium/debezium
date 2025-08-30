@@ -269,6 +269,7 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
 
     @Override
     protected void doStop() {
+
         try {
             if (connection != null) {
                 connection.close();
@@ -318,4 +319,8 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
         return new MariaDbFieldReader(connectorConfig);
     }
 
+    @Override
+    protected Optional<ChangeEventQueue<DataChangeEvent>> getChangeEventQueue() {
+        return Optional.ofNullable(queue);
+    }
 }

@@ -90,6 +90,7 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
     private final AtomicReference<T> bufferedEvent = new AtomicReference<>();
 
     private volatile RuntimeException producerException;
+    private volatile boolean running = true;
 
     private ChangeEventQueue(Duration pollInterval, int maxQueueSize, int maxBatchSize, Supplier<LoggingContext.PreviousContext> loggingContextSupplier,
                              long maxQueueSizeInBytes, boolean buffering, QueueProvider<T> queueProvider) {
@@ -212,18 +213,42 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
      */
     public void flushBuffer(Function<T, T> recordModifier) throws InterruptedException {
         assert buffering : "Unsupported for queues with disabled buffering";
+
         T record = bufferedEvent.getAndSet(null);
         if (record != null) {
+            // doEnqueue will check running state and throw InterruptedException if not running
             doEnqueue(recordModifier.apply(record));
         }
     }
 
     /**
-     * Disable buffering for the queue
+     * Disable buffering for the queue.
+     * This method enforces that the buffer must be empty (flushed) before disabling.
+     * Use this method in normal operation when you can guarantee the buffer is properly flushed.
+     * For cleanup scenarios where the buffer state might be inconsistent, use {@link #disableBufferingSafely()}.
+     *
+     * @throws AssertionError if the buffer is not empty (assertions enabled)
      */
     public void disableBuffering() {
         assert bufferedEvent.get() == null : "Buffer must be flushed";
         buffering = false;
+    }
+
+    /**
+     * Safely disable buffering for the queue without throwing assertions.
+     * This method should be used in cleanup scenarios where the buffer state
+     * might be inconsistent due to shutdown timing or interruptions.
+     *
+     * @return true if buffering was disabled successfully, false if buffer was not empty
+     */
+    public boolean disableBufferingSafely() {
+        if (bufferedEvent.get() != null) {
+            LOGGER.warn("Disabling buffering with non-empty buffer - this may indicate incomplete flush during shutdown");
+            // Clear the buffer to prevent memory leaks
+            bufferedEvent.set(null);
+        }
+        buffering = false;
+        return true;
     }
 
     /**
@@ -241,15 +266,21 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
         try {
             this.lock.lock();
 
-            while (queue.size() >= maxQueueSize || (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes >= maxQueueSizeInBytes)) {
+            while (running && (queue.size() >= maxQueueSize || (maxQueueSizeInBytes > 0 && currentQueueSizeInBytes >= maxQueueSizeInBytes))) {
                 // signal poll() to drain queue
                 this.isFull.signalAll();
                 // queue size or queue sizeInBytes threshold reached, so wait a bit
                 this.isNotFull.await(pollInterval.toMillis(), TimeUnit.MILLISECONDS);
             }
 
+            // Final check for running state within the lock to prevent race conditions
+            // This ensures that even if shutdown() is called between the while loop condition
+            // and this point, we will detect it and exit gracefully
+            if (!running) {
+                throw new InterruptedException("Queue has been shut down");
+            }
+
             queue.enqueue(record);
-            // If we pass a positiveLong max.queue.size.in.bytes to enable handling queue size in bytes feature
             if (maxQueueSizeInBytes > 0) {
                 long messageSize = record.objectSize();
                 sizeInBytesQueue.add(messageSize);
@@ -338,6 +369,23 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
         this.producerException = producerException;
     }
 
+    /**
+     * Shuts down the queue, interrupting any blocked operations.
+     * This prevents memory leaks by allowing blocked threads to exit gracefully.
+     */
+    public void shutdown() {
+        try {
+            this.lock.lock();
+            running = false;
+            // Wake up any threads waiting on conditions
+            this.isFull.signalAll();
+            this.isNotFull.signalAll();
+        }
+        finally {
+            this.lock.unlock();
+        }
+    }
+
     private void throwProducerExceptionIfPresent() {
         if (producerException != null) {
             throw producerException;
@@ -366,5 +414,14 @@ public class ChangeEventQueue<T extends Sizeable> implements ChangeEventQueueMet
 
     public boolean isBuffered() {
         return buffering;
+    }
+
+    /**
+     * Returns true if the queue is still running and accepting operations.
+     *
+     * @return true if the queue is running, false if it has been shut down
+     */
+    public boolean isRunning() {
+        return running;
     }
 }

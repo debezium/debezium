@@ -62,8 +62,7 @@ public class Header extends com.puppycrawl.tools.checkstyle.checks.header.Header
                 sb.append(l).append("\\n");
             }
             super.setHeader(sb.toString());
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             throw new RuntimeException("problem reading header file (using classloader) " + aFileName, e);
         }
     }
