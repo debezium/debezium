@@ -694,7 +694,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
 
     public static final Field LOGICAL_REPLICATION_MODE = Field.create("logical.replication.mode")
             .withDisplayName("Logical replication mode")
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 0))
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_REPLICATION, 14))
             .withEnum(LogicalReplicationMode.class, LogicalReplicationMode.COMMITTED)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.MEDIUM)
