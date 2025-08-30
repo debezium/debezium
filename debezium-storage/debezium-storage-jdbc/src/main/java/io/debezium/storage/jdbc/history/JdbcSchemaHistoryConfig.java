@@ -52,8 +52,8 @@ public class JdbcSchemaHistoryConfig extends JdbcCommonConfig {
             .withDefault(DEFAULT_TABLE_DDL)
             .withDeprecatedAliases(CONFIGURATION_FIELD_PREFIX_STRING + "schema.history.table.ddl");
 
-    private static final String DEFAULT_TABLE_SELECT = "SELECT id, history_data, history_data_seq FROM %s"
-            + " ORDER BY record_insert_ts, record_insert_seq, id, history_data_seq";
+    private static final String DEFAULT_TABLE_SELECT = "SELECT record_insert_seq, history_data, history_data_seq FROM %s"
+            + " ORDER BY record_insert_seq, history_data_seq";
 
     /**
      * Field that will store the Schema history SELECT query.
