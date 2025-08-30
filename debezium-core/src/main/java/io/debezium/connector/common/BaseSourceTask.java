@@ -155,7 +155,7 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                             return;
                         }
 
-                        throw new DebeziumException("The connector is trying to read change stream starting at " + offset.getSourceInfo() + ", but this is no longer "
+                        throw new DebeziumException("The connector is trying to read change stream starting at " + offset + ", but this is no longer "
                                 + "available on the server. Reconfigure the connector to use a snapshot mode when needed.");
                     }
                 }

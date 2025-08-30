@@ -233,7 +233,7 @@ public class BaseSourceTaskSnapshotModesValidationTest {
 
         assertThatThrownBy(() -> baseSourceTask.validateSchemaHistory(commonConnectorConfig, logPositionValidator, previousOffsets, databaseSchema, snapshotter))
                 .isInstanceOf(DebeziumException.class)
-                .hasMessage("The connector is trying to read change stream starting at Struct{test=test-offset}, but this is no longer "
+                .hasMessageMatching("The connector is trying to read change stream starting at .*, but this is no longer "
                         + "available on the server. Reconfigure the connector to use a snapshot mode when needed.");
 
     }
