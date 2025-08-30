@@ -13,6 +13,7 @@ import static io.debezium.data.Envelope.FieldName.AFTER;
 import static junit.framework.Assert.fail;
 import static junit.framework.TestCase.assertEquals;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 
 import java.lang.management.ManagementFactory;
@@ -58,6 +59,7 @@ import org.awaitility.core.ConditionTimeoutException;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.ComparisonFailure;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
@@ -5971,6 +5973,59 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "dbz9132");
+        }
+    }
+
+    @Test
+    @Ignore("This test requires manual execution of RMAN steps, so it cannot be automated")
+    @FixFor("DBZ-9416")
+    public void shouldNotFailWhenLogIsNoLongerAvailable() throws Exception {
+        // Before manually running this test, login to Oracle container using
+        // docker exec -it -e ORACLE_SID=ORCLCDB <container-name> rman
+        //
+        // At the rman property, type "connect target" to connect to the database.
+        // When prompted in the test, run "delete archivelog all;" and confirm by typing "YES".
+
+        TestHelper.dropTable(connection, "dbztest");
+        try {
+            connection.execute("CREATE TABLE dbztest (id numeric(9,0) primary key, data varchar2(50))");
+            connection.execute("INSERT INTO dbztest values (1, 'snapshot')");
+            TestHelper.streamTable(connection, "dbztest");
+
+            final LogInterceptor interceptor = new LogInterceptor(OracleConnectorIT.class);
+
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZTEST")
+                    .build();
+
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            consumeRecordsByTopic(1);
+
+            stopConnector();
+
+            // This makes sure that no online redo log may still have reference to the SCN that is
+            // being forced rolled into the archive.
+            TestHelper.forceFlushOfRedoLogsToArchiveLogs();
+
+            // This is where running "delete archivelog all;" should be executed
+            System.out.println("Use RMAN to run deletion of all archive logs now.");
+            Thread.sleep(15000);
+
+            // Restarts the connector, and should report an error about cannot read change stream
+            assertThatThrownBy(() -> {
+                start(OracleConnector.class, config);
+                assertConnectorIsRunning();
+            }).isInstanceOf(ComparisonFailure.class);
+
+            // Assert error thrown
+            assertThat(interceptor.containsErrorMessage("The connector is trying to read change stream starting at")).isTrue();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbztest");
         }
     }
 
