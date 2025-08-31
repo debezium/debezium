@@ -170,28 +170,28 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                                 Statement stmt = conn.createStatement();
                                 ResultSet rs = stmt.executeQuery(config.getTableSelect())) {
                             StringBuilder sb = new StringBuilder();
-                            int currentRecordSeq = Integer.MAX_VALUE;
+                            String currentId = null;
                             while (rs.next()) {
-                                int recordSeq = rs.getInt("record_insert_seq");
-                                String historyData = rs.getString("history_data");
-                                if (recordSeq != currentRecordSeq && !sb.isEmpty()) {
+                                String id = rs.getString(1);
+                                String historyData = rs.getString(3);
+                                if (currentId != null && !currentId.equals(id) && !sb.isEmpty()) {
                                     try {
                                         records.accept(new HistoryRecord(reader.read(sb.toString())));
                                     }
                                     catch (IOException e) {
-                                        throw new DebeziumException(e);
+                                        throw new DebeziumException("cannot read schema history record " + currentId, e);
                                     }
                                     sb = new StringBuilder();
                                 }
                                 sb.append(historyData);
-                                currentRecordSeq = recordSeq;
+                                currentId = id;
                             }
                             if (!sb.isEmpty()) {
                                 try {
                                     records.accept(new HistoryRecord(reader.read(sb.toString())));
                                 }
                                 catch (IOException e) {
-                                    throw new DebeziumException(e);
+                                    throw new DebeziumException("cannot read schema history record " + currentId, e);
                                 }
                             }
                         }
