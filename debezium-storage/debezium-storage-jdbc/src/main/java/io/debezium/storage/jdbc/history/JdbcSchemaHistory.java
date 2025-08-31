@@ -173,7 +173,7 @@ public final class JdbcSchemaHistory extends AbstractSchemaHistory {
                             String currentId = null;
                             while (rs.next()) {
                                 String id = rs.getString(1);
-                                String historyData = rs.getString(3);
+                                String historyData = rs.getString(2);
                                 if (currentId != null && !currentId.equals(id) && !sb.isEmpty()) {
                                     try {
                                         records.accept(new HistoryRecord(reader.read(sb.toString())));
