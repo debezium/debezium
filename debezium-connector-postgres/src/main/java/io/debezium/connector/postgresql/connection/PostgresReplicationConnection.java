@@ -64,7 +64,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
 
     private static final String SQL_LOCK_NOT_AVAILABLE = "55P03";
 
-    private static final String PUBLICATION_QUERY_FAILURE_MESSAGE = "Creation of publication slot failed: query to create/update publication timed out, please make sure that there are no maintenance activities going on the database end.";
+    private static final String PUBLICATION_QUERY_FAILURE_MESSAGE = "Creation of publication failed: query to create/update publication timed out, please make sure that there are no maintenance activities going on the database end.";
 
     private static Logger LOGGER = LoggerFactory.getLogger(PostgresReplicationConnection.class);
 
@@ -245,7 +245,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                             validatePublications(stmt);
                                         }
                                         else {
-                                            createOrUpdatePublicationModeFiltered(stmt, true);
+                                            // Only update publication if tables have changed
+                                            if (isPublicationUpdateRequired(stmt)) {
+                                                createOrUpdatePublicationModeFiltered(stmt, true);
+                                            }
                                         }
                                     }
                                     break;
@@ -289,6 +292,82 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             }
         });
         return isReadOnly.get();
+    }
+
+    /**
+     * Gets the list of tables currently configured in the publication.
+     *
+     * @param stmt the statement to use for the query
+     * @return Set of TableId objects representing tables in the publication, or null if unable to query
+     */
+    private Set<TableId> getCurrentPublicationTables(Statement stmt) {
+        String getPublicationTablesQuery = String.format("SELECT schemaname, tablename FROM pg_publication_tables WHERE pubname = '%s'", publicationName);
+
+        Set<TableId> publicationTables = new HashSet<>();
+        try (PreparedStatement prepStmt = stmt.getConnection().prepareStatement(getPublicationTablesQuery)) {
+            try (ResultSet rs = prepStmt.executeQuery()) {
+                while (rs.next()) {
+                    String schemaName = rs.getString("schemaname");
+                    String tableName = rs.getString("tablename");
+                    TableId tableId = new TableId(connectorConfig.databaseName(), schemaName, tableName);
+                    publicationTables.add(tableId);
+                }
+            }
+        }
+        catch (SQLException e) {
+            LOGGER.warn("Unable to query pg_publication_tables for publication '{}'. This may be due to insufficient privileges. " +
+                    "Publication will be updated to ensure synchronization. Error: {}", publicationName, e.getMessage());
+            return null;
+        }
+        return publicationTables;
+    }
+
+    /**
+     * Checks if the current publication tables match the desired captured tables.
+     *
+     * @param stmt the statement to use for database queries
+     * @return true if the publication needs to be updated, false otherwise
+     * @throws SQLException if database queries fail
+     */
+    public boolean isPublicationUpdateRequired(Statement stmt) throws SQLException {
+        Set<TableId> currentPublicationTables = getCurrentPublicationTables(stmt);
+
+        // If we couldn't query the current publication tables (e.g., due to insufficient privileges),
+        // we should update the publication to ensure synchronization
+        if (currentPublicationTables == null) {
+            LOGGER.info("Unable to determine current publication tables for '{}', will update publication to ensure synchronization", publicationName);
+            return true;
+        }
+
+        Set<TableId> desiredTables;
+        try {
+            desiredTables = determineCapturedTables();
+        }
+        catch (Exception e) {
+            throw new SQLException("Failed to determine captured tables", e);
+        }
+
+        if (desiredTables.isEmpty()) {
+            LOGGER.warn("No table filters found for filtered publication {}", publicationName);
+            return false;
+        }
+
+        boolean updateRequired = !currentPublicationTables.equals(desiredTables);
+
+        if (updateRequired) {
+            Set<TableId> toAdd = new HashSet<>(desiredTables);
+            toAdd.removeAll(currentPublicationTables);
+            Set<TableId> toRemove = new HashSet<>(currentPublicationTables);
+            toRemove.removeAll(desiredTables);
+
+            LOGGER.info("Publication '{}' has to be updated. Tables to add: {}, Tables to remove: {}",
+                    publicationName, toAdd, toRemove);
+        }
+        else {
+            LOGGER.info("Publication '{}' is already up to date with desired tables", publicationName);
+        }
+
+        return updateRequired;
     }
 
     private void validatePublications(Statement stmt) throws SQLException {
