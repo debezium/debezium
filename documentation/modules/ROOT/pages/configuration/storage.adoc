@@ -468,7 +468,7 @@ CREATE TABLE %s (
 [[jdbc-history-schema-history-table-select-default]]<<jdbc-history-schema-history-table-select-default,Select Query>>
 [SQL]
 ----
-SELECT id, record_insert_seq, history_data, history_data_seq FROM %s
+SELECT id, history_data FROM %s
     ORDER BY record_insert_ts, record_insert_seq, id, history_data_seq
 ----
 
