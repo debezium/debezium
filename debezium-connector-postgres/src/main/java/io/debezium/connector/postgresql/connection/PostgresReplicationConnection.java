@@ -154,6 +154,66 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
     }
 
+    /**
+     * Captures the current statement_timeout value from the database.
+     *
+     * @param stmt the Statement to use for querying
+     * @return the current statement_timeout value as a String, or null if unable to capture
+     */
+    private String captureCurrentStatementTimeout(Statement stmt) {
+        try (ResultSet timeoutRs = stmt.executeQuery("SHOW statement_timeout;")) {
+            if (timeoutRs.next()) {
+                String timeout = timeoutRs.getString(1);
+                LOGGER.debug("Captured original statement_timeout: {}", timeout);
+                return timeout;
+            }
+        }
+        catch (SQLException ex) {
+            LOGGER.warn("Failed to capture current statement_timeout", ex);
+        }
+        return null;
+    }
+
+    /**
+     * Resets the statement_timeout to the specified value.
+     *
+     * @param stmt the Statement to use for execution
+     * @param originalTimeout the timeout value to restore
+     */
+    private void resetStatementTimeout(Statement stmt, String originalTimeout) {
+        if (originalTimeout != null) {
+            try {
+                stmt.execute("SET statement_timeout = '" + originalTimeout + "';");
+                LOGGER.debug("Reset statement_timeout to: {}", originalTimeout);
+            }
+            catch (SQLException ex) {
+                LOGGER.warn("Failed to reset statement_timeout to original value: {}", originalTimeout, ex);
+            }
+        }
+    }
+
+    /**
+     * Executes a statement with a temporary statement_timeout, automatically restoring the original timeout afterwards.
+     *
+     * @param stmt the Statement to use for execution
+     * @param statementToExecute the SQL statement to execute
+     * @throws SQLException if the execution fails
+     */
+    private void executeWithTimeout(Statement stmt, String statementToExecute) throws SQLException {
+        String originalTimeout = captureCurrentStatementTimeout(stmt);
+        try {
+            String lineSeparator = System.lineSeparator();
+            StringBuilder statements = new StringBuilder();
+            statements.append("SET statement_timeout = ").append(TimeUnit.SECONDS.toMillis(connectorConfig.createSlotCommandTimeout()))
+                    .append(";").append(lineSeparator);
+            statements.append(statementToExecute).append(lineSeparator);
+            stmt.execute(statements.toString());
+        }
+        finally {
+            resetStatementTimeout(stmt, originalTimeout);
+        }
+    }
+
     protected void initPublication() {
         if (PostgresConnectorConfig.LogicalDecoder.PGOUTPUT.equals(plugin)) {
             LOGGER.info("Initializing PgOutput logical decoder publication");
@@ -181,8 +241,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                     // Publication doesn't exist, create it.
                                     if (!isOnlyRead) {
                                         try {
-                                            stmt.setQueryTimeout(toIntExact(connectorConfig.createSlotCommandTimeout()));
-                                            stmt.execute(createPublicationStmt);
+                                            executeWithTimeout(stmt, createPublicationStmt);
                                         }
                                         catch (SQLException ex) {
                                             if (PSQLState.QUERY_CANCELED.getState().equals(ex.getSQLState()) || SQL_LOCK_NOT_AVAILABLE.equals(ex.getSQLState())) {
@@ -211,8 +270,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                             : String.format("CREATE PUBLICATION %s;", publicationName);
                                     LOGGER.info("Creating publication with statement '{}'", createPublicationWithNoTablesStmt);
                                     try {
-                                        stmt.setQueryTimeout(toIntExact(connectorConfig.createSlotCommandTimeout()));
-                                        stmt.execute(createPublicationWithNoTablesStmt);
+                                        executeWithTimeout(stmt, createPublicationWithNoTablesStmt);
                                     }
                                     catch (SQLException ex) {
                                         if (PSQLState.QUERY_CANCELED.getState().equals(ex.getSQLState()) || SQL_LOCK_NOT_AVAILABLE.equals(ex.getSQLState())) {
@@ -418,8 +476,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             }
             LOGGER.info(isUpdate ? "Updating Publication with statement '{}'" : "Creating Publication with statement '{}'", createOrUpdatePublicationStmt);
             try {
-                stmt.setQueryTimeout(toIntExact(connectorConfig.createSlotCommandTimeout()));
-                stmt.execute(createOrUpdatePublicationStmt);
+                executeWithTimeout(stmt, createOrUpdatePublicationStmt);
             }
             catch (SQLException ex) {
                 if (PSQLState.QUERY_CANCELED.getState().equals(ex.getSQLState()) || SQL_LOCK_NOT_AVAILABLE.equals(ex.getSQLState())) {
