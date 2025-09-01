@@ -8,7 +8,7 @@ package io.quarkus.debezium.engine;
 
 import java.util.concurrent.ExecutorService;
 
-import io.debezium.runtime.Debezium;
+import io.debezium.runtime.DebeziumConnectorRegistry;
 import io.quarkus.arc.runtime.BeanContainer;
 import io.quarkus.runtime.ShutdownContext;
 import io.quarkus.runtime.annotations.Recorder;
@@ -17,7 +17,9 @@ import io.quarkus.runtime.annotations.Recorder;
 public class DebeziumRecorder {
 
     public void startEngine(ExecutorService executorService, ShutdownContext context, BeanContainer container) {
-        DebeziumRunner runner = new DebeziumRunner(executorService, container.beanInstance(Debezium.class));
+        DebeziumConnectorRegistry debeziumConnectorRegistry = container.beanInstance(DebeziumConnectorRegistry.class);
+
+        DebeziumRunner runner = new DebeziumRunner(executorService, debeziumConnectorRegistry.engines().getFirst());
 
         runner.start();
         context.addShutdownTask(runner::shutdown);

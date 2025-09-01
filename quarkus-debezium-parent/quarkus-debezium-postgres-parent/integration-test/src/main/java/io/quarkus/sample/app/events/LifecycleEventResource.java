@@ -14,7 +14,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
-import io.debezium.runtime.Debezium;
+import io.debezium.runtime.DebeziumConnectorRegistry;
 
 /**
  * @author Chris Cranford
@@ -24,7 +24,7 @@ import io.debezium.runtime.Debezium;
 public class LifecycleEventResource {
 
     @Inject
-    private Debezium debezium;
+    private DebeziumConnectorRegistry registry;
 
     @Inject
     LifecycleEventObserver observer;

@@ -11,14 +11,14 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.Response;
 
-import io.debezium.runtime.Debezium;
+import io.debezium.runtime.DebeziumConnectorRegistry;
 import io.debezium.runtime.DebeziumStatus;
 
 @Path("/api/debezium")
 public class DebeziumEndpoint {
 
     @Inject
-    private Debezium debezium;
+    private DebeziumConnectorRegistry registry;
 
     @Inject
     private CaptureService captureService;
@@ -26,7 +26,7 @@ public class DebeziumEndpoint {
     @GET
     @Path("status")
     public DebeziumStatus getState() {
-        return debezium.status();
+        return registry.engines().getFirst().status();
     }
 
     @GET

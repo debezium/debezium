@@ -20,6 +20,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import io.debezium.runtime.CaptureGroup;
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
 import io.quarkus.debezium.configuration.PostgresDatasourceConfiguration;
 import io.quarkus.debezium.notification.QuarkusNotificationChannel;
@@ -62,7 +63,7 @@ class PostgresEngineProducerTest {
             public Map<String, Capturing> capturing() {
                 return Map.of();
             }
-        })
+        }).get(new CaptureGroup("default"))
                 .configuration())
                 .isEqualTo(Map.of(
                         "connector.class", "io.debezium.connector.postgresql.PostgresConnector",
@@ -99,7 +100,7 @@ class PostgresEngineProducerTest {
             public Map<String, Capturing> capturing() {
                 return Map.of();
             }
-        })
+        }).get(new CaptureGroup("default"))
                 .configuration())
                 .isEqualTo(Map.of(
                         "connector.class", "io.debezium.connector.postgresql.PostgresConnector",
