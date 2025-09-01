@@ -12,5 +12,5 @@ import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
 @Incubating
 public interface ConnectorProducer {
 
-    Debezium engine(DebeziumEngineConfiguration debeziumEngineConfiguration);
+    DebeziumConnectorRegistry engine(DebeziumEngineConfiguration debeziumEngineConfiguration);
 }
