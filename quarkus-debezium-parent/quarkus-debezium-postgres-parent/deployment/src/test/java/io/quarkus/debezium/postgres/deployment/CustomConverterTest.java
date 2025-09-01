@@ -22,8 +22,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.debezium.relational.CustomConverterRegistry.ConverterDefinition;
+import io.debezium.runtime.CaptureGroup;
 import io.debezium.runtime.CustomConverter;
-import io.debezium.runtime.Debezium;
+import io.debezium.runtime.DebeziumConnectorRegistry;
 import io.debezium.runtime.DebeziumStatus;
 import io.debezium.runtime.FieldFilterStrategy;
 import io.debezium.spi.converter.ConvertedField;
@@ -40,7 +41,7 @@ public class CustomConverterTest {
     CustomFieldFilterStrategy fieldFilterStrategy;
 
     @Inject
-    Debezium debezium;
+    DebeziumConnectorRegistry registry;
 
     @RegisterExtension
     static final QuarkusUnitTest setup = new QuarkusUnitTest()
@@ -57,7 +58,7 @@ public class CustomConverterTest {
     void setUp() {
         given().await()
                 .atMost(10, TimeUnit.SECONDS)
-                .untilAsserted(() -> assertThat(debezium.status())
+                .untilAsserted(() -> assertThat(registry.get(new CaptureGroup("default")).status())
                         .isEqualTo(new DebeziumStatus(DebeziumStatus.State.POLLING)));
     }
 
