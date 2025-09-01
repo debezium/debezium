@@ -106,16 +106,17 @@ public class PostgresPublicationTableComparisonTest {
 
     @Test
     public void testGetCurrentPublicationTablesSuccess() throws Exception {
-        // Setup mock result set with test data
-        when(resultSet.next()).thenReturn(true, true, true, false);
-        when(resultSet.getString("schemaname")).thenReturn("public", "inventory");
-        when(resultSet.getString("tablename")).thenReturn("customers", "orders");
+        // Setup current publication tables
+        Set<TableId> currentTables = new HashSet<>(Arrays.asList(
+                new TableId(null, "public", "customers"),
+                new TableId(null, "inventory", "orders")));
+        mockGetCurrentPublicationTables(currentTables);
 
         // Setup mock for determineCapturedTables to return different tables to trigger publication check
         Set<TableId> capturedTables = new HashSet<>(Arrays.asList(
-                new TableId(TEST_DATABASE_NAME, "public", "customers"),
-                new TableId(TEST_DATABASE_NAME, "inventory", "orders"),
-                new TableId(TEST_DATABASE_NAME, "public", "products")));
+                new TableId(null, "public", "customers"),
+                new TableId(null, "inventory", "orders"),
+                new TableId(null, "public", "products")));
         mockDetermineCapturedTables(capturedTables);
 
         // Test indirectly through isPublicationUpdateRequired which calls getCurrentPublicationTables
@@ -136,14 +137,14 @@ public class PostgresPublicationTableComparisonTest {
 
         // Setup mock for determineCapturedTables
         Set<TableId> capturedTables = new HashSet<>(Arrays.asList(
-                new TableId(TEST_DATABASE_NAME, "public", "customers")));
+                new TableId(null, "public", "customers")));
         mockDetermineCapturedTables(capturedTables);
 
         // Test indirectly through isPublicationUpdateRequired which calls getCurrentPublicationTables
-        // When getCurrentPublicationTables returns null (due to SQLException), update should be required
+        // When getCurrentPublicationTables returns Optional.empty() (due to SQLException), update should be required
         boolean result = replicationConnection.isPublicationUpdateRequired(statement);
 
-        // Verify that update is required when getCurrentPublicationTables fails (returns null)
+        // Verify that update is required when getCurrentPublicationTables fails (returns Optional.empty())
         assertThat(result).isTrue();
     }
 
@@ -154,7 +155,7 @@ public class PostgresPublicationTableComparisonTest {
 
         // Setup mock for determineCapturedTables to return some tables
         Set<TableId> capturedTables = new HashSet<>(Arrays.asList(
-                new TableId(TEST_DATABASE_NAME, "public", "customers")));
+                new TableId(null, "public", "customers")));
         mockDetermineCapturedTables(capturedTables);
 
         // Test indirectly through isPublicationUpdateRequired which calls getCurrentPublicationTables
@@ -169,8 +170,8 @@ public class PostgresPublicationTableComparisonTest {
     public void testIsPublicationUpdateRequiredWhenTablesMatch() throws Exception {
         // Setup current publication tables
         Set<TableId> currentTables = new HashSet<>(Arrays.asList(
-                new TableId(TEST_DATABASE_NAME, "public", "customers"),
-                new TableId(TEST_DATABASE_NAME, "inventory", "orders")));
+                new TableId(null, "public", "customers"),
+                new TableId(null, "inventory", "orders")));
 
         // Mock getCurrentPublicationTables to return current tables
         mockGetCurrentPublicationTables(currentTables);
@@ -211,7 +212,7 @@ public class PostgresPublicationTableComparisonTest {
 
     @Test
     public void testIsPublicationUpdateRequiredWhenCurrentTablesIsNull() throws Exception {
-        // Mock getCurrentPublicationTables to return null (simulating SQL exception)
+        // Mock getCurrentPublicationTables to return Optional.empty() (simulating SQL exception)
         mockGetCurrentPublicationTables(null);
 
         // Mock determineCapturedTables to return some tables
@@ -256,6 +257,7 @@ public class PostgresPublicationTableComparisonTest {
         }
         else {
             // Setup result set for multiple tables
+            // getCurrentPublicationTables should return Optional.of(tables)
             Boolean[] nextResults = new Boolean[tables.size() + 1];
             String[] schemaNames = new String[tables.size()];
             String[] tableNames = new String[tables.size()];
@@ -266,6 +268,9 @@ public class PostgresPublicationTableComparisonTest {
                 schemaNames[i] = tableId.schema();
                 tableNames[i] = tableId.table();
                 i++;
+                // Mock the createTableId method call for each table
+                when(jdbcConnection.createTableId(TEST_DATABASE_NAME, tableId.schema(), tableId.table()))
+                        .thenReturn(tableId);
             }
             nextResults[i] = false; // Last call returns false
 
