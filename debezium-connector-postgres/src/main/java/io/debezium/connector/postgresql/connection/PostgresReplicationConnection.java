@@ -366,7 +366,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 while (rs.next()) {
                     String schemaName = rs.getString("schemaname");
                     String tableName = rs.getString("tablename");
-                    TableId tableId = new TableId(connectorConfig.databaseName(), schemaName, tableName);
+                    TableId tableId = jdbcConnection.createTableId(connectorConfig.databaseName(), schemaName, tableName);
                     publicationTables.add(tableId);
                 }
             }
