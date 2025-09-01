@@ -11,6 +11,7 @@ import static io.debezium.config.CommonConnectorConfig.NOTIFICATION_ENABLED_CHAN
 import static io.debezium.embedded.EmbeddedEngineConfig.CONNECTOR_CLASS;
 import static java.util.Collections.emptyMap;
 
+import java.util.List;
 import java.util.Map;
 
 import jakarta.enterprise.context.ApplicationScoped;
@@ -21,9 +22,11 @@ import jakarta.inject.Singleton;
 
 import io.debezium.connector.postgresql.PostgresConnector;
 import io.debezium.jdbc.JdbcConfiguration;
+import io.debezium.runtime.CaptureGroup;
 import io.debezium.runtime.Connector;
 import io.debezium.runtime.ConnectorProducer;
 import io.debezium.runtime.Debezium;
+import io.debezium.runtime.DebeziumConnectorRegistry;
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
 import io.quarkus.debezium.configuration.PostgresDatasourceConfiguration;
 import io.quarkus.debezium.engine.capture.consumer.SourceRecordEventConsumer;
@@ -53,7 +56,7 @@ public class PostgresEngineProducer implements ConnectorProducer {
 
     @Produces
     @Singleton
-    public Debezium engine(DebeziumEngineConfiguration debeziumEngineConfiguration) {
+    public DebeziumConnectorRegistry engine(DebeziumEngineConfiguration debeziumEngineConfiguration) {
         Map<String, String> configurationMap = debeziumEngineConfiguration.defaultConfiguration();
 
         configurationMap.compute(NOTIFICATION_ENABLED_CHANNELS.name(),
@@ -61,10 +64,31 @@ public class PostgresEngineProducer implements ConnectorProducer {
         configurationMap.put(CONNECTOR_CLASS.name(), POSTGRES.name());
 
         if (configurationMap.get(DEBEZIUM_DATASOURCE_HOSTNAME) != null) {
-            return new SourceRecordDebezium(configurationMap,
-                    stateHandler,
-                    POSTGRES,
-                    sourceRecordEventConsumer);
+            return new DebeziumConnectorRegistry() {
+                private final SourceRecordDebezium engine = new SourceRecordDebezium(configurationMap,
+                        stateHandler,
+                        POSTGRES,
+                        sourceRecordEventConsumer);
+
+                @Override
+                public Connector connector() {
+                    return POSTGRES;
+                }
+
+                @Override
+                public Debezium get(CaptureGroup group) {
+                    if (group == null || group.id() == null || !group.id().equals("default")) {
+                        return null;
+                    }
+
+                    return engine;
+                }
+
+                @Override
+                public List<Debezium> engines() {
+                    return List.of(engine);
+                }
+            };
         }
 
         /**
@@ -78,10 +102,31 @@ public class PostgresEngineProducer implements ConnectorProducer {
                 .map(PostgresDatasourceConfiguration::asDebezium)
                 .orElse(emptyMap()));
 
-        return new SourceRecordDebezium(configurationMap,
-                stateHandler,
-                POSTGRES,
-                sourceRecordEventConsumer);
+        return new DebeziumConnectorRegistry() {
+            private final SourceRecordDebezium engine = new SourceRecordDebezium(configurationMap,
+                    stateHandler,
+                    POSTGRES,
+                    sourceRecordEventConsumer);
+
+            @Override
+            public Connector connector() {
+                return POSTGRES;
+            }
+
+            @Override
+            public Debezium get(CaptureGroup group) {
+                if (group == null || group.id() == null || !group.id().equals("default")) {
+                    return null;
+                }
+
+                return engine;
+            }
+
+            @Override
+            public List<Debezium> engines() {
+                return List.of(engine);
+            }
+        };
     }
 
 }
