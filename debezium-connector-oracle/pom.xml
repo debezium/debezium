@@ -271,6 +271,14 @@
                     <testExcludes>
                         <exclude>**/io/debezium/connector/oracle/xstream/**</exclude>
                     </testExcludes>
+                    <!-- necessary for compilers > 22 -->
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.infinispan.protostream</groupId>
+                            <artifactId>protostream-processor</artifactId>
+                            <version>${version.infinispan.protostream}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>
