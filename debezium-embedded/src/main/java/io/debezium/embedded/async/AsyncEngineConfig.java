@@ -72,7 +72,7 @@ public interface AsyncEngineConfig extends EmbeddedEngineConfig {
                     + "Defaults to 3 minutes (180_000 ms).")
             // We may wait up to CommonConnectorConfig.EXECUTOR_SHUTDOWN_TIMEOUT_SEC during shutdown in e.g. ChangeEventSourceCoordinator, so for the whole task
             // shutdown we have to use bigger timeout. Let's double this timeout (and convert it to ms).
-            .withDefault(2 * CommonConnectorConfig.DEFAULT_EXECUTOR_SHUTDOWN_TIMEOUT.toMillis() * 1_000)
+            .withDefault(3 * CommonConnectorConfig.DEFAULT_EXECUTOR_SHUTDOWN_TIMEOUT.toMillis() * 1_000)
             .withValidation(Field::isPositiveInteger);
 
     /**
