@@ -400,13 +400,7 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
                 .pollInterval(200, TimeUnit.MILLISECONDS)
                 .atMost(waitTimeForEngine() * 60L, TimeUnit.SECONDS)
                 .until(() -> !isEngineRunning.get());
-
-        try {
-            stopConnector();
-        }
-        catch (IllegalStateException e) {
-            // ignoring since it is already stopped.
-        }
+        cleanupTestFwkState();
 
         startConnectorWithSnapshot(x -> mutableConfig(false, false)
                 .with(RelationalDatabaseConnectorConfig.TABLE_INCLUDE_LIST, "[A-z].*[ab]")
