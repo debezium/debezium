@@ -109,6 +109,7 @@ public abstract class AbstractConnectorTest implements Testing {
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
 
     private ExecutorService executor;
+    protected Configuration config;
     protected TestingDebeziumEngine<SourceRecord> engine;
     protected BlockingQueue<SourceRecord> consumedLines;
     protected long pollTimeoutInMs = TimeUnit.SECONDS.toMillis(10);
@@ -193,9 +194,17 @@ public abstract class AbstractConnectorTest implements Testing {
                 List<Runnable> neverRunTasks = executor.shutdownNow();
                 assertThat(neverRunTasks).isEmpty();
                 try {
+                    long waitStart = System.currentTimeMillis();
+                    long timeout = config != null ? config.getLong(EmbeddedEngineConfig.WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_MS)
+                            : (long) EmbeddedEngineConfig.WAIT_FOR_COMPLETION_BEFORE_INTERRUPT_MS.defaultValue();
                     while (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
                         // wait for completion ...
+                        if (System.currentTimeMillis() - waitStart > timeout) {
+                            break;
+                        }
+
                     }
+                    executor.shutdownNow();
                 }
                 catch (InterruptedException e) {
                     logger.warn("Executor has not stopped on time");
@@ -422,7 +431,7 @@ public abstract class AbstractConnectorTest implements Testing {
                          DebeziumEngine.CompletionCallback callback, Predicate<SourceRecord> isStopRecord,
                          Consumer<SourceRecord> recordArrivedListener, boolean ignoreRecordsAfterStop,
                          DebeziumEngine.ChangeConsumer changeConsumer, DebeziumEngine.ConnectorCallback connectorCallback) {
-        Configuration config = Configuration.copy(connectorConfig)
+        config = Configuration.copy(connectorConfig)
                 .with(EmbeddedEngineConfig.ENGINE_NAME, "testing-connector")
                 .with(EmbeddedEngineConfig.CONNECTOR_CLASS, connectorClass.getName())
                 .with(StandaloneConfig.OFFSET_STORAGE_FILE_FILENAME_CONFIG, OFFSET_STORE_PATH)
