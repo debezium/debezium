@@ -672,15 +672,13 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
 
             doPostProcessing(key, value);
 
-            var extendedHeaders = getExtendedHeaders(headers);
-
             SourceRecord record = new SourceRecord(
                     partition.getSourcePartition(),
                     offsetContext.getOffset(),
                     topicName, null,
                     keySchema, key,
                     dataCollectionSchema.getEnvelopeSchema().schema(), value,
-                    null, extendedHeaders);
+                    null, headers);
             dataListener.onEvent(partition, dataCollectionSchema.id(), offsetContext, keySchema, value, operation);
             queue.enqueue(changeEventCreator.createDataChangeEvent(record));
         }

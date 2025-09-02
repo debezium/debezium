@@ -7,14 +7,23 @@ package io.debezium.pipeline;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import java.util.List;
+import java.util.stream.StreamSupport;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.header.ConnectHeaders;
+import org.apache.kafka.connect.header.Header;
+import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
@@ -24,8 +33,10 @@ import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.data.Envelope;
+import io.debezium.doc.FixFor;
 import io.debezium.pipeline.signal.SignalProcessor;
 import io.debezium.pipeline.signal.channels.SourceSignalChannel;
+import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.ChangeEventCreator;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -117,6 +128,12 @@ public class EventDispatcherTest {
     @Mock
     private Struct struct;
 
+    @Mock
+    private DataChangeEventListener<Partition> dataChangeEventListener;
+
+    @Captor
+    ArgumentCaptor<SourceRecord> sourceRecordCaptor;
+
     private EventDispatcher<Partition, DataCollectionId> dispatcher;
     private static ConnectHeaders connectHeaders;
 
@@ -158,6 +175,48 @@ public class EventDispatcherTest {
         dispatcher.dispatchSnapshotEvent(partition, dataCollectionId, changeRecordEmitter, new PartitionSnapshotReceiver());
 
         assertThat(connectHeaders).isNotEmpty();
+    }
+
+    @Test
+    @FixFor("DBZ-9422")
+    public void dispatchIncrementalSnapshotShouldNotProduceDuplicateHeaders() throws InterruptedException {
+
+        DebeziumHeaderProducer debeziumHeaderProducer = new DebeziumHeaderProducer(cdcSourceTaskContext);
+        when(dataCollectionSchema.getEnvelopeSchema()).thenReturn(envelope);
+        when(envelope.read(any(), any(), any())).thenReturn(struct);
+        when(databaseSchema.schemaFor(any())).thenReturn(dataCollectionSchema);
+        when(config.getServiceRegistry()).thenReturn(serviceRegistry);
+        when(serviceRegistry.tryGetService(PostProcessorRegistry.class)).thenReturn(postProcessorRegistry);
+        when(config.getSourceInfoStructMaker()).thenReturn(sourceInfoStructMaker);
+        when(sourceInfoStructMaker.schema()).thenReturn(schema);
+        when(config.supportsOperationFiltering()).thenReturn(true);
+        when(signalProcessor.getSignalChannel(any())).thenReturn(sourceSignalChannel);
+        when(config.getTransactionMetadataFactory()).thenReturn(transactionMetadataFactory);
+        when(config.getTransactionMetadataFactory().getTransactionStructMaker()).thenReturn(transactionStructMaker);
+
+        when(config.isExtendedHeadersEnabled()).thenReturn(true);
+        when(cdcSourceTaskContext.getTaskId()).thenReturn("0");
+        when(cdcSourceTaskContext.getConnectorLogicalName()).thenReturn("test");
+        when(cdcSourceTaskContext.getConnectorPluginName()).thenReturn("plugin");
+
+        dispatcher = new EventDispatcher<>(config, topicNamingStrategy, databaseSchema, changeEventQueue, dataCollectionFilters, changeEventCreator,
+                eventMetadataProvider,
+                schemaNameAdjuster, signalProcessor, debeziumHeaderProducer);
+
+        Object[] data = new Object[]{ "col1", "col2" };
+        SnapshotChangeRecordEmitter<Partition> changeRecordEmitter = new SnapshotChangeRecordEmitter<>(partition, offsetContext, data, Clock.SYSTEM, config);
+
+        EventDispatcher.SnapshotReceiver<Partition> incrementalSnapshotChangeEventReceiver = dispatcher.getIncrementalSnapshotChangeEventReceiver(
+                dataChangeEventListener);
+        dispatcher.dispatchSnapshotEvent(partition, dataCollectionId, changeRecordEmitter, incrementalSnapshotChangeEventReceiver);
+
+        verify(changeEventCreator).createDataChangeEvent(sourceRecordCaptor.capture());
+
+        List<String> listOfHeaders = StreamSupport.stream(sourceRecordCaptor.getValue().headers().spliterator(), false)
+                .map(Header::key)
+                .toList();
+
+        Assert.assertEquals("Header must not be duplicated", listOfHeaders.stream().distinct().count(), listOfHeaders.size());
     }
 
     @Test
