@@ -367,12 +367,13 @@ public class PgOutputStreamingMessageDecoder extends PgOutputMessageDecoder {
         resetValuesForNextStream();
     }
 
-    private long extractSubTransactionIdFromBuffer(ByteBuffer buffer) {
+    private Long extractSubTransactionIdFromBuffer(ByteBuffer buffer) {
         if (isStreaming) {
             subTransactionId = Integer.toUnsignedLong(buffer.getInt());
             LOGGER.trace("Sub-transaction id: {}", subTransactionId);
+            return subTransactionId;
         }
-        return subTransactionId;
+        return null;
     }
 
     /**
