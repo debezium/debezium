@@ -96,7 +96,6 @@ import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.ExecutionTime;
 import io.quarkus.deployment.annotations.Record;
 import io.quarkus.deployment.builditem.CombinedIndexBuildItem;
-import io.quarkus.deployment.builditem.ExecutorBuildItem;
 import io.quarkus.deployment.builditem.GeneratedClassBuildItem;
 import io.quarkus.deployment.builditem.ShutdownContextBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.NativeImageConfigBuildItem;
@@ -165,10 +164,9 @@ public class EngineProcessor {
     @Record(ExecutionTime.RUNTIME_INIT)
     void startEngine(BeanContainerBuildItem beanContainerBuildItem,
                      DebeziumRecorder recorder,
-                     ExecutorBuildItem executorBuildItem,
                      ShutdownContextBuildItem shutdownContextBuildItem) {
 
-        recorder.startEngine(executorBuildItem.getExecutorProxy(), shutdownContextBuildItem, beanContainerBuildItem.getValue());
+        recorder.startEngine(shutdownContextBuildItem, beanContainerBuildItem.getValue());
     }
 
     @BuildStep(onlyIf = NativeOrNativeSourcesBuild.class)
