@@ -358,6 +358,12 @@ public final class TestHelper {
         }
     }
 
+    public static void executeSystemCommand(String systemCommand) throws Exception {
+        try (PostgresConnection connection = create()) {
+            connection.execute(systemCommand);
+        }
+    }
+
     public static String topicName(String suffix) {
         return TestHelper.TEST_SERVER + "." + suffix;
     }
