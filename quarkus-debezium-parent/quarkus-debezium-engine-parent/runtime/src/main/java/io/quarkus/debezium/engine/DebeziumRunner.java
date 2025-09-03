@@ -7,7 +7,7 @@
 package io.quarkus.debezium.engine;
 
 import java.io.IOException;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,29 +17,32 @@ import io.debezium.runtime.Debezium;
 class DebeziumRunner {
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumRunner.class);
 
-    private final ExecutorService executorService;
+    private final ThreadFactory threadFactory;
     private final RunnableDebezium engine;
+    private Thread debeziumThread;
 
-    DebeziumRunner(ExecutorService executorService, Debezium debezium) {
-        this.executorService = executorService;
+    DebeziumRunner(ThreadFactory threadFactory, Debezium debezium) {
+        this.threadFactory = threadFactory;
         this.engine = (RunnableDebezium) debezium;
     }
 
     public void start() {
-        LOGGER.info("Starting Debezium Engine...");
-        executorService.execute(engine::run);
+        debeziumThread = threadFactory.newThread(engine::run);
+        LOGGER.info("Starting Debezium Engine {}", debeziumThread.getName());
+        debeziumThread.start();
     }
 
     public void shutdown() {
-        LOGGER.info("Shutting down Debezium Engine...");
+        LOGGER.info("Shutting down Debezium Engine {}", debeziumThread.getName());
         try {
             engine.close();
         }
         catch (IOException e) {
-            throw new RuntimeException("Impossible to shutdown Debezium Engine ", e);
+            throw new RuntimeException("Impossible to shutdown Debezium Engine " + debeziumThread.getName(), e);
         }
         finally {
-            executorService.shutdown();
+            debeziumThread.interrupt();
+            LOGGER.info("Shutdown complete for Debezium Engine {}", debeziumThread.getName());
         }
     }
 }

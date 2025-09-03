@@ -15,7 +15,7 @@ import io.debezium.engine.DebeziumEngine.Signaler;
 /**
  * The Debezium engine abstraction in the Quarkus CDI
  * <p>
- * The Engine is submitted to an {@link Executor} or {@link ExecutorService} for execution by a single thread
+ * The Engine is submitted to an {@link Executor} or {@link ExecutorService} for execution
  */
 @Incubating
 public interface Debezium {
