@@ -9,10 +9,12 @@ package io.quarkus.debezium.engine;
 import static io.debezium.config.CommonConnectorConfig.DATABASE_CONFIG_PREFIX;
 import static io.debezium.config.CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS;
 import static io.debezium.embedded.EmbeddedEngineConfig.CONNECTOR_CLASS;
-import static java.util.Collections.emptyMap;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
@@ -28,6 +30,8 @@ import io.debezium.runtime.ConnectorProducer;
 import io.debezium.runtime.Debezium;
 import io.debezium.runtime.DebeziumConnectorRegistry;
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
+import io.quarkus.debezium.configuration.DebeziumConfigurationEngineParser;
+import io.quarkus.debezium.configuration.DebeziumConfigurationEngineParser.MultiEngineConfiguration;
 import io.quarkus.debezium.configuration.PostgresDatasourceConfiguration;
 import io.quarkus.debezium.engine.capture.consumer.SourceRecordEventConsumer;
 import io.quarkus.debezium.notification.QuarkusNotificationChannel;
@@ -39,9 +43,10 @@ public class PostgresEngineProducer implements ConnectorProducer {
     public static final String DEBEZIUM_DATASOURCE_HOSTNAME = DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME.name();
 
     private final StateHandler stateHandler;
-    private final Instance<PostgresDatasourceConfiguration> configurations;
+    private final Map<String, PostgresDatasourceConfiguration> quarkusDatasourceConfigurations;
     private final QuarkusNotificationChannel channel;
     private final SourceRecordEventConsumer sourceRecordEventConsumer;
+    private final DebeziumConfigurationEngineParser engineParser = new DebeziumConfigurationEngineParser();
 
     @Inject
     public PostgresEngineProducer(StateHandler stateHandler,
@@ -49,7 +54,19 @@ public class PostgresEngineProducer implements ConnectorProducer {
                                   QuarkusNotificationChannel channel,
                                   SourceRecordEventConsumer sourceRecordEventConsumer) {
         this.stateHandler = stateHandler;
-        this.configurations = configurations;
+        this.channel = channel;
+        this.sourceRecordEventConsumer = sourceRecordEventConsumer;
+        this.quarkusDatasourceConfigurations = configurations
+                .stream()
+                .collect(Collectors.toMap(PostgresDatasourceConfiguration::getSanitizedName, Function.identity()));
+    }
+
+    public PostgresEngineProducer(StateHandler stateHandler,
+                                  Map<String, PostgresDatasourceConfiguration> quarkusDatasourceConfigurations,
+                                  QuarkusNotificationChannel channel,
+                                  SourceRecordEventConsumer sourceRecordEventConsumer) {
+        this.stateHandler = stateHandler;
+        this.quarkusDatasourceConfigurations = quarkusDatasourceConfigurations;
         this.channel = channel;
         this.sourceRecordEventConsumer = sourceRecordEventConsumer;
     }
@@ -57,53 +74,80 @@ public class PostgresEngineProducer implements ConnectorProducer {
     @Produces
     @Singleton
     public DebeziumConnectorRegistry engine(DebeziumEngineConfiguration debeziumEngineConfiguration) {
-        Map<String, String> configurationMap = debeziumEngineConfiguration.defaultConfiguration();
-
-        configurationMap.compute(NOTIFICATION_ENABLED_CHANNELS.name(),
-                (key, value) -> value == null ? channel.name() : value.concat("," + channel.name()));
-        configurationMap.put(CONNECTOR_CLASS.name(), POSTGRES.name());
-
-        if (configurationMap.get(DEBEZIUM_DATASOURCE_HOSTNAME) != null) {
-            return new DebeziumConnectorRegistry() {
-                private final SourceRecordDebezium engine = new SourceRecordDebezium(configurationMap,
-                        stateHandler,
-                        POSTGRES,
-                        sourceRecordEventConsumer);
-
-                @Override
-                public Connector connector() {
-                    return POSTGRES;
-                }
-
-                @Override
-                public Debezium get(CaptureGroup group) {
-                    if (group == null || group.id() == null || !group.id().equals("default")) {
-                        return null;
-                    }
-
-                    return engine;
-                }
-
-                @Override
-                public List<Debezium> engines() {
-                    return List.of(engine);
-                }
-            };
+        /*
+         * creates a debezium engine using the database coordinates taken from Debezium convention (legacy way)
+         * in the legacy way we do not support multi-engine
+         */
+        if (debeziumEngineConfiguration.defaultConfiguration().get(DEBEZIUM_DATASOURCE_HOSTNAME) != null) {
+            return createRegistryFromLegacyConfiguration(debeziumEngineConfiguration.defaultConfiguration());
         }
 
-        /**
-         * it's possible to manage multiple configurations and multiple Debezium Instances
-         * the {@link engine(DebeziumEngineConfiguration debeziumEngineConfiguration)} should return
-         * a registry of Debezium instances
+        List<MultiEngineConfiguration> multiEngineConfigurations = engineParser.parse(debeziumEngineConfiguration);
+
+        /*
+         * enrich Quarkus-like debezium configuration with quarkus datasource configuration
          */
-        configurationMap.putAll(configurations
+        List<MultiEngineConfiguration> enrichedMultiEngineConfigurations = multiEngineConfigurations
                 .stream()
-                .findFirst()
-                .map(PostgresDatasourceConfiguration::asDebezium)
-                .orElse(emptyMap()));
+                .map(this::enrichConfiguration)
+                .toList();
 
         return new DebeziumConnectorRegistry() {
-            private final SourceRecordDebezium engine = new SourceRecordDebezium(configurationMap,
+            private final Map<String, Debezium> engines = enrichedMultiEngineConfigurations
+                    .stream()
+                    .map(a -> Map.entry(a.groupId(), new SourceRecordDebezium(
+                            a.configuration(),
+                            stateHandler,
+                            POSTGRES,
+                            sourceRecordEventConsumer)))
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+            @Override
+            public Connector connector() {
+                return POSTGRES;
+            }
+
+            @Override
+            public Debezium get(CaptureGroup group) {
+                return engines.get(group.id());
+            }
+
+            @Override
+            public List<Debezium> engines() {
+                return engines.values().stream().toList();
+            }
+        };
+    }
+
+    private MultiEngineConfiguration enrichConfiguration(MultiEngineConfiguration engine) {
+        HashMap<String, String> mutableMap = new HashMap<>(engine.configuration());
+
+        mutableMap.compute(NOTIFICATION_ENABLED_CHANNELS.name(),
+                (key, value) -> value == null ? channel.name() : value.concat("," + channel.name()));
+
+        mutableMap.putAll(getQuarkusDatasourceConfigurationByGroupId(engine.groupId()).asDebezium());
+        mutableMap.put(CONNECTOR_CLASS.name(), POSTGRES.name());
+
+        return new MultiEngineConfiguration(engine.groupId(), mutableMap);
+    }
+
+    private PostgresDatasourceConfiguration getQuarkusDatasourceConfigurationByGroupId(String groupId) {
+        PostgresDatasourceConfiguration configuration = quarkusDatasourceConfigurations.get(groupId);
+
+        if (configuration == null) {
+            throw new IllegalArgumentException("No datasource configuration found for group " + groupId);
+        }
+
+        return configuration;
+    }
+
+    private DebeziumConnectorRegistry createRegistryFromLegacyConfiguration(Map<String, String> configuration) {
+        configuration.compute(NOTIFICATION_ENABLED_CHANNELS.name(),
+                (key, value) -> value == null ? channel.name() : value.concat("," + channel.name()));
+        configuration.put(CONNECTOR_CLASS.name(), POSTGRES.name());
+
+        return new DebeziumConnectorRegistry() {
+            private final SourceRecordDebezium engine = new SourceRecordDebezium(configuration,
                     stateHandler,
                     POSTGRES,
                     sourceRecordEventConsumer);
