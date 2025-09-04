@@ -315,3 +315,5 @@ Zica,Lucas Gazire
 silan0176,Aleksei Silantev
 jtanza,John Tanza
 matt.bayley,Matt Bayley
+Olivier CHÉDRU,Olivier Chédru
+eljeko,Stefano Linguerri
