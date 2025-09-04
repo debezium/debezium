@@ -239,8 +239,13 @@ You can use either of the following editors to configure a source:
 **Form Editor**:: Enables you to specify the name and description of the source, along with a list of properties.
 For a complete list of the properties that are available for a connector, see the connector documentation.
 
-**Smart Editor**:: Enables you to use JSON to define the source configuration.
+**Smart Editor**:: Enables you to define the source configuration in JSON. It also provides the ability to directly use the configuration of a {prodname} connector on Kafka Connect or in {prodname} Server by automatically formatting it into the required JSON format for the platform.
 
+[NOTE]
+====
+image::create-source-toolbar.png[{prodname} platform - Create source toolbar]
+If you want to directly use the configuration of a {prodname} connector on Kafka Connect or {prodname} Server configuration for creating source then select the **Create using smart editor** button in the toolbar in **Source catalog** page.
+====
 
 [.responsive]
 video::CVY4Y4kAs_E[youtube, title="Create, edit and remove a source"]
@@ -250,13 +255,13 @@ video::CVY4Y4kAs_E[youtube, title="Create, edit and remove a source"]
 
 You can use the **Smart Editor** to specify the JSON that defines the source configuration.
 You can enter and edit `JSON` directly in the editor, or paste `JSON` from an external source into the editor.
-With a few small differences, the JSON that you use to configure a data source in the **Smart Editor** is nearly identical to the JSON in the `config` section that defines the configuration for a {prodname} connector on Kafka Connect or in the {prodname} Server.
-In fact, you can more or less directly copy the section from the `config` property of a standard {prodname} configuration into the **Smart Editor**.
-You need only remove the `connector.class`, because for the data source configuration, the `type` is already provided.
+With a few small differences, the JSON that you use to configure a data source in the {prodname} management Platform is nearly identical to the JSON in the `config` section that defines the configuration for a {prodname} connector on Kafka Connect or in the {prodname} Server.
 
-NOTE: **Smart Editor** support for directly using the Kafka Connect or {prodname} Server format for configuring a connector is planned for a future release.
+Now stage UI provides you the ability to directly use the configuration of a {prodname} connector on Kafka Connect or in {prodname} Server configuration by either uploading or pasting into the **Smart Editor**.
+Stage UI will intelligently recognize the configuration type and will provide the appropriate prompt in the UI along with **Auto format** action button in the **Smart Editor** toolbar to automatically convert provided JSON into the required JSON format for the platform.  
 
-For example, consider the following JSON for specifying the configuration for a {prodname} MySQL connector:
+
+For example, consider the following JSON for specifying the configuration of a {prodname} MySQL connector on Kafka Connect:
 
 [source,json,options="nowrap"]
 ----
@@ -276,10 +281,18 @@ For example, consider the following JSON for specifying the configuration for a 
 }
 ----
 
-To adapt the preceding configuration for use in defining a MySQL data source in the **Smart Editor**, copy the `config` section and remove the `connector.class`.
+When you add this JSON to the **Smart Editor**, it intelligently recognizes that the provided JSON is in Kafka Connect format and will inform via displaying an alert.
 
-The following example shows the JSON that you would use to define a MySQL data source in the **Smart Editor**.
+image::Debezium-platform-smart-editor-kafka.png[{prodname} UI smart editor - Kafka connect]
 
+The Smart Editor toolbar will then display an **Auto Format** option (highlighted in the image above). 
+You can use this option to automatically convert the provided JSON into the required {prodname} Platform JSON format.
+
+The following image shows the auto formatted JSON that you would use to define a MySQL data source where optionally you can update the name or add some appropriate description in the JSON.
+
+image::debezium-platform-smart-editor-source.png[{prodname} platform smart editor - source]
+
+Final JSON after updating the **name** and **description** 
 [source,json,options="nowrap"]
 ----
 {
@@ -300,6 +313,9 @@ The following example shows the JSON that you would use to define a MySQL data s
 }
 ----
 
+Similarly you can also use the {prodname} Server configuration in the **Smart Editor** where it will automatically extract the source configuration and provide you {prodname} platform supported JSON format.
+This example is covered in the destination xref:debezium-platform-configuring-a-destination-with-the-smart-editor[see here].
+
 ==== Deleting a source
 
 .Prerequisites
@@ -309,7 +325,7 @@ The following example shows the JSON that you would use to define a MySQL data s
 .Procedure
 
 * From the platform UI, open the **Source** menu, click the **Action** menu for the source that you want to delete, and then click **Delete**.
-+
+
 An error results if you attempt to delete a source that is in use.
 If the operation returns an error, verify that the source is no longer used in any pipeline, and then repeat the delete operation.
 
@@ -319,10 +335,12 @@ To edit a source, from the platform UI, open to the **Source** menu, click the *
 
 [NOTE]
 ====
-Editing a source will affect all pipelines that use it.
+Editing a source will affect all pipelines that use it. A confirmation modal will also appear informing this before changes are being submitted from the UI.
+
+image::edit-confirmation.png[Edit source confirmation modal] 
 ====
 
-=== Creating destinations
+=== Defining destinations
 
 Use the **Destination** section of the UI to specify the data sink to which the platform sends source data.
 All {prodname} Server sinks are available as destination.
@@ -338,19 +356,25 @@ You can use either of the following editors to configure a destination:
 
 **Form Editor**:: Enables you to specify the name and description of the destination, along with a list of properties.
 For a complete list of the properties that are available for a sink connector, see the connector documentation.
-**Smart Editor**:: Enables you to use JSON to define the sink configuration.
+**Smart Editor**:: Enables you to define the sink configuration in JSON. It also provides the ability to directly use the {prodname} Server configuration by automatically extracting the sink configuration from it and formatting it into the required JSON format for the platform.
 
+[NOTE]
+====
+image::create-destination-toolbar.png[{prodname} platform - Create sink toolbar]
+If you directly want to use the {prodname} Server configuration for extracting and creating a sink then select the **Create using smart editor** button in the toolbar in **Destination catalog** page.
+====
 
+[id="debezium-platform-configuring-a-destination-with-the-smart-editor"]
 ==== Configuring a destination with the Smart Editor
 
 You can use the **Smart Editor** to specify the JSON that defines the source configuration.
 You can enter and edit `JSON` directly in the editor, or paste `JSON` from an external source into the editor.
 With a few small differences, the JSON that you use to configure a destination in the **Smart Editor** is nearly identical to the configuration that you use to define a {prodname} Server `sink`.
 
-NOTE: **Smart Editor** support for directly using the {prodname} Server configuration format is planned for a future release.
-Typically, in {prodname} Server, the configuration of a sink is prefixed with `debezium.sink._<sink_name>_` where `_<sink_name>_` is the sink `type`.
+Now stage UI provides you the ability to directly use the {prodname} Server configuration by either uploading or pasting into the Smart Editor. Stage UI will intelligently recognize the configuration type and will provide the appropriate prompt in the UI along with **Auto format** action button in the Smart Editor toolbar.
+This will automatically extract the {prodname} server sink configuration and convert it into the required JSON format for the platform.
 
-For example, consider the following JSON for configuring a sink destination in {prodname} Server:
+For example, consider the following properties of {prodname} Server configuration:
 
 [source,properties,options="nowrap"]
 ----
@@ -359,25 +383,46 @@ For example, consider the following JSON for configuring a sink destination in {
 debezium.sink.type=pubsub
 debezium.sink.pubsub.project.id=debezium-tutorial-local
 debezium.sink.pubsub.address=pubsub:8085
+debezium.source.connector.class=io.debezium.connector.mysql.MySqlConnector
+debezium.source.database.hostname=mysql
+debezium.source.database.server.id=223344
+debezium.source.database.port=3306
+debezium.source.database.user=debezium
+debezium.source.database.password=dbz
+debezium.source.schema.history.internal=io.debezium.storage.file.history.FileSchemaHistory
+debezium.source.schema.history.internal.file.filename=data/schema.dat
+debezium.source.offset.storage.file.filename=data/offsets.dat
+debezium.source.offset.flush.interval.ms=0
+debezium.source.topic.prefix=tutorial
+debezium.source.database.include.list=inventory
+debezium.source.table.include.list=inventory.customers
 
 # ..
 ----
 
-To adapt the preceding configuration for use in defining a sink destination in the **Smart Editor**,  remove the prefix `debezium.sink.pubsub` and convert the configuration to JSON format.
+When you add this properties file to the Smart Editor, it intelligently recognizes that the provided configuration is a Debezium Server configuration and will inform via displaying an alert.
 
-The following example shows the JSON that you might use to define a sink destination in the **Smart Editor**.
+image::debezium-smart-editor-server.png[{prodname} UI smart editor - Server]
+
+The Smart Editor toolbar will then display an **Auto Format** option (highlighted in the image above). You can use this option to automatically extract the sink configuration and convert the sink properties into the required Debezium Platform JSON format.
+
+The following image shows the auto formatted JSON that you would use to define a Pub-Sub sink where you have to just provide name and optionally add some appropriate description in the JSON.
+
+image::debezium-platform-smart-editor-sink.png[{prodname} platform smart editor - Sink]
+
+Final JSON after updating the name and description
 
 [source,json,options="nowrap"]
 ----
 {
-  "name": "test-destination",
+  "name": "my-sink",
+  "description": "This is my first sink",
   "type": "pubsub",
-  "description": "Some funny destination",
-  "schema": "dummy",
+  "schema": "schema123",
   "vaults": [],
   "config": {
-    "project.id": "debezium-tutorial-local",
-    "address": "pubsub:8085"
+    "debezium.sink.pubsub.project.id": "debezium-tutorial-local",
+    "debezium.sink.pubsub.address": "pubsub:8085"
   }
 }
 ----
@@ -390,7 +435,7 @@ The following example shows the JSON that you might use to define a sink destina
 .Procedure
 
 *  From the platform UI, open the **Destination** menu, click the **Action** menu of the destination you want to delete, and then click **Delete**.
-+
+
 An error results if you attempt to delete a destination that is in use.
 If the operation returns an error, verify that the destination is no longer used in any pipeline, and then repeat the delete operation.
 
@@ -399,7 +444,7 @@ If the operation returns an error, verify that the destination is no longer used
 To edit a destination, go to the `Destination` menu and then click the `action` menu of the destination you want to edit, then click `Edit`.
 
 [NOTE]
-Editing a destination will affect all pipelines that use it.
+Editing a destination will affect all pipelines that use it. A confirmation modal will also appear informing this before changes are being submitted from the UI.
 
 === Managing transforms
 
@@ -508,21 +553,41 @@ The pipeline section is the place where you connect the "dots". You can define w
 [.responsive]
 video::cY7TS0nWBoY[youtube, title="Create, edit and remove a pipeline"]
 
-==== Creating pipelines
+==== Creating pipeline
 
-. From the platform UI, open the **Pipeline** menu and click **Create your first pipeline**  to open the **Pipeline Designer**.
-+
-From the **Pipeline Designer** you can add the pieces for your data pipeline.
+From the platform UI, open the **Pipeline** menu and click **Create your first pipeline** to open the **Pipeline Designer**.
+From the Pipeline Designer you can add the pieces for your data pipeline.
+
 . Click the **+ Source** box to add a source, and then choose a previously created source, or create a new source.
-
-Click the **+ Destination** box to add a destination .
 
 . (Optional) Click the **+ Transform** box to apply one or more transformations.
 
+. Click the **+ Destination** box to add a destination,and then choose a previously created destination, or create a new destination.
+
+The order in which a Transform is applied to the source is important and decides the final output at the end, so you have to be mindfully of the order in which you add transforms.
+
+In the pipeline designer you have the ability to delete a transform or alter the sequency of applied transforms. For more information about using the pipeline designer, see xref:debezium-platform-using-the-pipeline-designer-to-remove-and-order-transformations[using the Pipeline designer to remove and order transformations]
+
+[NOTE]
 Transformations that are configured with a predicate are marked with a predicate icon (image:predicate-icon.png[Transformation configured with a predicate]).
-A tooltip shows the name of the predicate.
+A tooltip shows the name of the predicate type.
+
+image::debezium-platform-pipeline.png[{prodname} platform pipeline]
 
 After you finish designing your pipeline, click **Configure Pipeline**, and then specify the name, description, and logging level for the pipeline.
+
+
+==== Creating pipeline using {prodname} Server config
+
+Pipeline Designer also provides you the option to upload the {prodname} Server configuration properties file directly to create the data pipeline resources i.e source, destination and transforms.
+
+In the pipeline designer click on **DBZ server config** which will open a modal where you can upload or drag and drop your {prodname} server properties file. Once you upload the file click on **Create** button.
+This will automatically create Source, Transforms and Destination in synchronous manner using the {prodname} server configuration. 
+
+image::debezium-platform-pipeline-server-modal.png[{prodname} platform pipeline server modal]
+
+[NOTE]
+Source and destination names are autogenerated.
 
 ==== Deleting a pipeline
 
@@ -531,10 +596,9 @@ The deletion removes only the pipeline: the source, destination, and any transfo
 
 ==== Editing a pipeline
 
-. From the platform UI, open the **Pipeline** menu, click the **Action** menu for the pipeline that you want to edit, and then click **Edit pipeline**.
-. Use the pipeline designer to modify transformations as needed.
-You can edit the name, description, and log level for the transformation.
-For more information about using the pipeline designer, see xref:debezium-platform-using-the-pipeline-designer-to-remove-and-order-transformations[Using the Pipeline designer to remove and order transformations].
+. From the platform UI, open the **Pipeline** menu, click the **Action** menu for the pipeline that you want to edit, and then click **Edit**.
+. Use the pipeline designer to modify transformations as needed. For more information about using the pipeline designer, see xref:debezium-platform-using-the-pipeline-designer-to-remove-and-order-transformations[Using the Pipeline designer to remove and order transformations]
+. Click on **Save and next** to edit the pipeline name, description, and log level properties of the pipeline.
 
 [id="debezium-platform-using-the-pipeline-designer-to-remove-and-order-transformations"]
 ===== Using the Pipeline designer to remove and order transformations
@@ -542,12 +606,10 @@ For more information about using the pipeline designer, see xref:debezium-platfo
 From the **Pipeline designer**, you can delete transformations, or rearrange the order in which they run.
 
 .Deleting a transformation
-
 . From the **Pipeline designer**, click the pencil icon (image:transformation-box-edit.png[pencil]) in the **Transform** box.
 . From the **Transform list**, click the trash icon next to the name of the transform.
 
 .Rearranging transformations
-
 If you configure a connector to use multiple transformations, you can use the **Transform list** in the **Pipeline designer** to specify the order in which they are applied.
 The first transformation in the list processes the message first.
 
