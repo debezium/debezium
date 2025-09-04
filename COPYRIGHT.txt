@@ -310,6 +310,7 @@ John Psoroulas
 John Wu
 Jon Casstevens
 Jonas Lins
+Jonathan Schnabel
 Jordan Bragg
 Jork Zijlstra
 Jorn Argelo
@@ -369,6 +370,7 @@ Lukas Krejci
 Lukas Langegger
 Lukasz Korzeniowski
 Lukasz Selwa
+Luke Alexander
 lyidataminr
 M Sazzadul Hoque
 Maciej Bryński
@@ -454,6 +456,7 @@ Oliver Weiler
 Olivier Boudet
 Olivier Jacquemart
 Olivier Lemasle
+Olivier Chédru
 Omar Al-Safi
 Ondrej Babec
 Oren Elias
