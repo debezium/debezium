@@ -6,7 +6,6 @@
 package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -245,11 +244,8 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
 
     private void validateGuardrailLimits(SqlServerConnectorConfig connectorConfig, SqlServerConnection connection) {
         try {
-            // Get all table IDs that match the connector's filters
-            Set<TableId> allTableIds = new HashSet<>();
-            for (String databaseName : connectorConfig.getDatabaseNames()) {
-                allTableIds.addAll(connection.readTableNames(databaseName, null, null, new String[]{ "TABLE" }));
-            }
+            // Get all table IDs using the connection's method, similar to PostgresConnectorTask
+            Set<TableId> allTableIds = connection.getAllTableIds(connectorConfig.getDatabaseNames());
 
             Set<TableId> capturedTables = allTableIds.stream()
                     .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))

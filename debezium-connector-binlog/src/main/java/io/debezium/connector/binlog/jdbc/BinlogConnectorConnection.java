@@ -10,10 +10,12 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.Set;
 import java.util.function.Predicate;
 
 import org.slf4j.Logger;
@@ -330,6 +332,85 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
      */
     public boolean isTableIdCaseSensitive() {
         return !"0".equals(readSystemVariables().get(BinlogSystemVariables.LOWER_CASE_TABLE_NAMES));
+    }
+
+    /**
+     * Result of getAllTableIds containing both table IDs and readable database names.
+     */
+    public static class TablesWithReadableDatabases {
+        private final Set<TableId> tableIds;
+        private final Set<String> readableDatabaseNames;
+
+        public TablesWithReadableDatabases(Set<TableId> tableIds, Set<String> readableDatabaseNames) {
+            this.tableIds = tableIds;
+            this.readableDatabaseNames = readableDatabaseNames;
+        }
+
+        public Set<TableId> getTableIds() {
+            return tableIds;
+        }
+
+        public Set<String> getReadableDatabaseNames() {
+            return readableDatabaseNames;
+        }
+    }
+
+    /**
+     * Retrieves all {@code TableId}s in all available databases.
+     * This method uses MySQL/MariaDB specific "SHOW FULL TABLES" queries
+     *
+     * @return set of all table ids for existing table objects
+     * @throws SQLException if a database exception occurred
+     */
+    public Set<TableId> getAllTableIds() throws SQLException {
+        return getAllTableIdsWithReadableDatabases().getTableIds();
+    }
+
+    /**
+     * Retrieves all {@code TableId}s in all available databases along with the list of
+     * databases that were successfully read.
+     * This method uses MySQL/MariaDB specific "SHOW FULL TABLES" queries which are more
+     * accurate than JDBC metadata for these databases.
+     *
+     * @return result containing both table IDs and readable database names
+     * @throws SQLException if a database exception occurred
+     */
+    public TablesWithReadableDatabases getAllTableIdsWithReadableDatabases() throws SQLException {
+        // -------------------
+        // READ DATABASE NAMES
+        // -------------------
+        // Get the list of databases ...
+        LOGGER.info("Read list of available databases");
+        final List<String> databaseNames = availableDatabases();
+        LOGGER.info("\t list of available databases is: {}", databaseNames);
+
+        // -------------------
+        // READ DATABASE NAMES
+        // -------------------
+        // Get the list of databases ...
+        LOGGER.info("Read list of available tables in each database");
+        final Set<TableId> tableIds = new HashSet<>();
+        final Set<String> readableDatabaseNames = new HashSet<>();
+
+        for (String dbName : databaseNames) {
+            try {
+                // MySQL sometimes considers some local files as databases (see DBZ-164),
+                // so we will simply try each one and ignore the problematic ones
+                query("SHOW FULL TABLES IN " + quoteIdentifier(dbName) + " where Table_Type = 'BASE TABLE'", rs -> {
+                    while (rs.next()) {
+                        TableId id = new TableId(dbName, null, rs.getString(1));
+                        tableIds.add(id);
+                    }
+                });
+                readableDatabaseNames.add(dbName);
+            }
+            catch (SQLException e) {
+                // We were unable to execute the query or process the results, so skip this
+                LOGGER.warn("\t skipping database '{}' due to error reading tables: {}", dbName, e.getMessage());
+            }
+        }
+
+        return new TablesWithReadableDatabases(tableIds, readableDatabaseNames);
     }
 
     /**
