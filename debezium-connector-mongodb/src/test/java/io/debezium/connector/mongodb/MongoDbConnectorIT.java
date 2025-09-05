@@ -3011,4 +3011,132 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
     private ObjectId toObjectId(String oid) {
         return new ObjectId(oid.substring(10, oid.length() - 2));
     }
+
+    @Test
+    @FixFor("DBZ-9427")
+    public void shouldValidateGuardrailLimitsExceedsMaximumCollections() throws Exception {
+        // This captures all logged messages, allowing us to verify log message was written.
+        final LogInterceptor logInterceptor = new LogInterceptor(CommonConnectorConfig.class);
+
+        // Clean the database first
+        TestHelper.cleanDatabase(mongo, "dbit");
+
+        // Create 10 collections
+        try (var client = connect()) {
+            MongoDatabase db = client.getDatabase("dbit");
+            for (int i = 1; i <= 10; i++) {
+                String collectionName = String.format("collection%d", i);
+                db.createCollection(collectionName);
+                MongoCollection<Document> collection = db.getCollection(collectionName);
+                collection.insertOne(new Document("_id", new ObjectId()).append("data", "test" + i));
+            }
+        }
+
+        // Configure with guardrail limit of 5 collections (less than the 10 we created)
+        config = TestHelper.getConfiguration(mongo)
+                .edit()
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 5)
+                .build();
+
+        // The connector should continue to run even after exceeding the guardrail limit
+        logger.info("Attempting to start connector with guardrail limit exceeded, expect a warning");
+        start(MongoDbConnector.class, config, (success, msg, error) -> {
+            assertThat(success).isTrue();
+            assertThat(error).isNull();
+        });
+        assertConnectorIsRunning();
+        assertThat(logInterceptor.containsWarnMessage("Guardrail limit exceeded")).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-9427")
+    public void shouldValidateGuardrailLimitsExceedsMaximumCollectionsAndFailConnector() throws Exception {
+        // Clean the database first
+        TestHelper.cleanDatabase(mongo, "dbit");
+
+        // Create 10 collections
+        try (var client = connect()) {
+            MongoDatabase db = client.getDatabase("dbit");
+            for (int i = 1; i <= 10; i++) {
+                String collectionName = String.format("collection%d", i);
+                db.createCollection(collectionName);
+                MongoCollection<Document> collection = db.getCollection(collectionName);
+                collection.insertOne(new Document("_id", new ObjectId()).append("data", "test" + i));
+            }
+        }
+
+        // Configure with guardrail limit of 5 collections (less than the 10 we created)
+        config = TestHelper.getConfiguration(mongo)
+                .edit()
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 5)
+                .with(CommonConnectorConfig.GUARDRAIL_LIMIT_ACTION, "fail")
+                .build();
+
+        // The connector should fail to start due to exceeding the guardrail limit
+        logger.info("Attempting to start connector with guardrail limit exceeded, expect an error");
+        start(MongoDbConnector.class, config, (success, msg, error) -> {
+            assertThat(success).isFalse();
+            assertThat(error).isNotNull();
+            assertThat(error.getMessage()).contains("Guardrail limit exceeded");
+        });
+        assertConnectorNotRunning();
+    }
+
+    @Test
+    @FixFor("DBZ-9427")
+    public void shouldStartSuccessfullyWithinGuardrailLimits() throws Exception {
+        // Clean the database first
+        TestHelper.cleanDatabase(mongo, "dbit");
+
+        // Create 3 collections (well below the limit of 10)
+        try (var client = connect()) {
+            MongoDatabase db = client.getDatabase("dbit");
+            for (int i = 1; i <= 3; i++) {
+                String collectionName = String.format("coll%d", i);
+                db.createCollection(collectionName);
+                MongoCollection<Document> collection = db.getCollection(collectionName);
+                ObjectId objId = new ObjectId();
+                collection.insertOne(new Document("_id", objId).append("name", "test" + i));
+            }
+        }
+
+        // Configure with guardrail limit of 10 collections
+        config = TestHelper.getConfiguration(mongo)
+                .edit()
+                .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
+                .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 10)
+                .build();
+
+        // The connector should start successfully
+        context = new MongoDbTaskContext(config);
+        start(MongoDbConnector.class, config);
+        assertConnectorIsRunning();
+
+        // Wait for streaming to be running
+        waitForStreamingRunning("mongodb", "mongo");
+
+        // Insert one more document to verify streaming works
+        insertDocuments("dbit", "coll1", new Document("_id", new ObjectId()).append("name", "streaming_test"));
+
+        // Consume the streaming record to ensure the connector is working properly
+        SourceRecords streamingRecords = consumeRecordsByTopic(1);
+        assertThat(streamingRecords).isNotNull();
+        assertThat(streamingRecords.allRecordsInOrder().size()).isEqualTo(1);
+
+        // Verify the record
+        SourceRecord record = streamingRecords.allRecordsInOrder().get(0);
+        Struct value = (Struct) record.value();
+        assertThat(value.getString(Envelope.FieldName.OPERATION)).isEqualTo(Operation.CREATE.code());
+        String after = value.getString(Envelope.FieldName.AFTER);
+        Document doc = Document.parse(after);
+        assertThat(doc.getString("name")).isEqualTo("streaming_test");
+
+        assertNoRecordsToConsume();
+        stopConnector();
+    }
 }

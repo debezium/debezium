@@ -2783,6 +2783,138 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         }
     }
 
+    @Test
+    @FixFor("DBZ-9427")
+    public void shouldValidateGuardrailLimitsExceedsMaximumTables() throws Exception {
+        // This captures all logged messages, allowing us to verify log message was written.
+        final LogInterceptor logInterceptor = new LogInterceptor(CommonConnectorConfig.class);
+
+        // Create multiple databases and tables to test the guardrail limits
+        final UniqueDatabase testdb1 = TestHelper.getUniqueDatabase("myServer1", "testdb1")
+                .withDbHistoryPath(SCHEMA_HISTORY_PATH);
+        final UniqueDatabase testdb2 = TestHelper.getUniqueDatabase("myServer1", "testdb2")
+                .withDbHistoryPath(SCHEMA_HISTORY_PATH);
+        testdb1.createAndInitialize();
+        testdb2.createAndInitialize();
+
+        try (BinlogTestConnection db = getTestDatabaseConnection(testdb1.getDatabaseName());
+                JdbcConnection connection = db.connect()) {
+            // Create multiple tables in testdb1
+            for (int i = 1; i <= 5; i++) {
+                connection.execute(String.format("CREATE TABLE table%d (id INT PRIMARY KEY, data VARCHAR(100));", i));
+                connection.execute(String.format("INSERT INTO table%d VALUES (1, 'test');", i));
+            }
+        }
+
+        try (BinlogTestConnection db = getTestDatabaseConnection(testdb2.getDatabaseName());
+                JdbcConnection connection = db.connect()) {
+            // Create multiple tables in testdb2
+            for (int i = 1; i <= 5; i++) {
+                connection.execute(String.format("CREATE TABLE table%d (id INT PRIMARY KEY, data VARCHAR(100));", i));
+                connection.execute(String.format("INSERT INTO table%d VALUES (1, 'test');", i));
+            }
+        }
+
+        // Configure with guardrail limit of 5 tables (less than the 10 we created)
+        Configuration config = testdb1.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, testdb1.getDatabaseName() + "," + testdb2.getDatabaseName())
+                .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 5)
+                .build();
+
+        // The connector should continue to run even after exceeding the guardrail limit
+        logger.info("Attempting to start connector with guardrail limit exceeded, expect a warning");
+        start(getConnectorClass(), config, (success, msg, error) -> {
+            assertThat(success).isTrue();
+            assertThat(error).isNull();
+        });
+        assertConnectorIsRunning();
+        assertThat(logInterceptor.containsWarnMessage("Guardrail limit exceeded")).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-9427")
+    public void shouldValidateGuardrailLimitsExceedsMaximumTablesAndFailConnector() throws Exception {
+        // Create multiple databases and tables to test the guardrail limits
+        final UniqueDatabase testdb1 = TestHelper.getUniqueDatabase("myServer1", "testdb1")
+                .withDbHistoryPath(SCHEMA_HISTORY_PATH);
+        final UniqueDatabase testdb2 = TestHelper.getUniqueDatabase("myServer1", "testdb2")
+                .withDbHistoryPath(SCHEMA_HISTORY_PATH);
+        testdb1.createAndInitialize();
+        testdb2.createAndInitialize();
+
+        try (BinlogTestConnection db = getTestDatabaseConnection(testdb1.getDatabaseName());
+                JdbcConnection connection = db.connect()) {
+            // Create multiple tables in testdb1
+            for (int i = 1; i <= 5; i++) {
+                connection.execute(String.format("CREATE TABLE table%d (id INT PRIMARY KEY, data VARCHAR(100));", i));
+                connection.execute(String.format("INSERT INTO table%d VALUES (1, 'test');", i));
+            }
+        }
+
+        try (BinlogTestConnection db = getTestDatabaseConnection(testdb2.getDatabaseName());
+                JdbcConnection connection = db.connect()) {
+            // Create multiple tables in testdb2
+            for (int i = 1; i <= 5; i++) {
+                connection.execute(String.format("CREATE TABLE table%d (id INT PRIMARY KEY, data VARCHAR(100));", i));
+                connection.execute(String.format("INSERT INTO table%d VALUES (1, 'test');", i));
+            }
+        }
+
+        // Configure with guardrail limit of 5 tables (less than the 10 we created)
+        Configuration config = testdb1.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, testdb1.getDatabaseName() + "," + testdb2.getDatabaseName())
+                .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 5)
+                .with(CommonConnectorConfig.GUARDRAIL_LIMIT_ACTION, "fail")
+                .build();
+
+        // The connector should fail to start due to exceeding the guardrail limit
+        logger.info("Attempting to start connector with guardrail limit exceeded, expect an error");
+        start(getConnectorClass(), config, (success, msg, error) -> {
+            assertThat(success).isFalse();
+            assertThat(error).isNotNull();
+            assertThat(error.getMessage()).contains("Guardrail limit exceeded");
+        });
+        assertConnectorNotRunning();
+    }
+
+    @Test
+    @FixFor("DBZ-9427")
+    public void shouldStartSuccessfullyWithinGuardrailLimits() throws Exception {
+        // Create database and a few tables within the guardrail limit
+        final UniqueDatabase testdb = TestHelper.getUniqueDatabase("myServer1", "testdb")
+                .withDbHistoryPath(SCHEMA_HISTORY_PATH);
+        testdb.createAndInitialize();
+
+        try (BinlogTestConnection db = getTestDatabaseConnection(testdb.getDatabaseName());
+                JdbcConnection connection = db.connect()) {
+            // Create 3 tables (well below the limit of 10)
+            for (int i = 1; i <= 3; i++) {
+                connection.execute(String.format("CREATE TABLE table%d (id INT PRIMARY KEY, data VARCHAR(100));", i));
+                connection.execute(String.format("INSERT INTO table%d VALUES (1, 'test');", i));
+            }
+        }
+
+        // Configure with guardrail limit of 10 tables
+        Configuration config = testdb.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, testdb.getDatabaseName())
+                .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 10)
+                .build();
+
+        // The connector should start successfully
+        start(getConnectorClass(), config);
+        assertConnectorIsRunning();
+
+        // Consume all records to ensure the connector is working
+        SourceRecords records = consumeRecordsByTopic(3); // 3 tables
+        assertThat(records).isNotNull();
+        assertThat(records.topics()).hasSize(3);
+
+        stopConnector();
+    }
+
     protected String getExpectedQuery(String statement) {
 
         return statement;
