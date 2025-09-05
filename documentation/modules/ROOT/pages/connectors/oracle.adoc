@@ -1889,12 +1889,15 @@ For more information about how {prodname} properties control mappings for these 
 ifdef::product[]
 For more information about how the {prodname} connector maps Oracle data types, see the following topics:
 
+* xref:oracle-unsupported-types[]
 * xref:oracle-character-types[]
 * xref:oracle-binary-character-lob-types[]
 * xref:oracle-numeric-types[]
 * xref:oracle-boolean-types[]
 * xref:oracle-temporal-types[]
 * xref:oracle-rowid-types[]
+* xref:oracle-vector-types[]
+* xref:oracle-xml-types[]
 * xref:oracle-user-defined-types[]
 * xref:oracle-supplied-types[]
 * xref:oracle-default-values[]
@@ -1905,6 +1908,27 @@ ifdef::community[]
 Support for further data types is planned for subsequent releases.
 Please file a {jira-url}/browse/DBZ[JIRA issue] for any specific types that might be missing.
 endif::community[]
+
+[id="oracle-unsupported-types"]
+=== Unsupported data types
+
+The {prodname} Oracle connector does not support the full range of data types that are used in Oracle.
+The connector cannot process columns that include the following types of data:
+
+* BFILE (Binary file)
+* BOOLEAN. For more information, see xref:oracle-boolean-types[Boolean types].
+* Direct Joins in the FROM clause of UPDATE and DELETE statements
+* Data Use Case Domains
+* JavaScript-based stored procedures
+* LONG
+* LONG RAW
+* ROWID (not supported on XStream)
+* Table value constructor (TVCs)
+* UROWID (Universal ROWID)
+* VECTOR
+
+If the connector attempts to capture an event that includes a column with one of these unsupported data types, it logs a warning, and skips the column with the unsupported type.
+The connector continues to process other columns and tables, but data from the unsupported column is lost.
 
 [id="oracle-character-types"]
 === Character types
@@ -2134,8 +2158,11 @@ By default, the number is converted to `Decimal` type (`zero_scale.decimal.mode=
 [id="oracle-boolean-types"]
 === Boolean types
 
-Oracle does not provide native support for a `BOOLEAN` data type.
-However, it is common practice to use other data types with certain semantics to simulate the concept of a logical `BOOLEAN` data type.
+Beginning with Oracle 23, the database provides native support for a `BOOLEAN` data type.
+However, the {prodname} connector for Oracle does not support this type.
+
+Earlier versions of Oracle did not include native support for Boolean types.
+In these earlier versions, some users adopted the practice of using other data types with certain semantics to simulate the concept of a logical `BOOLEAN` data type.
 
 To enable you to convert source columns to Boolean data types, {prodname} provides a `NumberOneToBooleanConverter` {link-prefix}:{link-custom-converters}#custom-converters[custom converter] that you can use in one of the following ways:
 
@@ -2307,6 +2334,11 @@ _This data type is not supported when using Oracle XStream._
 |_This data type is not supported_.
 
 |===
+
+[id="oracle-vector-types"]
+=== Vector types
+
+The {prodname} connector for Oracle does not support the Oracle VECTOR data type.
 
 [id="oracle-xml-types"]
 === XML types
