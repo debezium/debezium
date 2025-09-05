@@ -563,7 +563,7 @@ The pipeline section is the place where you connect the "dots". You can define w
 [.responsive]
 video::cY7TS0nWBoY[youtube, title="Create, edit and remove a pipeline"]
 
-==== Creating pipeline
+==== Creating a pipeline
 
 From the platform UI, open the *Pipeline* menu, and then click *Create your first pipeline*.
 The *Pipeline Designer* opens.
