@@ -319,7 +319,7 @@ Final JSON after updating the **name** and **description**
 ----
 
 Similarly, you can open a {prodname} Server configuration in the *Smart Editor* to automatically extract the source configuration and reformat it for use in the {prodname} platform.
-This example is covered in the destination xref:debezium-platform-configuring-a-destination-with-the-smart-editor[see here].
+For more information, see xref:debezium-platform-configuring-a-destination-with-the-smart-editor[Configuring a destination with the Smart Editor].
 
 ==== Deleting a source
 
