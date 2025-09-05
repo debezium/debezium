@@ -111,14 +111,14 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
             //
             // Oracle always stores usernames as upper-case.
             // This predicate build applies upper-case to the provided value lists from the configuration.
-            return applyToNonTransactionMarkers(IncludeExcludeInClause.builder()
+            return IncludeExcludeInClause.builder()
                     .withField("USERNAME")
                     .withFilterMode(LogMiningQueryFilterMode.IN)
                     .withDefaultIncludeValues(Collections.singletonList(UNKNOWN_USERNAME))
                     .withIncludeValues(connectorConfig.getLogMiningUsernameIncludes())
                     .withExcludeValues(connectorConfig.getLogMiningUsernameExcludes())
                     .caseInsensitive()
-                    .build());
+                    .build();
         }
         return EMPTY;
     }
@@ -132,22 +132,15 @@ public abstract class AbstractLogMinerQueryBuilder implements LogMinerQueryBuild
         if (!LogMiningQueryFilterMode.NONE.equals(connectorConfig.getLogMiningQueryFilterMode())) {
             // Only filter client ids when using IN and REGEX modes
             // Client id filters always use an IN-clause predicate
-            return applyToNonTransactionMarkers(IncludeExcludeInClause.builder()
+            return IncludeExcludeInClause.builder()
                     .withField("CLIENT_ID")
                     .withFilterMode(LogMiningQueryFilterMode.IN)
                     .withIncludeValues(connectorConfig.getLogMiningClientIdIncludes())
                     .withExcludeValues(connectorConfig.getLogMiningClientIdExcludes())
                     .caseInsensitive()
-                    .build());
+                    .build();
         }
         return EMPTY;
-    }
-
-    private String applyToNonTransactionMarkers(String fragment) {
-        if (!Strings.isNullOrBlank(fragment)) {
-            return "(CASE WHEN OPERATION_CODE IN (6,7,36) THEN 1 ELSE CASE WHEN " + fragment + " THEN 1 ELSE 0 END END = 1)";
-        }
-        return fragment;
     }
 
     /**
