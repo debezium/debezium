@@ -292,7 +292,8 @@ image::Debezium-platform-smart-editor-kafka.png[{prodname} UI smart editor - Kaf
 The Smart Editor toolbar then displays an **Auto Format** option, as shown in the preceding figure. 
 The Autoformat option automatically converts the provided JSON into the required {prodname} Platform JSON format.
 
-The following image shows the auto formatted JSON that you would use to define a MySQL data source where optionally you can update the name or add some appropriate description in the JSON.
+The following image shows the JSON that results after you use the Autoformat option to convert the configuration for a MySQL data source. 
+Optionally, you can edit the JSON to update the value of the `name` field or populate the` description` field.
 
 image::debezium-platform-smart-editor-source.png[{prodname} platform smart editor - source]
 
