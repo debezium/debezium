@@ -3832,11 +3832,11 @@ public class PostgresConnectorIT extends AbstractAsyncEngineConnectorTest {
 
         // Configure with guardrail limit of 5 tables (less than the 10 we created)
         Configuration config = TestHelper.defaultConfig()
-            .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-            .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.*,s2.*")
-            .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 5)
-            .with(CommonConnectorConfig.GUARDRAIL_LIMIT_ACTION, "fail")
-            .build();
+                .with(PostgresConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(PostgresConnectorConfig.TABLE_INCLUDE_LIST, "s1.*,s2.*")
+                .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 5)
+                .with(CommonConnectorConfig.GUARDRAIL_LIMIT_ACTION, "fail")
+                .build();
 
         // The connector should fail to start due to exceeding the guardrail limit
         logger.info("Attempting to start connector with guardrail limit exceeded, expect an error");
