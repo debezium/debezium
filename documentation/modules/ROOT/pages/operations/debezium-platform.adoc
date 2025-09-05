@@ -589,7 +589,7 @@ image::debezium-platform-pipeline.png[{prodname} platform pipeline]
 After you finish designing your pipeline, click **Configure Pipeline**, and then specify the name, description, and logging level for the pipeline.
 
 
-==== Creating pipeline using {prodname} Server config
+==== Creating a pipeline from a {prodname} Server configuration
 
 Pipeline Designer also provides you the option to upload the {prodname} Server configuration properties file directly to create the data pipeline resources i.e source, destination and transforms.
 
