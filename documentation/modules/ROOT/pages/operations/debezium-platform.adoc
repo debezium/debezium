@@ -362,7 +362,8 @@ You can use either of the following editors to configure a destination:
 
 **Form Editor**:: Enables you to specify the name and description of the destination, along with a list of properties.
 For a complete list of the properties that are available for a sink connector, see the connector documentation.
-**Smart Editor**:: Enables you to define the sink configuration in JSON. It also provides the ability to directly use the {prodname} Server configuration by automatically extracting the sink configuration from it and formatting it into the required JSON format for the platform.
+Smart Editor:: Enables you to define the sink configuration in JSON. 
+Alternately, you can extract a {prodname} Server sink configuration and automatically reformat it for use in the platform.
 
 [NOTE]
 ====
