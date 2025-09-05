@@ -70,7 +70,7 @@ If your source connector is configured to capture schema changes, in the JDBC co
 [[jdbc-at-least-once-delivery]]
 === At-least-once delivery
 
-The {prodname} JDBC sink connector guarantees that events that is consumes from Kafka topics are processed at least once.
+The {prodname} JDBC sink connector guarantees that events that it consumes from Kafka topics are processed at least once.
 
 // Type: concept
 // Title: Description of {prodname} JDBC use of multiple tasks
