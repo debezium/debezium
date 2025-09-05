@@ -239,7 +239,9 @@ You can use either of the following editors to configure a source:
 Form Editor:: Enables you to specify the name and description of the source, along with a list of properties.
 For a complete list of the properties that are available for a connector, see the connector documentation.
 
-**Smart Editor**:: Enables you to define the source configuration in JSON. It also provides the ability to directly use the configuration of a {prodname} connector on Kafka Connect or in {prodname} Server by automatically formatting it into the required JSON format for the platform.
+Smart Editor:: Provides a way to define the source configuration in JSON format. 
+You can also use the editor to reformat source configurations that are designed for {prodname} connectors in Kafka Connect or {prodname} Server environment for use in the platform.
+The editor automatically applies the JSON formatting that the platform requires to the specified source configuration.
 
 [NOTE]
 ====
