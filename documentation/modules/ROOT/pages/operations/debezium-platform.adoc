@@ -578,7 +578,8 @@ From the Pipeline Designer you can add the pieces for your data pipeline.
 The sequence in which {prodname} applies transformations to the source is significant and affects the final output. 
 Be sure to specify a sequence that results in the expected output. 
 
-In the pipeline designer you have the ability to delete a transform or alter the sequency of applied transforms. For more information about using the pipeline designer, see xref:debezium-platform-using-the-pipeline-designer-to-remove-and-order-transformations[using the Pipeline designer to remove and order transformations]
+In the pipeline designer you can delete a transform, or alter the sequence of applied transforms. 
+For more information about using the pipeline designer, see xref:debezium-platform-using-the-pipeline-designer-to-remove-and-order-transformations[using the Pipeline designer to remove and order transformations].
 
 [NOTE]
 Transformations that are configured with a predicate are marked with a predicate icon (image:predicate-icon.png[Transformation configured with a predicate]).
