@@ -259,7 +259,7 @@ video::CVY4Y4kAs_E[youtube, title="Create, edit and remove a source"]
 
 You can use the **Smart Editor** to specify the JSON that defines the source configuration.
 You can enter and edit `JSON` directly in the editor, or paste `JSON` from an external source into the editor.
-With a few small differences, the JSON that you use to configure a data source in the {prodname} management Platform is nearly identical to the JSON in the `config` section that defines the configuration for a {prodname} connector on Kafka Connect or in the {prodname} Server.
+The JSON that you use to configure a data source in the {prodname} management platform is nearly identical to the JSON in the `config` section that defines the configuration for a {prodname} connector on Kafka Connect or in the {prodname} Server.
 
 Now stage UI provides you the ability to directly use the configuration of a {prodname} connector on Kafka Connect or in {prodname} Server configuration by either uploading or pasting into the **Smart Editor**.
 Stage UI will intelligently recognize the configuration format and will provide the appropriate prompt in the UI along with **Auto format** action button in the **Smart Editor** toolbar to automatically convert provided JSON into the required JSON format for the platform.  
