@@ -378,7 +378,8 @@ You can use the **Smart Editor** to specify the JSON that defines the source con
 You can enter and edit `JSON` directly in the editor, or paste `JSON` from an external source into the editor.
 With a few small differences, the JSON that you use to configure a destination in the **Smart Editor** is nearly identical to the configuration that you use to define a {prodname} Server `sink`.
 
-Now stage UI provides you the ability to directly use the {prodname} Server configuration by either uploading or pasting into the Smart Editor. Stage UI will intelligently recognize the configuration type and will provide the appropriate prompt in the UI along with **Auto format** action button in the Smart Editor toolbar.
+You can directly use a {prodname} Server configuration by either uploading it, or pasting it into the Smart Editor. 
+The Stage UI intelligently recognizes the configuration type and prompts you prompts you to reformat it for use by the platform.
 This will automatically extract the {prodname} server sink configuration and convert it into the required JSON format for the platform.
 
 For example, consider the following properties of {prodname} Server configuration:
