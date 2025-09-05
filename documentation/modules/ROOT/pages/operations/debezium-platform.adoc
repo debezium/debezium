@@ -408,7 +408,7 @@ debezium.source.table.include.list=inventory.customers
 # ..
 ----
 
-When you add this properties file to the Smart Editor, it intelligently recognizes that the provided configuration is a Debezium Server configuration and will inform via displaying an alert.
+When you add the preceding properties file to the Smart Editor, it confirms that it recognizes the file as a {prodname} Server configuration.
 
 image::debezium-smart-editor-server.png[{prodname} UI smart editor - Server]
 
