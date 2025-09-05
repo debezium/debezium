@@ -285,7 +285,7 @@ For example, consider the following JSON for specifying the configuration of a {
 }
 ----
 
-When you add this JSON to the **Smart Editor**, it intelligently recognizes that the provided JSON is in Kafka Connect format and will inform via displaying an alert.
+When you add this JSON to the *Smart Editor*, it detects that it is formatted for Kafka Connect and displays an alert.
 
 image::Debezium-platform-smart-editor-kafka.png[{prodname} UI smart editor - Kafka connect]
 
