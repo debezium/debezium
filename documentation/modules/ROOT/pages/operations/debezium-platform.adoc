@@ -419,7 +419,7 @@ The following image shows the auto formatted JSON that you would use to define a
 
 image::debezium-platform-smart-editor-sink.png[{prodname} platform smart editor - Sink]
 
-Final JSON after updating the name and description
+After you update the name and description, the following JSON results:
 
 [source,json,options="nowrap"]
 ----
