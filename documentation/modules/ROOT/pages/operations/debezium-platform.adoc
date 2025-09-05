@@ -262,7 +262,7 @@ You can enter and edit `JSON` directly in the editor, or paste `JSON` from an ex
 The JSON that you use to configure a data source in the {prodname} management platform is nearly identical to the JSON in the `config` section that defines the configuration for a {prodname} connector on Kafka Connect or in the {prodname} Server.
 
 To reuse an existing {prodname} connector configuration, you can upload a file that contains the configuration, or you can copy and paste the configuration into the *Smart Editor*.
-Stage UI will intelligently recognize the configuration format and will provide the appropriate prompt in the UI along with **Auto format** action button in the **Smart Editor** toolbar to automatically convert provided JSON into the required JSON format for the platform.  
+Stage UI intelligently recognizes the format of the configuration that you provide, and prompts you to reformat it for use by the platform.  
 
 
 For example, consider the following JSON for specifying the configuration of a {prodname} MySQL connector on Kafka Connect:
