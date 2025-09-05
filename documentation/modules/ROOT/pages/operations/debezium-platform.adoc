@@ -340,7 +340,8 @@ To edit a source, from the platform UI, open to the **Source** menu, click the *
 
 [NOTE]
 ====
-Editing a source will affect all pipelines that use it. A confirmation modal will also appear informing this before changes are being submitted from the UI.
+Editing a source affects all pipelines that use it.
+Before you submit a change, a message notifies you that pipelines that use the source will restart.
 
 image::edit-confirmation.png[Edit source confirmation modal] 
 ====
