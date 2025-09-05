@@ -14,7 +14,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -120,43 +119,15 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
 
     @Override
     protected Set<TableId> getAllTableIds(RelationalSnapshotContext<P, O> ctx) throws Exception {
-        // -------------------
-        // READ DATABASE NAMES
-        // -------------------
-        // Get the list of databases ...
-        LOGGER.info("Read list of available databases");
-        final List<String> databaseNames = connection.availableDatabases();
-        LOGGER.info("\t list of available databases is: {}", databaseNames);
+        // Use the connection's getAllTableIds method which also tracks readable databases
+        final BinlogConnectorConnection.TablesWithReadableDatabases result = connection.getAllTableIdsWithReadableDatabases();
 
-        // ----------------
-        // READ TABLE NAMES
-        // ----------------
-        // Get the list of table IDs for each database. We can't use a prepared statement with MySQL, so we have to
-        // build the SQL statement each time. Although in other cases this might lead to SQL injection, in our case
-        // we are reading the database names from the database and not taking them from the user ...
-        LOGGER.info("Read list of available tables in each database");
-        final Set<TableId> tableIds = new HashSet<>();
-        final Set<String> readableDatabaseNames = new HashSet<>();
-        for (String dbName : databaseNames) {
-            try {
-                // MySQL sometimes considers some local files as databases (see DBZ-164),
-                // so we will simply try each one and ignore the problematic ones ...
-                connection.query("SHOW FULL TABLES IN " + connection.quoteIdentifier(dbName) + " where Table_Type = 'BASE TABLE'", rs -> {
-                    while (rs.next()) {
-                        TableId id = new TableId(dbName, null, rs.getString(1));
-                        tableIds.add(id);
-                    }
-                });
-                readableDatabaseNames.add(dbName);
-            }
-            catch (SQLException e) {
-                // We were unable to execute the query or process the results, so skip this ...
-                LOGGER.warn("\t skipping database '{}' due to error reading tables: {}", dbName, e.getMessage());
-            }
-        }
-        final Set<String> includedDatabaseNames = readableDatabaseNames.stream().filter(filters.databaseFilter()).collect(Collectors.toSet());
+        // Log the databases that were readable and are included based on filters
+        final Set<String> includedDatabaseNames = result.getReadableDatabaseNames().stream()
+                .filter(filters.databaseFilter())
+                .collect(Collectors.toSet());
         LOGGER.info("\tsnapshot continuing with database(s): {}", includedDatabaseNames);
-        return tableIds;
+        return result.getTableIds();
     }
 
     @Override

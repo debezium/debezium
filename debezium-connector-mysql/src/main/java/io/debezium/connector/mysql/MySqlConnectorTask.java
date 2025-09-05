@@ -310,15 +310,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
 
     private void validateGuardrailLimits(MySqlConnectorConfig connectorConfig, BinlogConnectorConnection connection) {
         try {
-            // Get all table IDs that match the connector's filters
-            Set<TableId> allTableIds = new java.util.HashSet<>();
-            List<String> databaseNames = connection.availableDatabases();
-
-            for (String databaseName : databaseNames) {
-                if (connectorConfig.getTableFilters().databaseFilter().test(databaseName)) {
-                    allTableIds.addAll(connection.readTableNames(databaseName, null, null, new String[]{ "TABLE" }));
-                }
-            }
+            Set<TableId> allTableIds = connection.getAllTableIds();
 
             Set<TableId> capturedTables = allTableIds.stream()
                     .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
