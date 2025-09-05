@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -137,6 +138,9 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
         if (validateSnapshotFeasibility(snapshotter, previousOffsets.getTheOnlyOffset(), connection)) {
             previousOffsets.resetOffset(previousOffsets.getTheOnlyPartition());
         }
+
+        // Validate guardrail limits for captured tables to prevent loading excessive table schemas into memory
+        validateGuardrailLimits(connectorConfig, connection);
 
         LOGGER.info("Closing JDBC connection before starting schema recovery.");
         try {
@@ -316,6 +320,34 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
 
     private BinlogFieldReader getFieldReader(MariaDbConnectorConfig connectorConfig) {
         return new MariaDbFieldReader(connectorConfig);
+    }
+
+    private void validateGuardrailLimits(MariaDbConnectorConfig connectorConfig, BinlogConnectorConnection connection) {
+        try {
+            // Get all table IDs that match the connector's filters
+            Set<TableId> allTableIds = new java.util.HashSet<>();
+            List<String> databaseNames = connection.availableDatabases();
+
+            for (String databaseName : databaseNames) {
+                if (connectorConfig.getTableFilters().databaseFilter().test(databaseName)) {
+                    allTableIds.addAll(connection.readTableNames(databaseName, null, null, new String[]{ "TABLE" }));
+                }
+            }
+
+            Set<TableId> capturedTables = allTableIds.stream()
+                    .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
+                    .collect(java.util.stream.Collectors.toSet());
+
+            List<String> tableNames = capturedTables.stream()
+                    .map(TableId::toString)
+                    .collect(java.util.stream.Collectors.toList());
+
+            connectorConfig.validateGuardrailLimits(capturedTables.size(), tableNames);
+
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to validate guardrail limits", e);
+        }
     }
 
 }

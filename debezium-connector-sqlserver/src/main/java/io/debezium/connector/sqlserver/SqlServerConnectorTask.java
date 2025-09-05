@@ -6,9 +6,11 @@
 package io.debezium.connector.sqlserver;
 
 import java.sql.SQLException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -114,6 +116,9 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         connectorConfig.getBeanRegistry().add(StandardBeanNames.CDC_SOURCE_TASK_CONTEXT, taskContext);
 
         final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
+
+        // Validate guardrail limits for captured tables to prevent loading excessive table schemas into memory
+        validateGuardrailLimits(connectorConfig, dataConnection);
 
         validateSchemaHistory(connectorConfig, dataConnection::validateLogPosition, offsets, schema,
                 snapshotterService.getSnapshotter());
@@ -236,6 +241,30 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
     @Override
     protected Iterable<Field> getAllConfigurationFields() {
         return SqlServerConnectorConfig.ALL_FIELDS;
+    }
+
+    private void validateGuardrailLimits(SqlServerConnectorConfig connectorConfig, SqlServerConnection connection) {
+        try {
+            // Get all table IDs that match the connector's filters
+            Set<TableId> allTableIds = new HashSet<>();
+            for (String databaseName : connectorConfig.getDatabaseNames()) {
+                allTableIds.addAll(connection.readTableNames(databaseName, null, null, new String[]{ "TABLE" }));
+            }
+
+            Set<TableId> capturedTables = allTableIds.stream()
+                    .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
+                    .collect(java.util.stream.Collectors.toSet());
+
+            List<String> tableNames = capturedTables.stream()
+                    .map(TableId::toString)
+                    .collect(java.util.stream.Collectors.toList());
+
+            connectorConfig.validateGuardrailLimits(capturedTables.size(), tableNames);
+
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to validate guardrail limits", e);
+        }
     }
 
 }

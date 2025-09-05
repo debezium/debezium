@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.source.SourceRecord;
@@ -112,6 +113,9 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         checkArchiveLogDestination(jdbcConnection, connectorConfig.getArchiveLogDestinationName());
 
         OracleOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
+
+        // Validate guardrail limits for captured tables to prevent loading excessive table schemas into memory
+        validateGuardrailLimits(connectorConfig, jdbcConnection);
 
         validateSchemaHistory(connectorConfig, jdbcConnection::validateLogPosition, previousOffsets, schema, snapshotterService.getSnapshotter());
 
@@ -281,6 +285,27 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
             else {
                 LOGGER.warn("Failed the archive log check but continuing as redo log isn't strictly required");
             }
+        }
+    }
+
+    private void validateGuardrailLimits(OracleConnectorConfig connectorConfig, OracleConnection connection) {
+        try {
+            // Get all table IDs that match the connector's filters
+            Set<TableId> allTableIds = connection.getAllTableIds(connectorConfig.getDatabaseName());
+
+            Set<TableId> capturedTables = allTableIds.stream()
+                    .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
+                    .collect(java.util.stream.Collectors.toSet());
+
+            List<String> tableNames = capturedTables.stream()
+                    .map(TableId::toString)
+                    .collect(java.util.stream.Collectors.toList());
+
+            connectorConfig.validateGuardrailLimits(capturedTables.size(), tableNames);
+
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to validate guardrail limits", e);
         }
     }
 
