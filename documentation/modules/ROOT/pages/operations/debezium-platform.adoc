@@ -380,7 +380,7 @@ With a few small differences, the JSON that you use to configure a destination i
 
 You can directly use a {prodname} Server configuration by either uploading it, or pasting it into the Smart Editor. 
 The Stage UI intelligently recognizes the configuration type and prompts you prompts you to reformat it for use by the platform.
-This will automatically extract the {prodname} server sink configuration and convert it into the required JSON format for the platform.
+The editor automatically extracts the {prodname} server sink configuration and converts it into the JSON format that the platform supports.
 
 For example, consider the following properties of {prodname} Server configuration:
 
