@@ -289,7 +289,7 @@ When you add this JSON to the *Smart Editor*, it detects that it is formatted fo
 
 image::Debezium-platform-smart-editor-kafka.png[{prodname} UI smart editor - Kafka connect]
 
-The Smart Editor toolbar will then display an **Auto Format** option (highlighted in the image above). 
+The Smart Editor toolbar then displays an **Auto Format** option, as shown in the preceding figure. 
 You can use this option to automatically convert the provided JSON into the required {prodname} Platform JSON format.
 
 The following image shows the auto formatted JSON that you would use to define a MySQL data source where optionally you can update the name or add some appropriate description in the JSON.
