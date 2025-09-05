@@ -453,7 +453,8 @@ If the operation returns an error, verify that the destination is no longer used
 To edit a destination, go to the `Destination` menu and then click the `action` menu of the destination you want to edit, then click `Edit`.
 
 [NOTE]
-Editing a destination will affect all pipelines that use it. A confirmation modal will also appear informing this before changes are being submitted from the UI.
+Editing a destination affects all pipelines that use it.
+After you make a change, a confirmation message informs you that pipelines that use the destination will restart.
 
 === Managing transforms
 
