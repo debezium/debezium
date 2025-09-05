@@ -594,7 +594,7 @@ After you finish designing your pipeline, click **Configure Pipeline**, and then
 Pipeline Designer also provides you the option to upload the {prodname} Server configuration properties file directly to create the data pipeline resources i.e source, destination and transforms.
 
 * In the pipeline designer, click *DBZ server config*, upload, or drag and drop a {prodname} server properties file, and then click *Create*.
-This will automatically create Source, Transforms and Destination in synchronous manner using the {prodname} server configuration. 
+The designer creates the Source, Transforms, and Destination for the pipeline, based on the {prodname} server configuration that you provided. 
 
 image::debezium-platform-pipeline-server-modal.png[{prodname} platform pipeline server modal]
 
