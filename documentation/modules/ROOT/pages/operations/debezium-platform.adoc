@@ -246,7 +246,9 @@ The editor automatically applies the JSON formatting that the platform requires 
 [NOTE]
 ====
 image::create-source-toolbar.png[{prodname} platform - Create source toolbar]
-If you want to directly use the configuration of a {prodname} connector on Kafka Connect or {prodname} Server configuration for creating source then select the **Create using smart editor** button in the toolbar in **Source catalog** page.
+You can create source configurations based on existing {prodname} configurations, such as the configuration for a {prodname} connector for Kafka Connect, or a {prodname} Server configuration.
+
+From the toolbar on the *Source catalog* page, select *Create using smart editor* .
 ====
 
 [.responsive]
