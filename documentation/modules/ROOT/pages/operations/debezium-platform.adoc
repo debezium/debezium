@@ -611,7 +611,7 @@ The deletion removes only the pipeline: the source, destination, and any transfo
 . From the platform UI, open the **Pipeline** menu, click the **Action** menu for the pipeline that you want to edit, and then click **Edit**.
 . In the pipeline designer, modify transformations as needed. 
 For more information about using the pipeline designer, see xref:debezium-platform-using-the-pipeline-designer-to-remove-and-order-transformations[Using the Pipeline designer to remove and order transformations].
-. Click on **Save and next** to edit the pipeline name, description, and log level properties of the pipeline.
+. Click *Save and next* to edit the name, description, and log level properties of the pipeline.
 
 [id="debezium-platform-using-the-pipeline-designer-to-remove-and-order-transformations"]
 ===== Using the Pipeline designer to remove and order transformations
