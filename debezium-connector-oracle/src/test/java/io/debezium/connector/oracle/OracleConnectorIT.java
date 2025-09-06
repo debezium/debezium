@@ -6154,7 +6154,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             connection.execute(ddl);
             TestHelper.streamTable(connection, "debezium.customer2");
 
-            connection.execute("INSERT INTO debezium.customer2 VALUES (2, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
+            connection.execute("INSERT INTO debezium.customer2 VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
             connection.execute("COMMIT");
 
             // Configure with guardrail limit of 10 tables

@@ -289,9 +289,17 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
     }
 
     private void validateGuardrailLimits(OracleConnectorConfig connectorConfig, OracleConnection connection) {
+        boolean switchedToPdb = false;
         try {
+            // Set the main connection to the PDB if configured.
+            // This is done before operations that need to see PDB-specific tables like validateGuardrailLimits.
+            if (!Strings.isNullOrEmpty(connectorConfig.getPdbName())) {
+                connection.setSessionToPdb(connectorConfig.getPdbName());
+                switchedToPdb = true;
+            }
+
             // Get all table IDs that match the connector's filters
-            Set<TableId> allTableIds = connection.getAllTableIds(connectorConfig.getDatabaseName());
+            Set<TableId> allTableIds = connection.getAllTableIds(connectorConfig.getCatalogName());
 
             Set<TableId> capturedTables = allTableIds.stream()
                     .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
@@ -306,6 +314,12 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         }
         catch (SQLException e) {
             throw new DebeziumException("Failed to validate guardrail limits", e);
+        }
+        finally {
+            // Reset the connection to the CDB.
+            if (switchedToPdb) {
+                connection.resetSessionToCdb();
+            }
         }
     }
 
