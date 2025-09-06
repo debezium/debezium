@@ -231,10 +231,11 @@ public class LogMinerQueryBuilderTest {
         final Set<String> excludes = config.getLogMiningUsernameExcludes();
 
         if (!includes.isEmpty() && !queryFilterMode.equals(LogMiningQueryFilterMode.NONE)) {
-            return " AND UPPER(USERNAME) IN ('UNKNOWN'," + includes.stream().map(this::quote).collect(Collectors.joining(",")) + ")";
+            return " AND "
+                    + applyTransactionMarkerExclusions("UPPER(USERNAME) IN ('UNKNOWN'," + includes.stream().map(this::quote).collect(Collectors.joining(",")) + ")");
         }
         else if (!excludes.isEmpty() && !queryFilterMode.equals(LogMiningQueryFilterMode.NONE)) {
-            return " AND UPPER(USERNAME) NOT IN (" + excludes.stream().map(this::quote).collect(Collectors.joining(",")) + ")";
+            return " AND " + applyTransactionMarkerExclusions("UPPER(USERNAME) NOT IN (" + excludes.stream().map(this::quote).collect(Collectors.joining(",")) + ")");
         }
         else {
             return "";
@@ -247,14 +248,21 @@ public class LogMinerQueryBuilderTest {
         final Set<String> excludes = config.getLogMiningClientIdExcludes();
 
         if (!includes.isEmpty() && !queryFilterMode.equals(LogMiningQueryFilterMode.NONE)) {
-            return " AND UPPER(CLIENT_ID) IN (" + includes.stream().map(this::quote).collect(Collectors.joining(",")) + ")";
+            return " AND " + applyTransactionMarkerExclusions("UPPER(CLIENT_ID) IN (" + includes.stream().map(this::quote).collect(Collectors.joining(",")) + ")");
         }
         else if (!excludes.isEmpty() && !queryFilterMode.equals(LogMiningQueryFilterMode.NONE)) {
-            return " AND UPPER(CLIENT_ID) NOT IN (" + excludes.stream().map(this::quote).collect(Collectors.joining(",")) + ")";
+            return " AND " + applyTransactionMarkerExclusions("UPPER(CLIENT_ID) NOT IN (" + excludes.stream().map(this::quote).collect(Collectors.joining(",")) + ")");
         }
         else {
             return "";
         }
+    }
+
+    private String applyTransactionMarkerExclusions(String fragment) {
+        if (!Strings.isNullOrBlank(fragment)) {
+            return "(CASE WHEN OPERATION_CODE IN (6,7,36) THEN 1 ELSE CASE WHEN " + fragment + " THEN 1 ELSE 0 END END = 1)";
+        }
+        return fragment;
     }
 
     private Set<String> getExcludedSchemas() {

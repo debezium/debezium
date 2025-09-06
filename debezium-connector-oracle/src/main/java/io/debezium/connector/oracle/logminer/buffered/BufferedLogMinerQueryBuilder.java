@@ -11,6 +11,7 @@ import java.util.List;
 
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerQueryBuilder;
+import io.debezium.util.Strings;
 
 /**
  * A builder that is responsible for producing the query to be executed against LogMiner when operating
@@ -84,6 +85,28 @@ public class BufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder {
         }
 
         return query.toString();
+    }
+
+    @Override
+    protected String getUserNamePredicate() {
+        final String userNamePredicate = super.getUserNamePredicate();
+        if (!Strings.isNullOrEmpty(userNamePredicate)) {
+            return applyToNonTransactionMarkers(userNamePredicate);
+        }
+        return userNamePredicate;
+    }
+
+    @Override
+    protected String getClientIdPredicate() {
+        final String clientIdPredicate = super.getClientIdPredicate();
+        if (!Strings.isNullOrBlank(clientIdPredicate)) {
+            return applyToNonTransactionMarkers(clientIdPredicate);
+        }
+        return clientIdPredicate;
+    }
+
+    protected String applyToNonTransactionMarkers(String fragment) {
+        return "(CASE WHEN OPERATION_CODE IN (6,7,36) THEN 1 ELSE CASE WHEN " + fragment + " THEN 1 ELSE 0 END END = 1)";
     }
 
     /**
