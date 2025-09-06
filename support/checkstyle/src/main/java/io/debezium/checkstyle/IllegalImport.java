@@ -26,7 +26,8 @@ public class IllegalImport extends AbstractCheck {
     /**
      * Set the list of illegal import statements.
      *
-     * @param importStatements array of illegal packages
+     * @param importStatements
+     *            array of illegal packages
      */
     public void setIllegalClassnames(String[] importStatements) {
         for (String impo : importStatements) {
