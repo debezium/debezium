@@ -34,6 +34,7 @@ import io.debezium.connector.oracle.logminer.LogMinerChangeRecordEmitter;
 import io.debezium.connector.oracle.logminer.LogMinerStreamingChangeEventSourceMetrics;
 import io.debezium.connector.oracle.logminer.SqlUtils;
 import io.debezium.connector.oracle.logminer.TransactionCommitConsumer;
+import io.debezium.connector.oracle.logminer.buffered.ProcessedTransaction.ProcessType;
 import io.debezium.connector.oracle.logminer.buffered.ehcache.EhcacheCacheProvider;
 import io.debezium.connector.oracle.logminer.buffered.ehcache.EhcacheTransactionFactory;
 import io.debezium.connector.oracle.logminer.buffered.infinispan.EmbeddedInfinispanCacheProvider;
@@ -253,7 +254,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     }
 
     @VisibleForTesting
-    protected LogMinerCache<String, String> getProcessedTransactionsCache() {
+    protected LogMinerCache<String, ProcessedTransaction> getProcessedTransactionsCache() {
         return cacheProvider.getProcessedTransactionsCache();
     }
 
@@ -657,7 +658,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
 
         if (!minCacheScn.isNull()) {
             abandonTransactions(getConfig().getLogMiningTransactionRetention());
-            getProcessedTransactionsCache().removeIf(entry -> Scn.valueOf(entry.getValue()).compareTo(minCacheScn) < 0);
+            getProcessedTransactionsCache().removeIf(entry -> entry.getValue().getStartScn().compareTo(minCacheScn) < 0);
             getSchemaChangesCache().removeIf(entry -> Scn.valueOf(entry.getKey()).compareTo(minCacheScn) < 0);
         }
         else {
@@ -705,7 +706,9 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
      * @param eventScn the transaction's starting system change number, should not be {@code null}
      */
     protected void markTransactionSkipped(String transactionId, Scn eventScn) {
-        getProcessedTransactionsCache().put(transactionId, eventScn.toString());
+        getProcessedTransactionsCache().put(
+                transactionId,
+                new ProcessedTransaction(transactionId, eventScn, ProcessType.SKIPPED));
     }
 
     /**
@@ -864,7 +867,9 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         getTransactionCache().removeAbandonedTransaction(transactionId);
 
         if (getConfig().isLobEnabled()) {
-            getProcessedTransactionsCache().put(transactionId, eventScn.toString());
+            getProcessedTransactionsCache().put(
+                    transactionId,
+                    new ProcessedTransaction(transactionId, eventScn, ProcessType.PROCESSED));
         }
     }
 

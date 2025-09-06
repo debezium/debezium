@@ -59,10 +59,10 @@ public interface CacheProvider<T extends Transaction> extends AutoCloseable {
      *
      * <ul>
      *     <li>Key - The unique transaction id</li>
-     *     <li>Value - The transaction's commit or rollback system change number</li>
+     *     <li>Value - The processed transaction object/li>
      * </ul>
      *
      * @return the processed transactions cache, never {@code null}
      */
-    LogMinerCache<String, String> getProcessedTransactionsCache();
+    LogMinerCache<String, ProcessedTransaction> getProcessedTransactionsCache();
 }

@@ -29,7 +29,9 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.logminer.buffered.AbstractCacheProvider;
 import io.debezium.connector.oracle.logminer.buffered.LogMinerCache;
 import io.debezium.connector.oracle.logminer.buffered.LogMinerTransactionCache;
+import io.debezium.connector.oracle.logminer.buffered.ProcessedTransaction;
 import io.debezium.connector.oracle.logminer.buffered.infinispan.marshalling.LogMinerEventMarshallerImpl;
+import io.debezium.connector.oracle.logminer.buffered.infinispan.marshalling.ProcessedTransactionMarshallerImpl;
 import io.debezium.connector.oracle.logminer.buffered.infinispan.marshalling.TransactionMarshallerImpl;
 
 /**
@@ -51,7 +53,7 @@ public class RemoteInfinispanCacheProvider extends AbstractCacheProvider<Infinis
     private final boolean dropBufferOnStop;
     private final RemoteCacheManager cacheManager;
     private final LogMinerTransactionCache<InfinispanTransaction> transactionCache;
-    private final InfinispanLogMinerCache<String, String> processedTransactionsCache;
+    private final InfinispanLogMinerCache<String, ProcessedTransaction> processedTransactionsCache;
     private final InfinispanLogMinerCache<String, String> schemaChangesCache;
 
     public RemoteInfinispanCacheProvider(OracleConnectorConfig connectorConfig) {
@@ -78,7 +80,7 @@ public class RemoteInfinispanCacheProvider extends AbstractCacheProvider<Infinis
     }
 
     @Override
-    public LogMinerCache<String, String> getProcessedTransactionsCache() {
+    public LogMinerCache<String, ProcessedTransaction> getProcessedTransactionsCache() {
         return processedTransactionsCache;
     }
 
@@ -128,7 +130,7 @@ public class RemoteInfinispanCacheProvider extends AbstractCacheProvider<Infinis
                 createCache(EVENTS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS));
     }
 
-    private InfinispanLogMinerCache<String, String> createProcessedTransactionCache(OracleConnectorConfig connectorConfig) {
+    private InfinispanLogMinerCache<String, ProcessedTransaction> createProcessedTransactionCache(OracleConnectorConfig connectorConfig) {
         return new InfinispanLogMinerCache<>(
                 createCache(PROCESSED_TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS));
     }
@@ -144,6 +146,7 @@ public class RemoteInfinispanCacheProvider extends AbstractCacheProvider<Infinis
                 // todo: why must these be defined manually rather than automated like embedded mode?
                 .addContextInitializer(TransactionMarshallerImpl.class.getName())
                 .addContextInitializer(LogMinerEventMarshallerImpl.class.getName())
+                .addContextInitializer(ProcessedTransactionMarshallerImpl.class.getName())
                 .build();
     }
 
