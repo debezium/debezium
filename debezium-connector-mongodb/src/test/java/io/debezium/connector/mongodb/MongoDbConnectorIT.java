@@ -3108,6 +3108,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
         config = TestHelper.getConfiguration(mongo)
                 .edit()
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
+                .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NO_DATA)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 10)
                 .build();
