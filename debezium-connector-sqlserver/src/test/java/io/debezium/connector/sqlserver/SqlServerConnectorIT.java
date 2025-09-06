@@ -3481,24 +3481,16 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
         // This captures all logged messages, allowing us to verify log message was written.
         final LogInterceptor logInterceptor = new LogInterceptor(CommonConnectorConfig.class);
 
-        // Create multiple schemas and tables to test the guardrail limits
-        TestHelper.dropTestDatabase();
-        TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
 
-        // Create multiple tables
-        for (int i = 1; i <= 10; i++) {
-            String createTable = String.format(
-                    "CREATE TABLE dbo.table%d (id INT PRIMARY KEY, data VARCHAR(100));", i);
-            connection.execute(createTable);
-            connection.execute(String.format("INSERT INTO dbo.table%d VALUES (1, 'test');", i));
-        }
+        connection.execute("INSERT INTO tablea VALUES(" + 101 + ", 'a')");
+        connection.execute("INSERT INTO tableb VALUES(" + 102 + ", 'b')");
 
-        // Configure with guardrail limit of 5 tables (less than the 10 we created)
+        // Configure with guardrail limit of 1 table (less than 2 that connector is capturing)
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.table.*")
-                .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 5)
+                .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 1)
                 .build();
 
         // The connector should continue to run even after exceeding the guardrail limit
@@ -3514,24 +3506,16 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     @Test
     @FixFor("DBZ-9427")
     public void shouldValidateGuardrailLimitsExceedsMaximumTablesAndFailConnector() throws Exception {
-        // Create multiple schemas and tables to test the guardrail limits
-        TestHelper.dropTestDatabase();
-        TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
 
-        // Create multiple tables
-        for (int i = 1; i <= 10; i++) {
-            String createTable = String.format(
-                    "CREATE TABLE dbo.table%d (id INT PRIMARY KEY, data VARCHAR(100));", i);
-            connection.execute(createTable);
-            connection.execute(String.format("INSERT INTO dbo.table%d VALUES (1, 'test');", i));
-        }
+        connection.execute("INSERT INTO tablea VALUES(" + 101 + ", 'a')");
+        connection.execute("INSERT INTO tableb VALUES(" + 102 + ", 'b')");
 
-        // Configure with guardrail limit of 5 tables (less than the 10 we created)
+        // Configure with guardrail limit of 1 table (less than 2 that connector is capturing)
         final Configuration config = TestHelper.defaultConfig()
                 .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.table.*")
-                .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 5)
+                .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 1)
                 .with(CommonConnectorConfig.GUARDRAIL_LIMIT_ACTION, "fail")
                 .build();
 
@@ -3548,34 +3532,29 @@ public class SqlServerConnectorIT extends AbstractAsyncEngineConnectorTest {
     @Test
     @FixFor("DBZ-9427")
     public void shouldStartSuccessfullyWithinGuardrailLimits() throws Exception {
-        // Create a few tables within the guardrail limit
-        TestHelper.dropTestDatabase();
-        TestHelper.createTestDatabase();
         connection = TestHelper.testConnection();
-
-        // Create 3 tables (well below the limit of 10)
-        for (int i = 1; i <= 3; i++) {
-            String createTable = String.format(
-                    "CREATE TABLE dbo.table%d (id INT PRIMARY KEY, data VARCHAR(100));", i);
-            connection.execute(createTable);
-            connection.execute(String.format("INSERT INTO dbo.table%d VALUES (1, 'test');", i));
-        }
 
         // Configure with guardrail limit of 10 tables
         final Configuration config = TestHelper.defaultConfig()
-                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                .with(SqlServerConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                 .with(SqlServerConnectorConfig.TABLE_INCLUDE_LIST, "dbo.table.*")
                 .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 10)
+                .with(CommonConnectorConfig.GUARDRAIL_LIMIT_ACTION, "fail")
                 .build();
 
         // The connector should start successfully
         start(SqlServerConnector.class, config);
-        assertConnectorIsRunning();
+        TestHelper.waitForSnapshotToBeCompleted();
+
+        TestHelper.waitForStreamingStarted();
+
+        connection.execute("INSERT INTO tablea VALUES(" + 101 + ", 'a')");
+        connection.execute("INSERT INTO tableb VALUES(" + 102 + ", 'b')");
 
         // Consume all records to ensure the connector is working
-        SourceRecords records = consumeRecordsByTopic(3); // 3 tables
+        SourceRecords records = consumeRecordsByTopic(1 + 1);
         assertThat(records).isNotNull();
-        assertThat(records.topics()).hasSize(3);
+        assertThat(records.topics()).hasSize(2);
 
         stopConnector();
     }

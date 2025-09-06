@@ -6062,102 +6062,131 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
         // This captures all logged messages, allowing us to verify log message was written.
         final LogInterceptor logInterceptor = new LogInterceptor(CommonConnectorConfig.class);
 
-        // Create multiple tables to test the guardrail limits
-        TestHelper.dropAllTables();
+        TestHelper.dropTable(connection, "debezium.customer2");
+        try {
+            String ddl = "create table debezium.customer2 (" +
+                    "  id numeric(9,0) not null, " +
+                    "  name varchar2(1000), " +
+                    "  score decimal(6, 2), " +
+                    "  registered timestamp, " +
+                    "  primary key (id)" +
+                    ")";
 
-        try (OracleConnection conn = TestHelper.testConnection()) {
-            // Create multiple tables
-            for (int i = 1; i <= 10; i++) {
-                conn.execute(String.format(
-                        "CREATE TABLE debezium.table%d (id NUMBER(10) PRIMARY KEY, data VARCHAR2(100))", i));
-                conn.execute(String.format("INSERT INTO debezium.table%d VALUES (%d, 'test')", i, i));
-            }
-            conn.commit();
+            connection.execute(ddl);
+            TestHelper.streamTable(connection, "debezium.customer2");
+
+            connection.execute("INSERT INTO debezium.customer2 VALUES (2, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
+            connection.execute("COMMIT");
+
+            // Configure with guardrail limit of 1 table (less than 2 that connector is capturing)
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER.*")
+                    .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 1)
+                    .build();
+
+            // The connector should continue to run even after exceeding the guardrail limit
+            LOGGER.info("Attempting to start connector with guardrail limit exceeded, expect a warning");
+            start(OracleConnector.class, config, (success, msg, error) -> {
+                assertThat(success).isTrue();
+                assertThat(error).isNull();
+            });
+            assertConnectorIsRunning();
+            assertThat(logInterceptor.containsWarnMessage("Guardrail limit exceeded")).isTrue();
         }
-
-        // Configure with guardrail limit of 5 tables (less than the 10 we created)
-        Configuration config = TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.TABLE.*")
-                .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 5)
-                .build();
-
-        // The connector should continue to run even after exceeding the guardrail limit
-        LOGGER.info("Attempting to start connector with guardrail limit exceeded, expect a warning");
-        start(OracleConnector.class, config, (success, msg, error) -> {
-            assertThat(success).isTrue();
-            assertThat(error).isNull();
-        });
-        assertConnectorIsRunning();
-        assertThat(logInterceptor.containsWarnMessage("Guardrail limit exceeded")).isTrue();
+        finally {
+            TestHelper.dropTable(connection, "debezium.customer2");
+        }
     }
 
     @Test
     @FixFor("DBZ-9427")
     public void shouldValidateGuardrailLimitsExceedsMaximumTablesAndFailConnector() throws Exception {
-        // Create multiple tables to test the guardrail limits
-        TestHelper.dropAllTables();
+        TestHelper.dropTable(connection, "debezium.customer2");
 
-        try (OracleConnection conn = TestHelper.testConnection()) {
-            // Create multiple tables
-            for (int i = 1; i <= 10; i++) {
-                conn.execute(String.format(
-                        "CREATE TABLE debezium.table%d (id NUMBER(10) PRIMARY KEY, data VARCHAR2(100))", i));
-                conn.execute(String.format("INSERT INTO debezium.table%d VALUES (%d, 'test')", i, i));
-            }
-            conn.commit();
+        try {
+            String ddl = "create table debezium.customer2 (" +
+                    "  id numeric(9,0) not null, " +
+                    "  name varchar2(1000), " +
+                    "  score decimal(6, 2), " +
+                    "  registered timestamp, " +
+                    "  primary key (id)" +
+                    ")";
+
+            connection.execute(ddl);
+            TestHelper.streamTable(connection, "debezium.customer2");
+
+            connection.execute("INSERT INTO debezium.customer2 VALUES (2, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
+            connection.execute("COMMIT");
+
+            // Configure with guardrail limit of 1 table (less than 2 that connector is capturing)
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER.*")
+                    .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 1)
+                    .with(CommonConnectorConfig.GUARDRAIL_LIMIT_ACTION, "fail")
+                    .build();
+
+            // The connector should fail to start due to exceeding the guardrail limit
+            LOGGER.info("Attempting to start connector with guardrail limit exceeded, expect an error");
+            start(OracleConnector.class, config, (success, msg, error) -> {
+                assertThat(success).isFalse();
+                assertThat(error).isNotNull();
+                assertThat(error.getMessage()).contains("Guardrail limit exceeded");
+            });
+            assertConnectorNotRunning();
         }
-
-        // Configure with guardrail limit of 5 tables (less than the 10 we created)
-        Configuration config = TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.TABLE.*")
-                .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 5)
-                .with(CommonConnectorConfig.GUARDRAIL_LIMIT_ACTION, "fail")
-                .build();
-
-        // The connector should fail to start due to exceeding the guardrail limit
-        LOGGER.info("Attempting to start connector with guardrail limit exceeded, expect an error");
-        start(OracleConnector.class, config, (success, msg, error) -> {
-            assertThat(success).isFalse();
-            assertThat(error).isNotNull();
-            assertThat(error.getMessage()).contains("Guardrail limit exceeded");
-        });
-        assertConnectorNotRunning();
+        finally {
+            TestHelper.dropTable(connection, "debezium.customer2");
+        }
     }
 
     @Test
     @FixFor("DBZ-9427")
     public void shouldStartSuccessfullyWithinGuardrailLimits() throws Exception {
-        // Create a few tables within the guardrail limit
-        TestHelper.dropAllTables();
+        TestHelper.dropTable(connection, "debezium.customer2");
 
-        try (OracleConnection conn = TestHelper.testConnection()) {
-            // Create 3 tables (well below the limit of 10)
-            for (int i = 1; i <= 3; i++) {
-                conn.execute(String.format(
-                        "CREATE TABLE debezium.table%d (id NUMBER(10) PRIMARY KEY, data VARCHAR2(100))", i));
-                conn.execute(String.format("INSERT INTO debezium.table%d VALUES (%d, 'test')", i, i));
-            }
-            conn.commit();
+        try {
+            String ddl = "create table debezium.customer2 (" +
+                    "  id numeric(9,0) not null, " +
+                    "  name varchar2(1000), " +
+                    "  score decimal(6, 2), " +
+                    "  registered timestamp, " +
+                    "  primary key (id)" +
+                    ")";
+
+            connection.execute(ddl);
+            TestHelper.streamTable(connection, "debezium.customer2");
+
+            connection.execute("INSERT INTO debezium.customer2 VALUES (2, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
+            connection.execute("COMMIT");
+
+            // Configure with guardrail limit of 10 tables
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER.*")
+                    .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 10)
+                    .build();
+
+            // The connector should start successfully
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO debezium.customer VALUES (1, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
+            connection.execute("INSERT INTO debezium.customer2 VALUES (2, 'Billie-Bob', 1234.56, TO_DATE('2018-02-22', 'yyyy-mm-dd'))");
+            connection.execute("COMMIT");
+
+            // Consume all records to ensure the connector is working
+            SourceRecords records = consumeRecordsByTopic(2);
+            assertThat(records).isNotNull();
+            assertThat(records.topics()).hasSize(2);
+
+            stopConnector();
         }
-
-        // Configure with guardrail limit of 10 tables
-        Configuration config = TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
-                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM.TABLE.*")
-                .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 10)
-                .build();
-
-        // The connector should start successfully
-        start(OracleConnector.class, config);
-        assertConnectorIsRunning();
-
-        // Consume all records to ensure the connector is working
-        SourceRecords records = consumeRecordsByTopic(3); // 3 tables
-        assertThat(records).isNotNull();
-        assertThat(records.topics()).hasSize(3);
-
-        stopConnector();
+        finally {
+            TestHelper.dropTable(connection, "debezium.customer2");
+        }
     }
 }
