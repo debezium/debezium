@@ -2783,6 +2783,90 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
         }
     }
 
+    @Test
+    @FixFor("DBZ-9427")
+    public void shouldValidateGuardrailLimitsExceedsMaximumTables() throws Exception {
+        // This captures all logged messages, allowing us to verify log message was written.
+        final LogInterceptor logInterceptor = new LogInterceptor(CommonConnectorConfig.class);
+
+        final String tables = String.format("%s.products, %s.orders", DATABASE.getDatabaseName(), DATABASE.getDatabaseName());
+        // Configure with guardrail limit of 1 table
+        Configuration config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, tables)
+                .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 1)
+                .build();
+
+        // The connector should continue to run even after exceeding the guardrail limit
+        logger.info("Attempting to start connector with guardrail limit exceeded, expect a warning");
+        start(getConnectorClass(), config, (success, msg, error) -> {
+            assertThat(success).isTrue();
+            assertThat(error).isNull();
+        });
+        assertConnectorIsRunning();
+        assertThat(logInterceptor.containsWarnMessage("Guardrail limit exceeded")).isTrue();
+    }
+
+    @Test
+    @FixFor("DBZ-9427")
+    public void shouldValidateGuardrailLimitsExceedsMaximumTablesAndFailConnector() throws Exception {
+        final String tables = String.format("%s.products, %s.orders", DATABASE.getDatabaseName(), DATABASE.getDatabaseName());
+        // Configure with guardrail limit of 1 table
+        Configuration config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, tables)
+                .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 1)
+                .with(CommonConnectorConfig.GUARDRAIL_LIMIT_ACTION, "fail")
+                .build();
+
+        // The connector should fail to start due to exceeding the guardrail limit
+        logger.info("Attempting to start connector with guardrail limit exceeded, expect an error");
+        start(getConnectorClass(), config, (success, msg, error) -> {
+            assertThat(success).isFalse();
+            assertThat(error).isNotNull();
+            assertThat(error.getMessage()).contains("Guardrail limit exceeded");
+        });
+        assertConnectorNotRunning();
+    }
+
+    @Test
+    @FixFor("DBZ-9427")
+    public void shouldStartSuccessfullyWithinGuardrailLimits() throws Exception {
+        final String tables = String.format("%s.products, %s.orders", DATABASE.getDatabaseName(), DATABASE.getDatabaseName());
+        // Configure with guardrail limit of 10 tables
+        Configuration config = DATABASE.defaultConfig()
+                .with(BinlogConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .with(BinlogConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
+                .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, tables)
+                .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 10)
+                .with(CommonConnectorConfig.GUARDRAIL_LIMIT_ACTION, "fail")
+                .build();
+
+        // Start the connector ...
+        start(getConnectorClass(), config);
+        waitForSnapshotToBeCompleted(getConnectorName(), DATABASE.getServerName());
+
+        try (BinlogTestConnection db = getTestDatabaseConnection(DATABASE.getDatabaseName());
+                JdbcConnection connection = db.connect()) {
+            connection.execute("INSERT INTO orders VALUES(1000, '2022-10-09', 1002, 90, 106)");
+            connection.execute("INSERT INTO products VALUES (201,'rubberduck','Rubber Duck',2.12);");
+        }
+
+        SourceRecords records = consumeRecordsByTopic(2);
+
+        List<SourceRecord> changeEvents = records.recordsForTopic(DATABASE.topicForTable("orders"));
+        assertThat(changeEvents.size()).isEqualTo(1);
+        List<SourceRecord> changeEvents2 = records.recordsForTopic(DATABASE.topicForTable("products"));
+        assertThat(changeEvents2.size()).isEqualTo(1);
+
+        stopConnector();
+    }
+
     protected String getExpectedQuery(String statement) {
 
         return statement;

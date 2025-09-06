@@ -19,6 +19,7 @@ import java.sql.Types;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -598,6 +599,23 @@ public class SqlServerConnection extends JdbcConnection {
         catch (SQLException e) {
             throw new RuntimeException("Couldn't obtain database name", e);
         }
+    }
+
+    /**
+     * Retrieves all {@code TableId}s across all configured databases.
+     *
+     * @param databaseNames the list of database names to query
+     * @return set of all table ids for existing table objects
+     * @throws SQLException if a database exception occurred
+     */
+    public Set<TableId> getAllTableIds(Collection<String> databaseNames) throws SQLException {
+        final Set<TableId> tableIds = new HashSet<>();
+
+        for (String databaseName : databaseNames) {
+            tableIds.addAll(readTableNames(databaseName, null, null, new String[]{ "TABLE" }));
+        }
+
+        return tableIds;
     }
 
     @Override

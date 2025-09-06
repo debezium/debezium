@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
@@ -155,6 +156,9 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
             LOGGER.error("Failed testing connection for {} with user '{}'", beanRegistryJdbcConnection.connectionString(),
                     beanRegistryJdbcConnection.username(), e);
         }
+
+        // Validate guardrail limits for captured tables to prevent loading excessive table schemas into memory
+        validateGuardrailLimits(connectorConfig, jdbcConnection);
 
         validateSchemaHistory(connectorConfig, jdbcConnection::validateLogPosition, previousOffsets, schema, snapshotter);
 
@@ -445,6 +449,27 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
     public PostgresTaskContext getTaskContext() {
         return taskContext;
+    }
+
+    private void validateGuardrailLimits(PostgresConnectorConfig connectorConfig, PostgresConnection connection) {
+        try {
+            // Get all table IDs that match the connector's filters
+            Set<TableId> allTableIds = connection.getAllTableIds(connectorConfig.databaseName());
+
+            Set<TableId> capturedTables = allTableIds.stream()
+                    .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
+                    .collect(java.util.stream.Collectors.toSet());
+
+            List<String> tableNames = capturedTables.stream()
+                    .map(TableId::toString)
+                    .collect(java.util.stream.Collectors.toList());
+
+            connectorConfig.validateGuardrailLimits(capturedTables.size(), tableNames);
+
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Failed to validate guardrail limits", e);
+        }
     }
 
     private static void checkWalLevel(PostgresConnection connection, SnapshotterService snapshotterService) throws SQLException {
