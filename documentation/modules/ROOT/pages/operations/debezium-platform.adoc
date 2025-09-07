@@ -297,7 +297,7 @@ Optionally, you can edit the JSON to update the value of the `name` field or pop
 
 image::debezium-platform-smart-editor-source.png[{prodname} platform smart editor - source]
 
-Final JSON after updating the **name** and **description** 
+Th following example shows the platform configuration JSON after updates to the *name* and *description* fields. 
 [source,json,options="nowrap"]
 ----
 {
