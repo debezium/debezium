@@ -382,7 +382,7 @@ You can directly use a {prodname} Server configuration by either uploading it, o
 The Stage UI intelligently recognizes the configuration type and prompts you to reformat it for use by the platform.
 The editor automatically extracts the {prodname} server sink configuration and converts it into the JSON format that the platform supports.
 
-For example, consider the following properties of {prodname} Server configuration:
+For example, consider the following properties from a {prodname} Server configuration:
 
 [source,properties,options="nowrap"]
 ----
