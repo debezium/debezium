@@ -565,7 +565,7 @@ video::cY7TS0nWBoY[youtube, title="Create, edit and remove a pipeline"]
 
 ==== Creating a pipeline
 
-From the platform UI, open the *Pipeline* menu, and then click *Create your first pipeline*.
+. From the platform UI, open the *Pipeline* menu, and then click *Create your first pipeline*.
 The *Pipeline Designer* opens.
 From the Pipeline Designer you can add the pieces for your data pipeline.
 
