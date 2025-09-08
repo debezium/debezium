@@ -368,7 +368,7 @@ Alternately, you can extract a {prodname} Server sink configuration and automati
 [NOTE]
 ====
 image::create-destination-toolbar.png[{prodname} platform - Create sink toolbar]
-To create a sink destination from an existing {prodname} Server configuration, from the toolbar on the *Destination catalog* page, click *Create using smart editor* .
+To create a sink destination from an existing {prodname} Server configuration, from the *Destination catalog* page, click *Create using smart editor* .
 ====
 
 [id="debezium-platform-configuring-a-destination-with-the-smart-editor"]
