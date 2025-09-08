@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Test;
 import io.debezium.runtime.events.ConnectorStartedEvent;
 import io.debezium.runtime.events.PollingStartedEvent;
 import io.debezium.runtime.events.TasksStartedEvent;
+import io.quarkus.sample.app.test.DisableIfMultiEngine;
+import io.quarkus.sample.app.test.DisableIfSingleEngine;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 
 /**
@@ -23,9 +25,13 @@ import io.quarkus.test.junit.QuarkusIntegrationTest;
 @QuarkusIntegrationTest
 public class LifecycleEventIT {
 
+    /**
+     * TODO: the following test show the heartbeat functionality should be expressed by engine
+     */
     @Test
-    @DisplayName("Test Lifecycle Events")
-    public void testLifecycleEvents() {
+    @DisplayName("Test Lifecycle Events for SingleEngine")
+    @DisableIfMultiEngine
+    public void testLifecycleEventsForSingleEngine() {
         // Only concerned with up to polling started because we don't stop the connector
         await().untilAsserted(() -> assertThat(
                 get("/lifecycle-events")
@@ -33,6 +39,25 @@ public class LifecycleEventIT {
                         .statusCode(200)
                         .extract().body().jsonPath().getList(".", String.class))
                 .containsExactly(
+                        ConnectorStartedEvent.class.getName(),
+                        TasksStartedEvent.class.getName(),
+                        PollingStartedEvent.class.getName()));
+    }
+
+    @Test
+    @DisplayName("Test Lifecycle Events for multiEngine")
+    @DisableIfSingleEngine
+    public void testLifecycleEventsForMultiEngine() {
+        // Only concerned with up to polling started because we don't stop the connector
+        await().untilAsserted(() -> assertThat(
+                get("/lifecycle-events")
+                        .then()
+                        .statusCode(200)
+                        .extract().body().jsonPath().getList(".", String.class))
+                .containsExactlyInAnyOrder(
+                        ConnectorStartedEvent.class.getName(),
+                        TasksStartedEvent.class.getName(),
+                        PollingStartedEvent.class.getName(),
                         ConnectorStartedEvent.class.getName(),
                         TasksStartedEvent.class.getName(),
                         PollingStartedEvent.class.getName()));

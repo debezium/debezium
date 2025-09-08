@@ -10,7 +10,7 @@
 
     <artifactId>quarkus-debezium-postgres-integration-tests</artifactId>
 
-    <name>Quarkus Debezium :: Extension :: Postgres :: Integration Test</name>
+    <name>Quarkus Debezium :: Extension :: Postgres :: Integration Tests</name>
 
     <dependencies>
         <dependency>
@@ -126,7 +126,26 @@
                                 </env>
                                 <volumes>
                                     <bind>
-                                        <volume>${project.basedir}/src/main/resources/init.sql:/docker-entrypoint-initdb.d/default.sql</volume>
+                                        <volume>${project.basedir}/src/main/resources/sql/default.sql:/docker-entrypoint-initdb.d/default.sql</volume>
+                                    </bind>
+                                </volumes>
+                            </run>
+                        </image>
+                        <image>
+                            <name>quay.io/debezium/postgres:15</name>
+                            <alias>postgres</alias>
+                            <run>
+                                <ports>
+                                    <port>5433:5432</port>
+                                </ports>
+                                <env>
+                                    <POSTGRES_USER>alternative</POSTGRES_USER>
+                                    <POSTGRES_PASSWORD>alternative</POSTGRES_PASSWORD>
+                                    <POSTGRES_DB>alternative</POSTGRES_DB>
+                                </env>
+                                <volumes>
+                                    <bind>
+                                        <volume>${project.basedir}/src/main/resources/default.sql:/docker-entrypoint-initdb.d/default.sql</volume>
                                     </bind>
                                 </volumes>
                             </run>
