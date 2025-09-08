@@ -21,7 +21,6 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>quarkus-debezium-postgres</artifactId>
         </dependency>
-
         <dependency>
             <groupId>io.rest-assured</groupId>
             <artifactId>rest-assured</artifactId>
@@ -145,7 +144,7 @@
                                 </env>
                                 <volumes>
                                     <bind>
-                                        <volume>${project.basedir}/src/main/resources/default.sql:/docker-entrypoint-initdb.d/default.sql</volume>
+                                        <volume>${project.basedir}/src/main/resources/sql/alternative.sql:/docker-entrypoint-initdb.d/alternative.sql</volume>
                                     </bind>
                                 </volumes>
                             </run>
