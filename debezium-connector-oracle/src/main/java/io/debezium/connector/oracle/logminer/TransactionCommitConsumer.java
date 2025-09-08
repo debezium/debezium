@@ -8,7 +8,7 @@ package io.debezium.connector.oracle.logminer;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -91,7 +91,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     private final ConstructionDetails currentExtendedStringDetails = new ConstructionDetails();
     private final ConstructionDetails currentXmlDetails = new ConstructionDetails();
 
-    private int transactionIndex = 0;
+    private long transactionIndex = 0;
     private int totalEvents = 0;
 
     public TransactionCommitConsumer(Handler<LogMinerEvent> delegate, OracleConnectorConfig connectorConfig, OracleDatabaseSchema schema) {
@@ -104,9 +104,10 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     public void close() throws InterruptedException {
         // dispatch the remaining events in the order we received them from LogMiner
         List<RowState> pending = new ArrayList<>(rows.values());
-        Collections.sort(pending, (a, b) -> a.transactionIndex - b.transactionIndex);
+        pending.sort(Comparator.comparingLong(x -> x.transactionIndex));
+
         for (final RowState rowState : pending) {
-            prepareAndDispatch(rowState.event);
+            prepareAndDispatch(rowState.event, rowState.transactionIndex);
         }
 
         // For situations where the consumer instance is reused, reset internal state
@@ -116,6 +117,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         currentXmlDetails.reset();
 
         totalEvents = 0;
+        transactionIndex = 0;
     }
 
     @Override
@@ -125,7 +127,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
 
         if (!connectorConfig.isLobEnabled()) {
             // LOB support is not enabled, perform immediate dispatch
-            dispatchChangeEvent(event);
+            dispatchChangeEvent(event, totalEvents);
             return;
         }
 
@@ -153,6 +155,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         String rowId = rowIdFromEvent(table, event);
         RowState rowState = rows.get(rowId);
         DmlEvent accumulatorEvent = (null == rowState) ? null : rowState.event;
+        Long accumulatorEventIndex = (null == rowState) ? null : rowState.transactionIndex;
 
         // DBZ-6963
         // This short-circuits the commit consumer's accumulation logic by assessing whether the
@@ -165,12 +168,12 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
             // queue with the logic below. Therefore, there is no need to attempt to dispatch the
             // accumulator as it should be null.
             LOGGER.debug("\tEvent for table {} has no LOB columns, dispatching.", table.id());
-            dispatchChangeEvent(event);
+            dispatchChangeEvent(event, transactionIndex);
             return;
         }
 
         if (!tryMerge(accumulatorEvent, event)) {
-            prepareAndDispatch(accumulatorEvent);
+            prepareAndDispatch(accumulatorEvent, accumulatorEventIndex);
             if (rowId.equals(currentLobDetails.rowId)) {
                 currentLobDetails.reset();
             }
@@ -300,8 +303,8 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         values[details.columnPosition] = constructor.apply(prevValue);
     }
 
-    private void prepareAndDispatch(DmlEvent event) throws InterruptedException {
-        if (null == event) { // we just added the first event for this row
+    private void prepareAndDispatch(DmlEvent event, Long eventIndex) throws InterruptedException {
+        if (null == event || null == eventIndex) { // we just added the first event for this row
             return;
         }
         Object[] values = newValues(event);
@@ -326,7 +329,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
                 return;
             }
         }
-        dispatchChangeEvent(event);
+        dispatchChangeEvent(event, eventIndex);
     }
 
     private boolean tryMerge(DmlEvent prev, DmlEvent next) {
@@ -501,9 +504,9 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         return BLOB_TYPE.equalsIgnoreCase(column.typeName()) || CLOB_TYPE.equalsIgnoreCase(column.typeName());
     }
 
-    private void dispatchChangeEvent(LogMinerEvent event) throws InterruptedException {
+    private void dispatchChangeEvent(LogMinerEvent event, long eventIndex) throws InterruptedException {
         LOGGER.trace("\tEmitting event {} {}", event.getEventType(), event);
-        delegate.accept(event, totalEvents);
+        delegate.accept(event, eventIndex, totalEvents);
     }
 
     private String rowIdFromEvent(Table table, DmlEvent event) {
@@ -991,9 +994,9 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
 
     private static class RowState {
         final DmlEvent event;
-        final int transactionIndex;
+        final long transactionIndex;
 
-        RowState(final DmlEvent event, final int transactionIndex) {
+        RowState(final DmlEvent event, final long transactionIndex) {
             this.event = event;
             this.transactionIndex = transactionIndex;
         }
@@ -1001,6 +1004,6 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
 
     @FunctionalInterface
     public interface Handler<T> {
-        void accept(T event, long eventsProcessed) throws InterruptedException;
+        void accept(T event, long eventIndex, long eventsProcessed) throws InterruptedException;
     }
 }
