@@ -404,6 +404,11 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             dispatchTransactionCommittedEvent = !skipEvents;
             final ZoneOffset databaseOffset = getMetrics().getDatabaseOffset();
             TransactionCommitConsumer.Handler<LogMinerEvent> delegate = (event, eventIndex, eventsProcessed) -> {
+                // Update SCN in offset context only if processed SCN less than SCN of other transactions
+                if (smallestScn.isNull() || commitScn.compareTo(smallestScn) < 0) {
+                    getMetrics().setOldestScnDetails(event.getScn(), event.getChangeTime());
+                }
+
                 if (Objects.equals(getOffsetContext().getTransactionId(), event.getTransactionId())) {
                     if (getOffsetContext().getTransactionSequence() != null) {
                         if (getOffsetContext().getTransactionSequence() >= eventIndex) {
