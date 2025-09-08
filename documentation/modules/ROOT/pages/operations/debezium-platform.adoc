@@ -567,7 +567,7 @@ video::cY7TS0nWBoY[youtube, title="Create, edit and remove a pipeline"]
 
 . From the platform UI, open the *Pipeline* menu, and then click *Create your first pipeline*.
 The *Pipeline Designer* opens.
-From the Pipeline Designer you can add the pieces for your data pipeline.
+From the *Pipeline designer*, specify the components that you want to add to your data pipeline.
 
 . Click the **+ Source** box to add a source, and then choose a previously created source, or create a new source.
 
