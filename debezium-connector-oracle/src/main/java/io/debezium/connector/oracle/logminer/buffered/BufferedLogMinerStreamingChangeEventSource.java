@@ -15,6 +15,7 @@ import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -396,30 +397,34 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             return;
         }
 
-        getBatchMetrics().commitObserved();
-
-        // When a COMMIT is received, regardless of the number of events it has, it still
-        // must be recorded in the commit scn for the node to guarantee updates to the
-        // offsets. This must be done prior to dispatching the transaction-commit or the
-        // heartbeat event that follows commit dispatch.
-        getOffsetContext().getCommitScn().recordCommit(row);
-
         Instant start = Instant.now();
         boolean dispatchTransactionCommittedEvent = false;
         if (numEvents > 0) {
             final boolean skipEvents = isTransactionSkippedAtCommit(transaction);
             dispatchTransactionCommittedEvent = !skipEvents;
             final ZoneOffset databaseOffset = getMetrics().getDatabaseOffset();
-            TransactionCommitConsumer.Handler<LogMinerEvent> delegate = (event, eventsProcessed) -> {
-                // Update SCN in offset context only if processed SCN less than SCN of other transactions
-                if (smallestScn.isNull() || commitScn.compareTo(smallestScn) < 0) {
-                    getOffsetContext().setScn(event.getScn());
-                    getMetrics().setOldestScnDetails(event.getScn(), event.getChangeTime());
+            TransactionCommitConsumer.Handler<LogMinerEvent> delegate = (event, eventIndex, eventsProcessed) -> {
+                if (Objects.equals(getOffsetContext().getTransactionId(), event.getTransactionId())) {
+                    if (getOffsetContext().getTransactionSequence() != null) {
+                        if (getOffsetContext().getTransactionSequence() >= eventIndex) {
+                            LOGGER.info("Skipping event {} in transaction {} - has already been sent.", eventIndex, event.getTransactionId());
+
+                            Loggings.logDebugAndTraceRecord(
+                                    LOGGER,
+                                    event,
+                                    "Skipping event {} in transaction {} - has already been sent.",
+                                    eventIndex,
+                                    event.getTransactionId());
+
+                            return;
+                        }
+                    }
                 }
 
                 getOffsetContext().setEventScn(event.getScn());
                 getOffsetContext().setEventCommitScn(row.getScn());
                 getOffsetContext().setTransactionId(transactionId);
+                getOffsetContext().setTransactionSequence(eventIndex);
                 getOffsetContext().setUserName(transaction.getUserName());
                 getOffsetContext().setSourceTime(event.getChangeTime().minusSeconds(databaseOffset.getTotalSeconds()));
                 getOffsetContext().setTableId(event.getTableId());
@@ -428,7 +433,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 getOffsetContext().setRowId(event.getRowId());
                 getOffsetContext().setCommitTime(row.getChangeTime().minusSeconds(databaseOffset.getTotalSeconds()));
 
-                if (eventsProcessed == 1) {
+                if (eventIndex == 1) {
                     getOffsetContext().setStartScn(event.getScn());
                     getOffsetContext().setStartTime(event.getChangeTime().minusSeconds(databaseOffset.getTotalSeconds()));
                 }
@@ -482,8 +487,13 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                     return true;
                 });
             }
+
+            if (!getContext().isRunning()) {
+                return;
+            }
         }
 
+        getOffsetContext().getCommitScn().recordCommit(row);
         getOffsetContext().setEventScn(commitScn);
         getOffsetContext().setRsId(row.getRsId());
         getOffsetContext().setRowId("");
@@ -497,6 +507,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
         else {
             getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
         }
+
+        getBatchMetrics().commitObserved();
 
         if (transaction != null) {
             finalizeTransaction(transactionId, commitScn, false);

@@ -492,10 +492,17 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
      * Handles the dispatch of events added to the {@link #accumulator}.
      *
      * @param event the event to be dispatched, never {@code null}
+     * @param eventIndex the event's index in the transaction
      * @param eventsProcessed the number of events dispatched thus far
      * @throws InterruptedException if the thread is interrupted
      */
-    protected void dispatchEvent(LogMinerEvent event, long eventsProcessed) throws InterruptedException {
+    protected void dispatchEvent(LogMinerEvent event, long eventIndex, long eventsProcessed) throws InterruptedException {
+        // NOTE:
+        // When using the unbuffered mode, we rely on the LogMinerEvent's TransactionSequence value, which is
+        // guaranteed to have the right value rather than using the synthetic eventIndex Debezium generates.
+        // This makes sure that if the connector configuration is changed, such as a table added or removed
+        // from the include list, the sequence is unaffected and the restart position is always the same.
+
         if (event instanceof TruncateEvent truncateEvent) {
             final int databaseOffsetSeconds = databaseOffset.getTotalSeconds();
 
