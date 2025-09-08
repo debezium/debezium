@@ -12,11 +12,8 @@ import static org.mockito.Mockito.when;
 
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
-import jakarta.enterprise.inject.Instance;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,7 +26,6 @@ import io.quarkus.debezium.notification.QuarkusNotificationChannel;
 
 class PostgresEngineProducerTest {
 
-    private final Instance<PostgresDatasourceConfiguration> instance = mock(Instance.class);
     private final QuarkusNotificationChannel quarkusNotificationChannel = mock(QuarkusNotificationChannel.class);
 
     @Test
@@ -78,21 +74,18 @@ class PostgresEngineProducerTest {
     @Test
     @DisplayName("should use debezium configurations when contains datasource information")
     void shouldUseDebeziumConfigurationWhenContainsDatasourceInformation() {
-        List<PostgresDatasourceConfiguration> configurations = List.of(new PostgresDatasourceConfiguration(
-                "host",
-                "username",
-                "password",
-                "database",
-                "1926",
-                true,
-                "<default>"));
-
         when(quarkusNotificationChannel.name()).thenReturn("a_name");
-        when(instance.iterator()).thenReturn(configurations.iterator());
-        when(instance.stream()).thenReturn(configurations.stream());
 
         var underTest = new PostgresEngineProducer(mock(DefaultStateHandler.class),
-                instance,
+                Map.of(
+                        "default", new PostgresDatasourceConfiguration(
+                                "host",
+                                "username",
+                                "password",
+                                "database",
+                                "1926",
+                                true,
+                                "<default>")),
                 quarkusNotificationChannel,
                 event -> {
                     /* ignore */ });

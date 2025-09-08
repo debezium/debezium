@@ -30,9 +30,9 @@ import io.debezium.runtime.ConnectorProducer;
 import io.debezium.runtime.Debezium;
 import io.debezium.runtime.DebeziumConnectorRegistry;
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
+import io.debezium.runtime.configuration.QuarkusDatasourceConfiguration;
 import io.quarkus.debezium.configuration.DebeziumConfigurationEngineParser;
 import io.quarkus.debezium.configuration.DebeziumConfigurationEngineParser.MultiEngineConfiguration;
-import io.quarkus.debezium.configuration.PostgresDatasourceConfiguration;
 import io.quarkus.debezium.engine.capture.consumer.SourceRecordEventConsumer;
 import io.quarkus.debezium.notification.QuarkusNotificationChannel;
 
@@ -43,14 +43,14 @@ public class PostgresEngineProducer implements ConnectorProducer {
     public static final String DEBEZIUM_DATASOURCE_HOSTNAME = DATABASE_CONFIG_PREFIX + JdbcConfiguration.HOSTNAME.name();
 
     private final StateHandler stateHandler;
-    private final Map<String, PostgresDatasourceConfiguration> quarkusDatasourceConfigurations;
+    private final Map<String, QuarkusDatasourceConfiguration> quarkusDatasourceConfigurations;
     private final QuarkusNotificationChannel channel;
     private final SourceRecordEventConsumer sourceRecordEventConsumer;
     private final DebeziumConfigurationEngineParser engineParser = new DebeziumConfigurationEngineParser();
 
     @Inject
     public PostgresEngineProducer(StateHandler stateHandler,
-                                  Instance<PostgresDatasourceConfiguration> configurations,
+                                  Instance<QuarkusDatasourceConfiguration> configurations,
                                   QuarkusNotificationChannel channel,
                                   SourceRecordEventConsumer sourceRecordEventConsumer) {
         this.stateHandler = stateHandler;
@@ -58,11 +58,11 @@ public class PostgresEngineProducer implements ConnectorProducer {
         this.sourceRecordEventConsumer = sourceRecordEventConsumer;
         this.quarkusDatasourceConfigurations = configurations
                 .stream()
-                .collect(Collectors.toMap(PostgresDatasourceConfiguration::getSanitizedName, Function.identity()));
+                .collect(Collectors.toMap(QuarkusDatasourceConfiguration::getSanitizedName, Function.identity()));
     }
 
     public PostgresEngineProducer(StateHandler stateHandler,
-                                  Map<String, PostgresDatasourceConfiguration> quarkusDatasourceConfigurations,
+                                  Map<String, QuarkusDatasourceConfiguration> quarkusDatasourceConfigurations,
                                   QuarkusNotificationChannel channel,
                                   SourceRecordEventConsumer sourceRecordEventConsumer) {
         this.stateHandler = stateHandler;
@@ -74,6 +74,7 @@ public class PostgresEngineProducer implements ConnectorProducer {
     @Produces
     @Singleton
     public DebeziumConnectorRegistry engine(DebeziumEngineConfiguration debeziumEngineConfiguration) {
+
         /*
          * creates a debezium engine using the database coordinates taken from Debezium convention (legacy way)
          * in the legacy way we do not support multi-engine
@@ -89,17 +90,17 @@ public class PostgresEngineProducer implements ConnectorProducer {
          */
         List<MultiEngineConfiguration> enrichedMultiEngineConfigurations = multiEngineConfigurations
                 .stream()
-                .map(this::enrichConfiguration)
+                .map(engine -> enrichConfiguration(engine, quarkusDatasourceConfigurations))
                 .toList();
 
         return new DebeziumConnectorRegistry() {
             private final Map<String, Debezium> engines = enrichedMultiEngineConfigurations
                     .stream()
-                    .map(a -> Map.entry(a.groupId(), new SourceRecordDebezium(
-                            a.configuration(),
+                    .map(engine -> Map.entry(engine.groupId(), new SourceRecordDebezium(
+                            engine.configuration(),
                             stateHandler,
                             POSTGRES,
-                            sourceRecordEventConsumer)))
+                            sourceRecordEventConsumer, new CaptureGroup(engine.groupId()))))
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
             @Override
@@ -119,20 +120,20 @@ public class PostgresEngineProducer implements ConnectorProducer {
         };
     }
 
-    private MultiEngineConfiguration enrichConfiguration(MultiEngineConfiguration engine) {
+    private MultiEngineConfiguration enrichConfiguration(MultiEngineConfiguration engine, Map<String, QuarkusDatasourceConfiguration> collect) {
         HashMap<String, String> mutableMap = new HashMap<>(engine.configuration());
 
         mutableMap.compute(NOTIFICATION_ENABLED_CHANNELS.name(),
                 (key, value) -> value == null ? channel.name() : value.concat("," + channel.name()));
 
-        mutableMap.putAll(getQuarkusDatasourceConfigurationByGroupId(engine.groupId()).asDebezium());
+        mutableMap.putAll(getQuarkusDatasourceConfigurationByGroupId(engine.groupId(), collect).asDebezium());
         mutableMap.put(CONNECTOR_CLASS.name(), POSTGRES.name());
 
         return new MultiEngineConfiguration(engine.groupId(), mutableMap);
     }
 
-    private PostgresDatasourceConfiguration getQuarkusDatasourceConfigurationByGroupId(String groupId) {
-        PostgresDatasourceConfiguration configuration = quarkusDatasourceConfigurations.get(groupId);
+    private QuarkusDatasourceConfiguration getQuarkusDatasourceConfigurationByGroupId(String groupId, Map<String, QuarkusDatasourceConfiguration> collect) {
+        QuarkusDatasourceConfiguration configuration = collect.get(groupId);
 
         if (configuration == null) {
             throw new IllegalArgumentException("No datasource configuration found for group " + groupId);
@@ -150,7 +151,7 @@ public class PostgresEngineProducer implements ConnectorProducer {
             private final SourceRecordDebezium engine = new SourceRecordDebezium(configuration,
                     stateHandler,
                     POSTGRES,
-                    sourceRecordEventConsumer);
+                    sourceRecordEventConsumer, new CaptureGroup("default"));
 
             @Override
             public Connector connector() {

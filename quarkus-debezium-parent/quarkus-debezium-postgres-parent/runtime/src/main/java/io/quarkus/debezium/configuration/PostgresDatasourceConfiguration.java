@@ -58,6 +58,7 @@ public class PostgresDatasourceConfiguration implements QuarkusDatasourceConfigu
         return name;
     }
 
+    @Override
     public String getSanitizedName() {
         return name.replaceAll("[<>]", "");
     }

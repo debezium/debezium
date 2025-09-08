@@ -16,6 +16,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.runtime.DebeziumStatus;
+import io.quarkus.sample.app.test.DisableIfSingleEngine;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.restassured.RestAssured;
 
@@ -47,7 +48,7 @@ public class SampleNativeApplicationIT {
 
     @Test
     @DisplayName("Debezium should capture deserialized events")
-    void name() {
+    void shouldCaptureDeserializedEvents() {
         await().untilAsserted(() -> RestAssured
                 .given()
                 .redirects().follow(false)
@@ -61,9 +62,24 @@ public class SampleNativeApplicationIT {
                 .body("[0].description", equalTo("red hat t-shirt"))
                 .body("[1].id", equalTo(2))
                 .body("[1].name", equalTo("sweatshirt"))
-                .body("[1].description", equalTo("blue ibm sweatshirt"))
+                .body("[1].description", equalTo("blue ibm sweatshirt")));
+    }
 
-        );
-
+    @Test
+    @DisplayName("should get multiple engines")
+    @DisableIfSingleEngine
+    void shouldGetMultipleEngines() {
+        await().untilAsserted(() -> RestAssured
+                .given()
+                .redirects().follow(false)
+                .when()
+                .get("/api/debezium/engines")
+                .then()
+                .statusCode(200)
+                .body("$", hasSize(2))
+                .body("[0].group", equalTo("default"))
+                .body("[0].connector", equalTo("io.debezium.connector.postgresql.PostgresConnector"))
+                .body("[1].group", equalTo("alternative"))
+                .body("[1].connector", equalTo("io.debezium.connector.postgresql.PostgresConnector")));
     }
 }

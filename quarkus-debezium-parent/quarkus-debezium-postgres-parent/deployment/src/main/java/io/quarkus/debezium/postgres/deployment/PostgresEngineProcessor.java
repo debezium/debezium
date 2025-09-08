@@ -9,6 +9,9 @@ import java.util.List;
 
 import jakarta.inject.Singleton;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.connector.postgresql.Module;
 import io.debezium.connector.postgresql.PostgresConnector;
 import io.debezium.connector.postgresql.PostgresConnectorTask;
@@ -16,11 +19,11 @@ import io.debezium.connector.postgresql.PostgresSourceInfoStructMaker;
 import io.debezium.connector.postgresql.snapshot.lock.NoSnapshotLock;
 import io.debezium.connector.postgresql.snapshot.lock.SharedSnapshotLock;
 import io.debezium.connector.postgresql.snapshot.query.SelectAllSnapshotQuery;
+import io.debezium.runtime.configuration.QuarkusDatasourceConfiguration;
 import io.quarkus.agroal.spi.JdbcDataSourceBuildItem;
 import io.quarkus.arc.deployment.SyntheticBeanBuildItem;
 import io.quarkus.datasource.deployment.spi.DevServicesDatasourceResultBuildItem;
 import io.quarkus.debezium.configuration.DatasourceRecorder;
-import io.quarkus.debezium.configuration.PostgresDatasourceConfiguration;
 import io.quarkus.debezium.deployment.items.DebeziumConnectorBuildItem;
 import io.quarkus.debezium.engine.PostgresEngineProducer;
 import io.quarkus.deployment.IsNormal;
@@ -36,6 +39,7 @@ import io.quarkus.deployment.pkg.steps.NativeOrNativeSourcesBuild;
 
 public class PostgresEngineProcessor {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(PostgresEngineProcessor.class.getName());
     public static final String POSTGRESQL = Module.name();
 
     @BuildStep
@@ -59,11 +63,11 @@ public class PostgresEngineProcessor {
                 .stream()
                 .filter(item -> item.getDbKind().equals(POSTGRESQL))
                 .forEach(item -> producer.produce(SyntheticBeanBuildItem
-                        .configure(PostgresDatasourceConfiguration.class)
+                        .configure(QuarkusDatasourceConfiguration.class)
                         .scope(Singleton.class)
                         .supplier(datasourceRecorder.convert(item.getName(), item.isDefault()))
                         .setRuntimeInit()
-                        .name(item.getName())
+                        .named(item.getDbKind() + item.getName())
                         .done()));
     }
 

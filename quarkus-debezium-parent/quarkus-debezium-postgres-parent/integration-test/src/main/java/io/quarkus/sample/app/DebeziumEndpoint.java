@@ -47,4 +47,17 @@ public class DebeziumEndpoint {
         }
         return Response.ok(captureService.products()).build();
     }
+
+    @GET
+    @Path("engines")
+    public Response product() {
+        return Response.ok(registry.engines()
+                .stream()
+                .map(engine -> new EngineManifest(engine.captureGroup().id(), engine.connector().name()))
+                .toList()).build();
+    }
+
+    record EngineManifest(String group, String connector) {
+
+    }
 }
