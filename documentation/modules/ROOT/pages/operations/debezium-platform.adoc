@@ -592,7 +592,7 @@ After you finish designing your pipeline, click **Configure Pipeline**, and then
 
 ==== Creating a pipeline from a {prodname} Server configuration
 
-The Pipeline Designer provides an option to create data pipeline resources (that is, source, destination, and transforms) by uploading an existing {prodname} Server configuration properties file .
+The *Pipeline designer* provides an option to create data pipeline resources (that is, source, destination, and transforms) by uploading an existing {prodname} Server configuration properties file .
 
 * In the *Pipeline designer*, click *DBZ server config*, upload, or drag and drop a {prodname} server properties file, and then click *Create*.
 The designer creates the Source, Transforms, and Destination for the pipeline, based on the {prodname} server configuration that you provided. 
