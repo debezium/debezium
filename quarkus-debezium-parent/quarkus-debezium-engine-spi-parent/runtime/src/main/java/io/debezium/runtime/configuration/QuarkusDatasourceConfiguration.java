@@ -22,4 +22,9 @@ public interface QuarkusDatasourceConfiguration {
      * Identify the default definition of datasource
      */
     boolean isDefault();
+
+    /**
+     * get the sanitized name (without special characters like <>) associated to this configuration
+     */
+    String getSanitizedName();
 }

@@ -28,11 +28,13 @@ class SourceRecordDebezium extends RunnableDebezium {
     private final DebeziumEngine<?> engine;
     private final Connector connector;
     private final StateHandler stateHandler;
+    private final CaptureGroup captureGroup;
 
     SourceRecordDebezium(Map<String, String> configuration,
                          StateHandler stateHandler,
                          Connector connector,
-                         SourceRecordEventConsumer consumer) {
+                         SourceRecordEventConsumer consumer,
+                         CaptureGroup captureGroup) {
         this.configuration = configuration;
         this.stateHandler = stateHandler;
         this.engine = DebeziumEngine.create(Connect.class, Connect.class)
@@ -47,6 +49,7 @@ class SourceRecordDebezium extends RunnableDebezium {
                 .build();
         this.stateHandler.setDebeziumEngine(this);
         this.connector = connector;
+        this.captureGroup = captureGroup;
     }
 
     @Override
@@ -71,7 +74,7 @@ class SourceRecordDebezium extends RunnableDebezium {
 
     @Override
     public CaptureGroup captureGroup() {
-        return new CaptureGroup("default");
+        return captureGroup;
     }
 
     protected void run() {

@@ -14,6 +14,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.runtime.events.DebeziumHeartbeat;
+import io.quarkus.sample.app.test.DisableIfMultiEngine;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 
 @QuarkusIntegrationTest
@@ -21,6 +22,7 @@ class HeartbeatEventIT {
 
     @Test
     @DisplayName("should get an heartbeat")
+    @DisableIfMultiEngine
     void shouldGetHeartbeat() {
         await().untilAsserted(() -> assertThat(
                 get("/heartbeat")

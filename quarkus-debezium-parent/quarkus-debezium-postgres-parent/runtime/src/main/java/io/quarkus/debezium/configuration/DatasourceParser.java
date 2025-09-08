@@ -10,10 +10,14 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.jdbc.JdbcConfiguration;
 
 public class DatasourceParser {
 
+    private static final Logger logger = LoggerFactory.getLogger(DatasourceParser.class);
     public static final String REGEX = "jdbc:[a-z]+://(?<hostname>[^:/;?]+)(:(?<port>\\d+))?([/;](?<dbname>[^?;]+))?";
     private static final Pattern pattern = Pattern.compile(REGEX);
     private final String value;
@@ -26,6 +30,8 @@ public class DatasourceParser {
         Matcher matcher = pattern.matcher(value);
 
         if (matcher.find()) {
+            logger.trace("Found datasource definition for {}", value);
+
             String host = matcher.group(JdbcConfiguration.HOSTNAME.name());
             String port = matcher.group(JdbcConfiguration.PORT.name());
             String database = matcher.group(JdbcConfiguration.DATABASE.name());
@@ -33,6 +39,7 @@ public class DatasourceParser {
             return Optional.of(new JdbcDatasource(host, port, database));
         }
 
+        logger.warn("Unable to parse datasource: {}", value);
         return Optional.empty();
     }
 
