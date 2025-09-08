@@ -578,7 +578,7 @@ From the *Pipeline designer*, specify the components that you want to add to you
 The sequence in which {prodname} applies transformations to the source is significant and affects the final output. 
 Verify that the sequence that you specify results in the expected output. 
 
-In the pipeline designer you can delete a transform, or alter the sequence of applied transforms. 
+In the Pipeline designer* you can delete a transform, or alter the sequence of applied transforms. 
 For more information about using the pipeline designer, see xref:debezium-platform-using-the-pipeline-designer-to-remove-and-order-transformations[using the Pipeline designer to remove and order transformations].
 
 [NOTE]
