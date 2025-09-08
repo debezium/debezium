@@ -55,4 +55,16 @@ public interface DebeziumEngineConfiguration {
         @WithParentName
         Map<String, String> configurations();
     }
+
+    interface DeserializerConfiguration {
+        /**
+         * destination for which the event is intended
+         */
+        Optional<String> destination();
+
+        /**
+         * deserializer class for the event associated to a destination
+         */
+        Optional<String> deserializer();
+    }
 }
