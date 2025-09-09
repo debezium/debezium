@@ -338,7 +338,6 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     .collect(Collectors.toList());
 
             connectorConfig.validateGuardrailLimits(collections.size(), collectionNames);
-
         }
         catch (InterruptedException e) {
             Thread.currentThread().interrupt();
