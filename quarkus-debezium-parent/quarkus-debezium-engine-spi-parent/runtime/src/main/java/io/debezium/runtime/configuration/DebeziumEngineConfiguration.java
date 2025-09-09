@@ -45,9 +45,15 @@ public interface DebeziumEngineConfiguration {
         Optional<String> destination();
 
         /**
-         * deserializer class for the event associated to a destination
+         * deserializers in a multi-engine configuration
          */
         Optional<String> deserializer();
+
+        /**
+         * blablabla
+         */
+        @WithParentName
+        Map<String, DeserializerConfiguration> deserializers();
 
         /**
          * configuration properties for debezium multi-engine
@@ -56,15 +62,18 @@ public interface DebeziumEngineConfiguration {
         Map<String, String> configurations();
     }
 
+    /**
+     * deserializer configuration
+     */
     interface DeserializerConfiguration {
         /**
          * destination for which the event is intended
          */
-        Optional<String> destination();
+        String destination();
 
         /**
          * deserializer class for the event associated to a destination
          */
-        Optional<String> deserializer();
+        String deserializer();
     }
 }

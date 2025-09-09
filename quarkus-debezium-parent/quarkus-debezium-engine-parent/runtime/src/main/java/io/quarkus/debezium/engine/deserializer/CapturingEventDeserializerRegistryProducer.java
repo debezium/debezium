@@ -16,6 +16,8 @@ import jakarta.inject.Singleton;
 
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.source.SourceRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
 import io.quarkus.debezium.engine.CapturingEventDeserializer;
@@ -23,32 +25,46 @@ import io.quarkus.debezium.engine.SourceRecordDeserializer;
 
 public class CapturingEventDeserializerRegistryProducer {
 
+    private final Logger LOGGER = LoggerFactory.getLogger(CapturingEventDeserializerRegistryProducer.class);
     private final JsonConverter converter = new JsonConverter();
 
     @Produces
     @Singleton
     public CapturingEventDeserializerRegistry<SourceRecord> produce(DebeziumEngineConfiguration configuration) {
+        Map<String, CapturingEventDeserializer<?, SourceRecord>> nestedDeserializers = configuration
+                .capturing()
+                .values()
+                .stream()
+                .flatMap(a -> a.deserializers().values().stream())
+                .collect(toMap(DebeziumEngineConfiguration.DeserializerConfiguration::destination,
+                        config -> getDeserializer(config.deserializer())));
+
+        Map<String, CapturingEventDeserializer<?, SourceRecord>> deserializers = configuration
+                .capturing()
+                .values()
+                .stream()
+                .filter(config -> config.deserializer().isPresent() && config.destination().isPresent())
+                .collect(toMap(config -> config.destination().get(), config -> getDeserializer(config.deserializer().get())));
+
+        deserializers.putAll(nestedDeserializers);
+
+        LOGGER.trace("Collecting deserializers: {}", deserializers.keySet());
+
         return new MutableCapturingEventDeserializerRegistry<>() {
-            private final Map<String, CapturingEventDeserializer<?, SourceRecord>> registry = configuration
-                    .capturing()
-                    .values()
-                    .stream()
-                    .filter(config -> config.deserializer().isPresent() && config.destination().isPresent())
-                    .collect(toMap(config -> config.destination().get(), config -> getDeserializer(config.deserializer().get())));
 
             @Override
             public void register(String identifier, Deserializer<?> deserializer) {
-                registry.put(identifier, new SourceRecordDeserializer<>(deserializer, converter));
+                deserializers.put(identifier, new SourceRecordDeserializer<>(deserializer, converter));
             }
 
             @Override
             public void unregister(String identifier) {
-                registry.remove(identifier);
+                deserializers.remove(identifier);
             }
 
             @Override
             public CapturingEventDeserializer<?, SourceRecord> get(String identifier) {
-                return registry.get(identifier);
+                return deserializers.get(identifier);
             }
         };
     }

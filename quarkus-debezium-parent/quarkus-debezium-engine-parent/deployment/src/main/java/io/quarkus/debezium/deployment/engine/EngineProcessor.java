@@ -242,6 +242,16 @@ public class EngineProcessor {
                                 .reason(getClass().getName())
                                 .build()));
 
+        debeziumEngineConfiguration.capturing().values()
+                .stream()
+                .flatMap(a -> a.deserializers().values().stream())
+                .map(DebeziumEngineConfiguration.DeserializerConfiguration::deserializer)
+                .forEach(a -> reflectiveClasses.produce(
+                        ReflectiveClassBuildItem
+                                .builder(a)
+                                .reason(getClass().getName())
+                                .build()));
+
         reflectiveClasses.produce(ReflectiveClassBuildItem.builder(
                 ArcHeartbeatFactory.class,
                 ArcPostProcessorFactory.class,

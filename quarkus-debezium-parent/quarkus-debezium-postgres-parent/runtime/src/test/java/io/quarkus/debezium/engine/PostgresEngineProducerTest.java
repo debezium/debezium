@@ -45,8 +45,10 @@ class PostgresEngineProducerTest {
                                 true,
                                 "<default>")),
                 quarkusNotificationChannel,
-                event -> {
-                    /* ignore */ });
+                ignore -> {
+                    return event -> {
+                    };
+                });
 
         assertThat(underTest.engine(new DebeziumEngineConfiguration() {
             @Override
@@ -87,8 +89,10 @@ class PostgresEngineProducerTest {
                                 true,
                                 "<default>")),
                 quarkusNotificationChannel,
-                event -> {
-                    /* ignore */ });
+                ignore -> {
+                    return event -> {
+                    };
+                });
 
         assertThat(underTest.engine(new DebeziumEngineConfiguration() {
             @Override
@@ -135,8 +139,10 @@ class PostgresEngineProducerTest {
                                 false,
                                 "another")),
                 quarkusNotificationChannel,
-                event -> {
-                    /* ignore */ });
+                ignore -> {
+                    return event -> {
+                    };
+                });
 
         DebeziumConnectorRegistry registry = underTest.engine(new DebeziumEngineConfiguration() {
             @Override
@@ -163,6 +169,11 @@ class PostgresEngineProducerTest {
                     }
 
                     @Override
+                    public Map<String, DeserializerConfiguration> deserializers() {
+                        return Map.of();
+                    }
+
+                    @Override
                     public Map<String, String> configurations() {
                         return Map.of("configuration.key", "default_value");
                     }
@@ -180,6 +191,11 @@ class PostgresEngineProducerTest {
                     @Override
                     public Optional<String> deserializer() {
                         return Optional.empty();
+                    }
+
+                    @Override
+                    public Map<String, DeserializerConfiguration> deserializers() {
+                        return Map.of();
                     }
 
                     @Override
