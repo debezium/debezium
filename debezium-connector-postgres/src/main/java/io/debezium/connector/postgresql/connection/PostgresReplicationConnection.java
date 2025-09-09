@@ -689,9 +689,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         int tryCount = 0;
         while (true) {
             try {
-                if (initialize && connectorConfig.slotSeekToKnownOffsetOnStart()) {
-                    validateSlotIsInExpectedState(walPosition);
-                }
                 return createReplicationStream(lsn, walPosition);
             }
             catch (Exception e) {
@@ -706,64 +703,6 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                     LOGGER.warn(message + ", waiting for {} ms and retrying, attempt number {} over {}", delay, tryCount, maxRetries, e);
                     final Metronome metronome = Metronome.sleeper(delay, Clock.SYSTEM);
                     metronome.pause();
-                }
-            }
-        }
-    }
-
-    protected void validateSlotIsInExpectedState(WalPositionLocator walPosition) throws SQLException {
-        Lsn lsn = walPosition.getLastEventStoredLsn() != null ? walPosition.getLastEventStoredLsn() : walPosition.getLastCommitStoredLsn();
-        if (lsn == null || !connectorConfig.isFlushLsnOnSource()) {
-            return;
-        }
-        try (Statement stmt = pgConnection().createStatement()) {
-            String seekCommand = String.format(
-                    "SELECT pg_replication_slot_advance('%s', '%s')",
-                    slotName,
-                    lsn.asString());
-            LOGGER.info("Seeking to {} on the replication slot with command {}", lsn, seekCommand);
-            stmt.execute(seekCommand);
-        }
-        catch (PSQLException e) {
-            if (e.getMessage().matches("ERROR: function pg_replication_slot_advance.*does not exist(.|\\n)*")
-                    || PSQLState.UNDEFINED_FUNCTION.getState().equals(e.getSQLState())) {
-                LOGGER.info("Postgres server doesn't support the command pg_replication_slot_advance(). Not seeking to last known offset.");
-            }
-            else if (e.getMessage().matches("ERROR: must be superuser or replication role to use replication slots(.|\\n)*")
-                    || SQL_STATE_INSUFFICIENT_PRIVILEGE.equals(e.getSQLState())) {
-                LOGGER.warn(
-                        "Unable to use pg_replication_slot_advance() function. The Postgres server is likely on an old RDS version or privileges are not correctly set",
-                        e);
-            }
-            else if (e.getMessage().matches("ERROR: cannot advance replication slot to.*")
-                    || PSQLState.OBJECT_NOT_IN_STATE.getState().equals(e.getSQLState())) {
-                switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
-                    case FAIL:
-                        throw new DebeziumException(
-                                String.format("Cannot seek to the last known offset '%s' on replication slot '%s'. Error from server: %s", lsn.asString(), slotName,
-                                        e.getMessage()));
-                    case WARN:
-                        LOGGER.warn("Cannot seek to the last known offset '{}' on replication slot '{}'. Error from server: '{}'", lsn.asString(), slotName,
-                                e.getMessage(), e);
-                        break;
-                    case SKIP:
-                    case IGNORE:
-                        LOGGER.debug("Cannot seek to the last known offset '{}' on replication slot '{}'. Error from server: '{}'", lsn.asString(), slotName,
-                                e.getMessage(), e);
-                        break;
-                }
-            }
-            else {
-                switch (connectorConfig.getEventProcessingFailureHandlingMode()) {
-                    case FAIL:
-                        throw new DebeziumException(e);
-                    case WARN:
-                        LOGGER.warn("Unexpected error while trying to seek LSN", e);
-                        break;
-                    case SKIP:
-                    case IGNORE:
-                        LOGGER.debug("Unexpected error while trying to seek LSN", e);
-                        break;
                 }
             }
         }
