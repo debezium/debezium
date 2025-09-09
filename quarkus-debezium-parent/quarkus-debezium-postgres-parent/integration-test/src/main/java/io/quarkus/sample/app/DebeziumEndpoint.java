@@ -17,11 +17,18 @@ import io.debezium.runtime.DebeziumStatus;
 @Path("/api/debezium")
 public class DebeziumEndpoint {
 
-    @Inject
-    private DebeziumConnectorRegistry registry;
+    private final DebeziumConnectorRegistry registry;
+    private final ProductService productService;
+    private final OrderService orderService;
 
     @Inject
-    private CaptureService captureService;
+    public DebeziumEndpoint(DebeziumConnectorRegistry registry,
+                            ProductService productService,
+                            OrderService orderService) {
+        this.registry = registry;
+        this.productService = productService;
+        this.orderService = orderService;
+    }
 
     @GET
     @Path("status")
@@ -32,7 +39,7 @@ public class DebeziumEndpoint {
     @GET
     @Path("captured")
     public Response capture() {
-        if (captureService.isInvoked()) {
+        if (productService.isInvoked()) {
             return Response.status(Response.Status.FOUND).build();
         }
 
@@ -42,10 +49,10 @@ public class DebeziumEndpoint {
     @GET
     @Path("products")
     public Response products() {
-        if (captureService.products().isEmpty()) {
+        if (productService.products().isEmpty()) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
-        return Response.ok(captureService.products()).build();
+        return Response.ok(productService.products()).build();
     }
 
     @GET
@@ -55,6 +62,15 @@ public class DebeziumEndpoint {
                 .stream()
                 .map(engine -> new EngineManifest(engine.captureGroup().id(), engine.connector().name()))
                 .toList()).build();
+    }
+
+    @GET
+    @Path("orders")
+    public Response orders() {
+        if (orderService.orders().isEmpty()) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+        return Response.ok(orderService.orders()).build();
     }
 
     record EngineManifest(String group, String connector) {
