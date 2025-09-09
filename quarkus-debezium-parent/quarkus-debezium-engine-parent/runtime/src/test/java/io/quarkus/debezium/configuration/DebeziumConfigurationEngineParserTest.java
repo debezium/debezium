@@ -58,6 +58,11 @@ class DebeziumConfigurationEngineParserTest {
                             }
 
                             @Override
+                            public Map<String, DeserializerConfiguration> deserializers() {
+                                return Map.of();
+                            }
+
+                            @Override
                             public Map<String, String> configurations() {
                                 return Map.of();
                             }
@@ -185,6 +190,11 @@ class DebeziumConfigurationEngineParserTest {
             @Override
             public Optional<String> deserializer() {
                 return Optional.of("deserializer");
+            }
+
+            @Override
+            public Map<String, DebeziumEngineConfiguration.DeserializerConfiguration> deserializers() {
+                return Map.of();
             }
 
             @Override
