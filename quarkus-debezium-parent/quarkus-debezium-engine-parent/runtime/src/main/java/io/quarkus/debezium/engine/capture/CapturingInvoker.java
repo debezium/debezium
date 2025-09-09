@@ -7,6 +7,7 @@
 package io.quarkus.debezium.engine.capture;
 
 import io.debezium.runtime.Capturing;
+import io.debezium.runtime.CapturingEvent;
 
 /**
  *
@@ -25,4 +26,22 @@ public interface CapturingInvoker<T> {
      * @param event captured by Debezium
      */
     void capture(T event);
+
+    /**
+     *
+     * @return the capturing group assigned
+     */
+    String group();
+
+    static String generateKey(CapturingInvoker invoker) {
+        return invoker.group() + "_" + invoker.destination();
+    }
+
+    static String getKey(CapturingEvent event) {
+        return event.group() + "_" + event.destination();
+    }
+
+    static String getAllDestinations(CapturingEvent event) {
+        return event.group() + "_" + Capturing.ALL;
+    }
 }

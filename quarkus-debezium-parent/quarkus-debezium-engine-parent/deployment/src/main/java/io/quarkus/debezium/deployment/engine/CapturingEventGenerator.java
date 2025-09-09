@@ -114,6 +114,20 @@ public class CapturingEventGenerator implements CapturingInvokerGenerator {
                                 () -> destination.returnValue(destination.load(Capturing.ALL)));
             }
 
+            try (MethodCreator group = invoker.getMethodCreator("group", String.class)) {
+                Optional.ofNullable(methodInfo
+                        .annotation(DebeziumDotNames.CAPTURING)
+                        .value("group"))
+                        .map(AnnotationValue::asString)
+                        .ifPresentOrElse(s -> {
+                            if (s.isEmpty()) {
+                                throw new IllegalArgumentException("empty groups are not allowed for @Capturing annotation  " + methodInfo.declaringClass());
+                            }
+                            group.returnValue(group.load(s));
+                        },
+                                () -> group.returnValue(group.load(Capturing.DEFAULT)));
+            }
+
             return new GeneratedClassMetaData(UUID.randomUUID(), name.replace('/', '.'), beanInfo, CapturingEventInvoker.class);
         }
     }

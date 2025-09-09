@@ -48,7 +48,8 @@ public class SourceRecordDeserializer<T> implements CapturingEventDeserializer<T
                     deserializer.deserialize(data, null),
                     event.destination(),
                     event.source(),
-                    event.headers());
+                    event.headers(),
+                    event.group());
         }
 
         return switch (event) {
@@ -56,32 +57,38 @@ public class SourceRecordDeserializer<T> implements CapturingEventDeserializer<T
                     deserializer.deserialize(data, AFTER),
                     record.destination(),
                     record.source(),
-                    record.headers());
+                    record.headers(),
+                    event.group());
             case Delete<SourceRecord> record -> new Delete<>(
                     deserializer.deserialize(data, BEFORE),
                     record.destination(),
                     record.source(),
-                    record.headers());
+                    record.headers(),
+                    event.group());
             case Message<SourceRecord> record -> new Message<>(
                     deserializer.deserialize(data, AFTER),
                     record.destination(),
                     record.source(),
-                    record.headers());
+                    record.headers(),
+                    event.group());
             case Read<SourceRecord> record -> new Read<>(
                     deserializer.deserialize(data, AFTER),
                     record.destination(),
                     record.source(),
-                    record.headers());
+                    record.headers(),
+                    event.group());
             case Truncate<SourceRecord> record -> new Truncate<>(
                     deserializer.deserialize(data, AFTER),
                     record.destination(),
                     record.source(),
-                    record.headers());
+                    record.headers(),
+                    event.group());
             case CapturingEvent.Update<SourceRecord> record -> new Update<>(
                     deserializer.deserialize(data, AFTER),
                     record.destination(),
                     record.source(),
-                    record.headers());
+                    record.headers(),
+                    event.group());
         };
     }
 }

@@ -53,5 +53,10 @@ class CapturingInvokerValidatorTest {
         public void capture(String event) {
             // ignore
         }
+
+        @Override
+        public String group() {
+            return "default";
+        }
     }
 }
