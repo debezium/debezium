@@ -18,6 +18,16 @@ import io.debezium.common.annotation.Incubating;
 @Incubating()
 public @interface Capturing {
     String ALL = "*";
+    String DEFAULT = "default";
 
+    /**
+     * the destination that triggers the handler
+     * default: "*"
+     */
     String destination() default ALL;
+
+    /**
+     * the Capturing Group assigned
+     */
+    String group() default DEFAULT;
 }

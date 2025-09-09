@@ -37,33 +37,38 @@ public sealed interface CapturingEvent<V> {
      */
     String source();
 
+    /***
+     * @return capturing group for which the event is emitted
+     */
+    String group();
+
     record Read<V>(V record, String destination, String source,
-            List<Header<Object>> headers) implements CapturingEvent<V> {
+            List<Header<Object>> headers, String group) implements CapturingEvent<V> {
 
     }
 
     record Create<V>(V record, String destination, String source,
-            List<Header<Object>> headers) implements CapturingEvent<V> {
+            List<Header<Object>> headers, String group) implements CapturingEvent<V> {
 
     }
 
     record Update<V>(V record, String destination, String source,
-            List<Header<Object>> headers) implements CapturingEvent<V> {
+            List<Header<Object>> headers, String group) implements CapturingEvent<V> {
 
     }
 
     record Delete<V>(V record, String destination, String source,
-            List<Header<Object>> headers) implements CapturingEvent<V> {
+            List<Header<Object>> headers, String group) implements CapturingEvent<V> {
 
     }
 
     record Truncate<V>(V record, String destination, String source,
-            List<Header<Object>> headers) implements CapturingEvent<V> {
+            List<Header<Object>> headers, String group) implements CapturingEvent<V> {
 
     }
 
     record Message<V>(V record, String destination, String source,
-            List<Header<Object>> headers) implements CapturingEvent<V> {
+            List<Header<Object>> headers, String group) implements CapturingEvent<V> {
 
     }
 }

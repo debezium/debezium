@@ -66,6 +66,26 @@ public class SampleNativeApplicationIT {
     }
 
     @Test
+    @DisplayName("Debezium should capture deserialized events from another engine")
+    @DisableIfSingleEngine
+    void shouldCaptureDeserializedEventsFromAnotherEngine() {
+        await().untilAsserted(() -> RestAssured
+                .given()
+                .redirects().follow(false)
+                .when()
+                .get("/api/debezium/orders")
+                .then()
+                .statusCode(200)
+                .body("$", hasSize(2))
+                .body("[0].id", equalTo(1))
+                .body("[0].name", equalTo("pizza"))
+                .body("[0].description", equalTo("pizza with peperoni"))
+                .body("[1].id", equalTo(2))
+                .body("[1].name", equalTo("kebab"))
+                .body("[1].description", equalTo("kebab with mayonnaise")));
+    }
+
+    @Test
     @DisplayName("should get multiple engines")
     @DisableIfSingleEngine
     void shouldGetMultipleEngines() {

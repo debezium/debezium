@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
-public class CaptureService {
+public class ProductService {
     private final List<Product> products = new ArrayList<>();
     private final AtomicBoolean invoked = new AtomicBoolean(false);
 

@@ -44,17 +44,17 @@ public class SourceRecordEventProducer {
 
             @Override
             public void accept(ChangeEvent<SourceRecord, SourceRecord> event) {
-                CapturingEvent<SourceRecord> capturingEvent = OperationMapper.from(event);
+                CapturingEvent<SourceRecord> capturingEvent = new OperationMapper("default").from(event);
 
                 var deserializer = capturingEventDeserializerRegistry.get(capturingEvent.destination());
-                CapturingInvoker<Object> objectCapturingInvoker = capturingObjectInvokerRegistry.get(capturingEvent.destination());
+                CapturingInvoker<Object> objectCapturingInvoker = capturingObjectInvokerRegistry.get(capturingEvent);
 
                 if (deserializer != null && objectCapturingInvoker != null) {
                     objectCapturingInvoker.capture(deserializer.deserialize(capturingEvent).record());
                     return;
                 }
 
-                var invoker = capturingEventRegistry.get(capturingEvent.destination());
+                var invoker = capturingEventRegistry.get(capturingEvent);
 
                 if (invoker == null) {
                     logger.debug("method annotated with @Capturing not found for destination: {}", capturingEvent.destination());
