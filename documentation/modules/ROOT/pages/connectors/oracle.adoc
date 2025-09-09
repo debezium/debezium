@@ -1927,8 +1927,8 @@ The connector cannot process columns that include the following types of data:
 * UROWID (Universal ROWID)
 * VECTOR
 
-If the connector attempts to capture an event that includes a column with one of these unsupported data types, it logs a warning, and skips the column with the unsupported type.
-The connector continues to process other columns and tables, but data from the unsupported column is lost.
+If the connector attempts to capture an event that includes a column with one of these unsupported data types, it skips the event and then continues to process subsequent events.
+The connector continues to process other columns and tables that are configured for capture, but data from the unsupported column is lost.
 
 [id="oracle-character-types"]
 === Character types
