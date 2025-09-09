@@ -24,14 +24,14 @@ import io.debezium.connector.postgresql.connection.WalPositionLocator;
  *
  * Comprehensive test coverage for WalPositionLocator class.
  * Tests every line and branch to ensure 100% code coverage.
- * 
+ *
  * IMPORTANT: WalPositionLocator follows a two-phase workflow:
- * 
+ *
  * PHASE 1 - SEARCH/LOCATION PHASE:
  * - Multiple calls to resumeFromLsn() to search for the restart point
  * - Each LSN gets added to lsnSeen set during this phase
  * - Continue until resumeFromLsn() returns Optional.of(lsn) (found restart point)
- * 
+ *
  * PHASE 2 - STREAMING PHASE:
  * - Call enableFiltering() to switch to streaming mode
  * - Only call skipMessage() to check if streaming LSNs should be skipped
