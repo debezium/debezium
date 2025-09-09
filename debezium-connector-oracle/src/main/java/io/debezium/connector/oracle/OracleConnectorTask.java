@@ -301,16 +301,12 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
             // Get all table IDs that match the connector's filters
             Set<TableId> allTableIds = connection.getAllTableIds(connectorConfig.getCatalogName());
 
-            Set<TableId> capturedTables = allTableIds.stream()
+            List<String> tableNames = allTableIds.stream()
                     .filter(tableId -> connectorConfig.getTableFilters().dataCollectionFilter().isIncluded(tableId))
-                    .collect(java.util.stream.Collectors.toSet());
-
-            List<String> tableNames = capturedTables.stream()
                     .map(TableId::toString)
                     .collect(java.util.stream.Collectors.toList());
 
-            connectorConfig.validateGuardrailLimits(capturedTables.size(), tableNames);
-
+            connectorConfig.validateGuardrailLimits(tableNames.size(), tableNames);
         }
         catch (SQLException e) {
             throw new DebeziumException("Failed to validate guardrail limits", e);
