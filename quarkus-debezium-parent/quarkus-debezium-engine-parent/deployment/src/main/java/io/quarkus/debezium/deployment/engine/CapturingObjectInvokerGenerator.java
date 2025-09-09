@@ -15,6 +15,7 @@ import org.jboss.jandex.MethodInfo;
 import org.jboss.jandex.ParameterizedType;
 import org.jboss.jandex.Type;
 
+import io.debezium.runtime.Capturing;
 import io.quarkus.arc.processor.BeanInfo;
 import io.quarkus.arc.processor.DotNames;
 import io.quarkus.debezium.deployment.dotnames.DebeziumDotNames;
@@ -111,6 +112,20 @@ public class CapturingObjectInvokerGenerator implements CapturingInvokerGenerato
                                 () -> {
                                     throw new RuntimeException("trying to capture events without defining a destination for class " + methodInfo.declaringClass());
                                 });
+            }
+
+            try (MethodCreator group = invoker.getMethodCreator("group", String.class)) {
+                Optional.ofNullable(methodInfo
+                        .annotation(DebeziumDotNames.CAPTURING)
+                        .value("group"))
+                        .map(AnnotationValue::asString)
+                        .ifPresentOrElse(s -> {
+                            if (s.isEmpty()) {
+                                throw new IllegalArgumentException("empty groups are not allowed for @Capturing annotation  " + methodInfo.declaringClass());
+                            }
+                            group.returnValue(group.load(s));
+                        },
+                                () -> group.returnValue(group.load(Capturing.DEFAULT)));
             }
 
             return new GeneratedClassMetaData(UUID.randomUUID(), name.replace('/', '.'), beanInfo, CapturingObjectInvoker.class);

@@ -15,13 +15,12 @@ import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
-public class CapturingObjectInvokerRegistryProducer implements CapturingInvokerRegistryProducer<Object> {
+public class CapturingObjectInvokerRegistryProducer {
     private final CapturingInvokerValidator<CapturingObjectInvoker> validator = new CapturingInvokerValidator<>();
 
     @Inject
     Instance<CapturingObjectInvoker> invokers;
 
-    @Override
     @Produces
     @Singleton
     public CapturingInvokerRegistry<Object> produce() {
@@ -31,9 +30,9 @@ public class CapturingObjectInvokerRegistryProducer implements CapturingInvokerR
 
         Map<String, CapturingObjectInvoker> invokers = this.invokers
                 .stream()
-                .collect(Collectors.toMap(CapturingObjectInvoker::destination, Function.identity()));
+                .collect(Collectors.toMap(CapturingInvoker::generateKey, Function.identity()));
 
-        return invokers::get;
+        return event -> invokers.get(CapturingInvoker.getKey(event));
     }
 
 }

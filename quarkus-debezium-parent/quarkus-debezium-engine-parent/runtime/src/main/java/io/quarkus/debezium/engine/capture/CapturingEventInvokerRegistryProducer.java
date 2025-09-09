@@ -15,16 +15,14 @@ import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
-import io.debezium.runtime.Capturing;
 import io.debezium.runtime.CapturingEvent;
 
-public class CapturingEventInvokerRegistryProducer implements CapturingInvokerRegistryProducer<CapturingEvent<Object>> {
+public class CapturingEventInvokerRegistryProducer {
     private final CapturingInvokerValidator<CapturingEventInvoker> validator = new CapturingInvokerValidator<>();
 
     @Inject
     Instance<CapturingEventInvoker> invokers;
 
-    @Override
     @Produces
     @Singleton
     public CapturingInvokerRegistry<CapturingEvent<Object>> produce() {
@@ -34,8 +32,9 @@ public class CapturingEventInvokerRegistryProducer implements CapturingInvokerRe
 
         Map<String, CapturingEventInvoker> invokers = this.invokers
                 .stream()
-                .collect(Collectors.toMap(CapturingEventInvoker::destination, Function.identity()));
+                .collect(Collectors.toMap(CapturingInvoker::generateKey, Function.identity()));
 
-        return identifier -> invokers.getOrDefault(identifier, invokers.get(Capturing.ALL));
+        return event -> invokers.getOrDefault(CapturingInvoker.getKey(event), invokers.get(CapturingInvoker.getAllDestinations(event)));
     }
+
 }

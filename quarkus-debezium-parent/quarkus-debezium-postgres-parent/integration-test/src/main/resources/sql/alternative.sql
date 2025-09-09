@@ -1,4 +1,4 @@
-CREATE TABLE products(
+CREATE TABLE orders(
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     description TEXT NOT NULL
@@ -9,5 +9,4 @@ CREATE TABLE users(
     name TEXT NOT NULL
 );
 
-INSERT INTO products (id, name, description) VALUES (1, 't-shirt', 'red hat t-shirt'), (2, 'sweatshirt', 'blue ibm sweatshirt');
-INSERT INTO users (name) VALUES ('alvar'), ('anisha'), ('chris'), ('indra'), ('jiri'), ('giovanni'), ('mario'), ('rené'), ('Vojtěch');
+INSERT INTO orders (id, name, description) VALUES (1, 'pizza', 'pizza with peperoni'), (2, 'kebab', 'kebab with mayonnaise');
