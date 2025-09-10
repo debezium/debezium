@@ -54,7 +54,7 @@ public interface MessageDecoder {
      */
     boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, PositionLocator positionLocator);
 
-    void isSearchingWAL(boolean isSearchingWAL);
+    void isSearchingWal(boolean isSearchingWal);
 
     /**
      * Closes this decoder, freeing and/or closing all resources it may potentially hold.

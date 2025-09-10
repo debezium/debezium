@@ -41,7 +41,7 @@ public class PgProtoMessageDecoder extends AbstractMessageDecoder {
     private static final Set<Op> SUPPORTED_OPS = Collect.unmodifiableSet(Op.INSERT, Op.UPDATE, Op.DELETE, Op.BEGIN, Op.COMMIT);
 
     private boolean warnedOnUnkownOp = false;
-    private boolean isSearchingWAL;
+    private boolean isSearchingWal;
 
     @Override
     public void processNotEmptyMessage(final ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry)
@@ -100,7 +100,7 @@ public class PgProtoMessageDecoder extends AbstractMessageDecoder {
     }
 
     @Override
-    public void isSearchingWAL(boolean isSearchingWAL) {
-        this.isSearchingWAL = isSearchingWAL;
+    public void isSearchingWal(boolean isSearchingWal) {
+        this.isSearchingWal = isSearchingWal;
     }
 }

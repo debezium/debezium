@@ -155,7 +155,7 @@ public class PgOutputStreamingMessageDecoderIT extends AbstractRecordsProducerTe
 
     private void setupSystemProperties() {
         System.setProperty(PostgresConnectorConfig.PLUGIN_NAME.name(), PostgresConnectorConfig.LogicalDecoder.PGOUTPUT.name());
-        System.setProperty(PostgresConnectorConfig.LOGICAL_REPLICATION_MODE.name(), PostgresConnectorConfig.LogicalReplicationMode.STREAMING.name());
+        System.setProperty(PostgresConnectorConfig.LOGICAL_REPLICATION_MODE.name(), PostgresConnectorConfig.LogicalReplicationMode.IN_PROGRESS.name());
     }
 
     private void setupDatabase() throws Exception {
@@ -205,7 +205,7 @@ public class PgOutputStreamingMessageDecoderIT extends AbstractRecordsProducerTe
         start(PostgresConnector.class, TestHelper.defaultConfig()
                 .with(PostgresConnectorConfig.SNAPSHOT_MODE, PostgresConnectorConfig.SnapshotMode.INITIAL)
                 .with(PostgresConnectorConfig.PLUGIN_NAME, PostgresConnectorConfig.LogicalDecoder.PGOUTPUT)
-                .with(PostgresConnectorConfig.LOGICAL_REPLICATION_MODE.name(), PostgresConnectorConfig.LogicalReplicationMode.STREAMING.name())
+                .with(PostgresConnectorConfig.LOGICAL_REPLICATION_MODE.name(), PostgresConnectorConfig.LogicalReplicationMode.IN_PROGRESS.name())
                 .build());
         assertConnectorIsRunning();
         waitForStreamingRunning("postgres", TestHelper.TEST_SERVER);
