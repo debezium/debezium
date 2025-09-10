@@ -15,7 +15,6 @@ import org.junit.jupiter.api.Test;
 import io.debezium.runtime.events.ConnectorStartedEvent;
 import io.debezium.runtime.events.PollingStartedEvent;
 import io.debezium.runtime.events.TasksStartedEvent;
-import io.quarkus.sample.app.test.DisableIfMultiEngine;
 import io.quarkus.sample.app.test.DisableIfSingleEngine;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 
@@ -30,7 +29,6 @@ public class LifecycleEventIT {
      */
     @Test
     @DisplayName("Test Lifecycle Events for SingleEngine")
-    @DisableIfMultiEngine
     public void testLifecycleEventsForSingleEngine() {
         // Only concerned with up to polling started because we don't stop the connector
         await().untilAsserted(() -> assertThat(
@@ -50,14 +48,11 @@ public class LifecycleEventIT {
     public void testLifecycleEventsForMultiEngine() {
         // Only concerned with up to polling started because we don't stop the connector
         await().untilAsserted(() -> assertThat(
-                get("/lifecycle-events")
+                get("/lifecycle-events?engine=alternative")
                         .then()
                         .statusCode(200)
                         .extract().body().jsonPath().getList(".", String.class))
                 .containsExactlyInAnyOrder(
-                        ConnectorStartedEvent.class.getName(),
-                        TasksStartedEvent.class.getName(),
-                        PollingStartedEvent.class.getName(),
                         ConnectorStartedEvent.class.getName(),
                         TasksStartedEvent.class.getName(),
                         PollingStartedEvent.class.getName()));
