@@ -46,6 +46,7 @@ import io.debezium.pipeline.txmetadata.DefaultTransactionMetadataFactory;
 import io.debezium.processors.spi.PostProcessor;
 import io.debezium.runtime.FieldFilterStrategy;
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
+import io.debezium.runtime.events.CaptureGroup;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.snapshot.lock.NoLockingSupport;
 import io.debezium.snapshot.mode.AlwaysSnapshotter;
@@ -119,6 +120,8 @@ public class EngineProcessor {
                                 .setUnremovable()
                                 .setDefaultScope(DotNames.APPLICATION_SCOPED)
                                 .build()));
+
+        additionalBeanProducer.produce(new AdditionalBeanBuildItem(CaptureGroup.class));
 
         additionalBeanProducer.produce(AdditionalBeanBuildItem
                 .builder()

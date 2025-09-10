@@ -11,6 +11,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 
+import io.debezium.runtime.events.AbstractDebeziumLifecycleEvent;
+import io.debezium.runtime.events.CaptureGroup;
 import io.debezium.runtime.events.ConnectorStartedEvent;
 import io.debezium.runtime.events.ConnectorStoppedEvent;
 import io.debezium.runtime.events.PollingStartedEvent;
@@ -26,34 +28,62 @@ import io.debezium.runtime.events.TasksStoppedEvent;
 @ApplicationScoped
 public class LifecycleEventObserver {
 
-    private final List<Object> lifecycleEvents = new CopyOnWriteArrayList<>();
+    private final List<AbstractDebeziumLifecycleEvent> defaultLifecycleEvents = new CopyOnWriteArrayList<>();
+    private final List<AbstractDebeziumLifecycleEvent> alternativeLifecycleEvents = new CopyOnWriteArrayList<>();
 
-    void onConnectorStarted(@Observes ConnectorStartedEvent connectorStartedEvent) {
-        lifecycleEvents.add(connectorStartedEvent);
+    void defaultOnConnectorStarted(@Observes @CaptureGroup("default") ConnectorStartedEvent connectorStartedEvent) {
+        defaultLifecycleEvents.add(connectorStartedEvent);
     }
 
-    void onConnectorStopped(@Observes ConnectorStoppedEvent connectorStoppedEvent) {
-        lifecycleEvents.add(connectorStoppedEvent);
+    void defaultOnConnectorStopped(@Observes @CaptureGroup("default") ConnectorStoppedEvent connectorStoppedEvent) {
+        defaultLifecycleEvents.add(connectorStoppedEvent);
     }
 
-    void onTaskStarted(@Observes TasksStartedEvent tasksStartedEvent) {
-        lifecycleEvents.add(tasksStartedEvent);
+    void defaultOnTaskStarted(@Observes @CaptureGroup("default") TasksStartedEvent tasksStartedEvent) {
+        defaultLifecycleEvents.add(tasksStartedEvent);
     }
 
-    void onTaskStopped(@Observes TasksStoppedEvent tasksStoppedEvent) {
-        lifecycleEvents.add(tasksStoppedEvent);
+    void defaultOnTaskStopped(@Observes @CaptureGroup("default") TasksStoppedEvent tasksStoppedEvent) {
+        defaultLifecycleEvents.add(tasksStoppedEvent);
     }
 
-    void onPollingStarted(@Observes PollingStartedEvent pollingStartedEvent) {
-        lifecycleEvents.add(pollingStartedEvent);
+    void defaultOnPollingStarted(@Observes @CaptureGroup("default") PollingStartedEvent pollingStartedEvent) {
+        defaultLifecycleEvents.add(pollingStartedEvent);
     }
 
-    void onPollingStopped(@Observes PollingStoppedEvent pollingStoppedEvent) {
-        lifecycleEvents.add(pollingStoppedEvent);
+    void defaultOnPollingStopped(@Observes @CaptureGroup("default") PollingStoppedEvent pollingStoppedEvent) {
+        defaultLifecycleEvents.add(pollingStoppedEvent);
     }
 
-    public List<Object> getLifecycleEvents() {
-        return lifecycleEvents;
+    void alternativeOnConnectorStarted(@Observes @CaptureGroup("alternative") ConnectorStartedEvent connectorStartedEvent) {
+        alternativeLifecycleEvents.add(connectorStartedEvent);
+    }
+
+    void alternativeOnConnectorStopped(@Observes @CaptureGroup("alternative") ConnectorStoppedEvent connectorStoppedEvent) {
+        alternativeLifecycleEvents.add(connectorStoppedEvent);
+    }
+
+    void alternativeOnTaskStarted(@Observes @CaptureGroup("alternative") TasksStartedEvent tasksStartedEvent) {
+        alternativeLifecycleEvents.add(tasksStartedEvent);
+    }
+
+    void alternativeOnTaskStopped(@Observes @CaptureGroup("alternative") TasksStoppedEvent tasksStoppedEvent) {
+        alternativeLifecycleEvents.add(tasksStoppedEvent);
+    }
+
+    void alternativeOnPollingStarted(@Observes @CaptureGroup("alternative") PollingStartedEvent pollingStartedEvent) {
+        alternativeLifecycleEvents.add(pollingStartedEvent);
+    }
+
+    void alternativeOnPollingStopped(@Observes @CaptureGroup("alternative") PollingStoppedEvent pollingStoppedEvent) {
+        alternativeLifecycleEvents.add(pollingStoppedEvent);
+    }
+
+    public List<AbstractDebeziumLifecycleEvent> getLifecycleEvents(String engine) {
+        if (engine.equals("default")) {
+            return defaultLifecycleEvents;
+        }
+        return alternativeLifecycleEvents;
     }
 
 }
