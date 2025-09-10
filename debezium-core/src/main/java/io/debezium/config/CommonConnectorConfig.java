@@ -82,7 +82,7 @@ public abstract class CommonConnectorConfig {
     protected final boolean isAdvancedMetricsEnabled;
     private final boolean isExtendedHeadersEnabled;
     protected final int guardrailTablesMax;
-    protected final GuardrailLimitAction guardrailLimitAction;
+    protected final GuardrailTablesLimitAction guardrailTablesLimitAction;
 
     /**
      * The set of predefined versions e.g. for source struct maker version
@@ -459,7 +459,7 @@ public abstract class CommonConnectorConfig {
     /**
      * The set of predefined GuardrailLimitAction options
      */
-    public enum GuardrailLimitAction implements EnumeratedValue {
+    public enum GuardrailTablesLimitAction implements EnumeratedValue {
         /**
          * Log a warning when the guardrail limit is exceeded but continue processing
          */
@@ -472,7 +472,7 @@ public abstract class CommonConnectorConfig {
 
         private final String value;
 
-        GuardrailLimitAction(String value) {
+        GuardrailTablesLimitAction(String value) {
             this.value = value;
         }
 
@@ -487,12 +487,12 @@ public abstract class CommonConnectorConfig {
          * @param value the configuration property value; may not be null
          * @return the matching option, or null if no match is found
          */
-        public static GuardrailLimitAction parse(String value) {
+        public static GuardrailTablesLimitAction parse(String value) {
             if (value == null) {
                 return null;
             }
             value = value.trim();
-            for (GuardrailLimitAction option : GuardrailLimitAction.values()) {
+            for (GuardrailTablesLimitAction option : GuardrailTablesLimitAction.values()) {
                 if (option.getValue().equalsIgnoreCase(value)) {
                     return option;
                 }
@@ -507,8 +507,8 @@ public abstract class CommonConnectorConfig {
          * @param defaultValue the default value; may be null
          * @return the matching option, or null if no match is found and the non-null default is invalid
          */
-        public static GuardrailLimitAction parse(String value, String defaultValue) {
-            GuardrailLimitAction action = parse(value);
+        public static GuardrailTablesLimitAction parse(String value, String defaultValue) {
+            GuardrailTablesLimitAction action = parse(value);
             if (action == null && defaultValue != null) {
                 action = parse(defaultValue);
             }
@@ -1362,13 +1362,13 @@ public abstract class CommonConnectorConfig {
             .withDefault(0)
             .withValidation(Field::isNonNegativeInteger);
 
-    public static final Field GUARDRAIL_LIMIT_ACTION = Field.create("guardrail.limit.action")
-            .withDisplayName("Guardrail limit action")
+    public static final Field GUARDRAIL_TABLES_LIMIT_ACTION = Field.create("guardrail.tables.limit.action")
+            .withDisplayName("Guardrail tables limit action")
             .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 34))
-            .withEnum(GuardrailLimitAction.class, GuardrailLimitAction.WARN)
+            .withEnum(GuardrailTablesLimitAction.class, GuardrailTablesLimitAction.WARN)
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
-            .withDescription("Specify the action to take when a guardrail limit is exceeded: " +
+            .withDescription("Specify the action to take when a guardrail tables limit is exceeded: " +
                     "'warn' (the default) logs a warning message and continues processing; " +
                     "'fail' stops the connector with an error.");
 
@@ -1408,7 +1408,7 @@ public abstract class CommonConnectorConfig {
                     OPEN_LINEAGE_INTEGRATION_JOB_OWNERS,
                     EXTENDED_HEADERS_ENABLED,
                     GUARDRAIL_TABLES_MAX,
-                    GUARDRAIL_LIMIT_ACTION)
+                    GUARDRAIL_TABLES_LIMIT_ACTION)
             .events(
                     CUSTOM_CONVERTERS,
                     CUSTOM_POST_PROCESSORS,
@@ -1523,7 +1523,7 @@ public abstract class CommonConnectorConfig {
         this.isAdvancedMetricsEnabled = config.getBoolean(ADVANCED_METRICS_ENABLE);
         this.isExtendedHeadersEnabled = config.getBoolean(EXTENDED_HEADERS_ENABLED);
         this.guardrailTablesMax = config.getInteger(GUARDRAIL_TABLES_MAX);
-        this.guardrailLimitAction = GuardrailLimitAction.parse(config.getString(GUARDRAIL_LIMIT_ACTION));
+        this.guardrailTablesLimitAction = GuardrailTablesLimitAction.parse(config.getString(GUARDRAIL_TABLES_LIMIT_ACTION));
 
         this.signalingDataCollectionId = !Strings.isNullOrBlank(this.signalingDataCollection)
                 ? TableId.parse(this.signalingDataCollection)
@@ -1663,8 +1663,8 @@ public abstract class CommonConnectorConfig {
         return guardrailTablesMax;
     }
 
-    public GuardrailLimitAction getGuardrailLimitAction() {
-        return guardrailLimitAction;
+    public GuardrailTablesLimitAction getGuardrailTablesLimitAction() {
+        return guardrailTablesLimitAction;
     }
 
     /**
@@ -1697,8 +1697,7 @@ public abstract class CommonConnectorConfig {
                 LOGGER.debug("Tables/Collections configured for capture: {}", tableList);
             }
 
-            GuardrailLimitAction action = getGuardrailLimitAction();
-            if (action == GuardrailLimitAction.FAIL) {
+            if (getGuardrailTablesLimitAction() == GuardrailTablesLimitAction.FAIL) {
                 throw new DebeziumException(message);
             }
             else {
