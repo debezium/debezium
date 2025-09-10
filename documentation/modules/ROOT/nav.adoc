@@ -26,6 +26,7 @@
 * Sink Connectors
 ** xref:connectors/index-sink.adoc[Overview]
 ** xref:connectors/jdbc.adoc[JDBC]
+** xref:connectors/mongodb-sink.adoc[MongoDB Sink]
 * Transformations
 ** xref:transformations/index.adoc[Overview]
 ** xref:transformations/topic-routing.adoc[Topic Routing]
