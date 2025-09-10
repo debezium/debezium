@@ -292,7 +292,7 @@ public class PgOutputStreamingMessageDecoder extends PgOutputMessageDecoder {
         LOGGER.trace("Event: {}", MessageType.STREAM_START);
         LOGGER.trace("XID of transaction: {}", xId);
         LOGGER.trace("First Segment: {}", firstStreamSegment);
-        if (firstStreamSegment == 1 || isSearchingWAL()) {
+        if (firstStreamSegment == 1 || isSearchingWal()) {
             isBeginMessage = true;
             subTransactionId = xId; // For the first stream xId will be subTransactionId
             TransactionMessage transactionMessage = new TransactionMessage(Operation.BEGIN, super.getTransactionId(), commitTimestamp);
@@ -337,7 +337,7 @@ public class PgOutputStreamingMessageDecoder extends PgOutputMessageDecoder {
         LOGGER.trace("Received stream commit event of transaction id: {}", getTransactionId());
         LOGGER.trace("XID of transaction: {}", getTransactionId());
         handleCommitMessage(buffer, processor);
-        if (!isSearchingWAL()) { // We will trigger flush only when we are not searching for WAL location.
+        if (!isSearchingWal()) { // We will trigger flush only when we are not searching for WAL location.
             bufferTransactions.flushOnCommit(xId, processor);
         }
         resetValuesForNextStream();
@@ -396,7 +396,7 @@ public class PgOutputStreamingMessageDecoder extends PgOutputMessageDecoder {
      */
     private void immediatelyProcessMessageOrBuffer(ReplicationMessage replicationMessage, ReplicationMessageProcessor processor)
             throws SQLException, InterruptedException {
-        if (isStreaming && !isSearchingWAL()) {
+        if (isStreaming && !isSearchingWal()) {
             if (isBeginMessage) {
                 this.bufferTransactions.beginMessage(super.getTransactionId(), subTransactionId, replicationMessage);
             }

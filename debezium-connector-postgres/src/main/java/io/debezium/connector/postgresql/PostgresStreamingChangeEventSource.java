@@ -32,7 +32,7 @@ import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.connector.postgresql.connection.ReplicationMessage;
 import io.debezium.connector.postgresql.connection.ReplicationMessage.Operation;
 import io.debezium.connector.postgresql.connection.ReplicationStream;
-import io.debezium.connector.postgresql.connection.WALPositionLocatorFactory;
+import io.debezium.connector.postgresql.connection.WalPositionLocatorFactory;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
@@ -154,13 +154,13 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                         : this.effectiveOffset.lsn();
                 final Operation lastProcessedMessageType = this.effectiveOffset.lastProcessedMessageType();
                 LOGGER.info("Retrieved latest position from stored offset '{}'", lsn);
-                walPosition = WALPositionLocatorFactory.create(connectorConfig, this.effectiveOffset.lastCommitLsn(), lsn, lastProcessedMessageType,
+                walPosition = WalPositionLocatorFactory.create(connectorConfig, this.effectiveOffset.lastCommitLsn(), lsn, lastProcessedMessageType,
                         this.effectiveOffset.lastCommitTransactionId());
                 replicationStream.compareAndSet(null, replicationConnection.startStreaming(lsn, walPosition));
             }
             else {
                 LOGGER.info("No previous LSN found in Kafka, streaming from the latest xlogpos or flushed LSN...");
-                walPosition = WALPositionLocatorFactory.create(connectorConfig);
+                walPosition = WalPositionLocatorFactory.create(connectorConfig);
                 replicationStream.compareAndSet(null, replicationConnection.startStreaming(walPosition));
             }
 

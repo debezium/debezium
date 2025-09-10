@@ -96,7 +96,7 @@ public class WalPositionLocatorStreaming implements PositionLocator {
             return Optional.of(startStreamingLsn);
         }
 
-        if (lastProcessedMessageType.equals(ReplicationMessage.Operation.COMMIT)) {
+        if (lastProcessedMessageType == ReplicationMessage.Operation.COMMIT) {
             // In case we are polling for LSN that is of commit, then we will always get a record that is of next batch, if available.
             return Optional.of(currentLsn);
         }

@@ -434,7 +434,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
             public MessageDecoder messageDecoder(MessageDecoderContext config, PostgresConnection connection) {
                 LogicalReplicationMode logicalReplicationMode = config.getConfig().logicalReplicationMode();
 
-                if (logicalReplicationMode.equals(LogicalReplicationMode.STREAMING)) {
+                if (logicalReplicationMode == LogicalReplicationMode.IN_PROGRESS) {
                     return new PgOutputStreamingMessageDecoder(config, connection);
                 }
 
@@ -624,7 +624,7 @@ public class PostgresConnectorConfig extends RelationalDatabaseConnectorConfig {
         /**
          * Stream large in-progress transactions before they are committed.
          */
-        STREAMING("streaming");
+        IN_PROGRESS("in-progress");
 
         private final String value;
 

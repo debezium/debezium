@@ -22,13 +22,13 @@ import io.debezium.connector.postgresql.PostgresConnectorConfig;
  * @author Pranav Tiwari
  */
 
-public class WALPositionLocatorFactory {
+public class WalPositionLocatorFactory {
 
     public static PositionLocator create(PostgresConnectorConfig connectorConfig, Lsn lastCommitLsn, Lsn lsn, ReplicationMessage.Operation operation,
                                          Long lastCommitTransactionId) {
         PostgresConnectorConfig.LogicalReplicationMode logicalReplicationMode = connectorConfig.logicalReplicationMode();
 
-        if (logicalReplicationMode.equals(PostgresConnectorConfig.LogicalReplicationMode.STREAMING)) {
+        if (logicalReplicationMode.equals(PostgresConnectorConfig.LogicalReplicationMode.IN_PROGRESS)) {
             return new WalPositionLocatorStreaming(lastCommitLsn, lsn, operation, lastCommitTransactionId);
         }
 
@@ -38,7 +38,7 @@ public class WALPositionLocatorFactory {
     public static PositionLocator create(PostgresConnectorConfig connectorConfig) {
         PostgresConnectorConfig.LogicalReplicationMode logicalReplicationMode = connectorConfig.logicalReplicationMode();
 
-        if (logicalReplicationMode.equals(PostgresConnectorConfig.LogicalReplicationMode.STREAMING)) {
+        if (logicalReplicationMode.equals(PostgresConnectorConfig.LogicalReplicationMode.IN_PROGRESS)) {
             return new WalPositionLocatorStreaming();
         }
 

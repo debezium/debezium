@@ -76,7 +76,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * Will be null for a non-transactional decoding message
      */
     private Long transactionId;
-    private boolean isSearchingWAL;
+    private boolean isSearchingWal;
 
     public PgOutputMessageDecoder(MessageDecoderContext decoderContext, PostgresConnection connection) {
         this.decoderContext = decoderContext;
@@ -211,12 +211,12 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
     }
 
     @Override
-    public void isSearchingWAL(boolean isSearchingWAL) {
-        this.isSearchingWAL = isSearchingWAL;
+    public void isSearchingWal(boolean isSearchingWal) {
+        this.isSearchingWal = isSearchingWal;
     }
 
-    protected boolean isSearchingWAL() {
-        return isSearchingWAL;
+    protected boolean isSearchingWal() {
+        return isSearchingWal;
     }
 
     private boolean isTruncateEventsIncluded() {

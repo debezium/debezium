@@ -1,3 +1,4 @@
+
 /*
  * Copyright Debezium Authors.
  *
@@ -59,37 +60,22 @@ public enum MessageType {
      * @throws IllegalArgumentException if the character does not map to any known message type
      */
     public static MessageType forType(char type) {
-        switch (type) {
-            case 'R':
-                return RELATION;
-            case 'B':
-                return BEGIN;
-            case 'C':
-                return COMMIT;
-            case 'I':
-                return INSERT;
-            case 'U':
-                return UPDATE;
-            case 'D':
-                return DELETE;
-            case 'Y':
-                return TYPE;
-            case 'O':
-                return ORIGIN;
-            case 'T':
-                return TRUNCATE;
-            case 'M':
-                return LOGICAL_DECODING_MESSAGE;
-            case 'S':
-                return STREAM_START;
-            case 'E':
-                return STREAM_STOP;
-            case 'c':
-                return STREAM_COMMIT;
-            case 'A':
-                return STREAM_ABORT;
-            default:
-                throw new IllegalArgumentException("Unsupported message type: " + type);
-        }
+        return switch (type) {
+            case 'R' -> RELATION;
+            case 'B' -> BEGIN;
+            case 'C' -> COMMIT;
+            case 'I' -> INSERT;
+            case 'U' -> UPDATE;
+            case 'D' -> DELETE;
+            case 'Y' -> TYPE;
+            case 'O' -> ORIGIN;
+            case 'T' -> TRUNCATE;
+            case 'M' -> LOGICAL_DECODING_MESSAGE;
+            case 'S' -> STREAM_START;
+            case 'E' -> STREAM_STOP;
+            case 'c' -> STREAM_COMMIT;
+            case 'A' -> STREAM_ABORT;
+            default -> throw new IllegalArgumentException("Unsupported message type: " + type);
+        };
     }
 }

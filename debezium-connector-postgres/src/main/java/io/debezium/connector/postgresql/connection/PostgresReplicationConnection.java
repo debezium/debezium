@@ -811,8 +811,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
             }
 
             @Override
-            public boolean readPending(ReplicationMessageProcessor processor, boolean isWALPositionLocator) throws SQLException, InterruptedException {
-                messageDecoder.isSearchingWAL(isWALPositionLocator);
+            public boolean readPending(ReplicationMessageProcessor processor, boolean isWalPositionLocator) throws SQLException, InterruptedException {
+                messageDecoder.isSearchingWal(isWalPositionLocator);
                 processWarnings(false);
                 ByteBuffer read = stream.readPending();
                 final Lsn lastReceiveLsn = Lsn.valueOf(stream.getLastReceiveLSN());
