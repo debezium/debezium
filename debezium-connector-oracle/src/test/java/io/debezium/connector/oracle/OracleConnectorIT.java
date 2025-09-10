@@ -6124,7 +6124,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
                     .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.INITIAL)
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER.*")
                     .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 1)
-                    .with(CommonConnectorConfig.GUARDRAIL_LIMIT_ACTION, "fail")
+                    .with(CommonConnectorConfig.GUARDRAIL_TABLES_LIMIT_ACTION, "fail")
                     .build();
 
             // The connector should fail to start due to exceeding the guardrail limit
@@ -6166,6 +6166,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
                     .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER.*")
                     .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 10)
+                    .with(CommonConnectorConfig.GUARDRAIL_TABLES_LIMIT_ACTION, "fail")
                     .build();
 
             // The connector should start successfully

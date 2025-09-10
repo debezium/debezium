@@ -3073,7 +3073,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
                 .with(MongoDbConnectorConfig.COLLECTION_INCLUDE_LIST, "dbit.*")
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 5)
-                .with(CommonConnectorConfig.GUARDRAIL_LIMIT_ACTION, "fail")
+                .with(CommonConnectorConfig.GUARDRAIL_TABLES_LIMIT_ACTION, "fail")
                 .build();
 
         // The connector should fail to start due to exceeding the guardrail limit
@@ -3111,6 +3111,7 @@ public class MongoDbConnectorIT extends AbstractMongoConnectorIT {
                 .with(MongoDbConnectorConfig.SNAPSHOT_MODE, MongoDbConnectorConfig.SnapshotMode.NO_DATA)
                 .with(CommonConnectorConfig.TOPIC_PREFIX, "mongo")
                 .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 10)
+                .with(CommonConnectorConfig.GUARDRAIL_TABLES_LIMIT_ACTION, "fail")
                 .build();
 
         // The connector should start successfully

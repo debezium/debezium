@@ -2820,7 +2820,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
                 .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, tables)
                 .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 1)
-                .with(CommonConnectorConfig.GUARDRAIL_LIMIT_ACTION, "fail")
+                .with(CommonConnectorConfig.GUARDRAIL_TABLES_LIMIT_ACTION, "fail")
                 .build();
 
         // The connector should fail to start due to exceeding the guardrail limit
@@ -2844,7 +2844,7 @@ public abstract class BinlogConnectorIT<C extends SourceConnector, P extends Bin
                 .with(BinlogConnectorConfig.DATABASE_INCLUDE_LIST, DATABASE.getDatabaseName())
                 .with(BinlogConnectorConfig.TABLE_INCLUDE_LIST, tables)
                 .with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 10)
-                .with(CommonConnectorConfig.GUARDRAIL_LIMIT_ACTION, "fail")
+                .with(CommonConnectorConfig.GUARDRAIL_TABLES_LIMIT_ACTION, "fail")
                 .build();
 
         // Start the connector ...
