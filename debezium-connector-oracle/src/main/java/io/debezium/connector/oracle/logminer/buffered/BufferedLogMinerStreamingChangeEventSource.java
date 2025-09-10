@@ -409,17 +409,17 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                     getMetrics().setOldestScnDetails(event.getScn(), event.getChangeTime());
                 }
 
-                if (Objects.equals(getOffsetContext().getTransactionId(), event.getTransactionId())) {
+                if (Objects.equals(getOffsetContext().getTransactionId(), transactionId)) {
                     if (getOffsetContext().getTransactionSequence() != null) {
                         if (getOffsetContext().getTransactionSequence() >= eventIndex) {
-                            LOGGER.info("Skipping event {} in transaction {} - has already been sent.", eventIndex, event.getTransactionId());
+                            LOGGER.info("Skipping event {} in transaction {} - has already been sent.", eventIndex, transactionId);
 
                             Loggings.logDebugAndTraceRecord(
                                     LOGGER,
                                     event,
                                     "Skipping event {} in transaction {} - has already been sent.",
                                     eventIndex,
-                                    event.getTransactionId());
+                                    transactionId);
 
                             return;
                         }
