@@ -92,13 +92,13 @@ public interface SinkConnectorConfig {
     String COLLECTION_NAMING_STRATEGY = "collection.naming.strategy";
     String DEPRECATED_TABLE_NAMING_STRATEGY = "table.naming.strategy";
     Field COLLECTION_NAMING_STRATEGY_FIELD = Field.create(COLLECTION_NAMING_STRATEGY)
-            .withDisplayName("Name of the strategy class that implements the CollectionNamingStrategy interface")
+            .withDisplayName("CollectionNamingStrategy class")
             .withType(ConfigDef.Type.CLASS)
             .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 2))
             .withWidth(ConfigDef.Width.LONG)
             .withImportance(ConfigDef.Importance.LOW)
             .withDefault(DefaultCollectionNamingStrategy.class.getName())
-            .withDescription("Name of the strategy class that implements the CollectionNamingStrategy interface.")
+            .withDescription("Name of the strategy class that defines the collection name from the topic name. It implements the CollectionNamingStrategy interface.")
             .withDeprecatedAliases(DEPRECATED_TABLE_NAMING_STRATEGY);
 
     String FIELD_INCLUDE_LIST = "field.include.list";
