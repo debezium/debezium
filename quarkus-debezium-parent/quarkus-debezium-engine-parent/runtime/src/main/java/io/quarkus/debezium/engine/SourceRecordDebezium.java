@@ -12,6 +12,9 @@ import java.util.function.Function;
 
 import jakarta.enterprise.context.ApplicationScoped;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.config.Configuration;
 import io.debezium.embedded.Connect;
 import io.debezium.engine.DebeziumEngine;
@@ -24,6 +27,7 @@ import io.quarkus.debezium.engine.capture.consumer.SourceRecordEventConsumer;
 @ApplicationScoped
 class SourceRecordDebezium extends RunnableDebezium {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(SourceRecordDebezium.class.getName());
     private final Map<String, String> configuration;
     private final DebeziumEngine<?> engine;
     private final Connector connector;
@@ -35,6 +39,7 @@ class SourceRecordDebezium extends RunnableDebezium {
                          Connector connector,
                          SourceRecordEventConsumer consumer,
                          CaptureGroup captureGroup) {
+        LOGGER.info("Creating SourceRecordDebezium for captureGroup {}", captureGroup);
         this.configuration = configuration;
         this.stateHandler = stateHandler;
         this.engine = DebeziumEngine.create(Connect.class, Connect.class)
@@ -43,11 +48,10 @@ class SourceRecordDebezium extends RunnableDebezium {
                         .edit()
                         .with(Configuration.from(configuration))
                         .build().asProperties())
-                .using(this.stateHandler.connectorCallback())
-                .using(this.stateHandler.completionCallback())
+                .using(this.stateHandler.connectorCallback(captureGroup, this))
+                .using(this.stateHandler.completionCallback(captureGroup, this))
                 .notifying(consumer)
                 .build();
-        this.stateHandler.setDebeziumEngine(this);
         this.connector = connector;
         this.captureGroup = captureGroup;
     }
@@ -64,7 +68,7 @@ class SourceRecordDebezium extends RunnableDebezium {
 
     @Override
     public DebeziumStatus status() {
-        return stateHandler.get();
+        return stateHandler.get(captureGroup);
     }
 
     @Override

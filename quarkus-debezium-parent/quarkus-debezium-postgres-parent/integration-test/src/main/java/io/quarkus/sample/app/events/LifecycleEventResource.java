@@ -9,9 +9,11 @@ import java.util.List;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 
 import io.debezium.runtime.DebeziumConnectorRegistry;
@@ -31,9 +33,9 @@ public class LifecycleEventResource {
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public List<String> getEvents() {
+    public List<String> getEvents(@QueryParam("engine") @DefaultValue("default") String engine) {
         // Returns a list of all observed event names
-        return observer.getLifecycleEvents()
+        return observer.getLifecycleEvents(engine)
                 .stream()
                 .map(o -> o.getClass().getName())
                 .toList();
