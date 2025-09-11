@@ -143,7 +143,12 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     snapshotterService.getSnapshotter());
 
             // Validate guardrail limits for captured collections to prevent loading excessive collection schemas into memory
-            validateGuardrailLimits(connectorConfig, taskContext.getConnection(dispatcher, previousOffsets.getTheOnlyPartition()));
+            if (connectorConfig.getGuardrailTablesMax() <= 0) {
+                LOGGER.info("Guardrail validation skipped");
+            }
+            else {
+                validateGuardrailLimits(connectorConfig, taskContext.getConnection(dispatcher, previousOffsets.getTheOnlyPartition()));
+            }
 
             NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                     connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);

@@ -131,7 +131,13 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
         }
 
         // Validate guardrail limits for captured tables to prevent loading excessive table schemas into memory
-        validateGuardrailLimits(connectorConfig, connection);
+        // Skip validation if guardrail is disabled (maxTables = 0)
+        if (connectorConfig.getGuardrailTablesMax() <= 0) {
+            LOGGER.info("Guardrail validation skipped");
+        }
+        else {
+            validateGuardrailLimits(connectorConfig, connection);
+        }
 
         LOGGER.info("Closing connection before starting schema recovery");
 
