@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.quarkus.sample.app.events;
+package io.quarkus.sample.app.resources;
 
 import java.util.List;
 
@@ -17,6 +17,7 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 
 import io.debezium.runtime.DebeziumConnectorRegistry;
+import io.quarkus.sample.app.events.LifecycleEventObserver;
 
 /**
  * @author Chris Cranford

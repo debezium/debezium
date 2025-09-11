@@ -4,7 +4,7 @@
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 
-package io.quarkus.sample.app;
+package io.quarkus.sample.app.services;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -15,6 +15,8 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.runtime.Capturing;
 import io.debezium.runtime.CapturingEvent;
+import io.quarkus.sample.app.dto.Order;
+import io.quarkus.sample.app.dto.Product;
 
 @ApplicationScoped
 public class CaptureHandler {
@@ -31,18 +33,18 @@ public class CaptureHandler {
 
     @Capturing
     public void capture(CapturingEvent<SourceRecord> event) {
-        productService.capture();
+        productService.captured();
     }
 
     @Capturing(destination = "dbserver1.public.products")
     public void products(CapturingEvent<Product> event) {
-        logger.info("getting an event from {}", event.destination());
+        logger.info("getting a product event for destination {} from capturing group {}", event.destination(), event.group());
         productService.add(event.record());
     }
 
     @Capturing(destination = "dbserver2.public.orders", group = "alternative")
     public void orders(CapturingEvent<Order> event) {
-        logger.info("getting an event from {}", event.destination());
+        logger.info("getting a order event for destination {} from capturing group {}", event.destination(), event.group());
         orderService.add(event.record());
     }
 }

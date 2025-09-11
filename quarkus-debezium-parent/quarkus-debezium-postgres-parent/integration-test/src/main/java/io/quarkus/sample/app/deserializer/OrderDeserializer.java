@@ -7,7 +7,7 @@
 package io.quarkus.sample.app.deserializer;
 
 import io.quarkus.debezium.engine.deserializer.ObjectMapperDeserializer;
-import io.quarkus.sample.app.Order;
+import io.quarkus.sample.app.dto.Order;
 
 public class OrderDeserializer extends ObjectMapperDeserializer<Order> {
     public OrderDeserializer() {
