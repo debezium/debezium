@@ -12,10 +12,15 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.runtime.DebeziumStatus;
+import io.quarkus.debezium.notification.SnapshotCompleted;
+import io.quarkus.debezium.notification.SnapshotInProgress;
+import io.quarkus.debezium.notification.SnapshotStarted;
+import io.quarkus.debezium.notification.SnapshotTableScanCompleted;
 import io.quarkus.sample.app.test.DisableIfSingleEngine;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.restassured.RestAssured;
@@ -101,5 +106,22 @@ public class SampleNativeApplicationIT {
                 .body("[0].connector", equalTo("io.debezium.connector.postgresql.PostgresConnector"))
                 .body("[1].group", equalTo("alternative"))
                 .body("[1].connector", equalTo("io.debezium.connector.postgresql.PostgresConnector")));
+    }
+
+    @Test
+    @DisplayName("should get snapshot notifications")
+    void shouldGetSnapshotNotifications() {
+        await().untilAsserted(() -> Assertions.assertThat(
+                get("/notifications")
+                        .then()
+                        .statusCode(200)
+                        .extract().body().jsonPath().getList(".", String.class))
+                .containsExactlyInAnyOrder(
+                        SnapshotStarted.class.getName(),
+                        SnapshotInProgress.class.getName(),
+                        SnapshotInProgress.class.getName(),
+                        SnapshotTableScanCompleted.class.getName(),
+                        SnapshotTableScanCompleted.class.getName(),
+                        SnapshotCompleted.class.getName()));
     }
 }
