@@ -1678,12 +1678,6 @@ public abstract class CommonConnectorConfig {
     public void validateGuardrailLimits(int tableCount, java.util.Collection<String> tableNames) {
         int maxTables = getGuardrailTablesMax();
 
-        // Skip validation if guardrail is disabled (maxTables = 0)
-        if (maxTables <= 0) {
-            LOGGER.info("Guardrail validation skipped");
-            return;
-        }
-
         if (tableCount > maxTables) {
             String message = String.format(
                     "Guardrail limit exceeded: %d tables/collections configured for capture, but maximum allowed is %d.",

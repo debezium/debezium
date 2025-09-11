@@ -33,6 +33,7 @@ import com.mongodb.client.MongoClients;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.mongodb.MongoDbConnectorConfig.CaptureScope;
+import io.debezium.connector.mongodb.connection.MongoDbConnections;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseProvider;
 import io.debezium.connector.mongodb.junit.MongoDbDatabaseVersionResolver;
 import io.debezium.connector.mongodb.junit.MongoDbPlatform;
@@ -173,6 +174,26 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractAsyncEngineCon
         // Connector should fail after 2 retries
         Awaitility.await().pollDelay(10, TimeUnit.SECONDS).timeout(30, TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
         Assertions.assertThat(logInterceptor.containsMessage("The maximum number of 2 retries has been attempted")).isTrue();
+    }
+
+    @Test
+    public void shouldFailInGuardRailValidationWithoutPermissions() {
+        var logInterceptor = new LogInterceptor(MongoDbConnections.class);
+
+        // Populate collection
+        populateCollection(TEST_DATABASE, TEST_COLLECTION, INIT_DOCUMENT_COUNT);
+
+        // Use the DB configuration to define the connector's configuration ...
+        var config = connectorConfiguration(TEST_DISALLOWED_USER, TEST_DISALLOWED_PWD);
+        // Set the guardrail to 1 collection, which should enforce the guardrail validation check
+        config = Configuration.create().with(config).with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 1).build();
+
+        // Start the connector ...
+        start(MongoDbConnector.class, config);
+
+        // Connector should fail during guardrail validation
+        Awaitility.await().pollDelay(10, TimeUnit.SECONDS).timeout(30, TimeUnit.SECONDS).until(() -> !isEngineRunning.get());
+        Assertions.assertThat(logInterceptor.containsMessage("Error while attempting to")).isTrue();
     }
 
     protected void consumeAndVerifyFromInitialSnapshot(String topic, int expectedRecords) throws InterruptedException {

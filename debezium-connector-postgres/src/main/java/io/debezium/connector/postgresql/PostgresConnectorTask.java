@@ -158,7 +158,12 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         }
 
         // Validate guardrail limits for captured tables to prevent loading excessive table schemas into memory
-        validateGuardrailLimits(connectorConfig, jdbcConnection);
+        if (connectorConfig.getGuardrailTablesMax() <= 0) {
+            LOGGER.info("Guardrail validation skipped");
+        }
+        else {
+            validateGuardrailLimits(connectorConfig, jdbcConnection);
+        }
 
         validateSchemaHistory(connectorConfig, jdbcConnection::validateLogPosition, previousOffsets, schema, snapshotter);
 

@@ -115,7 +115,12 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         OracleOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
         // Validate guardrail limits for captured tables to prevent loading excessive table schemas into memory
-        validateGuardrailLimits(connectorConfig, jdbcConnection);
+        if (connectorConfig.getGuardrailTablesMax() <= 0) {
+            LOGGER.info("Guardrail validation skipped");
+        }
+        else {
+            validateGuardrailLimits(connectorConfig, jdbcConnection);
+        }
 
         validateSchemaHistory(connectorConfig, jdbcConnection::validateLogPosition, previousOffsets, schema, snapshotterService.getSnapshotter());
 
