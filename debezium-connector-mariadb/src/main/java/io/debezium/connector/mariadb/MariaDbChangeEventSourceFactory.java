@@ -6,11 +6,9 @@
 package io.debezium.connector.mariadb;
 
 import java.util.Optional;
-import java.util.function.Function;
-
-import org.apache.kafka.connect.source.SourceRecord;
 
 import io.debezium.connector.base.ChangeEventQueue;
+import io.debezium.connector.binlog.BinlogChangeEventSourceFactory;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.mariadb.metrics.MariaDbSnapshotChangeEventSourceMetrics;
 import io.debezium.connector.mariadb.metrics.MariaDbStreamingChangeEventSourceMetrics;
@@ -21,7 +19,6 @@ import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
 import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotChangeEventSource;
-import io.debezium.pipeline.source.spi.ChangeEventSourceFactory;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
@@ -35,7 +32,7 @@ import io.debezium.util.Strings;
 /**
  * @author Chris Cranford
  */
-public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory<MariaDbPartition, MariaDbOffsetContext> {
+public class MariaDbChangeEventSourceFactory extends BinlogChangeEventSourceFactory<MariaDbPartition, MariaDbOffsetContext> {
 
     private final MariaDbConnectorConfig configuration;
     private final MainConnectionProvidingConnectionFactory<BinlogConnectorConnection> connectionFactory;
@@ -48,7 +45,6 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
     // Snapshot requires buffering to modify the last record in the snapshot as sometimes it is
     // impossible to detect it till the snapshot is ended. Mainly when the last snapshotted table is empty.
     // Based on the DBZ-3113 the code can change in the future, and it will be handled in the core shared code.
-    private final ChangeEventQueue<DataChangeEvent> queue;
     private final SnapshotterService snapshotterService;
 
     public MariaDbChangeEventSourceFactory(MariaDbConnectorConfig configuration,
@@ -61,6 +57,7 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
                                            MariaDbStreamingChangeEventSourceMetrics streamingMetrics,
                                            ChangeEventQueue<DataChangeEvent> queue,
                                            SnapshotterService snapshotterService) {
+        super(queue);
         this.configuration = configuration;
         this.connectionFactory = connectionFactory;
         this.errorHandler = errorHandler;
@@ -68,7 +65,6 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
         this.clock = clock;
         this.taskContext = taskContext;
         this.streamingMetrics = streamingMetrics;
-        this.queue = queue;
         this.schema = schema;
         this.snapshotterService = snapshotterService;
     }
@@ -139,14 +135,5 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
                 snapshotProgressListener,
                 dataChangeEventListener,
                 notificationService));
-    }
-
-    private void preSnapshot() {
-        queue.enableBuffering();
-    }
-
-    private void modifyAndFlushLastRecord(Function<SourceRecord, SourceRecord> modify) throws InterruptedException {
-        queue.flushBuffer(dataChange -> new DataChangeEvent(modify.apply(dataChange.getRecord())));
-        queue.disableBuffering();
     }
 }

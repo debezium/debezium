@@ -40,11 +40,13 @@ import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.converters.custom.CustomConverterServiceProvider;
 import io.debezium.data.Envelope;
 import io.debezium.function.LogPositionValidator;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
+import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.notification.channels.NotificationChannel;
 import io.debezium.pipeline.signal.channels.SignalChannelReader;
@@ -489,6 +491,12 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
                 throw new ConnectException("Interrupted while stopping coordinator, failing the task");
             }
 
+            // Shutdown the change event queue to prevent thread leaks
+            getChangeEventQueue().ifPresent(queue -> {
+                LOGGER.info("Shutting down queue to prevent thread leaks");
+                queue.shutdown();
+            });
+
             doStop();
 
             if (restart) {
@@ -505,6 +513,18 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         finally {
             stateLock.unlock();
         }
+    }
+
+    /**
+     * Override this method to provide access to the connector's ChangeEventQueue.
+     * If the connector uses a ChangeEventQueue, this should return it to enable
+     * automatic queue shutdown during connector stop to prevent thread leaks.
+     * If the connector doesn't use a ChangeEventQueue, return empty Optional.
+     *
+     * @return Optional containing the ChangeEventQueue instance, or empty if not applicable
+     */
+    protected Optional<ChangeEventQueue<DataChangeEvent>> getChangeEventQueue() {
+        return Optional.empty(); // Default implementation - connectors override if they have a queue
     }
 
     protected abstract void doStop();
