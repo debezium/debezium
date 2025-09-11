@@ -7,6 +7,7 @@ package io.debezium.engine.source;
 
 import java.util.Map;
 
+import org.apache.kafka.common.metrics.PluginMetrics;
 import org.apache.kafka.connect.source.SourceTaskContext;
 import org.apache.kafka.connect.storage.OffsetStorageReader;
 import org.apache.kafka.connect.storage.OffsetStorageWriter;
@@ -78,6 +79,12 @@ public class EngineSourceTaskContext implements DebeziumSourceTaskContext, Sourc
     @Override
     public Map<String, String> configs() {
         // we don't support config changes on the fly yet
+        return null;
+    }
+
+    @Override
+    public PluginMetrics pluginMetrics() {
+        // we don't support metrics yet
         return null;
     }
 }
