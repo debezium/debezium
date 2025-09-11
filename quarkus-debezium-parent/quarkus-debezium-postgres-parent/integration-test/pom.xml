@@ -18,10 +18,6 @@
             <artifactId>quarkus-rest-jackson</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-hibernate-orm</artifactId>
-        </dependency>
-        <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>quarkus-debezium-postgres</artifactId>
         </dependency>
@@ -128,6 +124,11 @@
                                     <POSTGRES_PASSWORD>native</POSTGRES_PASSWORD>
                                     <POSTGRES_DB>native</POSTGRES_DB>
                                 </env>
+                                <volumes>
+                                    <bind>
+                                        <volume>${project.basedir}/src/main/resources/init.sql:/docker-entrypoint-initdb.d/default.sql</volume>
+                                    </bind>
+                                </volumes>
                             </run>
                         </image>
                     </images>
