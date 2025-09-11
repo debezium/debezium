@@ -60,6 +60,7 @@ import io.debezium.snapshot.mode.WhenNeededSnapshotter;
 import io.debezium.snapshot.spi.SnapshotLock;
 import io.debezium.transforms.ExtractNewRecordState;
 import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
+import io.quarkus.arc.deployment.AutoInjectAnnotationBuildItem;
 import io.quarkus.arc.deployment.BeanContainerBuildItem;
 import io.quarkus.arc.deployment.BeanDiscoveryFinishedBuildItem;
 import io.quarkus.arc.deployment.SyntheticBeanBuildItem;
@@ -110,6 +111,11 @@ public class EngineProcessor {
     private final Logger logger = LoggerFactory.getLogger(EngineProcessor.class);
 
     @BuildStep
+    AutoInjectAnnotationBuildItem autoInjectCaptureGroup() {
+        return new AutoInjectAnnotationBuildItem(DotName.createSimple(CaptureGroup.class));
+    }
+
+    @BuildStep
     void engine(BuildProducer<AdditionalBeanBuildItem> additionalBeanProducer,
                 List<DebeziumConnectorBuildItem> debeziumConnectorBuildItems) {
         debeziumConnectorBuildItems
@@ -121,7 +127,7 @@ public class EngineProcessor {
                                 .setDefaultScope(DotNames.APPLICATION_SCOPED)
                                 .build()));
 
-        additionalBeanProducer.produce(new AdditionalBeanBuildItem(CaptureGroup.class));
+        additionalBeanProducer.produce(AdditionalBeanBuildItem.unremovableOf(CaptureGroup.class));
 
         additionalBeanProducer.produce(AdditionalBeanBuildItem
                 .builder()
@@ -247,11 +253,11 @@ public class EngineProcessor {
 
         debeziumEngineConfiguration.capturing().values()
                 .stream()
-                .flatMap(a -> a.deserializers().values().stream())
+                .flatMap(capturing -> capturing.deserializers().values().stream())
                 .map(DebeziumEngineConfiguration.DeserializerConfiguration::deserializer)
-                .forEach(a -> reflectiveClasses.produce(
+                .forEach(deserializer -> reflectiveClasses.produce(
                         ReflectiveClassBuildItem
-                                .builder(a)
+                                .builder(deserializer)
                                 .reason(getClass().getName())
                                 .build()));
 
