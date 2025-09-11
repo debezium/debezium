@@ -13,8 +13,6 @@
     <name>Quarkus Debezium :: Extension :: Postgres :: Runtime</name>
 
     <properties>
-        <!-- The below override should be removed when kafka is upgraded to 4.0.0 and quarkus to 3.25.0 -->
-        <kafka.version.override>4.0.0</kafka.version.override>
 
         <mockito.argLine>-javaagent:${org.mockito:mockito-core:jar}</mockito.argLine>
     </properties>
@@ -56,17 +54,6 @@
                     <groupId>org.apache.kafka</groupId>
                     <artifactId>connect-json</artifactId>
                 </exclusion>
-                <exclusion>
-                    <groupId>org.apache.kafka</groupId>
-                    <artifactId>connect-runtime</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>connect-runtime</artifactId>
-            <version>${kafka.version.override}</version>
-            <exclusions>
                 <exclusion>
                     <groupId>com.fasterxml.jackson.core</groupId>
                     <artifactId>jackson-annotations</artifactId>
@@ -119,16 +106,11 @@
                     <groupId>org.reflections</groupId>
                     <artifactId>reflections</artifactId>
                 </exclusion>
-                <exclusion>
-                    <groupId>org.apache.maven</groupId>
-                    <artifactId>maven-artifact</artifactId>
-                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>connect-json</artifactId>
-            <version>${kafka.version.override}</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.fasterxml</groupId>
@@ -166,7 +148,6 @@
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>connect-transforms</artifactId>
-            <version>${kafka.version.override}</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.apache.kafka</groupId>
