@@ -57,7 +57,7 @@ public class DebeziumEndpoint {
 
     @GET
     @Path("engines")
-    public Response product() {
+    public Response engines() {
         return Response.ok(registry.engines()
                 .stream()
                 .map(engine -> new EngineManifest(engine.captureGroup().id(), engine.connector().name()))
@@ -73,7 +73,4 @@ public class DebeziumEndpoint {
         return Response.ok(orderService.orders()).build();
     }
 
-    record EngineManifest(String group, String connector) {
-
-    }
 }

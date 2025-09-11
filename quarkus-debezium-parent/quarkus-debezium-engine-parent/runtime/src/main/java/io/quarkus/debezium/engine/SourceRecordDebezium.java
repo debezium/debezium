@@ -39,7 +39,7 @@ class SourceRecordDebezium extends RunnableDebezium {
                          Connector connector,
                          SourceRecordEventConsumer consumer,
                          CaptureGroup captureGroup) {
-        LOGGER.info("Creating SourceRecordDebezium for captureGroup {}", captureGroup);
+        LOGGER.trace("Creating SourceRecordDebezium for captureGroup {}", captureGroup);
         this.configuration = configuration;
         this.stateHandler = stateHandler;
         this.engine = DebeziumEngine.create(Connect.class, Connect.class)
