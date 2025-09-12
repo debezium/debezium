@@ -664,7 +664,7 @@ public class OracleConnection extends JdbcConnection {
                 try {
                     return reselectColumns(query, oracleTableId, columns, bindValues);
                 }
-                catch (SQLException e) {
+                catch (Exception e) {
                     if (shouldReselectFallbackToNonFlashbackQuery(e)) {
                         LOGGER.warn("Failed to re-select row for table {} and key columns {} with values {}. " +
                                 "Trying to perform re-selection without flashback.", table.id(), keyColumns, keyValues);
@@ -692,9 +692,22 @@ public class OracleConnection extends JdbcConnection {
             "ORA-01555",
             "ORA-01466");
 
-    private static boolean shouldReselectFallbackToNonFlashbackQuery(SQLException exception) {
-        return ORACLE_RESELECT_ERROR_CODE_FALLBACK.contains(exception.getErrorCode()) ||
-                ORACLE_RESELECT_ERROR_PREFIX_FALLBACK.stream().anyMatch(exception.getMessage()::startsWith);
+    private static boolean shouldReselectFallbackToNonFlashbackQuery(Exception exception) {
+        SQLException sqlException = null;
+        Throwable cause = exception;
+        while (cause != null) {
+            if (cause instanceof SQLException) {
+                sqlException = (SQLException) cause;
+                break;
+            }
+            if (cause.getCause() == cause) {
+                break;
+            }
+            cause = cause.getCause();
+        }
+        return sqlException != null &&
+                ORACLE_RESELECT_ERROR_CODE_FALLBACK.contains(sqlException.getErrorCode()) ||
+                ORACLE_RESELECT_ERROR_PREFIX_FALLBACK.stream().anyMatch(sqlException.getMessage()::startsWith);
     }
 
     @Override
