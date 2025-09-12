@@ -16,12 +16,13 @@ ENV KAFKA_HOME=/opt/kafka \
     KAFKA_CONNECT_PLUGINS=$KAFKA_HOME/new-connector-plugins
 
 #
-# Install openjdk-17, iproute and unzip
+# Install packages and clean dnf cache
 #
-RUN dnf -y install java-17-openjdk
-RUN dnf -y install unzip
-RUN dnf -y install nmap
-RUN dnf -y install iproute && dnf clean all
+
+RUN dnf -y install java-17-openjdk unzip nmap iproute --nodocs \
+    && dnf clean all \
+    && rm -rf /var/cache/dnf
+
 
 #
 # Create a user and home directory for Kafka
@@ -70,19 +71,20 @@ COPY metrics.yaml $KAFKA_HOME/config
 
 
 #
-# Download kafka and kafka-connect start scripts
-#
-RUN mkdir /scripts
-RUN curl -L https://raw.githubusercontent.com/debezium/container-images/main/kafka/${DEBEZIUM_VERSION}/docker-entrypoint.sh -o /scripts/kafka-start.sh
-RUN curl -L https://raw.githubusercontent.com/debezium/container-images/main/connect-base/${DEBEZIUM_VERSION}/docker-entrypoint.sh -o /scripts/kafka-connect-start.sh
-
-
-#
 # Setup original config directories
 #
 RUN mkdir $KAFKA_HOME/config.orig &&\
     mv $KAFKA_HOME/config/* $KAFKA_HOME/config.orig &&\
     chown -R 1001:kafka $KAFKA_HOME/config.orig
+
+
+#
+# Download kafka and kafka-connect start scripts and log4j.properties
+#
+RUN mkdir /scripts
+RUN curl -L https://raw.githubusercontent.com/debezium/container-images/main/connect-base/${DEBEZIUM_VERSION}/docker-entrypoint.sh -o /scripts/kafka-connect-start.sh
+RUN curl -L https://raw.githubusercontent.com/debezium/container-images/main/kafka/${DEBEZIUM_VERSION}/docker-entrypoint.sh -o /scripts/kafka-start.sh
+RUN curl -L https://raw.githubusercontent.com/debezium/container-images/main/kafka/${DEBEZIUM_VERSION}/log4j.properties -o /opt/kafka/config.orig/log4j.properties
 
 
 # Remove unnecessary files
