@@ -6,30 +6,45 @@
 
 package io.quarkus.debezium.notification;
 
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import java.util.Map;
 
 import jakarta.enterprise.event.Event;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 import io.debezium.pipeline.notification.Notification;
 
 class SnapshotHandlerTest {
 
-    private final Event<SnapshotStarted> startedEvent = Mockito.mock(Event.class);
-    private final Event<SnapshotInProgress> inProgressEvent = Mockito.mock(Event.class);
-    private final Event<SnapshotTableScanCompleted> tableScanCompletedEvent = Mockito.mock(Event.class);
-    private final Event<SnapshotCompleted> completedEvent = Mockito.mock(Event.class);
-    private final Event<SnapshotAborted> abortedEvent = Mockito.mock(Event.class);
-    private final Event<SnapshotSkipped> skippedEvent = Mockito.mock(Event.class);
-    private final Event<SnapshotPaused> snapshotPausedEvent = Mockito.mock(Event.class);
-    private final Event<SnapshotResumed> snapshotResumedEvent = Mockito.mock(Event.class);
+    private final Event<SnapshotStarted> startedEvent = mock(Event.class);
+    private final Event<SnapshotInProgress> inProgressEvent = mock(Event.class);
+    private final Event<SnapshotTableScanCompleted> tableScanCompletedEvent = mock(Event.class);
+    private final Event<SnapshotCompleted> completedEvent = mock(Event.class);
+    private final Event<SnapshotAborted> abortedEvent = mock(Event.class);
+    private final Event<SnapshotSkipped> skippedEvent = mock(Event.class);
+    private final Event<SnapshotPaused> snapshotPausedEvent = mock(Event.class);
+    private final Event<SnapshotResumed> snapshotResumedEvent = mock(Event.class);
+
+    @BeforeEach
+    void setUp() {
+        when(startedEvent.select(any())).thenReturn(startedEvent);
+        when(inProgressEvent.select(any())).thenReturn(inProgressEvent);
+        when(tableScanCompletedEvent.select(any())).thenReturn(tableScanCompletedEvent);
+        when(completedEvent.select(any())).thenReturn(completedEvent);
+        when(abortedEvent.select(any())).thenReturn(abortedEvent);
+        when(skippedEvent.select(any())).thenReturn(skippedEvent);
+        when(snapshotPausedEvent.select(any())).thenReturn(snapshotPausedEvent);
+        when(snapshotResumedEvent.select(any())).thenReturn(snapshotResumedEvent);
+    }
 
     @Test
     @DisplayName("should fire snapshotStarted when snapshot started")
