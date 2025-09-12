@@ -17,6 +17,7 @@ import io.quarkus.debezium.notification.SnapshotInProgress;
 import io.quarkus.debezium.notification.SnapshotStarted;
 import io.quarkus.debezium.notification.SnapshotTableScanCompleted;
 import io.quarkus.sample.app.test.DisableIfMultiEngine;
+import io.quarkus.sample.app.test.DisableIfSingleEngine;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 
 @QuarkusIntegrationTest
@@ -27,7 +28,25 @@ public class NotificationIT {
     @DisableIfMultiEngine
     void shouldGetSnapshotNotifications() {
         await().untilAsserted(() -> Assertions.assertThat(
-                get("/notifications")
+                get("/notifications?engine=default")
+                        .then()
+                        .statusCode(200)
+                        .extract().body().jsonPath().getList(".", String.class))
+                .containsExactlyInAnyOrder(
+                        SnapshotStarted.class.getName(),
+                        SnapshotInProgress.class.getName(),
+                        SnapshotInProgress.class.getName(),
+                        SnapshotTableScanCompleted.class.getName(),
+                        SnapshotTableScanCompleted.class.getName(),
+                        SnapshotCompleted.class.getName()));
+    }
+
+    @Test
+    @DisplayName("should get snapshot notifications fromAnotherEngine")
+    @DisableIfSingleEngine
+    void shouldGetSnapshotNotificationsFromAnotherEngine() {
+        await().untilAsserted(() -> Assertions.assertThat(
+                get("/notifications?engine=alternative")
                         .then()
                         .statusCode(200)
                         .extract().body().jsonPath().getList(".", String.class))

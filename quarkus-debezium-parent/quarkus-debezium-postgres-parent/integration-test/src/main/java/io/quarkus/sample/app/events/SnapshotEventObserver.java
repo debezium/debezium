@@ -11,18 +11,28 @@ import java.util.List;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 
+import io.debezium.runtime.events.CaptureGroup;
 import io.quarkus.debezium.notification.SnapshotEvent;
 
 @ApplicationScoped
 public class SnapshotEventObserver {
 
-    private final List<SnapshotEvent> snapshotEvents = new ArrayList<>();
+    private final List<SnapshotEvent> defaultSnapshotEvents = new ArrayList<>();
+    private final List<SnapshotEvent> alternativeSnapshotEvents = new ArrayList<>();
 
-    public void snapshot(@Observes SnapshotEvent snapshot) {
-        snapshotEvents.add(snapshot);
+    public void defaultSnapshot(@Observes @CaptureGroup("default") SnapshotEvent snapshot) {
+        defaultSnapshotEvents.add(snapshot);
     }
 
-    public List<SnapshotEvent> getSnapshotEvents() {
-        return snapshotEvents;
+    public void alternativeSnapshot(@Observes @CaptureGroup("alternative") SnapshotEvent snapshot) {
+        alternativeSnapshotEvents.add(snapshot);
     }
+
+    public List<SnapshotEvent> getDefaultSnapshotEvents(String engine) {
+        if (engine.equals("default")) {
+            return defaultSnapshotEvents;
+        }
+        return alternativeSnapshotEvents;
+    }
+
 }
