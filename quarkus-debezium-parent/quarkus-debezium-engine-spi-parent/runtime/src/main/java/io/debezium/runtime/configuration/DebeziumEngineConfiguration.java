@@ -35,7 +35,7 @@ public interface DebeziumEngineConfiguration {
     interface Capturing {
 
         /**
-         * identify the capturer group assigned to a datasource
+         * id for the capture group assigned to a datasource
          */
         Optional<String> groupId();
 
