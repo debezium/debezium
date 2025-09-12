@@ -1,0 +1,314 @@
+// Category: debezium-using
+// Type: assembly
+[id="debezium-sink-connector-for-mongodb"]
+= {prodname} sink connector for MongoDB
+
+:context: mongodb
+:data-collection: collection
+:mbean-name: {context}
+:connector-file: {context}
+:connector-class: MongoDbSink
+:connector-name: MongoDB Sink
+:include-list-example: public.inventory
+:collection-container:  database
+ifdef::community[]
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+endif::community[]
+
+
+// Type: concept
+// Title: Overview of {prodname} MongoDB Sink Connector
+// ModuleID: overview-of-debezium-mongodb-sink-connector
+[[mongodb-sink-overview]]
+== Overview
+
+The {prodname} MongoDB Sink Connector enables writing change events from {prodname}'s relational database connectors (PostgreSQL, MySQL, SQL Server, Oracle) into MongoDB collections. It consumes {prodname} change event records from Apache Kafka topics and persists them into a target MongoDB database.
+
+This document describes its architecture, how it works, its current limitations, and its configuration options.
+
+
+[NOTE]
+====
+Currently, the MongoDB Sink Connector only supports {prodname} change events originating from relational database connectors (PostgreSQL, MySQL, SQL Server, Oracle). Change events produced by the {prodname} MongoDB source connector are **not supported yet**.
+====
+
+ifdef::community[]
+For information about the MongoDB versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
+endif::community[]
+
+ifdef::product[]
+For information about the MongoDB versions that are compatible with this connector, see the link:{LinkDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
+
+Information and procedures for using a {prodname} sink connector for MongoDB is organized as follows:
+
+* xref:overview-of-debezium-mongodb-sink-connector[]
+* xref:architecture-of-debezium-mongodb-sink-connector[]
+* xref:limitations-of-debezium-mongodb-sink-connector[]
+* xref:quickstart-debezium-mongodb-sink-connector[]
+* xref:configuration-of-debezium-mongodb-sink-connector[]
+* xref:example-configuration-of-debezium-mongodb-sink-connector[]
+* xref:key-field-mapping-of-debezium-mongodb-sink-connector[]
+* xref:cloudevents-with-debezium-mongodb-sink-connector[]
+* xref:next-steps-of-debezium-mongodb-sink-connector[]
+endif::product[]
+
+
+// Type: concept
+// Title: Architecture of {prodname} MongoDB Sink Connector
+// ModuleID: architecture-of-debezium-mongodb-sink-connector
+[[mongodb-sink-architecture]]
+== Architecture and how it works
+
+The {prodname} MongoDB Sink Connector allows you to sink change data capture (CDC) events from various relational database management systems (RDBMS) directly into MongoDB collections.
+The MongoDB Sink Connector subscribes to topics populated by {prodname} RDBMS / relational database source connectors (such as PostgreSQL, MySQL, SQL Server, Oracle). These events are in a structured format that describes database changes (insertions, updates, and deletions). For each incoming change event record, it transforms the record into a MongoDB document representation and writes it into the target MongoDB collection.
+
+Upon receiving an event, the connector parses its payload and determines the target MongoDB collection and the type of operation to perform. For *insert* operations, it creates a new document. For *update* operations, it modifies an existing document based on a configurable identifier. For *delete* operations, it removes a document. The connector leverages the MongoDB Java driver to interact with the MongoDB database.
+
+The mapping between topics and MongoDB collections is derived from the connector configuration. Keys are used to identify documents, enabling updates, inserts, and deletes to be propagated into MongoDB.
+
+The core idea is to mirror the state of your relational database tables into MongoDB collections, making the change data available for applications that prefer a document-oriented database or cluster based environment to distribute load.
+
+
+// Type: concept
+// Title: Limitations of {prodname} MongoDB Sink Connector
+// ModuleID: limitations-of-debezium-mongodb-sink-connector
+[[mongodb-sink-limitations]]
+== Limitations
+
+Currently, the {prodname} MongoDB Sink Connector has the following limitations:
+
+* *Relational database / RDBMS source connectors only*: The connector is designed to process messages originating from {prodname} relational database / RDBMS source connectors (PostgreSQL, MySQL, SQL Server, Oracle). It *does not yet support* messages from the {prodname} MongoDB source connector or other non-RDBMS {prodname} source connectors.
+
+* *Schema evolution*: While it handles basic schema changes, advanced schema evolution scenarios might require manual intervention or specific configuration. Schema evolution handling in MongoDB is limited, as MongoDB is schemaless.
+
+* *Transaction Support*: The connector processes individual change events in order (based on the event's source system ordering guarantees). While MongoDB supports transactions, the connector itself does not provide transactional guarantees across multiple CDC events or across multiple documents within a single sink task.
+
+// Type: concept
+// Title: Quickstart of a {prodname} MongoDB Sink Connector
+// ModuleID: quickstart-debezium-mongodb-sink-connector
+[[quick-start]]
+== Quick Start (using Kafka Connect)
+
+To use the {prodname} MongoDB Sink Connector, you'll need a running Kafka cluster, Kafka Connect, and a MongoDB instance.
+
+. Download the connector plugin and install it in your Kafka Connect environment.
+. Configure and start a {prodname} source connector (e.g., {prodname} PostgreSQL Connector) to stream changes from your relational database to Kafka.
+. Configure and start the {prodname} MongoDB Sink Connector to consume these events and sink them into MongoDB.
+
+Here's a minimal example of a connector configuration (replace placeholders with your actual values):
+
+[source,json,indent=0,subs="+attributes"]
+----
+{
+  "name": "mongodb-sink-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.mongodb.sink.MongoDbSinkConnector",
+    "topics.regex": "server1\.inventory\..*",
+    "mongodb.connection.string": "mongodb://localhost:27017",
+    "sink.database": "debezium"
+  }
+}
+----
+
+
+// Type: concept
+// Title: Configuration of {prodname} MongoDB Sink Connector
+// ModuleID: configuration-of-debezium-mongodb-sink-connector
+[[mongodb-sink-configuration]]
+== Configuration
+
+This section describes the configuration properties for the {prodname} MongoDB Sink Connector. The MongoDB Sink Connector accepts a variety of configuration options.
+
+
+=== Required Kafka Connect sink connector configuration properties
+
+[cols="30%a,25%a,45%a"]
+|===
+|Property | Default | Description
+
+|`connector.class` |  | Must be set to `io.debezium.connector.mongodb.sink.MongoDbSinkConnector`.
+|`tasks.max` | 1 | Maximum number of tasks.
+|`topics` or `topics.regex` |  | List of Kafka topics to consume from. With `topics.regex`, the connector will consume from all topics matching the regular expression.
+
+|===
+
+=== Required MongoDB connection properties
+
+[cols="30%a,25%a,45%a"]
+|===
+|Property | Default | Description
+
+|[[mongodb-sink-property-connection-string]]<<mongodb-sink-property-connection-string, `+mongodb.connection.string+`>>
+|
+| MongoDB connection string (URI) that the sink uses to connect to MongoDB. This URI follows the standard MongoDB connection string format.
+
+Example: `mongodb://localhost:27017/?replicaSet=my-replica-set`
+
+|[[mongodb-sink-property-sink-database]]<<mongodb-sink-property-sink-database, `+sink.database+`>>
+|
+| Name of the target MongoDB database.
+
+|===
+
+=== Sink behavior configuration
+
+[cols="30%a,25%a,45%a"]
+|===
+|Property | Default | Description
+
+|[[mongodb-sink-property-collection-naming-strategy]]<<mongodb-sink-property-collection-naming-strategy, `+collection.naming.strategy+`>>
+| `io.debezium.sink.naming.DefaultCollectionNamingStrategy`
+| Specifies the strategy to determine the target MongoDB collection name from the Kafka topic name.
+
+Supported values (fully qualified class names):
+
+* `io.debezium.sink.naming.DefaultCollectionNamingStrategy`: Default strategy where the table name is driven directly from the topic name, replacing any dot characters with underscore and source field in topic.
+
+* Custom implementation: You can provide your own `CollectionNameStrategy` implementation.
+
+|[[mongodb-sink-property-collection-name-format]]<<mongodb-sink-property-collection-name-format, `+collection.name.format+`>>
+| `${topic}`
+| Template for deriving the target collection name from the Kafka topic name.
+
+|[[mongodb-sink-property-column-naming-strategy]]<<mongodb-sink-property-column-naming-strategy, `+column.naming.strategy+`>>
+| `io.debezium.sink.naming.DefaultColumnNamingStrategy`
+| Specifies the strategy to determine the target column name.
+
+Supported values (fully qualified class names):
+
+* `io.debezium.sink.naming.DefaultColumnNamingStrategy`: Uses the original field name as the column name.
+
+* Custom implementation: You can provide your own `CollectionNameStrategy` implementation.
+
+|===
+
+=== Common sink options
+
+[cols="30%a,25%a,45%a"]
+|===
+|Property | Default | Description
+
+|[[mongodb-sink-property-field-include-list]]<<mongodb-sink-property-field-include-list, `+field.include.list+`>>
+|_empty string_
+|An optional, comma-separated list of field names that match the fully-qualified names of fields to include from the change event value.
+Fully-qualified names for fields are of the form `_fieldName_` or `_topicName_:_fieldName_`. +
++
+If you include this property in the configuration, do not set the `field.exclude.list` property.
+
+|[[mongodb-sink-property-field-exclude-list]]<<mongodb-sink-property-field-exclude-list, `+field.exclude.list+`>>
+|_empty string_
+|An optional, comma-separated list of field names that match the fully-qualified names of fields to exclude from the change event value.
+Fully-qualified names for fields are of the form `_fieldName_` or `_topicName_:_fieldName_`. +
++
+If you include this property in the configuration, do not set the `field.include.list` property.
+
+|[[mongodb-sink-property-batch-size]]<<mongodb-sink-property-batch-size, `+batch.size+`>>
+| 2048 | Maximum number of records to write in a single batch.
+
+|===
+
+
+// Type: concept
+// Title: Example configuration for {prodname} MongoDB Sink Connector
+// ModuleID: example-configuration-of-debezium-mongodb-sink-connector
+[[mongodb-sink-examples]]
+== Example configuration
+
+[source,json,indent=0,subs="+attributes"]
+----
+
+{
+    "name": "mongodb-sink-connector",
+    "config": {
+        "connector.class": "io.debezium.connector.mongodb.sink.MongoDbSinkConnector",
+        "topics": "dbserver1.inventory.customers,dbserver1.inventory.orders,dbserver1.inventory.products",
+        "mongodb.connection.string": "mongodb://localhost:27017",
+        "sink.database": "debezium"
+    }
+}
+----
+
+
+// Type: concept
+// Title: Monitoring of {prodname} MongoDB Sink Connector
+// ModuleID: monitoring-of-debezium-mongodb-sink-connector
+[[mongodb-sink-monitoring]]
+== Monitoring
+
+The connector does not expose any metrics yet.
+
+
+// Type: concept
+// Title: Key field mapping of {prodname} MongoDB Sink Connector
+// ModuleID: key-field-mapping-of-debezium-mongodb-sink-connector
+[[mongodb-sink-key-field-mapping]]
+== Key field mapping
+
+* Keys from {prodname} change events (e.g. Kafka message keys) are mapped to MongoDB `_id` field by default.
+* Values are mapped into MongoDB documents.
+* Updates and deletes are resolved based on the key field mapping.
+
+For example, the following event key
+[source,json,indent=0,subs="+attributes"]
+----
+{
+    "userId": 1,
+    "orderId": 1
+}
+----
+
+will be mapped to the following MongoDB document `_id` field:
+[source,json,indent=0,subs="+attributes"]
+----
+{
+    "_id": {
+        "userId": 1,
+        "orderId": 1
+    }
+}
+----
+
+// Type: concept
+// Title: Using CloudEvents with {prodname} MongoDB Sink Connector
+// ModuleID: cloudevents-with-debezium-mongodb-sink-connector
+[[mongodb-sink-cloudevents]]
+== Using CloudEvents with {prodname} MongoDB Sink Connector
+
+The {prodname} MongoDB Sink Connector can consume records serialized as CloudEvents. {prodname} supports emitting change events in CloudEvents format, which encapsulates the event payload in a standardized envelope.
+
+When CloudEvents are enabled on the source connector side:
+
+The MongoDB Sink Connector parses the CloudEvents envelope.
+
+The actual {prodname} event payload is extracted from the data section.
+
+The event is then applied to the target MongoDB collection, following the same insert, update, or delete semantics.
+
+This makes it possible to integrate {prodname} with broader event-driven systems while still persisting the resulting events in MongoDB.
+
+
+[cols="30%a,25%a,45%a"]
+|===
+|Property | Default | Description
+
+|[[mongodb-sink-property-cloud-events]]<<mongodb-sink-property-cloud-events, `+cloud.events.schema.name.pattern+`>>
+| `.*CloudEvents\.Envelope$` | Regular expression pattern to identify CloudEvents messages by matching the schema name with this pattern.
+
+|===
+
+
+// Type: concept
+// Title: Next steps coming for {prodname} MongoDB Sink Connector
+// ModuleID: next-steps-of-debezium-mongodb-sink-connector
+[[mongodb-sink-next-steps]]
+== Next steps
+
+* Use the MongoDB Sink Connector when you want to materialize relational change events into a MongoDB database.
+* Ensure that your {prodname} connector topics contain well-formed records from supported relational sources.
