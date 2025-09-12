@@ -11,18 +11,28 @@ import java.util.concurrent.atomic.AtomicReference;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 
+import io.debezium.runtime.events.CaptureGroup;
 import io.debezium.runtime.events.DebeziumHeartbeat;
 
 @ApplicationScoped
 public class HeartbeatEventObserver {
 
-    private final AtomicReference<DebeziumHeartbeat> reference = new AtomicReference<>();
+    private final AtomicReference<DebeziumHeartbeat> defaultHeartbeats = new AtomicReference<>();
+    private final AtomicReference<DebeziumHeartbeat> alternativeHeartbeats = new AtomicReference<>();
 
-    public void observe(@Observes DebeziumHeartbeat heartbeat) {
-        reference.set(heartbeat);
+    public void observeDefaultHeartbeat(@Observes @CaptureGroup("default") DebeziumHeartbeat heartbeat) {
+        defaultHeartbeats.set(heartbeat);
     }
 
-    public DebeziumHeartbeat get() {
-        return reference.get();
+    public void observeAlternativeHeartbeat(@Observes @CaptureGroup("alternative") DebeziumHeartbeat heartbeat) {
+        alternativeHeartbeats.set(heartbeat);
+    }
+
+    public DebeziumHeartbeat get(String engine) {
+        if (engine.equals("default")) {
+            return defaultHeartbeats.get();
+        }
+
+        return alternativeHeartbeats.get();
     }
 }

@@ -6,19 +6,19 @@
 
 package io.quarkus.debezium.heartbeat;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 
 import jakarta.enterprise.event.Event;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -45,6 +45,11 @@ class QuarkusHeartbeatEmitterTest {
     private final Event event = Mockito.mock(Event.class);
     private final QuarkusHeartbeatEmitter underTest = new QuarkusHeartbeatEmitter(Collections.singletonList(registry), event);
 
+    @BeforeEach
+    void setUp() {
+        when(event.select(any())).thenReturn(event);
+    }
+
     @Test
     @DisplayName("should fire an event when called")
     void shouldFireEventWhenCalled() {
@@ -53,28 +58,6 @@ class QuarkusHeartbeatEmitterTest {
         underTest.emit(PARTITION, OFFSET);
 
         verify(event).fire(new DebeziumHeartbeat(CONNECTOR, DEBEZIUM_STATUS, PARTITION, Map.of("offset", "value")));
-    }
-
-    @Test
-    @DisplayName("should not fire an event when there are multiple engines")
-    void shouldNotFireEventInMultiEngineConfiguration() {
-        QuarkusHeartbeatEmitter emitter = new QuarkusHeartbeatEmitter(Collections.singletonList(registry), event);
-        when(registry.engines()).thenReturn(List.of(generate(DEBEZIUM_STATUS), generate(DEBEZIUM_STATUS)));
-
-        emitter.emit(PARTITION, OFFSET);
-
-        verifyNoInteractions(event);
-    }
-
-    @Test
-    @DisplayName("should not fire an event when there are multiple connectors")
-    void shouldNotFireEventInMultiConnectorsConfiguration() {
-        QuarkusHeartbeatEmitter emitter = new QuarkusHeartbeatEmitter(List.of(registry, registry), event);
-
-        emitter.emit(PARTITION, OFFSET);
-
-        verifyNoInteractions(registry);
-        verifyNoInteractions(event);
     }
 
     public Debezium generate(DebeziumStatus status) {

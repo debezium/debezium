@@ -11,12 +11,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import io.debezium.runtime.DebeziumContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.runtime.CaptureGroup;
 import io.debezium.runtime.Debezium;
+import io.debezium.runtime.DebeziumContext;
 
 public class DebeziumThreadHandler {
     private static final InheritableThreadLocal<DebeziumContext> context = new InheritableThreadLocal<>();
