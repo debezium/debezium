@@ -23,6 +23,7 @@ public final class ConfigProperties {
 
     public static final long WAIT_SCALE_FACTOR = longProperty("test.wait.scale", 1);
 
+    public static final String VERSION_KAFKA = System.getProperty("version.kafka");
     public static final boolean PRODUCT_BUILD = booleanProperty("test.product.build");
     public static final boolean PREPARE_NAMESPACES_AND_STRIMZI = booleanProperty("test.prepare.strimzi");
 
