@@ -45,12 +45,12 @@ public interface DebeziumEngineConfiguration {
         Optional<String> destination();
 
         /**
-         * deserializers in a multi-engine configuration
+         * deserializers in a single-engine configuration
          */
         Optional<String> deserializer();
 
         /**
-         * blablabla
+         * deserializers in a multi-engine configuration
          */
         @WithParentName
         Map<String, DeserializerConfiguration> deserializers();
