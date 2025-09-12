@@ -32,3 +32,7 @@ runs:
       shell: ${{ inputs.shell }}
       run: >
         ./mvnw install -B -pl :quarkus-debezium-parent -am -amd -Dnative
+    - name: Test Multiengine Debezium Quarkus Extensions
+      shell: ${{ inputs.shell }}
+      run: >
+        ./mvn install -B -pl quarkus-debezium-parent/quarkus-debezium-postgres-parent -am -amd -Dquarkus.test.integration-test-profile=multi
