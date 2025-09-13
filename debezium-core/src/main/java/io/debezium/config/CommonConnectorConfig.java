@@ -1357,7 +1357,7 @@ public abstract class CommonConnectorConfig {
             .withWidth(Width.SHORT)
             .withImportance(Importance.MEDIUM)
             .withDescription("The maximum number of tables that can be captured by the connector. " +
-                    "When this limit is exceeded, the action specified by 'guardrail.limit.action' will be taken. " +
+                    "When this limit is exceeded, the action specified by 'guardrail.tables.limit.action' will be taken. " +
                     "Set to 0 to disable this guardrail.")
             .withDefault(0)
             .withValidation(Field::isNonNegativeInteger);

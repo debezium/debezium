@@ -4184,6 +4184,22 @@ After the next failure, the connector stops, and user intervention is required t
 |Specifies the time, in milliseconds, that the connector waits for a query to complete.
 Set the value to `0` (zero) to remove the timeout limit.
 
+|[[postgresql-property-guardrail-tables-max]]<<postgresql-property-guardrail-tables-max, `+guardrail.tables.max+`>>
+|`0`
+|Specifies the maximum number of tables that can be captured by the connector. When this limit is exceeded, the action specified by `guardrail.tables.limit.action` will be taken.
+A value of `0` disables this guardrail.
+
+|[[postgresql-property-guardrail-tables-limit-action]]<<postgresql-property-guardrail-tables-limit-action, `+guardrail.tables.limit.action+`>>
+|`warn`
+|Specifies the action to take when a guardrail tables limit is exceeded.
+Set the property to one of the following values:
+
+`fail`::
+The connector fails if the total number of tables being captured exceed the maximum limit specified by the `guardrail.tables.max` property.
+
+`warn`::
+The connector logs a warning if the total number of tables being captured exceed the maximum limit specified by the `guardrail.tables.max` property.
+
 |[[postgresql-property-extended-headers-enabled]]<<postgresql-property-extended-headers-enabled, `extended.headers.enabled`>>
 |true
 |This property specifies whether {prodname} adds context headers with the prefix `__debezium.context.` to the messages that it emits.
