@@ -914,3 +914,25 @@ Set the value to `true` if the connector experiences deadlocks in `SSLSocketImpl
 ifdef::community[]
 For more information, see https://github.com/osheroff/mysql-binlog-connector-java/issues/133[Issue 133] in the https://github.com/osheroff/mysql-binlog-connector-java[mysql-binlog-connector-java] GitHub repository.
 endif::community[]
+
+[id="{context}-property-guardrail-tables-max"]
+xref:{context}-property-guardrail-tables-max[`guardrail.tables.max`]::
+
+Default value::: `0`
+
+Description:::
+Specifies the maximum number of tables that can be captured by the connector. When this limit is exceeded, the action specified by `guardrail.tables.limit.action` will be taken.
+A value of `0` disables this guardrail.
+
+[id="{context}-property-guardrail-tables-limit-action"]
+xref:{context}-property-guardrail-tables-limit-action[`guardrail.tables.limit.action`]::
+
+Default value::: `warn`
+
+Description:::
+Specifies the action to take when a guardrail tables limit is exceeded.
+Set the property to one of the following values:
+
+`fail`:::: The connector fails if the total number of tables being captured exceed the maximum limit specified by the `guardrail.tables.max` property.
+
+`warn`:::: The connector logs a warning if the total number of tables being captured exceed the maximum limit specified by the `guardrail.tables.max` property.
