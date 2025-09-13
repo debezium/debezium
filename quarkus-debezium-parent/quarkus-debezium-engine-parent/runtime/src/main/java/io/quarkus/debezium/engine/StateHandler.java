@@ -6,16 +6,17 @@
 
 package io.quarkus.debezium.engine;
 
-import io.debezium.engine.DebeziumEngine;
+import io.debezium.engine.DebeziumEngine.CompletionCallback;
+import io.debezium.engine.DebeziumEngine.ConnectorCallback;
+import io.debezium.runtime.CaptureGroup;
 import io.debezium.runtime.Debezium;
 import io.debezium.runtime.DebeziumStatus;
 
 public interface StateHandler {
-    DebeziumEngine.ConnectorCallback connectorCallback();
+    ConnectorCallback connectorCallback(CaptureGroup captureGroup, Debezium engine);
 
-    DebeziumEngine.CompletionCallback completionCallback();
+    CompletionCallback completionCallback(CaptureGroup captureGroup, Debezium engine);
 
-    DebeziumStatus get();
+    DebeziumStatus get(CaptureGroup captureGroup);
 
-    void setDebeziumEngine(Debezium engine);
 }

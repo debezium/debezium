@@ -6,36 +6,54 @@
 
 package io.quarkus.debezium.heartbeat;
 
+import java.util.List;
 import java.util.Map;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.spi.OffsetContext;
-import io.debezium.runtime.Debezium;
+import io.debezium.runtime.DebeziumConnectorRegistry;
+import io.debezium.runtime.events.CaptureGroup;
 import io.debezium.runtime.events.DebeziumHeartbeat;
+import io.quarkus.debezium.engine.DebeziumThreadHandler;
 
 @ApplicationScoped
 public class QuarkusHeartbeatEmitter implements Heartbeat {
 
-    private final Debezium debezium;
+    private static final Logger LOGGER = LoggerFactory.getLogger(QuarkusHeartbeatEmitter.class.getName());
+
+    private final List<DebeziumConnectorRegistry> registries;
     private final Event<DebeziumHeartbeat> heartbeat;
 
     @Inject
-    public QuarkusHeartbeatEmitter(Debezium debezium, Event<DebeziumHeartbeat> heartbeat) {
-        this.debezium = debezium;
+    public QuarkusHeartbeatEmitter(Instance<DebeziumConnectorRegistry> registries, Event<DebeziumHeartbeat> heartbeat) {
+        this.registries = registries
+                .stream()
+                .toList();
+        this.heartbeat = heartbeat;
+    }
+
+    public QuarkusHeartbeatEmitter(List<DebeziumConnectorRegistry> registries, Event<DebeziumHeartbeat> heartbeat) {
+        this.registries = registries;
         this.heartbeat = heartbeat;
     }
 
     @Override
     public void emit(Map<String, ?> partition, OffsetContext offset) {
-        heartbeat.fire(new DebeziumHeartbeat(
-                debezium.connector(),
-                debezium.status(),
-                partition,
-                offset.getOffset()));
+        heartbeat
+                .select(CaptureGroup.Literal.of(DebeziumThreadHandler.context().captureGroup().id()))
+                .fire(new DebeziumHeartbeat(
+                        this.registries.getFirst().engines().getFirst().connector(),
+                        this.registries.getFirst().engines().getFirst().status(),
+                        partition,
+                        offset.getOffset()));
     }
 
     @Override

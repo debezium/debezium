@@ -21,7 +21,6 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>quarkus-debezium-postgres</artifactId>
         </dependency>
-
         <dependency>
             <groupId>io.rest-assured</groupId>
             <artifactId>rest-assured</artifactId>
@@ -126,7 +125,26 @@
                                 </env>
                                 <volumes>
                                     <bind>
-                                        <volume>${project.basedir}/src/main/resources/init.sql:/docker-entrypoint-initdb.d/default.sql</volume>
+                                        <volume>${project.basedir}/src/main/resources/sql/default.sql:/docker-entrypoint-initdb.d/default.sql</volume>
+                                    </bind>
+                                </volumes>
+                            </run>
+                        </image>
+                        <image>
+                            <name>quay.io/debezium/postgres:15</name>
+                            <alias>postgres</alias>
+                            <run>
+                                <ports>
+                                    <port>5433:5432</port>
+                                </ports>
+                                <env>
+                                    <POSTGRES_USER>alternative</POSTGRES_USER>
+                                    <POSTGRES_PASSWORD>alternative</POSTGRES_PASSWORD>
+                                    <POSTGRES_DB>alternative</POSTGRES_DB>
+                                </env>
+                                <volumes>
+                                    <bind>
+                                        <volume>${project.basedir}/src/main/resources/sql/alternative.sql:/docker-entrypoint-initdb.d/alternative.sql</volume>
                                     </bind>
                                 </volumes>
                             </run>
