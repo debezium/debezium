@@ -4581,6 +4581,22 @@ After the next failure, the connector stops, and user intervention is required t
 |`600000`
 |Time to wait for a query to execute, given in milliseconds. Defaults to 600 seconds (600,000 ms); zero means there is no limit.
 
+|[[oracle-property-guardrail-tables-max]]<<oracle-property-guardrail-tables-max, `+guardrail.tables.max+`>>
+|`0`
+|Specifies the maximum number of tables that can be captured by the connector. When this limit is exceeded, the action specified by `guardrail.tables.limit.action` will be taken.
+A value of `0` disables this guardrail.
+
+|[[oracle-property-guardrail-tables-limit-action]]<<oracle-property-guardrail-tables-limit-action, `+guardrail.tables.limit.action+`>>
+|`warn`
+|Specifies the action to take when a guardrail tables limit is exceeded.
+Set the property to one of the following values:
+
+`fail`::
+The connector fails if the total number of tables being captured exceed the maximum limit specified by the `guardrail.tables.max` property.
+
+`warn`::
+The connector logs a warning if the total number of tables being captured exceed the maximum limit specified by the `guardrail.tables.max` property.
+
 |[[oracle-property-extended-headers-enabled]]<<oracle-property-extended-headers-enabled, `extended.headers.enabled`>>
 |true
 |This property specifies whether {prodname} adds context headers with the prefix `__debezium.context.` to the messages that it emits.
