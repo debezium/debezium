@@ -206,11 +206,11 @@ public class LogMinerSessionContext implements AutoCloseable {
 
     private List<String> getMiningOptions(boolean committedDataOnly) {
         final List<String> miningOptions = new ArrayList<>();
-        switch(strategy){
+        switch (strategy) {
             case CATALOG_IN_REDO:
                 miningOptions.add("DBMS_LOGMNR.DICT_FROM_REDO_LOGS");
                 miningOptions.add("DBMS_LOGMNR.DDL_DICT_TRACKING");
-            case DICTIONARY_FROM_FILE :
+            case DICTIONARY_FROM_FILE:
                 break;
             default:
                 miningOptions.add("DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG");
