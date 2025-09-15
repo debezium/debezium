@@ -267,11 +267,13 @@ You can also set the property to periodically prune a database schema history to
 
 WARNING: Do not use this mode to perform a snapshot if schema changes were committed to the database after the last connector shutdown.
 
-|`when_needed`
-|After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
-
-* It cannot detect any topic offsets.
-* A previously recorded offset specifies a log position that is not available on the server.
+// Add this back after we fix DBZ-9471
+//
+// |`when_needed`
+// |After the connector starts, it performs a snapshot only if it detects one of the following circumstances:
+//
+// * It cannot detect any topic offsets.
+// * A previously recorded offset specifies a log position that is not available on the server.
 
 ifdef::community[]
 |`configuration_based`
