@@ -5,11 +5,6 @@
  */
 package io.debezium.openlineage;
 
-import static io.debezium.config.ConfigurationNames.TASK_ID_PROPERTY_NAME;
-import static io.debezium.config.ConfigurationNames.TOPIC_PREFIX_PROPERTY_NAME;
-
-import java.util.Map;
-
 public record OpenLineageJobIdentifier(String namespace, String name) {
 
     /**
@@ -21,11 +16,11 @@ public record OpenLineageJobIdentifier(String namespace, String name) {
      */
     private static final String JOB_NAME_FORMAT = "%s.%s";
 
-    public static OpenLineageJobIdentifier from(Map<String, String> connectorConfig, DebeziumOpenLineageConfiguration debeziumOpenLineageConfiguration) {
+    public static OpenLineageJobIdentifier from(ConnectorContext connectorContext, DebeziumOpenLineageConfiguration debeziumOpenLineageConfiguration) {
 
         return new OpenLineageJobIdentifier(debeziumOpenLineageConfiguration.job().namespace(),
                 String.format(JOB_NAME_FORMAT,
-                        connectorConfig.get(TOPIC_PREFIX_PROPERTY_NAME),
-                        connectorConfig.getOrDefault(TASK_ID_PROPERTY_NAME, "0")));
+                        connectorContext.connectorLogicalName(),
+                        connectorContext.taskId()));
     }
 }

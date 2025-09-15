@@ -32,7 +32,7 @@ public class DebeziumLineageEmitterFactory implements LineageEmitterFactory {
     @Override
     public LineageEmitter get(ConnectorContext connectorContext) {
 
-        DebeziumOpenLineageConfiguration debeziumOpenLineageConfiguration = DebeziumOpenLineageConfiguration.from(connectorContext.config());
+        DebeziumOpenLineageConfiguration debeziumOpenLineageConfiguration = DebeziumOpenLineageConfiguration.from(connectorContext);
 
         if (debeziumOpenLineageConfiguration.enabled()) {
             DebeziumOpenLineageClient emitter = new DebeziumOpenLineageClient(connectorContext, debeziumOpenLineageConfiguration);
@@ -42,7 +42,7 @@ public class DebeziumLineageEmitterFactory implements LineageEmitterFactory {
                 OpenLineageContext ctx = new OpenLineageContext(
                         new OpenLineage(emitter.getProducer()),
                         debeziumOpenLineageConfiguration,
-                        OpenLineageJobIdentifier.from(connectorContext.config(), debeziumOpenLineageConfiguration));
+                        OpenLineageJobIdentifier.from(connectorContext, debeziumOpenLineageConfiguration));
                 contextRef.compareAndSet(null, ctx);
             }
 

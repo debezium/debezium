@@ -112,4 +112,11 @@ public class SmtManager<R extends ConnectRecord<R>> {
             }
         }
     }
+
+    public boolean isValidRecordForLineage(R record) {
+        return !(record.value() != null &&
+                !isValidSchemaChange(record) &&
+                !isValidNotification(record) &&
+                !isValidHeartBeat(record));
+    }
 }
