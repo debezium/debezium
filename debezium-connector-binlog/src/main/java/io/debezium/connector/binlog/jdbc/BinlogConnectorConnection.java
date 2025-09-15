@@ -76,6 +76,13 @@ public abstract class BinlogConnectorConnection extends JdbcConnection {
     }
 
     @Override
+    public Set<TableId> getAllTableIds(String catalogName) throws SQLException {
+
+        // Use the connection's getAllTableIds method which also tracks readable databases
+        return getAllTableIdsWithReadableDatabases().getTableIds();
+    }
+
+    @Override
     public Optional<Boolean> nullsSortLast() {
         // "any NULLs are considered to have the lowest value"
         // https://mariadb.com/kb/en/null-values/#ordering

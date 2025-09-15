@@ -221,7 +221,8 @@ public class OracleConnection extends JdbcConnection {
      * @return set of all table ids for existing table objects
      * @throws SQLException if a database exception occurred
      */
-    protected Set<TableId> getAllTableIds(String catalogName) throws SQLException {
+    @Override
+    public Set<TableId> getAllTableIds(String catalogName) throws SQLException {
         final String query = "select owner, table_name from all_tables " +
         // filter special spatial tables
                 "where table_name NOT LIKE 'MDRT_%' " +
