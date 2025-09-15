@@ -5,7 +5,6 @@
  */
 package io.debezium.openlineage;
 
-import static io.debezium.config.ConfigurationNames.TOPIC_PREFIX_PROPERTY_NAME;
 import static io.debezium.openlineage.OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH;
 import static io.debezium.openlineage.OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_ENABLED;
 import static io.debezium.openlineage.OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION;
@@ -36,21 +35,21 @@ public record DebeziumOpenLineageConfiguration(boolean enabled, Config config, J
     public record Job(String namespace, String description, Map<String, String> tags, Map<String, String> owners) {
     }
 
-    public static DebeziumOpenLineageConfiguration from(Map<String, String> configuration) {
+    public static DebeziumOpenLineageConfiguration from(ConnectorContext connectorContext) {
 
-        Map<String, String> tags = getList(configuration, OPEN_LINEAGE_INTEGRATION_JOB_TAGS, LIST_SEPARATOR, pair -> pair.split(KEY_VALUE_SEPARATOR))
+        Map<String, String> tags = getList(connectorContext.config(), OPEN_LINEAGE_INTEGRATION_JOB_TAGS, LIST_SEPARATOR, pair -> pair.split(KEY_VALUE_SEPARATOR))
                 .stream()
                 .collect(Collectors.toMap(pair -> pair[0].trim(), pair -> pair[1].trim()));
 
-        Map<String, String> owners = getList(configuration, OPEN_LINEAGE_INTEGRATION_JOB_OWNERS, LIST_SEPARATOR, pair -> pair.split(KEY_VALUE_SEPARATOR))
+        Map<String, String> owners = getList(connectorContext.config(), OPEN_LINEAGE_INTEGRATION_JOB_OWNERS, LIST_SEPARATOR, pair -> pair.split(KEY_VALUE_SEPARATOR))
                 .stream()
                 .collect(Collectors.toMap(pair -> pair[0].trim(), pair -> pair[1].trim()));
 
-        return new DebeziumOpenLineageConfiguration(Boolean.parseBoolean(configuration.get(OPEN_LINEAGE_INTEGRATION_ENABLED)),
-                new Config(configuration.get(OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH)),
+        return new DebeziumOpenLineageConfiguration(Boolean.parseBoolean(connectorContext.config().get(OPEN_LINEAGE_INTEGRATION_ENABLED)),
+                new Config(connectorContext.config().get(OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH)),
                 new Job(
-                        configuration.getOrDefault(OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE, configuration.get(TOPIC_PREFIX_PROPERTY_NAME)),
-                        configuration.get(OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION),
+                        connectorContext.config().getOrDefault(OPEN_LINEAGE_INTEGRATION_JOB_NAMESPACE, connectorContext.connectorLogicalName()),
+                        connectorContext.config().get(OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION),
                         tags,
                         owners));
     }

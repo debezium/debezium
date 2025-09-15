@@ -14,7 +14,6 @@ import java.util.Map;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.components.Versioned;
 import org.apache.kafka.connect.connector.ConnectRecord;
-import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.slf4j.Logger;
@@ -25,6 +24,7 @@ import io.debezium.config.Configuration;
 import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
+import io.debezium.openlineage.dataset.DatasetDataExtractor;
 import io.debezium.openlineage.dataset.DatasetMetadata;
 import io.debezium.transforms.SmtManager;
 import io.debezium.util.BoundedConcurrentHashMap;
@@ -39,6 +39,7 @@ public class OpenLineage<R extends ConnectRecord<R>> implements Transformation<R
     private final BoundedConcurrentHashMap<String, Boolean> recentlySeenTopics = new BoundedConcurrentHashMap<>(CACHE_SIZE);
     private final BoundedConcurrentHashMap<Schema, Boolean> recentlySeenSchemas = new BoundedConcurrentHashMap<>(CACHE_SIZE);
     private SmtManager<R> smtManager;
+    private DatasetDataExtractor datasetDataExtractor;
 
     @Override
     public ConfigDef config() {
@@ -51,12 +52,13 @@ public class OpenLineage<R extends ConnectRecord<R>> implements Transformation<R
 
         final Configuration config = Configuration.from(props);
         smtManager = new SmtManager<>(config);
+        datasetDataExtractor = new DatasetDataExtractor();
     }
 
     @Override
     public R apply(R record) {
 
-        if (isInvalidLineageRecord(record)) {
+        if (smtManager.isValidRecordForLineage(record)) {
             return record;
         }
 
@@ -64,9 +66,7 @@ public class OpenLineage<R extends ConnectRecord<R>> implements Transformation<R
 
             if (recentlySeenSchemas.put(record.valueSchema(), true) == null) {
 
-                List<DatasetMetadata.FieldDefinition> fieldDefinitions = record.valueSchema().fields().stream()
-                        .map(this::buildFieldDefinition)
-                        .toList();
+                List<DatasetMetadata.FieldDefinition> fieldDefinitions = datasetDataExtractor.extract(record);
 
                 ConnectorContext connectorContext = ConnectorContext.from(record.headers());
                 DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING, List.of(new DatasetMetadata(record.topic(), OUTPUT, fieldDefinitions)));
@@ -80,32 +80,6 @@ public class OpenLineage<R extends ConnectRecord<R>> implements Transformation<R
         }
 
         return record;
-    }
-
-    private boolean isInvalidLineageRecord(R record) {
-        return record.value() == null ||
-                smtManager.isValidSchemaChange(record) ||
-                smtManager.isValidNotification(record) ||
-                smtManager.isValidHeartBeat(record);
-    }
-
-    private DatasetMetadata.FieldDefinition buildFieldDefinition(Field field) {
-
-        Schema schema = field.schema();
-        String name = field.name();
-        String typeName = schema.type().name();
-        String description = schema.doc();
-
-        if (schema.type() == Schema.Type.STRUCT && schema.fields() != null && !schema.fields().isEmpty()) {
-
-            List<DatasetMetadata.FieldDefinition> nestedFields = schema.fields().stream()
-                    .map(this::buildFieldDefinition)
-                    .toList();
-
-            return new DatasetMetadata.FieldDefinition(name, typeName, description, nestedFields);
-        }
-
-        return new DatasetMetadata.FieldDefinition(name, typeName, description);
     }
 
     @Override
