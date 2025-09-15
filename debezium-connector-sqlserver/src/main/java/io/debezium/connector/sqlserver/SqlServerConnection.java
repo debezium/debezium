@@ -302,6 +302,11 @@ public class SqlServerConnection extends JdbcConnection {
         return connection;
     }
 
+    @Override
+    public Set<TableId> getAllTableIds(String catalogName) throws SQLException {
+        return super.getAllTableIds(catalogName);
+    }
+
     /**
      * @return the current largest log sequence number
      */

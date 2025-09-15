@@ -119,15 +119,16 @@ public abstract class BinlogSnapshotChangeEventSource<P extends BinlogPartition,
 
     @Override
     protected Set<TableId> getAllTableIds(RelationalSnapshotContext<P, O> ctx) throws Exception {
-        // Use the connection's getAllTableIds method which also tracks readable databases
-        final BinlogConnectorConnection.TablesWithReadableDatabases result = connection.getAllTableIdsWithReadableDatabases();
 
+        Set<TableId> allTableIds = connection.getAllTableIds(ctx.catalogName);
         // Log the databases that were readable and are included based on filters
-        final Set<String> includedDatabaseNames = result.getReadableDatabaseNames().stream()
+        final Set<String> includedDatabaseNames = allTableIds.stream()
+                .map(TableId::catalog)
                 .filter(filters.databaseFilter())
                 .collect(Collectors.toSet());
         LOGGER.info("\tsnapshot continuing with database(s): {}", includedDatabaseNames);
-        return result.getTableIds();
+
+        return allTableIds;
     }
 
     @Override

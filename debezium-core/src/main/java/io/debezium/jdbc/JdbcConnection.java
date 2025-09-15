@@ -1108,6 +1108,21 @@ public class JdbcConnection implements AutoCloseable {
     }
 
     /**
+     * Retrieves all {@code TableId}s in a given database catalog, mainly used to determine then the captured table.
+     *
+     * @param catalogName the catalog/database name
+     * @return set of all table ids for existing table objects
+     * @throws SQLException if a database exception occurred
+     */
+    public Set<TableId> getAllTableIds(String catalogName) throws SQLException {
+        return readTableNames(
+                catalogName,
+                null,
+                null,
+                new String[]{ "TABLE" });
+    }
+
+    /**
      * Returns a JDBC connection string using the current configuration and url.
      *
      * @param urlPattern a {@code String} representing a JDBC connection with variables that will be replaced
