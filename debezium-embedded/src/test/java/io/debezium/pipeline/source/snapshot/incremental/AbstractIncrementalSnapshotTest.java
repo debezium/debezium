@@ -753,7 +753,9 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         sendAdHocSnapshotStopSignal(collectionIdToRemove);
 
         // Wait until the stop has been processed, verifying it was removed from the snapshot.
-        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+        Awaitility.await()
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
                 .until(() -> interceptor.containsMessage("Removing '[" + collectionIdToRemove + "]' collections from incremental snapshot"));
 
         try (JdbcConnection connection = databaseConnection()) {
@@ -804,7 +806,9 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         sendAdHocSnapshotStopSignal(collectionIdToRemove);
 
         // Wait until the stop has been processed, verifying it was removed from the snapshot.
-        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+        Awaitility.await()
+                .pollInterval(100, TimeUnit.MILLISECONDS)
+                .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
                 .until(() -> interceptor.containsMessage("Removing '[" + collectionIdToRemove + "]' collections from incremental snapshot"));
 
         try (JdbcConnection connection = databaseConnection()) {
