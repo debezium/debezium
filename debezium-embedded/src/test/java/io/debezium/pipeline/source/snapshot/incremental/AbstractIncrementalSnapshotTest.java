@@ -33,6 +33,7 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceConnector;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
+import org.awaitility.pollinterval.FibonacciPollInterval;
 import org.junit.Test;
 
 import io.debezium.config.CommonConnectorConfig;
@@ -569,7 +570,9 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         sendAdHocSnapshotSignal(".*notExist");
 
         // Wait until the stop has been processed, verifying it was removed from the snapshot.
-        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+        Awaitility.await()
+                .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
+                .pollInterval(FibonacciPollInterval.fibonacci(TimeUnit.SECONDS))
                 .until(() -> interceptor.containsMessage("Skipping read chunk because snapshot is not running"));
 
     }
@@ -753,7 +756,9 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         sendAdHocSnapshotStopSignal(collectionIdToRemove);
 
         // Wait until the stop has been processed, verifying it was removed from the snapshot.
-        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+        Awaitility.await()
+                .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
+                .pollInterval(FibonacciPollInterval.fibonacci(TimeUnit.SECONDS))
                 .until(() -> interceptor.containsMessage("Removing '[" + collectionIdToRemove + "]' collections from incremental snapshot"));
 
         try (JdbcConnection connection = databaseConnection()) {
@@ -804,7 +809,9 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         sendAdHocSnapshotStopSignal(collectionIdToRemove);
 
         // Wait until the stop has been processed, verifying it was removed from the snapshot.
-        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+        Awaitility.await()
+                .atMost(waitTimeForRecords() * 30L, TimeUnit.SECONDS)
+                .pollInterval(FibonacciPollInterval.fibonacci(TimeUnit.SECONDS))
                 .until(() -> interceptor.containsMessage("Removing '[" + collectionIdToRemove + "]' collections from incremental snapshot"));
 
         try (JdbcConnection connection = databaseConnection()) {
@@ -1245,7 +1252,9 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
             sendAdHocSnapshotSignal(collectionIds);
         }
 
-        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(executeSignalWaiter());
+        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+                .pollInterval(FibonacciPollInterval.fibonacci(TimeUnit.SECONDS))
+                .until(executeSignalWaiter());
     }
 
     protected Callable<Boolean> executeSignalWaiter() {
@@ -1264,7 +1273,9 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         sendAdHocSnapshotStopSignal(collectionIds);
 
         // Wait for stop signal received and at least one incremental snapshot record
-        Awaitility.await().atMost(60, TimeUnit.SECONDS).until(stopSignalWaiter());
+        Awaitility.await().atMost(60, TimeUnit.SECONDS)
+                .pollInterval(FibonacciPollInterval.fibonacci(TimeUnit.SECONDS))
+                .until(stopSignalWaiter());
     }
 
     protected Callable<Boolean> stopSignalWaiter() {
@@ -1292,7 +1303,7 @@ public abstract class AbstractIncrementalSnapshotTest<T extends SourceConnector>
         final AtomicBoolean stopMessageFound = new AtomicBoolean(false);
         Awaitility.await().atMost(60, TimeUnit.SECONDS)
                 .pollDelay(5, TimeUnit.SECONDS)
-                .pollInterval(1, TimeUnit.SECONDS)
+                .pollInterval(FibonacciPollInterval.fibonacci(TimeUnit.SECONDS))
                 .until(() -> {
                     if (interceptor.containsMessage(stopMessage)) {
                         stopMessageFound.set(true);
