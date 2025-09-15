@@ -1,0 +1,14 @@
+---
+name: "MongoDB Debezium Extension for Quarkus"
+description: "Debezium engine powered by Quarkus for MongoDB"
+metadata:
+  keywords:
+  - "debezium"
+  - "cdc"
+  - "mongoDB"
+  guide: "not_available"
+  categories:
+  - "integration"
+  - "cdc"
+  - "mongoDB"
+  status: "experimental"
