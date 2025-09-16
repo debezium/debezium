@@ -351,7 +351,7 @@ The following examples show representative structures of primitive and logical d
 
 
 Kafka Connect is not the only source for these complex, logical types.
-In fact, when a {prodame} source connector emits a change event, it can assign similar logical types to event fields to represent such data types as timestamps, dates, and even JSON data.
+In fact, when a {prodname} source connector emits a change event, it can assign similar logical types to event fields to represent such data types as timestamps, dates, and even JSON data.
 
 
 The {prodname} JDBC sink connector uses these primitive and logical types to resolve a column's type to a JDBC SQL code, which represents a column's type.
