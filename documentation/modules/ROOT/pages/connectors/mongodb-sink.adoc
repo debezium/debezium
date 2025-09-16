@@ -29,7 +29,7 @@ endif::community[]
 [[mongodb-sink-overview]]
 == Overview
 
-The {prodname} MongoDB sink connector captures change event records from Apache Kafka topics and the transforms the record into a MongoDB document that it writes to a collection in a specified MongoDB sink database.
+The {prodname} MongoDB sink connector captures change event records from Apache Kafka topics and then transforms the records into MongoDB documents that it writes to a collections in a specified MongoDB sink database.
 The connector processes only change events that originate from a {prodname} relational database connector.
 
 ifdef::product[]
@@ -66,12 +66,12 @@ For information about the MongoDB versions that are compatible with this connect
 
 Information and procedures for using a {prodname} sink connector for MongoDB is organized as follows:
 
-* xref:overview-of-debezium-mongodb-sink-connector[]
 * xref:architecture-of-debezium-mongodb-sink-connector[]
 * xref:limitations-of-debezium-mongodb-sink-connector[]
 * xref:quickstart-debezium-mongodb-sink-connector[]
 * xref:configuration-of-debezium-mongodb-sink-connector[]
 * xref:example-configuration-of-debezium-mongodb-sink-connector[]
+* xref:monitoring-of-debezium-mongodb-sink-connector[]
 * xref:key-field-mapping-of-debezium-mongodb-sink-connector[]
 * xref:cloudevents-with-debezium-mongodb-sink-connector[]
 * xref:next-steps-of-debezium-mongodb-sink-connector[]
@@ -79,7 +79,7 @@ endif::product[]
 
 
 // Type: concept
-// Title: Architecture of {prodname} MongoDB sink connector
+// Title: Architecture of the {prodname} MongoDB sink connector
 // ModuleID: architecture-of-debezium-mongodb-sink-connector
 [[mongodb-sink-architecture]]
 == Architecture and how it works
@@ -90,7 +90,7 @@ Each event message describes a database operation (insert, update, or delete) in
 The connector transforms incoming change event records into MongoDB document format, and then writes the resulting documents into the target MongoDB collection.
 
 After it receives an event, the connector parses the event payload and determines which MongoDB collection to send it to.
-It then performs one of the following operation in the target collection, depending on the event type specified in the event payload:
+It then performs one of the following operations in the target collection, depending on the event type that is specified in the event payload:
 
 * For `insert` events, the connector creates a new document.
 * For `update` events, it modifies an existing document based on a configurable identifier.
@@ -118,7 +118,7 @@ The connector is designed to process messages originating from the following {pr
 
 * MariaDB
 * MySQL
-*  Oracle
+* Oracle
 * PostgreSQL
 * SQL Server
 
@@ -129,8 +129,8 @@ Although the connector can process basic schema changes, advanced schema evoluti
 Because MongoDB is schemaless, it has only a limited ability to handle schema evolution.
 
 Transaction Support::
-The connector processes individual change events in chronological order, based on the event's source system ordering guarantees.
-While MongoDB supports transactions, the connector itself does not provide transactional guarantees across multiple CDC events or across multiple documents within a single sink task.
+The connector processes individual change events in chronological order, based on the order in which operations are committed in the source system.
+Although MongoDB supports transactions, the {prodname} MongoDB connector does not provide transactional guarantees across multiple CDC events or across multiple documents within a single sink task.
 
 // Type: procedure
 // Title: Quickstart of a {prodname} MongoDB sink connector
@@ -139,20 +139,22 @@ While MongoDB supports transactions, the connector itself does not provide trans
 == Quick Start (using Kafka Connect)
 
 .Prerequisites
-* A running Kafka cluster.
-* Kafka Connect.
+
+The following components are available and running in your environment:
+
+* Kafka cluster
+* Kafka Connect
 * A MongoDB instance.
-* Running {prodname} relational database connector.
-* Running {prodname} MongoDB connector.
+* {prodname} relational database connector
+* {prodname} MongoDB connector
 
 .Procedure
-. Download the connector plugin and install it in your Kafka Connect environment.
 . Configure and start a {prodname} source connector, for example, a {prodname} PostgreSQL Connector, to stream changes from a relational database to Kafka.
-. Configure and start the {prodname} MongoDB sink connector to consume these events and send them to a MongoDB sink database.
-
+. Configure and start the {prodname} MongoDB sink connector to consume events that the source connector emits to Kafka, and send them to a MongoDB sink database.
++
 The following example provides a minimal configuration for a {prodname} MongoDB sink connector.
 Replace the placeholders in the example with the actual values for your environment.
-
++
 [source,json,indent=0,subs="+attributes"]
 ----
 {
@@ -214,8 +216,7 @@ Example: `mongodb://localhost:27017/?replicaSet=my-replica-set`
 
 |===
 
-Sink behavior configuration
-
+.Sink behavior configuration
 [cols="30%a,25%a,45%a"]
 |===
 |Property | Default | Description
