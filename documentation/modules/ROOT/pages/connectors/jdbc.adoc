@@ -314,6 +314,9 @@ After you apply the configuration, the connection pool begins to assess unused c
 [[jdbc-field-types]]
 == Data type mappings
 
+Before the {prodname} JDBC sink connector sends data to a sink database, it converts data types in the original source record to a corresponding type in the target system.
+Appropriate data type mapping ensures that the original data is accurately represented in the destination database.
+
 The {prodname} JDBC sink connector resolves a column's data type by using a logical or primitive type-mapping system.
 Primitive types include values such as integers, floating points, Booleans, strings, and bytes.
 Typically, Kafka messages use a specific Kafka Connect `Schema` type code to represent primitive data types.
