@@ -7,13 +7,12 @@ package io.debezium.testing.system.tools.kafka;
 
 import java.util.stream.Stream;
 
-import org.apache.maven.artifact.versioning.ComparableVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.lifecycle.Startables;
 
+import io.debezium.testing.system.TestUtils;
 import io.debezium.testing.system.tools.AbstractDockerDeployer;
-import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.Deployer;
 import io.debezium.testing.system.tools.kafka.docker.KafkaContainer;
 import io.debezium.testing.system.tools.kafka.docker.ZookeeperContainer;
@@ -37,7 +36,7 @@ public class DockerKafkaDeployer
     public DockerKafkaController deploy() {
         DockerKafkaController controller;
 
-        if (!shouldKRaftBeUsed()) {
+        if (!TestUtils.shouldKRaftBeUsed()) {
             ZookeeperContainer zookeeperContainer = new ZookeeperContainer()
                     .withNetwork(container.getNetwork());
             container.withZookeeper(zookeeperContainer);
@@ -53,11 +52,6 @@ public class DockerKafkaDeployer
         }
 
         return controller;
-    }
-
-    private boolean shouldKRaftBeUsed() {
-        ComparableVersion kafkaVersion = new ComparableVersion(ConfigProperties.VERSION_KAFKA);
-        return ConfigProperties.FORCE_KRAFT || kafkaVersion.compareTo(new ComparableVersion("4.0.0")) >= 0;
     }
 
     public static class Builder

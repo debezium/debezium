@@ -19,16 +19,13 @@ import io.debezium.testing.system.tools.WaitConditions;
 public class KafkaContainer extends GenericContainer<KafkaContainer> {
 
     public static final String KAFKA_COMMAND = "kafka";
-    public static final int KAFKA_PORT = 9093;
+    public static final int KAFKA_CONTROLLER_PORT = 9093;
     public static final int KAFKA_BROKER_PORT = 9092;
 
     private static final AtomicInteger COUNTER = new AtomicInteger();
 
-    private final int mappedPort;
-
     public KafkaContainer(String containerImageName) {
         super(containerImageName);
-        mappedPort = KAFKA_PORT + COUNTER.getAndIncrement();
         defaultConfig();
     }
 
@@ -37,14 +34,14 @@ public class KafkaContainer extends GenericContainer<KafkaContainer> {
     }
 
     private void defaultConfig() {
-        addFixedExposedPort(mappedPort, KAFKA_PORT);
-        addExposedPort(mappedPort);
+        addFixedExposedPort(KAFKA_BROKER_PORT, KAFKA_BROKER_PORT);
+        addFixedExposedPort(KAFKA_CONTROLLER_PORT, KAFKA_CONTROLLER_PORT);
         withCommand(KAFKA_COMMAND);
-        withEnv("KAFKA_LISTENERS", "PLAINTEXT://0.0.0.0:" + KAFKA_PORT + ",BROKER://0.0.0.0:" + KAFKA_BROKER_PORT);
-        withEnv("KAFKA_ADVERTISED_LISTENERS", "PLAINTEXT://" + getPublicBootstrapAddress() + ",BROKER://" + getBootstrapAddress());
-        withEnv("KAFKA_LISTENER_SECURITY_PROTOCOL_MAP", "BROKER:PLAINTEXT,PLAINTEXT:PLAINTEXT");
+        withEnv("KAFKA_LISTENERS", String.format("CONTROLLER://0.0.0.0:%d,BROKER://0.0.0.0:%d", KAFKA_CONTROLLER_PORT, KAFKA_BROKER_PORT));
+        withEnv("KAFKA_ADVERTISED_LISTENERS", String.format("CONTROLLER://%s:%d,BROKER://%s:%d", getHost(), KAFKA_CONTROLLER_PORT, getHost(), KAFKA_BROKER_PORT));
+        withEnv("KAFKA_LISTENER_SECURITY_PROTOCOL_MAP", "CONTROLLER:PLAINTEXT,BROKER:PLAINTEXT");
         withEnv("KAFKA_INTER_BROKER_LISTENER_NAME", "BROKER");
-        withStartupTimeout(Duration.ofMinutes(WaitConditions.scaled(1)));
+        withStartupTimeout(Duration.ofMinutes(WaitConditions.scaled(3)));
     }
 
     public KafkaContainer withZookeeper(ZookeeperContainer zookeeper) {
@@ -60,11 +57,11 @@ public class KafkaContainer extends GenericContainer<KafkaContainer> {
     }
 
     public String getPublicBootstrapAddress() {
-        return getContainerIpAddress() + ":" + mappedPort;
+        return getHost() + ":" + KAFKA_BROKER_PORT;
     }
 
     public String getBootstrapAddress() {
-        return getNetworkAliases().get(0) + ":" + KAFKA_BROKER_PORT;
+        return getNetworkAliases().getFirst() + ":" + KAFKA_BROKER_PORT;
     }
 
     @Override
