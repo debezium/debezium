@@ -308,7 +308,7 @@ You can customize the CP30 connection pool by setting properties in the hibernat
 In the preceding example, the setting of the hibernate.c3p0.idle_test_period property configures the connection pool to perform idle timeout tests every 300 seconds.
 After you apply the configuration, the connection pool begins to assess unused connections every five minutes.
 
-// Type: reference
+// Type: assembly
 // ModuleID: debezium-jdbc-connector-how-the-connector-maps-data-types
 // Title: How the {prodname} JDBC connector maps data types
 [[jdbc-field-types]]
@@ -316,13 +316,17 @@ After you apply the configuration, the connection pool begins to assess unused c
 
 The {prodname} JDBC sink connector resolves a column's data type by using a logical or primitive type-mapping system.
 Primitive types include values such as integers, floating points, Booleans, strings, and bytes.
-Typically, these types are represented with a specific Kafka Connect `Schema` type code only.
-Logical data types are more often complex types, including values such as `Struct`-based types that have a fixed set of field names and schema, or values that are represented with a specific encoding, such as number of days since epoch.
+Typically, Kafka messages use a specific Kafka Connect `Schema` type code to represent primitive data types.
+
+By contrast, to represent more complex data, such as `Struct` types, which group together fixed sets of named fields each with its own data type, Kafka uses logical schema names.
+Logical types take into account the semantic meaning of the data and provide a more opinionated interpretation about how to serialize underlying primitive types.
+Logical types are also useful in representing values that have a specific encoding, such as numbers that represent the time since the epoch.
 
 The following examples show representative structures of primitive and logical data types:
 
 .Primitive field schema
-[source.json]
+====
+[source,json]
 ----
 {
   "schema": {
@@ -330,8 +334,10 @@ The following examples show representative structures of primitive and logical d
   }
 }
 ----
+====
 
 .Logical field schema
+====
 [source,json]
 ----
 {
@@ -341,9 +347,12 @@ The following examples show representative structures of primitive and logical d
   }
 }
 ----
+====
+
 
 Kafka Connect is not the only source for these complex, logical types.
-In fact, {prodname} source connectors generate change events that have fields with similar logical types to represent a variety of different data types, including but not limited to, timestamps, dates, and even JSON data.
+In fact, when a {prodame} source connector emits a change event, it can assign similar logical types to event fields to represent such data types as timestamps, dates, and even JSON data.
+
 
 The {prodname} JDBC sink connector uses these primitive and logical types to resolve a column's type to a JDBC SQL code, which represents a column's type.
 These JDBC SQL codes are then used by the underlying Hibernate persistence framework to resolve the column's type to a logical data type for the dialect in use.
@@ -356,8 +365,12 @@ The actual final column type varies with for each database type.
 . xref:jdbc-debezium-logical-mappings-dialect-specific[]
 . xref:jdbc-debezium-vector-logical-mappings[]
 
+// Type: reference
+// Title: Mappings between Kafka Connect primitive data types and sink database column types
 [[jdbc-kafka-connect-primitive-mappings]]
-.Mappings between Kafka Connect Primitives and Column Data Types
+=== Kafka Connect primitive data type mappings
+
+.Mappings between Kafka Connect primitive data types and column data types
 |===
 |Primitive Type |JDBC SQL Type
 
@@ -390,8 +403,21 @@ The actual final column type varies with for each database type.
 
 |===
 
+[NOTE]
+====
+The connector does not support `BOOLEAN` data in Oracle 23.
+If you configure the JDBC connector to use an Oracle 23 database as the sink target, you cannot rely on schema evolution to automatically create a field that uses the Oracle 23 `BOOLEAN` data type.
+The connector maps `BOOLEAN` data to `BIT` data types, which are universal across Oracle versions.
+As a workaround, if you need a BOOLEAN data type for an Oracle 23 sink, add the field manually to the target table.
+====
+
+
+// Type: reference
+// Title: Mappings between Kafka Connect logical data types and sink database column types
 [[jdbc-kafka-connect-logical-mappings]]
-.Mappings between Kafka Connect Logical Types and Column Data Types
+=== Kafka Connect logical data type mappings
+
+.Mappings between Kafka Connect logical data types and column data types
 |===
 |Logical Type |JDBC SQL Type
 
@@ -409,8 +435,12 @@ The actual final column type varies with for each database type.
 
 |===
 
+// Type: reference
+// Title: Mappings between {prodname} logical data types and JDBC column types
 [[jdbc-debezium-logical-mappings]]
-.Mappings between {prodname} Logical Types and Column Data Types
+=== {prodname} logical data type mappings
+
+.Mappings between {prodname} logical types and column data types
 |===
 |Logical Type |JDBC SQL Type
 
@@ -451,8 +481,14 @@ The actual final column type varies with for each database type.
 If the database does not support time or timestamps with time zones, the mapping resolves to its equivalent without timezones.
 ====
 
+
+
+// Type: reference
+// Title: Mappings between {prodname} dialect-specific logical data types and RDBMS column data types
 [[jdbc-debezium-logical-mappings-dialect-specific]]
-.Mappings between {prodname} dialect-specific Logical Types and Column Data Types
+=== {prodname} dialect-specific data type mappings
+
+.Mappings between {prodname} dialect-specific logical types and column data types
 |===
 |Logical Type |MySQL SQL Type |PostgreSQL SQL Type |SQL Server SQL Type
 
@@ -503,7 +539,37 @@ If the database does not support time or timestamps with time zones, the mapping
 
 |===
 
+
+
+// Type: reference
+// Title: Mappings between {prodname} vector data types and RDBMS column types
 [[jdbc-debezium-vector-logical-mappings]]
+=== {prodname} logical vector types mappings
+
+The {prodname} JDBC sink connector supports direct mapping of logical vector data types from source events to sink destinations, provided that the target database supports a comparable representation.
+
+If a vector field in the source has a logical name, {prodname} uses it to determine the appropriate mapping.
+For certain databases, the connector recognizes the following logical names under the `io.debezium.data.vector.*` namespace:
+
+* `FloatVector`
+* `DoubleVector`
+* `SparseVector`
+
+When the connector processes a message, if these logical types are present, the connector checks for a corresponding mapping in the target database.
+If a mapping exists, it applies it; otherwise, it defaults to serializing the data as a string, based on the Kafka Connect schema type.
+
+For example, a connector that is configured to send data to a PostgreSQL database sink maps fields with the `io.debezium.data.FloatVector` logical name to the `halfvector` column type, using the special override mapping.
+By contrast, if no direct mapping is available in the sink database, as for example with an Oracle sink, the connector defaults to serializing vector data in its raw string format.
+
+Support for the special vector types is not available for all releases of the supported databases.
+Sink databases must meet the following requirements to support direct mapping of logical vector types:
+
+* MariaDB version 11.7 or later
+* MySQL version 9.0 or later
+* PostgreSQL requires the pgvector extension
+
+Earlier versions of MariaDB or MySQL, and PostgreSQL without pgvector, do not support special vector types.
+
 .Mappings between Debezium Vector Types and Column Data Types
 |===
 |Logical Type |Db2 |MySQL |PostgreSQL |Oracle |SQL Server
@@ -536,17 +602,23 @@ If the database does not support time or timestamps with time zones, the mapping
 If there is not a direct mapping between one of the vector logical types and your target relational database's column types, you can use the `VectorToJsonConverter` to convert the vector logical type to JSON so that it can be written to any target relational database.
 ====
 
-In addition to the primitive and logical mappings above, if the source of the change events is a {prodname} source connector, the resolution of the column type, along with its length, precision, and scale, can be further influenced by enabling column or data type propagation.
-To enforce propagation, one of the following properties must be set in the source connector  configuration:
+// Type: concept
+=== Column and data type propagation
+
+In addition to the primitive and logical mappings shown in the preceding tables, if the source of the change events is a {prodname} source connector, the resolution of the column type, along with its length, precision, and scale, can be further influenced by enabling column or data type propagation.
+Column and data type propagation helps to determine how the structure and data types of incoming data are translated and applied to the sink destination.
+As discussed earlier in xref:jdbc-data-and-type-mappings[Data and column type mappings], you can enforce propagation by setting one of the following properties in the source connector configuration:
 
 *  `column.propagate.source.type`
 *  `datatype.propagate.source.type`
 
-The {prodname} JDBC sink connector applies the values with the higher precedence.
+The {prodname} JDBC sink connector applies only the values with the higher precedence.
 
-For example, let's say the following field schema is included in a change event:
+To illustrate how propagation affects how the connector maps data types, let's look at an example.
+The following example shows a field schema that might be included within a change event:
 
 .{prodname} change event field schema with column or data type propagation enabled
+====
 [source,json]
 ----
 {
@@ -559,15 +631,21 @@ For example, let's say the following field schema is included in a change event:
   }
 }
 ----
+====
 
-In the preceding example, if no schema parameters are set, the {prodname} JDBC sink connector maps this field to a column type of `Types.SMALLINT`.
-`Types.SMALLINT` can have different logical database types, depending on the database dialect.
-For MySQL, the column type in the example converts to a `TINYINT` column type with no specified length.
-If column or data type propagation is enabled for the source connector, the {prodname} JDBC sink connector uses the mapping information to refine the data type mapping process and create a column with the type `TINYINT(1)`.
+Because the source connector that emitted the event was configured to use column or data type propagation, the event includes parameters that specify column `type` and `length`.
+
+If propagation were not enabled for the source connector, the `type` and `length` parameters would be absent, and the {prodname} JDBC sink connector would default to mapping the `INT8` value in the `type` field to a column type of `Types.SMALLINT`.
+Depending on the SQL dialect of the target database, the connector would then resolve the JDBC `Types.SMALLINT` type to any of several logical types,
+For example, for a MySQL sink target, the JDBC connector defaults to converting `Types.SMALLINT` to a `TINYINT` column type with no specified length.
+
+However, because type propagation is enabled in the source connector, the event that it emitted includes the `type` and `length`, providing more specific mapping instructions.
+Thus, rather than using the default mapping, the {prodname} JDBC sink connector uses the given parameter values to refine the mapping, and creates a column in the sink database with the type `TINYINT(1)`.
 
 [NOTE]
 ====
-Typically, the effect of using column or data type propagation is much greater when the same type of database is used for both the source and sink database.
+Typically, the effect of using column or data type propagation is most significant when the source and sink databases are of the same type.
+Because the source and sink database share the same underlying schema structure, it's easier to map data types between them without having to apply complex transformations or interpretations.
 ifdef::community[]
 We are continually looking at ways to improve this mapping across heterogeneous databases and the current type system allows us to continue to refine these mappings based on feedback.
 If you find a mapping could be improved, please let us know.
