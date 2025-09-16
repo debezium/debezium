@@ -12,6 +12,7 @@ import static org.awaitility.Awaitility.await;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.testing.system.TestUtils;
 import io.debezium.testing.system.tools.kafka.docker.KafkaContainer;
 import io.debezium.testing.system.tools.kafka.docker.ZookeeperContainer;
 
@@ -57,6 +58,11 @@ public class DockerKafkaController implements KafkaController {
     @Override
     public boolean undeploy() {
         kafkaContainer.stop();
+
+        if (TestUtils.shouldKRaftBeUsed()) {
+            return !kafkaContainer.isRunning();
+        }
+
         zookeeperContainer.stop();
         return !zookeeperContainer.isRunning() && !kafkaContainer.isRunning();
     }
