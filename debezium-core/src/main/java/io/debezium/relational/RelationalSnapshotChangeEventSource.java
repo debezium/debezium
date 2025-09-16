@@ -12,6 +12,7 @@ import java.sql.Statement;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -522,12 +523,12 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         try {
             int tableCount = rowCountTables.size();
             int tableOrder = 1;
+            final Set<TableId> rowCountTablesKeySet = Collections.unmodifiableSet(new HashSet<>(rowCountTables.keySet()));
             for (TableId tableId : rowCountTables.keySet()) {
                 boolean firstTable = tableOrder == 1 && snapshotMaxThreads == 1;
                 boolean lastTable = tableOrder == tableCount && snapshotMaxThreads == 1;
                 String selectStatement = queryTables.get(tableId);
                 OptionalLong rowCount = rowCountTables.get(tableId);
-                Set<TableId> rowCountTablesKeySet = new HashSet<>(rowCountTables.keySet());
                 Callable<Void> callable = createDataEventsForTableCallable(sourceContext, snapshotContext, snapshotReceiver,
                         snapshotContext.tables.forTable(tableId), firstTable, lastTable, tableOrder++, tableCount, selectStatement, rowCount, rowCountTablesKeySet,
                         connectionPool, offsets);
