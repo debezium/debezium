@@ -5,6 +5,10 @@
  */
 package io.debezium.testing.system;
 
+import org.apache.maven.artifact.versioning.ComparableVersion;
+
+import io.debezium.testing.system.tools.ConfigProperties;
+
 /**
  * Utility functions used in tests
  * @author Jakub Cechacek
@@ -21,5 +25,14 @@ public final class TestUtils {
      */
     public static String getUniqueId() {
         return String.valueOf(System.currentTimeMillis());
+    }
+
+    /**
+     * Checks if Kafka should be use with KRaft mode or not
+     * @return kraft being used
+     */
+    public static boolean shouldKRaftBeUsed() {
+        ComparableVersion kafkaVersion = new ComparableVersion(ConfigProperties.VERSION_KAFKA);
+        return ConfigProperties.FORCE_KRAFT || kafkaVersion.compareTo(new ComparableVersion("4.0.0")) >= 0;
     }
 }
