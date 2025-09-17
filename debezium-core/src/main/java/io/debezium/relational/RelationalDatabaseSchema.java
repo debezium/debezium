@@ -5,7 +5,7 @@
  */
 package io.debezium.relational;
 
-import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetType.INPUT;
+import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.INPUT;
 
 import java.util.List;
 import java.util.Set;
@@ -139,7 +139,7 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
         List<DatasetMetadata.FieldDefinition> fieldDefinitions = table.columns().stream()
                 .map(c -> new DatasetMetadata.FieldDefinition(c.name(), c.typeName(), c.comment()))
                 .toList();
-        return new DatasetMetadata(getIdentifier(table), INPUT, fieldDefinitions);
+        return new DatasetMetadata(getIdentifier(table), INPUT, DatasetMetadata.TABLE_DATASET_TYPE, DatasetMetadata.DataStore.DATABASE, fieldDefinitions);
     }
 
     private String getIdentifier(Table table) {

@@ -30,8 +30,7 @@ import io.debezium.openlineage.DebeziumOpenLineageConfiguration;
 import io.debezium.openlineage.OpenLineageContext;
 import io.debezium.openlineage.OpenLineageJobIdentifier;
 import io.debezium.openlineage.dataset.DatasetMetadata;
-import io.debezium.openlineage.dataset.DefaultInputDatasetNamespaceResolver;
-import io.debezium.openlineage.dataset.DefaultOutputDatasetNamespaceResolver;
+import io.debezium.openlineage.dataset.DefaultDatasetNamespaceResolverFactory;
 import io.openlineage.client.OpenLineage;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -67,8 +66,7 @@ public class OpenLineageEmitterTest {
                                         Map.of("owner1", "ownervalue"))),
                         new OpenLineageJobIdentifier("namespace", "test-connector")),
                 eventEmitter,
-                new DefaultInputDatasetNamespaceResolver(),
-                new DefaultOutputDatasetNamespaceResolver());
+                new DefaultDatasetNamespaceResolverFactory());
     }
 
     @Test
@@ -99,8 +97,10 @@ public class OpenLineageEmitterTest {
     @Test
     public void testEmitWithInputAndOutputDatasets() {
         DatasetMetadata.FieldDefinition field = new DatasetMetadata.FieldDefinition("id", "int", "Identifier", Collections.emptyList());
-        DatasetMetadata inputDataset = new DatasetMetadata("input_table", DatasetMetadata.DatasetType.INPUT, List.of(field));
-        DatasetMetadata outputDataset = new DatasetMetadata("output_table", DatasetMetadata.DatasetType.OUTPUT, List.of(field));
+        DatasetMetadata inputDataset = new DatasetMetadata("input_table", DatasetMetadata.DatasetKind.INPUT, DatasetMetadata.TABLE_DATASET_TYPE,
+                DatasetMetadata.DataStore.DATABASE, List.of(field));
+        DatasetMetadata outputDataset = new DatasetMetadata("output_table", DatasetMetadata.DatasetKind.OUTPUT, DatasetMetadata.STREAM_DATASET_TYPE,
+                DatasetMetadata.DataStore.KAFKA, List.of(field));
 
         emitter.emit(DebeziumTaskState.RUNNING, List.of(inputDataset, outputDataset));
 

@@ -22,4 +22,5 @@ public class OpenLineageConfig {
     public static final String OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION = "openlineage.integration.job.description";
     public static final String OPEN_LINEAGE_INTEGRATION_JOB_TAGS = "openlineage.integration.job.tags";
     public static final String OPEN_LINEAGE_INTEGRATION_JOB_OWNERS = "openlineage.integration.job.owners";
+    public static final String OPEN_LINEAGE_INTEGRATION_DATASET_KAFKA_BOOTSTRAP_SERVER = "openlineage.integration.dataset.kafka.bootstrap.servers";
 }

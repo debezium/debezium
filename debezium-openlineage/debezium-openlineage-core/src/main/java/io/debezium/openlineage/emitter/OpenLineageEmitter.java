@@ -5,8 +5,8 @@
  */
 package io.debezium.openlineage.emitter;
 
-import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetType.INPUT;
-import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetType.OUTPUT;
+import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.INPUT;
+import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.OUTPUT;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -22,8 +22,8 @@ import io.debezium.openlineage.OpenLineageContext;
 import io.debezium.openlineage.OpenLineageJobCreator;
 import io.debezium.openlineage.ProcessingEngineMetadata;
 import io.debezium.openlineage.dataset.DatasetMetadata;
-import io.debezium.openlineage.dataset.InputDatasetNamespaceResolver;
-import io.debezium.openlineage.dataset.OutputDatasetNamespaceResolver;
+import io.debezium.openlineage.dataset.DatasetNamespaceResolver;
+import io.debezium.openlineage.dataset.DatasetNamespaceResolverFactory;
 import io.debezium.openlineage.facets.DebeziumConfigFacet;
 import io.openlineage.client.OpenLineage;
 
@@ -54,26 +54,22 @@ import io.openlineage.client.OpenLineage;
 public class OpenLineageEmitter implements LineageEmitter {
 
     private static final String JAVA = "Java";
-    public static final String INPUT_DATASET_TYPE = "TABLE";
-    public static final String OUTPUT_DATASET_TYPE = "STREAM";
 
     private final ConnectorContext connectorContext;
     private final OpenLineageContext openLineageContext;
     private final String connectorName;
     private final DebeziumOpenLineageClient emitter;
     private final Map<String, String> config;
-    private final InputDatasetNamespaceResolver inputDatasetNamespaceResolver;
-    private final OutputDatasetNamespaceResolver outputDatasetNamespaceResolver;
+    private final DatasetNamespaceResolverFactory datasetNamespaceResolverFactory;
 
     public OpenLineageEmitter(ConnectorContext connectorContext, OpenLineageContext openLineageContext, DebeziumOpenLineageClient emitter,
-                              InputDatasetNamespaceResolver inputDatasetNamespaceResolver, OutputDatasetNamespaceResolver outputDatasetNamespaceResolver) {
+                              DatasetNamespaceResolverFactory datasetNamespaceResolverFactory) {
         this.connectorContext = connectorContext;
         this.openLineageContext = openLineageContext;
         this.connectorName = connectorContext.connectorName();
         this.emitter = emitter;
         this.config = connectorContext.config();
-        this.inputDatasetNamespaceResolver = inputDatasetNamespaceResolver;
-        this.outputDatasetNamespaceResolver = outputDatasetNamespaceResolver;
+        this.datasetNamespaceResolverFactory = datasetNamespaceResolverFactory;
     }
 
     @Override
@@ -138,7 +134,7 @@ public class OpenLineageEmitter implements LineageEmitter {
     private List<OpenLineage.InputDataset> getInputDatasets(List<DatasetMetadata> datasetMetadata) {
 
         return datasetMetadata.stream()
-                .filter(dataset -> INPUT.equals(dataset.type()))
+                .filter(dataset -> INPUT.equals(dataset.kind()))
                 .map(this::mapToInputDataset)
                 .toList();
 
@@ -147,7 +143,7 @@ public class OpenLineageEmitter implements LineageEmitter {
     private List<OpenLineage.OutputDataset> getOutputDatasets(List<DatasetMetadata> datasetMetadata) {
 
         return datasetMetadata.stream()
-                .filter(dataset -> OUTPUT.equals(dataset.type()))
+                .filter(dataset -> OUTPUT.equals(dataset.kind()))
                 .map(this::mapToOutputDataset)
                 .toList();
 
@@ -159,15 +155,16 @@ public class OpenLineageEmitter implements LineageEmitter {
                 .map(this::buildSchemaDatasetFacetFields)
                 .toList();
 
+        DatasetNamespaceResolver datasetNamespaceResolver = datasetNamespaceResolverFactory.create(outputDatasetMetadata.store(), connectorName);
         return openLineageContext.getOpenLineage().newOutputDatasetBuilder()
-                .namespace(outputDatasetNamespaceResolver.resolve(config))
+                .namespace(datasetNamespaceResolver.resolve(config, connectorName))
                 .name(outputDatasetMetadata.name())
                 .facets(
                         openLineageContext.getOpenLineage().newDatasetFacetsBuilder()
                                 .schema(openLineageContext.getOpenLineage().newSchemaDatasetFacetBuilder()
                                         .fields(datasetFields)
                                         .build())
-                                .datasetType(openLineageContext.getOpenLineage().newDatasetTypeDatasetFacet(OUTPUT_DATASET_TYPE, ""))
+                                .datasetType(openLineageContext.getOpenLineage().newDatasetTypeDatasetFacet(outputDatasetMetadata.type(), ""))
                                 .build())
                 .build();
     }
@@ -209,15 +206,17 @@ public class OpenLineageEmitter implements LineageEmitter {
                         .build())
                 .toList();
 
+        DatasetNamespaceResolver datasetNamespaceResolver = datasetNamespaceResolverFactory.create(inputDatasetMetadata.store(), connectorName);
+
         return openLineageContext.getOpenLineage().newInputDatasetBuilder()
-                .namespace(inputDatasetNamespaceResolver.resolve(config, connectorName))
+                .namespace(datasetNamespaceResolver.resolve(config, connectorName))
                 .name(inputDatasetMetadata.name())
                 .facets(
                         openLineageContext.getOpenLineage().newDatasetFacetsBuilder()
                                 .schema(openLineageContext.getOpenLineage().newSchemaDatasetFacetBuilder()
                                         .fields(datasetFields)
                                         .build())
-                                .datasetType(openLineageContext.getOpenLineage().newDatasetTypeDatasetFacet(INPUT_DATASET_TYPE, ""))
+                                .datasetType(openLineageContext.getOpenLineage().newDatasetTypeDatasetFacet(inputDatasetMetadata.type(), ""))
                                 .build())
                 .build();
     }

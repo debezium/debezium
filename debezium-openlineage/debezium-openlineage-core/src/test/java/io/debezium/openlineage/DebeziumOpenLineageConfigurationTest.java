@@ -41,7 +41,7 @@ public class DebeziumOpenLineageConfigurationTest {
     }
 
     @Test
-    public void testFromConfigurationUsesTopicPrefixAsNamespaceFallback() {
+    public void testFromConfigurationUsesConnectorLogicalNameAsNamespaceFallback() {
         Map<String, String> config = Map.of(
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_ENABLED, "true",
                 OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_CONFIG_FILE_PATH, "conf.yml",
@@ -52,7 +52,7 @@ public class DebeziumOpenLineageConfigurationTest {
 
         DebeziumOpenLineageConfiguration result = DebeziumOpenLineageConfiguration.from(new ConnectorContext("test-connector", "a-name", "0", "3.3.0.Final", config));
 
-        assertEquals("fallback-prefix", result.job().namespace());
+        assertEquals("test-connector", result.job().namespace());
     }
 
     @Test

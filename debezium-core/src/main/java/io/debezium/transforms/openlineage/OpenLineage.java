@@ -5,7 +5,9 @@
  */
 package io.debezium.transforms.openlineage;
 
-import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetType.OUTPUT;
+import static io.debezium.openlineage.dataset.DatasetMetadata.STREAM_DATASET_TYPE;
+import static io.debezium.openlineage.dataset.DatasetMetadata.DataStore.KAFKA;
+import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.OUTPUT;
 
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -69,7 +71,8 @@ public class OpenLineage<R extends ConnectRecord<R>> implements Transformation<R
                 List<DatasetMetadata.FieldDefinition> fieldDefinitions = datasetDataExtractor.extract(record);
 
                 ConnectorContext connectorContext = ConnectorContext.from(record.headers());
-                DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING, List.of(new DatasetMetadata(record.topic(), OUTPUT, fieldDefinitions)));
+                DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING,
+                        List.of(new DatasetMetadata(record.topic(), OUTPUT, STREAM_DATASET_TYPE, KAFKA, fieldDefinitions)));
 
                 lastEmissionTime = ZonedDateTime.now();
             }

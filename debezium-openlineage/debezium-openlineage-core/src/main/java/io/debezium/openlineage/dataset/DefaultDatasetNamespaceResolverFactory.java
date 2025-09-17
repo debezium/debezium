@@ -10,16 +10,18 @@ public class DefaultDatasetNamespaceResolverFactory implements DatasetNamespaceR
     private static final String MONGODB = "mongodb";
     private static final String POSTGRESQL = "postgresql";
 
-    public InputDatasetNamespaceResolver createInput(String connectorName) {
-        return switch (connectorName) {
-            case MONGODB -> new MongoDbDatasetNamespaceResolver();
-            case POSTGRESQL -> new PostgresDatasetNamespaceResolver();
-            default -> new DefaultInputDatasetNamespaceResolver();
+    public DatasetNamespaceResolver create(DatasetMetadata.DataStore dataStore, String connectorName) {
+        return switch (dataStore) {
+            case DATABASE -> resolveDatabase(connectorName);
+            case KAFKA -> new KafkaDatasetNamespaceResolver();
         };
     }
 
-    @Override
-    public OutputDatasetNamespaceResolver createOutput(String connectorName) {
-        return new DefaultOutputDatasetNamespaceResolver();
+    private static DatasetNamespaceResolver resolveDatabase(String connectorName) {
+        return switch (connectorName) {
+            case MONGODB -> new MongoDbDatasetNamespaceResolver();
+            case POSTGRESQL -> new PostgresDatasetNamespaceResolver();
+            default -> new DefaultDatabaseNamespaceResolver();
+        };
     }
 }
