@@ -321,9 +321,9 @@ The {prodname} JDBC sink connector resolves a column's data type by using a logi
 Primitive types include values such as integers, floating points, Booleans, strings, and bytes.
 Typically, Kafka messages use a specific Kafka Connect `Schema` type code to represent primitive data types.
 
-By contrast, to represent more complex data, such as `Struct` types, which group together fixed sets of named fields each with its own data type, Kafka uses logical schema names.
-Logical types take into account the semantic meaning of the data and provide a more opinionated interpretation about how to serialize underlying primitive types.
-Logical types are also useful in representing values that have a specific encoding, such as numbers that represent the time since the epoch.
+By contrast, to represent more complex data, {prodname} uses logical schema names, which provide logical groupings of named fields that can represent a range of data types (strings, arrays, JSON, XML, and so forth).
+These structured types take into account the semantic meaning of the data and provide a more opinionated interpretation about how to serialize the underlying primitive types.
+Logical types are useful in representing values that have a specific encoding, such as numbers that represent the time since the epoch.
 
 The following examples show representative structures of primitive and logical data types:
 
