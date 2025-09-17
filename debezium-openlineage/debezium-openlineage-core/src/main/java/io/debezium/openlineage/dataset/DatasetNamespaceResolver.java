@@ -22,7 +22,7 @@ import java.util.Map;
  *
  * @see <a href="https://openlineage.io/docs/spec/naming#dataset-naming">OpenLineage Dataset Naming Convention</a>
  */
-public interface OutputDatasetNamespaceResolver {
+public interface DatasetNamespaceResolver {
 
-    String resolve(Map<String, String> configuration);
+    String resolve(Map<String, String> configuration, String connectorName);
 }

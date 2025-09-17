@@ -5,7 +5,8 @@
  */
 package io.debezium.connector.mongodb;
 
-import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetType.INPUT;
+import static io.debezium.openlineage.dataset.DatasetMetadata.DataStore.DATABASE;
+import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.INPUT;
 
 import java.util.List;
 import java.util.Set;
@@ -94,7 +95,7 @@ public class MongoDbSchema implements DatabaseSchema<CollectionId> {
             final Envelope envelope = Envelope.fromSchema(valueSchema);
 
             DebeziumOpenLineageEmitter.emit(DebeziumOpenLineageEmitter.connectorContext(config.getConfig().asMap(), config.getConnectorName()), DebeziumTaskState.RUNNING,
-                    List.of(new DatasetMetadata(collectionId.identifier(), INPUT, List.of())));
+                    List.of(new DatasetMetadata(collectionId.identifier(), INPUT, DatasetMetadata.TABLE_DATASET_TYPE, DATABASE, List.of())));
 
             return new MongoDbCollectionSchema(
                     id,

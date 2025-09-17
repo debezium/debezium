@@ -53,8 +53,7 @@ public class DebeziumLineageEmitterFactory implements LineageEmitterFactory {
                     .orElse(new DefaultDatasetNamespaceResolverFactory());
 
             LOGGER.debug("OpenLineageContext {}", contextRef.get());
-            return new OpenLineageEmitter(connectorContext, contextRef.get(), emitter, namespaceResolverFactory.createInput(connectorContext.connectorName()),
-                    namespaceResolverFactory.createOutput(connectorContext.connectorName()));
+            return new OpenLineageEmitter(connectorContext, contextRef.get(), emitter, namespaceResolverFactory);
         }
 
         return new NoOpLineageEmitter();

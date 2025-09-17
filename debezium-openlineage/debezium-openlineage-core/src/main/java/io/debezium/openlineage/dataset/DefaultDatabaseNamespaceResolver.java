@@ -5,24 +5,13 @@
  */
 package io.debezium.openlineage.dataset;
 
+import static io.debezium.config.ConfigurationNames.DATABASE_CONFIG_PREFIX;
+import static io.debezium.config.ConfigurationNames.DATABASE_HOSTNAME_PROPERTY_NAME;
+import static io.debezium.config.ConfigurationNames.DATABASE_PORT_PROPERTY_NAME;
+
 import java.util.Map;
 
-/**
- * Resolver interface for determining the namespace of input datasets in lineage tracking.
- * <p>
- * This interface is responsible for resolving the appropriate namespace identifier for input datasets
- * based on connector configuration and type. The namespace is used to uniquely identify the source
- * of data in lineage tracking systems and follows OpenLineage specifications.
- * </p>
- * <p>
- * Implementations should construct namespace identifiers that conform to the OpenLineage dataset
- * naming conventions, typically in the format of a URI that identifies the data source location
- * and connection details.
- * </p>
- *
- * @see <a href="https://openlineage.io/docs/spec/naming#dataset-naming">OpenLineage Dataset Naming Convention</a>
- */
-public interface InputDatasetNamespaceResolver {
+public class DefaultDatabaseNamespaceResolver implements DatasetNamespaceResolver {
 
     /**
      * Format string for constructing input dataset namespace identifiers according to the OpenLineage specification.
@@ -39,7 +28,13 @@ public interface InputDatasetNamespaceResolver {
      *
      * @see <a href="https://openlineage.io/docs/spec/naming#dataset-naming">OpenLineage Dataset Naming Convention</a>
      */
-    String INPUT_DATASET_NAMESPACE_FORMAT = "%s://%s:%s";
+    public static String INPUT_DATASET_NAMESPACE_FORMAT = "%s://%s:%s";
 
-    String resolve(Map<String, String> configuration, String connectorName);
+    @Override
+    public String resolve(Map<String, String> configuration, String connectorName) {
+        return String.format(INPUT_DATASET_NAMESPACE_FORMAT,
+                connectorName,
+                configuration.get(DATABASE_CONFIG_PREFIX + DATABASE_HOSTNAME_PROPERTY_NAME),
+                configuration.get(DATABASE_CONFIG_PREFIX + DATABASE_PORT_PROPERTY_NAME));
+    }
 }

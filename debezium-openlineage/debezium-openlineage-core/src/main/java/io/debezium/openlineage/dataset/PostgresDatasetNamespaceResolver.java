@@ -8,10 +8,11 @@ package io.debezium.openlineage.dataset;
 import static io.debezium.config.ConfigurationNames.DATABASE_CONFIG_PREFIX;
 import static io.debezium.config.ConfigurationNames.DATABASE_HOSTNAME_PROPERTY_NAME;
 import static io.debezium.config.ConfigurationNames.DATABASE_PORT_PROPERTY_NAME;
+import static io.debezium.openlineage.dataset.DefaultDatabaseNamespaceResolver.INPUT_DATASET_NAMESPACE_FORMAT;
 
 import java.util.Map;
 
-public class PostgresDatasetNamespaceResolver implements InputDatasetNamespaceResolver {
+public class PostgresDatasetNamespaceResolver implements DatasetNamespaceResolver {
 
     @Override
     public String resolve(Map<String, String> configuration, String connectorName) {

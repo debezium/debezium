@@ -6,11 +6,12 @@
 package io.debezium.openlineage.dataset;
 
 import static io.debezium.openlineage.DebeziumOpenLineageConfiguration.getList;
+import static io.debezium.openlineage.OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_DATASET_KAFKA_BOOTSTRAP_SERVER;
 
 import java.util.Map;
 import java.util.function.Function;
 
-public class DefaultOutputDatasetNamespaceResolver implements OutputDatasetNamespaceResolver {
+public class KafkaDatasetNamespaceResolver implements DatasetNamespaceResolver {
 
     private static final String LIST_SEPARATOR = ",";
     /**
@@ -31,12 +32,14 @@ public class DefaultOutputDatasetNamespaceResolver implements OutputDatasetNames
     private static final String SCHEMA_HISTORY_INTERNAL_KAFKA_BOOTSTRAP_SERVERS_PROPERTY = "schema.history.internal.kafka.bootstrap.servers";
 
     @Override
-    public String resolve(Map<String, String> configuration) {
+    public String resolve(Map<String, String> configuration, String connectorName) {
 
-        String hostPort = getList(configuration, SCHEMA_HISTORY_INTERNAL_KAFKA_BOOTSTRAP_SERVERS_PROPERTY, LIST_SEPARATOR, Function.identity())
+        String autoDetectedKafkaAddress = getList(configuration, SCHEMA_HISTORY_INTERNAL_KAFKA_BOOTSTRAP_SERVERS_PROPERTY, LIST_SEPARATOR, Function.identity())
                 .stream().findFirst()
                 .orElse("unknown:unknown");
 
-        return String.format(KAFKA_NAMESPACE_FORMAT, hostPort);
+        String kafkaAddress = configuration.getOrDefault(OPEN_LINEAGE_INTEGRATION_DATASET_KAFKA_BOOTSTRAP_SERVER, autoDetectedKafkaAddress);
+
+        return String.format(KAFKA_NAMESPACE_FORMAT, kafkaAddress);
     }
 }
