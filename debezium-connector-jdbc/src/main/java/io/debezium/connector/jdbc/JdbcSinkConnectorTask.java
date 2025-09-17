@@ -6,7 +6,9 @@
 package io.debezium.connector.jdbc;
 
 import static io.debezium.config.ConfigurationNames.TASK_ID_PROPERTY_NAME;
-import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetType.INPUT;
+import static io.debezium.openlineage.dataset.DatasetMetadata.STREAM_DATASET_TYPE;
+import static io.debezium.openlineage.dataset.DatasetMetadata.DataStore.KAFKA;
+import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.INPUT;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -157,10 +159,8 @@ public class JdbcSinkConnectorTask extends SinkTask {
         // TODO put on separate thread and maybe add cache for schema
         records.forEach(record -> {
 
-            datasetDataExtractor.extract(record);
-
             DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING,
-                    List.of(new DatasetMetadata(record.topic(), INPUT, datasetDataExtractor.extract(record))));
+                    List.of(new DatasetMetadata(record.topic(), INPUT, STREAM_DATASET_TYPE, KAFKA, datasetDataExtractor.extract(record))));
         });
 
         try {

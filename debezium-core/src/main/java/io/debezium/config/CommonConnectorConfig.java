@@ -1303,6 +1303,32 @@ public abstract class CommonConnectorConfig {
             .withDescription("The job's owners emitted by Debezium. A comma-separated list of key-value pairs.For example: k1=v1,k2=v2");
 
     /**
+     * Configuration field for specifying the Kafka bootstrap server used in Kafka Connect deployment.
+     *
+     * <p>This field defines the Kafka bootstrap server address that will be used as the
+     * input/output namespace for dataset lineage tracking in OpenLineage. The bootstrap
+     * server is essential for identifying the data source/destination in the lineage metadata.</p>
+     *
+     * <p><strong>Configuration key:</strong> {@code openlineage.integration.dataset.kafka.bootstrap.server}<br>
+     * <strong>Type:</strong> String<br>
+     * <strong>Format:</strong> Host and port (e.g., {@code host:port})<br>
+     * <strong>Default:</strong> None<br>
+     * <strong>Importance:</strong> Low</p>
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * openlineage.integration.dataset.kafka.bootstrap.server=localhost:9092
+     * }</pre>
+     */
+    public static Field OPEN_LINEAGE_INTEGRATION_DATASET_KAFKA_BOOTSTRAP_SERVER = Field.create(OpenLineageConfig.OPEN_LINEAGE_INTEGRATION_DATASET_KAFKA_BOOTSTRAP_SERVER)
+            .withDisplayName("Kafka bootstrap server used in Kafka Connect deployment")
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 47))
+            .withType(Type.STRING)
+            .withWidth(ConfigDef.Width.LONG)
+            .withImportance(ConfigDef.Importance.LOW)
+            .withDescription("The Kafka bootstrap server address used as input/output namespace/");
+
+    /**
      * Configuration field for enabling or disabling extended Debezium context headers.
      *
      * <p>This field controls whether Debezium includes additional context headers in CDC events
@@ -1406,6 +1432,7 @@ public abstract class CommonConnectorConfig {
                     OPEN_LINEAGE_INTEGRATION_JOB_DESCRIPTION,
                     OPEN_LINEAGE_INTEGRATION_JOB_TAGS,
                     OPEN_LINEAGE_INTEGRATION_JOB_OWNERS,
+                    OPEN_LINEAGE_INTEGRATION_DATASET_KAFKA_BOOTSTRAP_SERVER,
                     EXTENDED_HEADERS_ENABLED,
                     GUARDRAIL_TABLES_MAX,
                     GUARDRAIL_TABLES_LIMIT_ACTION)
