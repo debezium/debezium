@@ -18,7 +18,7 @@ By default, when {prodname} detects a change in a data collection, the change ev
 As described in {link-prefix}:{link-topic-auto-creation}#customizing-debezium-automatically-created-topics[Customization of Kafka Connect automatic topic creation], you can customize the default configuration to route events to multiple partitions, based on a hash of the primary key.
 
 However, in some cases, you might also want {prodname} to route events to a specific topic partition.
-The partition routing SMT enables you to route events to specific destination partitions based on the values of one or more specified payload fields. 
+The partition routing SMT enables you to route events to specific destination partitions based on the values of one or more specified payload fields.
 To calculate the destination partition, {prodname} uses a hash of the specified field values.
 
 // Type: concept
@@ -65,9 +65,9 @@ Based on the preceding configuration, whenever the SMT receives a message that i
 The SMT computes the target partition from a hash of the value of the `name` field in the message payload.
 By specifying the`allTopic` predicate, the configuration selectively applies the SMT.
 The `change` prefix is a special keyword that enables the SMT to automatically refer to elements in the payload that describe the `before` or `after` states of the data.
-If a specified field is not present in the event message, the SMT ignores it. 
+If a specified field is not present in the event message, the SMT ignores it.
 If none of the fields exist in the message, then the transformation ignores the event message entirely, and delivers the original version of the message to the default destination topic.
-The number of partitions specified by the `topic.num` setting in the SMT configuration must match the number of partitions specified by the Kafka Connect configuration. 
+The number of partitions specified by the `topic.num` setting in the SMT configuration must match the number of partitions specified by the Kafka Connect configuration.
 For example, in the preceding configuration example, the value specified by the Kafka Connect property `topic.creation.default.partitions` matches the `topic.num` value in the SMT configuration.
 
 Given this `Products` table
@@ -146,7 +146,7 @@ predicates.myTopic.type=org.apache.kafka.connect.transforms.predicates.TopicName
 predicates.myTopic.pattern=my_topic
 ----
 
-The preceding configuration does not specify how to re-route events so that they are sent to a specific destination topic. 
+The preceding configuration does not specify how to re-route events so that they are sent to a specific destination topic.
 For information about how to send events to topics other than their default destination topics, see the {link-prefix}:{link-topic-routing}[Topic Routing SMT]., see the {link-prefix}:{link-topic-routing}[Topic Routing SMT].
 
 // Type: concept
@@ -158,8 +158,8 @@ For information about how to send events to topics other than their default dest
 The {prodname} `ComputePartition` SMT is to be discontinued in a future release.
 The information in the following section describes how migrate from the  `ComputePartition` SMT to the new `PartitionRouting` SMT.
 
-Assuming that the configuration sets the same number of partitions for all topics, replace the following `ComputePartition`configuration with the `PartitionRouting` SMT. 
-The following examples provide a comparison of the two configuration. 
+Assuming that the configuration sets the same number of partitions for all topics, replace the following `ComputePartition`configuration with the `PartitionRouting` SMT.
+The following examples provide a comparison of the two configuration.
 
 .Example: Legacy `ComputePartition` configuration
 [source]
@@ -198,9 +198,9 @@ predicates.allTopic.pattern=fulfillment.*
 ----
 
 If the SMT emits events to topics that do not share the same number of partitions, you must specify unique `partition.num.mappings` values for each topic.
-For example, in the following example, the topic for the legacy `products` collection is configured with 3 partitions, and the topic for the `orders` data collection is configured with 2 partitions: 
+For example, in the following example, the topic for the legacy `products` collection is configured with 3 partitions, and the topic for the `orders` data collection is configured with 2 partitions:
 
-.Example: Legacy `ComputePartition` configuration that sets unique partition values for different topics 
+.Example: Legacy `ComputePartition` configuration that sets unique partition values for different topics
 
 [source]
 ----
@@ -214,7 +214,7 @@ transforms.ComputePartition.partition.data-collections.partition.num.mappings=in
 ----
 
 Replace the preceding `ComputePartition` configuration with the following `PartitionRouting` configuration:
-.`PartitionRouting` configuration that sets unique `partition.topic.num` values for different topics 
+.`PartitionRouting` configuration that sets unique `partition.topic.num` values for different topics
 [source]
 ----
 ...
@@ -257,16 +257,15 @@ The following table lists the configuration options that you can set for the par
 |[[partition-routing-payload-fields]]<<partition-routing-payload-fields, `partition.payload.fields`>>
 |
 |Specifies the fields in the event payload that the SMT uses to calculate the target partition.
-Use dot notation if you want the SMT to add fields from the original payload to specific levels in the output data structure. 
+Use dot notation if you want the SMT to add fields from the original payload to specific levels in the output data structure.
 To access fields related to data collections, you can use: `after`, `before`, or `change`.
-The 'change' field is a special field that results in the SMT automatically populating content in the 'after' or 'before' elements, depending on type of operation. 
+The 'change' field is a special field that results in the SMT automatically populating content in the 'after' or 'before' elements, depending on type of operation.
 If a specified field is not present in a record, the SMT skips it.
 For example, `after.name,source.table,change.name`
 
 |[[partition-routing-partition-topic-num]]<<partition-routing-partition-topic-num, `partition.topic.num`>>
 |
-|The number of partitions for the topic on which this SMT acts. 
+|The number of partitions for the topic on which this SMT acts.
 Use the `TopicNameMatches` predicate to filter records by topic.
-|
 
 |===
