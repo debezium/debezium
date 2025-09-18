@@ -19,6 +19,7 @@ public class DebeziumConfigurationEngineParser {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumConfigurationEngineParser.class);
     public static final String DEFAULT = "default";
+    public static final String CAPTURING = "capturing";
 
     public List<MultiEngineConfiguration> parse(DebeziumEngineConfiguration globalConfiguration) {
         Map<String, Map<String, String>> configurations = globalConfiguration
@@ -32,7 +33,7 @@ public class DebeziumConfigurationEngineParser {
          * SmallRye Config in Quarkus is not able to map configuration on multiple fields if are used raw types
          * removing the keys with capturing
          */
-        globalConfiguration.defaultConfiguration().keySet().removeIf(key -> key.startsWith("capturing"));
+        globalConfiguration.defaultConfiguration().keySet().removeIf(key -> key.startsWith(CAPTURING));
 
         if (!globalConfiguration.defaultConfiguration().isEmpty() && configurations.get(DEFAULT) != null) {
             LOGGER.warn("found two default configurations for debezium engine: {} \n {}", globalConfiguration.defaultConfiguration().toString(),
