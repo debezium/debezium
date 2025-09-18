@@ -114,6 +114,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private final ExtendedStringParser extendedStringParser;
     private final XmlBeginParser xmlBeginParser;
     private final Tables.TableFilter tableFilter;
+    private final String archiveDestinationName;
 
     private boolean sequenceUnavailable = false;
     private List<LogFile> currentLogFiles;
@@ -151,6 +152,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         this.extendedStringParser = new ExtendedStringParser();
         this.xmlBeginParser = new XmlBeginParser();
         this.tableFilter = connectorConfig.getTableFilters().dataCollectionFilter();
+        this.archiveDestinationName = jdbcConnection.getArchiveLogDestinationByPrecedence(connectorConfig.getArchiveLogDestinationNames());
 
         metrics.setBatchSize(connectorConfig.getLogMiningBatchSizeDefault());
         metrics.setSleepTime(connectorConfig.getLogMiningSleepTimeDefault().toMillis());
@@ -1113,7 +1115,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             currentRedoLogSequences = sequences;
 
             metrics.setSwitchCount(jdbcConnection.queryAndMap(
-                    SqlUtils.switchHistoryQuery(connectorConfig.getArchiveLogDestinationName()),
+                    SqlUtils.switchHistoryQuery(archiveDestinationName),
                     rs -> rs.next() ? rs.getInt(2) : 0));
 
             return true;
@@ -1964,9 +1966,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if no system change number was found
      */
     private Scn getFirstScnAvailableInLogs() throws SQLException {
-        return jdbcConnection.getFirstScnInLogs(
-                connectorConfig.getArchiveLogRetention(),
-                connectorConfig.getArchiveLogDestinationName())
+        return jdbcConnection.getFirstScnInLogs(connectorConfig.getArchiveLogRetention(), archiveDestinationName)
                 .orElseThrow(() -> new DebeziumException("Failed to calculate oldest SCN available in logs"));
     }
 
