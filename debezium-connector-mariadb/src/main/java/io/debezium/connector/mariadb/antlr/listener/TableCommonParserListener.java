@@ -38,7 +38,7 @@ public class TableCommonParserListener extends MariaDBParserBaseListener {
     public void enterColumnDeclaration(MariaDBParser.ColumnDeclarationContext ctx) {
         parser.runIfNotNull(() -> {
             MariaDBParser.UidContext fullColumnNameContext = ctx.uid();
-            String columnName = parser.parseName(fullColumnNameContext);
+            String columnName = parser.removeRepeatedBacktick(parser.parseName(fullColumnNameContext));
             ColumnEditor columnEditor = Column.editor().name(columnName);
             if (columnDefinitionListener == null) {
                 columnDefinitionListener = new ColumnDefinitionParserListener(tableEditor, columnEditor, parser, listeners);
