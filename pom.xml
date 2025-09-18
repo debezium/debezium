@@ -192,7 +192,7 @@
         <!-- For credentials -->
         <publish.repository.id>central</publish.repository.id>
 
-        <version.mockito>5.17.0</version.mockito>
+        <version.mockito>5.19.0</version.mockito>
     </properties>
 
     <modules>
