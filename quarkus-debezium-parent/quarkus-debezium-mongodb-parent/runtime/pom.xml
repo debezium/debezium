@@ -11,6 +11,12 @@
     </parent>
 
     <artifactId>quarkus-debezium-mongodb</artifactId>
+    <dependencies>
+        <dependency>
+            <groupId>io.debezium.quarkus</groupId>
+            <artifactId>quarkus-debezium-engine-spi</artifactId>
+        </dependency>
+    </dependencies>
 
-    
+
 </project>
