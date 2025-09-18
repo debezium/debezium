@@ -328,10 +328,10 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
                     // MariaDB does not allow a primary key to have nullable columns, so let's make sure we model that correctly ...
                     String columnName;
                     if (indexColumnNameContext.uid() != null) {
-                        columnName = parseName(indexColumnNameContext.uid());
+                        columnName = removeRepeatedBacktick(parseName(indexColumnNameContext.uid()));
                     }
                     else if (indexColumnNameContext.STRING_LITERAL() != null) {
-                        columnName = withoutQuotes(indexColumnNameContext.STRING_LITERAL().getText());
+                        columnName = removeRepeatedBacktick(withoutQuotes(indexColumnNameContext.STRING_LITERAL().getText()));
                     }
                     else {
                         columnName = indexColumnNameContext.expression().getText();
@@ -384,10 +384,10 @@ public class MariaDbAntlrDdlParser extends AntlrDdlParser<MariaDBLexer, MariaDBP
                 .map(indexColumnNameContext -> {
                     String columnName;
                     if (indexColumnNameContext.uid() != null) {
-                        columnName = parseName(indexColumnNameContext.uid());
+                        columnName = removeRepeatedBacktick(parseName(indexColumnNameContext.uid()));
                     }
                     else if (indexColumnNameContext.STRING_LITERAL() != null) {
-                        columnName = withoutQuotes(indexColumnNameContext.STRING_LITERAL().getText());
+                        columnName = removeRepeatedBacktick(withoutQuotes(indexColumnNameContext.STRING_LITERAL().getText()));
                     }
                     else {
                         columnName = indexColumnNameContext.expression().getText();
