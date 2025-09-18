@@ -130,6 +130,5 @@ The following table lists the configuration options that you can use with the pa
 |[[partition-routing-data-collections-partition-num-mappings]]<<partition-routing-data-collections-partition-num-mappings, `partition.data-collections.partition.num.mappings`>>
 |
 |A comma-separated list of colon-delimited pairs that specify the number of partitions to use for a specific data-collection, for example, `inventory.products:2,inventory.orders:3`.
-|
 
 |===
