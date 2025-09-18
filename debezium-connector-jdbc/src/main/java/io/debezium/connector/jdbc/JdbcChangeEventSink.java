@@ -6,6 +6,9 @@
 package io.debezium.connector.jdbc;
 
 import static io.debezium.connector.jdbc.JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE;
+import static io.debezium.openlineage.dataset.DatasetMetadata.TABLE_DATASET_TYPE;
+import static io.debezium.openlineage.dataset.DatasetMetadata.DataStore.DATABASE;
+import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.OUTPUT;
 
 import java.sql.SQLException;
 import java.time.Duration;
@@ -17,7 +20,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
+import org.apache.kafka.common.utils.ThreadUtils;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -29,9 +35,13 @@ import org.hibernate.query.NativeQuery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.relational.TableDescriptor;
 import io.debezium.metadata.CollectionId;
+import io.debezium.openlineage.ConnectorContext;
+import io.debezium.openlineage.DebeziumOpenLineageEmitter;
+import io.debezium.openlineage.dataset.DatasetMetadata;
 import io.debezium.sink.DebeziumSinkRecord;
 import io.debezium.sink.field.FieldDescriptor;
 import io.debezium.sink.spi.ChangeEventSink;
@@ -57,14 +67,19 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     private final RecordWriter recordWriter;
     private final int flushMaxRetries;
     private final Duration flushRetryDelay;
+    private final ConnectorContext connectorContext;
 
-    public JdbcChangeEventSink(JdbcSinkConnectorConfig config, StatelessSession session, DatabaseDialect dialect, RecordWriter recordWriter) {
+    private final ExecutorService executor = Executors.newFixedThreadPool(1, ThreadUtils.createThreadFactory(this.getClass().getSimpleName() + "-%d", false));
+
+    public JdbcChangeEventSink(JdbcSinkConnectorConfig config, StatelessSession session, DatabaseDialect dialect, RecordWriter recordWriter,
+                               ConnectorContext connectorContext) {
         this.config = config;
         this.dialect = dialect;
         this.session = session;
         this.recordWriter = recordWriter;
         this.flushMaxRetries = config.getFlushMaxRetries();
         this.flushRetryDelay = Duration.of(config.getFlushRetryDelayMs(), ChronoUnit.MILLIS);
+        this.connectorContext = connectorContext;
 
         final DatabaseVersion version = this.dialect.getVersion();
         LOGGER.info("Database version {}.{}.{}", version.getMajor(), version.getMinor(), version.getMicro());
@@ -247,9 +262,24 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             recordWriter.write(toFlush, sqlStatement);
             flushBufferStopwatch.stop();
 
+            executor.submit(() -> DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING, List.of(extractDatasetMetadata(table))));
+
             LOGGER.trace("[PERF] Flush buffer execution time {}", flushBufferStopwatch.durations());
             LOGGER.trace("[PERF] Table changes execution time {}", tableChangesStopwatch.durations());
         }
+    }
+
+    private DatasetMetadata extractDatasetMetadata(TableDescriptor tableDescriptor) {
+
+        List<DatasetMetadata.FieldDefinition> fieldDefinitions = tableDescriptor.getColumns().stream()
+                .map(c -> new DatasetMetadata.FieldDefinition(c.getColumnName(), c.getTypeName(), ""))
+                .toList();
+        return new DatasetMetadata(getIdentifier(tableDescriptor), OUTPUT, TABLE_DATASET_TYPE, DATABASE, fieldDefinitions);
+    }
+
+    private String getIdentifier(TableDescriptor tableDescriptor) {
+
+        return tableDescriptor.getId().toFullIdentiferString();
     }
 
     @Override
