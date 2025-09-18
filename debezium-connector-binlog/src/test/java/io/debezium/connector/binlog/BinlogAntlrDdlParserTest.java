@@ -3424,6 +3424,25 @@ public abstract class BinlogAntlrDdlParserTest<V extends BinlogValueConverters, 
         assertColumn(t, "c1", "BIT", Types.BIT, 1, -1, true, false, false);
     }
 
+    @FixFor("DBZ-9479")
+    @Test
+    public void shouldParseColumnContainsBacktick() {
+        String ddlWithoutKey = "CREATE TABLE t ( `count(``c1``)` int(10));";
+        parser.parse(ddlWithoutKey, tables);
+        Table t = tables.forTable(new TableId(null, null, "t"));
+        assertColumn(t, "count(`c1`)", "INT", Types.INTEGER, 10, -1, true, false, false);
+
+        String ddlWithUk = "CREATE TABLE t1 (`COUNT(````id````)` int(10) NOT NULL, UNIQUE KEY `idx_id`(`COUNT(````id````)`));";
+        parser.parse(ddlWithUk, tables);
+        t = tables.forTable(new TableId(null, null, "t1"));
+        assertColumn(t, "COUNT(``id``)", "INT", Types.INTEGER, 10, -1, false, false, false);
+
+        String ddlWithPk = "CREATE TABLE t2 (`COUNT(````id````)` int(10) PRIMARY key);";
+        parser.parse(ddlWithPk, tables);
+        t = tables.forTable(new TableId(null, null, "t2"));
+        assertColumn(t, "COUNT(``id``)", "INT", Types.INTEGER, 10, -1, false, false, false);
+    }
+
     private String toIsoString(String timestamp) {
         return ZonedTimestamp.toIsoString(Timestamp.valueOf(timestamp).toInstant().atZone(ZoneId.systemDefault()), null, null);
     }
