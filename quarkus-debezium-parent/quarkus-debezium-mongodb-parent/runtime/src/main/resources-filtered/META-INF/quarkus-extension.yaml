@@ -1,12 +1,12 @@
 ---
 name: "MongoDB Debezium Extension for Quarkus"
-description: "Debezium engine powered by Quarkus for MongoDB"
+description: "Debezium Extensions for Quarkus integrates the Debezium Runtime into Quarkus applications, enabling developers to consume change data capture (CDC) events from supported databases directly within a lightweight, cloud-native application."
 metadata:
   keywords:
   - "debezium"
   - "cdc"
   - "mongoDB"
-  guide: "not_available"
+  guide: "https://debezium.io/documentation/reference/${parsedVersion.majorVersion}.${parsedVersion.minorVersion}/integrations/quarkus-debezium-engine-extension.html"
   categories:
   - "integration"
   - "cdc"
