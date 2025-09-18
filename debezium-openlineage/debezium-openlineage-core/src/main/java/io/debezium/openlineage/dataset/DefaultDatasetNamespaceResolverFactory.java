@@ -9,6 +9,7 @@ public class DefaultDatasetNamespaceResolverFactory implements DatasetNamespaceR
 
     private static final String MONGODB = "mongodb";
     private static final String POSTGRESQL = "postgresql";
+    private static final String JDBC = "Jdbc";
 
     public DatasetNamespaceResolver create(DatasetMetadata.DataStore dataStore, String connectorName) {
         return switch (dataStore) {
@@ -21,6 +22,7 @@ public class DefaultDatasetNamespaceResolverFactory implements DatasetNamespaceR
         return switch (connectorName) {
             case MONGODB -> new MongoDbDatasetNamespaceResolver();
             case POSTGRESQL -> new PostgresDatasetNamespaceResolver();
+            case JDBC -> new JdbcDatasetNamespaceResolver();
             default -> new DefaultDatabaseNamespaceResolver();
         };
     }

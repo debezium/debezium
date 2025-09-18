@@ -18,6 +18,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -25,6 +27,7 @@ import java.util.stream.Collectors;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.utils.ThreadUtils;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.runtime.InternalSinkRecord;
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -57,9 +60,9 @@ public class JdbcSinkConnectorTask extends SinkTask {
     private static final Logger LOGGER = LoggerFactory.getLogger(JdbcSinkConnectorTask.class);
 
     private static final Class[] EMPTY_CLASS_ARRAY = new Class[0];
+    private static final String CONNECTOR_NAME_PROPERTY = "name";
 
     private SessionFactory sessionFactory;
-    private String taskId;
     private ConnectorContext connectorContext;
 
     private enum State {
@@ -69,12 +72,12 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
     private final AtomicReference<State> state = new AtomicReference<>(State.STOPPED);
     private final ReentrantLock stateLock = new ReentrantLock();
+    private final ExecutorService executor = Executors.newFixedThreadPool(1, ThreadUtils.createThreadFactory(this.getClass().getSimpleName() + "-%d", false));
 
     private JdbcChangeEventSink changeEventSink;
     private final Set<TopicPartition> assignedPartitions = new HashSet<>();
     private final Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
     private Throwable previousPutException;
-    private String connectorName;
 
     /**
      * There is a change in {@link InternalSinkRecord} API between Connect 3.7 and 3.8.
@@ -108,8 +111,8 @@ public class JdbcSinkConnectorTask extends SinkTask {
         try {
 
             datasetDataExtractor = new DatasetDataExtractor();
-            connectorName = props.get("name");
-            taskId = props.getOrDefault(TASK_ID_PROPERTY_NAME, "0");
+            String connectorName = props.get(CONNECTOR_NAME_PROPERTY);
+            String taskId = props.getOrDefault(TASK_ID_PROPERTY_NAME, "0");
             connectorContext = new ConnectorContext(connectorName, Module.name(), taskId, Module.version(), props);
             DebeziumOpenLineageEmitter.init(connectorContext);
 
@@ -132,7 +135,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
             QueryBinderResolver queryBinderResolver = new QueryBinderResolver();
             RecordWriter recordWriter = new RecordWriter(session, queryBinderResolver, config, databaseDialect);
 
-            changeEventSink = new JdbcChangeEventSink(config, session, databaseDialect, recordWriter);
+            changeEventSink = new JdbcChangeEventSink(config, session, databaseDialect, recordWriter, connectorContext);
             DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING);
         }
         finally {
@@ -156,12 +159,8 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
         LOGGER.debug("Received {} changes.", records.size());
 
-        // TODO put on separate thread and maybe add cache for schema
-        records.forEach(record -> {
-
-            DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING,
-                    List.of(new DatasetMetadata(record.topic(), INPUT, STREAM_DATASET_TYPE, KAFKA, datasetDataExtractor.extract(record))));
-        });
+        executor.submit(() -> records.forEach(record -> DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING,
+                List.of(new DatasetMetadata(record.topic(), INPUT, STREAM_DATASET_TYPE, KAFKA, datasetDataExtractor.extract(record))))));
 
         try {
             executeStopWatch.start();
