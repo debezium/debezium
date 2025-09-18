@@ -423,6 +423,9 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 try {
                     // Delegate to the superclass ...
                     Event event = super.nextEvent(inputStream);
+                    if (event == null) {
+                        return null;
+                    }
 
                     // We have to record the most recent TableMapEventData for each table number for our custom deserializers ...
                     if (event.getHeader().getEventType() == EventType.TABLE_MAP) {
