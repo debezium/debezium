@@ -60,6 +60,10 @@ public class MongoProcessedSinkRecordData {
         return exception;
     }
 
+    public SinkDocument getSinkDocument() {
+        return sinkDocument;
+    }
+
     private MongoNamespace createNamespace() {
         return tryProcess(
                 () -> Optional.of(new MongoNamespace(
