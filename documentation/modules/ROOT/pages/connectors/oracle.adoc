@@ -4168,6 +4168,10 @@ Using a value of `0` will use the JDBC driver's default fetch size.
 
 See xref:oracle-transaction-metadata[Transaction Metadata] for additional details.
 
+|[[oracle-property-log-mining-readonly-hostname]]<<oracle-property-log-mining-readonly-hostname, `+log.mining.readonly.hostname+`>>
+|`null`
+|Specifies read-only hostname for log mining strategy `dictionary_from_file`.
+
 |[[oracle-property-log-mining-strategy]]<<oracle-property-log-mining-strategy, `+log.mining.strategy+`>>
 |`online_catalog`
 |Specifies the mining strategy that controls how Oracle LogMiner builds and uses a given data dictionary for resolving table and column ids to names. +
@@ -4182,6 +4186,8 @@ If the captured table(s) schema changes infrequently or never, this is the ideal
 
 `hybrid`:: Uses a combination of the database's current data dictionary and the {prodname} in-memory schema model to resolve table and column names seamlessly.
 This mode performs at the level of the `online_catalog` LogMiner strategy with the schema tracking resilience of the `redo_log_catalog` strategy while not incurring the overhead of archive log generation and performance costs of the `redo_log_catalog` strategy.
+
+`dictionary_from_file`:: Uses dictionary from file located in a Oracle directory object. Use this option if you set the log.mining.read.only to true and informed a log.mining.readonly.hostname.
 
 |[[oracle-property-log-mining-query-filter-mode]]<<oracle-property-log-mining-query-filter-mode, `+log.mining.query.filter.mode+`>>
 |`none`
