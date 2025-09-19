@@ -1560,6 +1560,15 @@ public class JdbcConnection implements AutoCloseable {
         return Set.of('%', '_');
     }
 
+    public StatementPreparer statementValuesSetter(List<Object> values) {
+        return statement -> {
+            int index = 1;
+            for (final Object parameter : values) {
+                statement.setObject(index++, parameter);
+            }
+        };
+    }
+
     public <T> ResultSetMapper<T> singleResultMapper(ResultSetExtractor<T> extractor, String error) throws SQLException {
         return (rs) -> {
             if (rs.next()) {
@@ -1569,6 +1578,25 @@ public class JdbcConnection implements AutoCloseable {
                 }
             }
             throw new IllegalStateException(error);
+        };
+    }
+
+    public <T> ResultSetMapper<T> singleResultMapper(ResultSetExtractor<T> extractor, T defaultValue, String msg) throws SQLException {
+        return singleResultMapper(extractor, defaultValue, msg, msg);
+    }
+
+    public <T> ResultSetMapper<T> singleResultMapper(ResultSetExtractor<T> extractor, T defaultValue, String notFoundMsg, String multipleResultMsg)
+            throws SQLException {
+        return (rs) -> {
+            if (!rs.next()) {
+                LOGGER.warn(notFoundMsg);
+                return defaultValue;
+            }
+            final T ret = extractor.apply(rs);
+            if (rs.next()) {
+                LOGGER.warn(multipleResultMsg);
+            }
+            return ret;
         };
     }
 
@@ -1725,29 +1753,24 @@ public class JdbcConnection implements AutoCloseable {
         return tableId.schema() + "." + tableId.table();
     }
 
-    public Map<String, Object> reselectColumns(Table table, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source)
+    public boolean reselectColumns(Table table, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source,
+                                   ResultSetConsumer resultConsumer)
             throws SQLException {
         final String query = String.format("SELECT %s FROM %s WHERE %s",
                 columns.stream().map(this::quoteIdentifier).collect(Collectors.joining(",")),
                 quotedTableIdString(table.id()),
                 keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
-        return reselectColumns(query, table.id(), columns, keyValues);
+        return reselectColumns(query, table.id(), columns, keyValues, resultConsumer);
     }
 
-    protected Map<String, Object> reselectColumns(String query, TableId tableId, List<String> columns, List<Object> bindValues) throws SQLException {
-        final Map<String, Object> results = new HashMap<>();
-        prepareQuery(query, bindValues, (params, rs) -> {
-            if (!rs.next()) {
-                LOGGER.warn("No data found for re-selection on table {}.", tableId);
-                return;
-            }
-            for (String columnName : columns) {
-                results.put(columnName, rs.getObject(columnName));
-            }
-            if (rs.next()) {
-                LOGGER.warn("Re-selection detected multiple rows for the same key in table {}, using first.", tableId);
-            }
-        });
-        return results;
+    protected boolean reselectColumns(String query, TableId tableId, List<String> columns, List<Object> bindValues, ResultSetConsumer resultConsumer)
+            throws SQLException {
+        return prepareQueryAndMap(query, statementValuesSetter(bindValues), singleResultMapper(resultSet -> {
+            resultConsumer.accept(resultSet);
+            return true;
+        },
+                false,
+                "No data found for re-selection on table %s.".formatted(tableId),
+                "Re-selection detected multiple rows for the same key in table %s, using first.".formatted(tableId)));
     }
 }

@@ -221,10 +221,21 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
             }
         }
 
-        final Map<String, Object> selections;
         try {
-            selections = jdbcConnection.reselectColumns(table, requiredColumnSelections, keyColumns, keyValues, source);
-            if (selections.isEmpty()) {
+            boolean found = jdbcConnection.reselectColumns(table, requiredColumnSelections, keyColumns, keyValues, source, rs -> {
+                // Iterate re-selection columns and override old values
+                for (String columnName : requiredColumnSelections) {
+                    final Column column = table.columnWithName(columnName);
+                    final org.apache.kafka.connect.data.Field field = after.schema().field(columnName);
+
+                    final Object convertedValue = getConvertedValue(column, field, rs.getObject(columnName));
+                    if (LOGGER.isTraceEnabled()) {
+                        LOGGER.trace("Replaced field {} value {} with {}", field.name(), value.get(field), convertedValue);
+                    }
+                    after.put(field.name(), convertedValue);
+                }
+            });
+            if (!found) {
                 if (errorHandlingMode == ErrorHandlingMode.FAIL) {
                     throw new DebeziumException("Failed to find row in table " + tableId + " with key " + key);
                 }
@@ -238,19 +249,6 @@ public class ReselectColumnsPostProcessor implements PostProcessor, BeanRegistry
             }
             LOGGER.warn("Failed to re-select columns for table {} and key {}", tableId, keyValues, e);
             return;
-        }
-
-        // Iterate re-selection columns and override old values
-        for (Map.Entry<String, Object> selection : selections.entrySet()) {
-            final String columnName = selection.getKey();
-            final Column column = table.columnWithName(columnName);
-            final org.apache.kafka.connect.data.Field field = after.schema().field(columnName);
-
-            final Object convertedValue = getConvertedValue(column, field, selection.getValue());
-            if (LOGGER.isTraceEnabled()) {
-                LOGGER.trace("Replaced field {} value {} with {}", field.name(), value.get(field), convertedValue);
-            }
-            after.put(field.name(), convertedValue);
         }
     }
 

@@ -649,7 +649,8 @@ public class OracleConnection extends JdbcConnection {
     }
 
     @Override
-    public Map<String, Object> reselectColumns(Table table, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source)
+    public boolean reselectColumns(Table table, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source,
+                                   ResultSetConsumer resultConsumer)
             throws SQLException {
         final TableId oracleTableId = new TableId(null, table.id().schema(), table.id().table());
         if (source != null) {
@@ -663,9 +664,9 @@ public class OracleConnection extends JdbcConnection {
                 bindValues.add(commitScn);
                 bindValues.addAll(keyValues);
                 try {
-                    return reselectColumns(query, oracleTableId, columns, bindValues);
+                    return reselectColumns(query, oracleTableId, columns, bindValues, resultConsumer);
                 }
-                catch (SQLException e) {
+                catch (Exception e) {
                     if (shouldReselectFallbackToNonFlashbackQuery(e)) {
                         LOGGER.warn("Failed to re-select row for table {} and key columns {} with values {}. " +
                                 "Trying to perform re-selection without flashback.", table.id(), keyColumns, keyValues);
@@ -682,7 +683,7 @@ public class OracleConnection extends JdbcConnection {
                 quotedTableIdString(oracleTableId),
                 keyColumns.stream().map(key -> key + "=?").collect(Collectors.joining(" AND ")));
 
-        return reselectColumns(query, oracleTableId, columns, keyValues);
+        return reselectColumns(query, oracleTableId, columns, keyValues, resultConsumer);
     }
 
     private static final Set<Integer> ORACLE_RESELECT_ERROR_CODE_FALLBACK = Set.of(
@@ -693,9 +694,22 @@ public class OracleConnection extends JdbcConnection {
             "ORA-01555",
             "ORA-01466");
 
-    private static boolean shouldReselectFallbackToNonFlashbackQuery(SQLException exception) {
-        return ORACLE_RESELECT_ERROR_CODE_FALLBACK.contains(exception.getErrorCode()) ||
-                ORACLE_RESELECT_ERROR_PREFIX_FALLBACK.stream().anyMatch(exception.getMessage()::startsWith);
+    private static boolean shouldReselectFallbackToNonFlashbackQuery(Exception exception) {
+        SQLException sqlException = null;
+        Throwable cause = exception;
+        while (cause != null) {
+            if (cause instanceof SQLException) {
+                sqlException = (SQLException) cause;
+                break;
+            }
+            if (cause.getCause() == cause) {
+                break;
+            }
+            cause = cause.getCause();
+        }
+        return sqlException != null &&
+                ORACLE_RESELECT_ERROR_CODE_FALLBACK.contains(sqlException.getErrorCode()) ||
+                ORACLE_RESELECT_ERROR_PREFIX_FALLBACK.stream().anyMatch(sqlException.getMessage()::startsWith);
     }
 
     @Override
