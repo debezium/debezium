@@ -110,7 +110,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         validateRedoLogConfiguration(connectorConfig, snapshotterService);
 
-        checkArchiveLogDestination(jdbcConnection, connectorConfig.getArchiveLogDestinationName());
+        checkArchiveLogDestination(jdbcConnection, connectorConfig.getArchiveLogDestinationNames());
 
         OracleOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
@@ -205,20 +205,18 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         return Module.name();
     }
 
-    private void checkArchiveLogDestination(OracleConnection connection, String destinationName) {
+    private void checkArchiveLogDestination(OracleConnection connection, Set<String> destinationNames) {
         try {
-
-            if (!Strings.isNullOrBlank(destinationName)) {
+            if (destinationNames != null && !destinationNames.isEmpty()) {
+                final String destinationName = connection.getArchiveLogDestinationByPrecedence(destinationNames);
                 if (!connection.isArchiveLogDestinationValid(destinationName)) {
                     LOGGER.warn("Archive log destination '{}' may not be valid, please check the database.", destinationName);
                 }
             }
-            else {
-                if (!connection.isOnlyOneArchiveLogDestinationValid()) {
-                    LOGGER.warn("There are multiple valid archive log destinations. " +
-                            "Please add '{}' to the connector configuration to avoid log availability problems.",
-                            OracleConnectorConfig.ARCHIVE_DESTINATION_NAME.name());
-                }
+            else if (!connection.isOnlyOneArchiveLogDestinationValid()) {
+                LOGGER.warn("There are multiple valid archive log destinations. " +
+                        "Please add '{}' to the connector configuration to avoid log availability problems.",
+                        OracleConnectorConfig.ARCHIVE_DESTINATION_NAME.name());
             }
         }
         catch (SQLException e) {

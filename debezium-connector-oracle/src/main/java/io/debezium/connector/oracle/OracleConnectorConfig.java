@@ -895,7 +895,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final boolean lobEnabled;
     private final Set<String> logMiningUsernameIncludes;
     private final Set<String> logMiningUsernameExcludes;
-    private final String archiveLogDestinationName;
+    private final Set<String> archiveLogDestinationNames;
     private final LogMiningBufferType logMiningBufferType;
     private final long logMiningBufferTransactionEventsThreshold;
     private final boolean logMiningBufferDropOnStop;
@@ -976,7 +976,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.archiveLogOnlyMode = config.getBoolean(LOG_MINING_ARCHIVE_LOG_ONLY_MODE);
         this.logMiningUsernameIncludes = Strings.setOfTrimmed(config.getString(LOG_MINING_USERNAME_INCLUDE_LIST), String::new);
         this.logMiningUsernameExcludes = Strings.setOfTrimmed(config.getString(LOG_MINING_USERNAME_EXCLUDE_LIST), String::new);
-        this.archiveLogDestinationName = config.getString(ARCHIVE_DESTINATION_NAME);
+        this.archiveLogDestinationNames = Strings.setOfTrimmed(config.getString(ARCHIVE_DESTINATION_NAME), String::new);
         this.logMiningBufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
         this.logMiningBufferTransactionEventsThreshold = config.getLong(LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD);
         this.logMiningBufferDropOnStop = config.getBoolean(LOG_MINING_BUFFER_DROP_ON_STOP);
@@ -1878,10 +1878,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
-     * @return name of the archive destination configuration to use
+     * @return names of the archive destination configurations to use
      */
-    public String getArchiveLogDestinationName() {
-        return archiveLogDestinationName;
+    public Set<String> getArchiveLogDestinationNames() {
+        return archiveLogDestinationNames;
     }
 
     /**
