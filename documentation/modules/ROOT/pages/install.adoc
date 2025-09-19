@@ -39,7 +39,7 @@ ifeval::['{page-version}' == 'master']
 * {link-cassandra-5-plugin-snapshot}[Cassandra 5.x plugin archive]
 * {link-vitess-plugin-snapshot}[Vitess plugin archive] (incubating)
 * {link-spanner-plugin-snapshot}[Spanner plugin archive]
-* {link-jdbc-plugin-snapshot}[JDBC sink plugin archive] (incubating)
+* {link-jdbc-plugin-snapshot}[JDBC sink plugin archive]
 * {link-informix-plugin-snapshot}[Informix plugin archive] (incubating)
 
 NOTE: All above links are to nightly snapshots of the {prodname} main branch.  If you are looking for non-snapshot versions, please select the appropriate version in the top right.
