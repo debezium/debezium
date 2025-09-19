@@ -8,8 +8,15 @@ package io.debezium.connector.mongodb.sink;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
+import io.debezium.connector.common.DebeziumTaskState;
+import io.debezium.openlineage.DebeziumOpenLineageEmitter;
+import io.debezium.openlineage.dataset.DatasetMetadata;
+import org.apache.kafka.common.utils.ThreadUtils;
 import org.apache.kafka.connect.sink.SinkRecord;
+import org.bson.BsonDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,8 +24,15 @@ import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.dlq.ErrorReporter;
 import io.debezium.sink.DebeziumSinkRecord;
 
+import static io.debezium.openlineage.dataset.DatasetMetadata.DataStore.DATABASE;
+import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.OUTPUT;
+import static io.debezium.openlineage.dataset.DatasetMetadata.TABLE_DATASET_TYPE;
+
 final class MongoSinkRecordProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(MongoSinkRecordProcessor.class);
+
+    private MongoSinkRecordProcessor() {
+    }
 
     static List<List<MongoProcessedSinkRecordData>> orderedGroupByTopicAndNamespace(
                                                                                     final Collection<SinkRecord> records,
@@ -63,8 +77,5 @@ final class MongoSinkRecordProcessor {
             orderedProcessedSinkRecordData.add(groupedBatch);
         }
         return orderedProcessedSinkRecordData;
-    }
-
-    private MongoSinkRecordProcessor() {
     }
 }

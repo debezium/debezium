@@ -5,20 +5,30 @@
  */
 package io.debezium.connector.jdbc;
 
+import static io.debezium.config.ConfigurationNames.TASK_ID_PROPERTY_NAME;
+import static io.debezium.openlineage.dataset.DatasetMetadata.STREAM_DATASET_TYPE;
+import static io.debezium.openlineage.dataset.DatasetMetadata.DataStore.KAFKA;
+import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.INPUT;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
+import io.debezium.config.ConfigurationNames;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.utils.ThreadUtils;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.runtime.InternalSinkRecord;
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -30,8 +40,13 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.annotation.VisibleForTesting;
+import io.debezium.connector.common.DebeziumTaskState;
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.dialect.DatabaseDialectResolver;
+import io.debezium.openlineage.ConnectorContext;
+import io.debezium.openlineage.DebeziumOpenLineageEmitter;
+import io.debezium.openlineage.dataset.DatasetDataExtractor;
+import io.debezium.openlineage.dataset.DatasetMetadata;
 import io.debezium.util.Stopwatch;
 import io.debezium.util.Strings;
 
@@ -48,6 +63,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
     private static final Class[] EMPTY_CLASS_ARRAY = new Class[0];
 
     private SessionFactory sessionFactory;
+    private ConnectorContext connectorContext;
 
     private enum State {
         RUNNING,
@@ -56,6 +72,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
     private final AtomicReference<State> state = new AtomicReference<>(State.STOPPED);
     private final ReentrantLock stateLock = new ReentrantLock();
+    private final ExecutorService executor = Executors.newFixedThreadPool(1, ThreadUtils.createThreadFactory(this.getClass().getSimpleName() + "-%d", false));
 
     private JdbcChangeEventSink changeEventSink;
     private final Set<TopicPartition> assignedPartitions = new HashSet<>();
@@ -68,11 +85,13 @@ public class JdbcSinkConnectorTask extends SinkTask {
      */
     private boolean usePre380OriginalRecordAccess = false;
     private Method pre380OriginalRecordMethod = null;
+    private DatasetDataExtractor datasetDataExtractor;
 
     public JdbcSinkConnectorTask() {
         try {
             pre380OriginalRecordMethod = InternalSinkRecord.class.getMethod("originalRecord", EMPTY_CLASS_ARRAY);
             usePre380OriginalRecordAccess = true;
+
             LOGGER.info("Old InternalSinkRecord class found, will use reflection for calls");
         }
         catch (NoSuchMethodException | SecurityException e) {
@@ -90,10 +109,19 @@ public class JdbcSinkConnectorTask extends SinkTask {
         stateLock.lock();
 
         try {
+
+            datasetDataExtractor = new DatasetDataExtractor();
+            String connectorName = props.get(ConfigurationNames.CONNECTOR_NAME_PROPERTY);
+            String taskId = props.getOrDefault(TASK_ID_PROPERTY_NAME, "0");
+            connectorContext = new ConnectorContext(connectorName, Module.name(), taskId, Module.version(), props);
+            DebeziumOpenLineageEmitter.init(connectorContext);
+
             if (!state.compareAndSet(State.STOPPED, State.RUNNING)) {
                 LOGGER.info("Connector has already been started");
                 return;
             }
+
+            DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.INITIAL);
 
             // be sure to reset this state
             previousPutException = null;
@@ -107,7 +135,8 @@ public class JdbcSinkConnectorTask extends SinkTask {
             QueryBinderResolver queryBinderResolver = new QueryBinderResolver();
             RecordWriter recordWriter = new RecordWriter(session, queryBinderResolver, config, databaseDialect);
 
-            changeEventSink = new JdbcChangeEventSink(config, session, databaseDialect, recordWriter);
+            changeEventSink = new JdbcChangeEventSink(config, session, databaseDialect, recordWriter, connectorContext);
+            DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING);
         }
         finally {
             stateLock.unlock();
@@ -122,10 +151,16 @@ public class JdbcSinkConnectorTask extends SinkTask {
         putStopWatch.start();
         if (previousPutException != null) {
             LOGGER.error("JDBC sink connector failure", previousPutException);
+
+            DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RESTARTING, previousPutException);
+
             throw new ConnectException("JDBC sink connector failure", previousPutException);
         }
 
         LOGGER.debug("Received {} changes.", records.size());
+
+        executor.submit(() -> records.forEach(record -> DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING,
+                List.of(new DatasetMetadata(record.topic(), INPUT, STREAM_DATASET_TYPE, KAFKA, datasetDataExtractor.extract(record))))));
 
         try {
             executeStopWatch.start();
@@ -197,6 +232,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
                 try {
                     changeEventSink.close();
 
+                    DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.STOPPED);
                     if (sessionFactory != null && sessionFactory.isOpen()) {
                         LOGGER.info("Closing the session factory");
                         sessionFactory.close();
@@ -218,6 +254,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
                 changeEventSink = null;
             }
             stateLock.unlock();
+            DebeziumOpenLineageEmitter.cleanup(connectorContext);
         }
     }
 

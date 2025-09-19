@@ -58,6 +58,22 @@ public class DebeziumOpenLineageEmitter {
         LOGGER.debug("Calling init for connector {} and config {}", connectorTypeName, configuration);
 
         ConnectorContext connectorContext = ConnectorContext.from(configuration, connectorTypeName);
+        init(connectorContext);
+    }
+
+    /**
+     * Initializes the lineage emitter with the given ConnectorContext.
+     * <p>
+     * This method must be called before any emission methods are used. It sets up the
+     * emitter if OpenLineage integration is enabled in the configuration.
+     * The initialization is thread-safe and ensures each connector has its own emitter instance.
+     *
+     * @param connectorContext The connector context
+     */
+    public static void init(ConnectorContext connectorContext) {
+
+        LOGGER.debug("Calling init for connector with context {}", connectorContext);
+
         LineageEmitter emitter = emitters.computeIfAbsent(connectorContext.toEmitterKey(), key -> {
             LOGGER.debug("Creating new emitter for connector with name {}", key);
             /*
@@ -77,7 +93,7 @@ public class DebeziumOpenLineageEmitter {
             }
         });
 
-        LOGGER.debug("Emitter instance for connector {}: {}", connectorTypeName, emitter);
+        LOGGER.debug("Emitter instance for connector {}: {}", connectorContext.connectorName(), emitter);
     }
 
     /**
@@ -154,6 +170,7 @@ public class DebeziumOpenLineageEmitter {
 
     private static LineageEmitter getEmitter(ConnectorContext connectorContext) {
         LineageEmitter emitter = emitters.get(connectorContext.toEmitterKey());
+        LOGGER.debug("Available emitters {}", emitters);
         if (emitter == null) {
             throw new IllegalStateException("DebeziumOpenLineageEmitter not initialized for connector " + connectorContext + ". Call init() first.");
         }

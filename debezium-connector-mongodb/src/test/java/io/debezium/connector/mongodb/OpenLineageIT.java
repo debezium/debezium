@@ -12,10 +12,8 @@ import static org.assertj.core.api.Assertions.entry;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
@@ -34,7 +32,6 @@ import io.debezium.openlineage.DebeziumTestTransport;
 import io.debezium.openlineage.facets.DebeziumConfigFacet;
 import io.debezium.util.Testing;
 import io.openlineage.client.OpenLineage;
-import io.openlineage.client.transports.TransportBuilder;
 
 public class OpenLineageIT extends AbstractMongoConnectorIT {
 
@@ -271,16 +268,6 @@ public class OpenLineageIT extends AbstractMongoConnectorIT {
                         OpenLineage.OwnershipJobFacetOwners::getType));
 
         assertThat(ownership).contains(entry("Mario", "maintainer"), entry("John Doe", "Data scientist"));
-    }
-
-    private static DebeziumTestTransport getDebeziumTestTransport() {
-        ServiceLoader<TransportBuilder> loader = ServiceLoader.load(TransportBuilder.class);
-        Optional<TransportBuilder> optionalBuilder = StreamSupport.stream(loader.spliterator(), false)
-                .filter(b -> b.getType().equals("debezium"))
-                .findFirst();
-
-        return (DebeziumTestTransport) optionalBuilder.orElseThrow(
-                () -> new IllegalArgumentException("Failed to find TransportBuilder")).build(null);
     }
 
     protected void verifyFromInitialSnapshot(SourceRecord record, AtomicBoolean foundLast) {
