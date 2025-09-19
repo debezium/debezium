@@ -6,7 +6,7 @@
 
 package io.quarkus.debezium.engine;
 
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.ConcurrentHashMap;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
@@ -16,6 +16,7 @@ import io.debezium.engine.DebeziumEngine.CompletionCallback;
 import io.debezium.engine.DebeziumEngine.ConnectorCallback;
 import io.debezium.runtime.Debezium;
 import io.debezium.runtime.DebeziumStatus;
+import io.debezium.runtime.events.CaptureGroup;
 import io.debezium.runtime.events.ConnectorStartedEvent;
 import io.debezium.runtime.events.ConnectorStoppedEvent;
 import io.debezium.runtime.events.DebeziumCompletionEvent;
@@ -29,7 +30,7 @@ import io.quarkus.arc.Unremovable;
 @Unremovable
 public class DefaultStateHandler implements StateHandler {
 
-    private final AtomicReference<DebeziumStatus> status;
+    private final ConcurrentHashMap<io.debezium.runtime.CaptureGroup, DebeziumStatus> statues = new ConcurrentHashMap<>();
 
     @Inject
     Event<ConnectorStartedEvent> connectorStarted;
@@ -46,69 +47,73 @@ public class DefaultStateHandler implements StateHandler {
     @Inject
     Event<DebeziumCompletionEvent> completed;
 
-    private Debezium engine;
-
-    public DefaultStateHandler() {
-        this.status = new AtomicReference<>(new DebeziumStatus(DebeziumStatus.State.STOPPED));
-    }
-
     @Override
-    public ConnectorCallback connectorCallback() {
+    public ConnectorCallback connectorCallback(io.debezium.runtime.CaptureGroup captureGroup, Debezium engine) {
         return new ConnectorCallback() {
             @Override
             public void connectorStarted() {
-                changeState(DebeziumStatus.State.CREATING);
-                connectorStarted.fire(new ConnectorStartedEvent(engine));
+                changeState(captureGroup, DebeziumStatus.State.CREATING);
+                connectorStarted
+                        .select(CaptureGroup.Literal.of(captureGroup.id()))
+                        .fire(new ConnectorStartedEvent(engine));
             }
 
             @Override
             public void connectorStopped() {
-                changeState(DebeziumStatus.State.STOPPED);
-                connectorStopped.fire(new ConnectorStoppedEvent(engine));
+                changeState(captureGroup, DebeziumStatus.State.STOPPED);
+                connectorStopped
+                        .select(CaptureGroup.Literal.of(captureGroup.id()))
+                        .fire(new ConnectorStoppedEvent(engine));
             }
 
             @Override
             public void taskStarted() {
-                taskStarted.fire(new TasksStartedEvent(engine));
+                taskStarted
+                        .select(CaptureGroup.Literal.of(captureGroup.id()))
+                        .fire(new TasksStartedEvent(engine));
             }
 
             @Override
             public void taskStopped() {
-                taskStopped.fire(new TasksStoppedEvent(engine));
+                taskStopped
+                        .select(CaptureGroup.Literal.of(captureGroup.id()))
+                        .fire(new TasksStoppedEvent(engine));
             }
 
             @Override
             public void pollingStarted() {
-                changeState(DebeziumStatus.State.POLLING);
-                pollingStarted.fire(new PollingStartedEvent(engine));
+                changeState(captureGroup, DebeziumStatus.State.POLLING);
+                pollingStarted
+                        .select(CaptureGroup.Literal.of(captureGroup.id()))
+                        .fire(new PollingStartedEvent(engine));
             }
 
             @Override
             public void pollingStopped() {
-                pollingStopped.fire(new PollingStoppedEvent(engine));
+                pollingStopped
+                        .select(CaptureGroup.Literal.of(captureGroup.id()))
+                        .fire(new PollingStoppedEvent(engine));
             }
 
-            private void changeState(DebeziumStatus.State newState) {
-                status.set(new DebeziumStatus(newState));
+            private void changeState(io.debezium.runtime.CaptureGroup group, DebeziumStatus.State newState) {
+                statues.put(group, new DebeziumStatus(newState));
             }
         };
     }
 
     @Override
-    public CompletionCallback completionCallback() {
+    public CompletionCallback completionCallback(io.debezium.runtime.CaptureGroup captureGroup, Debezium engine) {
         return (success, message, error) -> {
-            status.set(new DebeziumStatus(DebeziumStatus.State.STOPPED));
-            completed.fire(new DebeziumCompletionEvent(success, message, error));
+            statues.put(captureGroup, new DebeziumStatus(DebeziumStatus.State.STOPPED));
+            completed
+                    .select(CaptureGroup.Literal.of(captureGroup.id()))
+                    .fire(new DebeziumCompletionEvent(success, message, error));
         };
     }
 
     @Override
-    public DebeziumStatus get() {
-        return this.status.get();
+    public DebeziumStatus get(io.debezium.runtime.CaptureGroup captureGroup) {
+        return this.statues.getOrDefault(captureGroup, new DebeziumStatus(DebeziumStatus.State.STOPPED));
     }
 
-    @Override
-    public void setDebeziumEngine(Debezium engine) {
-        this.engine = engine;
-    }
 }

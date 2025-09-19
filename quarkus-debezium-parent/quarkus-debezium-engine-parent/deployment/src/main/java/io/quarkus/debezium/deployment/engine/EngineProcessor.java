@@ -46,6 +46,7 @@ import io.debezium.pipeline.txmetadata.DefaultTransactionMetadataFactory;
 import io.debezium.processors.spi.PostProcessor;
 import io.debezium.runtime.FieldFilterStrategy;
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
+import io.debezium.runtime.events.CaptureGroup;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.snapshot.lock.NoLockingSupport;
 import io.debezium.snapshot.mode.AlwaysSnapshotter;
@@ -59,6 +60,7 @@ import io.debezium.snapshot.mode.WhenNeededSnapshotter;
 import io.debezium.snapshot.spi.SnapshotLock;
 import io.debezium.transforms.ExtractNewRecordState;
 import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
+import io.quarkus.arc.deployment.AutoInjectAnnotationBuildItem;
 import io.quarkus.arc.deployment.BeanContainerBuildItem;
 import io.quarkus.arc.deployment.BeanDiscoveryFinishedBuildItem;
 import io.quarkus.arc.deployment.SyntheticBeanBuildItem;
@@ -96,7 +98,6 @@ import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.ExecutionTime;
 import io.quarkus.deployment.annotations.Record;
 import io.quarkus.deployment.builditem.CombinedIndexBuildItem;
-import io.quarkus.deployment.builditem.ExecutorBuildItem;
 import io.quarkus.deployment.builditem.GeneratedClassBuildItem;
 import io.quarkus.deployment.builditem.ShutdownContextBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.NativeImageConfigBuildItem;
@@ -110,6 +111,11 @@ public class EngineProcessor {
     private final Logger logger = LoggerFactory.getLogger(EngineProcessor.class);
 
     @BuildStep
+    AutoInjectAnnotationBuildItem autoInjectCaptureGroup() {
+        return new AutoInjectAnnotationBuildItem(DotName.createSimple(CaptureGroup.class));
+    }
+
+    @BuildStep
     void engine(BuildProducer<AdditionalBeanBuildItem> additionalBeanProducer,
                 List<DebeziumConnectorBuildItem> debeziumConnectorBuildItems) {
         debeziumConnectorBuildItems
@@ -120,6 +126,8 @@ public class EngineProcessor {
                                 .setUnremovable()
                                 .setDefaultScope(DotNames.APPLICATION_SCOPED)
                                 .build()));
+
+        additionalBeanProducer.produce(AdditionalBeanBuildItem.unremovableOf(CaptureGroup.class));
 
         additionalBeanProducer.produce(AdditionalBeanBuildItem
                 .builder()
@@ -165,10 +173,9 @@ public class EngineProcessor {
     @Record(ExecutionTime.RUNTIME_INIT)
     void startEngine(BeanContainerBuildItem beanContainerBuildItem,
                      DebeziumRecorder recorder,
-                     ExecutorBuildItem executorBuildItem,
                      ShutdownContextBuildItem shutdownContextBuildItem) {
 
-        recorder.startEngine(executorBuildItem.getExecutorProxy(), shutdownContextBuildItem, beanContainerBuildItem.getValue());
+        recorder.startEngine(shutdownContextBuildItem, beanContainerBuildItem.getValue());
     }
 
     @BuildStep(onlyIf = NativeOrNativeSourcesBuild.class)
@@ -209,19 +216,19 @@ public class EngineProcessor {
                 .reason(DebeziumDotNames.DEBEZIUM_ENGINE_PROCESSOR.toString())
                 .constructors(false).methods().build());
 
-        TRANSFORM.extract(debeziumEngineConfiguration.configuration())
+        TRANSFORM.extract(debeziumEngineConfiguration.defaultConfiguration())
                 .forEach(transform -> reflectiveClasses.produce(ReflectiveClassBuildItem
                         .builder(transform)
                         .reason(getClass().getName())
                         .build()));
 
-        PREDICATE.extract(debeziumEngineConfiguration.configuration())
+        PREDICATE.extract(debeziumEngineConfiguration.defaultConfiguration())
                 .forEach(predicate -> reflectiveClasses.produce(ReflectiveClassBuildItem
                         .builder(predicate)
                         .reason(getClass().getName())
                         .build()));
 
-        POST_PROCESSOR.extract(debeziumEngineConfiguration.configuration())
+        POST_PROCESSOR.extract(debeziumEngineConfiguration.defaultConfiguration())
                 .forEach(postProcessor -> reflectiveClasses.produce(ReflectiveClassBuildItem
                         .builder(postProcessor)
                         .reason(getClass().getName())
@@ -238,6 +245,16 @@ public class EngineProcessor {
                                 .build()));
 
         extractDeserializers(debeziumEngineConfiguration)
+                .forEach(deserializer -> reflectiveClasses.produce(
+                        ReflectiveClassBuildItem
+                                .builder(deserializer)
+                                .reason(getClass().getName())
+                                .build()));
+
+        debeziumEngineConfiguration.capturing().values()
+                .stream()
+                .flatMap(capturing -> capturing.deserializers().values().stream())
+                .map(DebeziumEngineConfiguration.DeserializerConfiguration::deserializer)
                 .forEach(deserializer -> reflectiveClasses.produce(
                         ReflectiveClassBuildItem
                                 .builder(deserializer)

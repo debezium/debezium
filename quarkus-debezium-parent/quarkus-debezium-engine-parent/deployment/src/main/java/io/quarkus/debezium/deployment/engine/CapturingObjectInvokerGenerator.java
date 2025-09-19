@@ -6,7 +6,6 @@
 
 package io.quarkus.debezium.deployment.engine;
 
-import java.lang.reflect.Modifier;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -23,11 +22,9 @@ import io.quarkus.gizmo.ClassCreator;
 import io.quarkus.gizmo.ClassOutput;
 import io.quarkus.gizmo.FieldDescriptor;
 import io.quarkus.gizmo.MethodCreator;
-import io.quarkus.gizmo.MethodDescriptor;
-import io.quarkus.gizmo.ResultHandle;
 import io.quarkus.runtime.util.HashUtil;
 
-public class CapturingObjectInvokerGenerator implements CapturingInvokerGenerator {
+public class CapturingObjectInvokerGenerator implements GizmoBasedCapturingInvokerGenerator {
 
     private final ClassOutput output;
 
@@ -66,36 +63,9 @@ public class CapturingObjectInvokerGenerator implements CapturingInvokerGenerato
                 .interfaces(CapturingObjectInvoker.class)
                 .build()) {
 
-            FieldDescriptor beanInstanceField = invoker.getFieldCreator("beanInstance", methodInfo
-                    .declaringClass()
-                    .name()
-                    .toString())
-                    .setModifiers(Modifier.PRIVATE)
-                    .getFieldDescriptor();
+            FieldDescriptor beanInstanceField = constructorWithObjectField(methodInfo, invoker, "beanInstance");
 
-            try (MethodCreator constructor = invoker.getMethodCreator("<init>", void.class, Object.class)) {
-                constructor.setModifiers(Modifier.PUBLIC);
-                constructor.invokeSpecialMethod(MethodDescriptor.ofConstructor(Object.class), constructor.getThis());
-                ResultHandle constructorThis = constructor.getThis();
-                ResultHandle beanInstance = constructor.getMethodParam(0);
-                constructor.writeInstanceField(beanInstanceField, constructorThis, beanInstance);
-                constructor.returnValue(null);
-            }
-
-            try (MethodCreator capture = invoker.getMethodCreator("capture", void.class, Object.class)) {
-                ResultHandle captureThis = capture.getThis();
-                ResultHandle delegate = capture.readInstanceField(beanInstanceField, captureThis);
-                ResultHandle event = capture.getMethodParam(0);
-
-                MethodDescriptor methodDescriptor = MethodDescriptor.ofMethod(
-                        methodInfo.declaringClass().toString(),
-                        methodInfo.name(),
-                        "V",
-                        methodInfo.parameterType(0).name().toString());
-
-                capture.invokeVirtualMethod(methodDescriptor, delegate, event);
-                capture.returnVoid();
-            }
+            createCaptureMethod(methodInfo, invoker, beanInstanceField, Object.class);
 
             try (MethodCreator destination = invoker.getMethodCreator("destination", String.class)) {
                 Optional.ofNullable(methodInfo
@@ -112,6 +82,8 @@ public class CapturingObjectInvokerGenerator implements CapturingInvokerGenerato
                                     throw new RuntimeException("trying to capture events without defining a destination for class " + methodInfo.declaringClass());
                                 });
             }
+
+            createGroupMethod(methodInfo, invoker);
 
             return new GeneratedClassMetaData(UUID.randomUUID(), name.replace('/', '.'), beanInfo, CapturingObjectInvoker.class);
         }

@@ -6,9 +6,7 @@
 
 package io.quarkus.debezium.engine;
 
-import java.util.concurrent.ExecutorService;
-
-import io.debezium.runtime.Debezium;
+import io.debezium.runtime.DebeziumConnectorRegistry;
 import io.quarkus.arc.runtime.BeanContainer;
 import io.quarkus.runtime.ShutdownContext;
 import io.quarkus.runtime.annotations.Recorder;
@@ -16,10 +14,17 @@ import io.quarkus.runtime.annotations.Recorder;
 @Recorder
 public class DebeziumRecorder {
 
-    public void startEngine(ExecutorService executorService, ShutdownContext context, BeanContainer container) {
-        DebeziumRunner runner = new DebeziumRunner(executorService, container.beanInstance(Debezium.class));
+    public void startEngine(ShutdownContext context, BeanContainer container) {
+        DebeziumConnectorRegistry debeziumConnectorRegistry = container.beanInstance(DebeziumConnectorRegistry.class);
 
-        runner.start();
-        context.addShutdownTask(runner::shutdown);
+        debeziumConnectorRegistry
+                .engines()
+                .stream()
+                .map(debezium -> new DebeziumRunner(DebeziumThreadHandler.getThreadFactory(debezium), debezium))
+                .forEach(runner -> {
+                    runner.start();
+                    context.addShutdownTask(runner::shutdown);
+                });
     }
+
 }
