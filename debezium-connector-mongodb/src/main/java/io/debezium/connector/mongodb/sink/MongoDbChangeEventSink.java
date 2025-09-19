@@ -6,13 +6,23 @@
 package io.debezium.connector.mongodb.sink;
 
 import static io.debezium.connector.mongodb.sink.MongoDbSinkConnectorTask.LOGGER;
+import static io.debezium.openlineage.dataset.DatasetMetadata.DataStore.DATABASE;
+import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.OUTPUT;
+import static io.debezium.openlineage.dataset.DatasetMetadata.TABLE_DATASET_TYPE;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
+import io.debezium.connector.common.DebeziumTaskState;
+import io.debezium.openlineage.ConnectorContext;
+import io.debezium.openlineage.DebeziumOpenLineageEmitter;
+import io.debezium.openlineage.dataset.DatasetMetadata;
+import org.apache.kafka.common.utils.ThreadUtils;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -36,14 +46,17 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
     private final MongoDbSinkConnectorConfig sinkConfig;
     private final MongoClient mongoClient;
     private final ErrorReporter errorReporter;
+    private final ConnectorContext connectorContext;
+    private final ExecutorService executor = Executors.newFixedThreadPool(1, ThreadUtils.createThreadFactory(this.getClass().getSimpleName() + "-%d", false));
 
     MongoDbChangeEventSink(
-                           final MongoDbSinkConnectorConfig sinkConfig,
-                           final MongoClient mongoClient,
-                           final ErrorReporter errorReporter) {
+            final MongoDbSinkConnectorConfig sinkConfig,
+            final MongoClient mongoClient,
+            final ErrorReporter errorReporter, ConnectorContext connectorContext) {
         this.sinkConfig = sinkConfig;
         this.mongoClient = mongoClient;
         this.errorReporter = errorReporter;
+        this.connectorContext = connectorContext;
     }
 
     @SuppressWarnings("try")
@@ -74,6 +87,7 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
             }
         }
         catch (Exception e) {
+
             throw new DebeziumException(e);
         }
     }
@@ -91,6 +105,11 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
         }
 
         MongoNamespace namespace = batch.get(0).getNamespace();
+
+        batch.get(0).getSinkDocument().getValueDoc().ifPresent(doc-> {
+            executor.submit(
+                    () -> DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING, List.of(extractDatasetMetadata(doc, namespace.getFullName()))));
+        });
 
         List<WriteModel<BsonDocument>> writeModels = batch.stream()
                 .map(MongoProcessedSinkRecordData::getWriteModel)
@@ -145,5 +164,13 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
 
     private static void log(final Collection<DebeziumSinkRecord> records, final RuntimeException e) {
         LOGGER.error("Failed to put into the sink the following records: {}", records, e);
+    }
+
+    private static DatasetMetadata extractDatasetMetadata(BsonDocument sinkDocument, String collectionId) {
+
+        List<DatasetMetadata.FieldDefinition> fieldDefinitions = sinkDocument.entrySet().stream()
+                .map((entry) -> new DatasetMetadata.FieldDefinition(entry.getKey(), entry.getValue().getBsonType().toString(), ""))
+                .toList();
+        return new DatasetMetadata(collectionId, OUTPUT, TABLE_DATASET_TYPE, DATABASE, fieldDefinitions);
     }
 }

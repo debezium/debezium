@@ -14,14 +14,19 @@ import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.ServiceLoader;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 
+import io.debezium.openlineage.DebeziumTestTransport;
+import io.openlineage.client.transports.TransportBuilder;
 import org.awaitility.Awaitility;
 import org.bson.Document;
 import org.junit.After;
@@ -291,6 +296,16 @@ public abstract class AbstractMongoConnectorIT extends AbstractAsyncEngineConnec
             }
         }
         return false;
+    }
+
+    protected static DebeziumTestTransport getDebeziumTestTransport() {
+        ServiceLoader<TransportBuilder> loader = ServiceLoader.load(TransportBuilder.class);
+        Optional<TransportBuilder> optionalBuilder = StreamSupport.stream(loader.spliterator(), false)
+                .filter(b -> b.getType().equals("debezium"))
+                .findFirst();
+
+        return (DebeziumTestTransport) optionalBuilder.orElseThrow(
+                () -> new IllegalArgumentException("Failed to find TransportBuilder")).build(null);
     }
 
     protected void storeDocuments(String dbName, String collectionName, String pathOnClasspath) {

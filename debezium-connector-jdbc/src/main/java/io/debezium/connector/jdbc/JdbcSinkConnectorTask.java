@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
+import io.debezium.config.ConfigurationNames;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
@@ -60,7 +61,6 @@ public class JdbcSinkConnectorTask extends SinkTask {
     private static final Logger LOGGER = LoggerFactory.getLogger(JdbcSinkConnectorTask.class);
 
     private static final Class[] EMPTY_CLASS_ARRAY = new Class[0];
-    private static final String CONNECTOR_NAME_PROPERTY = "name";
 
     private SessionFactory sessionFactory;
     private ConnectorContext connectorContext;
@@ -111,7 +111,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
         try {
 
             datasetDataExtractor = new DatasetDataExtractor();
-            String connectorName = props.get(CONNECTOR_NAME_PROPERTY);
+            String connectorName = props.get(ConfigurationNames.CONNECTOR_NAME_PROPERTY);
             String taskId = props.getOrDefault(TASK_ID_PROPERTY_NAME, "0");
             connectorContext = new ConnectorContext(connectorName, Module.name(), taskId, Module.version(), props);
             DebeziumOpenLineageEmitter.init(connectorContext);

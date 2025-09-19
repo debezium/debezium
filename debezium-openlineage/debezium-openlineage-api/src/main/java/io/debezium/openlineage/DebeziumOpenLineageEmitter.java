@@ -170,6 +170,7 @@ public class DebeziumOpenLineageEmitter {
 
     private static LineageEmitter getEmitter(ConnectorContext connectorContext) {
         LineageEmitter emitter = emitters.get(connectorContext.toEmitterKey());
+        LOGGER.debug("Available emitters {}", emitters);
         if (emitter == null) {
             throw new IllegalStateException("DebeziumOpenLineageEmitter not initialized for connector " + connectorContext + ". Call init() first.");
         }
