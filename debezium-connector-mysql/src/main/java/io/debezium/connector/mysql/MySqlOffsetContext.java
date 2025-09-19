@@ -34,7 +34,26 @@ public class MySqlOffsetContext extends BinlogOffsetContext<SourceInfo> {
                         ? new MySqlReadOnlyIncrementalSnapshotContext<>()
                         : new SignalBasedIncrementalSnapshotContext<>(),
                 new SourceInfo(config));
-        offset.setBinlogStartPoint("", 0L); // start from the beginning of the binlog
+
+        // Check if custom binlog position or GTID set is specified
+        String customBinlogFilename = config.getBinlogStartFilename();
+        Long customBinlogPosition = config.getBinlogStartPosition();
+        String customGtidSet = config.getBinlogStartGtidSet();
+
+        if (customGtidSet != null && !customGtidSet.trim().isEmpty()) {
+            // Use custom GTID set - start from beginning with GTID
+            offset.setBinlogStartPoint("", 0L);
+            offset.setCompletedGtidSet(customGtidSet);
+        }
+        else if (customBinlogFilename != null && customBinlogPosition != null) {
+            // Use custom binlog position
+            offset.setBinlogStartPoint(customBinlogFilename, customBinlogPosition);
+        }
+        else {
+            // Start from the beginning of the binlog
+            offset.setBinlogStartPoint("", 0L);
+        }
+
         return offset;
     }
 
