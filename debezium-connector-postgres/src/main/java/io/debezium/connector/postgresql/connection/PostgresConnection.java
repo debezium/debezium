@@ -17,7 +17,6 @@ import java.sql.Types;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -814,7 +813,8 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     @Override
-    public Map<String, Object> reselectColumns(Table table, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source)
+    public boolean reselectColumns(Table table, List<String> columns, List<String> keyColumns, List<Object> keyValues, Struct source,
+                                   ResultSetConsumer resultConsumer)
             throws SQLException {
         final String query = String.format("SELECT %s FROM %s WHERE %s",
                 columns.stream().map(this::quoteIdentifier).collect(Collectors.joining(",")),
@@ -826,7 +826,7 @@ public class PostgresConnection extends JdbcConnection {
                             return key + "=?::" + castableType;
                         })
                         .collect(Collectors.joining(" AND ")));
-        return reselectColumns(query, table.id(), columns, keyValues);
+        return reselectColumns(query, table.id(), columns, keyValues, resultConsumer);
     }
 
     @Override
