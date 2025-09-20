@@ -3349,19 +3349,19 @@ The connector will read the table contents in multiple batches of this size. Def
 
 |[[sqlserver-property-guardrail-tables-max]]<<sqlserver-property-guardrail-tables-max, `+guardrail.tables.max+`>>
 |`0`
-|Specifies the maximum number of tables that can be captured by the connector. When this limit is exceeded, the action specified by `guardrail.tables.limit.action` will be taken.
-A value of `0` disables this guardrail.
+|Specifies the maximum number of tables that the connector can capture. Exceeding this limit triggers the action specified by `guardrail.tables.limit.action`.
+Set this property to  `0` to prevent the connector from triggering guardrail actions.
 
 |[[sqlserver-property-guardrail-tables-limit-action]]<<sqlserver-property-guardrail-tables-limit-action, `+guardrail.tables.limit.action+`>>
 |`warn`
-|Specifies the action to take when a guardrail tables limit is exceeded.
+|Specifies the action to trigger if the number of tables that the connector captures exceeds the number that you specify in the `+guardrail.tables.max+` property.
 Set the property to one of the following values:
 
 `fail`::
-The connector fails if the total number of tables being captured exceed the maximum limit specified by the `guardrail.tables.max` property.
+The connector fails.
 
 `warn`::
-The connector logs a warning if the total number of tables being captured exceed the maximum limit specified by the `guardrail.tables.max` property.
+The connector logs a warning.
 
 |[[sqlserver-property-extended-headers-enabled]]<<sqlserver-property-extended-headers-enabled, `extended.headers.enabled`>>
 |true
