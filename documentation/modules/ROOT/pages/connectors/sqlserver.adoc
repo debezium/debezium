@@ -3347,6 +3347,22 @@ Set the value to `0` (zero) to remove the timeout limit.
 |Specifies the maximum number of rows that should be read in one go from each table while streaming.
 The connector will read the table contents in multiple batches of this size. Defaults to `0` which means no limit.
 
+|[[sqlserver-property-guardrail-tables-max]]<<sqlserver-property-guardrail-tables-max, `+guardrail.tables.max+`>>
+|`0`
+|Specifies the maximum number of tables that the connector can capture. Exceeding this limit triggers the action specified by `guardrail.tables.limit.action`.
+Set this property to  `0` to prevent the connector from triggering guardrail actions.
+
+|[[sqlserver-property-guardrail-tables-limit-action]]<<sqlserver-property-guardrail-tables-limit-action, `+guardrail.tables.limit.action+`>>
+|`warn`
+|Specifies the action to trigger if the number of tables that the connector captures exceeds the number that you specify in the `+guardrail.tables.max+` property.
+Set the property to one of the following values:
+
+`fail`::
+The connector fails.
+
+`warn`::
+The connector logs a warning.
+
 |[[sqlserver-property-extended-headers-enabled]]<<sqlserver-property-extended-headers-enabled, `extended.headers.enabled`>>
 |true
 |This property specifies whether {prodname} adds context headers with the prefix `__debezium.context.` to the messages that it emits.
