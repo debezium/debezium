@@ -1592,8 +1592,8 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     // TIMESTAMP where-as other databases return the sql type code as Types.DATE and the
                     // values are serialized as such.
                     if (SourceType.ORACLE.is(source.getType())) {
-                        assertColumn(sink, record, "id", getTimestampType(source, true, 6));
-                        assertColumn(sink, record, "data", getTimestampType(source, false, 6));
+                        assertColumn(sink, record, "id", getTimestampType(source, true, getMaxTimestampPrecision()));
+                        assertColumn(sink, record, "data", getTimestampType(source, false, getMaxTimestampPrecision()));
                     }
                     else {
                         assertColumn(sink, record, "id", getDateType());
@@ -1656,8 +1656,9 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 List.of(OffsetTime.of(1, 2, 3, nanoSeconds, getCurrentSinkTimeOffset()),
                         OffsetTime.of(14, 15, 16, nanoSeconds, getCurrentSinkTimeOffset())),
                 (record) -> {
-                    assertColumn(sink, record, "id", getTimeType(source, true, 6));
-                    assertColumn(sink, record, "data", getTimeType(source, false, 6));
+                    final int precision = getDefaultTimePrecision(source);
+                    assertColumn(sink, record, "id", getTimeType(source, true, precision));
+                    assertColumn(sink, record, "data", getTimeType(source, false, precision));
                 },
                 this::getTimeAsOffsetTime);
     }
@@ -1934,8 +1935,9 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 values,
                 expectedValues,
                 (record) -> {
-                    assertColumn(sink, record, "data0", getTimestampWithTimezoneType(source, false, 6));
-                    assertColumn(sink, record, "data1", getTimestampWithTimezoneType(source, false, 6));
+                    final int precision = getDefaultTimestampPrecision(source);
+                    assertColumn(sink, record, "data0", getTimestampWithTimezoneType(source, false, precision));
+                    assertColumn(sink, record, "data1", getTimestampWithTimezoneType(source, false, precision));
                 },
                 (rs, index) -> rs.getTimestamp(index).toInstant().atZone(ZoneOffset.UTC));
     }
@@ -2046,7 +2048,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 "time(6) with time zone",
                 List.of(value),
                 List.of(OffsetTime.of(14, 15, 16, nanoSeconds, ZoneOffset.UTC)),
-                (record) -> assertColumn(sink, record, "data", getTimeWithTimezoneType()),
+                (record) -> assertColumn(sink, record, "data", getTimeWithTimezoneType(source, false, 6)),
                 (rs, index) -> getTimestampWithTimeZoneAsZonedDateTime(rs, index).withZoneSameInstant(ZoneOffset.UTC).toOffsetDateTime().toOffsetTime());
     }
 
@@ -2060,7 +2062,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
         final int precision;
         if (SourceType.MYSQL.is(source.getType()) && source.getOptions().isColumnTypePropagated()) {
-            precision = 6;
+            precision = getDefaultTimestampPrecision(source);
         }
         else {
             precision = 3;
@@ -2181,7 +2183,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 "datetime2",
                 List.of(value),
                 List.of(toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 16, nanosOfSeconds)),
-                (record) -> assertColumn(sink, record, "data", getTimestampType(source, false, 6)),
+                (record) -> assertColumn(sink, record, "data", getTimestampType(source, false, getDefaultTimestampPrecision(source))),
                 this::getTimestampAsZonedDateTime);
     }
 
@@ -2213,8 +2215,10 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         final List<String> values = List.of(value, value, value, value, value, value, value);
 
         int dateTime7NanoSeconds = 456789000;
-        if (source.getOptions().isColumnTypePropagated() && SinkType.SQLSERVER.is(sink.getType())) {
-            if (source.getOptions().getTemporalPrecisionMode() != TemporalPrecisionMode.MICROSECONDS) {
+
+        final SourceConnectorOptions options = source.getOptions();
+        if (options.getTemporalPrecisionMode() != TemporalPrecisionMode.MICROSECONDS) {
+            if (sink.getType().is(SinkType.SQLSERVER, SinkType.ORACLE)) {
                 dateTime7NanoSeconds = 456789100;
             }
         }
@@ -2240,7 +2244,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     assertColumn(sink, record, "data3", getTimestampType(source, false, 4));
                     assertColumn(sink, record, "data4", getTimestampType(source, false, 5));
                     assertColumn(sink, record, "data5", getTimestampType(source, false, 6));
-                    assertColumn(sink, record, "data6", getTimestampType(source, false, 6));
+                    assertColumn(sink, record, "data6", getTimestampType(source, false, getDefaultTimestampPrecision(source)));
                 },
                 this::getTimestampAsZonedDateTime);
     }
@@ -2282,7 +2286,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 "datetimeoffset",
                 List.of(value),
                 List.of(OffsetDateTime.of(2023, 3, 1, 14, 15, 16, 456789000, ZoneOffset.UTC)),
-                (record) -> assertColumn(sink, record, "data", getTimestampWithTimezoneType(source, false, 6)),
+                (record) -> assertColumn(sink, record, "data", getTimestampWithTimezoneType(source, false, getDefaultTimestampPrecision(source))),
                 (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
     }
 
@@ -2300,7 +2304,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         final List<String> values = List.of(value, value, value, value, value, value, value);
 
         int precisionNanos7 = 456789000;
-        if (sink.getType().is(SinkType.SQLSERVER) && source.getOptions().isColumnTypePropagated()) {
+        if (sink.getType().is(SinkType.ORACLE, SinkType.SQLSERVER)) {
             precisionNanos7 = 456789100;
         }
 
@@ -2325,7 +2329,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     assertColumn(sink, record, "data3", getTimestampWithTimezoneType(source, false, 4));
                     assertColumn(sink, record, "data4", getTimestampWithTimezoneType(source, false, 5));
                     assertColumn(sink, record, "data5", getTimestampWithTimezoneType(source, false, 6));
-                    assertColumn(sink, record, "data6", getTimestampWithTimezoneType(source, false, 6));
+                    assertColumn(sink, record, "data6", getTimestampWithTimezoneType(source, false, getDefaultTimestampPrecision(source)));
                 },
                 (rs, index) -> getTimestamp(rs, index).toInstant().atOffset(ZoneOffset.UTC));
     }
@@ -2341,7 +2345,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 "smalldatetime", // minute precision
                 List.of(value),
                 List.of(toZonedDateTimeAtSinkOffset(2023, 3, 1, 14, 15, 0, 0)),
-                (record) -> assertColumn(sink, record, "data", getTimestampType(source, false, 6)),
+                (record) -> assertColumn(sink, record, "data", getTimestampType(source, false, getMaxTimestampPrecision())),
                 this::getTimestampAsZonedDateTime);
     }
 
@@ -3049,9 +3053,33 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
     protected abstract String getDateType();
 
+    protected int getDefaultTimePrecision(Source source) {
+        return switch (source.getType()) {
+            case MYSQL, ORACLE -> 9;
+            case SQLSERVER -> 7;
+            default -> 6;
+        };
+    }
+
+    protected int getDefaultTimestampPrecision(Source source) {
+        return switch (source.getType()) {
+            case MYSQL, ORACLE -> 9;
+            case SQLSERVER -> 7;
+            default -> 6;
+        };
+    }
+
+    protected int getDefaultSinkTimePrecision() {
+        return 6;
+    }
+
+    protected int getMaxTimestampPrecision() {
+        return 6;
+    }
+
     protected abstract String getTimeType(Source source, boolean key, int precision);
 
-    protected abstract String getTimeWithTimezoneType();
+    protected abstract String getTimeWithTimezoneType(Source source, boolean key, int precision);
 
     protected abstract String getTimestampType(Source source, boolean key, int precision);
 

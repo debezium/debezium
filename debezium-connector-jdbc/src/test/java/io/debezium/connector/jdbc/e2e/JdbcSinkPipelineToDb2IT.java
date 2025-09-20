@@ -155,7 +155,7 @@ public class JdbcSinkPipelineToDb2IT extends AbstractJdbcSinkPipelineIT {
     }
 
     @Override
-    protected String getTimeWithTimezoneType() {
+    protected String getTimeWithTimezoneType(Source source, boolean key, int precision) {
         return "TIME";
     }
 

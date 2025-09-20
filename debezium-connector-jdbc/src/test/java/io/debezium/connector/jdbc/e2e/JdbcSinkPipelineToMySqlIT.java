@@ -170,7 +170,7 @@ public class JdbcSinkPipelineToMySqlIT extends AbstractJdbcSinkPipelineIT {
     }
 
     @Override
-    protected String getTimeWithTimezoneType() {
+    protected String getTimeWithTimezoneType(Source source, boolean key, int precision) {
         return "DATETIME";
     }
 

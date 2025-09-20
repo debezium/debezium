@@ -171,33 +171,48 @@ public class JdbcSinkPipelineToOracleIT extends AbstractJdbcSinkPipelineIT {
     }
 
     @Override
-    protected String getTimeType(Source source, boolean key, int precision) {
-        if (key) {
-            return "TIMESTAMP(6)";
-        }
-        // Oracle only permits maximum of 6 digit precision
-        return String.format("TIMESTAMP(%d)", Math.min(6, precision));
+    protected int getDefaultSinkTimePrecision() {
+        // HHH-18035 - Hibernate changed default precision from 6 to 9 in Hibernate 7.0
+        return 9;
     }
 
     @Override
-    protected String getTimeWithTimezoneType() {
-        return "TIMESTAMP(6) WITH TIME ZONE";
+    protected int getMaxTimestampPrecision() {
+        // HHH-18035 - Hibernate changed default precision from 6 to 9 in Hibernate 7.0
+        return 9;
+    }
+
+    @Override
+    protected String getTimeType(Source source, boolean key, int precision) {
+        if (!source.getOptions().isColumnTypePropagated() || key) {
+            precision = getDefaultSinkTimePrecision();
+        }
+
+        return String.format("TIMESTAMP(%d)", Math.min(getDefaultSinkTimePrecision(), precision));
+    }
+
+    @Override
+    protected String getTimeWithTimezoneType(Source source, boolean key, int precision) {
+        if (!(source.getOptions().isColumnTypePropagated() && !key)) {
+            precision = getMaxTimestampPrecision();
+        }
+        return String.format("TIMESTAMP(%d) WITH TIME ZONE", precision);
     }
 
     @Override
     protected String getTimestampType(Source source, boolean key, int precision) {
-        if (source.getOptions().isColumnTypePropagated() && precision != 6 && !key) {
+        if (source.getOptions().isColumnTypePropagated() && !key) {
             return String.format("TIMESTAMP(%d)", precision);
         }
-        return "TIMESTAMP(6)"; // DATE
+        return "TIMESTAMP(" + getMaxTimestampPrecision() + ")"; // DATE
     }
 
     @Override
     protected String getTimestampWithTimezoneType(Source source, boolean key, int precision) {
-        if (source.getOptions().isColumnTypePropagated() && precision != 6 && !key) {
+        if (source.getOptions().isColumnTypePropagated() && !key) {
             return String.format("TIMESTAMP(%d) WITH TIME ZONE", precision);
         }
-        return "TIMESTAMP(6) WITH TIME ZONE";
+        return "TIMESTAMP(" + getMaxTimestampPrecision() + ") WITH TIME ZONE";
     }
 
     @Override
