@@ -27,7 +27,7 @@ public abstract class AbstractTimestampType extends AbstractTemporalType {
         if (precision > 0 && precision <= dialect.getMaxTimestampPrecision()) {
             return dialect.getJdbcTypeName(getJdbcType(), Size.precision(precision));
         }
-        return dialect.getJdbcTypeName(getJdbcType());
+        return dialect.getJdbcTypeName(getJdbcType(), Size.precision(dialect.getDefaultTimestampPrecision()));
     }
 
     protected int getTimePrecision(Schema schema) {

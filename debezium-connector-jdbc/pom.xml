@@ -16,7 +16,7 @@
 
     <properties>
         <!-- Other artifact versions -->
-        <version.hibernate>6.4.8.Final</version.hibernate>
+        <version.hibernate>7.1.0.Final</version.hibernate>
         <version.c3p0>0.9.5.5</version.c3p0>
         <version.assertjdb>3.0.0</version.assertjdb>
         <!--

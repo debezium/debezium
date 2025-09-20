@@ -116,6 +116,12 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
     }
 
     @Override
+    public int getDefaultTimestampPrecision() {
+        // Keeps behavior consistent between Hibernate 6.4 and 7.1
+        return 6;
+    }
+
+    @Override
     public String getTimestampPositiveInfinityValue() {
         return "9999-12-31T23:59:59+00:00";
     }

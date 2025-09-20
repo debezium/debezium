@@ -506,6 +506,11 @@ public class GeneralDatabaseDialect implements DatabaseDialect {
     }
 
     @Override
+    public int getDefaultTimePrecision() {
+        return dialect.getDefaultTimestampPrecision();
+    }
+
+    @Override
     public int getDefaultTimestampPrecision() {
         return dialect.getDefaultTimestampPrecision();
     }
