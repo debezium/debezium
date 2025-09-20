@@ -4186,19 +4186,19 @@ Set the value to `0` (zero) to remove the timeout limit.
 
 |[[postgresql-property-guardrail-tables-max]]<<postgresql-property-guardrail-tables-max, `+guardrail.tables.max+`>>
 |`0`
-|Specifies the maximum number of tables that can be captured by the connector. When this limit is exceeded, the action specified by `guardrail.tables.limit.action` will be taken.
-A value of `0` disables this guardrail.
+|Specifies the maximum number of tables that the connector can capture. Exceeding this limit triggers the action specified by `guardrail.tables.limit.action`.
+Set this property to  `0` to prevent the connector from triggering guardrail actions.
 
 |[[postgresql-property-guardrail-tables-limit-action]]<<postgresql-property-guardrail-tables-limit-action, `+guardrail.tables.limit.action+`>>
 |`warn`
-|Specifies the action to take when a guardrail tables limit is exceeded.
+|Specifies the action to trigger if the number of tables that the connector captures exceeds the number that you specify in the `+guardrail.tables.max+` property.
 Set the property to one of the following values:
 
 `fail`::
-The connector fails if the total number of tables being captured exceed the maximum limit specified by the `guardrail.tables.max` property.
+The connector fails.
 
 `warn`::
-The connector logs a warning if the total number of tables being captured exceed the maximum limit specified by the `guardrail.tables.max` property.
+The connector logs a warning.
 
 |[[postgresql-property-extended-headers-enabled]]<<postgresql-property-extended-headers-enabled, `extended.headers.enabled`>>
 |true
