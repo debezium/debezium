@@ -194,12 +194,17 @@ public class JdbcSinkPipelineToSqlServerIT extends AbstractJdbcSinkPipelineIT {
     }
 
     @Override
+    protected int getMaxTimestampPrecision() {
+        return 7;
+    }
+
+    @Override
     protected String getTimeType(Source source, boolean key, int precision) {
         return "TIME";
     }
 
     @Override
-    protected String getTimeWithTimezoneType() {
+    protected String getTimeWithTimezoneType(Source source, boolean key, int precision) {
         return "DATETIMEOFFSET";
     }
 

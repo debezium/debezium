@@ -6,7 +6,6 @@
 package io.debezium.connector.jdbc.integration.mysql;
 
 import static org.fest.assertions.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.sql.Connection;
@@ -106,7 +105,7 @@ public class JdbcSinkRetryIT extends AbstractJdbcSinkTest {
             assertThat(e.getCause().getMessage()).matches(
                     "Exceeded max retries [0-9]* times, failed to process sink records");
             // PessimisticLockException exception is retriable in mysql dialect.
-            assertEquals(e.getCause().getCause().getClass(), PessimisticLockException.class);
+            assertThat(e.getCause().getCause()).isInstanceOf(PessimisticLockException.class);
             assertThat(e.getCause().getCause().getCause().getMessage()).matches(
                     "Lock wait timeout exceeded; try restarting transaction");
         }

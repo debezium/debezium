@@ -247,6 +247,13 @@ public interface DatabaseDialect {
     int getDefaultDecimalPrecision();
 
     /**
+     * Get the default time precision for the dialect.
+     *
+     * @return default time precision
+     */
+    int getDefaultTimePrecision();
+
+    /**
      * Get the default timestamp precision for the dialect.
      *
      * @return default timestamp precision
