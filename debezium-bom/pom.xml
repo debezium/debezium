@@ -68,7 +68,7 @@
         <version.junit5>5.9.1</version.junit5>
         <version.junit.platform.launcher>1.9.3</version.junit.platform.launcher>
         <version.fest>1.4</version.fest>
-        <version.assertj>3.27.4</version.assertj>
+        <version.assertj>3.27.5</version.assertj>
         <version.jmh>1.21</version.jmh>
         <version.awaitility>4.0.1</version.awaitility>
         <version.testcontainers>1.20.6</version.testcontainers>
