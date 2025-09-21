@@ -125,6 +125,12 @@ public class RedisCommonConfig {
             .withDescription("Delay of retry on wait for replica failure")
             .withDefault(DEFAULT_WAIT_RETRY_DELAY);
 
+    // Cluster mode configuration
+    private static final boolean DEFAULT_CLUSTER_ENABLED = false;
+    private static final Field PROP_CLUSTER_ENABLED = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "cluster.enabled")
+            .withDescription("Enable Redis Cluster mode; when true, a JedisCluster client will be created. Single or comma-separated host:port addresses are accepted.")
+            .withDefault(DEFAULT_CLUSTER_ENABLED);
+
     private String address;
     private int dbIndex;
     private String user;
@@ -151,6 +157,8 @@ public class RedisCommonConfig {
     private boolean waitRetryEnabled;
     private long waitRetryDelay;
 
+    private boolean clusterEnabled;
+
     public RedisCommonConfig(Configuration config, String prefix) {
         config = config.subset(prefix, true);
 
@@ -170,7 +178,8 @@ public class RedisCommonConfig {
                 PROP_SSL_KEYSTORE_PATH, PROP_SSL_KEYSTORE_PASSWORD, PROP_SSL_KEYSTORE_TYPE,
                 PROP_CONNECTION_TIMEOUT, PROP_SOCKET_TIMEOUT,
                 PROP_RETRY_INITIAL_DELAY, PROP_RETRY_MAX_DELAY,
-                PROP_WAIT_ENABLED, PROP_WAIT_TIMEOUT, PROP_WAIT_RETRY_ENABLED, PROP_WAIT_RETRY_DELAY);
+                PROP_WAIT_ENABLED, PROP_WAIT_TIMEOUT, PROP_WAIT_RETRY_ENABLED, PROP_WAIT_RETRY_DELAY,
+                PROP_CLUSTER_ENABLED);
     }
 
     protected void init(Configuration config) {
@@ -199,6 +208,8 @@ public class RedisCommonConfig {
         waitTimeout = config.getLong(PROP_WAIT_TIMEOUT);
         waitRetryEnabled = config.getBoolean(PROP_WAIT_RETRY_ENABLED);
         waitRetryDelay = config.getLong(PROP_WAIT_RETRY_DELAY);
+
+        clusterEnabled = config.getBoolean(PROP_CLUSTER_ENABLED);
     }
 
     public String getPassword() {
@@ -287,5 +298,9 @@ public class RedisCommonConfig {
 
     public String getKeystoreType() {
         return keystoreType;
+    }
+
+    public boolean isClusterEnabled() {
+        return clusterEnabled;
     }
 }
