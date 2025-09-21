@@ -45,6 +45,7 @@ public class RedisConnection {
     private final int socketTimeout;
     private final boolean sslEnabled;
     private final boolean hostnameVerificationEnabled;
+    private final boolean clusterEnabled;
     private final String truststorePath;
     private final String truststorePassword;
     private final String truststoreType;
@@ -100,6 +101,13 @@ public class RedisConnection {
     public RedisConnection(String address, int dbIndex, String user, String password, int connectionTimeout, int socketTimeout, boolean sslEnabled,
                            boolean hostnameVerificationEnabled, String truststorePath, String truststorePassword, String truststoreType,
                            String keystorePath, String keystorePassword, String keystoreType) {
+        this(address, dbIndex, user, password, connectionTimeout, socketTimeout, sslEnabled, hostnameVerificationEnabled,
+                truststorePath, truststorePassword, truststoreType, keystorePath, keystorePassword, keystoreType, false);
+    }
+
+    public RedisConnection(String address, int dbIndex, String user, String password, int connectionTimeout, int socketTimeout, boolean sslEnabled,
+                           boolean hostnameVerificationEnabled, String truststorePath, String truststorePassword, String truststoreType,
+                           String keystorePath, String keystorePassword, String keystoreType, boolean clusterEnabled) {
         validateHostPort(address);
 
         this.address = address;
@@ -110,6 +118,7 @@ public class RedisConnection {
         this.socketTimeout = socketTimeout;
         this.sslEnabled = sslEnabled;
         this.hostnameVerificationEnabled = hostnameVerificationEnabled;
+        this.clusterEnabled = clusterEnabled;
         this.truststorePath = truststorePath;
         this.truststorePassword = truststorePassword;
         this.truststoreType = truststoreType;
@@ -139,7 +148,8 @@ public class RedisConnection {
                 config.getTruststoreType(),
                 config.getKeystorePath(),
                 config.getKeystorePassword(),
-                config.getKeystoreType());
+                config.getKeystoreType(),
+                config.isClusterEnabled());
     }
 
     /**
@@ -157,9 +167,9 @@ public class RedisConnection {
             throw new DebeziumException("Redis client wait timeout should be positive");
         }
 
-        HostAndPort address = HostAndPort.from(this.address);
+        // Use config-driven cluster mode; when enabled, a JedisCluster client is created.
+        boolean isCluster = this.clusterEnabled;
 
-        Jedis client;
         try {
             Builder configBuilder = DefaultJedisClientConfig.builder()
                     .database(this.dbIndex)
@@ -202,36 +212,62 @@ public class RedisConnection {
                 configBuilder = configBuilder.password(this.password);
             }
 
-            client = new Jedis(address, configBuilder.build());
-
-            // make sure that client is connected
-            client.ping();
-
-            try {
-                client.clientSetname(clientName);
+            if (isCluster) {
+                // Build cluster from comma-separated host:port list
+                java.util.Set<HostAndPort> nodes = new java.util.HashSet<>();
+                for (String part : this.address.split(",")) {
+                    nodes.add(HostAndPort.from(part.trim()));
+                }
+                if (LOGGER.isInfoEnabled()) {
+                    LOGGER.info("Redis cluster mode enabled; nodes: {}", nodes);
+                }
+                redis.clients.jedis.JedisCluster jedisCluster = new redis.clients.jedis.JedisCluster(nodes, configBuilder.build());
+                // Try a simple command to ensure connectivity
+                jedisCluster.ping();
+                RedisClient clusterClient = new JedisClusterClient(jedisCluster);
+                LOGGER.info("Using Redis client '{}'", clusterClient);
+                return clusterClient; // Do not wrap with WAIT in cluster mode
             }
-            catch (JedisDataException e) {
-                LOGGER.warn("Failed to set client name", e);
+            else {
+                // If multiple addresses are provided but cluster mode is disabled, use the first entry
+                String firstAddress = this.address.split(",")[0].trim();
+                if (this.address.contains(",")) {
+                    LOGGER.warn("Multiple Redis addresses provided but cluster mode disabled; using the first address: {}", firstAddress);
+                }
+                HostAndPort address = HostAndPort.from(firstAddress);
+                Jedis client = new Jedis(address, configBuilder.build());
+
+                // make sure that client is connected
+                client.ping();
+
+                try {
+                    client.clientSetname(clientName);
+                }
+                catch (JedisDataException e) {
+                    LOGGER.warn("Failed to set client name", e);
+                }
+
+                RedisClient jedisClient = new JedisClient(client);
+                // Use WAIT wrapper only for standalone
+                RedisClient redisClient = waitEnabled ? new WaitReplicasRedisClient(jedisClient, 1, waitTimeout, waitRetry, waitRetryDelay) : jedisClient;
+                LOGGER.info("Using Redis client '{}'", redisClient);
+                return redisClient;
             }
         }
         catch (JedisConnectionException e) {
             throw new RedisClientConnectionException(e);
         }
-
-        RedisClient jedisClient = new JedisClient(client);
-
-        // we use 1 for number of replicas as in Redis Enterprise there can be only one replica shard
-        RedisClient redisClient = waitEnabled ? new WaitReplicasRedisClient(jedisClient, 1, waitTimeout, waitRetry, waitRetryDelay) : jedisClient;
-
-        LOGGER.info("Using Redis client '{}'", redisClient);
-
-        return redisClient;
     }
 
     private void validateHostPort(String address) {
         Pattern pattern = Pattern.compile("^[\\w.-]+:\\d{1,5}+$");
-        if (!pattern.matcher(address).matches()) {
-            throw new DebeziumException(HOST_PORT_ERROR);
+        // Support comma-separated list of host:port pairs for cluster mode
+        String[] parts = address.split(",");
+        for (String part : parts) {
+            String trimmed = part.trim();
+            if (trimmed.isEmpty() || !pattern.matcher(trimmed).matches()) {
+                throw new DebeziumException(HOST_PORT_ERROR);
+            }
         }
     }
 }
