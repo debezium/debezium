@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.Callable;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
@@ -227,36 +228,11 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     }
 
     private void flushBufferWithRetries(CollectionId collectionId, List<JdbcSinkRecord> toFlush, TableDescriptor tableDescriptor) {
-        int retries = 0;
-        Exception lastException = null;
-
         LOGGER.debug("Flushing records in JDBC Writer for table: {}", collectionId.name());
-        while (retries <= flushMaxRetries) {
-            try {
-                if (retries > 0) {
-                    LOGGER.warn("Retry to flush records for table '{}'. Retry {}/{} with delay {} ms",
-                            collectionId.name(), retries, flushMaxRetries, flushRetryDelay.toMillis());
-                    try {
-                        Metronome.parker(flushRetryDelay, Clock.SYSTEM).pause();
-                    }
-                    catch (InterruptedException e) {
-                        throw new ConnectException("Interrupted while waiting to retry flush records", e);
-                    }
-                }
-                flushBuffer(collectionId, toFlush, tableDescriptor);
-                return;
-            }
-            catch (Exception e) {
-                lastException = e;
-                if (isRetriable(e)) {
-                    retries++;
-                }
-                else {
-                    throw new ConnectException("Failed to process a sink record", e);
-                }
-            }
-        }
-        throw new ConnectException("Exceeded max retries " + flushMaxRetries + " times, failed to process sink records", lastException);
+        executeWithRetries("flush records for table '" + collectionId.name() + "'", () -> {
+            flushBuffer(collectionId, toFlush, tableDescriptor);
+            return null;
+        });
     }
 
     private void flushBuffer(CollectionId collectionId, List<JdbcSinkRecord> toFlush, TableDescriptor table) throws SQLException {
@@ -319,7 +295,8 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     }
 
     private boolean hasTable(CollectionId collectionId) {
-        return session.doReturningWork((connection) -> dialect.tableExists(connection, collectionId));
+        return this.executeWithRetries("check for existence of table",
+                () -> session.doReturningWork((connection) -> dialect.tableExists(connection, collectionId)));
     }
 
     private TableDescriptor readTable(CollectionId collectionId) {
@@ -436,6 +413,39 @@ public class JdbcChangeEventSink implements ChangeEventSink {
 
     public Optional<CollectionId> getCollectionId(String collectionName) {
         return Optional.of(dialect.getCollectionId(collectionName));
+    }
+
+    // Retries the callable operation based on the configured retry settings.
+    // Wraps any exception into a ConnectException if retries are exhausted or if the exception is not retriable.
+    private <T> T executeWithRetries(String description, Callable<T> callable) {
+        int retries = 0;
+        Exception lastException = null;
+        while (retries <= flushMaxRetries) {
+            try {
+                if (retries > 0) {
+                    LOGGER.warn("Retry to {}. Retry {}/{} with delay {} ms",
+                            description, retries, flushMaxRetries, flushRetryDelay.toMillis());
+                    try {
+                        Metronome.parker(flushRetryDelay, Clock.SYSTEM).pause();
+                    }
+                    catch (InterruptedException e) {
+                        throw new ConnectException("Interrupted while waiting to retry " + description, e);
+                    }
+                }
+                return callable.call();
+            }
+            catch (Exception e) {
+                lastException = e;
+                if (isRetriable(e)) {
+                    retries++;
+                }
+                else {
+                    throw new ConnectException("Failed to " + description, e);
+                }
+            }
+        }
+        throw new ConnectException("Exceeded max retries " + flushMaxRetries + " times, failed to " + description, lastException);
+
     }
 
     private boolean isRetriable(Throwable throwable) {
