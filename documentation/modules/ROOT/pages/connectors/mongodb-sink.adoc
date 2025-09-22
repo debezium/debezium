@@ -52,7 +52,7 @@ ifdef::community[]
 Currently, the MongoDB sink connector only supports {prodname} change events originating from relational database connectors (PostgreSQL, MariaDB, MySQL, SQL Server, Oracle). Change events produced by the {prodname} MongoDB source connector are **not supported yet**.
 endif::community[]
 ifdef::product[]
-The MongoDB sink connector can process only change events that originate from {prodname} connectors that capture from the following relational databases: MariaDB, MySQL, Oracle, PostgreSQL, and SQL Server.
+The MongoDB sink connector can consume change events that originate from the {prodname} connectors for the following relational databases: MariaDB, MySQL, Oracle, PostgreSQL, and SQL Server.
 The connector cannot process change events that the {prodname} MongoDB source connector produces.
 endif::product[]
 ====
@@ -364,13 +364,3 @@ This process makes it possible to integrate {prodname} with broader event-driven
 | Regular expression pattern to identify CloudEvents messages by matching the schema name with this pattern.
 
 |===
-
-
-// Type: concept
-// Title: Next steps coming for {prodname} MongoDB Sink Connector
-// ModuleID: next-steps-of-debezium-mongodb-sink-connector
-[[mongodb-sink-next-steps]]
-== Next steps
-
-* Use the MongoDB Sink Connector when you want to materialize relational change events into a MongoDB database.
-* Ensure that your {prodname} connector topics contain well-formed records from supported relational sources.
