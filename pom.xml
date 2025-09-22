@@ -132,7 +132,7 @@
         <quarkus.version.runtime>3.33.1.1</quarkus.version.runtime>
 
         <!-- Apicurio -->
-        <version.apicurio>2.6.13.Final</version.apicurio>
+        <version.apicurio>3.2.4</version.apicurio>
         <!-- hibernate -->
         <version.hibernate>7.2.6.Final</version.hibernate>
 
