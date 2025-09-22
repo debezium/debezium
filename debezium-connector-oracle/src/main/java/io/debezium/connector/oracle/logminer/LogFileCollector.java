@@ -61,7 +61,7 @@ public class LogFileCollector {
         this.maxAttempts = connectorConfig.getMaximumNumberOfLogQueryRetries();
         this.archiveLogRetention = connectorConfig.getArchiveLogRetention();
         this.archiveLogOnlyMode = connectorConfig.isArchiveLogOnlyMode();
-        this.archiveLogDestinationName = connection.getArchiveLogDestinationByPrecedence(connectorConfig.getArchiveLogDestinationNames());
+        this.archiveLogDestinationName = connectorConfig.getArchiveDestinationNameResolver().getDestinationName(connection);
         this.connection = connection;
     }
 

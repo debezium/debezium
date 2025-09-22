@@ -140,6 +140,29 @@ public final class Strings {
     }
 
     /**
+     * Generate the list of values that are included in the list separated by commas, with each element trimmed.
+     *
+     * @param input the input string
+     * @param factory the factory for creating string items into filter matches; may not be null
+     * @return the list of objects included in the list; never null
+     */
+    public static <T> List<T> listOfTrimmed(String input, Function<String, T> factory) {
+        return listOfTrimmed(input, ',', factory);
+    }
+
+    /**
+     * Generate the list of values that are included in the list delimited by the given delimiter.
+     *
+     * @param input the input string
+     * @param delimiter the character used to delimit the items in the input
+     * @param factory the factory for creating string items into filter matches; may not be null
+     * @return the list of objects included in the list; never null
+     */
+    public static <T> List<T> listOfTrimmed(String input, char delimiter, Function<String, T> factory) {
+        return listOf(input, (str) -> str.split("[" + delimiter + "]"), factory);
+    }
+
+    /**
      * Generate the set of values that are included in the list delimited by the given delimiter.
      *
      * @param input the input string

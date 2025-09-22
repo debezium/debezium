@@ -216,7 +216,7 @@ public abstract class AbstractLogMinerStreamingAdapter
 
     protected Scn getOldestScnAvailableInLogs(OracleConnectorConfig config, OracleConnection connection) throws SQLException {
         final Duration archiveLogRetention = config.getArchiveLogRetention();
-        final String archiveLogDestinationName = connection.getArchiveLogDestinationByPrecedence(config.getArchiveLogDestinationNames());
+        final String archiveLogDestinationName = config.getArchiveDestinationNameResolver().getDestinationName(connection);
         return connection.queryAndMap(SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveLogDestinationName),
                 rs -> {
                     if (rs.next()) {

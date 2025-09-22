@@ -895,7 +895,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final boolean lobEnabled;
     private final Set<String> logMiningUsernameIncludes;
     private final Set<String> logMiningUsernameExcludes;
-    private final Set<String> archiveLogDestinationNames;
     private final LogMiningBufferType logMiningBufferType;
     private final long logMiningBufferTransactionEventsThreshold;
     private final boolean logMiningBufferDropOnStop;
@@ -923,6 +922,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final boolean logMiningUseCteQuery;
     private final String readonlyHostname;
     private final Integer logMiningRedoThreadScnAdjustment;
+    private final ArchiveDestinationNameResolver destinationNameResolver;
 
     private final String openLogReplicatorSource;
     private final String openLogReplicatorHostname;
@@ -976,7 +976,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.archiveLogOnlyMode = config.getBoolean(LOG_MINING_ARCHIVE_LOG_ONLY_MODE);
         this.logMiningUsernameIncludes = Strings.setOfTrimmed(config.getString(LOG_MINING_USERNAME_INCLUDE_LIST), String::new);
         this.logMiningUsernameExcludes = Strings.setOfTrimmed(config.getString(LOG_MINING_USERNAME_EXCLUDE_LIST), String::new);
-        this.archiveLogDestinationNames = Strings.setOfTrimmed(config.getString(ARCHIVE_DESTINATION_NAME), String::new);
         this.logMiningBufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
         this.logMiningBufferTransactionEventsThreshold = config.getLong(LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD);
         this.logMiningBufferDropOnStop = config.getBoolean(LOG_MINING_BUFFER_DROP_ON_STOP);
@@ -1006,6 +1005,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningRedoThreadScnAdjustment = config.getInteger(LOG_MINING_REDO_THREAD_SCN_ADJUSTMENT);
 
         this.logMiningEhCacheConfiguration = config.subset("log.mining.buffer.ehcache", false);
+
+        final List<String> destinationNames = Strings.listOfTrimmed(config.getString(ARCHIVE_DESTINATION_NAME), String::new);
+        this.destinationNameResolver = new ArchiveDestinationNameResolver(destinationNames);
 
         // OpenLogReplicator
         this.openLogReplicatorSource = config.getString(OLR_SOURCE);
@@ -1878,10 +1880,10 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
-     * @return names of the archive destination configurations to use
+     * @return archive destination name resolver
      */
-    public Set<String> getArchiveLogDestinationNames() {
-        return archiveLogDestinationNames;
+    public ArchiveDestinationNameResolver getArchiveDestinationNameResolver() {
+        return destinationNameResolver;
     }
 
     /**
