@@ -14,6 +14,7 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.hibernate.c3p0.internal.C3P0ConnectionProvider;
 import org.hibernate.cfg.AvailableSettings;
+import org.hibernate.cfg.DialectSpecificSettings;
 import org.hibernate.tool.schema.Action;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -580,6 +581,11 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         hibernateConfig.setProperty(AvailableSettings.C3P0_ACQUIRE_INCREMENT, config.getString(CONNECTION_POOL_ACQUIRE_INCREMENT_FIELD));
         hibernateConfig.setProperty(AvailableSettings.GLOBALLY_QUOTED_IDENTIFIERS, Boolean.toString(config.getBoolean(QUOTE_IDENTIFIERS_FIELD)));
         hibernateConfig.setProperty(AvailableSettings.JDBC_TIME_ZONE, useTimeZone());
+
+        // Hibernate 7 changes the behavior for double/float types for Oracle, expressly using the binary
+        // variants by default. To avoid this behavior change in Debezium, we expressly set this feature
+        // to false. If a user wants this behavior, they can re-enable this in the connector configuration.
+        hibernateConfig.setProperty(DialectSpecificSettings.ORACLE_USE_BINARY_FLOATS, false);
 
         if (LOGGER.isDebugEnabled()) {
             hibernateConfig.setProperty(AvailableSettings.SHOW_SQL, Boolean.toString(true));
