@@ -11,6 +11,7 @@ import java.util.List;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 
+import io.debezium.runtime.events.DefaultEngine;
 import io.debezium.runtime.events.Engine;
 import io.quarkus.debezium.notification.SnapshotEvent;
 
@@ -20,7 +21,7 @@ public class SnapshotEventObserver {
     private final List<SnapshotEvent> defaultSnapshotEvents = new ArrayList<>();
     private final List<SnapshotEvent> alternativeSnapshotEvents = new ArrayList<>();
 
-    public void defaultSnapshot(@Observes @Engine("default") SnapshotEvent snapshot) {
+    public void defaultSnapshot(@Observes @DefaultEngine SnapshotEvent snapshot) {
         defaultSnapshotEvents.add(snapshot);
     }
 

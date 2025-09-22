@@ -10,4 +10,5 @@ import io.debezium.common.annotation.Incubating;
 
 @Incubating
 public record EngineManifest(String id) {
+    public static EngineManifest DEFAULT = new EngineManifest("default");
 }
