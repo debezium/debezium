@@ -7,9 +7,10 @@ package io.debezium.connector.binlog;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.File;
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -31,10 +32,9 @@ import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.junit.logging.LogInterceptor;
-import io.debezium.kafka.KafkaCluster;
 import io.debezium.pipeline.signal.actions.snapshotting.ExecuteSnapshot;
 import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
-import io.debezium.util.Collect;
+import io.strimzi.test.container.StrimziKafkaCluster;
 
 /**
  * @author Chris Cranford
@@ -44,27 +44,26 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
     protected static final Path SCHEMA_HISTORY_PATH = Files.createTestingPath("file-schema-history-is.txt")
             .toAbsolutePath();
     protected final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase(SERVER_NAME, "incremental_snapshot-test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
-    protected static KafkaCluster kafka;
+    protected static StrimziKafkaCluster kafkaCluster;
 
     @BeforeClass
-    public static void startKafka() throws Exception {
-        File dataDir = Files.createTestingDirectory("signal_cluster");
-        Files.delete(dataDir);
-        kafka = new KafkaCluster().usingDirectory(dataDir)
-                .deleteDataPriorToStartup(true)
-                .deleteDataUponShutdown(true)
-                .addBrokers(1)
-                .withKafkaConfiguration(Collect.propertiesOf(
-                        "auto.create.topics.enable", "true",
-                        "zookeeper.session.timeout.ms", "20000"))
-                .startup();
+    public static void startKafka() {
+        Map<String, String> props = new HashMap<>();
+        props.put("auto.create.topics.enable", "false");
 
+        kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(1)
+                .withAdditionalKafkaConfiguration(props)
+                .withSharedNetwork()
+                .build();
+
+        kafkaCluster.start();
     }
 
     @AfterClass
     public static void stopKafka() {
-        if (kafka != null) {
-            kafka.shutdown();
+        if (kafkaCluster != null) {
+            kafkaCluster.stop();
         }
     }
 
@@ -108,7 +107,7 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
         final LogInterceptor logInterceptor = new LogInterceptor(ExecuteSnapshot.class);
         startConnector(x -> x.with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
                 .with(KafkaSignalChannel.SIGNAL_TOPIC, signalTopic)
-                .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafka.brokerList()));
+                .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafkaCluster.getBootstrapServers()));
         assertConnectorIsRunning();
         sendExecuteSnapshotKafkaSignal("b", signalTopic);
         waitForAvailableRecords(1000, TimeUnit.MILLISECONDS);
@@ -127,7 +126,7 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
         final LogInterceptor logInterceptor = new LogInterceptor(ExecuteSnapshot.class);
         startConnector(x -> x.with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
                 .with(KafkaSignalChannel.SIGNAL_TOPIC, signalTopic)
-                .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafka.brokerList()));
+                .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafkaCluster.getBootstrapServers()));
         assertConnectorIsRunning();
         sendExecuteSnapshotKafkaSignal("b", signalTopic);
         waitForAvailableRecords(1000, TimeUnit.MILLISECONDS);
@@ -144,7 +143,7 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
         sendExecuteSnapshotKafkaSignal("b", signalTopic);
         startConnector(x -> x.with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
                 .with(KafkaSignalChannel.SIGNAL_TOPIC, signalTopic)
-                .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafka.brokerList()));
+                .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafkaCluster.getBootstrapServers()));
         assertConnectorIsRunning();
         waitForAvailableRecords(1000, TimeUnit.MILLISECONDS);
 
@@ -153,7 +152,7 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
         sendExecuteSnapshotKafkaSignal("c", signalTopic);
         startConnector(x -> x.with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
                 .with(KafkaSignalChannel.SIGNAL_TOPIC, signalTopic)
-                .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafka.brokerList()));
+                .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafkaCluster.getBootstrapServers()));
 
         assertConnectorIsRunning();
         waitForStreamingRunning(getConnectorName(), DATABASE.getServerName());
@@ -172,7 +171,7 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
         sendExecuteSnapshotKafkaSignal("b", signalTopic);
         startConnector(x -> x.with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
                 .with(KafkaSignalChannel.SIGNAL_TOPIC, signalTopic)
-                .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafka.brokerList()));
+                .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafkaCluster.getBootstrapServers()));
         assertConnectorIsRunning();
 
         assertThat(logInterceptor.containsMessage("Requested 'INCREMENTAL' snapshot of data collections '[b]'")).isTrue();
@@ -202,7 +201,7 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
         final ProducerRecord<String, String> executeSnapshotSignal = new ProducerRecord<>(signalTopic, 0, SERVER_NAME, signalValue);
 
         final Configuration signalProducerConfig = Configuration.create()
-                .withDefault(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.brokerList())
+                .withDefault(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaCluster.getBootstrapServers())
                 .withDefault(ProducerConfig.CLIENT_ID_CONFIG, "signals")
                 .withDefault(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
                 .withDefault(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class)
