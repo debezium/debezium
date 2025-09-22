@@ -57,7 +57,7 @@ public abstract class BinlogIncrementalSnapshotIT<C extends SourceConnector>
     protected final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase(SERVER_NAME, "incremental_snapshot-test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
 
     @Before
-    public void before() throws SQLException {
+    public void before() throws Exception {
         stopConnector();
         DATABASE.createAndInitialize();
         initializeConnectorTestFramework();

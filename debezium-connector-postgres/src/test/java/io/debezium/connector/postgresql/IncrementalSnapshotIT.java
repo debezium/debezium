@@ -10,8 +10,8 @@ import static io.debezium.junit.EqualityCheck.LESS_THAN;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
-import java.io.File;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -36,12 +36,11 @@ import io.debezium.data.VariableScaleDecimal;
 import io.debezium.doc.FixFor;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.SkipWhenDatabaseVersion;
-import io.debezium.kafka.KafkaCluster;
+import io.debezium.kafka.KafkaClusterUtils;
 import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.debezium.pipeline.source.snapshot.incremental.AbstractIncrementalSnapshotTest;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
-import io.debezium.util.Collect;
-import io.debezium.util.Testing;
+import io.strimzi.test.container.StrimziKafkaCluster;
 
 public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<PostgresConnector> {
 
@@ -69,24 +68,24 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
 
     @BeforeClass
     public static void startKafka() throws Exception {
-        File dataDir = Testing.Files.createTestingDirectory("signal_cluster");
-        Testing.Files.delete(dataDir);
-        kafka = new KafkaCluster().usingDirectory(dataDir)
-                .deleteDataPriorToStartup(true)
-                .deleteDataUponShutdown(true)
-                .addBrokers(1)
-                .withKafkaConfiguration(Collect.propertiesOf(
-                        "auto.create.topics.enable", "false",
-                        "zookeeper.session.timeout.ms", "20000"))
-                .startup();
+        Map<String, String> props = new HashMap<>();
+        props.put("auto.create.topics.enable", "false");
 
-        kafka.createTopic("signals_topic", 1, 1);
+        kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(1)
+                .withAdditionalKafkaConfiguration(props)
+                .withSharedNetwork()
+                .build();
+
+        kafkaCluster.start();
+
+        KafkaClusterUtils.createTopic("signals_topic", 1, (short) 1, kafkaCluster.getBootstrapServers());
     }
 
     @AfterClass
     public static void stopKafka() {
-        if (kafka != null) {
-            kafka.shutdown();
+        if (kafkaCluster != null) {
+            kafkaCluster.stop();
         }
     }
 
@@ -306,7 +305,7 @@ public class IncrementalSnapshotIT extends AbstractIncrementalSnapshotTest<Postg
         populate4PkTable();
         startConnector(x -> x.with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
                 .with(KafkaSignalChannel.SIGNAL_TOPIC, getSignalsTopic())
-                .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafka.brokerList()));
+                .with(KafkaSignalChannel.BOOTSTRAP_SERVERS, kafkaCluster.getBootstrapServers()));
 
         sendExecuteSnapshotKafkaSignal("s1.a4");
 

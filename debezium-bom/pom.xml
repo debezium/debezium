@@ -706,6 +706,12 @@
                 <version>${version.opentelemetry.testing}</version>
                 <scope>test</scope>
             </dependency>
+            <dependency>
+                <groupId>io.strimzi</groupId>
+                <artifactId>strimzi-test-container</artifactId>
+                <version>${version.strimzi-test-container}</version>
+                <scope>test</scope>
+            </dependency>
 
             <dependency>
                 <groupId>io.fabric8</groupId>
