@@ -26,8 +26,8 @@ public class DebeziumConfigurationEngineParser {
                 .capturing()
                 .values()
                 .stream()
-                .filter(configuration -> configuration.groupId().isPresent())
-                .collect(Collectors.toMap(configuration -> configuration.groupId().get(), DebeziumEngineConfiguration.Capturing::configurations));
+                .filter(configuration -> configuration.engineId().isPresent())
+                .collect(Collectors.toMap(configuration -> configuration.engineId().get(), DebeziumEngineConfiguration.Capturing::configurations));
 
         /*
          * SmallRye Config in Quarkus is not able to map configuration on multiple fields if are used raw types
@@ -54,7 +54,7 @@ public class DebeziumConfigurationEngineParser {
         return engines;
     }
 
-    public record MultiEngineConfiguration(String groupId, Map<String, String> configuration) {
+    public record MultiEngineConfiguration(String engineId, Map<String, String> configuration) {
 
     }
 }

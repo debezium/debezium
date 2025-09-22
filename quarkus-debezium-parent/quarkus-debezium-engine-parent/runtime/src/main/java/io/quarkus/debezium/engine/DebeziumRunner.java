@@ -34,7 +34,7 @@ class DebeziumRunner {
 
     public void shutdown() {
         if (debeziumThread == null) {
-            LOGGER.warn("Shutting down before starting Debezium Engine {}", engine.captureGroup());
+            LOGGER.warn("Shutting down before starting Debezium Engine {}", engine.manifest());
             return;
         }
 

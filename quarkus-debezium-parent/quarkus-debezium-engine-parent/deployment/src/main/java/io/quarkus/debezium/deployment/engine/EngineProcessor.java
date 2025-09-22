@@ -46,7 +46,7 @@ import io.debezium.pipeline.txmetadata.DefaultTransactionMetadataFactory;
 import io.debezium.processors.spi.PostProcessor;
 import io.debezium.runtime.FieldFilterStrategy;
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
-import io.debezium.runtime.events.CaptureGroup;
+import io.debezium.runtime.events.Engine;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.snapshot.lock.NoLockingSupport;
 import io.debezium.snapshot.mode.AlwaysSnapshotter;
@@ -111,8 +111,8 @@ public class EngineProcessor {
     private final Logger logger = LoggerFactory.getLogger(EngineProcessor.class);
 
     @BuildStep
-    AutoInjectAnnotationBuildItem autoInjectCaptureGroup() {
-        return new AutoInjectAnnotationBuildItem(DotName.createSimple(CaptureGroup.class));
+    AutoInjectAnnotationBuildItem autoInjectEngine() {
+        return new AutoInjectAnnotationBuildItem(DotName.createSimple(Engine.class));
     }
 
     @BuildStep
@@ -127,7 +127,7 @@ public class EngineProcessor {
                                 .setDefaultScope(DotNames.APPLICATION_SCOPED)
                                 .build()));
 
-        additionalBeanProducer.produce(AdditionalBeanBuildItem.unremovableOf(CaptureGroup.class));
+        additionalBeanProducer.produce(AdditionalBeanBuildItem.unremovableOf(Engine.class));
 
         additionalBeanProducer.produce(AdditionalBeanBuildItem
                 .builder()

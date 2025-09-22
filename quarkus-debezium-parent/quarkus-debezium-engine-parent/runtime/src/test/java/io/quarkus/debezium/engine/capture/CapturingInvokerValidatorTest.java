@@ -55,7 +55,7 @@ class CapturingInvokerValidatorTest {
         }
 
         @Override
-        public String group() {
+        public String engine() {
             return "default";
         }
     }

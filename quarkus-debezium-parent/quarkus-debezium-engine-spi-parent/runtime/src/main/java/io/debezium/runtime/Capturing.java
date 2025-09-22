@@ -27,7 +27,7 @@ public @interface Capturing {
     String destination() default ALL;
 
     /**
-     * the Capturing Group assigned
+     * the engine assigned
      */
-    String group() default DEFAULT;
+    String engine() default DEFAULT;
 }

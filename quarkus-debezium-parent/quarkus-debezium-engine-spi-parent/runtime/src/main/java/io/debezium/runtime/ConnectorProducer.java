@@ -21,7 +21,7 @@ public interface ConnectorProducer {
      * given a set of {@link DebeziumEngineConfiguration} it creates a {@link DebeziumConnectorRegistry}
      * that contains the related {@link Debezium} engines
      * @param debeziumEngineConfiguration
-     * @return the registry that contains the {@link Debezium} engine capturing groups
+     * @return the registry that contains the {@link Debezium} engines
      */
     DebeziumConnectorRegistry engine(DebeziumEngineConfiguration debeziumEngineConfiguration);
 }

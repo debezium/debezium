@@ -12,7 +12,7 @@ package io.debezium.runtime;
 public interface DebeziumContext {
 
     /**
-     * @return the {@link CaptureGroup} for the running {@link Debezium} engine
+     * @return the {@link EngineManifest} for the running {@link Debezium} engine
      */
-    CaptureGroup captureGroup();
+    EngineManifest manifest();
 }

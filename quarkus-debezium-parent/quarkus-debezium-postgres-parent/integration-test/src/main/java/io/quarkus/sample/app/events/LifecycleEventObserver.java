@@ -12,9 +12,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 
 import io.debezium.runtime.events.AbstractDebeziumLifecycleEvent;
-import io.debezium.runtime.events.CaptureGroup;
 import io.debezium.runtime.events.ConnectorStartedEvent;
 import io.debezium.runtime.events.ConnectorStoppedEvent;
+import io.debezium.runtime.events.Engine;
 import io.debezium.runtime.events.PollingStartedEvent;
 import io.debezium.runtime.events.PollingStoppedEvent;
 import io.debezium.runtime.events.TasksStartedEvent;
@@ -31,51 +31,51 @@ public class LifecycleEventObserver {
     private final List<AbstractDebeziumLifecycleEvent> defaultLifecycleEvents = new CopyOnWriteArrayList<>();
     private final List<AbstractDebeziumLifecycleEvent> alternativeLifecycleEvents = new CopyOnWriteArrayList<>();
 
-    void defaultOnConnectorStarted(@Observes @CaptureGroup("default") ConnectorStartedEvent connectorStartedEvent) {
+    void defaultOnConnectorStarted(@Observes @Engine("default") ConnectorStartedEvent connectorStartedEvent) {
         defaultLifecycleEvents.add(connectorStartedEvent);
     }
 
-    void defaultOnConnectorStopped(@Observes @CaptureGroup("default") ConnectorStoppedEvent connectorStoppedEvent) {
+    void defaultOnConnectorStopped(@Observes @Engine("default") ConnectorStoppedEvent connectorStoppedEvent) {
         defaultLifecycleEvents.add(connectorStoppedEvent);
     }
 
-    void defaultOnTaskStarted(@Observes @CaptureGroup("default") TasksStartedEvent tasksStartedEvent) {
+    void defaultOnTaskStarted(@Observes @Engine("default") TasksStartedEvent tasksStartedEvent) {
         defaultLifecycleEvents.add(tasksStartedEvent);
     }
 
-    void defaultOnTaskStopped(@Observes @CaptureGroup("default") TasksStoppedEvent tasksStoppedEvent) {
+    void defaultOnTaskStopped(@Observes @Engine("default") TasksStoppedEvent tasksStoppedEvent) {
         defaultLifecycleEvents.add(tasksStoppedEvent);
     }
 
-    void defaultOnPollingStarted(@Observes @CaptureGroup("default") PollingStartedEvent pollingStartedEvent) {
+    void defaultOnPollingStarted(@Observes @Engine("default") PollingStartedEvent pollingStartedEvent) {
         defaultLifecycleEvents.add(pollingStartedEvent);
     }
 
-    void defaultOnPollingStopped(@Observes @CaptureGroup("default") PollingStoppedEvent pollingStoppedEvent) {
+    void defaultOnPollingStopped(@Observes @Engine("default") PollingStoppedEvent pollingStoppedEvent) {
         defaultLifecycleEvents.add(pollingStoppedEvent);
     }
 
-    void alternativeOnConnectorStarted(@Observes @CaptureGroup("alternative") ConnectorStartedEvent connectorStartedEvent) {
+    void alternativeOnConnectorStarted(@Observes @Engine("alternative") ConnectorStartedEvent connectorStartedEvent) {
         alternativeLifecycleEvents.add(connectorStartedEvent);
     }
 
-    void alternativeOnConnectorStopped(@Observes @CaptureGroup("alternative") ConnectorStoppedEvent connectorStoppedEvent) {
+    void alternativeOnConnectorStopped(@Observes @Engine("alternative") ConnectorStoppedEvent connectorStoppedEvent) {
         alternativeLifecycleEvents.add(connectorStoppedEvent);
     }
 
-    void alternativeOnTaskStarted(@Observes @CaptureGroup("alternative") TasksStartedEvent tasksStartedEvent) {
+    void alternativeOnTaskStarted(@Observes @Engine("alternative") TasksStartedEvent tasksStartedEvent) {
         alternativeLifecycleEvents.add(tasksStartedEvent);
     }
 
-    void alternativeOnTaskStopped(@Observes @CaptureGroup("alternative") TasksStoppedEvent tasksStoppedEvent) {
+    void alternativeOnTaskStopped(@Observes @Engine("alternative") TasksStoppedEvent tasksStoppedEvent) {
         alternativeLifecycleEvents.add(tasksStoppedEvent);
     }
 
-    void alternativeOnPollingStarted(@Observes @CaptureGroup("alternative") PollingStartedEvent pollingStartedEvent) {
+    void alternativeOnPollingStarted(@Observes @Engine("alternative") PollingStartedEvent pollingStartedEvent) {
         alternativeLifecycleEvents.add(pollingStartedEvent);
     }
 
-    void alternativeOnPollingStopped(@Observes @CaptureGroup("alternative") PollingStoppedEvent pollingStoppedEvent) {
+    void alternativeOnPollingStopped(@Observes @Engine("alternative") PollingStoppedEvent pollingStoppedEvent) {
         alternativeLifecycleEvents.add(pollingStoppedEvent);
     }
 

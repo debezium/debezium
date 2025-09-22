@@ -18,8 +18,8 @@ import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import io.debezium.runtime.CaptureGroup;
 import io.debezium.runtime.DebeziumConnectorRegistry;
+import io.debezium.runtime.EngineManifest;
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
 import io.quarkus.debezium.configuration.PostgresDatasourceConfiguration;
 import io.quarkus.debezium.notification.QuarkusNotificationChannel;
@@ -60,7 +60,7 @@ class PostgresEngineProducerTest {
             public Map<String, Capturing> capturing() {
                 return Map.of();
             }
-        }).get(new CaptureGroup("default"))
+        }).get(new EngineManifest("default"))
                 .configuration())
                 .isEqualTo(Map.of(
                         "connector.class", "io.debezium.connector.postgresql.PostgresConnector",
@@ -104,7 +104,7 @@ class PostgresEngineProducerTest {
             public Map<String, Capturing> capturing() {
                 return Map.of();
             }
-        }).get(new CaptureGroup("default"))
+        }).get(new EngineManifest("default"))
                 .configuration())
                 .isEqualTo(Map.of(
                         "connector.class", "io.debezium.connector.postgresql.PostgresConnector",
@@ -154,7 +154,7 @@ class PostgresEngineProducerTest {
             public Map<String, Capturing> capturing() {
                 return Map.of("default", new Capturing() {
                     @Override
-                    public Optional<String> groupId() {
+                    public Optional<String> engineId() {
                         return Optional.of("default");
                     }
 
@@ -179,7 +179,7 @@ class PostgresEngineProducerTest {
                     }
                 }, "another", new Capturing() {
                     @Override
-                    public Optional<String> groupId() {
+                    public Optional<String> engineId() {
                         return Optional.of("another");
                     }
 
@@ -206,7 +206,7 @@ class PostgresEngineProducerTest {
             }
         });
 
-        assertThat(registry.get(new CaptureGroup("default"))
+        assertThat(registry.get(new EngineManifest("default"))
                 .configuration())
                 .isEqualTo(Map.of(
                         "configuration.key", "default_value",
@@ -219,7 +219,7 @@ class PostgresEngineProducerTest {
                         "notification.enabled.channels", "a_name",
                         "database.dbname", "database"));
 
-        assertThat(registry.get(new CaptureGroup("another"))
+        assertThat(registry.get(new EngineManifest("another"))
                 .configuration())
                 .isEqualTo(Map.of(
                         "configuration.key", "another_value",

@@ -27,11 +27,11 @@ import io.debezium.connector.SnapshotRecord;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
-import io.debezium.runtime.CaptureGroup;
 import io.debezium.runtime.Connector;
 import io.debezium.runtime.Debezium;
 import io.debezium.runtime.DebeziumConnectorRegistry;
 import io.debezium.runtime.DebeziumStatus;
+import io.debezium.runtime.EngineManifest;
 import io.debezium.runtime.events.DebeziumHeartbeat;
 import io.debezium.spi.schema.DataCollectionId;
 
@@ -83,7 +83,7 @@ class QuarkusHeartbeatEmitterTest {
             }
 
             @Override
-            public CaptureGroup captureGroup() {
+            public EngineManifest manifest() {
                 return null;
             }
         };

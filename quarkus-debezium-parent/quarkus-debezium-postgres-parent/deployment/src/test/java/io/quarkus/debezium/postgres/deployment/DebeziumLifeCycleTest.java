@@ -20,9 +20,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import io.debezium.runtime.CaptureGroup;
 import io.debezium.runtime.DebeziumConnectorRegistry;
 import io.debezium.runtime.DebeziumStatus;
+import io.debezium.runtime.EngineManifest;
 import io.quarkus.runtime.Application;
 import io.quarkus.test.QuarkusUnitTest;
 import io.quarkus.test.common.QuarkusTestResource;
@@ -52,19 +52,19 @@ public class DebeziumLifeCycleTest {
     @Test
     @DisplayName("debezium should be integrated in the quarkus lifecycle")
     void shouldDebeziumBeIntegratedInTheQuarkusLifeCycle() {
-        Assertions.assertThat(registry.get(new CaptureGroup("default")).configuration().get("connector.class"))
+        Assertions.assertThat(registry.get(new EngineManifest("default")).configuration().get("connector.class"))
                 .isEqualTo("io.debezium.connector.postgresql.PostgresConnector");
 
         given().await()
                 .atMost(10, TimeUnit.SECONDS)
-                .untilAsserted(() -> Assertions.assertThat(registry.get(new CaptureGroup("default")).status())
+                .untilAsserted(() -> Assertions.assertThat(registry.get(new EngineManifest("default")).status())
                         .isEqualTo(new DebeziumStatus(DebeziumStatus.State.POLLING)));
 
         Application.currentApplication().close();
 
         given().await()
                 .atMost(30, TimeUnit.SECONDS)
-                .untilAsserted(() -> Assertions.assertThat(registry.get(new CaptureGroup("default")).status())
+                .untilAsserted(() -> Assertions.assertThat(registry.get(new EngineManifest("default")).status())
                         .isEqualTo(new DebeziumStatus(DebeziumStatus.State.STOPPED)));
     }
 }

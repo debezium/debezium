@@ -83,7 +83,7 @@ public class CapturingEventGenerator implements GizmoBasedCapturingInvokerGenera
                                 () -> destination.returnValue(destination.load(Capturing.ALL)));
             }
 
-            createGroupMethod(methodInfo, invoker);
+            createEngineMethod(methodInfo, invoker);
 
             return new GeneratedClassMetaData(UUID.randomUUID(), name.replace('/', '.'), beanInfo, CapturingEventInvoker.class);
         }

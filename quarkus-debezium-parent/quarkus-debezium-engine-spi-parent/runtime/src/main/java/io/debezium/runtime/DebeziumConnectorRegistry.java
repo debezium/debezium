@@ -17,10 +17,10 @@ public interface DebeziumConnectorRegistry {
 
     /**
      *
-     * @param group
-     * @return the {@link Debezium} engine instance assigned to a {@link CaptureGroup}
+     * @param manifest
+     * @return the {@link Debezium} engine instance assigned to a {@link EngineManifest}
      */
-    Debezium get(CaptureGroup group);
+    Debezium get(EngineManifest manifest);
 
     /**
      *

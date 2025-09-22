@@ -17,10 +17,10 @@ import jakarta.inject.Qualifier;
 @Qualifier
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ ElementType.FIELD, ElementType.PARAMETER, ElementType.METHOD })
-public @interface CaptureGroup {
+public @interface Engine {
     String value();
 
-    final class Literal extends AnnotationLiteral<CaptureGroup> implements CaptureGroup {
+    final class Literal extends AnnotationLiteral<Engine> implements Engine {
         private final String value;
 
         private Literal(String value) {

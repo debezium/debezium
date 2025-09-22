@@ -8,5 +8,5 @@ package io.quarkus.sample.app.dto;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 
 @RegisterForReflection
-public record EngineManifest(String group, String connector) {
+public record EngineInformation(String id, String connector) {
 }

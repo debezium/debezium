@@ -38,13 +38,13 @@ public class CaptureHandler {
 
     @Capturing(destination = "dbserver1.public.products")
     public void products(CapturingEvent<Product> event) {
-        logger.info("getting a product event for destination {} from capturing group {}", event.destination(), event.group());
+        logger.info("getting a product event for destination {} from capturing id {}", event.destination(), event.engine());
         productService.add(event.record());
     }
 
-    @Capturing(destination = "dbserver2.public.orders", group = "alternative")
+    @Capturing(destination = "dbserver2.public.orders", engine = "alternative")
     public void orders(CapturingEvent<Order> event) {
-        logger.info("getting a order event for destination {} from capturing group {}", event.destination(), event.group());
+        logger.info("getting a order event for destination {} from capturing id {}", event.destination(), event.engine());
         orderService.add(event.record());
     }
 }

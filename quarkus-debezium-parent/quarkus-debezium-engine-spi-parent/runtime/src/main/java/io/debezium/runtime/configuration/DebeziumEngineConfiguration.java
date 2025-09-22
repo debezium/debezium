@@ -35,9 +35,9 @@ public interface DebeziumEngineConfiguration {
     interface Capturing {
 
         /**
-         * id for the capture group assigned to a datasource
+         * id for the engine assigned to a datasource
          */
-        Optional<String> groupId();
+        Optional<String> engineId();
 
         /**
          * destination for which the event is intended

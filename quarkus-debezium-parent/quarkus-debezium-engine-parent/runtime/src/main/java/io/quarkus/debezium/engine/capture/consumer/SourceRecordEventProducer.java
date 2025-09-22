@@ -39,13 +39,13 @@ public class SourceRecordEventProducer {
     @Produces
     @Singleton
     public SourceRecordConsumerHandler produce() {
-        return capturingGroup -> new SourceRecordEventConsumer() {
+        return manifest -> new SourceRecordEventConsumer() {
             private final Logger logger = LoggerFactory.getLogger(SourceRecordEventConsumer.class);
 
             @Override
             public void accept(ChangeEvent<SourceRecord, SourceRecord> event) {
-                logger.trace("receiving event {} with group {}", event.destination(), capturingGroup.id());
-                CapturingEvent<SourceRecord> capturingEvent = new OperationMapper(capturingGroup.id()).from(event);
+                logger.trace("receiving event {} with engine id {}", event.destination(), manifest.id());
+                CapturingEvent<SourceRecord> capturingEvent = new OperationMapper(manifest.id()).from(event);
 
                 var deserializer = capturingEventDeserializerRegistry.get(capturingEvent.destination());
                 CapturingInvoker<Object> objectCapturingInvoker = capturingObjectInvokerRegistry.get(capturingEvent);
