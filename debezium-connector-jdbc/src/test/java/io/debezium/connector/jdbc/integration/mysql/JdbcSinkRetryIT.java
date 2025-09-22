@@ -10,6 +10,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
@@ -25,6 +27,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
 import io.debezium.connector.jdbc.integration.AbstractJdbcSinkTest;
+import io.debezium.connector.jdbc.junit.TestHelper;
 import io.debezium.connector.jdbc.junit.jupiter.MySqlSinkDatabaseContextProvider;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
@@ -104,11 +107,72 @@ public class JdbcSinkRetryIT extends AbstractJdbcSinkTest {
         }
         catch (Exception e) {
             assertThat(e.getCause().getMessage()).matches(
-                    "Exceeded max retries [0-9]* times, failed to process sink records");
+                    "Exceeded max retries [0-9]* times, failed to flush records for table '" + tableName + "'");
             // PessimisticLockException exception is retriable in mysql dialect.
             assertEquals(e.getCause().getCause().getClass(), PessimisticLockException.class);
             assertThat(e.getCause().getCause().getCause().getMessage()).matches(
                     "Lock wait timeout exceeded; try restarting transaction");
+        }
+        finally {
+            connection.close();
+            stopSinkConnector();
+        }
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-7772")
+    public void testRetryToFlushBufferWhenConnectionBroken(SinkRecordFactory factory) throws SQLException {
+        String tableName = randomTableName();
+        Connection connection = getSink().getConnection();
+
+        // create table
+        try (Statement st = connection.createStatement()) {
+            st.execute("CREATE TABLE `" + tableName + "` (\n" +
+                    "  `id` bigint(20) NOT NULL,\n" +
+                    "  `content` varchar(200) DEFAULT NULL,\n" +
+                    "  PRIMARY KEY (`id`)\n" +
+                    ")");
+        }
+
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.BASIC.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_VALUE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_FIELDS, "id");
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.UPSERT.getValue());
+        properties.put(JdbcSinkConnectorConfig.COLLECTION_NAME_FORMAT, tableName);
+        properties.put(JdbcSinkConnectorConfig.FLUSH_MAX_RETRIES, "1");
+        properties.put(JdbcSinkConnectorConfig.FLUSH_RETRY_DELAY_MS, "100");
+        properties.put(JdbcSinkConnectorConfig.CONNECTION_RESTART_ON_ERRORS, "true");
+
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        // kill the connection of the connector to the database, as a way to simulate a transient network issue.
+        try (PreparedStatement st = connection.prepareStatement("SELECT id FROM INFORMATION_SCHEMA.PROCESSLIST WHERE user = ? AND id != connection_id()")) {
+            st.setString(1, getSink().getUsername());
+            ResultSet rs = st.executeQuery();
+            while (rs.next()) {
+                long processId = rs.getLong(1);
+                try (Statement killSt = connection.createStatement()) {
+                    killSt.execute("KILL " + processId);
+                }
+            }
+        }
+
+        final String topicName = topicName("server1", "schema", tableName);
+
+        final KafkaDebeziumSinkRecord updateRecord = factory.updateRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                "content",
+                Schema.OPTIONAL_STRING_SCHEMA,
+                "retry-me");
+        try {
+            // since the connection was killed, the next query by the connector will fail with a JDBCConnectionException,
+            // which the connector should then retry.
+            consume(updateRecord);
+            TestHelper.assertTable(assertDbConnection(), tableName).exists().hasNumberOfRows(1);
         }
         finally {
             connection.close();
