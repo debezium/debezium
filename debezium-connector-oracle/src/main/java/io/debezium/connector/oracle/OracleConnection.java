@@ -430,7 +430,7 @@ public class OracleConnection extends JdbcConnection {
     public boolean validateLogPosition(Partition partition, OffsetContext offset, CommonConnectorConfig config) {
         final OracleConnectorConfig connectorConfig = (OracleConnectorConfig) config;
         final Duration archiveLogRetention = connectorConfig.getArchiveLogRetention();
-        final String archiveDestinationName = getArchiveLogDestinationByPrecedence(connectorConfig.getArchiveLogDestinationNames());
+        final String archiveDestinationName = connectorConfig.getArchiveDestinationNameResolver().getDestinationName(this);
         final Scn storedOffset = ((OracleConnectorConfig) config).getAdapter().getOffsetScn((OracleOffsetContext) offset);
 
         try {
@@ -882,25 +882,6 @@ public class OracleConnection extends JdbcConnection {
     public String getDatabaseParameterValue(String parameterName) throws SQLException {
         final String query = "SELECT VALUE FROM V$PARAMETER WHERE UPPER(NAME) = UPPER(?)";
         return prepareQueryAndMap(query, ps -> ps.setString(1, parameterName), rs -> rs.next() ? rs.getString(1) : null);
-    }
-
-    public String getArchiveLogDestinationByPrecedence(Set<String> destinationNames) {
-        try {
-            if (destinationNames != null && !destinationNames.isEmpty()) {
-                for (String destinationName : destinationNames) {
-                    if (isArchiveLogDestinationValid(destinationName)) {
-                        LOGGER.debug("Using archive destination '{}'.", destinationName);
-                        return destinationName;
-                    }
-                }
-                return destinationNames.stream().findFirst().orElse(null);
-            }
-            // Fallback to using a random one that's available in query
-            return null;
-        }
-        catch (SQLException e) {
-            throw new DebeziumException("Error while checking validity of archive destination configuration", e);
-        }
     }
 
     private static Scn readScnColumnAsScn(ResultSet rs, String columnName) throws SQLException {

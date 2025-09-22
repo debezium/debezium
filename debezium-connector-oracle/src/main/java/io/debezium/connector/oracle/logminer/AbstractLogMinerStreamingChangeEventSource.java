@@ -152,7 +152,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         this.extendedStringParser = new ExtendedStringParser();
         this.xmlBeginParser = new XmlBeginParser();
         this.tableFilter = connectorConfig.getTableFilters().dataCollectionFilter();
-        this.archiveDestinationName = jdbcConnection.getArchiveLogDestinationByPrecedence(connectorConfig.getArchiveLogDestinationNames());
+        this.archiveDestinationName = connectorConfig.getArchiveDestinationNameResolver().getDestinationName(jdbcConnection);
 
         metrics.setBatchSize(connectorConfig.getLogMiningBatchSizeDefault());
         metrics.setSleepTime(connectorConfig.getLogMiningSleepTimeDefault().toMillis());

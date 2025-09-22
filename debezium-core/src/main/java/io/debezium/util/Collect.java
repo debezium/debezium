@@ -299,6 +299,16 @@ public class Collect {
         return r;
     }
 
+    /**
+     * Check if the supplied collection is {@code null} or has no elements.
+     *
+     * @param collection the collection, may be {@code null}
+     * @return {@code true} if the collection is null or empty
+     */
+    public static <T> boolean isNullOrEmpty(Collection<T> collection) {
+        return collection == null || collection.isEmpty();
+    }
+
     private Collect() {
     }
 }

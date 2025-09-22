@@ -110,7 +110,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         validateRedoLogConfiguration(connectorConfig, snapshotterService);
 
-        checkArchiveLogDestination(jdbcConnection, connectorConfig.getArchiveLogDestinationNames());
+        connectorConfig.getArchiveDestinationNameResolver().validate(jdbcConnection);
 
         OracleOffsetContext previousOffset = previousOffsets.getTheOnlyOffset();
 
@@ -203,25 +203,6 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
     @Override
     protected String connectorName() {
         return Module.name();
-    }
-
-    private void checkArchiveLogDestination(OracleConnection connection, Set<String> destinationNames) {
-        try {
-            if (destinationNames != null && !destinationNames.isEmpty()) {
-                final String destinationName = connection.getArchiveLogDestinationByPrecedence(destinationNames);
-                if (!connection.isArchiveLogDestinationValid(destinationName)) {
-                    LOGGER.warn("Archive log destination '{}' may not be valid, please check the database.", destinationName);
-                }
-            }
-            else if (!connection.isOnlyOneArchiveLogDestinationValid()) {
-                LOGGER.warn("There are multiple valid archive log destinations. " +
-                        "Please add '{}' to the connector configuration to avoid log availability problems.",
-                        OracleConnectorConfig.ARCHIVE_DESTINATION_NAME.name());
-            }
-        }
-        catch (SQLException e) {
-            throw new DebeziumException("Error while checking validity of archive log configuration", e);
-        }
     }
 
     private OracleConnection getHeartbeatConnection(OracleConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig) {
