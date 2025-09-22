@@ -14,6 +14,7 @@ import jakarta.enterprise.event.Observes;
 import io.debezium.runtime.events.AbstractDebeziumLifecycleEvent;
 import io.debezium.runtime.events.ConnectorStartedEvent;
 import io.debezium.runtime.events.ConnectorStoppedEvent;
+import io.debezium.runtime.events.DefaultEngine;
 import io.debezium.runtime.events.Engine;
 import io.debezium.runtime.events.PollingStartedEvent;
 import io.debezium.runtime.events.PollingStoppedEvent;
@@ -39,7 +40,7 @@ public class LifecycleEventObserver {
         defaultLifecycleEvents.add(connectorStoppedEvent);
     }
 
-    void defaultOnTaskStarted(@Observes @Engine("default") TasksStartedEvent tasksStartedEvent) {
+    void defaultOnTaskStarted(@Observes @DefaultEngine TasksStartedEvent tasksStartedEvent) {
         defaultLifecycleEvents.add(tasksStartedEvent);
     }
 

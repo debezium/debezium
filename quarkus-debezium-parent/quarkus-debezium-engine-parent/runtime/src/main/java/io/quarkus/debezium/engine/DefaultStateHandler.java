@@ -20,6 +20,7 @@ import io.debezium.runtime.EngineManifest;
 import io.debezium.runtime.events.ConnectorStartedEvent;
 import io.debezium.runtime.events.ConnectorStoppedEvent;
 import io.debezium.runtime.events.DebeziumCompletionEvent;
+import io.debezium.runtime.events.DefaultEngine;
 import io.debezium.runtime.events.Engine;
 import io.debezium.runtime.events.PollingStartedEvent;
 import io.debezium.runtime.events.PollingStoppedEvent;
@@ -54,45 +55,45 @@ public class DefaultStateHandler implements StateHandler {
             @Override
             public void connectorStarted() {
                 changeState(engineManifest, DebeziumStatus.State.CREATING);
-                connectorStarted
-                        .select(Engine.Literal.of(engineManifest.id()))
+                DefaultEngine.Literal
+                        .selectDefault(connectorStarted.select(Engine.Literal.of(engineManifest.id())), engineManifest)
                         .fire(new ConnectorStartedEvent(engine));
             }
 
             @Override
             public void connectorStopped() {
                 changeState(engineManifest, DebeziumStatus.State.STOPPED);
-                connectorStopped
-                        .select(Engine.Literal.of(engineManifest.id()))
+                DefaultEngine.Literal
+                        .selectDefault(connectorStopped.select(Engine.Literal.of(engineManifest.id())), engineManifest)
                         .fire(new ConnectorStoppedEvent(engine));
             }
 
             @Override
             public void taskStarted() {
-                taskStarted
-                        .select(Engine.Literal.of(engineManifest.id()))
+                DefaultEngine.Literal
+                        .selectDefault(taskStarted.select(Engine.Literal.of(engineManifest.id())), engineManifest)
                         .fire(new TasksStartedEvent(engine));
             }
 
             @Override
             public void taskStopped() {
-                taskStopped
-                        .select(Engine.Literal.of(engineManifest.id()))
+                DefaultEngine.Literal
+                        .selectDefault(taskStopped.select(Engine.Literal.of(engineManifest.id())), engineManifest)
                         .fire(new TasksStoppedEvent(engine));
             }
 
             @Override
             public void pollingStarted() {
                 changeState(engineManifest, DebeziumStatus.State.POLLING);
-                pollingStarted
-                        .select(Engine.Literal.of(engineManifest.id()))
+                DefaultEngine.Literal
+                        .selectDefault(pollingStarted.select(Engine.Literal.of(engineManifest.id())), engineManifest)
                         .fire(new PollingStartedEvent(engine));
             }
 
             @Override
             public void pollingStopped() {
-                pollingStopped
-                        .select(Engine.Literal.of(engineManifest.id()))
+                DefaultEngine.Literal
+                        .selectDefault(pollingStopped.select(Engine.Literal.of(engineManifest.id())), engineManifest)
                         .fire(new PollingStoppedEvent(engine));
             }
 
@@ -106,8 +107,8 @@ public class DefaultStateHandler implements StateHandler {
     public CompletionCallback completionCallback(EngineManifest engineManifest, Debezium engine) {
         return (success, message, error) -> {
             statues.put(engineManifest, new DebeziumStatus(DebeziumStatus.State.STOPPED));
-            completed
-                    .select(Engine.Literal.of(engineManifest.id()))
+            DefaultEngine.Literal
+                    .selectDefault(completed.select(Engine.Literal.of(engineManifest.id())), engineManifest)
                     .fire(new DebeziumCompletionEvent(success, message, error));
         };
     }
