@@ -44,11 +44,14 @@ public class DebeziumThreadHandler {
     }
 
     /**
-     *
+     * The context is created through the dev/prod flow of the extension with {@link #getThreadFactory(Debezium)}. If
+     * it's called without starting the Quarkus Application (like during integration tests) the context is initialized
+     * with a dummy context.
      * @return the {@link DebeziumContext} associated to the running engine
      */
     public static DebeziumContext context() {
         if (context.get() == null) {
+
             LOGGER.warn("Debezium context not initialized, using testing context");
             return () -> new CaptureGroup("testing");
         }
