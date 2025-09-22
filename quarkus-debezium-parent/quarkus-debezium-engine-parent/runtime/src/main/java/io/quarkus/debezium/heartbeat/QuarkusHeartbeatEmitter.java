@@ -6,6 +6,8 @@
 
 package io.quarkus.debezium.heartbeat;
 
+import static io.quarkus.debezium.engine.DebeziumThreadHandler.context;
+
 import java.util.List;
 import java.util.Map;
 
@@ -21,8 +23,8 @@ import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.runtime.DebeziumConnectorRegistry;
 import io.debezium.runtime.events.DebeziumHeartbeat;
+import io.debezium.runtime.events.DefaultEngine;
 import io.debezium.runtime.events.Engine;
-import io.quarkus.debezium.engine.DebeziumThreadHandler;
 
 @ApplicationScoped
 public class QuarkusHeartbeatEmitter implements Heartbeat {
@@ -47,8 +49,8 @@ public class QuarkusHeartbeatEmitter implements Heartbeat {
 
     @Override
     public void emit(Map<String, ?> partition, OffsetContext offset) {
-        heartbeat
-                .select(Engine.Literal.of(DebeziumThreadHandler.context().manifest().id()))
+        DefaultEngine.Literal.selectDefault(heartbeat.select(Engine.Literal.of(context().manifest().id())),
+                context().manifest())
                 .fire(new DebeziumHeartbeat(
                         this.registries.getFirst().engines().getFirst().connector(),
                         this.registries.getFirst().engines().getFirst().status(),
