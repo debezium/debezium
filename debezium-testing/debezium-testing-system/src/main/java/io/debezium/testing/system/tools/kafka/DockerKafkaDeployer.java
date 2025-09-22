@@ -29,6 +29,7 @@ public class DockerKafkaDeployer
 
     @Override
     protected DockerKafkaController getController(KafkaContainer container) {
+        LOGGER.info("Deploying Kafka container");
         return new DockerKafkaController(container);
     }
 
@@ -37,6 +38,8 @@ public class DockerKafkaDeployer
         DockerKafkaController controller;
 
         if (!TestUtils.shouldKRaftBeUsed()) {
+            LOGGER.info("Using Kafka in Zookeeper mode");
+            LOGGER.info("Deploying Zookeeper container");
             ZookeeperContainer zookeeperContainer = new ZookeeperContainer()
                     .withNetwork(container.getNetwork());
             container.withZookeeper(zookeeperContainer);
@@ -44,11 +47,10 @@ public class DockerKafkaDeployer
 
             controller = getController(container);
             controller.setZookeeperContainer(zookeeperContainer);
-            LOGGER.info("Using Kafka in Zookeeper mode");
         }
         else {
-            controller = getController(container);
             LOGGER.info("Using Kafka in KRaft mode");
+            controller = getController(container);
         }
 
         return controller;
