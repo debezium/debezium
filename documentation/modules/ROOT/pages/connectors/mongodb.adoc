@@ -2263,18 +2263,19 @@ User intervention is required to restart the connector.
 `> 0`:: The connector restarts automatically until it reaches the specified maximum number of retries.
 After the next failure, the connector stops, and user intervention is required to restart it.
 
-|[[mongodb-property-guardrail-tables-max]]<<mongodb-property-guardrail-tables-max, `+guardrail.tables.max+`>>
+|[[mongodb-property-guardrail-collections-max]]<<mongodb-property-guardrail-collections-max, `+guardrail.collections.max+`>>
 |`0`
-|Specifies the maximum number of tables that the connector can capture. Exceeding this limit triggers the action specified by `guardrail.tables.limit.action`.
+|Specifies the maximum number of collections that the connector can capture. 
+Exceeding this limit triggers the action specified by `guardrail.collections.limit.action`.
 Set this property to  `0` to prevent the connector from triggering guardrail actions.
 
-|[[mongodb-property-guardrail-tables-limit-action]]<<mongodb-property-guardrail-tables-limit-action, `+guardrail.tables.limit.action+`>>
+|[[mongodb-property-guardrail-collections-limit-action]]<<mongodb-property-guardrail-collections-limit-action, `+guardrail.collections.limit.action+`>>
 |`warn`
-|Specifies the action to trigger if the number of tables that the connector captures exceeds the number that you specify in the `+guardrail.tables.max+` property.
+|Specifies the action to trigger if the number of collections that the connector captures exceeds the number that you specify in the `+guardrail.collections.max+` property.
 Set the property to one of the following values:
 
 `fail`::
-The connector fails.
+The connector fails and reports an exception.
 
 `warn`::
 The connector logs a warning.

@@ -4184,18 +4184,19 @@ After the next failure, the connector stops, and user intervention is required t
 |Specifies the time, in milliseconds, that the connector waits for a query to complete.
 Set the value to `0` (zero) to remove the timeout limit.
 
-|[[postgresql-property-guardrail-tables-max]]<<postgresql-property-guardrail-tables-max, `+guardrail.tables.max+`>>
+|[[postgresql-property-guardrail-collections-max]]<<postgresql-property-guardrail-collections-max, `+guardrail.collections.max+`>>
 |`0`
-|Specifies the maximum number of tables that the connector can capture. Exceeding this limit triggers the action specified by `guardrail.tables.limit.action`.
+|Specifies the maximum number of tables that the connector can capture. 
+Exceeding this limit triggers the action specified by `guardrail.collections.limit.action`.
 Set this property to  `0` to prevent the connector from triggering guardrail actions.
 
-|[[postgresql-property-guardrail-tables-limit-action]]<<postgresql-property-guardrail-tables-limit-action, `+guardrail.tables.limit.action+`>>
+|[[postgresql-property-guardrail-collections-limit-action]]<<postgresql-property-guardrail-collections-limit-action, `+guardrail.collections.limit.action+`>>
 |`warn`
-|Specifies the action to trigger if the number of tables that the connector captures exceeds the number that you specify in the `+guardrail.tables.max+` property.
+|Specifies the action to trigger if the number of tables that the connector captures exceeds the number that you specify in the `+guardrail.collections.max+` property.
 Set the property to one of the following values:
 
 `fail`::
-The connector fails.
+The connector fails and reports an exception.
 
 `warn`::
 The connector logs a warning.

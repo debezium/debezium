@@ -4581,18 +4581,19 @@ After the next failure, the connector stops, and user intervention is required t
 |`600000`
 |Time to wait for a query to execute, given in milliseconds. Defaults to 600 seconds (600,000 ms); zero means there is no limit.
 
-|[[oracle-property-guardrail-tables-max]]<<oracle-property-guardrail-tables-max, `+guardrail.tables.max+`>>
+|[[oracle-property-guardrail-collections-max]]<<oracle-property-guardrail-collections-max, `+guardrail.collections.max+`>>
 |`0`
-|Specifies the maximum number of tables that the connector can capture. Exceeding this limit triggers the action specified by `guardrail.tables.limit.action`.
+|Specifies the maximum number of tables that the connector can capture. 
+Exceeding this limit triggers the action specified by `guardrail.collections.limit.action`.
 Set this property to  `0` to prevent the connector from triggering guardrail actions.
 
-|[[oracle-property-guardrail-tables-limit-action]]<<oracle-property-guardrail-tables-limit-action, `+guardrail.tables.limit.action+`>>
+|[[oracle-property-guardrail-collections-limit-action]]<<oracle-property-guardrail-collections-limit-action, `+guardrail.collections.limit.action+`>>
 |`warn`
-|Specifies the action to trigger if the number of tables that the connector captures exceeds the number that you specify in the `+guardrail.tables.max+` property.
+|Specifies the action to trigger if the number of tables that the connector captures exceeds the number that you specify in the `+guardrail.collections.max+` property.
 Set the property to one of the following values:
 
 `fail`::
-The connector fails.
+The connector fails and reports an exception.
 
 `warn`::
 The connector logs a warning.
