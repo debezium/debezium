@@ -103,6 +103,7 @@ public class DebeziumOpenLineageEmitter {
      * @param connectorContext The context the connector
      */
     public static void cleanup(ConnectorContext connectorContext) {
+        getEmitter(connectorContext).close();
         LineageEmitter removed = emitters.remove(connectorContext.toEmitterKey());
         if (removed != null) {
             LOGGER.debug("Cleaned up emitter for connector {}", connectorContext);

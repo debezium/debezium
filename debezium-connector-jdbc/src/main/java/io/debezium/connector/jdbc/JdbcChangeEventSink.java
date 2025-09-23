@@ -21,9 +21,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
-import org.apache.kafka.common.utils.ThreadUtils;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -69,10 +67,10 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     private final Duration flushRetryDelay;
     private final ConnectorContext connectorContext;
 
-    private final ExecutorService executor = Executors.newFixedThreadPool(1, ThreadUtils.createThreadFactory(this.getClass().getSimpleName() + "-%d", false));
+    private final ExecutorService executor;
 
     public JdbcChangeEventSink(JdbcSinkConnectorConfig config, StatelessSession session, DatabaseDialect dialect, RecordWriter recordWriter,
-                               ConnectorContext connectorContext) {
+                               ConnectorContext connectorContext, ExecutorService executor) {
         this.config = config;
         this.dialect = dialect;
         this.session = session;
@@ -80,6 +78,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         this.flushMaxRetries = config.getFlushMaxRetries();
         this.flushRetryDelay = Duration.of(config.getFlushRetryDelayMs(), ChronoUnit.MILLIS);
         this.connectorContext = connectorContext;
+        this.executor = executor;
 
         final DatabaseVersion version = this.dialect.getVersion();
         LOGGER.info("Database version {}.{}.{}", version.getMajor(), version.getMinor(), version.getMicro());
@@ -291,6 +290,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         else {
             LOGGER.info("Session already closed.");
         }
+        executor.shutdown();
     }
 
     private TableDescriptor checkAndApplyTableChangesIfNeeded(CollectionId collectionId, JdbcSinkRecord record) throws SQLException {

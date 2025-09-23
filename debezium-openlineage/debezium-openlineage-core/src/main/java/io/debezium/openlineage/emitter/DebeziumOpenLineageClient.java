@@ -90,4 +90,14 @@ public class DebeziumOpenLineageClient {
         String gitTag = connectorContext.version().contains(SNAPSHOT) ? MAIN_BRANCH_NAME : String.format(VERSION_FORMAT, connectorContext.version());
         return URI.create(String.format(OPEN_LINEAGE_PRODUCER_URI_FORMAT, gitTag));
     }
+
+    public void close() {
+        try {
+            openLineageClient.close();
+            emitterExecutor.shutdown();
+        }
+        catch (Exception e) {
+            throw new RuntimeException(String.format("Error while closing emitter with context %s", connectorContext), e);
+        }
+    }
 }
