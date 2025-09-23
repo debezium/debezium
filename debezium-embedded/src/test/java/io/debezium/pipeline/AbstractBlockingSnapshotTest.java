@@ -419,6 +419,35 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
         stopConnector();
     }
 
+    @Test
+    @FixFor("DBZ-9494")
+    public void anErrorDuringBlockingSnapshotShouldNotLeaveTheStreamingPaused() throws Exception {
+        populateTable();
+
+        startConnectorWithSnapshot(x -> mutableConfig(false, false)
+                .with(CommonConnectorConfig.MAX_BATCH_SIZE, 1));
+
+        waitForSnapshotToBeCompleted(connector(), server(), task(), database());
+
+        insertRecords(ROW_COUNT, ROW_COUNT);
+
+        SourceRecords consumedRecordsByTopic = consumeRecordsByTopic(ROW_COUNT * 2, 20);
+        assertRecordsFromSnapshotAndStreamingArePresent(ROW_COUNT * 2, consumedRecordsByTopic);
+
+        sendAdHocSnapshotSignalWithAdditionalConditionsWithSurrogateKey(
+                String.format("{\"data-collection\": \"%s\"}", tableDataCollectionIds().get(1)), "", BLOCKING,
+                tableDataCollectionIds().get(1));
+
+        waitForLogMessage("Error while executing requested blocking snapshot.", ChangeEventSourceCoordinator.class);
+
+        insertRecords(ROW_COUNT, ROW_COUNT * 2);
+
+        signalingRecords = 1;
+
+        assertStreamingRecordsArePresent(ROW_COUNT, consumeRecordsByTopic(ROW_COUNT + signalingRecords, 10));
+
+    }
+
     protected int expectedDdlsCount() {
         return 0;
     };
