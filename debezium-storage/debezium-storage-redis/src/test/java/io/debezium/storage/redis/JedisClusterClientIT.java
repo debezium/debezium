@@ -57,7 +57,7 @@ public class JedisClusterClientIT {
     private static final int CLUSTER_TIMEOUT_SECONDS = 5;
 
     @Container
-    public static ComposeContainer redisCluster = new ComposeContainer(new File("src/test/resources/docker-compose.yml"))
+    public static ComposeContainer redisCluster = new ComposeContainer(new File("src/test/resources/docker-compose-redis-cluster.yml"))
             .withLocalCompose(true);
 
     private JedisCluster jedisCluster;
