@@ -19,8 +19,8 @@ import io.debezium.testing.system.tools.WaitConditions;
 public class KafkaContainer extends GenericContainer<KafkaContainer> {
 
     public static final String KAFKA_COMMAND = "kafka";
-    public static final int KAFKA_CONTROLLER_PORT = 9092;
-    public static final int KAFKA_INTERNAL_PORT = 9093;
+    public static final int KAFKA_CONTROLLER_PORT = 9093;
+    public static final int KAFKA_INTERNAL_PORT = 9092;
     public static final int KAFKA_EXTERNAL_PORT = 9094;
 
     private static final AtomicInteger COUNTER = new AtomicInteger();

@@ -12,17 +12,22 @@ ARG DEBEZIUM_VERSION=1.7
 
 ENV KAFKA_HOME=/opt/kafka \
     ZK_DATA=/var/lib/zookeeper \
-    KAFKA_DATA=/var/lib/kafka \
-    KAFKA_CONNECT_PLUGINS=$KAFKA_HOME/new-connector-plugins
+    KAFKA_DATA=/var/lib/kafka
+ENV KAFKA_CONNECT_PLUGINS=$KAFKA_HOME/new-connector-plugins
 
 #
-# Install packages and clean dnf cache
+# Install JAVA 17 JDK from binaries
 #
+RUN mkdir -p /tmp/ /usr/local/java \
+    && curl -L -o /tmp/openjdk-17.0.2_linux-x64_bin.tar.gz https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-x64_bin.tar.gz \
+    && tar -xzf /tmp/openjdk-17.0.2_linux-x64_bin.tar.gz -C /usr/local/java
+ENV JAVA_HOME=/usr/local/java/jdk-17.0.2
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
-RUN dnf -y install java-17-openjdk unzip nmap iproute --nodocs \
-    && dnf clean all \
-    && rm -rf /var/cache/dnf
-
+#
+# Install packages
+#
+RUN dnf -y install unzip nmap iproute --nodocs
 
 #
 # Create a user and home directory for Kafka
@@ -42,7 +47,7 @@ RUN mkdir $KAFKA_DATA && \
 RUN mkdir "$KAFKA_CONNECT_PLUGINS"
 
 #
-# Change ownership 
+# Change ownership
 #
 RUN chown -R 1001:kafka $KAFKA_HOME && \
     chown -R 1001:kafka $KAFKA_DATA && \
@@ -59,7 +64,12 @@ RUN unzip /tmp/zipped_kafka/*.zip -d /tmp/extracted_kafka
 # Move kafka from directory nested in another directory to $KAFKA_HOME and delete tmp directories
 #
 RUN mv /tmp/extracted_kafka/*/* $KAFKA_HOME
-RUN rm -rf /tmp/zipped_kafka /tmp/extracted_kafka
+
+#
+# Delete caches and tmp directories
+#
+RUN dnf clean all \
+    && rm -rf /tmp/* /var/cache/dnf/*
 
 #
 # Add Debezium connectors to connector-plugns
@@ -69,14 +79,12 @@ COPY $DEBEZIUM_CONNECTORS $KAFKA_HOME/connector-plugins/
 
 COPY metrics.yaml $KAFKA_HOME/config
 
-
 #
 # Setup original config directories
 #
 RUN mkdir $KAFKA_HOME/config.orig &&\
     mv $KAFKA_HOME/config/* $KAFKA_HOME/config.orig &&\
     chown -R 1001:kafka $KAFKA_HOME/config.orig
-
 
 #
 # Download kafka and kafka-connect start scripts and log4j.properties
@@ -86,10 +94,8 @@ RUN curl -L https://raw.githubusercontent.com/debezium/container-images/main/con
 RUN curl -L https://raw.githubusercontent.com/debezium/container-images/main/kafka/${DEBEZIUM_VERSION}/docker-entrypoint.sh -o /scripts/kafka-start.sh
 RUN curl -L https://raw.githubusercontent.com/debezium/container-images/main/kafka/${DEBEZIUM_VERSION}/log4j.properties -o /opt/kafka/config.orig/log4j.properties
 
-
 # Remove unnecessary files
 RUN rm -f $KAFKA_HOME/libs/*-{sources,javadoc,scaladoc}.jar*
-
 
 #
 # Allow random UID to use Kafka
