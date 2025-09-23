@@ -29,8 +29,9 @@ endif::community[]
 [[mongodb-sink-overview]]
 == Overview
 
-The {prodname} MongoDB sink connector captures change event records from Apache Kafka topics and then transforms the records into MongoDB documents that it writes to a collections in a specified MongoDB sink database.
-The connector processes only change events that originate from a {prodname} relational database connector.
+The {prodname} MongoDB sink connector captures change event records from Apache Kafka topics and then transforms the records into MongoDB documents that it writes to collections in a specified MongoDB sink database.
+For applications that require high scalability and fast data retrieval, propagating change data to a cluster-based MongoDB environment, which uses such features as sharding and replica sets to optimize read operations, can significantly improve retrieval performance.
+The connector can process only change events that originate from a {prodname} relational database connector.
 
 ifdef::product[]
 [IMPORTANT]
@@ -45,17 +46,6 @@ Red{nbsp}Hat might provide ways to submit feedback on Developer Preview software
 For more information about the support scope of Red{nbsp}Hat Developer Preview software, see link:https://access.redhat.com/support/offerings/devpreview/[Developer Preview Support Scope].
 ====
 endif::product[]
-
-[NOTE]
-====
-ifdef::community[]
-Currently, the MongoDB sink connector only supports {prodname} change events originating from relational database connectors (PostgreSQL, MariaDB, MySQL, SQL Server, Oracle). Change events produced by the {prodname} MongoDB source connector are **not supported yet**.
-endif::community[]
-ifdef::product[]
-The MongoDB sink connector can consume change events that originate from the {prodname} connectors for the following relational databases: MariaDB, MySQL, Oracle, PostgreSQL, and SQL Server.
-The connector cannot process change events that the {prodname} MongoDB source connector produces.
-endif::product[]
-====
 
 ifdef::community[]
 For information about the MongoDB versions that are compatible with this connector, see the link:https://debezium.io/releases/[{prodname} release overview].
@@ -102,7 +92,6 @@ The mapping between topics and MongoDB collections is derived from the connector
 The document key serves as a unique identifier for the document, ensuring that updates, inserts, and deletions are propagated to the correct MongoDB document and collection, and that operations are applied in the correct order.
 
 Through this process of mapping event messages to MongoDB documents, the connector is able to mirror the state of tables in your relational database to collections in a MongoDB database.
-For applications that require high scalability and fast data retrieval, propagating change data to a cluster-based MongoDB environment, which uses such features as sharding and replica sets to optimize read operations, can significantly improve retrieval performance.
 
 
 // Type: concept
@@ -114,7 +103,7 @@ For applications that require high scalability and fast data retrieval, propagat
 The {prodname} MongoDB sink connector has the following limitations:
 
 Relational database / RDBMS source connectors only::
-The connector is designed to process messages originating from the following {prodname} relational database / RDBMS source connectors:
+The MongoDB sink connector can consume only change events that originate from the {prodname} connectors for the following relational databases:
 
 * MariaDB
 * MySQL
@@ -122,7 +111,7 @@ The connector is designed to process messages originating from the following {pr
 * PostgreSQL
 * SQL Server
 
-The connector cannot process messages from a {prodname} MongoDB source connector or other non-RDBMS {prodname} source connector.
+The connector cannot process change event messages from any other {prodname} connectors, including the  {prodname} MongoDB source connector.
 
 Schema evolution::
 Although the connector can process basic schema changes, advanced schema evolution scenarios might require manual intervention or specific configuration.
@@ -137,6 +126,8 @@ Although MongoDB supports transactions, the {prodname} MongoDB connector does no
 // ModuleID: quickstart-debezium-mongodb-sink-connector
 [[quick-start]]
 == Quick Start (using Kafka Connect)
+
+Deploy a basic instance of the MongoDB sink connector for testing.
 
 .Prerequisites
 
@@ -228,7 +219,7 @@ Example: `mongodb://localhost:27017/?replicaSet=my-replica-set`
 Specify one of the following values:
 
 `io.debezium.sink.naming.DefaultCollectionNamingStrategy`::
-The connector takes the table name directly from the topic name, replacing dot characters in the source topic with underscores.
+The connector takes the table name directly from the topic name, replacing dot (period) characters in the name of the source topic with underscores.
 
 Custom implementation::
 You can provide your own `CollectionNameStrategy` implementation.
@@ -244,10 +235,10 @@ You can provide your own `CollectionNameStrategy` implementation.
 Specify one of the following values:
 
 `io.debezium.sink.naming.DefaultColumnNamingStrategy`::
-Uses the original field name as the column name.
+Use the original field name as the column name.
 
 Custom implementation::
-You can provide your own `CollectionNameStrategy` implementation.
+Specify a custom `CollectionNameStrategy` implementation.
 
 |===
 
@@ -283,6 +274,8 @@ If you include this property in the configuration, do not set the `field.include
 [[mongodb-sink-examples]]
 == Example configuration
 
+The following example shows how you might configure the connector to read change events from three specific topics from the `dbserver1.inventory` database to modify a collection in the MongoDB sink database named `debezium`.
+
 [source,json,indent=0,subs="+attributes"]
 ----
 
@@ -312,6 +305,8 @@ This release of the connector does not expose any metrics.
 // ModuleID: key-field-mapping-of-debezium-mongodb-sink-connector
 [[mongodb-sink-key-field-mapping]]
 == Key field mapping
+
+When the connector processes events, it maps data to specific fields in the target MongoDB document.
 
 * Keys from {prodname} change events, such as Kafka message keys, are mapped to the MongoDB `_id` field by default.
 * Values are mapped into MongoDB documents.
