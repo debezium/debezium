@@ -15,10 +15,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
-import org.apache.kafka.common.utils.ThreadUtils;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
@@ -49,16 +47,17 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
     private final MongoClient mongoClient;
     private final ErrorReporter errorReporter;
     private final ConnectorContext connectorContext;
-    private final ExecutorService executor = Executors.newFixedThreadPool(1, ThreadUtils.createThreadFactory(this.getClass().getSimpleName() + "-%d", false));
+    private final ExecutorService executor;
 
     MongoDbChangeEventSink(
                            final MongoDbSinkConnectorConfig sinkConfig,
                            final MongoClient mongoClient,
-                           final ErrorReporter errorReporter, ConnectorContext connectorContext) {
+                           final ErrorReporter errorReporter, ConnectorContext connectorContext, ExecutorService executor) {
         this.sinkConfig = sinkConfig;
         this.mongoClient = mongoClient;
         this.errorReporter = errorReporter;
         this.connectorContext = connectorContext;
+        this.executor = executor;
     }
 
     @SuppressWarnings("try")

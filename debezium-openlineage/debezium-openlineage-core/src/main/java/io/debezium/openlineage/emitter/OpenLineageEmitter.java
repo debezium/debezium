@@ -122,6 +122,11 @@ public class OpenLineageEmitter implements LineageEmitter {
 
     }
 
+    @Override
+    public void close() {
+        emitter.close();
+    }
+
     private void addStackTrace(Throwable t, OpenLineage.RunFacetsBuilder runFacetsBuilder) {
         if (t != null) {
             StringWriter sw = new StringWriter();

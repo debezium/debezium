@@ -19,4 +19,6 @@ public interface LineageEmitter {
     void emit(DebeziumTaskState state, List<DatasetMetadata> datasetMetadata);
 
     void emit(DebeziumTaskState state, List<DatasetMetadata> datasetMetadata, Throwable t);
+
+    void close();
 }
