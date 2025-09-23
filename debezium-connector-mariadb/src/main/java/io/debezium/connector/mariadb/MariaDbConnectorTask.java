@@ -140,7 +140,7 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
         }
 
         // Validate guardrail limits for captured tables to prevent loading excessive table schemas into memory
-        if (connectorConfig.getGuardrailTablesMax() <= 0) {
+        if (connectorConfig.getGuardrailCollectionsMax() <= 0) {
             LOGGER.info("Guardrail validation skipped");
         }
         else {
