@@ -117,7 +117,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         final SnapshotterService snapshotterService = connectorConfig.getServiceRegistry().tryGetService(SnapshotterService.class);
 
         // Validate guardrail limits for captured tables to prevent loading excessive table schemas into memory
-        if (connectorConfig.getGuardrailTablesMax() <= 0) {
+        if (connectorConfig.getGuardrailCollectionsMax() <= 0) {
             LOGGER.info("Guardrail validation skipped");
         }
         else {

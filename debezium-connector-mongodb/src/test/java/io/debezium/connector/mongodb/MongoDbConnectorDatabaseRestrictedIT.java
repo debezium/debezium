@@ -186,7 +186,7 @@ public class MongoDbConnectorDatabaseRestrictedIT extends AbstractAsyncEngineCon
         // Use the DB configuration to define the connector's configuration ...
         var config = connectorConfiguration(TEST_DISALLOWED_USER, TEST_DISALLOWED_PWD);
         // Set the guardrail to 1 collection, which should enforce the guardrail validation check
-        config = Configuration.create().with(config).with(CommonConnectorConfig.GUARDRAIL_TABLES_MAX, 1).build();
+        config = Configuration.create().with(config).with(CommonConnectorConfig.GUARDRAIL_COLLECTIONS_MAX, 1).build();
 
         // Start the connector ...
         start(MongoDbConnector.class, config);
