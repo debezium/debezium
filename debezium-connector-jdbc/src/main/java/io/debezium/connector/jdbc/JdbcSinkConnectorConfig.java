@@ -312,11 +312,7 @@ public class JdbcSinkConnectorConfig implements SinkConnectorConfig {
         /**
          * Events that create or change data are treated using standard SQL update semantics.
          */
-        UPDATE("update"),
-        /**
-         * Events that create or change data are treated using MERGE INTO update semantics.
-         */
-        MERGE_INTO("merge_into");
+        UPDATE("update");
 
         private final String mode;
 

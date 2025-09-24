@@ -13,8 +13,6 @@ import java.sql.SQLException;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.apache.kafka.connect.data.Schema;
 import org.hibernate.SessionFactory;
@@ -101,84 +99,55 @@ public class PostgresDatabaseDialect extends GeneralDatabaseDialect {
     @Override
     public String getUpsertStatement(TableDescriptor table, JdbcSinkRecord record) {
         final SqlStatementBuilder builder = new SqlStatementBuilder();
-        builder.append("INSERT INTO ");
-        builder.append(getQualifiedTableName(table.getId()));
-        builder.append(" (");
-        builder.appendLists(",", record.keyFieldNames(), record.nonKeyFieldNames(), (name) -> columnNameFromField(name, record));
-        builder.append(") VALUES (");
-        builder.appendLists(",", record.keyFieldNames(), record.nonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
-        builder.append(") ON CONFLICT (");
-        builder.appendList(",", record.keyFieldNames(), (name) -> columnNameFromField(name, record));
-        if (record.nonKeyFieldNames().isEmpty()) {
-            builder.append(") DO NOTHING");
+        if (getDatabaseVersion().isSameOrAfter(15)) {
+            builder.append("MERGE INTO ");
+            builder.append(getQualifiedTableName(table.getId()));
+            builder.append(" AS TARGET USING (SELECT ");
+            builder.appendLists(", ", record.keyFieldNames(), record.nonKeyFieldNames(),
+                    (name) -> columnNameFromField(name, columnQueryBindingFromField(name, table, record) + " AS ", record));
+            builder.append(") AS INCOMING ON (");
+            builder.appendList(" AND ", record.keyFieldNames(), (name) -> {
+                final String columnName = columnNameFromField(name, record);
+                return "TARGET." + columnName + "=INCOMING." + columnName;
+            });
+            builder.append(")");
+
+            if (!record.nonKeyFieldNames().isEmpty()) {
+                builder.append(" WHEN MATCHED THEN UPDATE SET ");
+                builder.appendList(",", record.nonKeyFieldNames(), (name) -> {
+                    final String columnName = columnNameFromField(name, record);
+                    return columnName + "=INCOMING." + columnName;
+                });
+            }
+
+            builder.append(" WHEN NOT MATCHED THEN INSERT (");
+            builder.appendLists(", ", record.nonKeyFieldNames(), record.keyFieldNames(), (name) -> columnNameFromField(name, record));
+            builder.append(") VALUES (");
+            builder.appendLists(",", record.nonKeyFieldNames(), record.keyFieldNames(), (name) -> columnNameFromField(name, "INCOMING.", record));
+            builder.append(")");
         }
         else {
-            builder.append(") DO UPDATE SET ");
-            builder.appendList(",", record.nonKeyFieldNames(), (name) -> {
-                final String columnNme = columnNameFromField(name, record);
-                return columnNme + "=EXCLUDED." + columnNme;
-            });
+            builder.append("INSERT INTO ");
+            builder.append(getQualifiedTableName(table.getId()));
+            builder.append(" (");
+            builder.appendLists(",", record.keyFieldNames(), record.nonKeyFieldNames(), (name) -> columnNameFromField(name, record));
+            builder.append(") VALUES (");
+            builder.appendLists(",", record.keyFieldNames(), record.nonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
+            builder.append(") ON CONFLICT (");
+            builder.appendList(",", record.keyFieldNames(), (name) -> columnNameFromField(name, record));
+            if (record.nonKeyFieldNames().isEmpty()) {
+                builder.append(") DO NOTHING");
+            }
+            else {
+                builder.append(") DO UPDATE SET ");
+                builder.appendList(",", record.nonKeyFieldNames(), (name) -> {
+                    final String columnNme = columnNameFromField(name, record);
+                    return columnNme + "=EXCLUDED." + columnNme;
+                });
+            }
         }
+
         return builder.build();
-    }
-
-    public String getMergeIntoStatement(TableDescriptor table, JdbcSinkRecord record) {
-        final SqlStatementBuilder builder = new SqlStatementBuilder();
-        builder.append("WITH __source as (SELECT * FROM (VALUES (");
-        builder.appendLists(",", Stream.concat(record.keyFieldNames().stream(), record.keyFieldNames().stream()).collect(Collectors.toList()),
-                record.nonKeyFieldNames(), (name) -> columnQueryBindingFromField(name, table, record));
-        builder.append(") ) as source ( ");
-        builder.appendList(", ", record.keyFieldNames(), (name) -> columnNameFromField(name, "before_", record));
-        builder.append(", ");
-        builder.appendList(", ", record.keyFieldNames(), (name) -> columnNameFromField(name, record));
-        if (!record.nonKeyFieldNames().isEmpty()) {
-            builder.append(", ");
-            builder.appendList(", ", record.nonKeyFieldNames(), (name) -> columnNameFromField(name, record));
-        }
-        builder.append(")) ");
-        builder.append(", __source_with_count as (SELECT COUNT(*) as __row_count_to_be_merged FROM ");
-        builder.append(getQualifiedTableName(table.getId()));
-        builder.append(" target JOIN __source source ON ((");
-        builder.appendList(" AND ", record.keyFieldNames(),
-                (name) -> columnNameFromField(name, "source.before_", record) + " = " + columnNameFromField(name, "target.", record));
-        builder.append(") OR (");
-        builder.appendList(" AND ", record.keyFieldNames(),
-                (name) -> columnNameFromField(name, "source.", record) + " = " + columnNameFromField(name, "target.", record));
-        builder.append(")) ) ");
-        builder.append(", __to_be_merged as (SELECT * FROM __source, __source_with_count) ");
-        builder.append("MERGE INTO ");
-        builder.append(getQualifiedTableName(table.getId()));
-        builder.append(" target USING __to_be_merged source ON ((");
-        builder.appendList(" AND ", record.keyFieldNames(),
-                (name) -> columnNameFromField(name, "source.before_", record) + " = " + columnNameFromField(name, "target.", record));
-        builder.append(") OR (");
-        builder.appendList(" AND ", record.keyFieldNames(),
-                (name) -> columnNameFromField(name, "source.", record) + " = " + columnNameFromField(name, "target.", record));
-        builder.append(")) ");
-        builder.append("WHEN MATCHED AND (source.__row_count_to_be_merged = 2 AND (");
-        builder.appendList(" AND ", record.keyFieldNames(),
-                (name) -> columnNameFromField(name, "source.before_", record) + " = " + columnNameFromField(name, "target.", record));
-
-        builder.append(")) THEN DELETE ");
-        builder.append("WHEN MATCHED THEN UPDATE SET ");
-        builder.appendList(", ", record.keyFieldNames(),
-                (name) -> columnNameFromField(name, record) + " = " + columnNameFromField(name, "source.", record));
-        if (!record.nonKeyFieldNames().isEmpty()) {
-            builder.append(", ");
-            builder.appendList(", ", record.nonKeyFieldNames(),
-                    (name) -> columnNameFromField(name, record) + " = " + columnNameFromField(name, "source.", record));
-        }
-        builder.append(" WHEN NOT MATCHED THEN INSERT (");
-        builder.appendLists(", ", record.keyFieldNames(), record.nonKeyFieldNames(), (name) -> columnNameFromField(name, record));
-        builder.append(") VALUES (");
-        builder.appendList(", ", record.keyFieldNames(), (name) -> columnNameFromField(name, "source.", record));
-        if (!record.nonKeyFieldNames().isEmpty()) {
-            builder.append(", ");
-            builder.appendList(", ", record.nonKeyFieldNames(), (name) -> columnNameFromField(name, "source.", record));
-        }
-        builder.append(")");
-        return builder.build();
-
     }
 
     @Override

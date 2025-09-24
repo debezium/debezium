@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.connector.jdbc.dialect.DatabaseDialect;
 import io.debezium.connector.jdbc.field.JdbcFieldDescriptor;
-import io.debezium.data.Envelope;
 import io.debezium.sink.valuebinding.ValueBindDescriptor;
 import io.debezium.util.Stopwatch;
 
@@ -117,32 +116,7 @@ public class RecordWriter {
                 index = bindNonKeyValuesToQuery(record, queryBinder, 1);
                 bindKeyValuesToQuery(record, queryBinder, index);
                 break;
-            case MERGE_INTO:
-                if (!record.isDebeziumMessage()) {
-                    throw new IllegalArgumentException("Cannot use merge into insert mode with non debezium record");
-                }
-                index = bindKeyFromBeforeValuesToQuery(record, queryBinder, 1);
-                index = bindKeyValuesToQuery(record, queryBinder, index);
-                bindNonKeyValuesToQuery(record, queryBinder, index);
-                break;
         }
-    }
-
-    private int bindKeyFromBeforeValuesToQuery(JdbcSinkRecord record, QueryBinder queryBinder, int i) {
-        for (String fieldName : record.keyFieldNames()) {
-            final JdbcFieldDescriptor field = record.jdbcFields().get(fieldName);
-            Struct source = ((Struct) record.value()).getStruct(Envelope.FieldName.BEFORE);
-            if (source == null) {
-                source = ((Struct) record.value()).getStruct(Envelope.FieldName.AFTER);
-            }
-            if (source == null) {
-                throw new IllegalArgumentException("Cannot bind key from before values for record without BEFORE or AFTER struct: " + record);
-            }
-            List<ValueBindDescriptor> boundValues = dialect.bindValue(field, i, source.get(fieldName));
-            boundValues.forEach(queryBinder::bind);
-            i += boundValues.size();
-        }
-        return i;
     }
 
     private int bindKeyValuesToQuery(JdbcSinkRecord record, QueryBinder query, int index) {

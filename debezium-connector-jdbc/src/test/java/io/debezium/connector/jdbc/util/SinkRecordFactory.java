@@ -366,10 +366,6 @@ public interface SinkRecordFactory {
     }
 
     default KafkaDebeziumSinkRecord updateRecord(String topicName) {
-        return updateRecord(topicName, (byte) 1, (byte) 1, "Jane Doe");
-    }
-
-    default KafkaDebeziumSinkRecord updateRecord(String topicName, byte keyBefore, byte keyAfter, String nameAfter) {
         return SinkRecordBuilder.update()
                 .flat(isFlattened())
                 .name("prefix")
@@ -377,11 +373,11 @@ public interface SinkRecordFactory {
                 .keySchema(basicKeySchema())
                 .recordSchema(basicRecordSchema())
                 .sourceSchema(basicSourceSchema())
-                .key("id", keyAfter)
-                .before("id", keyBefore)
+                .key("id", (byte) 1)
+                .before("id", (byte) 1)
                 .before("name", "John Doe")
-                .after("id", keyAfter)
-                .after("name", nameAfter)
+                .after("id", (byte) 1)
+                .after("name", "Jane Doe")
                 .after("nick_name_", "John Doe$")
                 .source("ts_ms", (int) Instant.now().getEpochSecond())
                 .build();

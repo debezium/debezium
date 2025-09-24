@@ -159,15 +159,6 @@ public interface DatabaseDialect {
     String getUpdateStatement(TableDescriptor table, JdbcSinkRecord record);
 
     /**
-     * Construct a {@code MERGE_INTO} statement specific for this dialect.
-     *
-     * @param table the current relational table model, should not be {@code null}
-     * @param record the current sink record being processed, should not be {@code null}
-     * @return the update SQL statement to be executed, never {@code null}
-     */
-    String getMergeIntoStatement(TableDescriptor table, JdbcSinkRecord record);
-
-    /**
      * Construct a {@code DELETE} statement specific for this dialect.
      *
      * @param table the current relational table model, should not be {@code null}
