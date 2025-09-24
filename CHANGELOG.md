@@ -2,6 +2,55 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.3.0.CR1
+September 24th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12467279)
+
+### New features since 3.3.0.Beta1
+
+* Make database exceptions retriable in JDBC sink connector [DBZ-7772](https://issues.redhat.com/browse/DBZ-7772)
+* Add Support for Multiple Oracle Log Miner Destinations by Precedence [DBZ-9041](https://issues.redhat.com/browse/DBZ-9041)
+* Upgrade to Kafka 4.1.0 [DBZ-9460](https://issues.redhat.com/browse/DBZ-9460)
+
+
+### Breaking changes since 3.3.0.Beta1
+
+* Offset position validation for Db2 is not reliable [DBZ-9470](https://issues.redhat.com/browse/DBZ-9470)
+* Update JDBC sink Hibernate dependency to 7.1.0.Final [DBZ-9481](https://issues.redhat.com/browse/DBZ-9481)
+
+
+### Fixes since 3.3.0.Beta1
+
+* Dropping in process batch transactions when shutting down [DBZ-8060](https://issues.redhat.com/browse/DBZ-8060)
+* A transaction mined across two queries can randomly cause unsupported operations [DBZ-8747](https://issues.redhat.com/browse/DBZ-8747)
+* Non-standard number format causing NumberFormatException [DBZ-9181](https://issues.redhat.com/browse/DBZ-9181)
+* Oracle connector reselect  exception handling (ORA-01555 + ORA-22924) [DBZ-9446](https://issues.redhat.com/browse/DBZ-9446)
+* In case of readonly usage the DBMS_LOGMNR.DICT_FROM_ONLINE_CATALOG should not be used [DBZ-9452](https://issues.redhat.com/browse/DBZ-9452)
+* Debezium server fails with CNFE [DBZ-9468](https://issues.redhat.com/browse/DBZ-9468)
+* OutOfMemory exception when recreating list of tables for snapshot callables [DBZ-9472](https://issues.redhat.com/browse/DBZ-9472)
+* Debezium Server  raise  "AttributeNotFoundException QueueTotalCapacity" with SqlServer source [DBZ-9477](https://issues.redhat.com/browse/DBZ-9477)
+* Getting "Unknown column in 'field list'" when column name contains backtick [DBZ-9479](https://issues.redhat.com/browse/DBZ-9479)
+* MySQL Event get header throws NullPointerException [DBZ-9483](https://issues.redhat.com/browse/DBZ-9483)
+
+
+### Other changes since 3.3.0.Beta1
+
+* Add unit tests to WalPositionLocator [DBZ-5978](https://issues.redhat.com/browse/DBZ-5978)
+* Add REST API to get retrieve the list of tables [DBZ-9317](https://issues.redhat.com/browse/DBZ-9317)
+* Source and Destination entities must be linked to the Connection entity [DBZ-9333](https://issues.redhat.com/browse/DBZ-9333)
+* Implement Kafka connection validator [DBZ-9334](https://issues.redhat.com/browse/DBZ-9334)
+* Unpin netty image pin [DBZ-9390](https://issues.redhat.com/browse/DBZ-9390)
+* Update JDBC sink connector doc to identify the data types that Debezium does not support [DBZ-9403](https://issues.redhat.com/browse/DBZ-9403)
+* Expose endpoint for get json schemas about connection [DBZ-9420](https://issues.redhat.com/browse/DBZ-9420)
+* Add missing destinations to Debezium Platform  [DBZ-9442](https://issues.redhat.com/browse/DBZ-9442)
+* Improve maven compiler config for Debezium Platform [DBZ-9453](https://issues.redhat.com/browse/DBZ-9453)
+* Zookeeperless kafka for DockerRhel executions [DBZ-9462](https://issues.redhat.com/browse/DBZ-9462)
+* Publish in Quarkus the extension for Postgres [DBZ-9478](https://issues.redhat.com/browse/DBZ-9478)
+* Update Mockito to 5.19.0 [DBZ-9480](https://issues.redhat.com/browse/DBZ-9480)
+* Update to AssertJ 3.27.5 [DBZ-9482](https://issues.redhat.com/browse/DBZ-9482)
+* Declate source/transforms in ServiceLoader manifests so it can be compatible with new plugin discovery mode  [DBZ-9493](https://issues.redhat.com/browse/DBZ-9493)
+
+
+
 ## 3.3.0.Beta1
 September 5th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12466490)
 
