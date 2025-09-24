@@ -14,7 +14,6 @@ import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.INPUT;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
 
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
@@ -39,7 +38,6 @@ import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.openlineage.dataset.DatasetDataExtractor;
 import io.debezium.openlineage.dataset.DatasetMetadata;
 import io.debezium.sink.DebeziumSinkRecord;
-import io.debezium.util.Threads;
 
 public class MongoDbSinkConnectorTask extends SinkTask {
     static final Logger LOGGER = LoggerFactory.getLogger(MongoDbSinkConnectorTask.class);
@@ -47,7 +45,6 @@ public class MongoDbSinkConnectorTask extends SinkTask {
     private MongoDbChangeEventSink mongoSink;
     private ConnectorContext connectorContext;
     private DatasetDataExtractor datasetDataExtractor;
-    private ExecutorService executor;
 
     @Override
     public String version() {
@@ -70,8 +67,6 @@ public class MongoDbSinkConnectorTask extends SinkTask {
             MongoDbConnectionContext connectionContext = new MongoDbConnectionContext(config);
             client = connectionContext.getMongoClient();
 
-            this.executor = Threads.newFixedThreadPool(this.getClass(), sinkConfig.getConnectorName(), "openlineage", 2);
-
             datasetDataExtractor = new DatasetDataExtractor();
             String connectorName = props.get(CONNECTOR_NAME_PROPERTY);
             String taskId = props.getOrDefault(TASK_ID_PROPERTY_NAME, "0");
@@ -79,7 +74,7 @@ public class MongoDbSinkConnectorTask extends SinkTask {
             DebeziumOpenLineageEmitter.init(connectorContext);
 
             DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.INITIAL);
-            mongoSink = new MongoDbChangeEventSink(sinkConfig, client, createErrorReporter(), connectorContext, executor);
+            mongoSink = new MongoDbChangeEventSink(sinkConfig, client, createErrorReporter(), connectorContext);
         }
         catch (RuntimeException taskStartingException) {
             // noinspection EmptyTryBlock
@@ -112,8 +107,8 @@ public class MongoDbSinkConnectorTask extends SinkTask {
     @Override
     public void put(final Collection<SinkRecord> records) {
         try {
-            executor.submit(() -> records.forEach(record -> DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING,
-                    List.of(new DatasetMetadata(record.topic(), INPUT, STREAM_DATASET_TYPE, KAFKA, datasetDataExtractor.extract(record))))));
+            records.forEach(record -> DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING,
+                    List.of(new DatasetMetadata(record.topic(), INPUT, STREAM_DATASET_TYPE, KAFKA, datasetDataExtractor.extract(record)))));
             mongoSink.execute(records);
         }
         catch (Exception e) {
@@ -148,7 +143,6 @@ public class MongoDbSinkConnectorTask extends SinkTask {
             mongoSink.close();
             DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.STOPPED);
             DebeziumOpenLineageEmitter.cleanup(connectorContext);
-            executor.shutdown();
         }
     }
 

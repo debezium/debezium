@@ -20,7 +20,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
 
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.errors.DataException;
@@ -67,10 +66,8 @@ public class JdbcChangeEventSink implements ChangeEventSink {
     private final Duration flushRetryDelay;
     private final ConnectorContext connectorContext;
 
-    private final ExecutorService executor;
-
     public JdbcChangeEventSink(JdbcSinkConnectorConfig config, StatelessSession session, DatabaseDialect dialect, RecordWriter recordWriter,
-                               ConnectorContext connectorContext, ExecutorService executor) {
+                               ConnectorContext connectorContext) {
         this.config = config;
         this.dialect = dialect;
         this.session = session;
@@ -78,7 +75,6 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         this.flushMaxRetries = config.getFlushMaxRetries();
         this.flushRetryDelay = Duration.of(config.getFlushRetryDelayMs(), ChronoUnit.MILLIS);
         this.connectorContext = connectorContext;
-        this.executor = executor;
 
         final DatabaseVersion version = this.dialect.getVersion();
         LOGGER.info("Database version {}.{}.{}", version.getMajor(), version.getMinor(), version.getMicro());
@@ -261,7 +257,7 @@ public class JdbcChangeEventSink implements ChangeEventSink {
             recordWriter.write(toFlush, sqlStatement);
             flushBufferStopwatch.stop();
 
-            executor.submit(() -> DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING, List.of(extractDatasetMetadata(table))));
+            DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING, List.of(extractDatasetMetadata(table)));
 
             LOGGER.trace("[PERF] Flush buffer execution time {}", flushBufferStopwatch.durations());
             LOGGER.trace("[PERF] Table changes execution time {}", tableChangesStopwatch.durations());
@@ -290,7 +286,6 @@ public class JdbcChangeEventSink implements ChangeEventSink {
         else {
             LOGGER.info("Session already closed.");
         }
-        executor.shutdown();
     }
 
     private TableDescriptor checkAndApplyTableChangesIfNeeded(CollectionId collectionId, JdbcSinkRecord record) throws SQLException {
