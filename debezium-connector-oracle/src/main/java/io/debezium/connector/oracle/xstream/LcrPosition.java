@@ -30,12 +30,14 @@ public class LcrPosition implements Comparable<LcrPosition> {
     private final byte[] rawPosition;
     private final String stringFromat;
     private final Scn scn;
+    private final Scn commitScn;
 
     public LcrPosition(byte[] rawPosition) {
         this.rawPosition = rawPosition;
         this.stringFromat = HexConverter.convertToHexString(rawPosition);
         try {
             scn = new Scn(XStreamUtility.getSCNFromPosition(rawPosition).bigIntegerValue());
+            commitScn = new Scn(XStreamUtility.getCommitSCNFromPosition(rawPosition).bigIntegerValue());
         }
         catch (SQLException | StreamsException e) {
             throw new RuntimeException(e);
@@ -56,6 +58,10 @@ public class LcrPosition implements Comparable<LcrPosition> {
 
     public Scn getScn() {
         return scn;
+    }
+
+    public Scn getCommitScn() {
+        return commitScn;
     }
 
     @Override

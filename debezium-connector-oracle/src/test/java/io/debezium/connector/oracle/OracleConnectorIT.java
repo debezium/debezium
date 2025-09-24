@@ -6190,4 +6190,43 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             TestHelper.dropTable(connection, "debezium.customer2");
         }
     }
+
+    @Test
+    @FixFor("DBZ-9497")
+    @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.OLR, reason = "OLR does not populate this field")
+    public void shouldSetCommitScnInSourceInformationBlock() throws Exception {
+        TestHelper.dropTable(connection, "dbz9497");
+        try {
+            connection.execute("CREATE TABLE dbz9497 (id numeric(9,0) primary key, data varchar2(50))");
+            TestHelper.streamTable(connection, "dbz9497");
+
+            // Configure with guardrail limit of 10 tables
+            Configuration config = TestHelper.defaultConfig()
+                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ9497")
+                    .build();
+
+            // The connector should start successfully
+            start(OracleConnector.class, config);
+            assertConnectorIsRunning();
+
+            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+            connection.execute("INSERT INTO dbz9497 values (1, 'test')");
+
+            // Consume all records to ensure the connector is working
+            SourceRecords records = consumeRecordsByTopic(1);
+            assertThat(records).isNotNull();
+            assertThat(records.topics()).hasSize(1);
+
+            final List<SourceRecord> tableRecords = records.recordsForTopic("server1.DEBEZIUM.DBZ9497");
+            final Struct source = ((Struct) tableRecords.get(0).value()).getStruct(Envelope.FieldName.SOURCE);
+            assertThat(source.get("commit_scn")).isNotNull();
+
+            stopConnector();
+        }
+        finally {
+            TestHelper.dropTable(connection, "dbz9497");
+        }
+    }
 }
