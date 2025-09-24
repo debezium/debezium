@@ -32,6 +32,7 @@ import io.debezium.connector.binlog.util.TestHelper;
 import io.debezium.connector.binlog.util.UniqueDatabase;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.junit.logging.LogInterceptor;
+import io.debezium.kafka.KafkaClusterUtils;
 import io.debezium.pipeline.signal.actions.snapshotting.ExecuteSnapshot;
 import io.debezium.pipeline.signal.channels.KafkaSignalChannel;
 import io.strimzi.test.container.StrimziKafkaCluster;
@@ -101,9 +102,10 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
 
     @Test
     public void givenOffsetCommitDisabledAndASignalSentWithConnectorRunning_whenConnectorComesBackUp_thenAllSignalsAreCorrectlyProcessed()
-            throws ExecutionException, InterruptedException {
+            throws Exception {
 
         final String signalTopic = "signals_topic-1";
+        KafkaClusterUtils.createTopic(signalTopic, 1, (short) 1, kafkaCluster.getBootstrapServers());
         final LogInterceptor logInterceptor = new LogInterceptor(ExecuteSnapshot.class);
         startConnector(x -> x.with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
                 .with(KafkaSignalChannel.SIGNAL_TOPIC, signalTopic)
@@ -120,9 +122,10 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
 
     @Test
     public void givenOffsetCommitEnabledAndASignalSentWithConnectorRunning_whenConnectorComesBackUp_thenAllSignalsAreCorrectlyProcessed()
-            throws ExecutionException, InterruptedException {
+            throws Exception {
 
         final String signalTopic = "signals_topic-3";
+        KafkaClusterUtils.createTopic(signalTopic, 1, (short) 1, kafkaCluster.getBootstrapServers());
         final LogInterceptor logInterceptor = new LogInterceptor(ExecuteSnapshot.class);
         startConnector(x -> x.with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
                 .with(KafkaSignalChannel.SIGNAL_TOPIC, signalTopic)
@@ -136,9 +139,10 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
 
     @Test
     public void givenOffsetCommitEnabledAndMultipleSignalsSentWithConnectorRunning_whenConnectorComesBackUp_thenAllSignalsAreCorrectlyProcessed()
-            throws ExecutionException, InterruptedException {
+            throws Exception {
 
         final String signalTopic = "signals_topic-4";
+        KafkaClusterUtils.createTopic(signalTopic, 1, (short) 1, kafkaCluster.getBootstrapServers());
         final LogInterceptor logInterceptor = new LogInterceptor(ExecuteSnapshot.class);
         sendExecuteSnapshotKafkaSignal("b", signalTopic);
         startConnector(x -> x.with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")
@@ -164,9 +168,10 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
 
     @Test
     public void givenOffsetCommitEnabledAndASignalSentWithConnectorNotRunning_whenConnectorComesBackUp_thenAllSignalsAreCorrectlyProcessed()
-            throws ExecutionException, InterruptedException {
+            throws Exception {
 
         final String signalTopic = "signals_topic-5";
+        KafkaClusterUtils.createTopic(signalTopic, 1, (short) 1, kafkaCluster.getBootstrapServers());
         final LogInterceptor logInterceptor = new LogInterceptor(ExecuteSnapshot.class);
         sendExecuteSnapshotKafkaSignal("b", signalTopic);
         startConnector(x -> x.with(CommonConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source,kafka")

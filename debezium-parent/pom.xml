@@ -226,6 +226,7 @@
                         <skipLongRunningTests>${skipLongRunningTests}</skipLongRunningTests>
                         <failFlakyTests>${failFlakyTests}</failFlakyTests>
                         <dbz.test.data.dir>${project.build.directory}/data</dbz.test.data.dir>
+                        <docker.host.address>${docker.host.address}</docker.host.address>
                     </systemPropertyVariables>
                     <argLine>-Djava.awt.headless=true ${debug.argline} ${modules.argline} ${mockito.argLine}</argLine>
                     <!--runOrder>alphabetical</runOrder-->
