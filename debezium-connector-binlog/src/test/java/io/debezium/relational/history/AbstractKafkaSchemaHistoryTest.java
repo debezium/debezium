@@ -427,7 +427,7 @@ public abstract class AbstractKafkaSchemaHistoryTest<P extends BinlogPartition, 
                 .with(KafkaSchemaHistory.TOPIC, "this-should-not-get-created")
                 .with(SchemaHistory.NAME, "my-db-history")
                 .with(KafkaSchemaHistory.KAFKA_QUERY_TIMEOUT_MS, 1)
-                .build();e
+                .build();
 
         history.configure(config, null, SchemaHistoryMetrics.NOOP, true);
         history.start();

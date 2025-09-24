@@ -16,7 +16,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.testcontainers.containers.JdbcDatabaseContainer;
-import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.output.FrameConsumerResultCallback;
 import org.testcontainers.containers.output.OutputFrame;
 import org.testcontainers.containers.output.WaitingConsumer;
@@ -29,6 +28,7 @@ import io.debezium.connector.jdbc.util.RandomTableNameGenerator;
 import io.debezium.testing.testcontainers.Connector;
 import io.debezium.testing.testcontainers.ConnectorConfiguration;
 import io.debezium.testing.testcontainers.DebeziumContainer;
+import io.strimzi.test.container.StrimziKafkaContainer;
 
 /**
  * A test parameter object that represents the source database and containers in a JDBC end-to-end test pipeline.
@@ -45,12 +45,12 @@ public class Source extends JdbcConnectionProvider {
 
     private final Integer id;
     private final SourceType type;
-    private final KafkaContainer kafka;
+    private final StrimziKafkaContainer kafka;
     private final DebeziumContainer connect;
     private final SourceConnectorOptions options;
     private final RandomTableNameGenerator tableNameGenerator;
 
-    public Source(SourceType type, JdbcDatabaseContainer<?> database, KafkaContainer kafka, DebeziumContainer connect,
+    public Source(SourceType type, JdbcDatabaseContainer<?> database, StrimziKafkaContainer kafka, DebeziumContainer connect,
                   SourceConnectorOptions options, RandomTableNameGenerator tableGenerator) {
         super(database, new SourceConnectionInitializer(type));
         this.type = type;
@@ -65,7 +65,7 @@ public class Source extends JdbcConnectionProvider {
         return type;
     }
 
-    public KafkaContainer getKafka() {
+    public StrimziKafkaContainer getKafka() {
         return kafka;
     }
 

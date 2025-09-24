@@ -57,7 +57,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
     @Before
     public void before() throws Exception {
         super.before();
-        KafkaClusterUtils.createTopic(getSignalsTopic(), 1, (short) 1, kafkaCluster.getBootstrapServers());
+        KafkaClusterUtils.createTopic(getSignalsTopic(), 1, (short) 1, kafka.getBootstrapServers());
     }
 
     @BeforeClass

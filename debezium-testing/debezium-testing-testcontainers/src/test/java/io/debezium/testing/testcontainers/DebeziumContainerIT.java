@@ -32,13 +32,14 @@ import org.junit.jupiter.api.Test;
 import org.rnorth.ducttape.unreliables.Unreliables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.lifecycle.Startables;
 
 import com.jayway.jsonpath.JsonPath;
+
+import io.strimzi.test.container.StrimziKafkaCluster;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -50,22 +51,29 @@ public class DebeziumContainerIT {
 
     private static final Network network = Network.newNetwork();
 
-    private static final KafkaContainer kafkaContainer = DebeziumKafkaContainer.defaultKRaftContainer(network);
+    private static StrimziKafkaCluster kafkaCluster;
 
     public static PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(ImageNames.POSTGRES_DOCKER_IMAGE_NAME)
             .withNetwork(network)
             .withNetworkAliases("postgres");
 
-    public static DebeziumContainer debeziumContainer = DebeziumContainer.nightly()
-            .withNetwork(network)
-            .withKafka(kafkaContainer)
-            .withLogConsumer(new Slf4jLogConsumer(LOGGER))
-            .dependsOn(kafkaContainer);
+    public static DebeziumContainer debeziumContainer;
 
     @BeforeAll
     public static void startContainers() {
+        kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(1)
+                .withSharedNetwork()
+                .build();
+        kafkaCluster.start();
+
+        debeziumContainer = DebeziumContainer.nightly()
+                .withNetwork(network)
+                .withKafka(network, kafkaCluster.getBootstrapServers())
+                .withLogConsumer(new Slf4jLogConsumer(LOGGER));
+
         Startables.deepStart(Stream.of(
-                kafkaContainer, postgresContainer, debeziumContainer)).join();
+                postgresContainer, debeziumContainer)).join();
     }
 
     @Test
@@ -90,7 +98,7 @@ public class DebeziumContainerIT {
     public void shouldRegisterPostgreSQLConnector() throws Exception {
         try (Connection connection = getConnection(postgresContainer);
                 Statement statement = connection.createStatement();
-                KafkaConsumer<String, String> consumer = getConsumer(kafkaContainer)) {
+                KafkaConsumer<String, String> consumer = getConsumer(kafkaCluster)) {
 
             statement.execute("create schema todo");
             statement.execute("create table todo.Todo (id int8 not null, title varchar(255), primary key (id))");
@@ -130,10 +138,10 @@ public class DebeziumContainerIT {
                 postgresContainer.getPassword());
     }
 
-    private KafkaConsumer<String, String> getConsumer(KafkaContainer kafkaContainer) {
+    private KafkaConsumer<String, String> getConsumer(StrimziKafkaCluster kafkaCluster) {
         return new KafkaConsumer<>(
                 Map.of(
-                        ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaContainer.getBootstrapServers(),
+                        ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaCluster.getBootstrapServers(),
                         ConsumerConfig.GROUP_ID_CONFIG, "tc-" + UUID.randomUUID(),
                         ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"),
                 new StringDeserializer(),
@@ -176,8 +184,8 @@ public class DebeziumContainerIT {
             if (postgresContainer != null) {
                 postgresContainer.stop();
             }
-            if (kafkaContainer != null) {
-                kafkaContainer.stop();
+            if (kafkaCluster != null) {
+                kafkaCluster.stop();
             }
             if (debeziumContainer != null) {
                 debeziumContainer.stop();

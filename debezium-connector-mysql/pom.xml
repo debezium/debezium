@@ -138,6 +138,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>io.strimzi</groupId>
+            <artifactId>strimzi-test-container</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>io.debezium</groupId>
             <artifactId>debezium-testing-testcontainers</artifactId>
             <scope>test</scope>
@@ -258,7 +263,7 @@
                                 </wait>
                             </run>
                             <build>
-                                <from>${mysql.server.image.source}:${version.mysql.server}</from>
+                                <from>${mysql.server.image.source}:${version.mysql.server}-aarch64</from>
                                 <runCmds>
                                     <run>${docker.initimage}</run>
                                 </runCmds>
@@ -317,7 +322,7 @@
                                 </wait>
                             </run>
                             <build>
-                                <from>${mysql.server.image.source}:${version.mysql.server}</from>
+                                <from>${mysql.server.image.source}:${version.mysql.server}-aarch64</from>
                                 <runCmds>
                                     <run>${docker.initimage}</run>
                                 </runCmds>
@@ -375,7 +380,7 @@
                                 </wait>
                             </run>
                             <build>
-                                <from>${mysql.server.image.source}:${version.mysql.server}</from>
+                                <from>${mysql.server.image.source}:${version.mysql.server}-aarch64</from>
                                 <runCmds>
                                     <run>${docker.initimage}</run>
                                 </runCmds>
@@ -433,7 +438,7 @@
                                 </wait>
                             </run>
                             <build>
-                                <from>${mysql.server.image.source}:${version.mysql.server}</from>
+                                <from>${mysql.server.image.source}:${version.mysql.server}-aarch64</from>
                                 <runCmds>
                                     <run>${docker.initimage}</run>
                                 </runCmds>
@@ -489,6 +494,12 @@
                             </run>
                             <build>
                                 <from>${percona.server.image.source}/percona-server:${version.mysql.percona.server}</from>
+                                <buildx>
+                                    <platforms>
+                                            <platform>linux/amd64</platform>
+                                            <platform>linux/arm64</platform>
+                                    </platforms>
+                                </buildx>
                                 <assembly>
                                     <inline>
                                         <fileSets>
