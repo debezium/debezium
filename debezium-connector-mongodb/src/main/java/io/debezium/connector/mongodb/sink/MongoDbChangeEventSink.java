@@ -14,7 +14,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
-import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -47,17 +46,15 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
     private final MongoClient mongoClient;
     private final ErrorReporter errorReporter;
     private final ConnectorContext connectorContext;
-    private final ExecutorService executor;
 
     MongoDbChangeEventSink(
                            final MongoDbSinkConnectorConfig sinkConfig,
                            final MongoClient mongoClient,
-                           final ErrorReporter errorReporter, ConnectorContext connectorContext, ExecutorService executor) {
+                           final ErrorReporter errorReporter, ConnectorContext connectorContext) {
         this.sinkConfig = sinkConfig;
         this.mongoClient = mongoClient;
         this.errorReporter = errorReporter;
         this.connectorContext = connectorContext;
-        this.executor = executor;
     }
 
     @SuppressWarnings("try")
@@ -107,9 +104,8 @@ final class MongoDbChangeEventSink implements ChangeEventSink, AutoCloseable {
 
         MongoNamespace namespace = batch.get(0).getNamespace();
 
-        executor.submit(
-                () -> DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING,
-                        List.of(extractDatasetMetadata(batch.get(0).getSinkDocument(), namespace.getFullName()))));
+        DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING,
+                List.of(extractDatasetMetadata(batch.get(0).getSinkDocument(), namespace.getFullName())));
 
         List<WriteModel<BsonDocument>> writeModels = batch.stream()
                 .map(MongoProcessedSinkRecordData::getWriteModel)

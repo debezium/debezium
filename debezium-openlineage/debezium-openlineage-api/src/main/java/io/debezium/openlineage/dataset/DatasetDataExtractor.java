@@ -15,6 +15,10 @@ public class DatasetDataExtractor {
 
     public <R extends ConnectRecord<R>> List<DatasetMetadata.FieldDefinition> extract(ConnectRecord<R> record) {
 
+        if (record.valueSchema() == null || record.valueSchema().type() != Schema.Type.STRUCT) {
+            return List.of();
+        }
+
         return record.valueSchema().fields().stream()
                 .map(this::buildFieldDefinition)
                 .toList();

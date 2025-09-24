@@ -18,7 +18,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -47,7 +46,6 @@ import io.debezium.openlineage.dataset.DatasetDataExtractor;
 import io.debezium.openlineage.dataset.DatasetMetadata;
 import io.debezium.util.Stopwatch;
 import io.debezium.util.Strings;
-import io.debezium.util.Threads;
 
 /**
  * The main task executing streaming from sink connector.
@@ -71,7 +69,6 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
     private final AtomicReference<State> state = new AtomicReference<>(State.STOPPED);
     private final ReentrantLock stateLock = new ReentrantLock();
-    private ExecutorService executor;
 
     private JdbcChangeEventSink changeEventSink;
     private final Set<TopicPartition> assignedPartitions = new HashSet<>();
@@ -110,7 +107,6 @@ public class JdbcSinkConnectorTask extends SinkTask {
         try {
 
             final JdbcSinkConnectorConfig config = new JdbcSinkConnectorConfig(props);
-            this.executor = Threads.newFixedThreadPool(this.getClass(), config.getConnectorName(), "openlineage", 2);
             datasetDataExtractor = new DatasetDataExtractor();
             String connectorName = props.get(ConfigurationNames.CONNECTOR_NAME_PROPERTY);
             String taskId = props.getOrDefault(TASK_ID_PROPERTY_NAME, "0");
@@ -135,7 +131,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
             QueryBinderResolver queryBinderResolver = new QueryBinderResolver();
             RecordWriter recordWriter = new RecordWriter(session, queryBinderResolver, config, databaseDialect);
 
-            changeEventSink = new JdbcChangeEventSink(config, session, databaseDialect, recordWriter, connectorContext, executor);
+            changeEventSink = new JdbcChangeEventSink(config, session, databaseDialect, recordWriter, connectorContext);
             DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING);
         }
         finally {
@@ -159,8 +155,8 @@ public class JdbcSinkConnectorTask extends SinkTask {
 
         LOGGER.debug("Received {} changes.", records.size());
 
-        executor.submit(() -> records.forEach(record -> DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING,
-                List.of(new DatasetMetadata(record.topic(), INPUT, STREAM_DATASET_TYPE, KAFKA, datasetDataExtractor.extract(record))))));
+        records.forEach(record -> DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.RUNNING,
+                List.of(new DatasetMetadata(record.topic(), INPUT, STREAM_DATASET_TYPE, KAFKA, datasetDataExtractor.extract(record)))));
 
         try {
             executeStopWatch.start();
@@ -240,8 +236,6 @@ public class JdbcSinkConnectorTask extends SinkTask {
                     else {
                         LOGGER.info("Session factory already closed");
                     }
-
-                    executor.shutdown();
                 }
                 catch (Exception e) {
                     LOGGER.error("Failed to gracefully close resources.", e);
