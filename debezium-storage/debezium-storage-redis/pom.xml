@@ -132,6 +132,34 @@
                 <plugins>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <version>${version.failsafe.plugin}</version>
+                        <configuration>
+                            <skipTests>${skipITs}</skipTests>
+                            <enableAssertions>true</enableAssertions>
+                            <systemPropertyVariables>
+                                <!-- Make these available to the tests via system properties -->
+                                <skipLongRunningTests>false</skipLongRunningTests>
+                            </systemPropertyVariables>
+                            <runOrder>${runOrder}</runOrder>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>integration-test-mysql</id>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>verify</id>
+                                <goals>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-assembly-plugin</artifactId>
                         <version>${version.assembly.plugin}</version>
                         <dependencies>
