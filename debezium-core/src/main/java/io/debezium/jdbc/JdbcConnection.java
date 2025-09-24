@@ -1236,6 +1236,12 @@ public class JdbcConnection implements AutoCloseable {
 
         if (totalTables == tableIds.size() || config.getBoolean(RelationalDatabaseConnectorConfig.SNAPSHOT_FULL_COLUMN_SCAN_FORCE)) {
             columnsByTable = getColumnsDetails(catalogName, schemaName, null, tableFilter, columnFilter, metadata, viewIds);
+            if (columnsByTable.isEmpty()) {
+                for (TableId emptyTableId : tableIds) {
+                    LOGGER.warn("Table {} has no column or all columns were excluded due to include/exclude lists.", emptyTableId);
+                    columnsByTable.put(emptyTableId, new ArrayList<>());
+                }
+            }
         }
         else {
             for (TableId includeTable : tableIds) {
