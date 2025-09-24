@@ -1,6 +1,6 @@
 services:
   redis-node-1:
-    image: redis:7.0-alpine
+    image: redis:8.2.1
     volumes:
       - redis-node-1-data:/data
     command: >
@@ -32,10 +32,10 @@ services:
       retries: 3
       start_period: 40s
     networks:
-      - study-network
+      - redis-cluster-network
 
   redis-node-2:
-    image: redis:7.0-alpine
+    image: redis:8.2.1
     volumes:
       - redis-node-2-data:/data
     command: >
@@ -59,7 +59,7 @@ services:
         condition: service_healthy
 
   redis-node-3:
-    image: redis:7.0-alpine
+    image: redis:8.2.1
     volumes:
       - redis-node-3-data:/data
     command: >
@@ -83,7 +83,7 @@ services:
         condition: service_healthy
 
   redis-cluster-init:
-    image: alpine:3.22
+    image: alpine:3.22.1
     container_name: redis-cluster-init
     command: >
       sh -c "
@@ -114,9 +114,9 @@ volumes:
     driver: local
 
 networks:
-  study-network:
+  redis-cluster-network:
     driver: bridge
-    name: study-network
+    name: redis-cluster-network
     ipam:
       config:
         - subnet: 172.20.0.0/16

@@ -69,7 +69,7 @@ class RedisOffsetBackingStoreIT {
     private int port;
 
     @BeforeAll
-    static void initCluster() throws InterruptedException {
+    static void initCluster() {
         try {
             redisCluster = new ComposeContainer(new File("src/test/resources/docker-compose-redis-cluster.yml"))
                     .withLocalCompose(true);
