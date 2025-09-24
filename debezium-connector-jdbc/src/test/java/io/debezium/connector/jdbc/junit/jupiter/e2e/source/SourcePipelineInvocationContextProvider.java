@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.JdbcDatabaseContainer;
-import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.MSSQLServerContainer;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.containers.Network;
@@ -59,7 +58,7 @@ import io.debezium.connector.jdbc.junit.jupiter.e2e.WithTemporalPrecisionMode;
 import io.debezium.connector.jdbc.util.RandomTableNameGenerator;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.testing.testcontainers.DebeziumContainer;
-import io.debezium.testing.testcontainers.DebeziumKafkaContainer;
+import io.strimzi.test.container.StrimziKafkaContainer;
 
 /**
  * The JDBC sink end to end pipeline context provider.
@@ -92,7 +91,7 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
     private static final Network network = Network.newNetwork();
 
     private final RandomTableNameGenerator tableNameGenerator;
-    private final KafkaContainer kafkaContainer;
+    private final StrimziKafkaContainer kafkaContainer;
     private final DebeziumContainer connectContainer;
     private final Map<SourceType, JdbcDatabaseContainer<?>> sourceContainers;
 
@@ -348,12 +347,12 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
     }
 
     @SuppressWarnings("resource")
-    private KafkaContainer getKafkaContainer() {
-        return DebeziumKafkaContainer.defaultKRaftContainer(network).withNetworkAliases("kafka");
+    private StrimziKafkaContainer getKafkaContainer() {
+        return new StrimziKafkaContainer().withNetwork(network).withNetworkAliases("kafka");
     }
 
     @SuppressWarnings("resource")
-    private DebeziumContainer getKafkaConnectContainer(KafkaContainer kafkaContainer) {
+    private DebeziumContainer getKafkaConnectContainer(StrimziKafkaContainer kafkaContainer) {
         return DebeziumContainer.nightly()
                 .withKafka(kafkaContainer)
                 .withNetwork(network)

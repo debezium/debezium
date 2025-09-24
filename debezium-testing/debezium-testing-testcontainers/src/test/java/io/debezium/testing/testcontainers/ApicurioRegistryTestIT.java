@@ -35,7 +35,6 @@ import org.junit.jupiter.api.Test;
 import org.rnorth.ducttape.unreliables.Unreliables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.output.OutputFrame;
@@ -45,6 +44,7 @@ import org.testcontainers.lifecycle.Startables;
 import com.jayway.jsonpath.JsonPath;
 
 import io.debezium.doc.FixFor;
+import io.strimzi.test.container.StrimziKafkaCluster;
 
 /**
  * An integration test verifying the Apicurio registry is interoperable with Debezium
@@ -59,11 +59,11 @@ public class ApicurioRegistryTestIT {
 
     private static final List<Pattern> logMatchers = Collections.synchronizedList(new ArrayList<>());
 
-    private static final Network network = Network.newNetwork();
+    private static final Network network = Network.SHARED;
 
     private static final ApicurioRegistryContainer apicurioContainer = new ApicurioRegistryContainer().withNetwork(network);
 
-    private static final KafkaContainer kafkaContainer = DebeziumKafkaContainer.defaultKRaftContainer(network);
+    private static StrimziKafkaCluster kafkaCluster;
 
     public static final PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>(ImageNames.POSTGRES_DOCKER_IMAGE_NAME)
             .withNetwork(network)
@@ -71,18 +71,25 @@ public class ApicurioRegistryTestIT {
 
     private static final String TROUBLE_MAKER_LOG = "Caused by: java.io.FileNotFoundException: TroubleMaker";
     private static final String INVALID_HEADER_NAME_LOG = "Caused by: java.lang.IllegalArgumentException: invalid header name: \"\"";
-    public static final DebeziumContainer debeziumContainer = DebeziumContainer.nightly()
-            .withNetwork(network)
-            .withKafka(kafkaContainer)
-            .withLogConsumer(new Slf4jLogConsumer(LOGGER))
-            .withLogConsumer(ApicurioRegistryTestIT::captureMatchingLog)
-            .enableApicurioConverters()
-            .dependsOn(kafkaContainer);
+    public static DebeziumContainer debeziumContainer;
 
     @BeforeAll
     public static void startContainers() {
+        kafkaCluster = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
+                .withNumberOfBrokers(1)
+                .withSharedNetwork()
+                .build();
+        kafkaCluster.start();
+
+        debeziumContainer = DebeziumContainer.nightly()
+                .withNetwork(network)
+                .withKafka(network, kafkaCluster.getBootstrapServers())
+                .withLogConsumer(new Slf4jLogConsumer(LOGGER))
+                .withLogConsumer(ApicurioRegistryTestIT::captureMatchingLog)
+                .enableApicurioConverters();
+
         Startables.deepStart(Stream.of(
-                apicurioContainer, kafkaContainer, postgresContainer, debeziumContainer)).join();
+                apicurioContainer, postgresContainer, debeziumContainer)).join();
     }
 
     @BeforeEach
@@ -95,7 +102,7 @@ public class ApicurioRegistryTestIT {
     public void shouldConvertToJson() throws Exception {
         try (Connection connection = getConnection(postgresContainer);
                 Statement statement = connection.createStatement();
-                KafkaConsumer<String, String> consumer = getConsumerString(kafkaContainer)) {
+                KafkaConsumer<String, String> consumer = getConsumerString(kafkaCluster)) {
 
             statement.execute("drop schema if exists todo cascade");
             statement.execute("create schema todo");
@@ -136,7 +143,7 @@ public class ApicurioRegistryTestIT {
     public void shouldConvertToAvro() throws Exception {
         try (Connection connection = getConnection(postgresContainer);
                 Statement statement = connection.createStatement();
-                KafkaConsumer<byte[], byte[]> consumer = getConsumerBytes(kafkaContainer)) {
+                KafkaConsumer<byte[], byte[]> consumer = getConsumerBytes(kafkaCluster)) {
 
             statement.execute("drop schema if exists todo cascade");
             statement.execute("create schema todo");
@@ -165,7 +172,7 @@ public class ApicurioRegistryTestIT {
     public void shouldConvertToCloudEventWithDataAsAvro() throws Exception {
         try (Connection connection = getConnection(postgresContainer);
                 Statement statement = connection.createStatement();
-                KafkaConsumer<String, String> consumer = getConsumerString(kafkaContainer)) {
+                KafkaConsumer<String, String> consumer = getConsumerString(kafkaCluster)) {
 
             statement.execute("drop schema if exists todo cascade");
             statement.execute("create schema todo");
@@ -243,20 +250,20 @@ public class ApicurioRegistryTestIT {
                 postgresContainer.getPassword());
     }
 
-    private KafkaConsumer<String, String> getConsumerString(KafkaContainer kafkaContainer) {
+    private KafkaConsumer<String, String> getConsumerString(StrimziKafkaCluster kafkaCluster) {
         return new KafkaConsumer<>(
                 Map.of(
-                        ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaContainer.getBootstrapServers(),
+                        ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaCluster.getBootstrapServers(),
                         ConsumerConfig.GROUP_ID_CONFIG, "tc-" + UUID.randomUUID(),
                         ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"),
                 new StringDeserializer(),
                 new StringDeserializer());
     }
 
-    private KafkaConsumer<byte[], byte[]> getConsumerBytes(KafkaContainer kafkaContainer) {
+    private KafkaConsumer<byte[], byte[]> getConsumerBytes(StrimziKafkaCluster kafkaCluster) {
         return new KafkaConsumer<>(
                 Map.of(
-                        ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaContainer.getBootstrapServers(),
+                        ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaCluster.getBootstrapServers(),
                         ConsumerConfig.GROUP_ID_CONFIG, "tc-" + UUID.randomUUID(),
                         ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"),
                 new ByteArrayDeserializer(),
@@ -326,8 +333,8 @@ public class ApicurioRegistryTestIT {
             if (apicurioContainer != null) {
                 apicurioContainer.stop();
             }
-            if (kafkaContainer != null) {
-                kafkaContainer.stop();
+            if (kafkaCluster != null) {
+                kafkaCluster.stop();
             }
             if (debeziumContainer != null) {
                 debeziumContainer.stop();
