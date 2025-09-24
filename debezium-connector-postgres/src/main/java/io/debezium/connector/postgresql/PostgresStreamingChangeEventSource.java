@@ -14,6 +14,7 @@ import java.util.OptionalLong;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -74,6 +75,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     private final SnapshotterService snapshotterService;
     private final DelayStrategy pauseNoMessage;
     private final ElapsedTimeStrategy connectionProbeTimer;
+    private final ExecutorService lsnFlushExecutor;
 
     // Offset committing is an asynchronous operation.
     // When connector is restarted we cannot be sure about timing of recovery, offset committing etc.
@@ -84,6 +86,9 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     // Offset commit is executed in a different thread.
     // In case of failure we are going to terminate the processing gracefully from the current thread.
     private volatile boolean commitOffsetFailure = false;
+
+    // Flag to indicate that the connector is closing to prevent new LSN flush operations
+    private volatile boolean isClosing = false;
 
     /**
      * The minimum of (number of event received since the last event sent to Kafka,
@@ -107,7 +112,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         this.snapshotterService = snapshotterService;
         this.replicationConnection = replicationConnection;
         this.connectionProbeTimer = ElapsedTimeStrategy.constant(Clock.system(), connectorConfig.statusUpdateInterval());
-
+        this.lsnFlushExecutor = Threads.newSingleThreadExecutor(PostgresStreamingChangeEventSource.class, connectorConfig.getLogicalName(), "lsn-flush");
     }
 
     @Override
@@ -129,6 +134,12 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
     @Override
     public void close() {
+        isClosing = true;
+
+        if (lsnFlushExecutor != null && !lsnFlushExecutor.isShutdown()) {
+            shutdownLsnFlushExecutorGracefully();
+        }
+
         if (connection != null) {
             connection.close();
         }
@@ -457,46 +468,46 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 LOGGER.debug("Flushing LSN to server: {}", lsn);
             }
             // tell the server the point up to which we've processed data, so it can be free to recycle WAL segments
-            ExecutorService executor = Threads.newSingleThreadExecutor(PostgresStreamingChangeEventSource.class,
-                    connectorConfig.getLogicalName(), "lsn-flush");
-            Future<Void> future = executor.submit(() -> {
-                try {
-                    replicationStream.flushLsn(lsn);
-                    return null;
-                }
-                catch (SQLException e) {
-                    commitOffsetFailure = true;
-                    cleanUpStreamingOnStop(null);
-                    throw new ConnectException(e);
-                }
-            });
+            Future<Void> future = null;
             try {
+                future = lsnFlushExecutor.submit(() -> {
+                    try {
+                        replicationStream.flushLsn(lsn);
+                        return null;
+                    }
+                    catch (SQLException e) {
+                        commitOffsetFailure = true;
+                        cleanUpStreamingOnStop(null);
+                        throw new ConnectException(e);
+                    }
+                });
+
                 future.get(connectorConfig.lsnFlushTimeout().toMillis(), TimeUnit.MILLISECONDS);
             }
             catch (TimeoutException e) {
                 future.cancel(true);
-                shutdownExecutorGracefully(executor);
                 // Handle the timeout according to configuration
                 handleTimeout(lsn);
             }
             catch (InterruptedException e) {
                 future.cancel(true);
-                shutdownExecutorGracefully(executor);
                 Thread.currentThread().interrupt();
                 LOGGER.warn("LSN flush operation for '{}' was interrupted. Continuing without waiting for flush completion.", lsn);
             }
             catch (ExecutionException e) {
-                shutdownExecutorGracefully(executor);
                 Throwable cause = e.getCause();
                 if (cause instanceof ConnectException) {
                     throw (ConnectException) cause;
                 }
                 throw new ConnectException("LSN flush operation failed", cause);
             }
-            finally {
-                // Ensure executor is always shut down
-                if (!executor.isShutdown()) {
-                    shutdownExecutorGracefully(executor);
+            catch (RejectedExecutionException e) {
+                if (isClosing) {
+                    LOGGER.debug("LSN flush rejected due to connector shutdown, ignoring");
+                }
+                else {
+                    LOGGER.error("LSN flush operation was rejected by executor");
+                    throw new ConnectException("LSN flush operation rejected by executor", e);
                 }
             }
         }
@@ -535,21 +546,20 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     }
 
     /**
-     * Gracefully shuts down an executor service.
-     *
-     * @param executor the executor to shut down
+     * Gracefully shuts downs lsnFlushExecutor.
      */
-    private void shutdownExecutorGracefully(ExecutorService executor) {
+    private void shutdownLsnFlushExecutorGracefully() {
         try {
-            executor.shutdown();
-            if (!executor.awaitTermination(1, TimeUnit.SECONDS)) {
-                LOGGER.warn("Executor did not terminate gracefully within 1 second, forcing shutdown");
-                executor.shutdownNow();
+            lsnFlushExecutor.shutdown();
+            long timeoutSeconds = connectorConfig.lsnFlushTimeout().toSeconds();
+            if (!lsnFlushExecutor.awaitTermination(timeoutSeconds, TimeUnit.SECONDS)) {
+                LOGGER.warn("Lsn flush executor did not terminate gracefully within {} second, forcing shutdown", timeoutSeconds);
+                lsnFlushExecutor.shutdownNow();
             }
         }
         catch (InterruptedException e) {
-            LOGGER.warn("Interrupted while shutting down executor, forcing shutdown");
-            executor.shutdownNow();
+            LOGGER.warn("Interrupted while shutting down lsn flush executor, forcing shutdown");
+            lsnFlushExecutor.shutdownNow();
             Thread.currentThread().interrupt();
         }
     }
