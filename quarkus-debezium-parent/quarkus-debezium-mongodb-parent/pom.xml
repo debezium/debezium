@@ -8,6 +8,7 @@
         <version>3.3.0-SNAPSHOT</version>
     </parent>
 
+    <name>Quarkus Debezium :: Extension :: MongoDB :: Build Aggregator</name>
     <artifactId>quarkus-debezium-mongodb-parent</artifactId>
     <packaging>pom</packaging>
 
@@ -17,5 +18,34 @@
         <module>integration-test</module>
     </modules>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>quarkus-debezium-mongodb</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>quarkus-debezium-mongodb-deployment</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <profiles>
+        <profile>
+            <id>native</id>
+            <activation>
+                <property>
+                    <name>native</name>
+                </property>
+            </activation>
+            <properties>
+                <skipITs>false</skipITs>
+                <quarkus.native.enabled>true</quarkus.native.enabled>
+            </properties>
+        </profile>
+    </profiles>
     
 </project>
