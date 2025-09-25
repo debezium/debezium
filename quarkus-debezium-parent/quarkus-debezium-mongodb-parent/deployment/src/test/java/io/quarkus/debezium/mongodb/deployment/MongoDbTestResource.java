@@ -66,6 +66,22 @@ public class MongoDbTestResource implements QuarkusTestResourceLifecycleManager 
                                 new Document("name", "smartphone")),
                         new InsertManyOptions().bypassDocumentValidation(true));
 
+                users.insertMany(session,
+                        List.of(
+                                new Document(
+                                        Map.of(
+                                                "id", 1,
+                                                "name", "giovanni",
+                                                "description", "developer"
+                                        )),
+                                new Document(
+                                        Map.of(
+                                                "id", 2,
+                                                "name", "mario",
+                                                "description", "developer"
+                                        ))),
+                        new InsertManyOptions().bypassDocumentValidation(true));
+
                 orders.insertMany(session,
                         List.of(
                                 new Document(Map.of(
