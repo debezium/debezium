@@ -1318,6 +1318,16 @@ public class RecordsSnapshotProducerIT extends AbstractRecordsProducerTest {
         consumer.process(record -> assertReadRecord(record, expectedValueByTopicName));
     }
 
+    @Test
+    @FixFor("DBZ-9500")
+    public void shouldStreamAfterSnapshotForTableWithoutAnyColumn() throws Exception {
+        TestHelper.dropAllSchemas();
+        TestHelper.execute("CREATE TABLE t1();");
+        buildWithStreamProducer(TestHelper.defaultConfig());
+        waitForSnapshotToBeCompleted();
+        waitForStreamingToStart();
+    }
+
     private void buildNoStreamProducer(Configuration.Builder config) {
         alterConfig(config);
         start(PostgresConnector.class, config
