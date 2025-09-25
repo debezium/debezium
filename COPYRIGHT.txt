@@ -77,6 +77,7 @@ Babur Duisenov
 Balázs Németh
 Balázs Sipos
 Balint Bene
+Barbara Lócsi
 Barry LaFond
 Bartosz Miedlar
 Ben Hardesty
@@ -207,6 +208,7 @@ Frank Mormino
 Franz Emberger
 Frederic Laurent
 Gabor Andras
+Gabriel Cerioni
 Gagan Agrawal
 Ganesh Bankar
 Ganesh Ramasubramanian
@@ -252,6 +254,7 @@ Hang Ruan
 Hans-Peter Grahsl
 Haris Bin Saif
 Haris Osmanagić
+Harris Nguyen
 Harvey Yue
 Helong Zhang
 Henk van Dyk
@@ -301,12 +304,14 @@ Jessica Laughlin
 jinguangyang
 Jiri Novotny
 Jiri Pechanec
+Joan Gomez
 Jochen Schalanda
 Johan Rhedin
 Johan Venant
 John Graf
 John Martin
 John Psoroulas
+John Tanza
 John Wu
 Jon Casstevens
 Jonas Lins
@@ -378,6 +383,7 @@ Mans Singh
 MaoXiang Pan
 Marc Zbyszynski
 Marcelo Avancini
+Marci
 Marek Winkler
 Mario Fiore Vitale
 Mario Mueller
@@ -395,6 +401,7 @@ Martin Vlk
 Martin Walsh
 Masazumi Kobayashi
 Mathijs van den Worm
+Matt Bayley
 Matt Beary
 Matt Hejnas
 Matt Vance
@@ -441,6 +448,7 @@ Navdeep Agarwal
 Naveen Kumar KR
 Nayana Hettiarachchi
 Nenad Stojanovikj
+Nick Chomey
 Nick Murray
 Niels Pardon
 Nikhil Benesch
@@ -454,9 +462,9 @@ Olavi Mustanoja
 Ole-Martin Bratteng
 Oliver Weiler
 Olivier Boudet
+Olivier Chédru
 Olivier Jacquemart
 Olivier Lemasle
-Olivier Chédru
 Omar Al-Safi
 Ondrej Babec
 Oren Elias
@@ -544,6 +552,7 @@ Seo Jae-kwon
 Seongjoon Jeong
 Sergei Kazakov
 Sergei Morozov
+Sergei Nikolaev
 Sergey Eizner
 Sergey Ivanov
 Sergey Kazakov
@@ -567,6 +576,7 @@ Stanley Shyiko
 Stathis Souris
 Stavros Champilomatis
 Stefan Miklosovic
+Stefano Linguerri
 Stephen Powis
 Steven Siahetiong
 Subodh Kant Chaturvedi
@@ -673,7 +683,6 @@ Snigdhajyoti Ghosh
 Andrei Isac
 M. Gökhan Akgül
 Maithem
-Marci
 Mark Allanson
 Mark Banierink
 Rahul Khanna
