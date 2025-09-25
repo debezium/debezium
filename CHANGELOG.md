@@ -2,6 +2,37 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.2.3.Final
+September 25th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12467260)
+
+### New features since 3.2.2.Final
+
+None
+
+
+### Breaking changes since 3.2.2.Final
+
+* Offset position validation for Db2 is not reliable [DBZ-9470](https://issues.redhat.com/browse/DBZ-9470)
+
+
+### Fixes since 3.2.2.Final
+
+* Dropping in process batch transactions when shutting down [DBZ-8060](https://issues.redhat.com/browse/DBZ-8060)
+* A transaction mined across two queries can randomly cause unsupported operations [DBZ-8747](https://issues.redhat.com/browse/DBZ-8747)
+* Oracle connector reselect  exception handling (ORA-01555 + ORA-22924) [DBZ-9446](https://issues.redhat.com/browse/DBZ-9446)
+* OutOfMemory exception when recreating list of tables for snapshot callables [DBZ-9472](https://issues.redhat.com/browse/DBZ-9472)
+* Debezium Server  raise  "AttributeNotFoundException QueueTotalCapacity" with SqlServer source [DBZ-9477](https://issues.redhat.com/browse/DBZ-9477)
+* Getting "Unknown column in 'field list'" when column name contains backtick [DBZ-9479](https://issues.redhat.com/browse/DBZ-9479)
+* MySQL Event get header throws NullPointerException [DBZ-9483](https://issues.redhat.com/browse/DBZ-9483)
+
+
+### Other changes since 3.2.2.Final
+
+* Update JDBC sink connector doc to identify the data types that Debezium does not support [DBZ-9403](https://issues.redhat.com/browse/DBZ-9403)
+* Zookeeperless kafka for DockerRhel executions [DBZ-9462](https://issues.redhat.com/browse/DBZ-9462)
+
+
+
 ## 3.2.2.Final
 September 4th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12466095)
 
