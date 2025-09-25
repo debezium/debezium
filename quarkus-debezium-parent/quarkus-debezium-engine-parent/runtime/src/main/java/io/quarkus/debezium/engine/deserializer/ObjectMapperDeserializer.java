@@ -60,6 +60,12 @@ public class ObjectMapperDeserializer<T> implements Deserializer<T> {
         try {
             JsonNode root = objectMapper.readTree(data);
             JsonNode afterNode = root.path(PAYLOAD).path(path);
+
+            // Check if it's a string containing JSON
+            if (afterNode.isTextual()) {
+                return objectMapper.treeToValue(objectMapper.readTree(afterNode.textValue()), type);
+            }
+
             return objectMapper.treeToValue(afterNode, type);
 
         }

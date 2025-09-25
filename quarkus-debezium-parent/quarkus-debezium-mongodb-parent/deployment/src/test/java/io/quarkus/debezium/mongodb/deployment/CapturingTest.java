@@ -14,12 +14,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -70,7 +71,6 @@ public class CapturingTest {
 
     @Test
     @DisplayName("should call the filtered by destination capture")
-    @Disabled
     void shouldInvokeFilteredByDestinationCapture() {
         given().await()
                 .atMost(100, TimeUnit.SECONDS)
@@ -79,7 +79,6 @@ public class CapturingTest {
 
     @Test
     @DisplayName("should map and capture 'capturing' orders filtered by destination")
-    @Disabled
     void shouldMapAndCaptureOrdersFilteredByDestination() {
         given().await()
                 .atMost(100, TimeUnit.SECONDS)
@@ -90,7 +89,6 @@ public class CapturingTest {
 
     @Test
     @DisplayName("should map and capture users filtered by destination")
-    @Disabled
     void shouldMapAndCaptureUsersFilteredByDestination() {
         given().await()
                 .atMost(100, TimeUnit.SECONDS)
@@ -121,7 +119,7 @@ public class CapturingTest {
             orders.add(event.record());
         }
 
-        @Capturing(destination = "mongodb1.public.users")
+        @Capturing(destination = "mongodb1.dbA.users")
         public void deserialized(User user) {
             users.add(user);
         }
@@ -151,17 +149,21 @@ public class CapturingTest {
 
     }
 
+    private static final ObjectMapper configuredMapper = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
     public static class OrderDeserializer extends ObjectMapperDeserializer<Order> {
 
+
         public OrderDeserializer() {
-            super(Order.class);
+            super(Order.class, configuredMapper);
         }
     }
 
     public static class UserDeserializer extends ObjectMapperDeserializer<User> {
 
         public UserDeserializer() {
-            super(User.class);
+            super(User.class, configuredMapper);
         }
     }
 
