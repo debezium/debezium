@@ -129,7 +129,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
             LOGGER.info("No previous offset found");
         }
         else {
-            LOGGER.info("Found previous offset {}", previousOffset);
+            LOGGER.info("Found previous offset {}", previousOffset.getOffset());
         }
 
         Clock clock = Clock.system();
