@@ -262,7 +262,7 @@
                                 </wait>
                             </run>
                             <build>
-                                <from>${mysql.server.image.source}:${version.mysql.server}-aarch64</from>
+                                <from>${mysql.server.image.source}:${version.mysql.server}</from>
                                 <runCmds>
                                     <run>${docker.initimage}</run>
                                 </runCmds>
@@ -321,7 +321,7 @@
                                 </wait>
                             </run>
                             <build>
-                                <from>${mysql.server.image.source}:${version.mysql.server}-aarch64</from>
+                                <from>${mysql.server.image.source}:${version.mysql.server}</from>
                                 <runCmds>
                                     <run>${docker.initimage}</run>
                                 </runCmds>
@@ -379,7 +379,7 @@
                                 </wait>
                             </run>
                             <build>
-                                <from>${mysql.server.image.source}:${version.mysql.server}-aarch64</from>
+                                <from>${mysql.server.image.source}:${version.mysql.server}</from>
                                 <runCmds>
                                     <run>${docker.initimage}</run>
                                 </runCmds>
@@ -437,7 +437,7 @@
                                 </wait>
                             </run>
                             <build>
-                                <from>${mysql.server.image.source}:${version.mysql.server}-aarch64</from>
+                                <from>${mysql.server.image.source}:${version.mysql.server}</from>
                                 <runCmds>
                                     <run>${docker.initimage}</run>
                                 </runCmds>
@@ -492,7 +492,7 @@
                                 </wait>
                             </run>
                             <build>
-                                <from>${percona.server.image.source}/percona-server:${version.mysql.percona.server}-aarch64</from>
+                                <from>${percona.server.image.source}/percona-server:${version.mysql.percona.server}</from>
                                 <assembly>
                                     <inline>
                                         <fileSets>
