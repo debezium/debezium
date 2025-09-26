@@ -83,6 +83,10 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>io.strimzi</groupId>
+            <artifactId>strimzi-test-container</artifactId>
+        </dependency>
+        <dependency>
             <groupId>mil.nga</groupId>
             <artifactId>wkb</artifactId>
             <scope>test</scope>

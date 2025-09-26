@@ -49,7 +49,7 @@ public class DebeziumContainerIT {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumContainerIT.class);
 
-    private static final Network network = Network.newNetwork();
+    private static final Network network = Network.SHARED;
 
     private static StrimziKafkaCluster kafkaCluster;
 
@@ -68,8 +68,8 @@ public class DebeziumContainerIT {
         kafkaCluster.start();
 
         debeziumContainer = DebeziumContainer.nightly()
+                .withKafka(kafkaCluster)
                 .withNetwork(network)
-                .withKafka(network, kafkaCluster.getBootstrapServers())
                 .withLogConsumer(new Slf4jLogConsumer(LOGGER));
 
         Startables.deepStart(Stream.of(
