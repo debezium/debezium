@@ -78,7 +78,7 @@
         <version.compiler.plugin>3.13.0</version.compiler.plugin>
         <version.resources.plugin>3.1.0</version.resources.plugin>
         <version.dependency.plugin>3.1.1</version.dependency.plugin>
-        <version.enforcer.plugin>3.0.0-M2</version.enforcer.plugin>
+        <version.enforcer.plugin>3.6.1</version.enforcer.plugin>
 
         <version.maven>3.9.8</version.maven>
         <version.jar.plugin>3.0.2</version.jar.plugin>
@@ -364,6 +364,13 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
+                <dependencies>
+                    <dependency>
+                        <groupId>io.flomava</groupId>
+                        <artifactId>service-provider-enforcer-rule</artifactId>
+                        <version>0.2.0</version>
+                    </dependency>
+                </dependencies>
                 <executions>
                     <execution>
                         <id>enforce-maven</id>
@@ -375,6 +382,33 @@
                                 <requireMavenVersion>
                                     <version>[${version.maven},)</version>
                                 </requireMavenVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>check-service-registration</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <serviceRegistrationRule implementation="io.flomava.ServiceRegistrationRule">
+                                    <serviceInterfaces>
+                                        <serviceInterface>org.apache.kafka.connect.source.SourceConnector</serviceInterface>
+                                        <serviceInterface>org.apache.kafka.connect.sink.SinkConnector</serviceInterface>
+                                        <serviceInterface>org.apache.kafka.connect.transforms.Transformation</serviceInterface>
+                                        <serviceInterface>org.apache.kafka.connect.storage.Converter</serviceInterface>
+                                        <serviceInterface>org.apache.kafka.connect.storage.HeaderConverter</serviceInterface>
+                                        <serviceInterface>io.debezium.spi.snapshot.Snapshotter</serviceInterface>
+                                    </serviceInterfaces>
+                                    <!-- Enforcement strategy: FAIL or WARN -->
+                                    <strategy>FAIL</strategy>
+                                    <!-- Packages to scan (optional - defaults to scanning all packages) -->
+                                    <packagesToScan>
+                                        <packageToScan>io.debezium</packageToScan>
+                                    </packagesToScan>
+                                </serviceRegistrationRule>
                             </rules>
                         </configuration>
                     </execution>
