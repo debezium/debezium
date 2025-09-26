@@ -12,26 +12,34 @@ import java.util.function.Function;
 
 import jakarta.enterprise.context.ApplicationScoped;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.config.Configuration;
 import io.debezium.embedded.Connect;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.Signaler;
 import io.debezium.runtime.Connector;
 import io.debezium.runtime.DebeziumStatus;
+import io.debezium.runtime.EngineManifest;
 import io.quarkus.debezium.engine.capture.consumer.SourceRecordEventConsumer;
 
 @ApplicationScoped
 class SourceRecordDebezium extends RunnableDebezium {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(SourceRecordDebezium.class.getName());
     private final Map<String, String> configuration;
     private final DebeziumEngine<?> engine;
     private final Connector connector;
     private final StateHandler stateHandler;
+    private final EngineManifest engineManifest;
 
     SourceRecordDebezium(Map<String, String> configuration,
                          StateHandler stateHandler,
                          Connector connector,
-                         SourceRecordEventConsumer consumer) {
+                         SourceRecordEventConsumer consumer,
+                         EngineManifest engineManifest) {
+        LOGGER.trace("Creating SourceRecordDebezium for engine {}", engineManifest);
         this.configuration = configuration;
         this.stateHandler = stateHandler;
         this.engine = DebeziumEngine.create(Connect.class, Connect.class)
@@ -40,12 +48,12 @@ class SourceRecordDebezium extends RunnableDebezium {
                         .edit()
                         .with(Configuration.from(configuration))
                         .build().asProperties())
-                .using(this.stateHandler.connectorCallback())
-                .using(this.stateHandler.completionCallback())
+                .using(this.stateHandler.connectorCallback(engineManifest, this))
+                .using(this.stateHandler.completionCallback(engineManifest, this))
                 .notifying(consumer)
                 .build();
-        this.stateHandler.setDebeziumEngine(this);
         this.connector = connector;
+        this.engineManifest = engineManifest;
     }
 
     @Override
@@ -60,12 +68,17 @@ class SourceRecordDebezium extends RunnableDebezium {
 
     @Override
     public DebeziumStatus status() {
-        return stateHandler.get();
+        return stateHandler.get(engineManifest);
     }
 
     @Override
     public Connector connector() {
         return connector;
+    }
+
+    @Override
+    public EngineManifest manifest() {
+        return engineManifest;
     }
 
     protected void run() {

@@ -11,8 +11,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 
+import io.debezium.runtime.events.AbstractDebeziumLifecycleEvent;
 import io.debezium.runtime.events.ConnectorStartedEvent;
 import io.debezium.runtime.events.ConnectorStoppedEvent;
+import io.debezium.runtime.events.DefaultEngine;
+import io.debezium.runtime.events.Engine;
 import io.debezium.runtime.events.PollingStartedEvent;
 import io.debezium.runtime.events.PollingStoppedEvent;
 import io.debezium.runtime.events.TasksStartedEvent;
@@ -26,34 +29,62 @@ import io.debezium.runtime.events.TasksStoppedEvent;
 @ApplicationScoped
 public class LifecycleEventObserver {
 
-    private final List<Object> lifecycleEvents = new CopyOnWriteArrayList<>();
+    private final List<AbstractDebeziumLifecycleEvent> defaultLifecycleEvents = new CopyOnWriteArrayList<>();
+    private final List<AbstractDebeziumLifecycleEvent> alternativeLifecycleEvents = new CopyOnWriteArrayList<>();
 
-    void onConnectorStarted(@Observes ConnectorStartedEvent connectorStartedEvent) {
-        lifecycleEvents.add(connectorStartedEvent);
+    void defaultOnConnectorStarted(@Observes @Engine("default") ConnectorStartedEvent connectorStartedEvent) {
+        defaultLifecycleEvents.add(connectorStartedEvent);
     }
 
-    void onConnectorStopped(@Observes ConnectorStoppedEvent connectorStoppedEvent) {
-        lifecycleEvents.add(connectorStoppedEvent);
+    void defaultOnConnectorStopped(@Observes @Engine("default") ConnectorStoppedEvent connectorStoppedEvent) {
+        defaultLifecycleEvents.add(connectorStoppedEvent);
     }
 
-    void onTaskStarted(@Observes TasksStartedEvent tasksStartedEvent) {
-        lifecycleEvents.add(tasksStartedEvent);
+    void defaultOnTaskStarted(@Observes @DefaultEngine TasksStartedEvent tasksStartedEvent) {
+        defaultLifecycleEvents.add(tasksStartedEvent);
     }
 
-    void onTaskStopped(@Observes TasksStoppedEvent tasksStoppedEvent) {
-        lifecycleEvents.add(tasksStoppedEvent);
+    void defaultOnTaskStopped(@Observes @Engine("default") TasksStoppedEvent tasksStoppedEvent) {
+        defaultLifecycleEvents.add(tasksStoppedEvent);
     }
 
-    void onPollingStarted(@Observes PollingStartedEvent pollingStartedEvent) {
-        lifecycleEvents.add(pollingStartedEvent);
+    void defaultOnPollingStarted(@Observes @Engine("default") PollingStartedEvent pollingStartedEvent) {
+        defaultLifecycleEvents.add(pollingStartedEvent);
     }
 
-    void onPollingStopped(@Observes PollingStoppedEvent pollingStoppedEvent) {
-        lifecycleEvents.add(pollingStoppedEvent);
+    void defaultOnPollingStopped(@Observes @Engine("default") PollingStoppedEvent pollingStoppedEvent) {
+        defaultLifecycleEvents.add(pollingStoppedEvent);
     }
 
-    public List<Object> getLifecycleEvents() {
-        return lifecycleEvents;
+    void alternativeOnConnectorStarted(@Observes @Engine("alternative") ConnectorStartedEvent connectorStartedEvent) {
+        alternativeLifecycleEvents.add(connectorStartedEvent);
+    }
+
+    void alternativeOnConnectorStopped(@Observes @Engine("alternative") ConnectorStoppedEvent connectorStoppedEvent) {
+        alternativeLifecycleEvents.add(connectorStoppedEvent);
+    }
+
+    void alternativeOnTaskStarted(@Observes @Engine("alternative") TasksStartedEvent tasksStartedEvent) {
+        alternativeLifecycleEvents.add(tasksStartedEvent);
+    }
+
+    void alternativeOnTaskStopped(@Observes @Engine("alternative") TasksStoppedEvent tasksStoppedEvent) {
+        alternativeLifecycleEvents.add(tasksStoppedEvent);
+    }
+
+    void alternativeOnPollingStarted(@Observes @Engine("alternative") PollingStartedEvent pollingStartedEvent) {
+        alternativeLifecycleEvents.add(pollingStartedEvent);
+    }
+
+    void alternativeOnPollingStopped(@Observes @Engine("alternative") PollingStoppedEvent pollingStoppedEvent) {
+        alternativeLifecycleEvents.add(pollingStoppedEvent);
+    }
+
+    public List<AbstractDebeziumLifecycleEvent> getLifecycleEvents(String engine) {
+        if (engine.equals("default")) {
+            return defaultLifecycleEvents;
+        }
+        return alternativeLifecycleEvents;
     }
 
 }

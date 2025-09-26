@@ -24,7 +24,13 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.debezium.pipeline.notification.Notification;
+import io.debezium.runtime.events.DefaultEngine;
+import io.debezium.runtime.events.Engine;
+import io.quarkus.debezium.engine.DebeziumThreadHandler;
 import io.quarkus.debezium.notification.SnapshotEvent.Kind;
 
 @ApplicationScoped
@@ -34,6 +40,7 @@ public class SnapshotHandler implements NotificationHandler {
     private static final List<String> kinds = Arrays.stream(Kind.values()).map(Kind::getDescription).toList();
 
     private final Map<String, BiConsumer<Kind, Notification>> events;
+    private static final Logger LOGGER = LoggerFactory.getLogger(SnapshotHandler.class.getName());
 
     @Inject
     public SnapshotHandler(Event<SnapshotStarted> startedEvent,
@@ -46,38 +53,70 @@ public class SnapshotHandler implements NotificationHandler {
                            Event<SnapshotResumed> snapshotResumedEvent) {
 
         this.events = Map.of(
-                STARTED.name(), (kind, notification) -> startedEvent.fire(new SnapshotStarted(
-                        notification.getId(),
-                        notification.getAdditionalData(),
-                        notification.getTimestamp(), kind)),
-                IN_PROGRESS.name(), (kind, notification) -> inProgressEvent.fire(new SnapshotInProgress(
-                        notification.getId(),
-                        notification.getAdditionalData(),
-                        notification.getTimestamp(), kind)),
-                TABLE_SCAN_COMPLETED.name(), (kind, notification) -> tableScanCompletedEvent.fire(new SnapshotTableScanCompleted(
-                        notification.getId(),
-                        notification.getAdditionalData(),
-                        notification.getTimestamp(), kind)),
-                COMPLETED.name(), (kind, notification) -> completedEvent.fire(new SnapshotCompleted(
-                        notification.getId(),
-                        notification.getAdditionalData(),
-                        notification.getTimestamp(), kind)),
-                ABORTED.name(), (kind, notification) -> abortedEvent.fire(new SnapshotAborted(
-                        notification.getId(),
-                        notification.getAdditionalData(),
-                        notification.getTimestamp(), kind)),
-                SKIPPED.name(), (kind, notification) -> skippedEvent.fire(new SnapshotSkipped(
-                        notification.getId(),
-                        notification.getAdditionalData(),
-                        notification.getTimestamp(), kind)),
-                PAUSED.name(), (kind, notification) -> snapshotPausedEvent.fire(new SnapshotPaused(
-                        notification.getId(),
-                        notification.getAdditionalData(),
-                        notification.getTimestamp(), kind)),
-                RESUMED.name(), (kind, notification) -> snapshotResumedEvent.fire(new SnapshotResumed(
-                        notification.getId(),
-                        notification.getAdditionalData(),
-                        notification.getTimestamp(), kind)));
+                STARTED.name(), (kind, notification) -> DefaultEngine.Literal.selectDefault(
+                        startedEvent
+                                .select(Engine.Literal.of(DebeziumThreadHandler.context().manifest().id())),
+                        DebeziumThreadHandler.context().manifest())
+                        .fire(new SnapshotStarted(
+                                notification.getId(),
+                                notification.getAdditionalData(),
+                                notification.getTimestamp(), kind)),
+                IN_PROGRESS.name(), (kind, notification) -> DefaultEngine.Literal.selectDefault(
+                        inProgressEvent
+                                .select(Engine.Literal.of(DebeziumThreadHandler.context().manifest().id())),
+                        DebeziumThreadHandler.context().manifest())
+                        .fire(new SnapshotInProgress(
+                                notification.getId(),
+                                notification.getAdditionalData(),
+                                notification.getTimestamp(), kind)),
+                TABLE_SCAN_COMPLETED.name(), (kind, notification) -> DefaultEngine.Literal.selectDefault(
+                        tableScanCompletedEvent
+                                .select(Engine.Literal.of(DebeziumThreadHandler.context().manifest().id())),
+                        DebeziumThreadHandler.context().manifest())
+                        .fire(new SnapshotTableScanCompleted(
+                                notification.getId(),
+                                notification.getAdditionalData(),
+                                notification.getTimestamp(), kind)),
+                COMPLETED.name(), (kind, notification) -> DefaultEngine.Literal.selectDefault(
+                        completedEvent
+                                .select(Engine.Literal.of(DebeziumThreadHandler.context().manifest().id())),
+                        DebeziumThreadHandler.context().manifest())
+                        .fire(new SnapshotCompleted(
+                                notification.getId(),
+                                notification.getAdditionalData(),
+                                notification.getTimestamp(), kind)),
+                ABORTED.name(), (kind, notification) -> DefaultEngine.Literal.selectDefault(
+                        abortedEvent
+                                .select(Engine.Literal.of(DebeziumThreadHandler.context().manifest().id())),
+                        DebeziumThreadHandler.context().manifest())
+                        .fire(new SnapshotAborted(
+                                notification.getId(),
+                                notification.getAdditionalData(),
+                                notification.getTimestamp(), kind)),
+                SKIPPED.name(), (kind, notification) -> DefaultEngine.Literal.selectDefault(
+                        skippedEvent
+                                .select(Engine.Literal.of(DebeziumThreadHandler.context().manifest().id())),
+                        DebeziumThreadHandler.context().manifest())
+                        .fire(new SnapshotSkipped(
+                                notification.getId(),
+                                notification.getAdditionalData(),
+                                notification.getTimestamp(), kind)),
+                PAUSED.name(), (kind, notification) -> DefaultEngine.Literal.selectDefault(
+                        snapshotPausedEvent
+                                .select(Engine.Literal.of(DebeziumThreadHandler.context().manifest().id())),
+                        DebeziumThreadHandler.context().manifest())
+                        .fire(new SnapshotPaused(
+                                notification.getId(),
+                                notification.getAdditionalData(),
+                                notification.getTimestamp(), kind)),
+                RESUMED.name(), (kind, notification) -> DefaultEngine.Literal.selectDefault(
+                        snapshotResumedEvent
+                                .select(Engine.Literal.of(DebeziumThreadHandler.context().manifest().id())),
+                        DebeziumThreadHandler.context().manifest())
+                        .fire(new SnapshotResumed(
+                                notification.getId(),
+                                notification.getAdditionalData(),
+                                notification.getTimestamp(), kind)));
     }
 
     @Override

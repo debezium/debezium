@@ -38,34 +38,38 @@ public class SourceRecordEventProducer {
 
     @Produces
     @Singleton
-    public SourceRecordEventConsumer produce() {
-        return new SourceRecordEventConsumer() {
+    public SourceRecordConsumerHandler produce() {
+        return manifest -> new SourceRecordEventConsumer() {
             private final Logger logger = LoggerFactory.getLogger(SourceRecordEventConsumer.class);
 
             @Override
             public void accept(ChangeEvent<SourceRecord, SourceRecord> event) {
-                CapturingEvent<SourceRecord> capturingEvent = OperationMapper.from(event);
+                logger.trace("receiving event {} with engine id {}", event.destination(), manifest.id());
+                CapturingEvent<SourceRecord> capturingEvent = new OperationMapper(manifest.id()).from(event);
 
                 var deserializer = capturingEventDeserializerRegistry.get(capturingEvent.destination());
-                CapturingInvoker<Object> objectCapturingInvoker = capturingObjectInvokerRegistry.get(capturingEvent.destination());
+                CapturingInvoker<Object> objectCapturingInvoker = capturingObjectInvokerRegistry.get(capturingEvent);
 
                 if (deserializer != null && objectCapturingInvoker != null) {
+                    logger.trace("method annotated with @Capturing with object mapping found for destination: {}", capturingEvent.destination());
                     objectCapturingInvoker.capture(deserializer.deserialize(capturingEvent).record());
                     return;
                 }
 
-                var invoker = capturingEventRegistry.get(capturingEvent.destination());
+                var invoker = capturingEventRegistry.get(capturingEvent);
 
                 if (invoker == null) {
-                    logger.debug("method annotated with @Capturing not found for destination: {}", capturingEvent.destination());
+                    logger.trace("method annotated with @Capturing not found for destination: {}", capturingEvent.destination());
                     return;
                 }
 
                 if (deserializer != null) {
+                    logger.trace("deserializer found for destination: {}", capturingEvent.destination());
                     invoker.capture(deserializer.deserialize(capturingEvent));
                     return;
                 }
 
+                logger.trace("deserializer not found, using default invoker for: {}", capturingEvent.destination());
                 invoker.capture(capturingEvent);
             }
         };

@@ -4,15 +4,18 @@
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 
-package io.quarkus.sample.app.events;
+package io.quarkus.sample.app.resources;
 
 import jakarta.inject.Inject;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 
 import io.debezium.runtime.events.DebeziumHeartbeat;
+import io.quarkus.sample.app.events.HeartbeatEventObserver;
 
 @Path("/heartbeat")
 public class HeartbeatEventResource {
@@ -25,8 +28,8 @@ public class HeartbeatEventResource {
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public DebeziumHeartbeat get() {
-        return observer.get();
+    public DebeziumHeartbeat get(@QueryParam("engine") @DefaultValue("default") String engine) {
+        return observer.get(engine);
     }
 
 }

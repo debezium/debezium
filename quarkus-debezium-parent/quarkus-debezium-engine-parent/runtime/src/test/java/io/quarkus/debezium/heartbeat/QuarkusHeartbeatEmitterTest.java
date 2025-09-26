@@ -6,26 +6,32 @@
 
 package io.quarkus.debezium.heartbeat;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.Map;
 
 import jakarta.enterprise.event.Event;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import io.debezium.connector.SnapshotRecord;
+import io.debezium.engine.DebeziumEngine;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.txmetadata.TransactionContext;
 import io.debezium.runtime.Connector;
 import io.debezium.runtime.Debezium;
+import io.debezium.runtime.DebeziumConnectorRegistry;
 import io.debezium.runtime.DebeziumStatus;
+import io.debezium.runtime.EngineManifest;
 import io.debezium.runtime.events.DebeziumHeartbeat;
 import io.debezium.spi.schema.DataCollectionId;
 
@@ -35,19 +41,52 @@ class QuarkusHeartbeatEmitterTest {
     public static final Connector CONNECTOR = new Connector("test.connector");
     public static final Map<String, String> PARTITION = Map.of("key", "value");
 
-    private final Debezium debezium = Mockito.mock(Debezium.class);
+    private final DebeziumConnectorRegistry registry = Mockito.mock(DebeziumConnectorRegistry.class);
     private final Event event = Mockito.mock(Event.class);
-    private final QuarkusHeartbeatEmitter underTest = new QuarkusHeartbeatEmitter(debezium, event);
+    private final QuarkusHeartbeatEmitter underTest = new QuarkusHeartbeatEmitter(Collections.singletonList(registry), event);
+
+    @BeforeEach
+    void setUp() {
+        when(event.select(any())).thenReturn(event);
+    }
 
     @Test
     @DisplayName("should fire an event when called")
     void shouldFireEventWhenCalled() {
-        when(debezium.status()).thenReturn(DEBEZIUM_STATUS);
-        when(debezium.connector()).thenReturn(CONNECTOR);
+        when(registry.engines()).thenReturn(Collections.singletonList(generate(DEBEZIUM_STATUS)));
 
         underTest.emit(PARTITION, OFFSET);
 
         verify(event).fire(new DebeziumHeartbeat(CONNECTOR, DEBEZIUM_STATUS, PARTITION, Map.of("offset", "value")));
+    }
+
+    public Debezium generate(DebeziumStatus status) {
+        return new Debezium() {
+            @Override
+            public DebeziumEngine.Signaler signaler() {
+                return null;
+            }
+
+            @Override
+            public Map<String, String> configuration() {
+                return Map.of();
+            }
+
+            @Override
+            public DebeziumStatus status() {
+                return status;
+            }
+
+            @Override
+            public Connector connector() {
+                return CONNECTOR;
+            }
+
+            @Override
+            public EngineManifest manifest() {
+                return null;
+            }
+        };
     }
 
     public static final OffsetContext OFFSET = new OffsetContext() {

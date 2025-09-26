@@ -12,6 +12,7 @@ import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.annotations.ConfigRoot;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithName;
+import io.smallrye.config.WithParentName;
 
 /**
  * Debezium configuration.
@@ -20,10 +21,10 @@ import io.smallrye.config.WithName;
 @ConfigRoot(phase = ConfigPhase.BUILD_AND_RUN_TIME_FIXED)
 public interface DebeziumEngineConfiguration {
     /**
-     * Configuration properties for debezium engine
+     * Default Configuration properties for debezium engine
      */
     @WithName("debezium")
-    Map<String, String> configuration();
+    Map<String, String> defaultConfiguration();
 
     /**
      * Configuration for capturing events
@@ -32,14 +33,47 @@ public interface DebeziumEngineConfiguration {
     Map<String, Capturing> capturing();
 
     interface Capturing {
+
+        /**
+         * id for the engine assigned to a datasource
+         */
+        Optional<String> engineId();
+
         /**
          * destination for which the event is intended
          */
         Optional<String> destination();
 
         /**
-         * deserializer class for the event associated to a destination
+         * deserializers in a single-engine configuration
          */
         Optional<String> deserializer();
+
+        /**
+         * deserializers in a multi-engine configuration
+         */
+        @WithParentName
+        Map<String, DeserializerConfiguration> deserializers();
+
+        /**
+         * configuration properties for debezium multi-engine
+         */
+        @WithParentName
+        Map<String, String> configurations();
+    }
+
+    /**
+     * deserializer configuration
+     */
+    interface DeserializerConfiguration {
+        /**
+         * destination for which the event is intended
+         */
+        String destination();
+
+        /**
+         * deserializer class for the event associated to a destination
+         */
+        String deserializer();
     }
 }
