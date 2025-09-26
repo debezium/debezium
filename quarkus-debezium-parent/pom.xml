@@ -63,6 +63,7 @@
     <modules>
         <module>quarkus-debezium-engine-spi-parent</module>
         <module>quarkus-debezium-engine-parent</module>
+        <module>quarkus-debezium-testsuite-parent</module>
         <module>quarkus-debezium-postgres-parent</module>
         <module>quarkus-debezium-mongodb-parent</module>
     </modules>

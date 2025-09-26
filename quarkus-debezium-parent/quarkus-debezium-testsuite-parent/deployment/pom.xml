@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
+
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -6,40 +7,18 @@
 
     <parent>
         <groupId>io.debezium.quarkus</groupId>
-        <artifactId>quarkus-debezium-mongodb-parent</artifactId>
+        <artifactId>quarkus-debezium-testsuite-parent</artifactId>
         <version>3.3.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>quarkus-debezium-mongodb-deployment</artifactId>
-
-    <name>Quarkus Debezium :: Extension :: MongoDB :: Deployment</name>
+    <artifactId>quarkus-debezium-testsuite-deployment</artifactId>
 
     <dependencies>
         <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-core-deployment</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-arc-deployment</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.debezium</groupId>
-            <artifactId>debezium-connector-mongodb</artifactId>
-        </dependency>
-        <dependency>
             <groupId>io.debezium.quarkus</groupId>
-            <artifactId>quarkus-debezium-engine-deployment</artifactId>
+            <artifactId>quarkus-debezium-engine</artifactId>
+            <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>io.debezium.quarkus</groupId>
-            <artifactId>quarkus-debezium-mongodb</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-mongodb-client-deployment</artifactId>
-        </dependency>
-
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
@@ -61,37 +40,41 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>io.debezium.quarkus</groupId>
-            <artifactId>quarkus-debezium-testsuite-deployment</artifactId>
-            <version>${project.version}</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.junit.platform</groupId>
             <artifactId>junit-platform-suite</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
 
+
     <build>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.2</version>
                 <configuration>
+                    <excludedGroups>external-suite-only</excludedGroups>
                     <systemPropertyVariables>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <maven.home>${maven.home}</maven.home>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>tests-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
-    
+
+
 </project>

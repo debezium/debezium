@@ -5,8 +5,8 @@
  */
 package io.quarkus.debezium.mongodb.deployment;
 
+import java.io.Serializable;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -24,9 +24,8 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.InsertManyOptions;
 
 import io.debezium.testing.testcontainers.MongoDbReplicaSet;
-import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 
-public class MongoDbTestResource implements QuarkusTestResourceLifecycleManager {
+public class MongoDbTestResource {
 
     private final MongoDbReplicaSet mongoDBContainer = MongoDbReplicaSet.replicaSet()
             .name("rs0")
@@ -37,16 +36,15 @@ public class MongoDbTestResource implements QuarkusTestResourceLifecycleManager 
             .startupTimeout(Duration.ofSeconds(90))
             .build();
 
-    @Override
-    public Map<String, String> start() {
+    public void start(List<Map<String, ? extends  Serializable>> rawUsers,
+                      List<Map<String, ? extends  Serializable>> rawOrders) {
         mongoDBContainer.start();
 
         try (var client = MongoClients.create(MongoClientSettings.builder()
                 .applyConnectionString(new ConnectionString(mongoDBContainer.getConnectionString()))
                 .uuidRepresentation(UuidRepresentation.STANDARD)
                 .build())) {
-            final MongoDatabase db = client.getDatabase("dbA");
-            db.createCollection("a_collection");
+            final MongoDatabase db = client.getDatabase("inventory");
 
             final MongoCollection<Document> general = db.getCollection("general");
             final MongoCollection<Document> products = db.getCollection("products");
@@ -66,43 +64,23 @@ public class MongoDbTestResource implements QuarkusTestResourceLifecycleManager 
                                 new Document("name", "smartphone")),
                         new InsertManyOptions().bypassDocumentValidation(true));
 
-                users.insertMany(session,
-                        List.of(
-                                new Document(
-                                        Map.of(
-                                                "id", 1,
-                                                "name", "giovanni",
-                                                "description", "developer"
-                                        )),
-                                new Document(
-                                        Map.of(
-                                                "id", 2,
-                                                "name", "mario",
-                                                "description", "developer"
-                                        ))),
-                        new InsertManyOptions().bypassDocumentValidation(true));
+                users.insertMany(session, rawUsers
+                        .stream()
+                        .map(Document::new)
+                        .toList(), new InsertManyOptions().bypassDocumentValidation(true));
 
-                orders.insertMany(session,
-                        List.of(
-                                new Document(Map.of(
-                                        "key", 1,
-                                        "name", "one")),
-                                new Document(Map.of(
-                                        "key", 2,
-                                        "name", "two"))),
-                        new InsertManyOptions().bypassDocumentValidation(true));
+                orders.insertMany(session, rawOrders
+                        .stream()
+                        .map(Document::new)
+                        .toList(), new InsertManyOptions().bypassDocumentValidation(true));
 
                 session.commitTransaction();
             }
         }
 
-        Map<String, String> config = new HashMap<>();
-        config.put("quarkus.mongodb.connection-string", mongoDBContainer.getConnectionString());
-
-        return config;
+        System.setProperty("MONGODB_CONNECTION_STRING", mongoDBContainer.getConnectionString());
     }
 
-    @Override
     public void stop() {
         mongoDBContainer.stop();
     }

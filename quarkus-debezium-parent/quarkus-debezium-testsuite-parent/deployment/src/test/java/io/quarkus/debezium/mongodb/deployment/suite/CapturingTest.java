@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.quarkus.debezium.mongodb.deployment;
+package io.quarkus.debezium.mongodb.deployment.suite;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.given;
@@ -14,26 +14,28 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.debezium.runtime.Capturing;
 import io.debezium.runtime.CapturingEvent;
 import io.quarkus.debezium.engine.deserializer.CapturingEventDeserializerRegistry;
 import io.quarkus.debezium.engine.deserializer.MutableCapturingEventDeserializerRegistry;
 import io.quarkus.debezium.engine.deserializer.ObjectMapperDeserializer;
+import io.quarkus.debezium.mongodb.deployment.SuiteTags;
 import io.quarkus.test.QuarkusUnitTest;
-import io.quarkus.test.common.QuarkusTestResource;
 
-@QuarkusTestResource(value = MongoDbTestResource.class)
+@Tag(SuiteTags.DEFAULT)
 public class CapturingTest {
 
     @Inject
@@ -45,20 +47,14 @@ public class CapturingTest {
     @BeforeEach
     void setUp() {
         var mutableRegistry = (MutableCapturingEventDeserializerRegistry<SourceRecord>) registry;
-        mutableRegistry.register("mongodb1.dbA.orders", new OrderDeserializer());
-        mutableRegistry.register("mongodb1.dbA.users", new UserDeserializer());
+        mutableRegistry.register("topic.inventory.orders", new OrderDeserializer());
+        mutableRegistry.register("topic.inventory.users", new UserDeserializer());
     }
 
     @RegisterExtension
     static final QuarkusUnitTest setup = new QuarkusUnitTest()
             .withApplicationRoot((jar) -> jar.addClasses(CaptureProductsHandler.class))
-            .overrideConfigKey("quarkus.debezium.offset.storage", "org.apache.kafka.connect.storage.MemoryOffsetBackingStore")
-            .overrideConfigKey("quarkus.debezium.name", "test")
-            .overrideConfigKey("quarkus.debezium.topic.prefix", "mongodb1")
-            .overrideConfigKey("quarkus.debezium.database.include.list", "dbA")
-            .overrideConfigKey("quarkus.debezium.snapshot.mode", "initial")
-            .overrideConfigKey("quarkus.debezium.capturing.orders.destination", "mongodb1.dbA.orders")
-            .overrideConfigKey("quarkus.datasource.devservices.enabled", "false");
+            .withConfigurationResource("quarkus-debezium-testsuite.properties");
 
     @Test
     @DisplayName("should invoke the default capture")
@@ -109,17 +105,17 @@ public class CapturingTest {
             isInvoked.set(true);
         }
 
-        @Capturing(destination = "mongodb1.dbA.products")
+        @Capturing(destination = "topic.inventory.products")
         public void anotherCapture(CapturingEvent<SourceRecord> event) {
             isCapturingFilteredEvent.incrementAndGet();
         }
 
-        @Capturing(destination = "mongodb1.dbA.orders")
+        @Capturing(destination = "topic.inventory.orders")
         public void deserializedCapture(CapturingEvent<Order> event) {
             orders.add(event.record());
         }
 
-        @Capturing(destination = "mongodb1.dbA.users")
+        @Capturing(destination = "topic.inventory.users")
         public void deserialized(User user) {
             users.add(user);
         }
@@ -153,7 +149,6 @@ public class CapturingTest {
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     public static class OrderDeserializer extends ObjectMapperDeserializer<Order> {
-
 
         public OrderDeserializer() {
             super(Order.class, configuredMapper);

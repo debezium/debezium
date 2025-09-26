@@ -4,7 +4,7 @@
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 
-package io.quarkus.debezium.mongodb.deployment;
+package io.quarkus.debezium.mongodb.deployment.suite;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.given;
@@ -19,6 +19,7 @@ import jakarta.inject.Inject;
 import org.apache.kafka.connect.data.Struct;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -26,10 +27,10 @@ import io.debezium.runtime.DebeziumConnectorRegistry;
 import io.debezium.runtime.DebeziumStatus;
 import io.debezium.runtime.EngineManifest;
 import io.debezium.runtime.PostProcessing;
+import io.quarkus.debezium.mongodb.deployment.SuiteTags;
 import io.quarkus.test.QuarkusUnitTest;
-import io.quarkus.test.common.QuarkusTestResource;
 
-@QuarkusTestResource(value = MongoDbTestResource.class)
+@Tag(SuiteTags.DEFAULT)
 public class PostProcessingTest {
 
     @Inject
@@ -37,6 +38,11 @@ public class PostProcessingTest {
 
     @Inject
     DebeziumConnectorRegistry debeziumConnectorRegistry;
+
+    @RegisterExtension
+    static final QuarkusUnitTest setup = new QuarkusUnitTest()
+            .withApplicationRoot((jar) -> jar.addClasses(PostProcessingHandler.class))
+            .withConfigurationResource("quarkus-debezium-testsuite.properties");
 
     @BeforeEach
     void setUp() {
@@ -46,24 +52,12 @@ public class PostProcessingTest {
                         .isEqualTo(new DebeziumStatus(DebeziumStatus.State.POLLING)));
     }
 
-    @RegisterExtension
-    static final QuarkusUnitTest setup = new QuarkusUnitTest()
-            .withApplicationRoot((jar) -> jar
-                    .addClasses(PostProcessingHandler.class))
-            .overrideConfigKey("quarkus.debezium.offset.storage", "org.apache.kafka.connect.storage.MemoryOffsetBackingStore")
-            .overrideConfigKey("quarkus.debezium.name", "test")
-            .overrideConfigKey("quarkus.debezium.topic.prefix", "dbserver1")
-            .overrideConfigKey("quarkus.debezium.plugin.name", "pgoutput")
-            .overrideConfigKey("quarkus.debezium.snapshot.mode", "initial")
-            .overrideConfigKey("quarkus.datasource.devservices.enabled", "false");
-
     @Test
     @DisplayName("should use post processor")
     void shouldApplyPostProcessor() {
         given().await()
                 .atMost(100, TimeUnit.SECONDS)
                 .untilAsserted(() -> assertThat(postProcessingHandler.key()).contains("id"));
-
     }
 
     @ApplicationScoped
