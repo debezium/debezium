@@ -259,4 +259,14 @@ public class AlterTableParserListener extends BaseParserListener {
         }, tableEditor);
         super.enterConstraint_clauses(ctx);
     }
+
+    @Override
+    public void enterDrop_constraint_clause(PlSqlParser.Drop_constraint_clauseContext ctx) {
+        parser.runIfNotNull(() -> {
+            if (ctx.PRIMARY() != null) {
+                tableEditor.setPrimaryKeyNames();
+            }
+        }, tableEditor);
+        super.enterDrop_constraint_clause(ctx);
+    }
 }
