@@ -88,7 +88,7 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
     private static final String ORACLE_USERNAME = "debezium";
     private static final String ORACLE_PASSWORD = "dbz";
 
-    private static final Network network = Network.newNetwork();
+    private static final Network network = Network.SHARED;
 
     private final RandomTableNameGenerator tableNameGenerator;
     private final StrimziKafkaContainer kafkaContainer;
@@ -104,9 +104,10 @@ public class SourcePipelineInvocationContextProvider implements BeforeAllCallbac
 
     @Override
     public void beforeAll(ExtensionContext context) throws Exception {
+        this.kafkaContainer.start();
+
         // Create a stream of all containers to be started
         final Stream.Builder<Startable> startables = Stream.builder();
-        startables.add(this.kafkaContainer);
         startables.add(this.connectContainer);
         sourceContainers.values().forEach(startables::add);
 
