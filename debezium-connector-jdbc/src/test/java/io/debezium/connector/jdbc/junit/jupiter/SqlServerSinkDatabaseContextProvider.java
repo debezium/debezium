@@ -27,7 +27,7 @@ public class SqlServerSinkDatabaseContextProvider extends AbstractSinkDatabaseCo
                         .withPassword("Debezium1!")
                         .withEnv("MSSQL_AGENT_ENABLED", "true")
                         .withEnv("MSSQL_PID", "Standard")
-                        .withNetwork(Network.newNetwork())
+                        .withNetwork(Network.SHARED)
                         .withInitScript("database-init-scripts/sqlserver-init.sql")
                         .acceptLicense()
                         .withEnv("TZ", TestHelper.getSinkTimeZone()));
