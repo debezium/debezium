@@ -47,9 +47,11 @@ import io.strimzi.test.container.StrimziKafkaCluster;
 
 public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnector> extends BinlogIncrementalSnapshotIT<C> {
 
-    private static StrimziKafkaCluster kafka;
-    private static final int PARTITION_NO = 0;
     public static final String EXCLUDED_TABLE = "b";
+
+    private static StrimziKafkaCluster kafka;
+    private static String signalTopicName;
+    private static final int PARTITION_NO = 0;
 
     @Rule
     public ConditionalFail conditionalFail = new ConditionalFail();
@@ -57,11 +59,11 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
     @Before
     public void before() throws Exception {
         super.before();
-        KafkaClusterUtils.createTopic(getSignalsTopic(), 1, (short) 1, kafka.getBootstrapServers());
+        signalTopicName = getSignalsTopic();
     }
 
     @BeforeClass
-    public static void startKafka() {
+    public static void startKafka() throws Exception {
         Map<String, String> props = new HashMap<>();
         props.put("auto.create.topics.enable", "false");
 
@@ -71,6 +73,8 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
                 .withSharedNetwork()
                 .build();
         kafka.start();
+
+        KafkaClusterUtils.createTopic(signalTopicName, 1, (short) 1, kafka.getBootstrapServers());
     }
 
     @AfterClass

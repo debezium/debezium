@@ -24,7 +24,7 @@ public class OracleSinkDatabaseContextProvider extends AbstractSinkDatabaseConte
     @SuppressWarnings("resource")
     public OracleSinkDatabaseContextProvider() {
         super(SinkType.ORACLE, new OracleContainer(IMAGE_NAME)
-                .withNetwork(Network.newNetwork())
+                .withNetwork(Network.SHARED)
                 .withUsername("debezium")
                 .withPassword("dbz")
                 .withDatabaseName("ORCLPDB1")

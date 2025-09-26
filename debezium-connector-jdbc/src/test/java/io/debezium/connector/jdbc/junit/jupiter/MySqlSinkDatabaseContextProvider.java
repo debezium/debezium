@@ -28,7 +28,7 @@ public class MySqlSinkDatabaseContextProvider extends AbstractSinkDatabaseContex
 
     private static MySQLContainer createContainer() {
         MySQLContainer container = new MySQLContainer<>(IMAGE_NAME)
-                .withNetwork(Network.newNetwork())
+                .withNetwork(Network.SHARED)
                 .withDatabaseName("test")
                 .withUsername("mysqluser")
                 .withPassword("debezium")
