@@ -1,7 +1,7 @@
 // Category: debezium-using
 // Type: assembly
-[id="debezium-connector-for-jdbc"]
-= {prodname} connector for JDBC
+[id="debezium-sink-connector-for-jdbc"]
+= {prodname} sink connector for JDBC
 :context: jdbc
 :mbean-name: {context}
 :connector-file: {context}
