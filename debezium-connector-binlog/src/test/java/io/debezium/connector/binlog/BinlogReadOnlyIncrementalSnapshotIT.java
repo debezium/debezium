@@ -68,6 +68,7 @@ public abstract class BinlogReadOnlyIncrementalSnapshotIT<C extends SourceConnec
         kafka = new StrimziKafkaCluster.StrimziKafkaClusterBuilder()
                 .withNumberOfBrokers(1)
                 .withAdditionalKafkaConfiguration(props)
+                .withSharedNetwork()
                 .build();
         kafka.start();
     }
