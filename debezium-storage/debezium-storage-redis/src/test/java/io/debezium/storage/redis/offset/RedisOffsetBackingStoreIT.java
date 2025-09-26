@@ -40,6 +40,7 @@ import io.debezium.config.Configuration;
 import io.debezium.storage.redis.RedisClient;
 import io.debezium.storage.redis.RedisClientConnectionException;
 import io.debezium.storage.redis.RedisConnection;
+import io.debezium.util.Testing;
 
 @Testcontainers
 class RedisOffsetBackingStoreIT {
@@ -78,7 +79,7 @@ class RedisOffsetBackingStoreIT {
         }
         catch (Exception e) {
             // If cluster setup fails, tests will be skipped via assumeTrue
-            System.err.println("Redis cluster setup failed: " + e.getMessage());
+            Testing.printError("Redis cluster setup failed", e);
             redisCluster = null;
         }
     }

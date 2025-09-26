@@ -117,6 +117,3 @@ networks:
   redis-cluster-network:
     driver: bridge
     name: redis-cluster-network
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
