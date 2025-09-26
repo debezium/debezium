@@ -464,6 +464,63 @@ public class OracleDdlParserTest {
         assertThat(table.columnWithName("A_NUMBER_20").scale().orElse(null)).isEqualTo(0);
     }
 
+    @Test
+    @FixFor("DBZ-9505")
+    public void shouldAdjustPrimaryKeyColumnsOnAlterTableStatements() throws Exception {
+        parser.setCurrentDatabase(PDB_NAME);
+        parser.setCurrentSchema("SCOTT");
+
+        String SQL = "CREATE TABLE \"SCOTT\".\"TEST\" (id NUMBER(9,0) PRIMARY KEY, org_id NUMERIC(9,0), NAME varchar2(50))";
+        parser.parse(SQL, tables);
+
+        DdlChanges changes = parser.getDdlChanges();
+        List<DdlParserListener.EventType> eventTypes = getEventTypesFromChanges(changes);
+        assertThat(eventTypes).containsExactly(DdlParserListener.EventType.CREATE_TABLE);
+
+        Table table = tables.forTable(new TableId(PDB_NAME, "SCOTT", "TEST"));
+        assertThat(table.columns()).hasSize(3);
+        assertThat(table.primaryKeyColumnNames()).containsExactly("ID");
+
+        changes.reset();
+
+        SQL = "ALTER TABLE \"SCOTT\".\"TEST\" DROP PRIMARY KEY";
+        parser.parse(SQL, tables);
+
+        changes = parser.getDdlChanges();
+        eventTypes = getEventTypesFromChanges(changes);
+        assertThat(eventTypes).containsExactly(DdlParserListener.EventType.ALTER_TABLE);
+
+        table = tables.forTable(new TableId(PDB_NAME, "SCOTT", "TEST"));
+        assertThat(table.columns()).hasSize(3);
+        assertThat(table.primaryKeyColumns()).isEmpty();
+
+        changes.reset();
+
+        SQL = "ALTER TABLE \"SCOTT\".\"TEST\" ADD PRIMARY KEY (id, org_id)";
+        parser.parse(SQL, tables);
+
+        changes = parser.getDdlChanges();
+        eventTypes = getEventTypesFromChanges(changes);
+        assertThat(eventTypes).containsExactly(DdlParserListener.EventType.ALTER_TABLE);
+
+        table = tables.forTable(new TableId(PDB_NAME, "SCOTT", "TEST"));
+        assertThat(table.columns()).hasSize(3);
+        assertThat(table.primaryKeyColumnNames()).containsExactly("ID", "ORG_ID");
+
+        changes.reset();
+
+        SQL = "ALTER TABLE \"SCOTT\".\"TEST\" ADD CONSTRAINT pk_contraint PRIMARY KEY(id)";
+        parser.parse(SQL, tables);
+
+        changes = parser.getDdlChanges();
+        eventTypes = getEventTypesFromChanges(changes);
+        assertThat(eventTypes).containsExactly(DdlParserListener.EventType.ALTER_TABLE);
+
+        table = tables.forTable(new TableId(PDB_NAME, "SCOTT", "TEST"));
+        assertThat(table.columns()).hasSize(3);
+        assertThat(table.primaryKeyColumnNames()).containsExactly("ID");
+    }
+
     private List<DdlParserListener.EventType> getEventTypesFromChanges(DdlChanges changes) {
         List<DdlParserListener.EventType> eventTypes = new ArrayList<>();
         changes.getEventsByDatabase((String dbName, List<DdlParserListener.Event> events) -> {
