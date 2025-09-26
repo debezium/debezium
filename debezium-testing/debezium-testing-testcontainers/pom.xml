@@ -25,6 +25,13 @@
             <artifactId>kafka</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.strimzi</groupId>
+            <artifactId>strimzi-test-container</artifactId>
+            <!-- we need override default (i.e., test scope) to provided
+            because we are using it within code in DebeziumContainer -->
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>jdbc</artifactId>
             <scope>provided</scope>
