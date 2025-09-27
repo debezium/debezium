@@ -44,6 +44,7 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
     private Lsn lastCommitLsn;
     private Lsn streamingStoppingLsn = null;
     private final TransactionContext transactionContext;
+    private Long lastCommitTransactionId;
     private final IncrementalSnapshotContext<TableId> incrementalSnapshotContext;
 
     private PostgresOffsetContext(PostgresConnectorConfig connectorConfig, Lsn lsn, Lsn lastCompletelyProcessedLsn, Lsn lastCommitLsn, Long txId, Operation messageType,
@@ -58,6 +59,7 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
         sourceInfo.update(lsn, time, txId, sourceInfo.xmin(), null, messageType);
         sourceInfo.updateLastCommit(lastCommitLsn);
         sourceInfoSchema = sourceInfo.schema();
+        lastCommitTransactionId = txId;
 
         this.lastSnapshotRecord = lastSnapshotRecord;
         if (this.lastSnapshotRecord || this.snapshotCompleted) {
@@ -156,6 +158,10 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
 
     public Lsn lastCommitLsn() {
         return lastCommitLsn;
+    }
+
+    public Long lastCommitTransactionId() {
+        return lastCommitTransactionId;
     }
 
     Operation lastProcessedMessageType() {

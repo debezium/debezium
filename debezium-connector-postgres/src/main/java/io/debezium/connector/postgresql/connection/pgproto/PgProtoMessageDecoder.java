@@ -20,6 +20,8 @@ import com.google.protobuf.InvalidProtocolBufferException;
 
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.AbstractMessageDecoder;
+import io.debezium.connector.postgresql.connection.Lsn;
+import io.debezium.connector.postgresql.connection.PositionLocator;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
 import io.debezium.connector.postgresql.proto.PgProto;
 import io.debezium.connector.postgresql.proto.PgProto.Op;
@@ -39,6 +41,7 @@ public class PgProtoMessageDecoder extends AbstractMessageDecoder {
     private static final Set<Op> SUPPORTED_OPS = Collect.unmodifiableSet(Op.INSERT, Op.UPDATE, Op.DELETE, Op.BEGIN, Op.COMMIT);
 
     private boolean warnedOnUnkownOp = false;
+    private boolean isSearchingWal;
 
     @Override
     public void processNotEmptyMessage(final ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry)
@@ -65,7 +68,26 @@ public class PgProtoMessageDecoder extends AbstractMessageDecoder {
                 }
                 return;
             }
-            processor.process(new PgProtoReplicationMessage(message, typeRegistry));
+            processor.process(new PgProtoReplicationMessage(message, typeRegistry), Integer.toUnsignedLong(message.getTransactionId()));
+        }
+        catch (InvalidProtocolBufferException e) {
+            throw new ConnectException(e);
+        }
+    }
+
+    @Override
+    public boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, PositionLocator walPosition) {
+        try {
+            if (!buffer.hasArray()) {
+                throw new IllegalStateException(
+                        "Invalid buffer received from Postgres server during streaming replication");
+            }
+            final byte[] source = buffer.array();
+            final byte[] content = Arrays.copyOfRange(source, buffer.arrayOffset(), source.length);
+            final RowMessage message = PgProto.RowMessage.parseFrom(content);
+            LOGGER.trace("Received protobuf message from the server {}", message);
+
+            return super.isMessageAlreadyProcessed(buffer, lastReceivedLsn, startLsn, walPosition, Integer.toUnsignedLong(message.getTransactionId()));
         }
         catch (InvalidProtocolBufferException e) {
             throw new ConnectException(e);
@@ -75,5 +97,10 @@ public class PgProtoMessageDecoder extends AbstractMessageDecoder {
     @Override
     public ChainedLogicalStreamBuilder defaultOptions(ChainedLogicalStreamBuilder builder, Function<Integer, Boolean> hasMinimumServerVersion) {
         return builder;
+    }
+
+    @Override
+    public void isSearchingWal(boolean isSearchingWal) {
+        this.isSearchingWal = isSearchingWal;
     }
 }
