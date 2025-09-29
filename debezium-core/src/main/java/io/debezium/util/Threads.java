@@ -288,7 +288,7 @@ public class Threads {
      * @return the thread factory setting the correct name
      */
     public static ThreadFactory threadFactory(Class<?> component, String componentId, String name, boolean indexed, boolean daemon,
-                                               Consumer<Thread> callback, Optional<Runnable> preHook) {
+                                              Consumer<Thread> callback, Optional<Runnable> preHook) {
 
         if (LOGGER.isInfoEnabled()) {
             LOGGER.info("Requested thread factory for component {}, id = {} named = {}", component.getSimpleName(), componentId, name);
