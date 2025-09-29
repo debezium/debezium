@@ -7,6 +7,7 @@ package io.debezium.util;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -269,6 +270,26 @@ public class Threads {
      */
     public static ThreadFactory threadFactory(Class<?> component, String componentId, String name, boolean indexed, boolean daemon,
                                               Consumer<Thread> callback) {
+
+        return threadFactory(component, componentId, name, indexed, daemon, callback, Optional.empty());
+    }
+
+    /**
+     * Returns a thread factory that creates threads conforming to Debezium thread naming
+     * pattern {@code debezium-<component class>-<component-id>-<thread-name>}.
+     *
+     * @param component - the source or sink component class
+     * @param componentId - the identifier to differentiate between componentId instances
+     * @param name - the name of the thread
+     * @param indexed - true if the thread name should be appended with an index
+     * @param daemon - true if the thread should be a daemon thread
+     * @param callback - a callback called on every thread created
+     * @param preHook - a hook called beforehand the execution of every thread
+     * @return the thread factory setting the correct name
+     */
+    public static ThreadFactory threadFactory(Class<?> component, String componentId, String name, boolean indexed, boolean daemon,
+                                               Consumer<Thread> callback, Optional<Runnable> preHook) {
+
         if (LOGGER.isInfoEnabled()) {
             LOGGER.info("Requested thread factory for component {}, id = {} named = {}", component.getSimpleName(), componentId, name);
         }
@@ -288,7 +309,10 @@ public class Threads {
                     threadName.append('-').append(index.getAndIncrement());
                 }
                 LOGGER.info("Creating thread {}", threadName);
-                final Thread t = new Thread(r, threadName.toString());
+                final Thread t = new Thread(() -> {
+                    preHook.ifPresent(Runnable::run);
+                    r.run();
+                }, threadName.toString());
                 t.setDaemon(daemon);
                 if (callback != null) {
                     callback.accept(t);
