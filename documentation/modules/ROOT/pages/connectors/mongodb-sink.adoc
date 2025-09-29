@@ -1,5 +1,6 @@
 // Category: debezium-using
 // Type: assembly
+// Title: {prodname} sink connector for MongoDB (Developer Preview)
 [id="debezium-sink-connector-for-mongodb"]
 = {prodname} sink connector for MongoDB
 
@@ -20,15 +21,13 @@ ifdef::community[]
 :source-highlighter: highlight.js
 
 toc::[]
-endif::community[]
-
 
 // Type: concept
 // Title: Overview of {prodname} MongoDB sink connector
 // ModuleID: overview-of-debezium-mongodb-sink-connector
 [[mongodb-sink-overview]]
 == Overview
-
+endif::community[]
 The {prodname} MongoDB sink connector captures change event records from Apache Kafka topics and then transforms the records into MongoDB documents that it writes to collections in a specified MongoDB sink database.
 For applications that require high scalability and fast data retrieval, propagating change data to a cluster-based MongoDB environment, which uses such features as sharding and replica sets to optimize read operations, can significantly improve retrieval performance.
 The connector can process only change events that originate from a {prodname} relational database connector.
@@ -54,7 +53,7 @@ endif::community[]
 ifdef::product[]
 For information about the MongoDB versions that are compatible with this connector, see the link:{LinkDebeziumSupportedConfigurations}[{NameDebeziumSupportedConfigurations}].
 
-Information and procedures for using a {prodname} sink connector for MongoDB is organized as follows:
+Information about the {prodname} sink connector for MongoDB and and instructions about how to use it is available in the following topics:
 
 * xref:architecture-of-debezium-mongodb-sink-connector[]
 * xref:limitations-of-debezium-mongodb-sink-connector[]
@@ -121,6 +120,7 @@ The MongoDB sink connector can consume only change events that originate from th
 * PostgreSQL
 * SQL Server
 
++
 The connector cannot process change event messages from any other {prodname} connectors, including the {prodname} MongoDB source connector.
 
 Schema evolution::
@@ -260,15 +260,14 @@ Specify a custom `CollectionNameStrategy` implementation.
 |[[mongodb-sink-property-field-include-list]]<<mongodb-sink-property-field-include-list, `+field.include.list+`>>
 |_empty string_
 |An optional, comma-separated list of field names that match the fully-qualified names of fields to include from the change event value.
-Fully-qualified names for fields are of the form `_fieldName_` or `_topicName_:_fieldName_`. +
-+
+Fully-qualified names for fields are of the form `_fieldName_` or `_topicName_:__fieldName__`. +
 If you include this property in the configuration, do not set the `field.exclude.list` property.
 
 |[[mongodb-sink-property-field-exclude-list]]<<mongodb-sink-property-field-exclude-list, `+field.exclude.list+`>>
 |_empty string_
 |An optional, comma-separated list of field names that match the fully-qualified names of fields to exclude from the change event value.
-Fully-qualified names for fields are of the form `_fieldName_` or `_topicName_:_fieldName_`. +
-+
+Fully-qualified names for fields are of the form `_fieldName_` or `_topicName_:__fieldName__`. +
+
 If you include this property in the configuration, do not set the `field.include.list` property.
 
 |[[mongodb-sink-property-batch-size]]<<mongodb-sink-property-batch-size, `+batch.size+`>>
