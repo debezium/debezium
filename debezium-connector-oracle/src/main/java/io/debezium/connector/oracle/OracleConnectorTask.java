@@ -25,6 +25,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.common.BaseSourceTask;
 import io.debezium.connector.common.DebeziumHeaderProducer;
+import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.document.DocumentReader;
 import io.debezium.jdbc.DefaultMainConnectionProvidingConnectionFactory;
@@ -61,7 +62,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
     private volatile ErrorHandler errorHandler;
     private volatile OracleDatabaseSchema schema;
 
-    private String adapterType;
+    private ConnectorAdapter connectorAdapter;
     private Partition.Provider<OraclePartition> partitionProvider = null;
     private OffsetContext.Loader<OracleOffsetContext> offsetContextLoader = null;
 
@@ -73,7 +74,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
     @Override
     public ChangeEventSourceCoordinator<OraclePartition, OracleOffsetContext> start(Configuration config) {
         OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
-        adapterType = connectorConfig.getAdapter().getType();
+        connectorAdapter = connectorConfig.getConnectorAdapter();
         partitionProvider = new OraclePartition.Provider(connectorConfig);
         offsetContextLoader = connectorConfig.getAdapter().getOffsetContextLoader();
 
@@ -281,7 +282,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
     @Override
     public void performCommit() {
-        if (!"xstream".equals(adapterType)) {
+        if (!ConnectorAdapter.XSTREAM.equals(connectorAdapter)) {
             super.performCommit();
             return;
         }
