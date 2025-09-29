@@ -76,6 +76,7 @@ public class OracleDatabaseDialect extends GeneralDatabaseDialect {
         registerType(BytesType.INSTANCE);
         registerType(ZonedTimestampType.INSTANCE);
         registerType(ZonedTimeType.INSTANCE);
+        registerType(GeometryType.INSTANCE);
     }
 
     @Override
