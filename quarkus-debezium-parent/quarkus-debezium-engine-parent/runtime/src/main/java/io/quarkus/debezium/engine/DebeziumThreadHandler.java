@@ -8,6 +8,7 @@ package io.quarkus.debezium.engine;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ThreadFactory;
 
 import org.slf4j.Logger;
@@ -16,11 +17,13 @@ import org.slf4j.LoggerFactory;
 import io.debezium.runtime.Debezium;
 import io.debezium.runtime.DebeziumContext;
 import io.debezium.runtime.EngineManifest;
+import io.debezium.util.Threads;
 
 public class DebeziumThreadHandler {
     private static final InheritableThreadLocal<DebeziumContext> context = new InheritableThreadLocal<>();
     private static final Map<EngineManifest, Integer> manifests = new HashMap<>();
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumThreadHandler.class.getName());
+    public static final String COMPONENT = "quarkus-extension";
 
     /**
      * Generate a {@link ThreadFactory} and initialize the {@link DebeziumContext} for a give {@link Debezium} engine
@@ -28,19 +31,11 @@ public class DebeziumThreadHandler {
      * @return the {@link ThreadFactory} customized for Quarkus
      */
     static ThreadFactory getThreadFactory(Debezium debezium) {
-        return new ThreadFactory() {
-            @Override
-            public synchronized Thread newThread(Runnable runnable) {
-                Integer threadNumber = manifests.getOrDefault(debezium.manifest(), 0) + 1;
-
-                manifests.put(debezium.manifest(), threadNumber);
-
-                return new Thread(() -> {
-                    context.set(debezium::manifest);
-                    runnable.run();
-                }, "dbz-" + debezium.manifest().id() + "-" + threadNumber);
-            }
-        };
+        return Threads.threadFactory(debezium.connector().getClass(),
+                COMPONENT,
+                debezium.manifest().id(),
+                true,
+                false, null, Optional.of(() -> context.set(debezium::manifest)));
     }
 
     /**

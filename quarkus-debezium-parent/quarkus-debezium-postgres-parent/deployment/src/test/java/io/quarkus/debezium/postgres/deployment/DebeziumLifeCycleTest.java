@@ -45,8 +45,8 @@ public class DebeziumLifeCycleTest {
             .overrideConfigKey("quarkus.datasource.devservices.enabled", "false")
             .setLogRecordPredicate(record -> record.getLoggerName().equals("io.quarkus.debezium.engine.DebeziumRunner"))
             .assertLogRecords((records) -> {
-                assertThat(records.getFirst().getMessage()).isEqualTo("Starting Debezium Engine dbz-default-1");
-                assertThat(records.get(1).getMessage()).isEqualTo("Shutting down Debezium Engine dbz-default-1");
+                assertThat(records.getFirst().getMessage()).isEqualTo("Starting Debezium Engine debezium-connector-quarkus-extension-default-0");
+                assertThat(records.get(1).getMessage()).isEqualTo("Shutting down Debezium Engine debezium-connector-quarkus-extension-default-0");
             });
 
     @Test
