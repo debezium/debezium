@@ -1718,6 +1718,13 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     }
 
     /**
+     * @return the connector adapter enum, use {@link #getAdapter()} for the adapter instance
+     */
+    public ConnectorAdapter getConnectorAdapter() {
+        return connectorAdapter;
+    }
+
+    /**
      * @return the streaming adapter implementation
      */
     public StreamingAdapter getAdapter() {
