@@ -35,12 +35,7 @@ kubectl create namespace debezium
 helm repo add debezium https://charts.debezium.io
 helm install my-debezium-operator debezium/debezium-operator --version 3.2.0-final -n debezium
 ----
-+
-[NOTE]
-====
-Due to a versioning problem, you must currently specify a version number, even if you just want to install the last stable version.
-====
-+
+
 You can find the available versions of the operator in the https://charts.debezium.io/index.yaml[Debezium Helm Chart Repository].
 
 == Tracking the progress of the operator deployment
