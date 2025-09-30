@@ -1,0 +1,2 @@
+CREATE FUNCTION process_table(tab       TABLE)
+RETURN TABLE PIPELINED ROW POLYMORPHIC USING process_table_pkg;

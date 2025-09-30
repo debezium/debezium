@@ -1,0 +1,8 @@
+ALTER FLASHBACK ARCHIVE test_archive1
+   MODIFY RETENTION 1 MONTH;
+
+ALTER TABLE oe.customers
+    FLASHBACK ARCHIVE;
+
+ALTER TABLE oe.orders
+    FLASHBACK ARCHIVE test_archive2;

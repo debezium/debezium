@@ -1,0 +1,1 @@
+DROP LOCKDOWN PROFILE hr_prof;
