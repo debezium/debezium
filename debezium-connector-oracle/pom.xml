@@ -272,12 +272,12 @@
                         <exclude>**/io/debezium/connector/oracle/xstream/**</exclude>
                     </testExcludes>
                     <!-- necessary for compilers > 22 -->
-                    <annotationProcessorPaths>
-                        <path>
+                    <annotationProcessorPaths combine.children="append">
+                        <annotationProcessorPath>
                             <groupId>org.infinispan.protostream</groupId>
                             <artifactId>protostream-processor</artifactId>
                             <version>${version.infinispan.protostream}</version>
-                        </path>
+                        </annotationProcessorPath>
                     </annotationProcessorPaths>
                 </configuration>
             </plugin>
@@ -411,14 +411,10 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
-                        <configuration combine.self="override">
+                        <configuration combine.self="merge">
                             <!-- Point (2) add the Xstream sources back into the module -->
-                            <includes>
-                                <include>**</include>
-                            </includes>
-                            <testIncludes>
-                                <include>**</include>
-                            </testIncludes>
+                            <excludes combine.self="override"/>
+                            <testExcludes combine.self="override"/>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -468,10 +464,9 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
-                        <configuration combine.self="override">
-                            <includes>
-                                <include>**</include>
-                            </includes>
+                        <configuration combine.self="merge">
+                            <excludes combine.self="override"/>
+                            <testExcludes combine.self="override"/>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -494,11 +489,10 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
-                        <configuration combine.self="override">
+                        <configuration combine.self="merge">
                             <!-- include xstream back into the module on assembly builds -->
-                            <includes>
-                                <include>**</include>
-                            </includes>
+                            <excludes combine.self="override"/>
+                            <testExcludes combine.self="override"/>
                         </configuration>
                     </plugin>
                     <plugin>
@@ -553,11 +547,11 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-compiler-plugin</artifactId>
-                        <configuration combine.self="override">
-                            <excludes>
+                        <configuration combine.self="merge">
+                            <excludes combine.self="override">
                                 <exclude>**/io/debezium/connector/oracle/xstream/**</exclude>
                             </excludes>
-                            <testExcludes>
+                            <testExcludes combine.self="override">
                                 <exclude>**/*IT</exclude>
                             </testExcludes>
                         </configuration>
