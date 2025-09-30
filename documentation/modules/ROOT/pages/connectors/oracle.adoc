@@ -2642,7 +2642,9 @@ Consult with your database administrator to evaluate whether the database might 
 // Type: procedure
 // ModuleID: oracle-connector-specifying-the-archive-log-destination
 // Title: Specifying the archive log destination that the {prodname} Oracle connector uses
+[id="archive-log-destinations"]
 === Archive log destinations
+
 
 Oracle database administrators can configure up to 31 different destinations for archive logs.
 Administrators can set parameters for each destination to designate it for a specific use, for example, log shipping for physical standbys, or external storage to allow for extended log retention.
@@ -2655,7 +2657,7 @@ If your Oracle environment includes multiple destinations that satisfy that crit
 * To specify the archive log destination that you want {prodname} to use, set the xref:oracle-property-archive-destination-name[`archive.destination.name`] property in the connector configuration. +
  +
 For example, suppose that a database is configured with two archive destination paths, `/path/one` and `/path/two`, and that the `V$ARCHIVE_DEST_STATUS` table associates these paths with destination names that are specified in the column `DEST_NAME`.
-If both destinations satisfy the criteria for {prodname} -- that is, their `status` is `VALID` and their `type` is `LOCAL` -- to configure the connector to use the archive logs that the database writes to `/path/two`, set the value of `archive.destination.name` to the value in the `DEST_NAME` column that is associated with `/path/two` in the `V$ARCHIVE_DEST_STATUS` table.
+If both destinations satisfy the criteria for {prodname} -- that is, if their `status` is `VALID` and their `type` is `LOCAL` -- to configure the connector to use the archive logs that the database writes to `/path/two`, set the value of `archive.destination.name` to the value in the `DEST_NAME` column that is associated with `/path/two` in the `V$ARCHIVE_DEST_STATUS` table.
 For example, if the `DEST_NAME` is `LOG_ARCHIVE_DEST_3` for `/path/two`, you would configure Debezium as follows:
 
 [source,json]
@@ -4335,10 +4337,12 @@ Any transaction that exceeds this configured value is discarded entirely, and th
 
 |[[oracle-property-archive-destination-name]]<<oracle-property-archive-destination-name, `+archive.destination.name+`>>
 |No default
-|Specifies the configured Oracle archive destination to use when mining archive logs with LogMiner. +
- +
+|Specifies the configured Oracle archive destination(s) to use when mining archive logs with LogMiner.
+
 The default behavior automatically selects the first valid, local configured destination.
 However, you can use a specific destination can be used by providing the destination name, for example, `LOG_ARCHIVE_DEST_5`.
+
+For information about specifying the archive destination in environments where the primary and standby instances use different names, see xref:archive-log-destinations[Archive log destinations]. 
 
 |[[oracle-property-log-mining-username-include-list]]<<oracle-property-log-mining-username-include-list, `+log.mining.username.include.list+`>>
 |No default
