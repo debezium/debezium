@@ -1,7 +1,9 @@
 // Category: debezium-using
 // Type: assembly
-[id="debezium-sink-connector-for-jdbc"]
-= {prodname} sink connector for JDBC
+// Title: {prodname} sink connector for JDBC
+// ModuleID: debezium-sink-connector-for-jdbc
+[id="debezium-connector-for-jdbc"]
+= {prodname} connector for JDBC
 :context: jdbc
 :mbean-name: {context}
 :connector-file: {context}
@@ -605,6 +607,7 @@ Earlier versions of MariaDB or MySQL, and PostgreSQL without pgvector, do not su
 If there is not a direct mapping between one of the vector logical types and your target relational database's column types, you can use the `VectorToJsonConverter` to convert the vector logical type to JSON so that it can be written to any target relational database.
 ====
 
+[id="debezium-jdbc-sink-column-and-data-type-propagation"]
 // Type: concept
 === Column and data type propagation
 
