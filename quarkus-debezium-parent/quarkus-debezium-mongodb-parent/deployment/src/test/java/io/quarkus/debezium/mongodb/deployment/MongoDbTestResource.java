@@ -36,8 +36,8 @@ public class MongoDbTestResource {
             .startupTimeout(Duration.ofSeconds(90))
             .build();
 
-    public void start(List<Map<String, ? extends  Serializable>> rawUsers,
-                      List<Map<String, ? extends  Serializable>> rawOrders) {
+    public void start(List<Map<String, ? extends Serializable>> rawUsers,
+                      List<Map<String, ? extends Serializable>> rawOrders) {
         mongoDBContainer.start();
 
         try (var client = MongoClients.create(MongoClientSettings.builder()
