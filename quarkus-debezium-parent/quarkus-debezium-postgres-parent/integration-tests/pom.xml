@@ -8,7 +8,7 @@
         <version>3.3.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>quarkus-debezium-postgres-integration-test</artifactId>
+    <artifactId>quarkus-debezium-postgres-integration-tests</artifactId>
 
     <name>Quarkus Debezium :: Extension :: Postgres :: Integration Test</name>
 
