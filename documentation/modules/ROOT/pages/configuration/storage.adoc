@@ -488,6 +488,13 @@ INSERT INTO %s(id, history_data, history_data_seq, record_insert_ts, record_inse
 
 {prodname} can use a https://redis.io/docs/latest/develop/clients/jedis/[Jedis client] to store data in a Redis cache.
 
+{prodname} supports both single Redis instance and Redis Cluster modes:
+
+* **Single Instance Mode**: Connects to a single Redis server instance
+* **Cluster Mode**: Connects to a Redis Cluster for high availability and horizontal scaling
+
+To enable Redis Cluster mode, set the `redis.cluster.enabled` property to `true` and provide comma-separated host:port addresses in the `redis.address` property.
+
 === Offset Store
 
 [cols="35%a,10%a,55%a",options="header"]
@@ -589,6 +596,10 @@ If a data packet is not transferred with the specified interval, {prodname} clos
 |[[offset-storage-redis-wait-retry-delay-ms]]<<offset-storage-redis-wait-retry-delay-ms, `offset.storage.redis.wait.retry.delay.ms`>>
 |1000
 |Specifies the time, in milliseconds, that {prodname} waits after a failure before it resubmits a request to Redis to confirm data is written to a replica shard.
+
+|[[offset-storage-redis-cluster-enabled]]<<offset-storage-redis-cluster-enabled, `offset.storage.redis.cluster.enabled`>>
+|false
+|Enables Redis Cluster mode. When set to `true`, {prodname} uses a JedisCluster client to connect to Redis. Single or comma-separated host:port addresses are accepted in the `offset.storage.redis.address` property.
 
 
 |===
@@ -693,8 +704,50 @@ If a data packet is not transferred with the specified interval, {prodname} clos
 |1000
 |Specifies the time, in milliseconds, that {prodname} waits after a failure before it resubmits a request to Redis to confirm data is written to a replica shard.
 
+|[[schema-history-internal-redis-cluster-enabled]]<<schema-history-internal-redis-cluster-enabled, `schema.history.internal.storage.redis.cluster.enabled`>>
+|false
+|Enables Redis Cluster mode for schema history storage. When set to `true`, {prodname} uses a JedisCluster client to connect to Redis. Single or comma-separated host:port addresses are accepted in the `schema.history.internal.storage.redis.address` property.
+
 
 |===
+
+=== Redis Configuration Examples
+
+==== Single Instance Mode
+
+[source,properties]
+----
+# Offset storage configuration
+offset.storage=io.debezium.storage.redis.offset.RedisOffsetBackingStore
+offset.storage.redis.address=localhost:6379
+offset.storage.redis.password=password
+offset.storage.redis.cluster.enabled=false
+
+# Schema history storage configuration
+schema.history.internal=io.debezium.storage.redis.history.RedisSchemaHistory
+schema.history.internal.storage.redis.address=localhost:6379
+schema.history.internal.storage.redis.password=password
+schema.history.internal.storage.redis.cluster.enabled=false
+----
+
+==== Cluster Mode
+
+[source,properties]
+----
+# Offset storage configuration
+offset.storage=io.debezium.storage.redis.offset.RedisOffsetBackingStore
+offset.storage.redis.address=redis-node-1:7001,redis-node-2:7002,redis-node-3:7003
+offset.storage.redis.password=password
+offset.storage.redis.cluster.enabled=true
+
+# Schema history storage configuration
+schema.history.internal=io.debezium.storage.redis.history.RedisSchemaHistory
+schema.history.internal.storage.redis.address=redis-node-1:7001,redis-node-2:7002,redis-node-3:7003
+schema.history.internal.storage.redis.password=password
+schema.history.internal.storage.redis.cluster.enabled=true
+----
+
+NOTE: When using Redis Cluster mode, ensure that your Redis cluster is properly configured and accessible. The cluster nodes should be reachable from the {prodname} instance.
 
 == Amazon S3
 
