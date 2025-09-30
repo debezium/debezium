@@ -8,13 +8,13 @@ package io.quarkus.sample.app;
 
 import org.junit.platform.suite.api.SelectClasses;
 import org.junit.platform.suite.api.Suite;
+import org.junit.platform.suite.api.SuiteDisplayName;
 
 import io.quarkus.sample.app.events.HeartbeatEventIT;
 import io.quarkus.sample.app.events.LifecycleEventIT;
 import io.quarkus.sample.app.general.CapturingIT;
 import io.quarkus.sample.app.general.EngineIT;
 import io.quarkus.sample.app.general.NotificationIT;
-import org.junit.platform.suite.api.SuiteDisplayName;
 
 @Suite
 @SuiteDisplayName("Debezium Extensions for Quarkus - Integration Test Suite")
