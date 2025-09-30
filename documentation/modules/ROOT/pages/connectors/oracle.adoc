@@ -2986,7 +2986,7 @@ To help resolve some instances of the problem, you can configure the connector t
 `internal.log.mining.sql.relaxed.quote.detection` +
 
 ifdef::product[]
-For more information, see the link:{LinkDebeziumReleaseNotes}#debezium-release-notes-ga-promoted-oracle-extended-max-string-size-suppor[{NameDebeziumReleaseNotes}].
+For more information, see the link:{LinkDebeziumReleaseNotes}#debezium-release-notes-ga-promoted-oracle-extended-max-string-size-support[{NameDebeziumReleaseNotes}].
 endif::product[]
 ifdef::community[]
 Note that the use of this internal setting is not currently a supported feature. +
