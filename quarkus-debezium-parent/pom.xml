@@ -57,6 +57,23 @@
                 <artifactId>quarkus-debezium-engine</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.debezium.quarkus</groupId>
+                <artifactId>quarkus-debezium-testsuite-deployment</artifactId>
+                <type>test-jar</type>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium.quarkus</groupId>
+                <artifactId>quarkus-debezium-testsuite-integration-test</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.debezium.quarkus</groupId>
+                <artifactId>quarkus-debezium-testsuite-integration-test</artifactId>
+                <type>test-jar</type>
+                <version>${project.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
