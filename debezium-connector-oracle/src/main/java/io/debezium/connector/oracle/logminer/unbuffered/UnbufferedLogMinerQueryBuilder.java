@@ -29,7 +29,7 @@ public class UnbufferedLogMinerQueryBuilder extends AbstractLogMinerQueryBuilder
         // For DDL operations, the COMMIT_SCN column is NULL when using COMMITTED_DATA_ONLY mode,
         // and so we use the INFO field combined with the COMMIT_SCN field to retrieve those
         // specific rows.
-        predicates.append("(COMMIT_SCN >= ? OR (COMMIT_SCN IS NULL AND INFO IN (' DDL', 'USER DDL (PlSql=0 RecDep=0)')))");
+        predicates.append("(COMMIT_SCN >= ? AND COMMIT_SCN < ? OR (COMMIT_SCN IS NULL AND INFO IN (' DDL', 'USER DDL (PlSql=0 RecDep=0)')))");
 
         final String multiTenantPredicate = getMultiTenantPredicate();
         if (!Strings.isNullOrEmpty(multiTenantPredicate)) {

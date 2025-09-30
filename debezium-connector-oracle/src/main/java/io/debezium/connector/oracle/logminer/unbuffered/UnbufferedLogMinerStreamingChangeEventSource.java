@@ -148,7 +148,7 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
 
             if (startMiningSession(minLogScn, Scn.NULL, miningStartAttempts)) {
                 miningStartAttempts = 1;
-                minCommitScn = process(minCommitScn);
+                minCommitScn = process(minCommitScn, upperBoundsScn);
 
                 getMetrics().setLastBatchProcessingDuration(Duration.between(batchStartTime, Instant.now()));
             }
@@ -244,21 +244,24 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
      * Processes the Oracle LogMiner data between the specified bounds.
      *
      * @param minCommitScn mining range lower bounds SCN, should not be {@code null}
+     * @param upperBoundsScn mining range upper bounds SCN, should not be {@code null}
      * @return the next iteration's lower bounds SCN, never {@code null}
      * @throws SQLException if a database exception occurred
      * @throws InterruptedException if the thread is interrupted
      */
-    private Scn process(Scn minCommitScn) throws SQLException, InterruptedException {
+    private Scn process(Scn minCommitScn, Scn upperBoundsScn) throws SQLException, InterruptedException {
         getBatchMetrics().reset();
 
         try (PreparedStatement statement = createQueryStatement()) {
-            LOGGER.debug("Fetching results with COMMIT_SCN >= {}", minCommitScn);
+            LOGGER.debug("Fetching results with COMMIT_SCN >= {} and < {}", minCommitScn, upperBoundsScn);
             statement.setFetchSize(getConfig().getQueryFetchSize());
             statement.setFetchDirection(ResultSet.FETCH_FORWARD);
             statement.setString(1, minCommitScn.toString());
+            statement.setString(2, upperBoundsScn.toString());
 
             if (getConfig().isLogMiningUseCteQuery()) {
-                statement.setString(2, minCommitScn.toString());
+                statement.setString(3, minCommitScn.toString());
+                statement.setString(4, upperBoundsScn.toString());
             }
 
             lastCommitScn = minCommitScn;
