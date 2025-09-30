@@ -287,6 +287,10 @@ For more information see Redis https://redis.io/commands/wait/[WAIT] command.
 |`1000`
 |If using Redis to store offsets, defines the delay of retry on wait for replica failure.
 
+|[[debezium-source-offset-redis-cluster-enabled]]<<debezium-source-offset-redis-cluster-enabled, `debezium.source.offset.storage.redis.cluster.enabled`>>
+|`false`
+|If using Redis to store offsets, enables Redis Cluster mode. When set to `true`, {prodname} uses a JedisCluster client to connect to Redis. Single or comma-separated host:port addresses are accepted in the `debezium.source.offset.storage.redis.address` property.
+
 |[[debezium-source-database-history-class]]<<debezium-source-database-history-class, `debezium.source.schema.history.internal`>>
 |`io.debezium.storage.kafka.history.KafkaSchemaHistory`
 |Some of the connectors (e.g MySQL, SQL Server, Db2, Oracle) track the database schema evolution over time and stores this data in a database schema history.
@@ -387,6 +391,10 @@ For more information see Redis https://redis.io/commands/wait/[WAIT] command.
 |[[debezium-source-database-history-redis-wait-retry-delay]]<<redis-wait-retry-delay, `debezium.source.schema.history.internal.redis.wait.retry.delay.ms`>>
 |`1000`
 |If using Redis to store schema history, defines the delay of retry on wait for replica failure.
+
+|[[debezium-source-database-history-redis-cluster-enabled]]<<debezium-source-database-history-redis-cluster-enabled, `debezium.source.schema.history.internal.redis.cluster.enabled`>>
+|`false`
+|If using Redis to store schema history, enables Redis Cluster mode. When set to `true`, {prodname} uses a JedisCluster client to connect to Redis. Single or comma-separated host:port addresses are accepted in the `debezium.source.schema.history.internal.redis.address` property.
 
 
 |[[schema-history-internal-rocketmq-topic]]<<schema-history-internal-rocketmq-topic, `debezium.source.schema.history.internal.rocketmq.topic`>>
@@ -1111,6 +1119,13 @@ When the alternative implementations are not available then the default ones are
 Redis is an open source (BSD licensed) in-memory data structure store, used as a database, cache and message broker.
 The Stream is a data type which models a _log data structure_ in a more abstract way. It implements powerful operations to overcome the limitations of a log file.
 
+{prodname} supports both single Redis instance and Redis Cluster modes for sink operations:
+
+* **Single Instance Mode**: Connects to a single Redis server instance
+* **Cluster Mode**: Connects to a Redis Cluster for high availability and horizontal scaling
+
+To enable Redis Cluster mode, set the `debezium.sink.redis.cluster.enabled` property to `true` and provide comma-separated host:port addresses in the `debezium.sink.redis.address` property.
+
 [cols="35%a,10%a,55%a",options="header"]
 |===
 |Property
@@ -1237,6 +1252,10 @@ By default it is `0` (disabled).
 |`true`
 |Determines whether heartbeat messages from Debezium connectors should be skipped (not stored in Redis). When set to `true` (default), heartbeat messages are marked as processed but not stored in Redis streams. When set to `false`, heartbeat messages are stored in Redis streams alongside regular CDC events.
 
+|[[redis-cluster-enabled]]<<redis-cluster-enabled, `debezium.sink.redis.cluster.enabled`>>
+|`false`
+|Enables Redis Cluster mode for sink operations. When set to `true`, {prodname} uses a JedisCluster client to connect to Redis. Single or comma-separated host:port addresses are accepted in the `debezium.sink.redis.address` property.
+
 |===
 
 [id="p-redis-message-format"]
@@ -1280,6 +1299,55 @@ By default the same name is used.
 
 |===
 
+==== Redis Configuration Examples
+
+===== Single Instance Mode
+
+[source,properties]
+----
+# Sink configuration
+debezium.sink.type=redis
+debezium.sink.redis.address=localhost:6379
+debezium.sink.redis.password=password
+debezium.sink.redis.cluster.enabled=false
+
+# Offset storage configuration
+debezium.source.offset.storage=io.debezium.storage.redis.offset.RedisOffsetBackingStore
+debezium.source.offset.storage.redis.address=localhost:6379
+debezium.source.offset.storage.redis.password=password
+debezium.source.offset.storage.redis.cluster.enabled=false
+
+# Schema history storage configuration
+debezium.source.schema.history.internal=io.debezium.storage.redis.history.RedisSchemaHistory
+debezium.source.schema.history.internal.redis.address=localhost:6379
+debezium.source.schema.history.internal.redis.password=password
+debezium.source.schema.history.internal.redis.cluster.enabled=false
+----
+
+===== Cluster Mode
+
+[source,properties]
+----
+# Sink configuration
+debezium.sink.type=redis
+debezium.sink.redis.address=redis-node-1:7001,redis-node-2:7002,redis-node-3:7003
+debezium.sink.redis.password=password
+debezium.sink.redis.cluster.enabled=true
+
+# Offset storage configuration
+debezium.source.offset.storage=io.debezium.storage.redis.offset.RedisOffsetBackingStore
+debezium.source.offset.storage.redis.address=redis-node-1:7001,redis-node-2:7002,redis-node-3:7003
+debezium.source.offset.storage.redis.password=password
+debezium.source.offset.storage.redis.cluster.enabled=true
+
+# Schema history storage configuration
+debezium.source.schema.history.internal=io.debezium.storage.redis.history.RedisSchemaHistory
+debezium.source.schema.history.internal.redis.address=redis-node-1:7001,redis-node-2:7002,redis-node-3:7003
+debezium.source.schema.history.internal.redis.password=password
+debezium.source.schema.history.internal.redis.cluster.enabled=true
+----
+
+NOTE: When using Redis Cluster mode, ensure that your Redis cluster is properly configured and accessible. The cluster nodes should be reachable from the {prodname} Server instance.
 
 
 ==== NATS Streaming
