@@ -13,6 +13,7 @@ import io.debezium.connector.mongodb.MongoDbConnectorTask;
 import io.debezium.connector.mongodb.MongoDbSourceInfoStructMaker;
 import io.debezium.connector.mongodb.connection.DefaultMongoDbAuthProvider;
 import io.debezium.connector.mongodb.snapshot.query.SelectAllSnapshotQuery;
+import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.quarkus.arc.deployment.SyntheticBeanBuildItem;
 import io.quarkus.debezium.configuration.MongoDbDatasourceConfiguration;
 import io.quarkus.debezium.configuration.MongoDbDatasourceRecorder;
@@ -64,6 +65,7 @@ public class MongoDbEngineProcessor {
     @BuildStep(onlyIf = NativeOrNativeSourcesBuild.class)
     void registerClassesThatAreLoadedThroughReflection(BuildProducer<ReflectiveClassBuildItem> reflectiveClasses) {
         reflectiveClasses.produce(ReflectiveClassBuildItem.builder(
+                DefaultTopicNamingStrategy.class,
                 MongoDbConnector.class,
                 MongoDbConnectorTask.class,
                 MongoDbSourceInfoStructMaker.class,
