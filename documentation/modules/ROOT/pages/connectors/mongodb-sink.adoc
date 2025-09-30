@@ -235,7 +235,7 @@ Custom implementation::
 You can provide your own `CollectionNameStrategy` implementation.
 
 |[[mongodb-sink-property-collection-name-format]]<<mongodb-sink-property-collection-name-format, `+collection.name.format+`>>
-| `${topic}`
+| `$\{topic}`
 | Template for deriving the target collection name from the Kafka topic name.
 
 |[[mongodb-sink-property-column-naming-strategy]]<<mongodb-sink-property-column-naming-strategy, `+column.naming.strategy+`>>
