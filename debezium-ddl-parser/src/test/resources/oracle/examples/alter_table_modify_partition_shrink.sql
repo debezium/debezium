@@ -1,0 +1,1 @@
+ALTER TABLE tft_tsm.t_act_trade_detail MODIFY PARTITION  SYS_P41089 SHRINK SPACE;
