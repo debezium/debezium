@@ -2954,10 +2954,12 @@ internal.log.mining.read.only=true
 The preceding setting prevents the database from creating and updating the `LOG_MINING_FLUSH` table.
 You can use the `internal.log.mining.read.only` property with an Oracle Standalone database, or with an Oracle RAC installation.
 
+// Type: concept
+// ModuleID: debezium-oracle-connector-extended-max-string-size
 [id="support-for-extended-max-string-size"]
 === Extended max string size
 
-The database parameter `max_string_size` controls how the Oracle database, and by extension, Debezium, interprets values for `VARCHAR2`, `NVARCHAR2`, and `RAW` fields.
+The database parameter `max_string_size` controls how the Oracle database, and by extension, the {prodname} Oracle connector, interprets values for `VARCHAR2`, `NVARCHAR2`, and `RAW` fields.
 The default, `STANDARD`, means the lengths for these data types align with the same limits with releases prior to Oracle 12c (4000 bytes for `VARCHAR2` and `NVARCHAR2` and 2000 bytes for `RAW`).
 When configured as `EXTENDED`, these columns now allow up to 32767 bytes of data to be stored.
 
