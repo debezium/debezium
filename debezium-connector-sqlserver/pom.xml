@@ -79,6 +79,21 @@
         <dependency>
             <groupId>io.strimzi</groupId>
             <artifactId>strimzi-test-container</artifactId>
+            <!--
+            The strimzi-test-container dependency is bringing
+            in log4j-slf4j-impl which conflicts with logback-classic.
+            Both implement the SLF4J API, and Log4j is being loaded
+            instead of Logback, causing the ClassCastException.
+            Therefore, I am excluding `log4j-slf4j-impl` from the
+            strimzi-test-container dependency to prevent
+            the conflict with logback-classic
+            -->
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.logging.log4j</groupId>
+                    <artifactId>log4j-slf4j-impl</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>
