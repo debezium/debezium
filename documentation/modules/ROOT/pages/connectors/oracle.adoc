@@ -2986,7 +2986,7 @@ To help resolve some instances of the problem, you can configure the connector t
 `internal.log.mining.sql.relaxed.quote.detection` +
 
 ifdef::product[]
-For more information, see the link:{LinkDebeziumReleaseNotes}#debezium-release-notes-tech-preview-oracle-extended-max-string-size-support[{NameDebeziumReleaseNotes}].
+For more information, see the link:{LinkDebeziumReleaseNotes}#debezium-release-notes-ga-promoted-oracle-extended-max-string-size-suppor[{NameDebeziumReleaseNotes}].
 endif::product[]
 ifdef::community[]
 Note that the use of this internal setting is not currently a supported feature. +
@@ -4583,7 +4583,7 @@ After the next failure, the connector stops, and user intervention is required t
 
 |[[oracle-property-guardrail-collections-max]]<<oracle-property-guardrail-collections-max, `+guardrail.collections.max+`>>
 |`0`
-|Specifies the maximum number of tables that the connector can capture. 
+|Specifies the maximum number of tables that the connector can capture.
 Exceeding this limit triggers the action specified by `guardrail.collections.limit.action`.
 Set this property to  `0` to prevent the connector from triggering guardrail actions.
 
