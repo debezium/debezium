@@ -106,18 +106,17 @@
                     </execution>
                 </executions>
             </plugin>
-            <!--
             <plugin>
                 <groupId>io.fabric8</groupId>
                 <artifactId>docker-maven-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>start-postgres</id>
+                        <id>start-mongodb</id>
                         <phase>pre-integration-test</phase>
                         <goals><goal>start</goal></goals>
                     </execution>
                     <execution>
-                        <id>stop-postgres</id>
+                        <id>stop-mongodb</id>
                         <phase>post-integration-test</phase>
                         <goals><goal>stop</goal></goals>
                     </execution>
@@ -125,38 +124,21 @@
                 <configuration>
                     <images>
                         <image>
-                            <name>quay.io/debezium/example-mongodb:3.0</name>
+                            <name>debezium-mongo:local4</name>
                             <alias>mongodb</alias>
                             <run>
                                 <ports>
                                     <port>27017:27017</port>
                                 </ports>
                                 <env>
-                                    <MONGODB_USER>native</MONGODB_USER>
-                                    <MONGODB_PASSWORD>native</MONGODB_PASSWORD>
+                                    <MONGO_INITDB_ROOT_USERNAME>native</MONGO_INITDB_ROOT_USERNAME>
+                                    <MONGO_INITDB_ROOT_PASSWORD>native</MONGO_INITDB_ROOT_PASSWORD>
+                                    <MONGO_INITDB_DATABASE>test</MONGO_INITDB_DATABASE>
+                                    <HOSTNAME>127.0.0.1</HOSTNAME>
                                 </env>
                                 <volumes>
                                     <bind>
-                                        <volume>${project.basedir}/src/main/resources/sql/default.sql:/docker-entrypoint-initdb.d/default.sql</volume>
-                                    </bind>
-                                </volumes>
-                            </run>
-                        </image>
-                        <image>
-                            <name>quay.io/debezium/postgres:15</name>
-                            <alias>postgres</alias>
-                            <run>
-                                <ports>
-                                    <port>5433:5432</port>
-                                </ports>
-                                <env>
-                                    <POSTGRES_USER>alternative</POSTGRES_USER>
-                                    <POSTGRES_PASSWORD>alternative</POSTGRES_PASSWORD>
-                                    <POSTGRES_DB>alternative</POSTGRES_DB>
-                                </env>
-                                <volumes>
-                                    <bind>
-                                        <volume>${project.basedir}/src/main/resources/sql/alternative.sql:/docker-entrypoint-initdb.d/alternative.sql</volume>
+                                        <volume>${project.basedir}/src/main/resources/script:/docker-entrypoint-initdb.d</volume>
                                     </bind>
                                 </volumes>
                             </run>
@@ -164,7 +146,6 @@
                     </images>
                 </configuration>
             </plugin>
-            -->
         </plugins>
     </build>
 
