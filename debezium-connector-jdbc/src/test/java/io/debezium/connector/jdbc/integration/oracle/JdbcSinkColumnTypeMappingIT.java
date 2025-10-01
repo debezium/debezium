@@ -11,6 +11,7 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Struct;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -23,6 +24,7 @@ import io.debezium.connector.jdbc.junit.jupiter.OracleSinkDatabaseContextProvide
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
+import io.debezium.data.geometry.Geometry;
 import io.debezium.doc.FixFor;
 
 /**
@@ -75,6 +77,59 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
         getSink().assertRows(destinationTable, rs -> {
             assertThat(rs.getInt(1)).isEqualTo(1);
             assertThat(rs.getBytes(2)).isEqualTo(new byte[]{ 1, 2, 3 });
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SinkRecordFactoryArgumentsProvider.class)
+    @FixFor("DBZ-9508")
+    public void testShouldCoerceGeometryTypeToSdoGeometryColumnType(SinkRecordFactory factory) throws Exception {
+        final Map<String, String> properties = getDefaultSinkConfig();
+        properties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, JdbcSinkConnectorConfig.SchemaEvolutionMode.NONE.getValue());
+        properties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, JdbcSinkConnectorConfig.PrimaryKeyMode.RECORD_KEY.getValue());
+        properties.put(JdbcSinkConnectorConfig.INSERT_MODE, JdbcSinkConnectorConfig.InsertMode.INSERT.getValue());
+        startSinkConnector(properties);
+        assertSinkConnectorIsRunning();
+
+        final Schema optionalGeometrySchema = Geometry.builder().optional().build();
+
+        final String tableName = randomTableName();
+        final String topicName = topicName("server1", "schema", tableName);
+
+        final byte[] wkb = new byte[]{ 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32, 64, 0, 0, 0, 0, 0, 0, 76, 64 };
+
+        final Struct geometry = Geometry.createValue(optionalGeometrySchema, wkb, 4326);
+
+        final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
+                topicName,
+                (byte) 1,
+                "data",
+                optionalGeometrySchema,
+                geometry);
+
+        final String destinationTable = destinationTableName(createRecord);
+        final String sql = "CREATE TABLE %s (id number(9,0) not null, data mdsys.sdo_geometry, primary key(id))";
+        getSink().execute(String.format(sql, destinationTable));
+
+        consume(createRecord);
+
+        getSink().assertRows(destinationTable, rs -> {
+            assertThat(rs.getInt(1)).isEqualTo(1);
+
+            Object obj = rs.getObject(2);
+            assertThat(obj).isInstanceOf(java.sql.Struct.class);
+            java.sql.Struct sdoGeometry = (java.sql.Struct) obj;
+            Object[] attributes = sdoGeometry.getAttributes();
+
+            assertThat(attributes[0]).isEqualTo(2001);
+            assertThat(attributes[1]).isEqualTo(4326);
+            Object sdoPointObj = attributes[2];
+            java.sql.Struct sdoPoint = (java.sql.Struct) sdoPointObj;
+            Object[] pointAttrs = sdoPoint.getAttributes();
+            assertThat(pointAttrs[0]).isEqualTo(8);
+            assertThat(pointAttrs[1]).isEqualTo(51);
+
             return null;
         });
     }
