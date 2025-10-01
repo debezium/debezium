@@ -8,6 +8,7 @@ package io.debezium.connector.jdbc.junit.jupiter;
 import static org.fest.assertions.Assertions.assertThat;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -21,6 +22,8 @@ import java.util.Objects;
 import org.assertj.db.api.AbstractColumnAssert;
 import org.assertj.db.api.TableAssert;
 import org.assertj.db.type.ValueType;
+import org.hibernate.dialect.DatabaseVersion;
+import org.hibernate.dialect.SimpleDatabaseVersion;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.utility.ThrowingFunction;
 
@@ -32,6 +35,7 @@ import org.testcontainers.utility.ThrowingFunction;
 public class Sink extends JdbcConnectionProvider {
 
     private final SinkType type;
+    private DatabaseVersion version;
 
     public Sink(SinkType sinkType, JdbcDatabaseContainer<?> database) {
         super(database, new SinkConnectionInitializer(sinkType));
@@ -40,6 +44,18 @@ public class Sink extends JdbcConnectionProvider {
 
     public SinkType getType() {
         return type;
+    }
+
+    public DatabaseVersion getVersion() throws SQLException {
+        if (version == null) {
+            try (Connection connection = getConnection()) {
+                final DatabaseMetaData metadata = connection.getMetaData();
+                version = new SimpleDatabaseVersion(
+                        metadata.getDatabaseMajorVersion(),
+                        metadata.getDatabaseMinorVersion());
+            }
+        }
+        return version;
     }
 
     public String getJdbcUrl() {
