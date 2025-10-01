@@ -7,6 +7,7 @@ package io.debezium.connector.jdbc.integration.oracle;
 
 import static org.fest.assertions.Assertions.assertThat;
 
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
@@ -19,6 +20,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 
 import io.debezium.bindings.kafka.KafkaDebeziumSinkRecord;
 import io.debezium.connector.jdbc.JdbcSinkConnectorConfig;
+import io.debezium.connector.jdbc.dialect.oracle.GeometryType;
 import io.debezium.connector.jdbc.integration.AbstractJdbcSinkTest;
 import io.debezium.connector.jdbc.junit.jupiter.OracleSinkDatabaseContextProvider;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
@@ -122,13 +124,20 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
             java.sql.Struct sdoGeometry = (java.sql.Struct) obj;
             Object[] attributes = sdoGeometry.getAttributes();
 
-            assertThat(attributes[0]).isEqualTo(2001);
-            assertThat(attributes[1]).isEqualTo(4326);
+            BigDecimal expectedSrid = null;
+            if (GeometryType.isSridBoundToValue(getSink().getVersion())) {
+                expectedSrid = BigDecimal.valueOf(4326);
+            }
+
+            assertThat(attributes[0]).isEqualTo(BigDecimal.valueOf(2001));
+            assertThat(attributes[1]).isEqualTo(expectedSrid);
+
             Object sdoPointObj = attributes[2];
+            assertThat(sdoPointObj).isInstanceOf(java.sql.Struct.class);
             java.sql.Struct sdoPoint = (java.sql.Struct) sdoPointObj;
             Object[] pointAttrs = sdoPoint.getAttributes();
-            assertThat(pointAttrs[0]).isEqualTo(8);
-            assertThat(pointAttrs[1]).isEqualTo(51);
+            assertThat(pointAttrs[0]).isEqualTo(BigDecimal.valueOf(8));
+            assertThat(pointAttrs[1]).isEqualTo(BigDecimal.valueOf(56));
 
             return null;
         });
