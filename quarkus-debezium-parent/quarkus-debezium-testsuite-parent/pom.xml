@@ -17,7 +17,7 @@
 
     <modules>
         <module>deployment</module>
-        <module>integration-test</module>
+        <module>integration-tests</module>
     </modules>
 
     

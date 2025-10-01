@@ -65,12 +65,12 @@
             </dependency>
             <dependency>
                 <groupId>io.debezium.quarkus</groupId>
-                <artifactId>quarkus-debezium-testsuite-integration-test</artifactId>
+                <artifactId>quarkus-debezium-testsuite-integration-tests</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.debezium.quarkus</groupId>
-                <artifactId>quarkus-debezium-testsuite-integration-test</artifactId>
+                <artifactId>quarkus-debezium-testsuite-integration-tests</artifactId>
                 <type>test-jar</type>
                 <version>${project.version}</version>
             </dependency>

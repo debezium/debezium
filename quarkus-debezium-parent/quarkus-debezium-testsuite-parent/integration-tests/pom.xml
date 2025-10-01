@@ -10,7 +10,8 @@
         <version>3.3.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>quarkus-debezium-testsuite-integration-test</artifactId>
+    <name>Quarkus Debezium :: Extension :: TestSuite :: Integration Tests</name>
+    <artifactId>quarkus-debezium-testsuite-integration-tests</artifactId>
 
     <dependencies>
         <dependency>
