@@ -102,16 +102,9 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
 
     @Override
     public void close() throws InterruptedException {
-        // dispatch the remaining events in the order we received them from LogMiner
-        List<RowState> pending = new ArrayList<>(rows.values());
-        pending.sort(Comparator.comparingLong(x -> x.transactionIndex));
-
-        for (final RowState rowState : pending) {
-            prepareAndDispatch(rowState.event, rowState.transactionIndex);
-        }
+        flushRows();
 
         // For situations where the consumer instance is reused, reset internal state
-        rows.clear();
         currentLobDetails.reset();
         currentExtendedStringDetails.reset();
         currentXmlDetails.reset();
@@ -168,6 +161,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
             // queue with the logic below. Therefore, there is no need to attempt to dispatch the
             // accumulator as it should be null.
             LOGGER.debug("\tEvent for table {} has no LOB columns, dispatching.", table.id());
+            flushRows();
             dispatchChangeEvent(event, transactionIndex);
             return;
         }
@@ -198,6 +192,22 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         else if (EventType.XML_BEGIN == event.getEventType()) {
             final String columnName = ((XmlBeginEvent) event).getColumnName();
             initConstructable(currentXmlDetails, rowId, columnName, table, accumulatorEvent, XmlUnderConstruction::fromInitialValue);
+        }
+    }
+
+    private void flushRows() throws InterruptedException {
+        if (!rows.isEmpty()) {
+            LOGGER.debug("Flushing {} row values from the consumer queue.", rows.size());
+
+            // Dispatch any of the existing events in the order they were received
+            List<RowState> pending = new ArrayList<>(rows.values());
+            pending.sort(Comparator.comparingLong(x -> x.transactionIndex));
+
+            for (final RowState rowState : pending) {
+                prepareAndDispatch(rowState.event, rowState.transactionIndex);
+            }
+
+            rows.clear();
         }
     }
 
