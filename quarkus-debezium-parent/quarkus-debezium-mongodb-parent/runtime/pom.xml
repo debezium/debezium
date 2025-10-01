@@ -10,7 +10,7 @@
 
     <artifactId>quarkus-debezium-mongodb</artifactId>
 
-    <name>Quarkus Debezium :: Extension :: Mongodb :: Runtime</name>
+    <name>Quarkus Debezium :: Extension :: MongoDB :: Runtime</name>
 
     <dependencies>
         <dependency>

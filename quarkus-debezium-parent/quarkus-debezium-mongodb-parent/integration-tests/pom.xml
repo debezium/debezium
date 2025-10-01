@@ -10,8 +10,9 @@
         <version>3.3.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>quarkus-debezium-mongodb-integration-test</artifactId>
-    <version>3.3.0-SNAPSHOT</version>
+    <artifactId>quarkus-debezium-mongodb-integration-tests</artifactId>
+
+    <name>Quarkus Debezium :: Extension :: MongoDB :: Integration Tests</name>
 
     <dependencies>
         <dependency>
