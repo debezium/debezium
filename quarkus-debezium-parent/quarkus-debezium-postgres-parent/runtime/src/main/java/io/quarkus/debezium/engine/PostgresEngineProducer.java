@@ -24,11 +24,11 @@ import jakarta.inject.Singleton;
 
 import io.debezium.connector.postgresql.PostgresConnector;
 import io.debezium.jdbc.JdbcConfiguration;
-import io.debezium.runtime.CaptureGroup;
 import io.debezium.runtime.Connector;
 import io.debezium.runtime.ConnectorProducer;
 import io.debezium.runtime.Debezium;
 import io.debezium.runtime.DebeziumConnectorRegistry;
+import io.debezium.runtime.EngineManifest;
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
 import io.debezium.runtime.configuration.QuarkusDatasourceConfiguration;
 import io.quarkus.debezium.configuration.DebeziumConfigurationEngineParser;
@@ -97,13 +97,13 @@ public class PostgresEngineProducer implements ConnectorProducer {
             private final Map<String, Debezium> engines = enrichedMultiEngineConfigurations
                     .stream()
                     .map(engine -> {
-                        CaptureGroup captureGroup = new CaptureGroup(engine.groupId());
+                        EngineManifest engineManifest = new EngineManifest(engine.engineId());
 
-                        return Map.entry(engine.groupId(), new SourceRecordDebezium(
+                        return Map.entry(engine.engineId(), new SourceRecordDebezium(
                                 engine.configuration(),
                                 stateHandler,
                                 POSTGRES,
-                                sourceRecordConsumerHandler.get(captureGroup), captureGroup));
+                                sourceRecordConsumerHandler.get(engineManifest), engineManifest));
                     })
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
@@ -113,8 +113,8 @@ public class PostgresEngineProducer implements ConnectorProducer {
             }
 
             @Override
-            public Debezium get(CaptureGroup group) {
-                return engines.get(group.id());
+            public Debezium get(EngineManifest manifest) {
+                return engines.get(manifest.id());
             }
 
             @Override
@@ -130,17 +130,17 @@ public class PostgresEngineProducer implements ConnectorProducer {
         mutableMap.compute(NOTIFICATION_ENABLED_CHANNELS.name(),
                 (key, value) -> value == null ? channel.name() : value.concat("," + channel.name()));
 
-        mutableMap.putAll(getQuarkusDatasourceConfigurationByGroupId(engine.groupId(), collect).asDebezium());
+        mutableMap.putAll(getQuarkusDatasourceConfigurationByEngineId(engine.engineId(), collect).asDebezium());
         mutableMap.put(CONNECTOR_CLASS.name(), POSTGRES.name());
 
-        return new MultiEngineConfiguration(engine.groupId(), mutableMap);
+        return new MultiEngineConfiguration(engine.engineId(), mutableMap);
     }
 
-    private QuarkusDatasourceConfiguration getQuarkusDatasourceConfigurationByGroupId(String groupId, Map<String, QuarkusDatasourceConfiguration> collect) {
-        QuarkusDatasourceConfiguration configuration = collect.get(groupId);
+    private QuarkusDatasourceConfiguration getQuarkusDatasourceConfigurationByEngineId(String engineId, Map<String, QuarkusDatasourceConfiguration> collect) {
+        QuarkusDatasourceConfiguration configuration = collect.get(engineId);
 
         if (configuration == null) {
-            throw new IllegalArgumentException("No datasource configuration found for group " + groupId);
+            throw new IllegalArgumentException("No datasource configuration found for engine " + engineId);
         }
 
         return configuration;
@@ -151,13 +151,13 @@ public class PostgresEngineProducer implements ConnectorProducer {
                 (key, value) -> value == null ? channel.name() : value.concat("," + channel.name()));
         configuration.put(CONNECTOR_CLASS.name(), POSTGRES.name());
 
-        CaptureGroup captureGroup = new CaptureGroup("default");
+        EngineManifest engineManifest = new EngineManifest("default");
 
         return new DebeziumConnectorRegistry() {
             private final SourceRecordDebezium engine = new SourceRecordDebezium(configuration,
                     stateHandler,
                     POSTGRES,
-                    sourceRecordConsumerHandler.get(captureGroup), captureGroup);
+                    sourceRecordConsumerHandler.get(engineManifest), engineManifest);
 
             @Override
             public Connector connector() {
@@ -165,8 +165,8 @@ public class PostgresEngineProducer implements ConnectorProducer {
             }
 
             @Override
-            public Debezium get(CaptureGroup group) {
-                if (group == null || group.id() == null || !group.id().equals("default")) {
+            public Debezium get(EngineManifest manifest) {
+                if (manifest == null || manifest.id() == null || !manifest.id().equals("default")) {
                     return null;
                 }
 

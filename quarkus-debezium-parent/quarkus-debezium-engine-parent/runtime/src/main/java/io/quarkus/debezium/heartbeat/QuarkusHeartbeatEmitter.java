@@ -20,8 +20,8 @@ import org.slf4j.LoggerFactory;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.runtime.DebeziumConnectorRegistry;
-import io.debezium.runtime.events.CaptureGroup;
 import io.debezium.runtime.events.DebeziumHeartbeat;
+import io.debezium.runtime.events.Engine;
 import io.quarkus.debezium.engine.DebeziumThreadHandler;
 
 @ApplicationScoped
@@ -48,7 +48,7 @@ public class QuarkusHeartbeatEmitter implements Heartbeat {
     @Override
     public void emit(Map<String, ?> partition, OffsetContext offset) {
         heartbeat
-                .select(CaptureGroup.Literal.of(DebeziumThreadHandler.context().captureGroup().id()))
+                .select(Engine.Literal.of(DebeziumThreadHandler.context().manifest().id()))
                 .fire(new DebeziumHeartbeat(
                         this.registries.getFirst().engines().getFirst().connector(),
                         this.registries.getFirst().engines().getFirst().status(),

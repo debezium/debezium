@@ -60,19 +60,19 @@ interface GizmoBasedCapturingInvokerGenerator extends CapturingInvokerGenerator 
         }
     }
 
-    default void createGroupMethod(MethodInfo methodInfo, ClassCreator invoker) {
-        try (MethodCreator group = invoker.getMethodCreator("group", String.class)) {
+    default void createEngineMethod(MethodInfo methodInfo, ClassCreator invoker) {
+        try (MethodCreator engine = invoker.getMethodCreator("engine", String.class)) {
             Optional.ofNullable(methodInfo
                     .annotation(DebeziumDotNames.CAPTURING)
-                    .value("group"))
+                    .value("engine"))
                     .map(AnnotationValue::asString)
                     .ifPresentOrElse(s -> {
                         if (s.isEmpty()) {
-                            throw new IllegalArgumentException("empty groups are not allowed for @Capturing annotation  " + methodInfo.declaringClass());
+                            throw new IllegalArgumentException("empty engine is not allowed for @Capturing annotation  " + methodInfo.declaringClass());
                         }
-                        group.returnValue(group.load(s));
+                        engine.returnValue(engine.load(s));
                     },
-                            () -> group.returnValue(group.load(Capturing.DEFAULT)));
+                            () -> engine.returnValue(engine.load(Capturing.DEFAULT)));
         }
     }
 }

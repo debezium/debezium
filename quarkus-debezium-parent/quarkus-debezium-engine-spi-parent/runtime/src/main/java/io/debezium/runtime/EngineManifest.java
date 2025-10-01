@@ -9,5 +9,5 @@ package io.debezium.runtime;
 import io.debezium.common.annotation.Incubating;
 
 @Incubating
-public record CaptureGroup(String id) {
+public record EngineManifest(String id) {
 }

@@ -14,13 +14,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.debezium.runtime.CaptureGroup;
 import io.debezium.runtime.Debezium;
 import io.debezium.runtime.DebeziumContext;
+import io.debezium.runtime.EngineManifest;
 
 public class DebeziumThreadHandler {
     private static final InheritableThreadLocal<DebeziumContext> context = new InheritableThreadLocal<>();
-    private static final Map<CaptureGroup, AtomicInteger> captureGroups = new ConcurrentHashMap<>();
+    private static final Map<EngineManifest, AtomicInteger> manifests = new ConcurrentHashMap<>();
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumThreadHandler.class.getName());
 
     /**
@@ -30,16 +30,16 @@ public class DebeziumThreadHandler {
      */
     static ThreadFactory getThreadFactory(Debezium debezium) {
         return runnable -> {
-            int num = captureGroups
-                    .computeIfAbsent(debezium.captureGroup(), ignore -> new AtomicInteger(0))
+            int num = manifests
+                    .computeIfAbsent(debezium.manifest(), ignore -> new AtomicInteger(0))
                     .incrementAndGet();
 
-            captureGroups.put(debezium.captureGroup(), new AtomicInteger(num));
+            manifests.put(debezium.manifest(), new AtomicInteger(num));
 
             return new Thread(() -> {
-                context.set(debezium::captureGroup);
+                context.set(debezium::manifest);
                 runnable.run();
-            }, "dbz-" + debezium.captureGroup().id() + "-" + num);
+            }, "dbz-" + debezium.manifest().id() + "-" + num);
         };
     }
 
@@ -53,7 +53,7 @@ public class DebeziumThreadHandler {
         if (context.get() == null) {
 
             LOGGER.warn("Debezium context not initialized, using testing context");
-            return () -> new CaptureGroup("testing");
+            return () -> new EngineManifest("testing");
         }
         return context.get();
     }

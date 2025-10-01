@@ -22,9 +22,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import io.debezium.runtime.CaptureGroup;
 import io.debezium.runtime.DebeziumConnectorRegistry;
 import io.debezium.runtime.DebeziumStatus;
+import io.debezium.runtime.EngineManifest;
 import io.debezium.runtime.PostProcessing;
 import io.quarkus.test.QuarkusUnitTest;
 import io.quarkus.test.common.QuarkusTestResource;
@@ -42,7 +42,7 @@ public class PostProcessingTest {
     void setUp() {
         given().await()
                 .atMost(10, TimeUnit.SECONDS)
-                .untilAsserted(() -> assertThat(debeziumConnectorRegistry.get(new CaptureGroup("default")).status())
+                .untilAsserted(() -> assertThat(debeziumConnectorRegistry.get(new EngineManifest("default")).status())
                         .isEqualTo(new DebeziumStatus(DebeziumStatus.State.POLLING)));
     }
 

@@ -49,7 +49,7 @@ public class SourceRecordDeserializer<T> implements CapturingEventDeserializer<T
                     event.destination(),
                     event.source(),
                     event.headers(),
-                    event.group());
+                    event.engine());
         }
 
         return switch (event) {
@@ -58,37 +58,37 @@ public class SourceRecordDeserializer<T> implements CapturingEventDeserializer<T
                     record.destination(),
                     record.source(),
                     record.headers(),
-                    event.group());
+                    event.engine());
             case Delete<SourceRecord> record -> new Delete<>(
                     deserializer.deserialize(data, BEFORE),
                     record.destination(),
                     record.source(),
                     record.headers(),
-                    event.group());
+                    event.engine());
             case Message<SourceRecord> record -> new Message<>(
                     deserializer.deserialize(data, AFTER),
                     record.destination(),
                     record.source(),
                     record.headers(),
-                    event.group());
+                    event.engine());
             case Read<SourceRecord> record -> new Read<>(
                     deserializer.deserialize(data, AFTER),
                     record.destination(),
                     record.source(),
                     record.headers(),
-                    event.group());
+                    event.engine());
             case Truncate<SourceRecord> record -> new Truncate<>(
                     deserializer.deserialize(data, AFTER),
                     record.destination(),
                     record.source(),
                     record.headers(),
-                    event.group());
+                    event.engine());
             case CapturingEvent.Update<SourceRecord> record -> new Update<>(
                     deserializer.deserialize(data, AFTER),
                     record.destination(),
                     record.source(),
                     record.headers(),
-                    event.group());
+                    event.engine());
         };
     }
 }

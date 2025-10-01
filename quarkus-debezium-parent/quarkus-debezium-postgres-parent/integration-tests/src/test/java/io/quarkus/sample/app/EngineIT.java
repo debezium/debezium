@@ -35,7 +35,7 @@ public class EngineIT {
                 .then()
                 .statusCode(200)
                 .body("$", hasSize(1))
-                .body("[0].group", equalTo("default"))
+                .body("[0].id", equalTo("default"))
                 .body("[0].connector", equalTo("io.debezium.connector.postgresql.PostgresConnector")));
     }
 
@@ -51,9 +51,9 @@ public class EngineIT {
                 .then()
                 .statusCode(200)
                 .body("$", hasSize(2))
-                .body("[0].group", equalTo("default"))
+                .body("[0].id", equalTo("default"))
                 .body("[0].connector", equalTo("io.debezium.connector.postgresql.PostgresConnector"))
-                .body("[1].group", equalTo("alternative"))
+                .body("[1].id", equalTo("alternative"))
                 .body("[1].connector", equalTo("io.debezium.connector.postgresql.PostgresConnector")));
     }
 

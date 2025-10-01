@@ -24,10 +24,10 @@ import io.debezium.runtime.CapturingEvent.Update;
 public class OperationMapper {
 
     public static final String NOT_AVAILABLE = "NOT_AVAILABLE";
-    private final String group;
+    private final String engine;
 
-    public OperationMapper(String group) {
-        this.group = group;
+    public OperationMapper(String engine) {
+        this.engine = engine;
     }
 
     public CapturingEvent<SourceRecord> from(ChangeEvent<SourceRecord, SourceRecord> record) {
@@ -39,7 +39,7 @@ public class OperationMapper {
                     record.destination(),
                     NOT_AVAILABLE,
                     record.headers(),
-                    group);
+                    engine);
         }
 
         if (payload.schema() == null) {
@@ -48,7 +48,7 @@ public class OperationMapper {
                     record.destination(),
                     NOT_AVAILABLE,
                     record.headers(),
-                    group);
+                    engine);
         }
 
         if (payload.schema().field(OPERATION) == null) {
@@ -57,7 +57,7 @@ public class OperationMapper {
                     record.destination(),
                     NOT_AVAILABLE,
                     record.headers(),
-                    group);
+                    engine);
         }
 
         return switch (Operation.forCode(payload.getString(OPERATION))) {
@@ -66,37 +66,37 @@ public class OperationMapper {
                     record.destination(),
                     NOT_AVAILABLE,
                     record.headers(),
-                    group);
+                    engine);
             case CREATE -> new Create<>(
                     record.value(),
                     record.destination(),
                     NOT_AVAILABLE,
                     record.headers(),
-                    group);
+                    engine);
             case UPDATE -> new Update<>(
                     record.value(),
                     record.destination(),
                     NOT_AVAILABLE,
                     record.headers(),
-                    group);
+                    engine);
             case DELETE -> new Delete<>(
                     record.value(),
                     record.destination(),
                     NOT_AVAILABLE,
                     record.headers(),
-                    group);
+                    engine);
             case TRUNCATE -> new Truncate<>(
                     record.value(),
                     record.destination(),
                     NOT_AVAILABLE,
                     record.headers(),
-                    group);
+                    engine);
             case MESSAGE -> new Message<>(
                     record.value(),
                     record.destination(),
                     NOT_AVAILABLE,
                     record.headers(),
-                    group);
+                    engine);
         };
     }
 }
