@@ -599,7 +599,7 @@ If a data packet is not transferred with the specified interval, {prodname} clos
 
 |[[offset-storage-redis-cluster-enabled]]<<offset-storage-redis-cluster-enabled, `offset.storage.redis.cluster.enabled`>>
 |false
-|Enables Redis Cluster mode. When set to `true`, {prodname} uses a JedisCluster client to connect to Redis. Single or comma-separated host:port addresses are accepted in the `offset.storage.redis.address` property.
+|Enables Redis Cluster mode for offset storage. When set to `true`, {prodname} uses a JedisCluster client to connect to Redis.
 
 
 |===
@@ -706,7 +706,7 @@ If a data packet is not transferred with the specified interval, {prodname} clos
 
 |[[schema-history-internal-redis-cluster-enabled]]<<schema-history-internal-redis-cluster-enabled, `schema.history.internal.storage.redis.cluster.enabled`>>
 |false
-|Enables Redis Cluster mode for schema history storage. When set to `true`, {prodname} uses a JedisCluster client to connect to Redis. Single or comma-separated host:port addresses are accepted in the `schema.history.internal.storage.redis.address` property.
+|Enables Redis Cluster mode for schema history storage. When set to `true`, {prodname} uses a JedisCluster client to connect to Redis.
 
 
 |===
@@ -747,7 +747,9 @@ schema.history.internal.storage.redis.password=password
 schema.history.internal.storage.redis.cluster.enabled=true
 ----
 
-NOTE: When using Redis Cluster mode, ensure that your Redis cluster is properly configured and accessible. The cluster nodes should be reachable from the {prodname} instance.
+NOTE: When using Redis Cluster mode,
+ensure that your Redis cluster is properly configured and accessible.
+The cluster nodes should be reachable from the {prodname} instance.
 
 == Amazon S3
 
