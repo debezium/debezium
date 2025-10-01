@@ -2,6 +2,39 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.3.0.Final
+October 1st 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12469379)
+
+### New features since 3.3.0.CR1
+
+* Support OpenLineage on Debezium sinks [DBZ-9469](https://issues.redhat.com/browse/DBZ-9469)
+* Debezium Server NATS JetStream Sink: Add Asynchronous Message Publishing [DBZ-9474](https://issues.redhat.com/browse/DBZ-9474)
+* Add commit_scn to Oracle XStream events [DBZ-9497](https://issues.redhat.com/browse/DBZ-9497)
+* Postgres connector Fix excessive thread creation in LSN flush operations. [DBZ-9501](https://issues.redhat.com/browse/DBZ-9501)
+
+
+### Breaking changes since 3.3.0.CR1
+
+None
+
+
+### Fixes since 3.3.0.CR1
+
+* XStream may fail with invalid processed low-watermark [DBZ-8923](https://issues.redhat.com/browse/DBZ-8923)
+* Adhoc blocking snapshot can leave streaming paused forever if additional-conditions is bad [DBZ-9494](https://issues.redhat.com/browse/DBZ-9494)
+* Getting "table is null" when table has no column during snapshot [DBZ-9500](https://issues.redhat.com/browse/DBZ-9500)
+* Dropping primary key does not change Oracle relational metadata [DBZ-9505](https://issues.redhat.com/browse/DBZ-9505)
+
+
+### Other changes since 3.3.0.CR1
+
+* Implement the user interface for managing the Connection [DBZ-9314](https://issues.redhat.com/browse/DBZ-9314)
+* Force jackson version to the test suite [DBZ-9495](https://issues.redhat.com/browse/DBZ-9495)
+* Fail debezium build if SPI interfaces are not correctly registered [DBZ-9503](https://issues.redhat.com/browse/DBZ-9503)
+* fix integration-tests module name in quarkus extension for postgres [DBZ-9514](https://issues.redhat.com/browse/DBZ-9514)
+
+
+
 ## 3.3.0.CR1
 September 24th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12467279)
 
