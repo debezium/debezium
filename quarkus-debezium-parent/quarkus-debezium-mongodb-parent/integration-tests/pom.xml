@@ -21,12 +21,12 @@
         </dependency>
         <dependency>
             <groupId>io.debezium.quarkus</groupId>
-            <artifactId>quarkus-debezium-testsuite-integration-test</artifactId>
+            <artifactId>quarkus-debezium-testsuite-integration-tests</artifactId>
         </dependency>
 
         <dependency>
             <groupId>io.debezium.quarkus</groupId>
-            <artifactId>quarkus-debezium-testsuite-integration-test</artifactId>
+            <artifactId>quarkus-debezium-testsuite-integration-tests</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
