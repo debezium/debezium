@@ -12,7 +12,7 @@ import jakarta.ws.rs.core.Response;
 
 import io.debezium.runtime.DebeziumConnectorRegistry;
 import io.debezium.runtime.DebeziumStatus;
-import io.quarkus.sample.app.dto.EngineManifest;
+import io.quarkus.sample.app.dto.EngineInformation;
 
 @Path("engine")
 @ApplicationScoped
@@ -29,7 +29,7 @@ public class EngineResource {
     public Response engines() {
         return Response.ok(registry.engines()
                 .stream()
-                .map(engine -> new EngineManifest(engine.captureGroup().id(), engine.connector().name()))
+                .map(engine -> new EngineInformation(engine.manifest().id(), engine.connector().name()))
                 .toList()).build();
     }
 

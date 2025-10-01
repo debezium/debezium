@@ -6,8 +6,8 @@
 
 package io.quarkus.debezium.engine.capture.consumer;
 
-import io.debezium.runtime.CaptureGroup;
+import io.debezium.runtime.EngineManifest;
 
 public interface SourceRecordConsumerHandler {
-    SourceRecordEventConsumer get(CaptureGroup group);
+    SourceRecordEventConsumer get(EngineManifest manifest);
 }

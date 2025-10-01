@@ -43,7 +43,7 @@ class DebeziumConfigurationEngineParserTest {
                 return Map.of(
                         "product", new Capturing() {
                             @Override
-                            public Optional<String> groupId() {
+                            public Optional<String> engineId() {
                                 return Optional.empty();
                             }
 
@@ -84,7 +84,7 @@ class DebeziumConfigurationEngineParserTest {
 
             @Override
             public Map<String, Capturing> capturing() {
-                return Map.of("default", capturingWithGroupId("default"));
+                return Map.of("default", capturingWithEngineId("default"));
             }
         });
 
@@ -103,8 +103,8 @@ class DebeziumConfigurationEngineParserTest {
             @Override
             public Map<String, Capturing> capturing() {
                 return Map.of(
-                        "default", capturingWithGroupId("default"),
-                        "another", capturingWithGroupId("another"));
+                        "default", capturingWithEngineId("default"),
+                        "another", capturingWithEngineId("another"));
             }
         }));
     }
@@ -121,8 +121,8 @@ class DebeziumConfigurationEngineParserTest {
             @Override
             public Map<String, Capturing> capturing() {
                 return Map.of(
-                        "orders", capturingWithGroupId("orders"),
-                        "products", capturingWithGroupId("products"));
+                        "orders", capturingWithEngineId("orders"),
+                        "products", capturingWithEngineId("products"));
             }
         });
 
@@ -142,8 +142,8 @@ class DebeziumConfigurationEngineParserTest {
             @Override
             public Map<String, Capturing> capturing() {
                 return Map.of(
-                        "orders", capturingWithGroupId("orders"),
-                        "default", capturingWithGroupId("default"), "product", capturingWithGroupId("products"));
+                        "orders", capturingWithEngineId("orders"),
+                        "default", capturingWithEngineId("default"), "product", capturingWithEngineId("products"));
             }
 
         });
@@ -165,7 +165,7 @@ class DebeziumConfigurationEngineParserTest {
             @Override
             public Map<String, Capturing> capturing() {
                 return Map.of(
-                        "orders", capturingWithGroupId("orders"), "product", capturingWithGroupId("products"));
+                        "orders", capturingWithEngineId("orders"), "product", capturingWithEngineId("products"));
             }
 
         });
@@ -175,10 +175,10 @@ class DebeziumConfigurationEngineParserTest {
                 new MultiEngineConfiguration("default", DEBEZIUM_CONFIGURATION));
     }
 
-    private DebeziumEngineConfiguration.Capturing capturingWithGroupId(String products) {
+    private DebeziumEngineConfiguration.Capturing capturingWithEngineId(String products) {
         return new DebeziumEngineConfiguration.Capturing() {
             @Override
-            public Optional<String> groupId() {
+            public Optional<String> engineId() {
                 return Optional.of(products);
             }
 

@@ -19,9 +19,9 @@ import io.debezium.config.Configuration;
 import io.debezium.embedded.Connect;
 import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.DebeziumEngine.Signaler;
-import io.debezium.runtime.CaptureGroup;
 import io.debezium.runtime.Connector;
 import io.debezium.runtime.DebeziumStatus;
+import io.debezium.runtime.EngineManifest;
 import io.quarkus.debezium.engine.capture.consumer.SourceRecordEventConsumer;
 
 @ApplicationScoped
@@ -32,14 +32,14 @@ class SourceRecordDebezium extends RunnableDebezium {
     private final DebeziumEngine<?> engine;
     private final Connector connector;
     private final StateHandler stateHandler;
-    private final CaptureGroup captureGroup;
+    private final EngineManifest engineManifest;
 
     SourceRecordDebezium(Map<String, String> configuration,
                          StateHandler stateHandler,
                          Connector connector,
                          SourceRecordEventConsumer consumer,
-                         CaptureGroup captureGroup) {
-        LOGGER.trace("Creating SourceRecordDebezium for captureGroup {}", captureGroup);
+                         EngineManifest engineManifest) {
+        LOGGER.trace("Creating SourceRecordDebezium for engine {}", engineManifest);
         this.configuration = configuration;
         this.stateHandler = stateHandler;
         this.engine = DebeziumEngine.create(Connect.class, Connect.class)
@@ -48,12 +48,12 @@ class SourceRecordDebezium extends RunnableDebezium {
                         .edit()
                         .with(Configuration.from(configuration))
                         .build().asProperties())
-                .using(this.stateHandler.connectorCallback(captureGroup, this))
-                .using(this.stateHandler.completionCallback(captureGroup, this))
+                .using(this.stateHandler.connectorCallback(engineManifest, this))
+                .using(this.stateHandler.completionCallback(engineManifest, this))
                 .notifying(consumer)
                 .build();
         this.connector = connector;
-        this.captureGroup = captureGroup;
+        this.engineManifest = engineManifest;
     }
 
     @Override
@@ -68,7 +68,7 @@ class SourceRecordDebezium extends RunnableDebezium {
 
     @Override
     public DebeziumStatus status() {
-        return stateHandler.get(captureGroup);
+        return stateHandler.get(engineManifest);
     }
 
     @Override
@@ -77,8 +77,8 @@ class SourceRecordDebezium extends RunnableDebezium {
     }
 
     @Override
-    public CaptureGroup captureGroup() {
-        return captureGroup;
+    public EngineManifest manifest() {
+        return engineManifest;
     }
 
     protected void run() {

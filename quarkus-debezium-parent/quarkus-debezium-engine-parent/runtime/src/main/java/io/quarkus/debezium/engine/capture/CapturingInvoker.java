@@ -29,19 +29,19 @@ public interface CapturingInvoker<T> {
 
     /**
      *
-     * @return the capturing group assigned
+     * @return the engine id assigned
      */
-    String group();
+    String engine();
 
     static String generateKey(CapturingInvoker invoker) {
-        return invoker.group() + "_" + invoker.destination();
+        return invoker.engine() + "_" + invoker.destination();
     }
 
     static String getKey(CapturingEvent event) {
-        return event.group() + "_" + event.destination();
+        return event.engine() + "_" + event.destination();
     }
 
     static String getAllDestinations(CapturingEvent event) {
-        return event.group() + "_" + Capturing.ALL;
+        return event.engine() + "_" + Capturing.ALL;
     }
 }

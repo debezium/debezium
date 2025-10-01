@@ -43,7 +43,7 @@ public interface Debezium {
 
     /**
      *
-     * @return engine's capture group
+     * @return engine's manifest
      */
-    CaptureGroup captureGroup();
+    EngineManifest manifest();
 }
