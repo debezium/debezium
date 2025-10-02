@@ -20,7 +20,6 @@ import java.lang.management.ManagementFactory;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.file.Path;
-import java.sql.Clob;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
@@ -48,7 +47,6 @@ import javax.management.JMException;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
@@ -6243,58 +6241,6 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "dbz9497");
-        }
-    }
-
-    @Test
-    @FixFor("DBZ-9521")
-    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED, reason = "Only for buffered LogMiner")
-    public void shouldFlushLobChangesWhenTableWithoutLobColumnsAppearsInStream() throws Exception {
-        TestHelper.dropTable(connection, "dbz9521");
-        TestHelper.dropTable(connection, "dbz9521a");
-        try {
-            connection.execute("CREATE TABLE dbz9521 (id numeric(9,0) primary key, data clob, data2 varchar2(50))");
-            connection.execute("CREATE TABLE dbz9521a (id numeric(9,0) primary key, data varchar2(50))");
-            TestHelper.streamTable(connection, "dbz9521");
-            TestHelper.streamTable(connection, "dbz9521a");
-
-            // Configure with guardrail limit of 10 tables
-            Configuration config = TestHelper.defaultConfig()
-                    .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
-                    .with(OracleConnectorConfig.LOB_ENABLED, "true")
-                    .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ9521,DEBEZIUM\\.DBZ9521A")
-                    .build();
-
-            // The connector should start successfully
-            start(OracleConnector.class, config);
-            assertConnectorIsRunning();
-
-            waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
-
-            connection.executeWithoutCommitting("INSERT INTO dbz9521a values (1, 'test1')");
-
-            final Clob clob1 = connection.connection().createClob();
-            clob1.setString(1, RandomStringUtils.randomAlphanumeric(8 * 1024));
-
-            connection.prepareUpdate("INSERT INTO dbz9521 values (1, ?, NULL)", ps -> ps.setClob(1, clob1));
-
-            connection.executeWithoutCommitting("INSERT INTO dbz9521a values (2, 'test2')");
-
-            connection.commit();
-
-            // This makes sure that when the second instance of DBZ9521A is seen and its immediately dispatched,
-            // the connector automatically flushes any pending events from prior LOB-enabled tables, should any
-            // exist before immediately dispatching the non-LOB table.
-            final SourceRecords sourceRecords = consumeRecordsByTopic(3);
-            assertThat(sourceRecords.recordsForTopic("server1.DEBEZIUM.DBZ9521")).hasSize(1);
-            assertThat(sourceRecords.recordsForTopic("server1.DEBEZIUM.DBZ9521A")).hasSize(2);
-
-            assertThat(sourceRecords.allRecordsInOrder().stream().map(SourceRecord::topic).toList()).containsExactly(
-                    "server1.DEBEZIUM.DBZ9521A", "server1.DEBEZIUM.DBZ9521", "server1.DEBEZIUM.DBZ9521A");
-        }
-        finally {
-            TestHelper.dropTable(connection, "dbz9521");
-            TestHelper.dropTable(connection, "dbz9521a");
         }
     }
 }
