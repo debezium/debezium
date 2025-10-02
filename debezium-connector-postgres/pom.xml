@@ -532,6 +532,12 @@
             </properties>
         </profile>
         <profile>
+            <id>postgres-18</id>
+            <properties>
+                <version.postgres.server>18</version.postgres.server>
+            </properties>
+        </profile>
+        <profile>
             <id>pgoutput-decoder</id>
             <properties>
                 <decoder.plugin.name>pgoutput</decoder.plugin.name>

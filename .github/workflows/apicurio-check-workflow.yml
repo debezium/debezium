@@ -32,7 +32,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        server-version: [ "17"]
+        server-version: [ "18"]
     steps:
       - name: Checkout
         uses: actions/checkout@v5
