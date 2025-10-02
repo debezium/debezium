@@ -11,10 +11,12 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.DebeziumException;
 import io.debezium.openlineage.ConnectorContext;
 import io.debezium.openlineage.DebeziumOpenLineageConfiguration;
 import io.openlineage.client.Clients;
@@ -30,6 +32,7 @@ public class DebeziumOpenLineageClient {
     private static final String SNAPSHOT = "SNAPSHOT";
     private static final String MAIN_BRANCH_NAME = "main";
     private static final String VERSION_FORMAT = "v%s";
+    private static final long SHUTDOWN_TIMEOUT_SECONDS = 60L;
 
     private final ExecutorService emitterExecutor = Executors.newSingleThreadExecutor();
     private final OpenLineageClient openLineageClient;
@@ -93,11 +96,29 @@ public class DebeziumOpenLineageClient {
 
     public void close() {
         try {
-            openLineageClient.close();
+            LOGGER.debug("Shutting down OpenLineage emitter executor");
             emitterExecutor.shutdown();
+
+            if (!emitterExecutor.awaitTermination(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                LOGGER.warn("OpenLineage emitter executor did not terminate in {} seconds, forcing shutdown", SHUTDOWN_TIMEOUT_SECONDS);
+                List<Runnable> droppedTasks = emitterExecutor.shutdownNow();
+                LOGGER.warn("Dropped {} pending OpenLineage tasks", droppedTasks.size());
+            }
+            else {
+                LOGGER.debug("OpenLineage emitter executor terminated gracefully");
+            }
+
+            if (openLineageClient != null) {
+                openLineageClient.close();
+            }
+        }
+        catch (InterruptedException e) {
+            LOGGER.warn("Interrupted while waiting for OpenLineage emitter to shutdown", e);
+            Thread.currentThread().interrupt();
+            emitterExecutor.shutdownNow();
         }
         catch (Exception e) {
-            throw new RuntimeException(String.format("Error while closing emitter with context %s", connectorContext), e);
+            throw new DebeziumException(String.format("Error while closing emitter with context %s", connectorContext), e);
         }
     }
 }
