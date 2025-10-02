@@ -177,7 +177,7 @@ jobs:
       - name: Maven Build
         run: >
           ./mvnw clean install -B -pl debezium-bom,debezium-connector-oracle -am 
-          -DskipITs=true 
+          -Passembly ${{ matrix.feature.args }} 
           -Dformat.formatter.goal=validate 
           -Dformat.imports.goal=check 
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn 
