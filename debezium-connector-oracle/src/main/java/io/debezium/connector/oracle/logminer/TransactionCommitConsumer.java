@@ -167,7 +167,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
         }
 
         if (!tryMerge(accumulatorEvent, event)) {
-            prepareAndDispatch(accumulatorEvent, accumulatorEventIndex);
+            flushRows();
             if (rowId.equals(currentLobDetails.rowId)) {
                 currentLobDetails.reset();
             }
@@ -515,7 +515,7 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     }
 
     private void dispatchChangeEvent(LogMinerEvent event, long eventIndex) throws InterruptedException {
-        LOGGER.trace("\tEmitting event {} {}", event.getEventType(), event);
+        LOGGER.trace("\tEmitting event #{}: {} {}", eventIndex, event.getEventType(), event);
         delegate.accept(event, eventIndex, totalEvents);
     }
 
