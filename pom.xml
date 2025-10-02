@@ -370,7 +370,7 @@
                     <dependency>
                         <groupId>io.flomava</groupId>
                         <artifactId>service-provider-enforcer-rule</artifactId>
-                        <version>0.2.0</version>
+                        <version>0.3.0</version>
                     </dependency>
                 </dependencies>
                 <executions>
