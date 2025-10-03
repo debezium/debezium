@@ -84,6 +84,9 @@ public class OracleConnector extends RelationalBaseSourceConnector {
         try {
             Threads.runWithTimeout(OracleConnector.class, () -> {
                 try (OracleConnection connection = new OracleConnection(connectorConfig)) {
+                    // Force a connection call to the database.
+                    connection.getOracleVersion();
+
                     LOGGER.debug("Successfully tested connection for {} with user '{}'", OracleConnection.connectionString(connectorConfig.getJdbcConfig()),
                             connection.username());
                 }
