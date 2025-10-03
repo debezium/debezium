@@ -796,7 +796,7 @@ public class TestHelper {
      * @throws SQLException if a database error occurred
      */
     public static Scn getCurrentScn() throws SQLException {
-        try (OracleConnection admin = new OracleConnection(adminJdbcConfig(), false)) {
+        try (OracleConnection admin = new OracleConnection(adminJdbcConfig())) {
             // Force the connection to the CDB$ROOT if we're operating w/a PDB
             if (isUsingPdb()) {
                 admin.resetSessionToCdb();

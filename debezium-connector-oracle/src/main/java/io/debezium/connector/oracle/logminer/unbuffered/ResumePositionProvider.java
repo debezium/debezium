@@ -79,7 +79,7 @@ public class ResumePositionProvider implements AutoCloseable {
             // Lazily create the connection if it doesn't exist.
             if (connection == null) {
                 LOGGER.info("Starting the unbuffered resume position provider");
-                connection = new OracleConnection(jdbcConfig, false);
+                connection = new OracleConnection(connectorConfig, jdbcConfig);
 
                 // Always make sure connection is not set to auto-commit
                 connection.setAutoCommit(false);
