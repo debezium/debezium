@@ -506,7 +506,8 @@ public class TransactionCommitConsumer implements AutoCloseable, BlockingConsume
     }
 
     private void dispatchChangeEvent(LogMinerEvent event) throws InterruptedException {
-        final long eventIndex = dispatchEventIndex++;
+        // Must be one based so that START_SCN/START_SCN_TS assignment works in delegate
+        final long eventIndex = ++dispatchEventIndex;
         LOGGER.trace("\tEmitting event #{}: {} {}", eventIndex, event.getEventType(), event);
         delegate.accept(event, eventIndex, totalEvents);
     }
