@@ -118,12 +118,12 @@
         <dependency>
             <groupId>com.sun.istack</groupId>
             <artifactId>istack-commons-runtime</artifactId>
-            <version>3.0.7</version>
+            <version>${version.istack}</version>
         </dependency>
         <dependency>
             <groupId>com.sun.xml.fastinfoset</groupId>
             <artifactId>FastInfoset</artifactId>
-            <version>1.2.15</version>
+            <version>${version.fastinfoset}</version>
         </dependency>
 
         <!-- Testing -->
@@ -231,6 +231,13 @@
         <log.mining.buffer.type.name>memory</log.mining.buffer.type.name>
         <log.mining.read.only.mode>false</log.mining.read.only.mode>
         <version.oracle.server>19.3.0</version.oracle.server>
+
+        <!--
+        Ehcache-specific dependency version overrides.
+        These can be removed when ehcache distribution refers to versions published to maven central.
+        -->
+        <version.istack>3.0.7</version.istack>
+        <version.fastinfoset>1.2.15</version.fastinfoset>
 
         <protobuf.output.directory>${project.basedir}/generated-sources</protobuf.output.directory>
 
