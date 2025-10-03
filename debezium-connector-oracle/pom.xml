@@ -95,12 +95,35 @@
             <groupId>org.ehcache</groupId>
             <artifactId>ehcache</artifactId>
             <version>${version.ehcache}</version>
+            <!-- These dependencies are pulled in from old maven.java.net only supports HTTP -->
+            <exclusions>
+                <exclusion>
+                    <groupId>com.sun.istack</groupId>
+                    <artifactId>istack-commons-runtime</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.sun.xml.fastinfoset</groupId>
+                    <artifactId>FastInfoset</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <!-- Ehcache JAXB implementation dependency -->
         <dependency>
             <groupId>org.glassfish.jaxb</groupId>
             <artifactId>jaxb-runtime</artifactId>
             <version>${version.jaxb.implementation}</version>
+        </dependency>
+
+        <!-- Introduce ehcache dependencies on Maven Central -->
+        <dependency>
+            <groupId>com.sun.istack</groupId>
+            <artifactId>istack-commons-runtime</artifactId>
+            <version>3.0.7</version>
+        </dependency>
+        <dependency>
+            <groupId>com.sun.xml.fastinfoset</groupId>
+            <artifactId>FastInfoset</artifactId>
+            <version>1.2.15</version>
         </dependency>
 
         <!-- Testing -->
