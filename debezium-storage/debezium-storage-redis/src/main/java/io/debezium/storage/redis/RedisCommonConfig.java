@@ -128,7 +128,7 @@ public class RedisCommonConfig {
     // Cluster mode configuration
     private static final boolean DEFAULT_CLUSTER_ENABLED = false;
     private static final Field PROP_CLUSTER_ENABLED = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "cluster.enabled")
-            .withDescription("Enable Redis Cluster mode; when true, a JedisCluster client will be created. Single or comma-separated host:port addresses are accepted.")
+            .withDescription("Enable Redis cluster mode; when true, a JedisCluster client will be created. Single or comma-separated host:port addresses are accepted.")
             .withDefault(DEFAULT_CLUSTER_ENABLED);
 
     private String address;
