@@ -48,6 +48,11 @@ public class OracleConnectionTest {
         when(statement.executeQuery(any()))
                 .thenThrow(new SQLRecoverableException("IO Error: The Network Adapter could not establish the connection (CONNECTION_ID=u/VErjYySfO0HgLtwdCuTQ==)"));
 
-        assertThrows(RetriableException.class, () -> new OracleConnection(jdbcConfiguration, connectionFactory));
+        assertThrows(RetriableException.class, () -> {
+            try (OracleConnection connection = new OracleConnection(jdbcConfiguration, connectionFactory)) {
+                // Force a connection call to the database.
+                connection.getOracleVersion();
+            }
+        });
     }
 }
