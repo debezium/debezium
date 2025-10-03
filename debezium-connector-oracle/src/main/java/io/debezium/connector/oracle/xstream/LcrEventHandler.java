@@ -312,7 +312,7 @@ class LcrEventHandler implements XStreamLCRCallbackHandler {
         final String pdbName = connectorConfig.getPdbName();
         // A separate connection must be used for this out-of-bands query while processing the Xstream callback.
         // This should have negligible overhead as this should happen rarely.
-        try (OracleConnection connection = new OracleConnection(connectorConfig.getJdbcConfig(), false)) {
+        try (OracleConnection connection = new OracleConnection(connectorConfig)) {
             if (!Strings.isNullOrBlank(pdbName)) {
                 connection.setSessionToPdb(pdbName);
             }

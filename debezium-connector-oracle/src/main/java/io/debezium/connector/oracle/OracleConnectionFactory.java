@@ -31,7 +31,7 @@ public class OracleConnectionFactory implements MainConnectionProvidingConnectio
     private final OracleConnection readOnlyConnection;
 
     public OracleConnectionFactory(OracleConnectorConfig connectorConfig) {
-        this.mainConnectionFactory = () -> new OracleConnection(connectorConfig.getJdbcConfig());
+        this.mainConnectionFactory = () -> new OracleConnection(connectorConfig);
         this.readOnlyConnectionFactory = buildReadOnlyConnectionFactory(connectorConfig);
         this.mainConnection = mainConnectionFactory.newConnection();
         this.readOnlyConnection = readOnlyConnectionFactory != null ? readOnlyConnectionFactory.newConnection() : null;
@@ -64,7 +64,7 @@ public class OracleConnectionFactory implements MainConnectionProvidingConnectio
         private final ConnectionFactory<OracleConnection> delegate;
 
         ReadOnlyConnectionFactory(OracleConnectorConfig connectorConfig) {
-            this.delegate = () -> new OracleConnection(buildReadOnlyConfig(connectorConfig)) {
+            this.delegate = () -> new OracleConnection(connectorConfig, buildReadOnlyConfig(connectorConfig)) {
                 @Override
                 public synchronized Connection connection(boolean executeOnConnect) throws SQLException {
                     final Connection connection = super.connection(executeOnConnect);

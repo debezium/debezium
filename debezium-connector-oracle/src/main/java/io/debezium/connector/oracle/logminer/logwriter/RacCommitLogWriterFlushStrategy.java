@@ -206,7 +206,7 @@ public class RacCommitLogWriterFlushStrategy implements LogWriterFlushStrategy {
 
             final JdbcConfiguration jdbcHostConfig = JdbcConfiguration.adapt(jdbcConfigBuilder.build());
 
-            this.connection = new OracleConnection(jdbcHostConfig);
+            this.connection = new OracleConnection(connectorConfig, jdbcHostConfig);
             this.connection.setAutoCommit(false);
 
             LOGGER.info("Created flush connection to RAC node '{}'", hostName);
