@@ -289,7 +289,7 @@ For more information see Redis https://redis.io/commands/wait/[WAIT] command.
 
 |[[debezium-source-offset-redis-cluster-enabled]]<<debezium-source-offset-redis-cluster-enabled, `debezium.source.offset.storage.redis.cluster.enabled`>>
 |`false`
-|If using Redis to store offsets, enables Redis cluster mode. When set to `true`, {prodname} uses a JedisCluster client to connect to Redis.
+|If using Redis to store offsets, enables Redis cluster mode. When set to `true`, {prodname} uses a https://redis.io/docs/latest/develop/clients/jedis/connect/#connect-to-a-redis-cluster[JedisCluster client] to connect to Redis.
 
 |[[debezium-source-database-history-class]]<<debezium-source-database-history-class, `debezium.source.schema.history.internal`>>
 |`io.debezium.storage.kafka.history.KafkaSchemaHistory`
@@ -394,7 +394,7 @@ For more information see Redis https://redis.io/commands/wait/[WAIT] command.
 
 |[[debezium-source-database-history-redis-cluster-enabled]]<<debezium-source-database-history-redis-cluster-enabled, `debezium.source.schema.history.internal.redis.cluster.enabled`>>
 |`false`
-|If using Redis to store schema history, enables Redis cluster mode. When set to `true`, {prodname} uses a JedisCluster client to connect to Redis.
+|If using Redis to store schema history, enables Redis cluster mode. When set to `true`, {prodname} uses a https://redis.io/docs/latest/develop/clients/jedis/connect/#connect-to-a-redis-cluster[JedisCluster client] to connect to Redis.
 
 
 |[[schema-history-internal-rocketmq-topic]]<<schema-history-internal-rocketmq-topic, `debezium.source.schema.history.internal.rocketmq.topic`>>
@@ -1254,7 +1254,7 @@ By default it is `0` (disabled).
 
 |[[redis-cluster-enabled]]<<redis-cluster-enabled, `debezium.sink.redis.cluster.enabled`>>
 |`false`
-|Enables Redis cluster mode for sink operations. When set to `true`, {prodname} uses a JedisCluster client to connect to Redis.
+|Enables Redis cluster mode for sink operations. When set to `true`, {prodname} uses a https://redis.io/docs/latest/develop/clients/jedis/connect/#connect-to-a-redis-cluster[JedisCluster client] to connect to Redis.
 
 |===
 
