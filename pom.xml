@@ -170,7 +170,7 @@
         <version.infinispan.protostream>5.0.13.Final</version.infinispan.protostream>
 
         <!-- EhCache Specific Versions -->
-        <version.ehcache>3.9.6</version.ehcache>
+        <version.ehcache>3.11.1</version.ehcache>
         <!-- Must be aligned with the version.jaxb of the JAXB-API -->
         <version.jaxb.implementation>2.3.1</version.jaxb.implementation>
 
