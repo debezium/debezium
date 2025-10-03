@@ -35,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
+import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
@@ -85,37 +86,37 @@ public class OracleConnection extends JdbcConnection {
      */
     private static final Field URL = Field.create("url", "Raw JDBC url");
 
-    /**
-     * The database version.
-     */
-    private final OracleDatabaseVersion databaseVersion;
-
     private static final String QUOTED_CHARACTER = "\"";
 
+    private final int queryFetchSize;
+    private OracleDatabaseVersion databaseVersion;
+
+    public OracleConnection(OracleConnectorConfig connectorConfig) {
+        this(connectorConfig.getJdbcConfig(), connectorConfig.getQueryFetchSize());
+    }
+
+    public OracleConnection(OracleConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig) {
+        this(jdbcConfig, connectorConfig.getQueryFetchSize());
+    }
+
+    @VisibleForTesting
     public OracleConnection(JdbcConfiguration config) {
-        this(config, true);
+        this(config, 10);
     }
 
+    private OracleConnection(JdbcConfiguration config, int queryFetchSize) {
+        this(config, resolveConnectionFactory(config), queryFetchSize);
+    }
+
+    @VisibleForTesting
     public OracleConnection(JdbcConfiguration config, ConnectionFactory connectionFactory) {
-        this(config, connectionFactory, true);
+        this(config, connectionFactory, 10);
     }
 
-    public OracleConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, boolean showVersion) {
+    private OracleConnection(JdbcConfiguration config, ConnectionFactory connectionFactory, int queryFetchSize) {
         super(config, connectionFactory, QUOTED_CHARACTER, QUOTED_CHARACTER);
         LOGGER.trace("JDBC connection string: " + connectionString(config));
-        this.databaseVersion = resolveOracleDatabaseVersion();
-        if (showVersion) {
-            LOGGER.info("Database Version: {}", databaseVersion.getBanner());
-        }
-    }
-
-    public OracleConnection(JdbcConfiguration config, boolean showVersion) {
-        super(config, resolveConnectionFactory(config), QUOTED_CHARACTER, QUOTED_CHARACTER);
-        LOGGER.trace("JDBC connection string: " + connectionString(config));
-        this.databaseVersion = resolveOracleDatabaseVersion();
-        if (showVersion) {
-            LOGGER.info("Database Version: {}", databaseVersion.getBanner());
-        }
+        this.queryFetchSize = queryFetchSize;
     }
 
     public void setSessionToPdb(String pdbName) {
@@ -148,6 +149,9 @@ public class OracleConnection extends JdbcConnection {
     }
 
     public OracleDatabaseVersion getOracleVersion() {
+        if (databaseVersion == null) {
+            databaseVersion = resolveOracleDatabaseVersion();
+        }
         return databaseVersion;
     }
 
@@ -272,6 +276,13 @@ public class OracleConnection extends JdbcConnection {
                     && !MROW_PATTERN.matcher(columnName).matches();
         }
         return false;
+    }
+
+    @Override
+    protected void initializeStatement(Statement statement) throws SQLException {
+        statement.setFetchSize(queryFetchSize);
+
+        super.initializeStatement(statement);
     }
 
     /**

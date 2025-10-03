@@ -88,6 +88,8 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         jdbcConnection = connectionFactory.mainConnection();
 
+        LOGGER.info("Database Version: {}", jdbcConnection.getOracleVersion().getBanner());
+
         final boolean extendedStringsSupported = jdbcConnection.hasExtendedStringSupport();
 
         // Service providers
@@ -220,7 +222,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
     }
 
     private OracleConnection getHeartbeatConnection(OracleConnectorConfig connectorConfig, JdbcConfiguration jdbcConfig) {
-        final OracleConnection connection = new OracleConnection(jdbcConfig);
+        final OracleConnection connection = new OracleConnection(connectorConfig, jdbcConfig);
         if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
             connection.setSessionToPdb(connectorConfig.getPdbName());
         }
