@@ -199,7 +199,7 @@ public class TransactionCommitConsumerIT extends AbstractAsyncEngineConnectorTes
             assertThat(sourceRecords.recordsForTopic("server1.DEBEZIUM.DBZ9521B")).hasSize(2);
 
             assertThat(sourceRecords.allRecordsInOrder().stream().map(SourceRecord::topic).toList()).containsExactly(
-                    "server1.DEBEZIUM.DBZ9521B", "server1.DEBEZIUM.DBZ9521A", "server1.DEBEZIUM.DBZ9521B");
+                    "server1.DEBEZIUM.DBZ9521B", "server1.DEBEZIUM.DBZ9521B", "server1.DEBEZIUM.DBZ9521A");
         }
         finally {
             TestHelper.dropTable(connection, "dbz9521a");
