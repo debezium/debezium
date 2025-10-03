@@ -175,6 +175,7 @@ OVER                          : 'OVER';
 PARTITION                     : 'PARTITION';
 PRIMARY                       : 'PRIMARY';
 PACKAGE                       : 'PACKAGE';
+PERIOD                        : 'PERIOD';
 PROCEDURE                     : 'PROCEDURE';
 PURGE                         : 'PURGE';
 RANGE                         : 'RANGE';

@@ -476,6 +476,7 @@ createDefinition
     : uid columnDefinition  # columnDeclaration
     | tableConstraint       # constraintDeclaration
     | indexColumnDefinition # indexDeclaration
+    | periodDefinition      # periodDeclaration
     ;
 
 columnDefinition
@@ -495,7 +496,10 @@ columnConstraint
     | STORAGE storageval = (DISK | MEMORY | DEFAULT)                             # storageColumnConstraint
     | referenceDefinition                                                        # referenceColumnConstraint
     | COLLATE collationName                                                      # collateColumnConstraint
-    | (GENERATED ALWAYS)? AS '(' expression ')' (VIRTUAL | STORED | PERSISTENT)? # generatedColumnConstraint
+    | (GENERATED ALWAYS)? AS (
+        '(' expression ')' (VIRTUAL | STORED | PERSISTENT)?
+        | ROW (START | END)
+        )                                                                        # generatedColumnConstraint
     | SERIAL DEFAULT VALUE                                                       # serialDefaultColumnConstraint
     | (CONSTRAINT name = uid?)? CHECK '(' expression ')'                         # checkColumnConstraint
     ;
@@ -526,6 +530,10 @@ referenceControlType
 indexColumnDefinition
     : indexFormat = (INDEX | KEY) uid? indexType? indexColumnNames indexOption*            # simpleIndexDeclaration
     | (FULLTEXT | SPATIAL) indexFormat = (INDEX | KEY)? uid? indexColumnNames indexOption* # specialIndexDeclaration
+    ;
+
+periodDefinition
+    : PERIOD FOR (uid | SYSTEM_TIME) '(' uid ',' uid ')'
     ;
 
 tableOption
@@ -3076,6 +3084,7 @@ keywordsCanBeId
     | PASSWORDLESS_USER_ADMIN
     | PASSWORD_LOCK_TIME
     | PATH
+    | PERIOD
     | PERSIST_RO_VARIABLES_ADMIN
     | PHASE
     | PLUGINS

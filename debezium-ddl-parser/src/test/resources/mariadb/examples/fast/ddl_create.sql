@@ -225,6 +225,20 @@ CREATE TABLE `products_labels` (
 
 -- Create Table with vector column
 CREATE TABLE VECTOR_TABLE (id INT AUTO_INCREMENT PRIMARY KEY, embedding1 VECTOR(3) DEFAULT NULL, embedding VECTOR(3));
+
+-- Create table with ROW START/END
+CREATE TABLE `rebate_account` (
+  `id` char(36) NOT NULL,
+  `ts` timestamp(6) GENERATED ALWAYS AS ROW START,
+  `te` timestamp(6) GENERATED ALWAYS AS ROW END,
+  `assigned_account_id` char(36) DEFAULT NULL,
+  `assigned_user_id` char(36) DEFAULT NULL,
+  PRIMARY KEY (`id`,`te`),
+  UNIQUE KEY `rebate_account_unique` (`account_id`,`te`),
+  KEY `idx` (`id`),
+  PERIOD FOR SYSTEM_TIME(`ts`, `te`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci WITH SYSTEM VERSIONING
+
 #end
 #begin
 -- Rename table
