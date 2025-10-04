@@ -39,7 +39,7 @@ import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.JedisCluster;
 
 /**
- * Integration tests for JedisClusterClient against a local Redis cluster
+ * Integration tests for JedisClusterClient against a local Redis Cluster
  * composed of nodes at localhost:7001,7002,7003 with password "password".
  * <p>
  * Tests are skipped automatically if the cluster is not reachable.
@@ -71,7 +71,7 @@ public class JedisClusterClientIT {
 
     @BeforeEach
     void setUp() {
-        assumeTrue(isClusterAvailable(), () -> "Skipping tests: Redis cluster not available on localhost:7001-7003");
+        assumeTrue(isClusterAvailable(), () -> "Skipping tests: Redis Cluster not available on localhost:7001-7003");
         Set<HostAndPort> nodes = Set.of(
                 new HostAndPort(HOSTNAME, PORT_1),
                 new HostAndPort(HOSTNAME, PORT_2),

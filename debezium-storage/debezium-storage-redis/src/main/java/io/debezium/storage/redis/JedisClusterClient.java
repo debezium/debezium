@@ -73,10 +73,10 @@ public class JedisClusterClient implements RedisClient {
                 return responses.stream().map(r -> r.get().toString()).toList();
             }
             catch (JedisDataException jde) {
-                // When the Redis cluster is starting, a JedisDataException will be thrown with this message.
+                // When the Redis Cluster is starting, a JedisDataException will be thrown with this message.
                 // We will retry communicating with the target cluster as once Redis is available, this message will be gone.
                 if (jde.getMessage().equals("LOADING Redis is loading the dataset in memory")) {
-                    LOGGER.error("Redis cluster is starting", jde);
+                    LOGGER.error("Redis Cluster is starting", jde);
                 }
                 else {
                     LOGGER.error("Unexpected JedisDataException", jde);
