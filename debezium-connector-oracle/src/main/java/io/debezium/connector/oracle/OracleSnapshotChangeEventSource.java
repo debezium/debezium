@@ -8,6 +8,7 @@ package io.debezium.connector.oracle;
 import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.sql.Statement;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Collection;
@@ -37,6 +38,7 @@ import io.debezium.relational.Tables;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.snapshot.SnapshotterService;
 import io.debezium.util.Clock;
+import io.debezium.util.Metronome;
 import io.debezium.util.Strings;
 
 /**
@@ -288,6 +290,8 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
             OracleOffsetContext offset = offsets.poll();
             try {
                 final int maxRetries = getTableSnapshotMaxRetries();
+                final Metronome retrySleeper = Metronome.sleeper(Duration.ofSeconds(5), clock);
+
                 for (int i = 0; i <= maxRetries; i++) {
                     try {
                         doCreateDataEventsForTable(sourceContext, snapshotContext, offset, snapshotReceiver, table, firstTable,
@@ -303,6 +307,7 @@ public class OracleSnapshotChangeEventSource extends RelationalSnapshotChangeEve
                             if ((i + 1) <= maxRetries) {
                                 LOGGER.warn("Table {} snapshot failed: {}, attempting to retry ({} of {})",
                                         table.id(), e.getMessage(), i, getTableSnapshotMaxRetries());
+                                retrySleeper.pause();
                                 continue;
                             }
                         }
