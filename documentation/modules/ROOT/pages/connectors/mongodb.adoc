@@ -2265,7 +2265,7 @@ After the next failure, the connector stops, and user intervention is required t
 
 |[[mongodb-property-guardrail-collections-max]]<<mongodb-property-guardrail-collections-max, `+guardrail.collections.max+`>>
 |`0`
-|Specifies the maximum number of collections that the connector can capture. 
+|Specifies the maximum number of collections that the connector can capture.
 Exceeding this limit triggers the action specified by `guardrail.collections.limit.action`.
 Set this property to  `0` to prevent the connector from triggering guardrail actions.
 
@@ -2345,6 +2345,13 @@ The {prodname} MongoDB connector also provides the following custom snapshot met
 |`long`
 |Number of database disconnects.
 
+|`NumberOfErroneousEvents`
+|`long`
+|Records the number of change events that the connector identifies as erroneous during a snapshot operation.
+The connector increments this metric each time that it encounters an event that it cannot process during an initial, incremental, or ad hoc snapshot.
+Events might fail processing if they are malformed, are incompatible with the schema, or if they encounter failures during transformation.
+The metric value persists for the lifetime of the connector task.
+If the snapshot is interrupted, and the connector task restarts, the metric count resets to `0`.
 |===
 
 // Type: reference
@@ -2370,6 +2377,14 @@ The {prodname} MongoDB connector also provides the following custom streaming me
 |`NumberOfPrimaryElections`
 |`long`
 |Number of primary node elections.
+
+|`NumberOfErroneousEvents`
+|`long`
+|Records the number of change events that the connector identifies as erroneous during streaming.
+The connector increments this metric each time that it encounters an event that it cannot process during the lifetime of the streaming session.
+Events might fail processing if they are malformed, are incompatible with the schema, or if they encounter failures during transformation.
+The metric value persists for the lifetime of the connector task.
+After a connector restart, the metric count resets to `0`.
 
 |===
 
