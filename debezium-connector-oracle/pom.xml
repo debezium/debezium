@@ -95,12 +95,35 @@
             <groupId>org.ehcache</groupId>
             <artifactId>ehcache</artifactId>
             <version>${version.ehcache}</version>
+            <!-- These dependencies are pulled in from old maven.java.net only supports HTTP -->
+            <exclusions>
+                <exclusion>
+                    <groupId>com.sun.istack</groupId>
+                    <artifactId>istack-commons-runtime</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.sun.xml.fastinfoset</groupId>
+                    <artifactId>FastInfoset</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <!-- Ehcache JAXB implementation dependency -->
         <dependency>
             <groupId>org.glassfish.jaxb</groupId>
             <artifactId>jaxb-runtime</artifactId>
             <version>${version.jaxb.implementation}</version>
+        </dependency>
+
+        <!-- Introduce ehcache dependencies on Maven Central -->
+        <dependency>
+            <groupId>com.sun.istack</groupId>
+            <artifactId>istack-commons-runtime</artifactId>
+            <version>${version.istack}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.sun.xml.fastinfoset</groupId>
+            <artifactId>FastInfoset</artifactId>
+            <version>${version.fastinfoset}</version>
         </dependency>
 
         <!-- Testing -->
@@ -208,6 +231,13 @@
         <log.mining.buffer.type.name>memory</log.mining.buffer.type.name>
         <log.mining.read.only.mode>false</log.mining.read.only.mode>
         <version.oracle.server>19.3.0</version.oracle.server>
+
+        <!--
+        Ehcache-specific dependency version overrides.
+        These can be removed when ehcache distribution refers to versions published to maven central.
+        -->
+        <version.istack>3.0.7</version.istack>
+        <version.fastinfoset>1.2.15</version.fastinfoset>
 
         <protobuf.output.directory>${project.basedir}/generated-sources</protobuf.output.directory>
 
