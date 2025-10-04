@@ -17,7 +17,7 @@ import io.debezium.config.Configuration;
 import io.debezium.storage.redis.offset.RedisOffsetBackingStoreConfig;
 
 /**
- * Unit tests for verifying Redis cluster enablement flag handling via configuration.
+ * Unit tests for verifying Redis Cluster enablement flag handling via configuration.
  */
 public class RedisOffsetBackingStoreConfigTest {
 

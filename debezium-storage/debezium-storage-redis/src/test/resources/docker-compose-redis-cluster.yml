@@ -91,9 +91,9 @@ services:
         apk add --no-cache redis &&
         echo 'Waiting for Redis nodes to be ready...' &&
         sleep 15 &&
-        echo 'Creating Redis cluster...' &&
+        echo 'Creating Redis Cluster...' &&
         redis-cli --cluster create 127.0.0.1:7001 127.0.0.1:7002 127.0.0.1:7003 --cluster-replicas 0 --cluster-yes -a password &&
-        echo 'Redis cluster created successfully!' &&
+        echo 'Redis Cluster created successfully!' &&
         tail -f /dev/null
       "
     network_mode: "service:redis-node-1"

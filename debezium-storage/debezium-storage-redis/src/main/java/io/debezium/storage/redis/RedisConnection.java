@@ -219,7 +219,7 @@ public class RedisConnection {
                     nodes.add(HostAndPort.from(part.trim()));
                 }
                 if (LOGGER.isInfoEnabled()) {
-                    LOGGER.info("Redis cluster mode enabled; nodes: {}", nodes);
+                    LOGGER.info("Redis Cluster mode enabled; nodes: {}", nodes);
                 }
                 redis.clients.jedis.JedisCluster jedisCluster = new redis.clients.jedis.JedisCluster(nodes, configBuilder.build());
                 // Try a simple command to ensure connectivity

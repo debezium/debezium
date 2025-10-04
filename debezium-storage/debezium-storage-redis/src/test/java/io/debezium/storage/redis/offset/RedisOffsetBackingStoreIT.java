@@ -49,7 +49,7 @@ class RedisOffsetBackingStoreIT {
     public GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse(REDIS_CONTAINER_IMAGE))
             .withExposedPorts(6379);
 
-    // Redis cluster container - only used when cluster tests are enabled
+    // Redis Cluster container - only used when cluster tests are enabled
     public static ComposeContainer redisCluster;
 
     private static final String PROP_PREFIX = "offset.storage.redis.";
@@ -79,7 +79,7 @@ class RedisOffsetBackingStoreIT {
         }
         catch (Exception e) {
             // If cluster setup fails, tests will be skipped via assumeTrue
-            Testing.printError("Redis cluster setup failed", e);
+            Testing.printError("Redis Cluster setup failed", e);
             redisCluster = null;
         }
     }
