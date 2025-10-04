@@ -272,6 +272,8 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
                 LOGGER.debug("Adjusting Min Commit SCN from {} to {}.", minCommitScn, lastCommitScn);
             }
 
+            clearSchemaChangeQueue();
+
             return lastCommitScn;
         }
     }
@@ -583,4 +585,27 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
         ddlQueue.clear();
     }
 
+    /**
+     * Clears any pending schema changes that were not yet dispatched.
+     * <p>
+     * In situations where the upper boundary splits a transaction that contains DDL events where the COMMIT
+     * event is not processed, the DDL queue will be repopulated on the next iteration. In this case, the
+     * queue needs to be emptied to avoid emitting multiple copies of the event when processing the COMMIT.
+     */
+    private void clearSchemaChangeQueue() {
+        // todo: what prevents tracking DDL change events by transaction + sequence like DML events?
+        if (!ddlQueue.isEmpty()) {
+            LOGGER.debug("Cleared uncommitted DDL change queue");
+            ddlQueue.forEach(event -> {
+                Loggings.logDebugAndTraceRecord(
+                        LOGGER,
+                        event,
+                        "\tTransaction {} SCN {}: {}",
+                        event.getTransactionId(),
+                        event.getScn(),
+                        event.getRedoSql());
+            });
+            ddlQueue.clear();
+        }
+    }
 }
