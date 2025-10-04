@@ -49,7 +49,7 @@ class RedisOffsetBackingStoreIT {
     public GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse(REDIS_CONTAINER_IMAGE))
             .withExposedPorts(6379);
 
-    // Redis cluster container - only used when cluster tests are enabled
+    // Redis Cluster container - only used when cluster tests are enabled
     public static ComposeContainer redisCluster;
 
     private static final String PROP_PREFIX = "offset.storage.redis.";
@@ -79,7 +79,7 @@ class RedisOffsetBackingStoreIT {
         }
         catch (Exception e) {
             // If cluster setup fails, tests will be skipped via assumeTrue
-            Testing.printError("Redis cluster setup failed", e);
+            Testing.printError("Redis Cluster setup failed", e);
             redisCluster = null;
         }
     }
@@ -204,7 +204,7 @@ class RedisOffsetBackingStoreIT {
 
         if (clusterEnabled) {
             // For cluster mode, use cluster addresses
-            assumeTrue(isClusterAvailable(), () -> "Skipping cluster tests: Redis cluster not available on localhost:7001-7003");
+            assumeTrue(isClusterAvailable(), () -> "Skipping cluster tests: Redis Cluster not available on localhost:7001-7003");
             String clusterAddresses = HOSTNAME + ":" + PORT_1 + "," + HOSTNAME + ":" + PORT_2 + "," + HOSTNAME + ":" + PORT_3;
             dummyConfig.put(PROP_PREFIX + "address", clusterAddresses);
             dummyConfig.put(PROP_PREFIX + "password", PASSWORD);

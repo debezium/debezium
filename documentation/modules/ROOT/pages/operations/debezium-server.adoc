@@ -1120,12 +1120,12 @@ When the alternative implementations are not available then the default ones are
 Redis is an open source (BSD licensed) in-memory data structure store, used as a database, cache and message broker.
 The Stream is a data type which models a _log data structure_ in a more abstract way. It implements powerful operations to overcome the limitations of a log file.
 
-{prodname} supports both single Redis instance and Redis cluster mode for sink operations:
+{prodname} supports both single Redis instance and Redis Cluster mode for sink operations:
 
 * **Single Instance Mode**: Connects to a single Redis server instance
-* **Cluster Mode**: Connects to a Redis cluster for high availability and horizontal scaling
+* **Cluster Mode**: Connects to a Redis Cluster for high availability and horizontal scaling
 
-To enable Redis cluster mode, set the `debezium.sink.redis.cluster.enabled` property to `true` and provide comma-separated host:port addresses in the `debezium.sink.redis.address` property.
+To enable Redis Cluster mode, set the `debezium.sink.redis.cluster.enabled` property to `true` and provide comma-separated host:port addresses in the `debezium.sink.redis.address` property.
 
 [cols="35%a,10%a,55%a",options="header"]
 |===
@@ -1143,7 +1143,7 @@ To enable Redis cluster mode, set the `debezium.sink.redis.cluster.enabled` prop
 
 |[[redis-db-index]]<<redis-db-index, `debezium.sink.redis.db.index`>>
 |`0`
-|A number in the range 0..15 used for selecting the database to work with. Default is database 0. This feature is only available for standalone Redis connections; Redis clusters use only database 0.
+|A number in the range 0..15 used for selecting the database to work with. Default is database 0. This feature is only available for standalone Redis connections; Redis Clusters use only database 0.
 
 |[[redis-user]]<<redis-user, `debezium.sink.redis.user`>>
 |
@@ -1255,7 +1255,7 @@ By default it is `0` (disabled).
 
 |[[redis-cluster-enabled]]<<redis-cluster-enabled, `debezium.sink.redis.cluster.enabled`>>
 |`false`
-|Enables Redis cluster mode for sink operations. When set to `true`, {prodname} uses a https://redis.io/docs/latest/develop/clients/jedis/connect/#connect-to-a-redis-cluster[JedisCluster client] to connect to Redis.
+|Enables Redis Cluster mode for sink operations. When set to `true`, {prodname} uses a https://redis.io/docs/latest/develop/clients/jedis/connect/#connect-to-a-redis-cluster[JedisCluster client] to connect to Redis.
 
 |===
 
@@ -1348,8 +1348,8 @@ debezium.source.schema.history.internal.redis.password=password
 debezium.source.schema.history.internal.redis.cluster.enabled=true
 ----
 
-NOTE: When using Redis cluster mode,
-ensure that your Redis cluster is properly configured and accessible.
+NOTE: When using Redis Cluster mode,
+ensure that your Redis Cluster is properly configured and accessible.
 The cluster nodes should be reachable from the {prodname} Server instance.
 
 
