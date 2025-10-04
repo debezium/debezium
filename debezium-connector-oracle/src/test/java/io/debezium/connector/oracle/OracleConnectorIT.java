@@ -99,6 +99,8 @@ import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
+import io.debezium.junit.ConditionalFail;
+import io.debezium.junit.Flaky;
 import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.relational.RelationalDatabaseConnectorConfig;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
@@ -128,6 +130,8 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     public final TestRule skipOptionRule = new SkipTestDependingOnDatabaseOptionRule();
     @Rule
     public final TestRule skipStrategyRule = new SkipTestDependingOnStrategyRule();
+    @Rule
+    public final TestRule conditionalFail = new ConditionalFail();
 
     private static OracleConnection connection;
 
@@ -1969,6 +1973,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     @Test
     @FixFor("DBZ-3036")
     @SkipWhenAdapterNameIs(value = SkipWhenAdapterNameIs.AdapterName.OLR, reason = "IOT tables are skipped")
+    @Flaky("Oracle sometimes fails with ORA-01466 despite the code retries, this gives it another chance to pass")
     public void shouldHandleParentChildIndexOrganizedTables() throws Exception {
         TestHelper.dropTable(connection, "test_iot");
         try {
@@ -1985,6 +1990,15 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             // Insert data for snapshot
             connection.executeWithoutCommitting("INSERT INTO debezium.test_iot VALUES ('1', 'Hello World')");
             connection.execute("COMMIT");
+
+            // NOTE:
+            // The creation of IOT tables can be problematic and trigger ORA-01466 errors due to
+            // the inconsistencies that can exist between the main table data pages, it's index
+            // and the overflow index, where the writes are not always synchronized. This is a
+            // documented limitation when using flashback "AS OF SCN ..." queries. To address
+            // this problem, the test implies a small 10-second wait here to give Oracle enough
+            // time between the DDL and DML events before the connector begins the snapshot.
+            TestHelper.sleep(10, TimeUnit.SECONDS);
 
             Configuration config = defaultConfig()
                     .with(OracleConnectorConfig.SCHEMA_INCLUDE_LIST, "DEBEZIUM")
