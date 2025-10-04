@@ -173,7 +173,7 @@ public class XstreamStreamingChangeEventSource implements StreamingChangeEventSo
         for (int attempt = 1; attempt <= DEFAULT_MAX_ATTACH_RETRIES; attempt++) {
             XStreamOut out = null;
             try {
-                connection = new OracleConnection(jdbcConfig);
+                connection = new OracleConnection(connectorConfig, jdbcConfig);
                 out = XStreamOut.attach((oracle.jdbc.OracleConnection) connection.connection(), xStreamServerName,
                         startPosition, 1, 1, XStreamOut.DEFAULT_MODE);
 

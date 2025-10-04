@@ -1543,7 +1543,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         if (tableId != null && isUsingHybridStrategy()) {
             if (tableId.table().startsWith("BIN$")) {
                 // Object was dropped but has not been purged.
-                try (OracleConnection connection = new OracleConnection(getConfig().getJdbcConfig())) {
+                try (OracleConnection connection = new OracleConnection(getConfig())) {
                     return connection.prepareQueryAndMap("SELECT OWNER, ORIGINAL_NAME FROM DBA_RECYCLEBIN WHERE OBJECT_NAME=?",
                             ps -> ps.setString(1, tableId.table()),
                             rs -> {
@@ -1678,7 +1678,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     protected Table dispatchSchemaChangeEventAndGetTableForNewConfiguredTable(TableId tableId) throws SQLException, InterruptedException {
         LOGGER.warn("Obtaining schema for table {}, which should already be loaded.", tableId);
         // Given that the current connection is used for processing the event data, a separate connection is needed
-        try (OracleConnection connection = new OracleConnection(getConfig().getJdbcConfig(), false)) {
+        try (OracleConnection connection = new OracleConnection(getConfig())) {
             connection.setAutoCommit(false);
             if (isUsingPluggableDatabase()) {
                 connection.setSessionToPdb(getConfig().getPdbName());
