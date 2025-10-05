@@ -247,6 +247,11 @@ public class TransactionCommitConsumerIT extends AbstractAsyncEngineConnectorTes
 
             // Wait until we mine past the current SCN
             final Scn currentScn = TestHelper.getCurrentScn();
+
+            // Generate a change that will be after the CURRENT_SCN, that will be picked up after the
+            // Awaitility call below.
+            connection.execute("INSERT INTO dbz9521b (id, data1) values (3, 'data')");
+
             Awaitility.await()
                     .atMost(2, TimeUnit.MINUTES)
                     .until(() -> {
@@ -258,9 +263,9 @@ public class TransactionCommitConsumerIT extends AbstractAsyncEngineConnectorTes
                     .as("Should not skip events")
                     .isFalse();
 
-            records = consumeRecordsByTopic(5);
+            records = consumeRecordsByTopic(6);
             assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ9521A")).hasSize(3);
-            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ9521B")).hasSize(2);
+            assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ9521B")).hasSize(3);
         }
         finally {
             TestHelper.dropTable(connection, "dbz9521a");
