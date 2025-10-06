@@ -83,6 +83,7 @@ public abstract class CommonConnectorConfig {
     private final boolean isExtendedHeadersEnabled;
     protected final int guardrailCollectionsMax;
     protected final GuardrailCollectionsLimitAction guardrailCollectionsLimitAction;
+    protected final String name;
 
     /**
      * The set of predefined versions e.g. for source struct maker version
@@ -642,6 +643,15 @@ public abstract class CommonConnectorConfig {
     public static final int DEFAULT_MAX_RETRIES = ErrorHandler.RETRIES_UNLIMITED;
     public static final String ERRORS_MAX_RETRIES = "errors.max.retries";
     private final int maxRetriesOnError;
+
+    public static final Field NAME = Field.create(ConfigurationNames.CONNECTOR_NAME_PROPERTY)
+            .withDisplayName("Connector name")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION, 0))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.HIGH)
+            .required()
+            .withDescription("Connector name");
 
     public static final Field TOPIC_PREFIX = Field.create(ConfigurationNames.TOPIC_PREFIX_PROPERTY_NAME)
             .withDisplayName("Topic prefix")
@@ -1551,6 +1561,7 @@ public abstract class CommonConnectorConfig {
         this.isExtendedHeadersEnabled = config.getBoolean(EXTENDED_HEADERS_ENABLED);
         this.guardrailCollectionsMax = config.getInteger(GUARDRAIL_COLLECTIONS_MAX);
         this.guardrailCollectionsLimitAction = GuardrailCollectionsLimitAction.parse(config.getString(GUARDRAIL_COLLECTIONS_LIMIT_ACTION));
+        this.name = config.getString(CommonConnectorConfig.NAME);
 
         this.signalingDataCollectionId = !Strings.isNullOrBlank(this.signalingDataCollection)
                 ? TableId.parse(this.signalingDataCollection)
@@ -2079,5 +2090,9 @@ public abstract class CommonConnectorConfig {
             throw new DebeziumException("Unable to instantiate the transaction struct maker class " + TRANSACTION_METADATA_FACTORY);
         }
         return factory;
+    }
+
+    public String getName() {
+        return name;
     }
 }
