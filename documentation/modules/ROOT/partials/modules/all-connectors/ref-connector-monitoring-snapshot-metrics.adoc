@@ -14,6 +14,14 @@ The following table lists the snapshot metrics that are available.
 |`long`
 |The number of milliseconds since the connector has read and processed the most recent event.
 
+|[[connectors-snaps-metric-numberoferroneousevents_{context}]]<<connectors-snaps-metric-numberoferroneousevents_{context}, `NumberOfErroneousEvents`>>
+|`long`
+|Records the number of change events that the connector identifies as erroneous during a snapshot operation.
+The connector increments this metric each time that it encounters an event that it cannot process during an initial, incremental, or ad hoc snapshot.
+Events might fail processing if they are malformed, are incompatible with the schema, or if they encounter failures during transformation.
+The metric value persists for the lifetime of the connector task.
+If the snapshot is interrupted, and the connector task restarts, the metric count resets to `0`.
+
 |[[connectors-snaps-metric-totalnumberofeventsseen_{context}]]<<connectors-snaps-metric-totalnumberofeventsseen_{context}, `TotalNumberOfEventsSeen`>>
 |`long`
 |The total number of events that this connector has seen since last started or reset.
