@@ -84,7 +84,7 @@ jobs:
 
       - name: Create comment
         if: ${{ steps.octocat.outputs.OCTOCAT_COMMIT_FOUND == 'true' }}
-        uses: peter-evans/create-or-update-comment@v4
+        uses: peter-evans/create-or-update-comment@v5
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
