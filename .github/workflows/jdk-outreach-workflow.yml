@@ -174,10 +174,11 @@ jobs:
           path: ~/.m2/repository
           key: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
           restore-keys: maven-debezium-test-push-build-${{ hashFiles('**/pom.xml') }}
+      # Intentionally does not use assembly profile.
       - name: Maven Build
         run: >
           ./mvnw clean install -B -pl debezium-bom,debezium-connector-oracle -am 
-          -Passembly ${{ matrix.feature.args }} 
+          ${{ matrix.feature.args }} 
           -Dformat.formatter.goal=validate 
           -Dformat.imports.goal=check 
           -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn 
