@@ -2,7 +2,7 @@ Snapshot metrics are not exposed unless a snapshot operation is active, or if a 
 
 The following table lists the snapshot metrics that are available.
 
-[cols="45%a,25%a,30%a",options="header"]
+[cols="35%a,20%a,45%a",options="header"]
 |===
 |Attributes |Type |Description
 
