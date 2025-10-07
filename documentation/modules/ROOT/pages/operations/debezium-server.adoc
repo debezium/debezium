@@ -396,7 +396,7 @@ For more information see Redis https://redis.io/commands/wait/[WAIT] command.
 |[[debezium-source-database-history-redis-cluster-enabled]]<<debezium-source-database-history-redis-cluster-enabled, `debezium.source.schema.history.internal.redis.cluster.enabled`>>
 |`false`
 |If you configure {prodname} Server to store schema history in Redis, set this property to specify whether to use Redis Cluster mode.
-Set the value to `true` to configure {prodname} to use a  https://redis.io/docs/latest/develop/clients/jedis/connect/#connect-to-a-redis-cluster[JedisCluster client] to route history data to Redis nodes.
+Set the value to `true` to configure {prodname} to use a https://redis.io/docs/latest/develop/clients/jedis/connect/#connect-to-a-redis-cluster[JedisCluster client] to route history data to Redis nodes.
 
 |[[schema-history-internal-rocketmq-topic]]<<schema-history-internal-rocketmq-topic, `debezium.source.schema.history.internal.rocketmq.topic`>>
 |
@@ -1143,7 +1143,7 @@ To enable Redis Cluster mode, set the `debezium.sink.redis.cluster.enabled` prop
 
 |[[redis-db-index]]<<redis-db-index, `debezium.sink.redis.db.index`>>
 |`0`
-|A number in the range 0..15 used that {prodname} uses to select the database to work with.
+|A number in the range 0--15 used that {prodname} uses to select the database to work with.
 This setting is only available to standalone Redis connections; Redis Clusters use only database 0.
 
 |[[redis-user]]<<redis-user, `debezium.sink.redis.user`>>
