@@ -1034,8 +1034,9 @@ ifdef::community[]
 [[oracle-logminer-mining-database]]
 === Using a downstream mining database
 
-The {prodname} Oracle connector supports capturing changes from an Oracle database mining database.
-This capability is useful in scenarios where you want to offload change data capture processing from the primary database to a downstream instance, reducing the load on your production system.
+You can use the {prodname} Oracle connector to capture changes from an Oracle Database mining database.
+Log mining operations consume system resources and increase the load on a database, which can result in decreased performance.
+Configuring the connector to perform change data capture processing on a secondary mining database, can reduce the load on the primary database.
 
 [NOTE]
 ====
@@ -1043,21 +1044,17 @@ This feature is in an incubating state. This means that exact semantics, configu
 Please let us know your specific requirements or if you encounter any problems while using this feature.
 ====
 
-==== Prerequisites
+.Prerequisites
 
-Before configuring the connector to capture changes from a downstream mining databases, ensure the following requirements are met:
-
-1. An Oracle downstream mining database is configured and synchronized with the primary instance.
-2. The primary instance generates an external dictionary file that is accessible to the downstream mining database.
-3. Configure the connector using the following key properties.
-`log.mining.strategy`:: This must be set to `dictionary_from_file` for this mode to be used.
-`internal.log.mining.read.only`:: Set this property to `true` to enable capturing changes from a downstream mining database.
-When this property is not set to `true`, the {prodname} connector assumes changes are being captured from the primary instance.
-`log.mining.read.only.hostname`:: Specifies the hostname of the downstream mining database that the {prodname} Oracle connector connects to for capturing and reading transaction logs.
-Given the connector uses this downstream mining instance to capture changes, changes must be replicated from the primary to the downstream instance before change events can be emitted.
-`log.mining.path.dictionary`:: Specifies the absolute file path on the downstream mining database server where Oracle LogMiner can access the data dictionary export file generated from the primary Oracle instance.
-This file is essential for LogMiner to interpret schema changes and other database metadata.
-The specified path must be accessible from the Oracle downstream mining LogMiner process to work.
+* An Oracle downstream mining database is configured and synchronized with the primary instance.
+* The downstream mining database has access to the external dictionary file that the primary database instance generates.
+* The connector configuration includes following key properties:
+`log.mining.strategy`:: This property is set to `dictionary_from_file`.
+`internal.log.mining.read.only`:: This property is set to `true` to enable capturing changes from a downstream mining database, rather than from the primary instance.
+`log.mining.read.only.hostname`:: Specifies the hostname of the downstream mining database from which you want the {prodname} Oracle connector to read and capture transaction logs.
+Because the connector uses this downstream mining instance to capture changes, changes must be replicated from the primary to the downstream instance before {prodname} can emit change events.
+`log.mining.path.dictionary`:: Specifies the absolute file path on the downstream mining database server where Oracle LogMiner can access the data dictionary file that is exported from the primary Oracle instance.
+The LogMiner process on the downstream database must have access to the specified path.
 
 ==== How this works
 
@@ -1071,9 +1068,8 @@ When {prodname} Oracle connector is configured to capture changes from a downstr
 ==== Important considerations
 
 1. The dictionary file must be regularly updated on the primary instance to ensure schema changes are properly reflected.
-2. Network connectivity and file access permissions must be properly configured between the primary and downstream mining databases.
-3. The `dictionary_from_file` strategy is mandatory when using downstream mining mode; other mining strategies are not supported.
-4. Monitor the dictionary file synchronization to prevent issues with schema change detection.
+2. Ensure that network and file access settings permit the downstream mining database to access the dictionary file and redo logs on the primary database.
+3. Monitor the dictionary file synchronization to prevent issues with schema change detection.
 endif::community[]
 
 [[oracle-logminer-query-modes]]
@@ -4234,7 +4230,7 @@ See xref:oracle-transaction-metadata[Transaction Metadata] for additional detail
 ifdef::community[]
 |[[oracle-property-log-mining-readonly-hostname]]<<oracle-property-log-mining-readonly-hostname, `+log.mining.readonly.hostname+`>>
 |`null`
-|Specifies read-only hostname for log mining strategy `dictionary_from_file`.
+|Specifies the hostname of the downstream read-only mining database from which you want the {prodname} Oracle connector to capture transaction logs.
 endif::community[]
 
 |[[oracle-property-log-mining-strategy]]<<oracle-property-log-mining-strategy, `+log.mining.strategy+`>>
@@ -4253,7 +4249,7 @@ If the captured table(s) schema changes infrequently or never, this is the ideal
 This mode performs at the level of the `online_catalog` LogMiner strategy with the schema tracking resilience of the `redo_log_catalog` strategy while not incurring the overhead of archive log generation and performance costs of the `redo_log_catalog` strategy.
 
 ifdef::community[]
-`dictionary_from_file`:: Uses dictionary from file located in a Oracle directory object.
+`dictionary_from_file`:: The connector uses the dictionary from a file located in an Oracle directory object.
 For more information, see xref:oracle-logminer-mining-database[Capturing changes from downstream mining databases].
 endif::community[]
 
