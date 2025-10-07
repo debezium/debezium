@@ -5,6 +5,8 @@
  */
 package io.quarkus.debezium.mongodb.deployment;
 
+import java.util.Map;
+
 import jakarta.inject.Singleton;
 
 import org.testcontainers.containers.GenericContainer;
@@ -38,8 +40,6 @@ import io.quarkus.deployment.builditem.Startable;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
 import io.quarkus.deployment.dev.devservices.DevServicesConfig;
 import io.quarkus.deployment.pkg.steps.NativeOrNativeSourcesBuild;
-
-import java.util.Map;
 
 public class MongoDbEngineProcessor {
     public static final String MONGODB = Module.name();
