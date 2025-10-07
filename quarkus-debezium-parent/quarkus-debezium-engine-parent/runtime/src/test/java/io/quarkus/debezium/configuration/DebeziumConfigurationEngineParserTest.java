@@ -17,6 +17,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
+import io.debezium.runtime.configuration.DevServicesConfig;
 import io.quarkus.debezium.configuration.DebeziumConfigurationEngineParser.MultiEngineConfiguration;
 
 class DebeziumConfigurationEngineParserTest {
@@ -68,6 +69,11 @@ class DebeziumConfigurationEngineParserTest {
                             }
                         });
             }
+
+            @Override
+            public Map<String, DevServicesConfig> devservices() {
+                return Map.of();
+            }
         });
 
         assertThat(configurations).containsOnly(new MultiEngineConfiguration("default", DEBEZIUM_CONFIGURATION));
@@ -85,6 +91,11 @@ class DebeziumConfigurationEngineParserTest {
             @Override
             public Map<String, Capturing> capturing() {
                 return Map.of("default", capturingWithEngineId("default"));
+            }
+
+            @Override
+            public Map<String, DevServicesConfig> devservices() {
+                return Map.of();
             }
         });
 
@@ -106,6 +117,11 @@ class DebeziumConfigurationEngineParserTest {
                         "default", capturingWithEngineId("default"),
                         "another", capturingWithEngineId("another"));
             }
+
+            @Override
+            public Map<String, DevServicesConfig> devservices() {
+                return Map.of();
+            }
         }));
     }
 
@@ -123,6 +139,11 @@ class DebeziumConfigurationEngineParserTest {
                 return Map.of(
                         "orders", capturingWithEngineId("orders"),
                         "products", capturingWithEngineId("products"));
+            }
+
+            @Override
+            public Map<String, DevServicesConfig> devservices() {
+                return Map.of();
             }
         });
 
@@ -146,6 +167,11 @@ class DebeziumConfigurationEngineParserTest {
                         "default", capturingWithEngineId("default"), "product", capturingWithEngineId("products"));
             }
 
+            @Override
+            public Map<String, DevServicesConfig> devservices() {
+                return Map.of();
+            }
+
         });
 
         assertThat(actual).containsExactlyInAnyOrder(new MultiEngineConfiguration("products", DEBEZIUM_CONFIGURATION),
@@ -166,6 +192,11 @@ class DebeziumConfigurationEngineParserTest {
             public Map<String, Capturing> capturing() {
                 return Map.of(
                         "orders", capturingWithEngineId("orders"), "product", capturingWithEngineId("products"));
+            }
+
+            @Override
+            public Map<String, DevServicesConfig> devservices() {
+                return Map.of();
             }
 
         });

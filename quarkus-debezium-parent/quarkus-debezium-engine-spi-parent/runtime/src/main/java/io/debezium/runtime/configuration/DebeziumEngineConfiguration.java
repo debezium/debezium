@@ -8,6 +8,7 @@ package io.debezium.runtime.configuration;
 import java.util.Map;
 import java.util.Optional;
 
+import io.quarkus.runtime.annotations.ConfigDocSection;
 import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.annotations.ConfigRoot;
 import io.smallrye.config.ConfigMapping;
@@ -31,6 +32,15 @@ public interface DebeziumEngineConfiguration {
      */
     @WithName("debezium.capturing")
     Map<String, Capturing> capturing();
+
+    /**
+     * Dev Services.
+     * <p>
+     * Dev Services allows Quarkus to automatically start containers in dev and test mode.
+     */
+    @ConfigDocSection(generated = true)
+    @WithName("debezium.devservices")
+    Map<String, DevServicesConfig> devservices();
 
     interface Capturing {
 
