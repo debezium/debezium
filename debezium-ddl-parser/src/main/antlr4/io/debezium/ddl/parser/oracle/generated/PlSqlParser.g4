@@ -5010,6 +5010,7 @@ alter_table_partitioning
     | exchange_table_partition
     | coalesce_table_partition
     | alter_interval_partition
+    | move_table_partition
     ;
 
 add_table_partition
@@ -5067,6 +5068,23 @@ coalesce_table_partition
 
 alter_interval_partition
     : SET INTERVAL '(' (constant | expression)? ')'
+    ;
+
+move_table_partition
+    : MOVE (
+        partition_extended_names (MAPPING TABLE)? table_partition_description
+        | subpartition_extended_names indexing_clause? partitioning_storage_clause?
+    ) (
+        filter_condition
+        | update_index_clauses
+        | parallel_clause
+        | allow_or_disallow CLUSTERING
+        | ONLINE
+    )*
+    ;
+
+filter_condition
+    : INCLUDING ROWS where_clause
     ;
 
 partition_extended_names
