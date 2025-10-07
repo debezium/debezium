@@ -1067,9 +1067,9 @@ When {prodname} Oracle connector is configured to capture changes from a downstr
 
 ==== Important considerations
 
-1. The dictionary file must be regularly updated on the primary instance to ensure schema changes are properly reflected.
-2. Ensure that network and file access settings permit the downstream mining database to access the dictionary file and redo logs on the primary database.
-3. Monitor the dictionary file synchronization to prevent issues with schema change detection.
+* Ensure that network and file access settings permit the mining database to access the dictionary file and redo logs on the primary database.
+* Keep the dictionary file on the primary instance updated to ensure that it properly reflects schema changes.
+* To prevent issues with schema change detection, keep the dictionary file on the mining database synchronized with the file on the primary.
 endif::community[]
 
 [[oracle-logminer-query-modes]]
