@@ -526,7 +526,7 @@ To enable Redis Cluster mode, set the `redis.cluster.enabled` property to `true`
 
 |[[offset-storage-redis-db-index]]<<offset-storage-redis-db-index, `offset.storage.redis.db.index`>>
 |0
-|The database index (0..15) that {prodname} uses to access Redis to store offset data..
+|The database index (0--15) that {prodname} uses to access Redis to store offset data.
 
 |[[offset-storage-redis-ssl-enabled]]<<offset-storage-redis-ssl-enabled,`offset.storage.redis.ssl.enabled`>>
 |false
@@ -633,7 +633,7 @@ Set the value to `true` to configure {prodname} to use a https://redis.io/docs/l
 
 |[[schema-history-internal-redis-db-index]]<<schema-history-internal-redis-db-index, `schema.history.internal.redis.db.index`>>
 |0
-|The database index (0..15) that {prodname} uses to access Redis to store schema history data.
+|The database index (0--15) that {prodname} uses to access Redis to store schema history data.
 
 |[[schema-history-internal-redis-ssl-enabled]]<<schema-history-internal-redis-ssl-enabled,`schema.history.internal.storage.redis.ssl.enabled`>>
 |false

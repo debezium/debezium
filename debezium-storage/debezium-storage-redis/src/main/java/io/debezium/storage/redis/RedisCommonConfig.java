@@ -35,7 +35,7 @@ public class RedisCommonConfig {
 
     private static final int DEFAULT_DB_INDEX = 0;
     private static final Field PROP_DB_INDEX = Field.create(CONFIGURATION_FIELD_PREFIX_STRING + "db.index")
-            .withDescription("The database index (0..15) that will be used to access Redis")
+            .withDescription("The database index (0--15) that will be used to access Redis")
             .withAllowedValues(IntStream.rangeClosed(0, 15).boxed().collect(Collectors.toSet()))
             .withDefault(DEFAULT_DB_INDEX);
 
