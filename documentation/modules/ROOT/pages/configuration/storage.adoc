@@ -488,10 +488,10 @@ INSERT INTO %s(id, history_data, history_data_seq, record_insert_ts, record_inse
 
 {prodname} can use a https://redis.io/docs/latest/develop/clients/jedis/[Jedis client] to store data in a Redis cache.
 
-{prodname} supports both single Redis instance and https://redis.io/docs/latest/operate/oss_and_stack/reference/cluster-spec/[Redis Cluster mode]:
+{prodname} can use either a single Redis instance or use https://redis.io/docs/latest/operate/oss_and_stack/reference/cluster-spec/[Redis Cluster mode]:
 
-* **Single Instance Mode**: Connects to a single Redis server instance
-* **Cluster Mode**: Connects to a Redis Cluster for high availability and horizontal scaling
+Single instance mode:: Connects to a single Redis server instance.
+Cluster mode:: Connects to a Redis Cluster for high availability and horizontal scaling.
 
 To enable Redis Cluster mode, set the `redis.cluster.enabled` property to `true` and provide comma-separated host:port addresses in the `redis.address` property.
 
@@ -599,8 +599,8 @@ If a data packet is not transferred with the specified interval, {prodname} clos
 
 |[[offset-storage-redis-cluster-enabled]]<<offset-storage-redis-cluster-enabled, `offset.storage.redis.cluster.enabled`>>
 |false
-|Enables Redis Cluster mode for offset storage. When set to `true`, {prodname} uses a https://redis.io/docs/latest/develop/clients/jedis/connect/#connect-to-a-redis-cluster[JedisCluster client] to connect to Redis.
-
+|If you configure {prodname} Server to store offsets in Redis, set this property to specify whether to use Redis Cluster mode.
+Set the value to `true` to configure {prodname} to use a https://redis.io/docs/latest/develop/clients/jedis/connect/#connect-to-a-redis-cluster[JedisCluster client] to route offset data to Redis nodes.
 
 |===
 
@@ -706,8 +706,8 @@ If a data packet is not transferred with the specified interval, {prodname} clos
 
 |[[schema-history-internal-redis-cluster-enabled]]<<schema-history-internal-redis-cluster-enabled, `schema.history.internal.storage.redis.cluster.enabled`>>
 |false
-|Enables Redis Cluster mode for schema history storage. When set to `true`, {prodname} uses a https://redis.io/docs/latest/develop/clients/jedis/connect/#connect-to-a-redis-cluster[JedisCluster client] to connect to Redis.
-
+|If you configure {prodname} Server to store schema history in Redis, set this property to specify whether to use Redis Cluster mode.
+Set the value to `true` to configure {prodname} to use a  https://redis.io/docs/latest/develop/clients/jedis/connect/#connect-to-a-redis-cluster[JedisCluster client] to route history data to Redis nodes.
 
 |===
 
@@ -747,9 +747,9 @@ schema.history.internal.storage.redis.password=password
 schema.history.internal.storage.redis.cluster.enabled=true
 ----
 
-NOTE: When using Redis Cluster mode,
+NOTE: If you configure {prodname} to use Redis Cluster mode,
 ensure that your Redis Cluster is properly configured and accessible.
-The cluster nodes should be reachable from the {prodname} instance.
+The {prodname} Server instance must be able to communicate with the cluster nodes.
 
 == Amazon S3
 
