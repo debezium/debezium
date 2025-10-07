@@ -2,6 +2,33 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.2.4.Final
+October 7th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12469391)
+
+### New features since 3.2.3.Final
+
+None
+
+
+### Breaking changes since 3.2.3.Final
+
+None
+
+
+### Fixes since 3.2.3.Final
+
+* XStream may fail with invalid processed low-watermark [DBZ-8923](https://issues.redhat.com/browse/DBZ-8923)
+* MySQL example container images are not properly configured [DBZ-9485](https://issues.redhat.com/browse/DBZ-9485)
+* Dropping primary key does not change Oracle relational metadata [DBZ-9505](https://issues.redhat.com/browse/DBZ-9505)
+* Events are mistakenly skipped during commit dispatch when LOB is enabled  [DBZ-9521](https://issues.redhat.com/browse/DBZ-9521)
+
+
+### Other changes since 3.2.3.Final
+
+* Doc: Document metric `NumberOfErroneousEvents` [DBZ-9510](https://issues.redhat.com/browse/DBZ-9510)
+
+
+
 ## 3.2.3.Final
 September 25th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12467260)
 
