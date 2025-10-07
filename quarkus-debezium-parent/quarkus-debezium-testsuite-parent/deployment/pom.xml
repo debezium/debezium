@@ -8,7 +8,7 @@
     <parent>
         <groupId>io.debezium.quarkus</groupId>
         <artifactId>quarkus-debezium-testsuite-parent</artifactId>
-        <version>3.3.0-SNAPSHOT</version>
+        <version>3.4.0-SNAPSHOT</version>
     </parent>
 
     <name>Quarkus Debezium :: Extension :: TestSuite :: Deployment Tests</name>
