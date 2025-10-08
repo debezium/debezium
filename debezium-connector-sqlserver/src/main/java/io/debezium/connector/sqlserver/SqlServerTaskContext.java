@@ -15,7 +15,7 @@ import io.debezium.connector.common.CdcSourceTaskContext;
  */
 public class SqlServerTaskContext extends CdcSourceTaskContext {
 
-    public SqlServerTaskContext(SqlServerConnectorConfig config, SqlServerDatabaseSchema schema) {
-        super(config, config.getTaskId(), config.getCustomMetricTags(), schema::tableIds);
+    public SqlServerTaskContext(SqlServerConnectorConfig config) {
+        super(config, config.getTaskId(), config.getCustomMetricTags());
     }
 }

@@ -12,8 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.function.BlockingConsumer;
-import io.debezium.relational.TableId;
-import io.debezium.spi.topic.TopicNamingStrategy;
 import io.debezium.util.Clock;
 
 /**
@@ -26,13 +24,16 @@ public abstract class RecordsProducer {
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     protected final PostgresTaskContext taskContext;
     protected final SourceInfo sourceInfo;
+    protected final PostgresSchema schema;
 
-    protected RecordsProducer(PostgresTaskContext taskContext, SourceInfo sourceInfo) {
+    protected RecordsProducer(PostgresTaskContext taskContext, SourceInfo sourceInfo, PostgresSchema schema) {
         assert taskContext != null;
         assert sourceInfo != null;
+        assert schema != null;
 
         this.sourceInfo = sourceInfo;
         this.taskContext = taskContext;
+        this.schema = schema;
     }
 
     /**
@@ -54,11 +55,7 @@ public abstract class RecordsProducer {
     protected abstract void stop();
 
     protected PostgresSchema schema() {
-        return taskContext.schema();
-    }
-
-    protected TopicNamingStrategy<TableId> topicNamingStrategy() {
-        return taskContext.topicNamingStrategy();
+        return schema;
     }
 
     protected Clock clock() {

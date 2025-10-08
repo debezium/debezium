@@ -12,6 +12,7 @@ import org.apache.kafka.connect.data.Struct;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.data.Envelope;
 import io.debezium.pipeline.meters.StreamingMeter;
+import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.spi.schema.DataCollectionId;
@@ -23,9 +24,10 @@ class SqlServerStreamingPartitionMetrics extends AbstractSqlServerPartitionMetri
 
     SqlServerStreamingPartitionMetrics(CdcSourceTaskContext taskContext,
                                        Map<String, String> tags,
-                                       EventMetadataProvider metadataProvider) {
+                                       EventMetadataProvider metadataProvider,
+                                       CapturedTablesSupplier capturedTablesSupplier) {
         super(taskContext, tags, metadataProvider);
-        streamingMeter = new StreamingMeter(taskContext, metadataProvider);
+        streamingMeter = new StreamingMeter(capturedTablesSupplier, metadataProvider);
     }
 
     @Override

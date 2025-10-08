@@ -127,7 +127,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         CustomConverterRegistry customConverterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
 
         schema = new PostgresSchema(connectorConfig, defaultValueConverter, topicNamingStrategy, valueConverter, customConverterRegistry);
-        this.taskContext = new PostgresTaskContext(connectorConfig, schema, topicNamingStrategy);
+        this.taskContext = new PostgresTaskContext(connectorConfig, schema);
         this.partitionProvider = new PostgresPartition.Provider(connectorConfig, config);
         this.offsetContextLoader = new PostgresOffsetContext.Loader(connectorConfig);
         final Offsets<PostgresPartition, PostgresOffsetContext> previousOffsets = getPreviousOffsets(
@@ -285,7 +285,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
         SlotCreationResult slotCreatedInfo = null;
         if (snapshotter.shouldStream()) {
-            replicationConnection = createReplicationConnection(this.taskContext,
+            replicationConnection = createReplicationConnection(connectorConfig,
                     connectorConfig.maxRetries(), connectorConfig.retryDelay());
 
             // we need to create the slot before we start streaming if it doesn't exist
@@ -324,14 +324,40 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         return slotInfo;
     }
 
-    public ReplicationConnection createReplicationConnection(PostgresTaskContext taskContext, int maxRetries, Duration retryDelay)
+    protected ReplicationConnection buildReplicationConnection(PostgresConnection jdbcConnection, PostgresSchema schema, PostgresConnectorConfig connectorConfig)
+            throws SQLException {
+        final boolean dropSlotOnStop = connectorConfig.dropSlotOnStop();
+        if (dropSlotOnStop) {
+            LOGGER.warn(
+                    "Connector has enabled automated replication slot removal upon restart ({} = true). " +
+                            "This setting is not recommended for production environments, as a new replication slot " +
+                            "will be created after a connector restart, resulting in missed data change events.",
+                    PostgresConnectorConfig.DROP_SLOT_ON_STOP.name());
+        }
+        return ReplicationConnection.builder(connectorConfig)
+                .withSlot(connectorConfig.slotName())
+                .withPublication(connectorConfig.publicationName())
+                .withTableFilter(connectorConfig.getTableFilters())
+                .withPublicationAutocreateMode(connectorConfig.publicationAutocreateMode())
+                .withPlugin(connectorConfig.plugin())
+                .dropSlotOnClose(dropSlotOnStop)
+                .createFailOverSlot(connectorConfig.createFailOverSlot())
+                .streamParams(connectorConfig.streamParams())
+                .statusUpdateInterval(connectorConfig.statusUpdateInterval())
+                .withTypeRegistry(jdbcConnection.getTypeRegistry())
+                .withSchema(schema)
+                .jdbcMetadataConnection(jdbcConnection)
+                .build();
+    }
+
+    public ReplicationConnection createReplicationConnection(PostgresConnectorConfig connectorConfig, int maxRetries, Duration retryDelay)
             throws ConnectException {
         final Metronome metronome = Metronome.parker(retryDelay, Clock.SYSTEM);
         short retryCount = 0;
         ReplicationConnection replicationConnection = null;
         while (retryCount <= maxRetries) {
             try {
-                return taskContext.createReplicationConnection(jdbcConnection);
+                return buildReplicationConnection(jdbcConnection, schema, connectorConfig);
             }
             catch (SQLException ex) {
                 retryCount++;
@@ -452,8 +478,8 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         }
     }
 
-    public PostgresTaskContext getTaskContext() {
-        return taskContext;
+    public PostgresSchema getSchema() {
+        return schema;
     }
 
     private void validateGuardrailLimits(PostgresConnectorConfig connectorConfig, PostgresConnection connection) {

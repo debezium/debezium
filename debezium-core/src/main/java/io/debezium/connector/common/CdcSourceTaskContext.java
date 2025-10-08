@@ -5,16 +5,12 @@
  */
 package io.debezium.connector.common;
 
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Map;
-import java.util.function.Supplier;
 
 import org.apache.kafka.connect.source.SourceTask;
 
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.pipeline.spi.Partition;
-import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
 
@@ -33,29 +29,21 @@ public class CdcSourceTaskContext {
     private final Clock clock;
     private final CommonConnectorConfig config;
 
-    /**
-     * Obtains the data collections captured at the point of invocation.
-     */
-    private final Supplier<Collection<? extends DataCollectionId>> collectionsSupplier;
-
     public CdcSourceTaskContext(CommonConnectorConfig config,
                                 String taskId,
-                                Map<String, String> customMetricTags,
-                                Supplier<Collection<? extends DataCollectionId>> collectionsSupplier) {
+                                Map<String, String> customMetricTags) {
         this.connectorType = config.getContextName();
         this.connectorLogicalName = config.getLogicalName();
         this.connectorPluginName = config.getConnectorName();
         this.taskId = taskId;
         this.customMetricTags = customMetricTags;
-        this.collectionsSupplier = collectionsSupplier != null ? collectionsSupplier : Collections::emptyList;
         this.config = config;
         this.clock = Clock.system();
     }
 
     public CdcSourceTaskContext(CommonConnectorConfig config,
-                                Map<String, String> customMetricTags,
-                                Supplier<Collection<? extends DataCollectionId>> collectionsSupplier) {
-        this(config, "0", customMetricTags, collectionsSupplier);
+                                Map<String, String> customMetricTags) {
+        this(config, "0", customMetricTags);
     }
 
     /**
@@ -91,13 +79,6 @@ public class CdcSourceTaskContext {
      */
     public Clock getClock() {
         return clock;
-    }
-
-    public String[] capturedDataCollections() {
-        return collectionsSupplier.get()
-                .stream()
-                .map(DataCollectionId::toString)
-                .toArray(String[]::new);
     }
 
     public String getConnectorType() {

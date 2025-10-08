@@ -36,17 +36,19 @@ public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> exten
     private final ActivityMonitoringMeter activityMonitoringMeter;
 
     public <T extends CdcSourceTaskContext> DefaultStreamingChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                                     EventMetadataProvider metadataProvider) {
+                                                                                     EventMetadataProvider metadataProvider,
+                                                                                     CapturedTablesSupplier capturedTablesSupplier) {
         super(taskContext, "streaming", changeEventQueueMetrics, metadataProvider);
-        streamingMeter = new StreamingMeter(taskContext, metadataProvider);
+        streamingMeter = new StreamingMeter(capturedTablesSupplier, metadataProvider);
         connectionMeter = new ConnectionMeter();
         activityMonitoringMeter = new ActivityMonitoringMeter();
     }
 
     public <T extends CdcSourceTaskContext> DefaultStreamingChangeEventSourceMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                                     EventMetadataProvider metadataProvider, Map<String, String> tags) {
+                                                                                     EventMetadataProvider metadataProvider, Map<String, String> tags,
+                                                                                     CapturedTablesSupplier capturedTablesSupplier) {
         super(taskContext, changeEventQueueMetrics, metadataProvider, tags);
-        streamingMeter = new StreamingMeter(taskContext, metadataProvider);
+        streamingMeter = new StreamingMeter(capturedTablesSupplier, metadataProvider);
         connectionMeter = new ConnectionMeter();
         activityMonitoringMeter = new ActivityMonitoringMeter();
     }

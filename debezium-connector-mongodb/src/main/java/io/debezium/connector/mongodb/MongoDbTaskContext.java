@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.mongodb;
 
-import java.util.Collections;
-
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
@@ -33,8 +31,7 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
     public MongoDbTaskContext(Configuration config) {
         super(new MongoDbConnectorConfig(config),
                 config.getString(MongoDbConnectorConfig.TASK_ID),
-                new MongoDbConnectorConfig(config).getCustomMetricTags(),
-                Collections::emptySet);
+                new MongoDbConnectorConfig(config).getCustomMetricTags());
 
         this.filters = new Filters(config);
         this.config = config;

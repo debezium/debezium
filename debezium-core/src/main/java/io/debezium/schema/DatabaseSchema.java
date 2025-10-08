@@ -22,6 +22,15 @@ public interface DatabaseSchema<I extends DataCollectionId> extends AutoCloseabl
     DataCollectionSchema schemaFor(I id);
 
     /**
+     * Returns the collection of data collection identifiers that are being captured.
+     *
+     * @return a collection of data collection identifiers
+     */
+    default java.util.Collection<I> dataCollectionIds() {
+        return java.util.Collections.emptySet();
+    }
+
+    /**
      * Indicates whether or not table names are guaranteed to be fully present, regardless of whether or not a
      * snapshot has been performed.
      *

@@ -7,6 +7,7 @@ package io.debezium.connector.mongodb;
 
 import static java.util.Comparator.comparing;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -167,7 +168,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                             clock,
                             taskContext,
                             schema,
-                            metricsFactory.getStreamingMetrics(taskContext, queue, metadataProvider),
+                            metricsFactory.getStreamingMetrics(taskContext, queue, metadataProvider, Collections::emptySet),
                             snapshotterService),
                     metricsFactory,
                     dispatcher,

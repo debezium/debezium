@@ -167,7 +167,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     @Override
     public void execute(ChangeEventSourceContext context, P partition, O offsetContext) throws InterruptedException {
         if (!(snapshotterService.getSnapshotter() instanceof NeverSnapshotter)) {
-            taskContext.getSchema().assureNonEmptySchema();
+            schema.assureNonEmptySchema();
         }
         final Set<Envelope.Operation> skippedOperations = connectorConfig.getSkippedOperations();
 
@@ -843,7 +843,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 WriteRowsEventData::getRows,
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
                         new BinlogChangeRecordEmitter<>(partition, offsetContext, clock, Envelope.Operation.CREATE, null, row, connectorConfig)),
-                (tableId, row) -> validateChangeEventWithTable(taskContext.getSchema().tableFor(tableId), null, row));
+                (tableId, row) -> validateChangeEventWithTable(schema.tableFor(tableId), null, row));
     }
 
     /**
@@ -860,7 +860,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
                         new BinlogChangeRecordEmitter<>(partition, offsetContext, clock, Envelope.Operation.UPDATE, row.getKey(), row.getValue(),
                                 connectorConfig)),
-                (tableId, row) -> validateChangeEventWithTable(taskContext.getSchema().tableFor(tableId), row.getKey(), row.getValue()));
+                (tableId, row) -> validateChangeEventWithTable(schema.tableFor(tableId), row.getKey(), row.getValue()));
     }
 
     /**
@@ -876,7 +876,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                 DeleteRowsEventData::getRows,
                 (tableId, row) -> eventDispatcher.dispatchDataChangeEvent(partition, tableId,
                         new BinlogChangeRecordEmitter<>(partition, offsetContext, clock, Envelope.Operation.DELETE, row, null, connectorConfig)),
-                (tableId, row) -> validateChangeEventWithTable(taskContext.getSchema().tableFor(tableId), row, null));
+                (tableId, row) -> validateChangeEventWithTable(schema.tableFor(tableId), row, null));
     }
 
     /**
@@ -1101,7 +1101,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         final List<U> rows = rowsProvider.getRows(data);
         String changeType = operation.name();
 
-        if (tableId != null && taskContext.getSchema().schemaFor(tableId) != null) {
+        if (tableId != null && schema.schemaFor(tableId) != null) {
             int count = 0;
             int numRows = rows.size();
             if (startingRowNumber < numRows) {

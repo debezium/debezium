@@ -51,9 +51,10 @@ public class MariaDbStreamingChangeEventSource extends BinlogStreamingChangeEven
                                              ErrorHandler errorHandler,
                                              Clock clock,
                                              MariaDbTaskContext taskContext,
+                                             MariaDbDatabaseSchema schema,
                                              MariaDbStreamingChangeEventSourceMetrics metrics,
                                              SnapshotterService snapshotterService) {
-        super(connectorConfig, connection, dispatcher, errorHandler, clock, taskContext, taskContext.getSchema(), metrics, snapshotterService);
+        super(connectorConfig, connection, dispatcher, errorHandler, clock, taskContext, schema, metrics, snapshotterService);
         this.connectorConfig = connectorConfig;
         this.signalDataCollectionId = getSignalDataCollectionId(connectorConfig);
     }
