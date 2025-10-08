@@ -11,6 +11,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -25,8 +26,10 @@ import io.debezium.config.Configuration;
 import io.debezium.service.spi.Configurable;
 import io.debezium.service.spi.InjectService;
 import io.debezium.service.spi.ServiceProvider;
+import io.debezium.service.spi.ServiceProviderContributor;
 import io.debezium.service.spi.ServiceRegistry;
 import io.debezium.service.spi.ServiceRegistryAware;
+import io.debezium.service.spi.ServiceRegistryBuilder;
 import io.debezium.service.spi.Startable;
 
 /**
@@ -36,7 +39,7 @@ import io.debezium.service.spi.Startable;
  */
 @Incubating
 @ThreadSafe
-public class DefaultServiceRegistry implements ServiceRegistry {
+public class DefaultServiceRegistry implements ServiceRegistry, ServiceRegistryBuilder {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultServiceRegistry.class);
 
@@ -55,6 +58,8 @@ public class DefaultServiceRegistry implements ServiceRegistry {
     public DefaultServiceRegistry(Configuration configuration, BeanRegistry beanRegistry) {
         this.configuration = configuration;
         registerService(new ServiceRegistration<>(BeanRegistry.class, beanRegistry), beanRegistry);
+
+        loadServices();
     }
 
     @Override
@@ -231,6 +236,10 @@ public class DefaultServiceRegistry implements ServiceRegistry {
             throw new DebeziumException(String.format("Unable to create service %s",
                     registration.getServiceClass().getName()), e);
         }
+    }
+
+    private void loadServices() {
+        ServiceLoader.load(ServiceProviderContributor.class).forEach(contributor -> contributor.contribute(this));
     }
 
 }

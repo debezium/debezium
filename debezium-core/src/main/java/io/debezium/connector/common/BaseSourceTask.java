@@ -40,7 +40,6 @@ import io.debezium.annotation.VisibleForTesting;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
-import io.debezium.converters.custom.CustomConverterServiceProvider;
 import io.debezium.data.Envelope;
 import io.debezium.function.LogPositionValidator;
 import io.debezium.openlineage.DebeziumOpenLineageEmitter;
@@ -52,13 +51,8 @@ import io.debezium.pipeline.signal.channels.process.SignalChannelWriter;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Offsets;
 import io.debezium.pipeline.spi.Partition;
-import io.debezium.processors.PostProcessorRegistryServiceProvider;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.schema.HistorizedDatabaseSchema;
-import io.debezium.service.spi.ServiceRegistry;
-import io.debezium.snapshot.SnapshotLockProvider;
-import io.debezium.snapshot.SnapshotQueryProvider;
-import io.debezium.snapshot.SnapshotterServiceProvider;
 import io.debezium.spi.snapshot.Snapshotter;
 import io.debezium.util.Clock;
 import io.debezium.util.ElapsedTimeStrategy;
@@ -612,12 +606,4 @@ public abstract class BaseSourceTask<P extends Partition, O extends OffsetContex
         return notificationChannels;
     }
 
-    protected void registerServiceProviders(ServiceRegistry serviceRegistry) {
-        serviceRegistry.registerServiceProvider(new PostProcessorRegistryServiceProvider());
-        serviceRegistry.registerServiceProvider(new SnapshotLockProvider());
-        serviceRegistry.registerServiceProvider(new SnapshotQueryProvider());
-        serviceRegistry.registerServiceProvider(new SnapshotterServiceProvider());
-        serviceRegistry.registerServiceProvider(new DebeziumHeaderProducerProvider());
-        serviceRegistry.registerServiceProvider(new CustomConverterServiceProvider());
-    }
 }
