@@ -47,7 +47,6 @@ public abstract class BinlogSignalsIT<C extends SourceConnector> extends Abstrac
             .toAbsolutePath();
     protected final UniqueDatabase DATABASE = TestHelper.getUniqueDatabase(SERVER_NAME, "incremental_snapshot-test").withDbHistoryPath(SCHEMA_HISTORY_PATH);
     protected static StrimziKafkaCluster kafkaCluster;
-    protected static KafkaCluster kafka;
     public static final String EXCLUDED_TABLE = "a";
 
     @BeforeAll
