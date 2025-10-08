@@ -3002,7 +3002,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
 
         assertDataTypeNonKeyOnly(source,
                 sink,
-                "geography",
+                "postgis.geography",
                 values,
                 expectedValues,
                 (config) -> config.with(JdbcSinkConnectorConfig.POSTGRES_POSTGIS_SCHEMA, "postgis"),
