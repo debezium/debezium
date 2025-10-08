@@ -12,6 +12,7 @@ import static io.debezium.pipeline.notification.IncrementalSnapshotNotificationS
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -385,14 +386,11 @@ public class MongoDbIncrementalSnapshotChangeEventSource
         return key.get() != null ? new Object[]{ key.get() } : null;
     }
 
-    @Override
     @SuppressWarnings("unchecked")
-    public void addDataCollectionNamesToSnapshot(SignalPayload<MongoDbPartition> signalPayload,
-                                                 SnapshotConfiguration snapshotConfiguration)
+    protected void addDataCollectionNamesToSnapshot(MongoDbPartition partition, OffsetContext offsetContext, SignalPayload<MongoDbPartition> signalPayload,
+                                                    SnapshotConfiguration snapshotConfiguration)
             throws InterruptedException {
 
-        final MongoDbPartition partition = signalPayload.partition;
-        final OffsetContext offsetContext = signalPayload.offsetContext;
         final String correlationId = signalPayload.id;
 
         if (!Strings.isNullOrEmpty(snapshotConfiguration.getSurrogateKey())) {
@@ -434,6 +432,52 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     public void requestStopSnapshot(MongoDbPartition partition, OffsetContext offsetContext, Map<String, Object> additionalData, List<String> dataCollectionPatterns) {
         context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
         context.requestSnapshotStop(dataCollectionPatterns);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public void requestAddDataCollectionNamesToSnapshot(SignalPayload<MongoDbPartition> signalPayload, SnapshotConfiguration snapshotConfiguration) {
+        final OffsetContext offsetContext = signalPayload.offsetContext;
+        LOGGER.info("Request data collections {}", signalPayload);
+        context = (IncrementalSnapshotContext<CollectionId>) offsetContext.getIncrementalSnapshotContext();
+        context.requestAddDataCollectionNamesToSnapshot(signalPayload, snapshotConfiguration);
+    }
+
+    @Override
+    public void processHeartbeat(MongoDbPartition partition, OffsetContext offsetContext) throws InterruptedException {
+        checkAndAddDataCollections(partition, offsetContext);
+    }
+
+    @Override
+    public void processFilteredEvent(MongoDbPartition partition, OffsetContext offsetContext) throws InterruptedException {
+        checkAndAddDataCollections(partition, offsetContext);
+    }
+
+    @Override
+    public void processTransactionStartedEvent(MongoDbPartition partition, OffsetContext offsetContext) throws InterruptedException {
+        checkAndAddDataCollections(partition, offsetContext);
+    }
+
+    @Override
+    public void processTransactionCommittedEvent(MongoDbPartition partition, OffsetContext offsetContext) throws InterruptedException {
+        checkAndAddDataCollections(partition, offsetContext);
+    }
+
+    private void checkAndAddDataCollections(MongoDbPartition partition, OffsetContext offsetContext) throws InterruptedException {
+        if (context == null) {
+            LOGGER.warn("Context is null, skipping check and add data collections");
+            return;
+        }
+        LOGGER.debug("Check and add data collections {}", context.getDataCollectionsToAdd().keySet());
+        Map<SignalPayload, SnapshotConfiguration> map = context.getDataCollectionsToAdd();
+        Iterator<Map.Entry<SignalPayload, SnapshotConfiguration>> iterator = map.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<SignalPayload, SnapshotConfiguration> entry = iterator.next();
+            SignalPayload signalPayload = entry.getKey();
+            SnapshotConfiguration snapshotConfiguration = entry.getValue();
+            addDataCollectionNamesToSnapshot(partition, offsetContext, signalPayload, snapshotConfiguration);
+            map.remove(signalPayload);
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -743,6 +787,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
             LOGGER.warn("Context is null, skipping message processing");
             return;
         }
+        checkAndAddDataCollections(partition, offsetContext);
         LOGGER.trace("Checking window for table '{}', key '{}', window contains '{}'", dataCollectionId, key, window);
         if (!window.isEmpty() && context.deduplicationNeeded()) {
             deduplicateWindow(dataCollectionId, key);
