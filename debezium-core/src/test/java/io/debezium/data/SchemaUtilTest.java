@@ -14,6 +14,9 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.junit.Test;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.debezium.doc.FixFor;
 
 /**
@@ -47,5 +50,21 @@ public class SchemaUtilTest {
 
         Struct struct = new Struct(schema).put("some_field", new byte[]{ 1, 3, 5, 7 });
         assertThat(SchemaUtil.asString(struct)).isEqualTo("{\"some_field\" : [1, 3, 5, 7]}");
+    }
+
+    @Test
+    public void correctlyEscapesJsonString() {
+        String originalText = "This is a \"test\" string with a backslash \\ and a newline\n.";
+        String escapedText = SchemaUtil.asString(originalText);
+        assertThat(escapedText).isEqualTo("\"This is a \\\"test\\\" string with a backslash \\\\ and a newline\\n.\"");
+    }
+
+    @Test
+    public void canParseEscapedJsonString() throws JsonProcessingException {
+        var originalText = "This is a \"test\" string with a backslash \\ and a newline\n.";
+        var escapedText = SchemaUtil.asString(originalText);
+        var mapper = new ObjectMapper();
+        var read = mapper.readValue(escapedText, String.class);
+        assertThat(read).isEqualTo(originalText);
     }
 }
