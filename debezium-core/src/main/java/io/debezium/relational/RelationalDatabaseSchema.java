@@ -75,6 +75,11 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
     }
 
     @Override
+    public java.util.Collection<TableId> dataCollectionIds() {
+        return tableIds();
+    }
+
+    @Override
     public void assureNonEmptySchema() {
         if (tableIds().isEmpty()) {
             LOG.warn(NO_CAPTURED_DATA_COLLECTIONS_WARNING);

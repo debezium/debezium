@@ -102,7 +102,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         this.schema = new OracleDatabaseSchema(connectorConfig, valueConverters, defaultValueConverter, schemaNameAdjuster,
                 topicNamingStrategy, tableNameCaseSensitivity, extendedStringsSupported, customConverterRegistry);
-        taskContext = new OracleTaskContext(connectorConfig, schema);
+        taskContext = new OracleTaskContext(connectorConfig);
 
         Offsets<OraclePartition, OracleOffsetContext> previousOffsets = getPreviousOffsets(partitionProvider, offsetContextLoader);
 
@@ -194,7 +194,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
                 connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
 
         final AbstractOracleStreamingChangeEventSourceMetrics streamingMetrics = connectorConfig.getAdapter()
-                .getStreamingMetrics(taskContext, queue, metadataProvider, connectorConfig);
+                .getStreamingMetrics(taskContext, queue, metadataProvider, connectorConfig, schema::dataCollectionIds);
 
         NotificationService<OraclePartition, OracleOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                 connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);

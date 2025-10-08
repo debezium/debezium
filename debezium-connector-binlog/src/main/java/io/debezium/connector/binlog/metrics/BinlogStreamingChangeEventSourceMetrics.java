@@ -16,6 +16,7 @@ import com.github.shyiko.mysql.binlog.jmx.BinaryLogClientStatistics;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.binlog.BinlogDatabaseSchema;
 import io.debezium.connector.binlog.BinlogTaskContext;
+import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.metrics.DefaultStreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.Partition;
@@ -32,7 +33,6 @@ public class BinlogStreamingChangeEventSourceMetrics<T extends BinlogDatabaseSch
 
     private final BinaryLogClient client;
     private final BinaryLogClientStatistics stats;
-    private final T schema;
 
     private final AtomicLong numberOfCommittedTransactions = new AtomicLong();
     private final AtomicLong numberOfRolledBackTransactions = new AtomicLong();
@@ -44,11 +44,12 @@ public class BinlogStreamingChangeEventSourceMetrics<T extends BinlogDatabaseSch
 
     public BinlogStreamingChangeEventSourceMetrics(BinlogTaskContext<T> taskContext,
                                                    ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                   EventMetadataProvider eventMetadataProvider) {
-        super(taskContext, changeEventQueueMetrics, eventMetadataProvider);
-        this.client = taskContext.getBinaryLogClient();
+                                                   EventMetadataProvider eventMetadataProvider,
+                                                   CapturedTablesSupplier capturedTablesSupplier,
+                                                   BinaryLogClient client) {
+        super(taskContext, changeEventQueueMetrics, eventMetadataProvider, capturedTablesSupplier);
+        this.client = client;
         this.stats = new BinaryLogClientStatistics(client);
-        this.schema = taskContext.getSchema();
         this.milliSecondsBehindMaster.set(-1);
     }
 
@@ -131,11 +132,6 @@ public class BinlogStreamingChangeEventSourceMetrics<T extends BinlogDatabaseSch
     @Override
     public long getNumberOfLargeTransactions() {
         return numberOfLargeTransactions.get();
-    }
-
-    @Override
-    public String[] getCapturedTables() {
-        return schema.capturedTablesAsStringArray();
     }
 
     @Override

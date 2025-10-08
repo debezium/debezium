@@ -33,6 +33,7 @@ import io.debezium.connector.oracle.OraclePartition;
 import io.debezium.connector.oracle.OracleTaskContext;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.document.Document;
+import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotContext;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.txmetadata.TransactionContext;
@@ -69,8 +70,9 @@ public abstract class AbstractLogMinerStreamingAdapter
     public LogMinerStreamingChangeEventSourceMetrics getStreamingMetrics(OracleTaskContext taskContext,
                                                                          ChangeEventQueueMetrics changeEventQueueMetrics,
                                                                          EventMetadataProvider metadataProvider,
-                                                                         OracleConnectorConfig connectorConfig) {
-        return new LogMinerStreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, metadataProvider, connectorConfig);
+                                                                         OracleConnectorConfig connectorConfig,
+                                                                         CapturedTablesSupplier capturedTablesSupplier) {
+        return new LogMinerStreamingChangeEventSourceMetrics(taskContext, changeEventQueueMetrics, metadataProvider, connectorConfig, capturedTablesSupplier);
     }
 
     @Override

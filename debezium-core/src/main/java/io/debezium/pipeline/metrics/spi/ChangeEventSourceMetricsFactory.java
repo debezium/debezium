@@ -7,6 +7,7 @@ package io.debezium.pipeline.metrics.spi;
 
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
+import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.metrics.SnapshotChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
@@ -43,11 +44,14 @@ public interface ChangeEventSourceMetricsFactory<P extends Partition> {
      *          The change event queue metrics
      * @param eventMetadataProvider
      *          The event metadata provider implementation
+     * @param capturedTablesSupplier
+     *          Supplier for the captured tables
      *
      * @return a streaming change event source metrics
      */
     <T extends CdcSourceTaskContext> StreamingChangeEventSourceMetrics<P> getStreamingMetrics(T taskContext, ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                                                              EventMetadataProvider eventMetadataProvider);
+                                                                                              EventMetadataProvider eventMetadataProvider,
+                                                                                              CapturedTablesSupplier capturedTablesSupplier);
 
     default boolean connectionMetricHandledByCoordinator() {
         return true;

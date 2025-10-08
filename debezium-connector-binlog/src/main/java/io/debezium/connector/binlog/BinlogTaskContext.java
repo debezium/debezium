@@ -17,22 +17,11 @@ import io.debezium.relational.RelationalDatabaseSchema;
  */
 public class BinlogTaskContext<T extends RelationalDatabaseSchema> extends CdcSourceTaskContext {
 
-    private final T schema;
     private final BinaryLogClient binaryLogClient;
 
     public BinlogTaskContext(BinlogConnectorConfig config, T schema) {
-        super(config, config.getCustomMetricTags(), schema::tableIds);
-        this.schema = schema;
+        super(config, config.getCustomMetricTags());
         this.binaryLogClient = new BinaryLogClient(config.getHostName(), config.getPort(), config.getUserName(), config.getPassword());
-    }
-
-    /**
-     * Get the task's database schema instance.
-     *
-     * @return the schema instance, never null
-     */
-    public T getSchema() {
-        return schema;
     }
 
     /**

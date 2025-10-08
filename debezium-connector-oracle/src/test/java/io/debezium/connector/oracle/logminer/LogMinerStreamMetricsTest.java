@@ -40,7 +40,7 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
                                                                       EventMetadataProvider metadataProvider,
                                                                       OracleConnectorConfig connectorConfig,
                                                                       Clock clock) {
-        return new LogMinerStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider, connectorConfig, clock);
+        return new LogMinerStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider, connectorConfig, clock, java.util.Collections::emptyList);
     }
 
     @Test

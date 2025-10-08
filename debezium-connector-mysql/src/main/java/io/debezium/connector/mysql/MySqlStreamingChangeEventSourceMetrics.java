@@ -7,6 +7,7 @@ package io.debezium.connector.mysql;
 
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.binlog.metrics.BinlogStreamingChangeEventSourceMetrics;
+import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 
 /**
@@ -17,7 +18,8 @@ public class MySqlStreamingChangeEventSourceMetrics
 
     public MySqlStreamingChangeEventSourceMetrics(MySqlTaskContext taskContext,
                                                   ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                  EventMetadataProvider metadataProvider) {
-        super(taskContext, changeEventQueueMetrics, metadataProvider);
+                                                  EventMetadataProvider metadataProvider,
+                                                  CapturedTablesSupplier capturedTablesSupplier) {
+        super(taskContext, changeEventQueueMetrics, metadataProvider, capturedTablesSupplier, taskContext.getBinaryLogClient());
     }
 }

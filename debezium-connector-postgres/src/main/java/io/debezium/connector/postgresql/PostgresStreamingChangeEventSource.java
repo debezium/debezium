@@ -98,6 +98,9 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     private Lsn lastCompletelyProcessedLsn;
     private PostgresOffsetContext effectiveOffset;
 
+    private ElapsedTimeStrategy refreshXmin;
+    private Long lastXmin;
+
     public PostgresStreamingChangeEventSource(PostgresConnectorConfig connectorConfig, SnapshotterService snapshotterService,
                                               PostgresConnection connection, PostgresEventDispatcher<TableId> dispatcher, ErrorHandler errorHandler, Clock clock,
                                               PostgresSchema schema, PostgresTaskContext taskContext, ReplicationConnection replicationConnection) {
@@ -113,6 +116,9 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         this.replicationConnection = replicationConnection;
         this.connectionProbeTimer = ElapsedTimeStrategy.constant(Clock.system(), connectorConfig.statusUpdateInterval());
         this.lsnFlushExecutor = Threads.newSingleThreadExecutor(PostgresStreamingChangeEventSource.class, connectorConfig.getLogicalName(), "lsn-flush");
+        if (connectorConfig.xminFetchInterval().toMillis() > 0) {
+            this.refreshXmin = ElapsedTimeStrategy.constant(Clock.SYSTEM, connectorConfig.xminFetchInterval().toMillis());
+        }
     }
 
     @Override
@@ -125,7 +131,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
     private void initSchema() {
         try {
-            taskContext.refreshSchema(connection, true);
+            schema.refresh(connection, true);
         }
         catch (SQLException e) {
             throw new DebeziumException("Error while executing initial schema load", e);
@@ -284,6 +290,29 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         }
     }
 
+    private Long getSlotXmin() throws SQLException {
+        // when xmin fetch is set to 0, we don't track it to ignore any performance of querying the
+        // slot periodically
+        if (connectorConfig.xminFetchInterval().toMillis() <= 0) {
+            return null;
+        }
+        assert (this.refreshXmin != null);
+
+        if (this.refreshXmin.hasElapsed() || lastXmin == null) {
+            lastXmin = connection.getSlotXmin(connectorConfig.slotName(), connectorConfig.plugin().getPostgresPluginName());
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Fetched new xmin from slot of {}", lastXmin);
+            }
+        }
+        else {
+            if (LOGGER.isTraceEnabled()) {
+                LOGGER.trace("reusing xmin value of {}", lastXmin);
+            }
+        }
+
+        return lastXmin;
+    }
+
     private void processReplicationMessages(PostgresPartition partition, PostgresOffsetContext offsetContext, ReplicationStream stream, ReplicationMessage message)
             throws SQLException, InterruptedException {
 
@@ -297,7 +326,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         if (message.isTransactionalMessage()) {
 
             offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
-                    taskContext.getSlotXmin(connection),
+                    getSlotXmin(),
                     null,
                     message.getOperation());
 
@@ -323,7 +352,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         }
         else if (message.getOperation() == Operation.MESSAGE) {
             offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
-                    taskContext.getSlotXmin(connection),
+                    getSlotXmin(),
                     message.getOperation());
 
             // non-transactional message that will not be followed by a COMMIT message
@@ -348,7 +377,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             }
 
             offsetContext.updateWalPosition(lsn, lastCompletelyProcessedLsn, message.getCommitTime(), toLong(message.getTransactionId()),
-                    taskContext.getSlotXmin(connection),
+                    getSlotXmin(),
                     tableId,
                     message.getOperation());
 

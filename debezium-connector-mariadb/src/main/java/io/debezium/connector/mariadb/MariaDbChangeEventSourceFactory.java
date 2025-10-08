@@ -80,7 +80,7 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
         return new MariaDbSnapshotChangeEventSource(
                 configuration,
                 connectionFactory,
-                taskContext.getSchema(),
+                schema,
                 dispatcher,
                 clock,
                 (MariaDbSnapshotChangeEventSourceMetrics) snapshotProgressListener,
@@ -100,6 +100,7 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
                 errorHandler,
                 clock,
                 taskContext,
+                schema,
                 streamingMetrics,
                 snapshotterService);
     }

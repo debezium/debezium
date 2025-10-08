@@ -16,9 +16,6 @@ import org.junit.Test;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.ReplicationConnection;
 import io.debezium.doc.FixFor;
-import io.debezium.relational.CustomConverterRegistry;
-import io.debezium.schema.SchemaTopicNamingStrategy;
-import io.debezium.spi.topic.TopicNamingStrategy;
 
 /**
  * Integration test for {@link PostgresConnectorTask} class.
@@ -32,13 +29,10 @@ public class PostgresConnectorTaskIT {
         postgresConnectorTask.commit();
     }
 
-    class FakeContext extends PostgresTaskContext {
-        FakeContext(PostgresConnectorConfig postgresConnectorConfig, PostgresSchema postgresSchema) {
-            super(postgresConnectorConfig, postgresSchema, null);
-        }
-
+    static class FakeTask extends PostgresConnectorTask {
         @Override
-        protected ReplicationConnection createReplicationConnection(PostgresConnection jdbcConnection) throws SQLException {
+        protected ReplicationConnection buildReplicationConnection(PostgresConnection jdbcConnection, PostgresSchema schema, PostgresConnectorConfig connectorConfig)
+                throws SQLException {
             throw new SQLException("Could not connect");
         }
     }
@@ -46,14 +40,10 @@ public class PostgresConnectorTaskIT {
     @Test(expected = ConnectException.class)
     @FixFor("DBZ-1426")
     public void retryOnFailureToCreateConnection() throws Exception {
-        PostgresConnectorTask postgresConnectorTask = new PostgresConnectorTask();
+        FakeTask postgresConnectorTask = new FakeTask();
         PostgresConnectorConfig config = new PostgresConnectorConfig(TestHelper.defaultConfig().build());
         long startTime = System.currentTimeMillis();
-        postgresConnectorTask.createReplicationConnection(new FakeContext(config, new PostgresSchema(
-                config,
-                null,
-                (TopicNamingStrategy) SchemaTopicNamingStrategy.create(config), null, config.getServiceRegistry().tryGetService(CustomConverterRegistry.class))), 3,
-                Duration.ofSeconds(2));
+        postgresConnectorTask.createReplicationConnection(config, 3, Duration.ofSeconds(2));
 
         // Verify retry happened for 10 seconds
         long endTime = System.currentTimeMillis();
