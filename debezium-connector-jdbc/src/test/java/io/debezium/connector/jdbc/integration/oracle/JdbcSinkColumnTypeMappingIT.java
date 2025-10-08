@@ -7,7 +7,6 @@ package io.debezium.connector.jdbc.integration.oracle;
 
 import static org.fest.assertions.Assertions.assertThat;
 
-import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
@@ -24,6 +23,7 @@ import io.debezium.connector.jdbc.integration.AbstractJdbcSinkTest;
 import io.debezium.connector.jdbc.junit.jupiter.OracleSinkDatabaseContextProvider;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
 import io.debezium.connector.jdbc.junit.jupiter.SinkRecordFactoryArgumentsProvider;
+import io.debezium.connector.jdbc.util.SdoGeometryUtil;
 import io.debezium.connector.jdbc.util.SinkRecordFactory;
 import io.debezium.data.geometry.Geometry;
 import io.debezium.doc.FixFor;
@@ -102,6 +102,8 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
 
         final Struct geometry = Geometry.createValue(optionalGeometrySchema, wkb, 4326);
 
+        final Object[] expectedValue = SdoGeometryUtil.toSdoGeometryAttributes(2001, 4326, new double[]{ 8, 56 });
+
         final KafkaDebeziumSinkRecord createRecord = factory.createRecordWithSchemaValue(
                 topicName,
                 (byte) 1,
@@ -117,22 +119,9 @@ public class JdbcSinkColumnTypeMappingIT extends AbstractJdbcSinkTest {
 
         getSink().assertRows(destinationTable, rs -> {
             assertThat(rs.getInt(1)).isEqualTo(1);
-
-            Object obj = rs.getObject(2);
-            assertThat(obj).isInstanceOf(java.sql.Struct.class);
-            java.sql.Struct sdoGeometry = (java.sql.Struct) obj;
-            Object[] attributes = sdoGeometry.getAttributes();
-
-            assertThat(attributes[0]).isEqualTo(BigDecimal.valueOf(2001));
-            assertThat(attributes[1]).isEqualTo(BigDecimal.valueOf(4326));
-
-            Object sdoPointObj = attributes[2];
-            assertThat(sdoPointObj).isInstanceOf(java.sql.Struct.class);
-            java.sql.Struct sdoPoint = (java.sql.Struct) sdoPointObj;
-            Object[] pointAttrs = sdoPoint.getAttributes();
-            assertThat(pointAttrs[0]).isEqualTo(BigDecimal.valueOf(8));
-            assertThat(pointAttrs[1]).isEqualTo(BigDecimal.valueOf(56));
-
+            assertThat(rs.getObject(2)).isInstanceOf(java.sql.Struct.class);
+            Object[] value = SdoGeometryUtil.toSdoGeometryAttributes((java.sql.Struct) rs.getObject(2));
+            assertThat(value).isEqualTo(expectedValue);
             return null;
         });
     }
