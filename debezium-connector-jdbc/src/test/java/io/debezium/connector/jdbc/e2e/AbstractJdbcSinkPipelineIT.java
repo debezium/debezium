@@ -3005,7 +3005,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 "geography",
                 values,
                 expectedValues,
-                (config) -> config.with("include.unknown.datatypes", true),
+                (config) -> config.with(JdbcSinkConnectorConfig.POSTGRES_POSTGIS_SCHEMA, "postgis"),
                 (record) -> {
                     if (sink.getType().is(SinkType.POSTGRES)) {
                         assertColumn(sink, record, "data", "GEOGRAPHY");
@@ -3325,6 +3325,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         sinkProperties.put(JdbcSinkConnectorConfig.CONNECTION_USER, sink.getUsername());
         sinkProperties.put(JdbcSinkConnectorConfig.CONNECTION_PASSWORD, sink.getPassword());
         sinkProperties.put(JdbcSinkConnectorConfig.USE_TIME_ZONE, TestHelper.getSinkTimeZone());
+        sinkProperties.put(JdbcSinkConnectorConfig.POSTGRES_POSTGIS_SCHEMA, "postgis");
         return sinkProperties;
     }
 
