@@ -25,6 +25,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
+import io.debezium.connector.postgresql.PostgresOffsetContext;
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,6 +69,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
     private final MessageDecoderContext decoderContext;
     private final PostgresConnection connection;
+    private PostgresOffsetContext postgresOffsetContext;
 
     private Instant commitTimestamp;
 
@@ -75,6 +77,10 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
      * Will be null for a non-transactional decoding message
      */
     private Long transactionId;
+
+    private Lsn commitLsn;
+    private Lsn endLsn;
+    private boolean lsnSearchCompleted;
 
     public enum MessageType {
         RELATION,
@@ -123,56 +129,77 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
     @Override
     public boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, WalPositionLocator walPosition) {
-        // Cache position as we're going to peak at the first byte to determine message type
-        // We need to reprocess all BEGIN/COMMIT messages regardless.
-        int position = buffer.position();
+        int originalPosition = buffer.position();
+
         try {
             MessageType type = MessageType.forType((char) buffer.get());
             LOGGER.trace("Message Type: {}", type);
+
             switch (type) {
                 case TYPE:
                 case ORIGIN:
-                    // TYPE/ORIGIN
-                    // These should be skipped without calling shouldMessageBeSkipped. DBZ-5792
-                    LOGGER.trace("{} messages are always skipped without calling shouldMessageBeSkipped", type);
                     return true;
+
                 case TRUNCATE:
                     if (!isTruncateEventsIncluded()) {
-                        LOGGER.trace("{} messages are being skipped without calling shouldMessageBeSkipped", type);
+                        LOGGER.trace("TRUNCATE message skipped as truncate events are not included.");
                         return true;
                     }
-                    // else delegate to super.shouldMessageBeSkipped
                     break;
-                default:
-                    // call super.shouldMessageBeSkipped for rest of the types
-            }
-            final boolean candidateForSkipping = super.shouldMessageBeSkipped(buffer, lastReceivedLsn, startLsn, walPosition);
-            switch (type) {
-                case COMMIT:
-                case BEGIN:
+
                 case RELATION:
-                    // BEGIN
-                    // These types should always be processed due to the nature that they provide
-                    // the stream with pertinent per-transaction boundary state we will need to
-                    // always cache as we potentially might reprocess the stream from an earlier
-                    // LSN point.
-                    //
-                    // RELATION
-                    // These messages are always sent with a lastReceivedLSN=0; and we need to
-                    // always accept these to keep per-stream table state cached properly.
-                    LOGGER.trace("{} messages are always reprocessed", type);
+                case COMMIT:
                     return false;
+
+                case BEGIN:
+                    this.commitLsn = Lsn.valueOf(buffer.getLong());
+                    return false;
+
+                case LOGICAL_DECODING_MESSAGE:
+                    boolean isTransactional = buffer.get() == 1;
+                    if (!isTransactional) {
+                        this.commitLsn = Lsn.valueOf(buffer.getLong());
+                    }
+                    break;
+
                 default:
-                    // INSERT/UPDATE/DELETE/TRUNCATE/LOGICAL_DECODING_MESSAGE
-                    // These should be excluded based on the normal behavior, delegating to default method
-                    return candidateForSkipping;
+                    // Unknown or unhandled message types
+                    LOGGER.debug("Unhandled message type: {}", type);
+                    break;
             }
-        }
-        finally {
-            // Reset buffer position
-            buffer.position(position);
+
+            // Post-processing logic
+            if (lsnSearchCompleted) {
+                return false;
+            }
+
+            Lsn lastProcessedLsn = postgresOffsetContext.lastCompletelyProcessedLsn();
+            Lsn lastCommitLsn = postgresOffsetContext.lastCommitLsn();
+
+            if (lastProcessedLsn == null) {
+                lsnSearchCompleted = true;
+                return false;
+            }
+
+            int compare = lastCommitLsn.compareTo(this.commitLsn);
+
+            if (compare > 0) {
+                return true;
+            } else if (compare < 0) {
+                lsnSearchCompleted = true;
+                return false;
+            } else if (lastReceivedLsn.equals(lastProcessedLsn)) {
+                lsnSearchCompleted = true;
+                return true;
+            }
+
+            return true;
+
+        } finally {
+            buffer.position(originalPosition);
         }
     }
+
 
     @Override
     public void processNotEmptyMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {
@@ -276,7 +303,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
         LOGGER.trace("Commit LSN: {}", lsn);
         LOGGER.trace("End LSN of transaction: {}", endLsn);
         LOGGER.trace("Commit timestamp of transaction: {}", commitTimestamp);
-        processor.process(new TransactionMessage(Operation.COMMIT, transactionId, commitTimestamp));
+        processor.process(new TransactionMessage(Operation.COMMIT, transactionId, commitTimestamp, lsn));
     }
 
     /**
@@ -614,7 +641,8 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                 transactionId,
                 isTransactional,
                 prefix,
-                content));
+                content,
+                lsn));
     }
 
     /**

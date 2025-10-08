@@ -21,11 +21,20 @@ public class TransactionMessage implements ReplicationMessage {
     private final long transactionId;
     private final Instant commitTime;
     private final Operation operation;
+    private final Lsn commitLsn;
 
     public TransactionMessage(Operation operation, long transactionId, Instant commitTime) {
         this.operation = operation;
         this.transactionId = transactionId;
         this.commitTime = commitTime;
+        this.commitLsn = null;
+    }
+
+    public TransactionMessage(Operation operation, long transactionId, Instant commitTime, Lsn commitLsn) {
+        this.operation = operation;
+        this.transactionId = transactionId;
+        this.commitTime = commitTime;
+        this.commitLsn = commitLsn;
     }
 
     @Override
@@ -61,6 +70,11 @@ public class TransactionMessage implements ReplicationMessage {
     @Override
     public Instant getCommitTime() {
         return commitTime;
+    }
+
+    @Override
+    public Lsn getCommitLsn() {
+        return commitLsn;
     }
 
     @Override

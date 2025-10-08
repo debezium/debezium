@@ -166,6 +166,10 @@ public interface ReplicationMessage {
      */
     List<Column> getNewTupleList();
 
+    default Lsn getCommitLsn() {
+        return null;
+    }
+
     /**
      * @return true if this is the last message in the batch of messages with same LSN
      */

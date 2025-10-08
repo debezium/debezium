@@ -353,7 +353,7 @@ public class WALPositionLocatorTest {
     }
 
     private ReplicationMessage createCommitMessage(long txId) {
-        return new TransactionMessage(ReplicationMessage.Operation.COMMIT, txId, Instant.now());
+        return new TransactionMessage(ReplicationMessage.Operation.COMMIT, txId, Instant.now(), Lsn.valueOf(100L));
     }
 
     private ReplicationMessage createInsertMessage(long txId) {
