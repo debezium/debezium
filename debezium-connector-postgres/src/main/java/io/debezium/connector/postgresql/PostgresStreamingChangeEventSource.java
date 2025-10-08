@@ -306,7 +306,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 // Don't skip on BEGIN message as it would flush LSN for the whole transaction
                 // too early
                 if (message.getOperation() == Operation.COMMIT) {
-                    commitMessage(partition, offsetContext, lsn);
+                    commitMessage(partition, offsetContext, lsn, message.getCommitLsn(), message.getTransactionId());
                     dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, message.getCommitTime());
                 }
                 return;
@@ -316,7 +316,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 dispatcher.dispatchTransactionStartedEvent(partition, toString(message.getTransactionId()), offsetContext, message.getCommitTime());
             }
             else if (message.getOperation() == Operation.COMMIT) {
-                commitMessage(partition, offsetContext, lsn);
+                commitMessage(partition, offsetContext, lsn, message.getCommitLsn(), message.getTransactionId());
                 dispatcher.dispatchTransactionCommittedEvent(partition, offsetContext, message.getCommitTime());
             }
             maybeWarnAboutGrowingWalBacklog(true);
@@ -328,7 +328,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
             // non-transactional message that will not be followed by a COMMIT message
             if (message.isLastEventForLsn()) {
-                commitMessage(partition, offsetContext, lsn);
+                commitMessage(partition, offsetContext, lsn, message.getCommitLsn(), message.getTransactionId());
             }
 
             dispatcher.dispatchLogicalDecodingMessage(
@@ -407,9 +407,9 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         }
     }
 
-    private void commitMessage(PostgresPartition partition, PostgresOffsetContext offsetContext, final Lsn lsn) throws SQLException, InterruptedException {
+    private void commitMessage(PostgresPartition partition, PostgresOffsetContext offsetContext, final Lsn lsn, final Lsn commitLsn, OptionalLong commitTxId) throws SQLException, InterruptedException {
         lastCompletelyProcessedLsn = lsn;
-        offsetContext.updateCommitPosition(lsn, lastCompletelyProcessedLsn);
+        offsetContext.updateCommitPosition(lsn, lastCompletelyProcessedLsn, commitLsn, commitTxId);
         maybeWarnAboutGrowingWalBacklog(false);
         dispatcher.dispatchHeartbeatEvent(partition, offsetContext);
     }
@@ -454,6 +454,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
     public void commitOffset(Map<String, ?> partition, Map<String, ?> offset) {
         ReplicationStream replicationStream = this.replicationStream.get();
         final Lsn commitLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMMIT_LSN_KEY));
+        final Lsn endLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_END_LSN_KEY));
         final Lsn changeLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMPLETELY_PROCESSED_LSN_KEY));
         final Lsn lsn = (commitLsn != null) ? commitLsn : changeLsn;
 

@@ -22,15 +22,17 @@ public class LogicalDecodingMessage implements ReplicationMessage {
     private final boolean isTransactional;
     private final String prefix;
     private final byte[] content;
+    private Lsn lsn;
 
     public LogicalDecodingMessage(Operation op, Instant commitTimestamp, Long transactionId, boolean isTransactional,
-                                  String prefix, byte[] content) {
+                                  String prefix, byte[] content, Lsn lsn) {
         this.operation = op;
         this.commitTime = commitTimestamp;
         this.transactionId = transactionId;
         this.isTransactional = isTransactional;
         this.prefix = prefix;
         this.content = content;
+        this.lsn = lsn;
     }
 
     @Override
@@ -61,6 +63,11 @@ public class LogicalDecodingMessage implements ReplicationMessage {
     @Override
     public List<Column> getOldTupleList() {
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Lsn getCommitLsn() {
+        return isTransactional ? null : lsn;
     }
 
     @Override
