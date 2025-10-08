@@ -76,7 +76,7 @@ public class MongoDbEngineProducer implements ConnectorProducer {
          */
         List<MultiEngineConfiguration> enrichedMultiEngineConfigurations = multiEngineConfigurations
                 .stream()
-                .map(engine -> enrichConfiguration(engine, quarkusDatasourceConfigurations))
+                .map(engine -> merge(engine, quarkusDatasourceConfigurations))
                 .toList();
 
         return new DebeziumConnectorRegistry() {
@@ -110,20 +110,20 @@ public class MongoDbEngineProducer implements ConnectorProducer {
         };
     }
 
-    private MultiEngineConfiguration enrichConfiguration(MultiEngineConfiguration engine, Map<String, MongoDbDatasourceConfiguration> collect) {
-        HashMap<String, String> mutableMap = new HashMap<>(engine.configuration());
+    private MultiEngineConfiguration merge(MultiEngineConfiguration engine, Map<String, ? extends QuarkusDatasourceConfiguration> configurations) {
+        HashMap<String, String> mutableConfigurations = new HashMap<>(engine.configuration());
 
-        mutableMap.compute(NOTIFICATION_ENABLED_CHANNELS.name(),
+        mutableConfigurations.compute(NOTIFICATION_ENABLED_CHANNELS.name(),
                 (key, value) -> value == null ? channel.name() : value.concat("," + channel.name()));
 
-        mutableMap.putAll(getQuarkusDatasourceConfigurationByEngineId(engine.engineId(), collect).asDebezium());
-        mutableMap.put(CONNECTOR_CLASS.name(), MONGODB.name());
+        mutableConfigurations.putAll(getQuarkusDatasourceConfigurationByEngineId(engine.engineId(), configurations).asDebezium());
+        mutableConfigurations.put(CONNECTOR_CLASS.name(), MONGODB.name());
 
-        return new MultiEngineConfiguration(engine.engineId(), mutableMap);
+        return new MultiEngineConfiguration(engine.engineId(), mutableConfigurations);
     }
 
-    private QuarkusDatasourceConfiguration getQuarkusDatasourceConfigurationByEngineId(String engineId, Map<String, MongoDbDatasourceConfiguration> collect) {
-        QuarkusDatasourceConfiguration configuration = collect.get(engineId);
+    private QuarkusDatasourceConfiguration getQuarkusDatasourceConfigurationByEngineId(String engineId, Map<String, ? extends QuarkusDatasourceConfiguration> configurations) {
+        QuarkusDatasourceConfiguration configuration = configurations.get(engineId);
 
         if (configuration == null) {
             throw new IllegalArgumentException("No datasource configuration found for engine " + engineId);

@@ -23,12 +23,6 @@ public class MongoDbDatasourceConfiguration implements QuarkusDatasourceConfigur
         this.name = name;
     }
 
-    /**
-     * debezium.configuration.mongodb.connection.string=mongodb://localhost:27017/?replicaSet=rs0
-     * debezium.configuration.mongodb.user=admin
-     * debezium.configuration.mongodb.password=admin
-     */
-
     @Override
     public Map<String, String> asDebezium() {
         return Map.of("mongodb.connection.string", connection);

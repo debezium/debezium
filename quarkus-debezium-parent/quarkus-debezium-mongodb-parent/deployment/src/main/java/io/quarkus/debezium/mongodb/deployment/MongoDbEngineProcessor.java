@@ -5,6 +5,7 @@
  */
 package io.quarkus.debezium.mongodb.deployment;
 
+import java.util.List;
 import java.util.Map;
 
 import jakarta.inject.Singleton;
@@ -57,15 +58,16 @@ public class MongoDbEngineProcessor {
     @BuildStep
     @Record(ExecutionTime.RUNTIME_INIT)
     public void generateDatasourceConfig(
+                                         List<DebeziumDatasourceBuildItem> debeziumDatasourceBuildItems,
                                          MongoDbDatasourceRecorder mongoDbDatasourceRecorder,
                                          BuildProducer<SyntheticBeanBuildItem> producer) {
-        producer.produce(SyntheticBeanBuildItem
+        debeziumDatasourceBuildItems.forEach(item -> producer.produce(SyntheticBeanBuildItem
                 .configure(MongoDbDatasourceConfiguration.class)
                 .scope(Singleton.class)
-                .supplier(mongoDbDatasourceRecorder.convert("default", false))
+                .supplier(mongoDbDatasourceRecorder.convert(item.getName(), item.isDefault()))
                 .setRuntimeInit()
-                .named(MONGODB + "an_item")
-                .done());
+                .named(MONGODB + item.getName())
+                .done()));
     }
 
     @BuildStep(onlyIfNot = IsNormal.class, onlyIf = DevServicesConfig.Enabled.class)
