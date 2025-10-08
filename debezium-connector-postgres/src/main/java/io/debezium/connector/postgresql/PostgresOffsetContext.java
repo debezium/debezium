@@ -55,8 +55,8 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
 
         this.lastCompletelyProcessedLsn = lastCompletelyProcessedLsn;
         this.lastCommitLsn = lastCommitLsn;
-        sourceInfo.update(lsn, time, txId, sourceInfo.xmin(), null, messageType);
         sourceInfo.updateLastCommit(lastCommitLsn);
+        sourceInfo.update(lsn, time, txId, sourceInfo.xmin(), null, messageType);
         sourceInfoSchema = sourceInfo.schema();
 
         this.lastSnapshotRecord = lastSnapshotRecord;
@@ -150,7 +150,7 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
         return sourceInfo.lsn();
     }
 
-    Lsn lastCompletelyProcessedLsn() {
+    public Lsn lastCompletelyProcessedLsn() {
         return lastCompletelyProcessedLsn;
     }
 

@@ -850,7 +850,7 @@ public class PostgresConnection extends JdbcConnection {
 
     public boolean validateLogPosition(Partition partition, OffsetContext offset, CommonConnectorConfig config) {
 
-        final Lsn storedLsn = ((PostgresOffsetContext) offset).lastCommitLsn();
+        final Lsn storedLsn = ((PostgresOffsetContext) offset).lastCompletelyProcessedLsn();
         final String slotName = ((PostgresConnectorConfig) config).slotName();
         final String postgresPluginName = ((PostgresConnectorConfig) config).plugin().getPostgresPluginName();
 
