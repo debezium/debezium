@@ -9,7 +9,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import io.debezium.pipeline.signal.SignalPayload;
 import io.debezium.pipeline.signal.actions.snapshotting.AdditionalCondition;
+import io.debezium.pipeline.signal.actions.snapshotting.SnapshotConfiguration;
 import io.debezium.relational.Table;
 
 public interface IncrementalSnapshotContext<T> {
@@ -77,4 +79,7 @@ public interface IncrementalSnapshotContext<T> {
 
     List<String> getDataCollectionsToStop();
 
+    void requestAddDataCollectionNamesToSnapshot(SignalPayload signalPayload, SnapshotConfiguration snapshotConfiguration);
+
+    Map<SignalPayload, SnapshotConfiguration> getDataCollectionsToAdd();
 }
