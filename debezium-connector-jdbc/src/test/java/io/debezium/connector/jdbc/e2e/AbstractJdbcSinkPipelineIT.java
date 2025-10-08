@@ -65,6 +65,7 @@ import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourceConnectorOption
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourcePipelineInvocationContextProvider;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourceType;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.ValueBinder;
+import io.debezium.connector.jdbc.util.SdoGeometryUtil;
 import io.debezium.data.vector.FloatVector;
 import io.debezium.jdbc.TemporalPrecisionMode;
 import io.debezium.relational.RelationalDatabaseConnectorConfig.DecimalHandlingMode;
@@ -2958,6 +2959,67 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     }
                 },
                 ResultSet::getString);
+    }
+
+    @TestTemplate
+    @ForSource(value = { SourceType.POSTGRES }, reason = "The GEOGRAPHY data type only applies to PostgreSQL")
+    @SkipWhenSink(value = { SinkType.DB2, SinkType.SQLSERVER, SinkType.MYSQL }, reason = "No support for GEOGRAPHY data type")
+    @WithPostgresExtension("postgis")
+    public void testGeometryDataType(Source source, Sink sink) throws Exception {
+        List<Object> expectedValues;
+        if (sink.getType().is(SinkType.ORACLE)) {
+            expectedValues = List.of(
+                    SdoGeometryUtil.toSdoGeometryAttributes(2001, 4326, new double[]{ 8, 19 }),
+                    SdoGeometryUtil.toSdoGeometryAttributes(2002, 4326, new double[]{ 1, 2, 1 }, new double[]{ 30, 10, 10, 30, 40, 40 }),
+                    SdoGeometryUtil.toSdoGeometryAttributes(2003, 4326, new double[]{ 1, 1003, 1 }, new double[]{ 30, 10, 40, 40, 20, 40, 10, 20, 30, 10 }),
+                    SdoGeometryUtil.toSdoGeometryAttributes(2003, 4326, new double[]{ 1, 1003, 1, 11, 2003, 1 },
+                            new double[]{ 35, 10, 45, 45, 15, 40, 10, 20, 35, 10, 20, 30, 35, 35, 30, 20, 20, 30 }),
+                    SdoGeometryUtil.toSdoGeometryAttributes(2005, 4326, new double[]{ 1, 1, 4 }, new double[]{ 10, 40, 40, 30, 20, 20, 30, 10 }),
+                    SdoGeometryUtil.toSdoGeometryAttributes(2006, 4326, new double[]{ 1, 2, 1, 7, 2, 1 },
+                            new double[]{ 10, 10, 20, 20, 10, 40, 40, 40, 30, 30, 40, 20, 30, 10 }),
+                    SdoGeometryUtil.toSdoGeometryAttributes(2007, 4326, new double[]{ 1, 1003, 1, 9, 1003, 1, 21, 2003, 1 },
+                            new double[]{ 40, 40, 20, 45, 45, 30, 40, 40, 20, 35, 10, 30, 10, 10, 30, 5, 45, 20, 20, 35, 30, 20, 20, 15, 20, 25, 30, 20 }));
+        }
+        else {
+            expectedValues = List.of(
+                    "010100000000000000000020400000000000003340",
+                    "0102000000030000000000000000003E40000000000000244000000000000024400000000000003E4000000000000044400000000000004440",
+                    "010300000001000000050000000000000000003E4000000000000024400000000000004440000000000000444000000000000034400000000000004440000000000000244000000000000034400000000000003E400000000000002440",
+                    "0103000000020000000500000000000000008041400000000000002440000000000080464000000000008046400000000000002E40000000000000444000000000000024400000000000003440000000000080414000000000000024400400000000000000000034400000000000003E40000000000080414000000000008041400000000000003E40000000000000344000000000000034400000000000003E40",
+                    "010400000004000000010100000000000000000024400000000000004440010100000000000000000044400000000000003E4001010000000000000000003440000000000000344001010000000000000000003E400000000000002440",
+                    "010500000002000000010200000003000000000000000000244000000000000024400000000000003440000000000000344000000000000024400000000000004440010200000004000000000000000000444000000000000044400000000000003E400000000000003E40000000000000444000000000000034400000000000003E400000000000002440",
+                    "01060000000200000001030000000100000004000000000000000000444000000000000044400000000000003440000000000080464000000000008046400000000000003E4000000000000044400000000000004440010300000002000000060000000000000000003440000000000080414000000000000024400000000000003E40000000000000244000000000000024400000000000003E4000000000000014400000000000804640000000000000344000000000000034400000000000804140040000000000000000003E40000000000000344000000000000034400000000000002E40000000000000344000000000000039400000000000003E400000000000003440");
+        }
+
+        List<String> values = List.of(
+                "'SRID=4326;POINT (8, 51)'::geography",
+                "'SRID=4326;LINESTRING (30 10, 10 30, 40 40)'::geography",
+                "'SRID=4326;POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))'::geography",
+                "'SRID=4326;POLYGON ((35 10, 45 45, 15 40, 10 20, 35 10),(20 30, 35 35, 30 20, 20 30))'::geography",
+                "'SRID=4326;MULTIPOINT ((10 40), (40 30), (20 20), (30 10))'::geography",
+                "'SRID=4326;MULTILINESTRING ((10 10, 20 20, 10 40),(40 40, 30 30, 40 20, 30 10))'::geography",
+                "'SRID=4326;MULTIPOLYGON (((40 40, 20 45, 45 30, 40 40)),((20 35, 10 30, 10 10, 30 5, 45 20, 20 35),(30 20, 20 15, 20 25, 30 20)))'::geography");
+
+        assertDataTypeNonKeyOnly(source,
+                sink,
+                "geography",
+                values,
+                expectedValues,
+                (config) -> config.with("include.unknown.datatypes", true),
+                (record) -> {
+                    if (sink.getType().is(SinkType.POSTGRES)) {
+                        assertColumn(sink, record, "data", "GEOGRAPHY");
+                    }
+                    else if (sink.getType().is(SinkType.ORACLE)) {
+                        assertColumn(sink, record, "data", "MDSYS.SDO_GEOMETRY");
+                    }
+                },
+                (rs, index) -> {
+                    if (sink.getType().is(SinkType.ORACLE)) {
+                        return SdoGeometryUtil.toSdoGeometryAttributes((java.sql.Struct) rs.getObject(index));
+                    }
+                    return rs.getString(index);
+                });
     }
 
     private static List<ZonedDateTime> getExpectedZonedDateTimes(Sink sink) {
