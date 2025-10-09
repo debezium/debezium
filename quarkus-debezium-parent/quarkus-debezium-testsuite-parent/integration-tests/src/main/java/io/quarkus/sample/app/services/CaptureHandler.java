@@ -36,13 +36,13 @@ public class CaptureHandler {
         productService.captured();
     }
 
-    @Capturing(destination = "integration.test.products")
+    @Capturing(destination = "integration.native.products")
     public void products(CapturingEvent<Product> event) {
         logger.info("getting a product event for destination {} from capturing id {}", event.destination(), event.engine());
         productService.add(event.record());
     }
 
-    @Capturing(destination = "integration.test.orders", engine = "alternative")
+    @Capturing(destination = "integration.alternative.orders", engine = "alternative")
     public void orders(CapturingEvent<Order> event) {
         logger.info("getting a order event for destination {} from capturing id {}", event.destination(), event.engine());
         orderService.add(event.record());
