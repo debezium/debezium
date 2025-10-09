@@ -5,7 +5,6 @@
  */
 package io.quarkus.debezium.mongodb.deployment;
 
-import java.util.List;
 import java.util.Map;
 
 import jakarta.inject.Singleton;
@@ -26,8 +25,8 @@ import io.debezium.connector.mongodb.snapshot.query.SelectAllSnapshotQuery;
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.quarkus.arc.deployment.SyntheticBeanBuildItem;
-import io.quarkus.debezium.configuration.MongoDbDatasourceConfiguration;
 import io.quarkus.debezium.configuration.MongoDbDatasourceRecorder;
+import io.quarkus.debezium.configuration.MultiEngineMongoDbDatasourceConfiguration;
 import io.quarkus.debezium.deployment.items.DebeziumConnectorBuildItem;
 import io.quarkus.debezium.engine.MongoDbEngineProducer;
 import io.quarkus.deployment.IsNormal;
@@ -58,16 +57,15 @@ public class MongoDbEngineProcessor {
     @BuildStep
     @Record(ExecutionTime.RUNTIME_INIT)
     public void generateDatasourceConfig(
-                                         List<DebeziumDatasourceBuildItem> debeziumDatasourceBuildItems,
                                          MongoDbDatasourceRecorder mongoDbDatasourceRecorder,
                                          BuildProducer<SyntheticBeanBuildItem> producer) {
-        debeziumDatasourceBuildItems.forEach(item -> producer.produce(SyntheticBeanBuildItem
-                .configure(MongoDbDatasourceConfiguration.class)
+        producer.produce(SyntheticBeanBuildItem
+                .configure(MultiEngineMongoDbDatasourceConfiguration.class)
                 .scope(Singleton.class)
-                .supplier(mongoDbDatasourceRecorder.convert(item.getName(), item.isDefault()))
+                .supplier(mongoDbDatasourceRecorder.convert(null, false))
                 .setRuntimeInit()
-                .named(MONGODB + item.getName())
-                .done()));
+                .named(MONGODB)
+                .done());
     }
 
     @BuildStep(onlyIfNot = IsNormal.class, onlyIf = DevServicesConfig.Enabled.class)

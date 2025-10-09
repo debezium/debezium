@@ -11,10 +11,8 @@ import static io.debezium.embedded.EmbeddedEngineConfig.CONNECTOR_CLASS;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -30,6 +28,7 @@ import io.debezium.runtime.configuration.QuarkusDatasourceConfiguration;
 import io.quarkus.debezium.configuration.DebeziumConfigurationEngineParser;
 import io.quarkus.debezium.configuration.DebeziumConfigurationEngineParser.MultiEngineConfiguration;
 import io.quarkus.debezium.configuration.MongoDbDatasourceConfiguration;
+import io.quarkus.debezium.configuration.MultiEngineMongoDbDatasourceConfiguration;
 import io.quarkus.debezium.engine.capture.consumer.SourceRecordConsumerHandler;
 import io.quarkus.debezium.notification.QuarkusNotificationChannel;
 
@@ -44,15 +43,13 @@ public class MongoDbEngineProducer implements ConnectorProducer {
 
     @Inject
     public MongoDbEngineProducer(StateHandler stateHandler,
-                                 Instance<MongoDbDatasourceConfiguration> configurations,
+                                 MultiEngineMongoDbDatasourceConfiguration multiEngineMongoDbDatasourceConfiguration,
                                  QuarkusNotificationChannel channel,
                                  SourceRecordConsumerHandler sourceRecordConsumerHandler) {
         this.stateHandler = stateHandler;
         this.channel = channel;
         this.sourceRecordConsumerHandler = sourceRecordConsumerHandler;
-        this.quarkusDatasourceConfigurations = configurations
-                .stream()
-                .collect(Collectors.toMap(QuarkusDatasourceConfiguration::getSanitizedName, Function.identity()));
+        this.quarkusDatasourceConfigurations = multiEngineMongoDbDatasourceConfiguration.get();
     }
 
     public MongoDbEngineProducer(StateHandler stateHandler,
@@ -122,7 +119,8 @@ public class MongoDbEngineProducer implements ConnectorProducer {
         return new MultiEngineConfiguration(engine.engineId(), mutableConfigurations);
     }
 
-    private QuarkusDatasourceConfiguration getQuarkusDatasourceConfigurationByEngineId(String engineId, Map<String, ? extends QuarkusDatasourceConfiguration> configurations) {
+    private QuarkusDatasourceConfiguration getQuarkusDatasourceConfigurationByEngineId(String engineId,
+                                                                                       Map<String, ? extends QuarkusDatasourceConfiguration> configurations) {
         QuarkusDatasourceConfiguration configuration = configurations.get(engineId);
 
         if (configuration == null) {

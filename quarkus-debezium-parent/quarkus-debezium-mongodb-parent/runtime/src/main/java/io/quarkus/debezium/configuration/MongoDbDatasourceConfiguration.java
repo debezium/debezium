@@ -35,6 +35,6 @@ public class MongoDbDatasourceConfiguration implements QuarkusDatasourceConfigur
 
     @Override
     public String getSanitizedName() {
-        return name;
+        return name.replaceAll("[<>]", "");
     }
 }
