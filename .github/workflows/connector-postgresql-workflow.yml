@@ -17,7 +17,7 @@ jobs:
       max-parallel: ${{ inputs.max-parallel }}
       fail-fast: false
       matrix:
-        profile: [ "assembly,postgres-12", "assembly,postgres-18,pgoutput-decoder" ]
+        profile: [ "assembly,postgres-14", "assembly,postgres-18,pgoutput-decoder" ]
     name: PostgreSQL - ${{ matrix.profile }}
     runs-on: ubuntu-latest
 

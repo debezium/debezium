@@ -500,18 +500,6 @@
             </properties>
         </profile>
         <profile>
-            <id>postgres-10</id>
-            <properties>
-                <version.postgres.server>10</version.postgres.server>
-            </properties>
-        </profile>
-        <profile>
-            <id>postgres-12</id>
-            <properties>
-                <version.postgres.server>12</version.postgres.server>
-            </properties>
-        </profile>
-        <profile>
             <id>postgres-14</id>
             <properties>
                 <version.postgres.server>14</version.postgres.server>
