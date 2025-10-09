@@ -81,9 +81,32 @@ Output dataset mappings are created according to the following principles:
 
 .Dataset mapping for sink connectors
 
-Kafka Connect:: Support for sink connectors is not yet available.
+For sink connectors, the data flow is reversed compared to source connectors.
 
-{prodname} Server:: Currently, only the Kafka sink is supported. Output datasets represent the Kafka topics where CDC events are written.
+Input datasets::
+Represent the Kafka topics that the sink connector reads from.
+These topics typically contain CDC events from {prodname} source connectors.
+The following principles apply:
++
+* Each Kafka topic that the sink connector consumes becomes an input dataset.
+* The input dataset captures the Kafka topic schema and metadata.
+* The namespace format follows `kafka://bootstrap-server:port` where the bootstrap server is specified via the `openlineage.integration.dataset.kafka.bootstrap.servers` property.
+
+Output datasets::
+Represents the target databases or collections where the sink connector writes data.
++
+Output dataset mappings follow these principles:
++
+* Each target database table or collection becomes an output dataset.
+* The output dataset captures schema information for the target database.
+* The namespace format depends on the target database system (see <<dataset-namespace-formatting>> for details).
+
+The following {prodname} sink connectors support OpenLineage integration in Kafka Connect:
+
+* *MongoDB Sink Connector*: Writes CDC events to MongoDB collections
+* *JDBC Sink Connector*: Writes CDC events to relational database tables
+
+NOTE: {prodname} Server currently only supports OpenLineage integration with the Kafka sink. MongoDB Sink and JDBC Sink connectors are only supported in Kafka Connect deployments.
 
 .Run events
 
@@ -221,6 +244,11 @@ NOTE: For {prodname} Server, add the `debezium.source.` prefix to all property n
 |Comma-separated list of name-role ownership entries.
 |No
 |No default value
+
+|`openlineage.integration.dataset.kafka.bootstrap.servers`
+|Kafka bootstrap servers used to retrieve Kafka topic metadata. For source connectors, if not specified, the value of `schema.history.internal.kafka.bootstrap.servers` is used. For sink connectors, this property must be explicitly specified.
+|Yes (for sink connectors)
+|Value of `schema.history.internal.kafka.bootstrap.servers` (for source connectors only)
 |===
 
 .Example: Tags list format
@@ -347,6 +375,60 @@ quarkus.log.console.json=false
 
 NOTE: In {prodname} Server, output dataset lineage is automatically captured. No SMT configuration is required.
 
+=== MongoDB Sink Connector configuration example
+
+The following example shows a complete configuration for enabling the MongoDB Sink Connector to integrate with OpenLineage in Kafka Connect:
+
+[source,json]
+----
+{
+  "name": "mongodb-sink",
+  "config": {
+    "connector.class": "io.debezium.connector.mongodb.MongoDbSinkConnector",
+    "tasks.max": "1",
+    "mongodb.connection.string": "mongodb://admin:admin@mongodb:27017",
+    "topics": "inventory.inventory.products",
+    "sink.database": "inventory2",
+    "openlineage.integration.enabled": "true",
+    "openlineage.integration.config.file.path": "/kafka/openlineage.yml",
+    "openlineage.integration.job.description": "Sink connector for MongoDB",
+    "openlineage.integration.job.tags": "env=prod,team=cdc",
+    "openlineage.integration.job.owners": "Mario=maintainer,John Doe=Data scientist",
+    "openlineage.integration.dataset.kafka.bootstrap.servers": "kafka:9092"
+  }
+}
+----
+
+NOTE: For sink connectors, the `openlineage.integration.dataset.kafka.bootstrap.servers` property is required to retrieve input dataset metadata from Kafka topics. Unlike source connectors, sink connectors do not have direct access to Kafka topic metadata through the Kafka Connect framework and must explicitly connect to retrieve schema information.
+
+=== JDBC Sink Connector configuration example
+
+The following example shows a complete configuration for enabling the JDBC Sink Connector to integrate with OpenLineage in Kafka Connect:
+
+[source,json]
+----
+{
+  "name": "jdbc-sink",
+  "config": {
+    "connector.class": "io.debezium.connector.jdbc.JdbcSinkConnector",
+    "tasks.max": "1",
+    "connection.url": "jdbc:postgresql://postgres:5432/inventory",
+    "connection.username": "postgres",
+    "connection.password": "postgres",
+    "topics": "inventory.inventory.customers",
+    "insert.mode": "upsert",
+    "primary.key.mode": "record_key",
+    "openlineage.integration.enabled": "true",
+    "openlineage.integration.config.file.path": "/kafka/openlineage.yml",
+    "openlineage.integration.job.description": "Sink connector for JDBC",
+    "openlineage.integration.job.tags": "env=prod,team=data-engineering",
+    "openlineage.integration.job.owners": "Data Team=maintainer,Alice Johnson=Data Engineer",
+    "openlineage.integration.dataset.kafka.bootstrap.servers": "kafka:9092"
+  }
+}
+----
+
+[id="dataset-namespace-formatting"]
 == Dataset namespace formatting
 
 {prodname} formats dataset namespaces according to the https://openlineage.io/docs/spec/naming#dataset-naming[OpenLineage dataset naming specification].
@@ -355,21 +437,40 @@ NOTE: In {prodname} Server, output dataset lineage is automatically captured. No
 
 Input dataset namespaces identify the source database and follow a format specific to each database system.
 
-.Example: PostgreSQL input dataset
+.Example: PostgreSQL input dataset (for source connectors)
 * Namespace: `postgres://hostname:port`
 * Name: `schema.table`
 * Schema: Column names and types from the source table
 
+.Example: Kafka input dataset (for sink connectors)
+* Namespace: `kafka://kafka-broker:9092`
+* Name: `inventory.inventory.products`
+* Schema: CDC event structure from the source connector
+
 The exact namespace format depends on your database system and follows the OpenLineage specification for dataset naming.
 
-=== Output dataset namespaces
+=== Output dataset namespaces for source connectors
 
 Output dataset namespaces identify the Kafka topics where CDC events are written.
 
-.Example: Output dataset for Kafka
+.Example: Kafka output dataset (for source connectors)
 * Namespace: `kafka://bootstrap-server:port`
 * Name: `topic-prefix.schema.table`
 * Schema: Complete CDC event structure including metadata fields
+
+=== Output dataset namespaces for sink connectors
+
+Output dataset namespaces identify the target databases where sink connectors write data.
+
+.Example: MongoDB output dataset
+* Namespace: `mongodb://mongodb-host:27017`
+* Name: `database.collection`
+* Schema: Target collection schema
+
+.Example: JDBC output dataset (PostgreSQL)
+* Namespace: `postgres://postgres-host:5432`
+* Name: `schema.table`
+* Schema: Target table schema
 
 == Monitoring and Troubleshooting
 
@@ -410,6 +511,12 @@ Dependency issues::
 
 * Ensure that all required JAR files are present and their versions are compatible versions.
 * Check for classpath conflicts with existing dependencies.
+
+Missing input datasets for sink connectors::
+
+* Verify that the `openlineage.integration.dataset.kafka.bootstrap.servers` property is configured.
+* Check that the Kafka bootstrap servers are accessible from the connector.
+* Ensure the Kafka topics specified in the `topics` configuration exist and are accessible.
 
 .Error Events
 
