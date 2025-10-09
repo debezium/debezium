@@ -2,7 +2,7 @@
 // Type: assembly
 // ModuleID: open-lineage-integration
 // Title: OpenLineage Integration
-[id="open-linegage-integration"]
+[id="open-lineage-integration"]
 = OpenLineage Integration
 
 :toc:
@@ -13,13 +13,13 @@
 
 toc::[]
 
-{prodname} provides built-in integration with OpenLineage to automatically track data lineage for Change Data Capture (CDC) operations. 
+{prodname} provides built-in integration with OpenLineage to automatically track data lineage for Change Data Capture (CDC) operations.
 The OpenLineage integration provides you with comprehensive visibility into the data flow and transformations that you use in your data pipeline.
 
 == About Data Lineage and OpenLineage
 
 Data lineage tracks the flow of data through various systems, transformations, and processes.
-This information provides you with visibility into where data originates, how it moves, and what dependencies exist in the data pipeline. 
+This information provides you with visibility into where data originates, how it moves, and what dependencies exist in the data pipeline.
 Insights into data lineage is crucial for the following activities:
 
 * Data governance and compliance
@@ -27,10 +27,19 @@ Insights into data lineage is crucial for the following activities:
 * Debugging data quality issues
 * Understanding data dependencies
 
-https://openlineage.io/[OpenLineage] is an open standard for data lineage that provides a unified way to collect and track lineage metadata across multiple data systems. 
+https://openlineage.io/[OpenLineage] is an open standard for data lineage that provides a unified way to collect and track lineage metadata across multiple data systems.
 The specification defines a common model for describing datasets, jobs, and runs, simplifying the process of building comprehensive lineage graphs across heterogeneous data infrastructures.
 
 For more information, see the OpenLineage https://openlineage.io/[website] and https://openlineage.io/docs/[documentation].
+
+== Deployment types
+
+The {prodname} OpenLineage integration is available for the following deployment types:
+
+* *Kafka Connect*: When running {prodname} connectors as Kafka Connect plugins
+* *{prodname} Server*: When running {prodname} in standalone server mode
+
+Both deployment types share the same core functionality and OpenLineage event model, but differ in their configuration approach and dependency installation.
 
 == How {prodname} integrates with OpenLineage
 
@@ -40,10 +49,10 @@ To integrate with OpenLineage, {prodname} maps events in its lifecycle to artifa
 
 The {prodname} connector is mapped to an OpenLineage *Job*, which includes the following elements:
 
-Name:: A job inherits its name from the {prodname} `topic.prefix.<taskId>`.
+Name:: A job inherits its name from the {prodname} `topic.prefix` combined with the task ID (for example, `inventory.0`).
 Namespace:: Inherited from `openlineage.integration.job.namespace`, if specified; otherwise defaults to the value of the `topic.prefix`.
-{prodname} connector version::
-Complete connector configuration::
+{prodname} connector version:: The version of the {prodname} connector that is running and generating lineage events.
+Complete connector configuration:: All connector configuration properties, enabling full reproducibility and debugging of the data pipeline.
 Job metadata:: Description, tags, and owners.
 
 .Dataset mapping for source connectors
@@ -60,17 +69,23 @@ The integration applies the following principles when it creates dataset mapping
 * DDL changes in the source table are reflected dynamically in the dataset schema.
 
 Output datasets::
-Represents the Kafka topics that result after you apply the OpenLineage single message transformation (SMT):.
+Represents the Kafka topics where CDC events are written.
+For Kafka Connect deployments, output datasets are created when you apply the OpenLineage single message transformation (SMT).
+For {prodname} Server deployments, output datasets are automatically captured.
++
 Output dataset mappings are created according to the following principles:
 
 * Each Kafka topic that the connector produces becomes an output dataset.
 * The output dataset captures the complete CDC event structure, including metadata fields.
 * The name of the dataset is based on the connector's topic prefix configuration.
 
-.Dataset Mapping for sink connectors
-Support for sink connectors is not yet available.
+.Dataset mapping for sink connectors
 
-.Run Events
+Kafka Connect:: Support for sink connectors is not yet available.
+
+{prodname} Server:: Currently, only the Kafka sink is supported. Output datasets represent the Kafka topics where CDC events are written.
+
+.Run events
 
 When you integrate {prodname} with OpenLineage, the connector emits events to report changes of status.
 The connector emits OpenLineage run events after the following status changes:
@@ -83,20 +98,31 @@ FAIL:: Reports that the connector encountered an error.
 
 == Required Dependencies
 
-The OpenLineage integration requires several JAR files that are bundled together in the `debezium-openlineage-core` archive.
+The OpenLineage integration requires several JAR files that are bundled together in the `debezium-openlineage-core-libs` archive.
 
-Before you can use {prodname} with OpenLineage, complete the following steps to obtain the required dependencies:
+=== Kafka Connect
+
+Before you can use {prodname} with OpenLineage in Kafka Connect, complete the following steps to obtain the required dependencies:
 
 . Download the link:https://repo1.maven.org/maven2/io/debezium/debezium-openlineage-core/{debezium-version}/debezium-openlineage-core-{debezium-version}-libs.tar.gz[OpenLineage core archive].
 . Extract the contents of the archive into the {prodname} plug-in directories in your Kafka Connect environment.
 
+=== {prodname} Server
+
+Before you can use {prodname} Server with OpenLineage, complete the following steps to obtain the required dependencies:
+
+. Download the link:https://repo1.maven.org/maven2/io/debezium/debezium-openlineage-core/{debezium-version}/debezium-openlineage-core-{debezium-version}-libs.tar.gz[OpenLineage core archive].
+. Extract the contents of the archive.
+. Copy all JAR files to the `/debezium/lib` directory in your {prodname} Server installation.
+
 == Configuring the integration
 
 To enable the integration, you must configure the {prodname} connector and the OpenLineage client.
+The configuration approach differs between Kafka Connect and {prodname} Server deployments.
 
-== Configuring connectors with a basic OpenLineage configuration
+=== Kafka Connect configuration
 
-To enable {prodname} to integrate with OpenLineage, add properties to your connector configuration, as shown in the following example:
+To enable {prodname} to integrate with OpenLineage in Kafka Connect, add properties to your connector configuration, as shown in the following example:
 
 [source,properties]
 ----
@@ -113,9 +139,30 @@ openlineage.integration.job.tags=env=prod,team=data-engineering
 openlineage.integration.job.owners=Alice Smith=maintainer,Bob Johnson=Data Engineer
 ----
 
+=== {prodname} Server configuration
+
+To enable {prodname} Server to integrate with OpenLineage, add properties to your `application.properties` file, as shown in the following example:
+
+[source,properties]
+----
+# Enable OpenLineage integration
+debezium.source.openlineage.integration.enabled=true
+
+# Path to OpenLineage configuration file
+debezium.source.openlineage.integration.config.file.path=config/openlineage.yml
+
+# Job metadata (optional but recommended)
+debezium.source.openlineage.integration.job.description=CDC connector for products database
+debezium.source.openlineage.integration.job.tags=env=prod,team=data-engineering
+debezium.source.openlineage.integration.job.owners=Alice Smith=maintainer,Bob Johnson=Data Engineer
+----
+
+NOTE: In {prodname} Server, all OpenLineage properties use the `debezium.source.` prefix, as shown in the example.
+
 == Configuring the OpenLineage client
 
 Create an `openlineage.yml` file to configure the OpenLineage client.
+This configuration file is used by both Kafka Connect and {prodname} Server deployments.
 Use the following example as a guide:
 
 [source,yaml]
@@ -137,9 +184,13 @@ For detailed OpenLineage client configuration options, refer to the https://open
 
 == {prodname} OpenLineage configuration properties
 
+The following table lists the OpenLineage configuration properties for both deployment types.
+
+NOTE: For {prodname} Server, add the `debezium.source.` prefix to all property names (for example, `debezium.source.openlineage.integration.enabled`).
+
 [cols="3,4,1,2"]
 |===
-|Property |Description |Required |Default
+|Property (Kafka Connect) |Description |Required |Default
 
 |`openlineage.integration.enabled`
 |Enables and disables the OpenLineage integration.
@@ -153,7 +204,7 @@ For detailed OpenLineage client configuration options, refer to the https://open
 
 |`openlineage.integration.job.namespace`
 |Namespace used for the job.
-|Value from `topic.prefix`
+|No
 |Value of `topic.prefix`
 
 |`openlineage.integration.job.description`
@@ -190,9 +241,14 @@ Specify Owners as a comma-separated list of name-role pairs, as shown in the fol
 openlineage.integration.job.owners=John Doe=maintainer,Jane Smith=Data Engineer,Team Lead=owner
 ----
 
-== Source connectors output dataset lineage
+== Output dataset lineage
 
-To capture output dataset lineage (Kafka topics), configure {prodname} to use the OpenLineage Single Message Transform (SMT):
+{prodname} can capture output dataset lineage (Kafka topics) to track the destination of CDC events.
+The configuration approach differs between Kafka Connect and {prodname} Server.
+
+=== Kafka Connect output dataset lineage
+
+To capture output dataset lineage in Kafka Connect, configure {prodname} to use the OpenLineage Single Message Transform (SMT):
 
 [source,properties]
 ----
@@ -211,86 +267,120 @@ The transformation captures schema data that includes the following items:
 * Field types and nested structures
 * Topic names and namespaces
 
-== Example: Complete connector configuration for enabling OpenLineage integration
+=== {prodname} Server output dataset lineage
 
-The following example shows a possible complete configuration for enabling a PostgreSQL connector to integrate with OpenLineage:
+For {prodname} Server deployments, output dataset lineage is automatically captured when OpenLineage integration is enabled.
+No additional configuration or transformation is required, as {prodname} Server has full control over the output records.
+
+NOTE: The OpenLineage SMT is only required for Kafka Connect deployments. {prodname} Server captures output lineage automatically.
+
+== Complete configuration examples
+
+The following examples show complete configurations for enabling OpenLineage integration in both Kafka Connect and {prodname} Server.
+
+=== Kafka Connect complete configuration example
+
+The following example shows a complete configuration for enabling a PostgreSQL connector to integrate with OpenLineage in Kafka Connect:
+
+[source,json]
+----
+{
+  "name": "inventory-connector-postgres",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "tasks.max": "1",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "postgres",
+    "database.password": "postgres",
+    "database.dbname": "postgres",
+    "topic.prefix": "inventory",
+    "snapshot.mode": "initial",
+    "slot.name": "inventory",
+    "schema.history.internal.kafka.bootstrap.servers": "kafka:9092",
+    "schema.history.internal.kafka.topic": "schema-changes.inventory",
+    "openlineage.integration.enabled": "true",
+    "openlineage.integration.config.file.path": "/kafka/openlineage.yml",
+    "openlineage.integration.job.description": "CDC connector for inventory database",
+    "openlineage.integration.job.tags": "env=production,team=data-platform,database=postgresql",
+    "openlineage.integration.job.owners": "Data Team=maintainer,Alice Johnson=Data Engineer",
+    "transforms": "openlineage",
+    "transforms.openlineage.type": "io.debezium.transforms.openlineage.OpenLineage"
+  }
+}
+----
+
+=== {prodname} Server complete configuration example
+
+The following example shows a complete `application.properties` configuration for enabling a PostgreSQL connector to integrate with OpenLineage in {prodname} Server with Kafka sink:
 
 [source,properties]
 ----
-# Connector basics
-name=products-cdc-connector
-connector.class=io.debezium.connector.postgresql.PostgresConnector
-database.hostname=localhost
-database.port=5432
-database.user=debezium
-database.password=debezium
-database.dbname=inventory
-topic.prefix=inventory
+# Sink configuration (Kafka)
+debezium.sink.type=kafka
+debezium.sink.kafka.producer.key.serializer=org.apache.kafka.common.serialization.StringSerializer
+debezium.sink.kafka.producer.value.serializer=org.apache.kafka.common.serialization.StringSerializer
+debezium.sink.kafka.producer.bootstrap.servers=kafka:9092
 
-# Snapshot configuration
-snapshot.mode=initial
-slot.drop.on.stop=false
+# Source connector configuration
+debezium.source.connector.class=io.debezium.connector.postgresql.PostgresConnector
+debezium.source.offset.storage=org.apache.kafka.connect.storage.MemoryOffsetBackingStore
+debezium.source.offset.flush.interval.ms=0
+debezium.source.database.hostname=postgres
+debezium.source.database.port=5432
+debezium.source.database.user=postgres
+debezium.source.database.password=postgres
+debezium.source.database.dbname=postgres
+debezium.source.topic.prefix=tutorial
+debezium.source.schema.include.list=inventory
 
 # OpenLineage integration
-openlineage.integration.enabled=true
-openlineage.integration.config.file.path=/opt/debezium/config/openlineage.yml
-openlineage.integration.job.description=CDC connector for inventory database
-openlineage.integration.job.tags=env=production,team=data-platform,database=postgresql
-openlineage.integration.job.owners=Data Team=maintainer,Alice Johnson=Data Engineer
+debezium.source.openlineage.integration.enabled=true
+debezium.source.openlineage.integration.config.file.path=config/openlineage.yml
+debezium.source.openlineage.integration.job.description=CDC connector for products database
+debezium.source.openlineage.integration.job.tags=env=prod,team=cdc
+debezium.source.openlineage.integration.job.owners=Mario=maintainer,John Doe=Data scientist
 
-# For output lineage (optional)
-transforms=openlineage
-transforms.openlineage.type=io.debezium.transforms.openlineage.OpenLineage
-schema.history.internal.kafka.bootstrap.servers=kafka:9092
-
-# Standard Kafka Connect settings
-key.converter=org.apache.kafka.connect.json.JsonConverter
-value.converter=org.apache.kafka.connect.json.JsonConverter
+# Logging configuration (optional)
+quarkus.log.console.json=false
 ----
 
-== Lineage Events
+NOTE: In {prodname} Server, output dataset lineage is automatically captured. No SMT configuration is required.
 
-The integration produces several types of OpenLineage events:
+== Dataset namespace formatting
 
-.Run Events
+{prodname} formats dataset namespaces according to the https://openlineage.io/docs/spec/naming#dataset-naming[OpenLineage dataset naming specification].
 
-START:: Reports connector initialization.
-RUNNING:: Reports that the connector is operating normally and is processing tables.
-COMPLETE:: Reports that the connector shut down gracefully.
-FAIL:: Reports that the connector encountered an error.
+=== Input dataset namespaces
 
-== Dataset information
+Input dataset namespaces identify the source database and follow a format specific to each database system.
 
-*Input Datasets* represent source database tables. 
-The namespace follows the https://openlineage.io/docs/spec/naming#dataset-naming[OpenLineage dataset naming specification].
-
-The following example shows the dataset naming for a table in a PostgreSQL database:
-
+.Example: PostgreSQL input dataset
 * Namespace: `postgres://hostname:port`
 * Name: `schema.table`
 * Schema: Column names and types from the source table
 
 The exact namespace format depends on your database system and follows the OpenLineage specification for dataset naming.
 
-Output datasets represent the Kafka topics that result after you apply the OpenLineage transformation.
+=== Output dataset namespaces
 
-An output dataset includes the following information about the Kafka topic:
+Output dataset namespaces identify the Kafka topics where CDC events are written.
 
-[horizontal]
-Namespace:: `kafka://bootstrap-server:port`
-Name:: `topic-prefix.schema.table`
-Schema:: Complete CDC event structure including metadata fields
+.Example: Output dataset for Kafka
+* Namespace: `kafka://bootstrap-server:port`
+* Name: `topic-prefix.schema.table`
+* Schema: Complete CDC event structure including metadata fields
 
 == Monitoring and Troubleshooting
 
 .Verifying the integration
-You can perform several tasks to verify that the integration is working as expected.
+
+To verify that the OpenLineage integration is working correctly, complete the following steps:
 
 .Procedure
-1. Check the connector logs for messages that refer to OpenLineage.
-2. Verify events in your OpenLineage backend. 
-This applies only if you use HTTP transport.
-3. Use console transport for testing, as shown in the following example:
+1. Check the connector logs for OpenLineage-related messages.
+2. If you configured HTTP transport, verify that events appear in your OpenLineage backend.
+3. For testing purposes, you can use console transport to view events directly in the logs:
 +
 [source,yaml]
 ----
