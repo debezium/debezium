@@ -61,6 +61,13 @@ explained here: xref:{link-oracle-connector}#obtaining-oracle-jdbc-driver-and-xs
 {prodname} Server uses https://github.com/eclipse/microprofile-config[MicroProfile Configuration] for configuration.
 This means that the application can be configured from disparate sources like configuration files, environment variables, system properties etc.
 
+[NOTE]
+====
+Configuration properties that contain the `$` character are normally interpreted by Quarkus for property expansion.
+If a property value contains a `++${...}++` syntax and should not be expanded, the `$` character must be escaped using `++$$++` so that the value is written as `++$${name}++`.
+This syntax guarantees that the property value is passed to {prodname} as `++${name}++` without expansion.
+====
+
 The main configuration file is _config/application.properties_.
 There are multiple sections configured:
 
