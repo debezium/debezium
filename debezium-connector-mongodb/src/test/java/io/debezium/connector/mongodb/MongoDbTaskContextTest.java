@@ -38,7 +38,7 @@ public class MongoDbTaskContextTest implements Testing {
 
     @Test
     public void shouldConfigureMongoDbTaskPropertiesFromConfig() {
-        assertThat(context.getConnectorConfig().getConfig()).isEqualTo(config);
-        assertThat(context.getConnectorConfig().getCaptureMode()).isEqualTo(MongoDbConnectorConfig.CaptureMode.CHANGE_STREAMS);
+        assertThat(context.getConfig().getConfig()).isEqualTo(config);
+        assertThat(context.getConfig().getCaptureMode()).isEqualTo(MongoDbConnectorConfig.CaptureMode.CHANGE_STREAMS);
     }
 }

@@ -12,24 +12,21 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 /**
  * @author Randall Hauch
  */
-public class MongoDbTaskContext extends CdcSourceTaskContext {
+public class MongoDbTaskContext extends CdcSourceTaskContext<MongoDbConnectorConfig> {
 
     private final Filters filters;
     private final String serverName;
-    private final MongoDbConnectorConfig connectorConfig;
-    private final Configuration config;
 
     /**
      * @param config the configuration
      */
     public MongoDbTaskContext(Configuration config) {
-        super(new MongoDbConnectorConfig(config),
+        super(config,
+                new MongoDbConnectorConfig(config),
                 config.getString(MongoDbConnectorConfig.TASK_ID),
                 new MongoDbConnectorConfig(config).getCustomMetricTags());
 
         this.filters = new Filters(config);
-        this.config = config;
-        this.connectorConfig = new MongoDbConnectorConfig(config);
         this.serverName = config.getString(CommonConnectorConfig.TOPIC_PREFIX);
     }
 
@@ -39,13 +36,5 @@ public class MongoDbTaskContext extends CdcSourceTaskContext {
 
     public String getServerName() {
         return serverName;
-    }
-
-    public MongoDbConnectorConfig getConnectorConfig() {
-        return this.connectorConfig;
-    }
-
-    public Configuration getConfiguration() {
-        return this.config;
     }
 }

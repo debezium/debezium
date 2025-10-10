@@ -81,7 +81,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             return;
         }
 
-        try (MongoDbConnection mongo = MongoDbConnections.create(taskContext.getConfiguration(), dispatcher, partition)) {
+        try (MongoDbConnection mongo = MongoDbConnections.create(taskContext.getRawConfig(), dispatcher, partition)) {
             mongo.execute("Reading change stream", client -> {
                 readChangeStream(client, context, partition);
             });

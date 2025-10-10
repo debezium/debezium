@@ -10,6 +10,7 @@ import java.util.Map;
 import org.apache.kafka.connect.source.SourceTask;
 
 import io.debezium.config.CommonConnectorConfig;
+import io.debezium.config.Configuration;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.util.Clock;
 import io.debezium.util.LoggingContext;
@@ -19,7 +20,7 @@ import io.debezium.util.LoggingContext;
  *
  * @author Gunnar Morling
  */
-public class CdcSourceTaskContext {
+public class CdcSourceTaskContext<T extends CommonConnectorConfig> {
 
     private final String connectorType;
     private final String connectorLogicalName;
@@ -27,23 +28,27 @@ public class CdcSourceTaskContext {
     private final String taskId;
     private final Map<String, String> customMetricTags;
     private final Clock clock;
-    private final CommonConnectorConfig config;
+    private final T connectorConfig;
+    private final Configuration rawConfig;
 
-    public CdcSourceTaskContext(CommonConnectorConfig config,
+    public CdcSourceTaskContext(Configuration rawConfig,
+                                T connectorConfig,
                                 String taskId,
                                 Map<String, String> customMetricTags) {
-        this.connectorType = config.getContextName();
-        this.connectorLogicalName = config.getLogicalName();
-        this.connectorPluginName = config.getConnectorName();
+        this.connectorType = connectorConfig.getContextName();
+        this.connectorLogicalName = connectorConfig.getLogicalName();
+        this.connectorPluginName = connectorConfig.getConnectorName();
         this.taskId = taskId;
         this.customMetricTags = customMetricTags;
-        this.config = config;
+        this.connectorConfig = connectorConfig;
+        this.rawConfig = rawConfig;
         this.clock = Clock.system();
     }
 
-    public CdcSourceTaskContext(CommonConnectorConfig config,
+    public CdcSourceTaskContext(Configuration rawConfig,
+                                T connectorConfig,
                                 Map<String, String> customMetricTags) {
-        this(config, "0", customMetricTags);
+        this(rawConfig, connectorConfig, "0", customMetricTags);
     }
 
     /**
@@ -101,7 +106,11 @@ public class CdcSourceTaskContext {
         return customMetricTags;
     }
 
-    public CommonConnectorConfig getConfig() {
-        return config;
+    public T getConfig() {
+        return connectorConfig;
+    }
+
+    public Configuration getRawConfig() {
+        return rawConfig;
     }
 }
