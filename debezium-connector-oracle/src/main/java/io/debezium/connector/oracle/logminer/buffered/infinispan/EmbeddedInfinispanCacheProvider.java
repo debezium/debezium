@@ -29,8 +29,11 @@ import io.debezium.DebeziumException;
 import io.debezium.config.Field;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.logminer.buffered.AbstractCacheProvider;
+import io.debezium.connector.oracle.logminer.buffered.CompositeTransactionCache;
+import io.debezium.connector.oracle.logminer.buffered.EventCountStrategy;
 import io.debezium.connector.oracle.logminer.buffered.LogMinerCache;
 import io.debezium.connector.oracle.logminer.buffered.LogMinerTransactionCache;
+import io.debezium.connector.oracle.logminer.buffered.SpillStrategy;
 
 /**
  * Provides access to various transaction-focused caches to store transaction details in Infinispan
@@ -44,7 +47,7 @@ public class EmbeddedInfinispanCacheProvider extends AbstractCacheProvider<Infin
 
     private final boolean dropBufferOnStop;
     private final EmbeddedCacheManager cacheManager;
-    private final InfinispanLogMinerTransactionCache transactionCache;
+    private final LogMinerTransactionCache<InfinispanTransaction> transactionCache;
     private final InfinispanLogMinerCache<String, String> processedTransactionsCache;
     private final InfinispanLogMinerCache<String, String> schemaChangesCache;
 
@@ -54,7 +57,24 @@ public class EmbeddedInfinispanCacheProvider extends AbstractCacheProvider<Infin
         this.dropBufferOnStop = connectorConfig.isLogMiningBufferDropOnStop();
         this.cacheManager = new DefaultCacheManager(createGlobalConfig(connectorConfig));
 
-        this.transactionCache = createTransactionCache(connectorConfig);
+        // If the connector is configured to use MEMORY buffer with Infinispan as the spill provider,
+        // compose a Memory event store + Infinispan spill cache into a CompositeTransactionCache so the
+        // composite semantics (memory first, spilled second) match other providers like Chronicle.
+        if (connectorConfig.getLogMiningBufferType() == OracleConnectorConfig.LogMiningBufferType.MEMORY
+                && connectorConfig.isLogMiningBufferSpillEnabled()) {
+            // Create Infinispan spillover cache and strategy, then create composite
+            InfinispanLogMinerTransactionCache spilloverCache = createTransactionCache(connectorConfig);
+
+            long spillThreshold = connectorConfig.getLogMiningBufferSpillThreshold();
+            SpillStrategy strategy = new EventCountStrategy(spillThreshold);
+            int indexThreshold = connectorConfig.getLogMiningBufferSpillInMemoryIndexThreshold();
+
+            this.transactionCache = new CompositeTransactionCache<InfinispanTransaction>(spilloverCache, strategy, indexThreshold);
+        }
+        else {
+            this.transactionCache = createTransactionCache(connectorConfig);
+        }
+
         this.processedTransactionsCache = createProcessedTransactionsCache(connectorConfig);
         this.schemaChangesCache = createSchemaChangesCache(connectorConfig);
 
