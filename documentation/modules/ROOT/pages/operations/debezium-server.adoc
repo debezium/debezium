@@ -1391,6 +1391,15 @@ Do not enable password authentication if xref:nats-jetstream-auth-jwt[JWT authen
 |No default value
 |Specifies the password to use when xref:nats-jetstream-auth-user[password authentication] is enabled.
 
+|[[nats-jetstream-async-enabled]]<<nats-jetstream-async-enabled, `debezium.sink.nats-jetstream.async.enabled`>>
+|true
+|(Optional) A Boolean value that specifies whether {prodname} can stream asynchronously to a NATS JetStream server.
+
+|[[nats-jetstream-async-timeout-ms]]<<nats-jetstream-async-timeout-ms, `debezium.sink.nats-jetstream.async.timeout.ms`>>
+|5000
+|(Optional) Specifies the maximum time, in milliseconds, that {prodname} waits for acknowledgment from the NATS server after it sends a batch of messages for asynchronous processing.
+During asynchronous processing, each message is published with a timeout specified by `asyncTimeoutMs`.
+
 |===
 
 If you need a more configurable stream, it can be created with nats cli. More about streams at: https://docs.nats.io/nats-concepts/jetstream/streams
