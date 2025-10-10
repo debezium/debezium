@@ -13,6 +13,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import io.debezium.data.geometry.Geography;
+import io.debezium.data.geometry.Point;
+import io.debezium.data.geometry.Geometry;
+import org.apache.kafka.connect.data.Struct;
+import io.debezium.util.HexConverter;
+
 /**
  * Helper that returns placeholder values for unchanged toasted columns.
  *
@@ -27,6 +33,8 @@ public class UnchangedToastedPlaceholder {
     private final String toastPlaceholderString;
     private final Map<String, String> toastPlaceholderHstore = new HashMap<>();
     private final String toastPlaceholderUuid;
+    private final byte[] geometryPlaceholderWkb;
+    private final byte[] geographyPlaceholderWkb;
 
     /**
      * Provides different representations of a placeholder value.<br>
@@ -55,6 +63,18 @@ public class UnchangedToastedPlaceholder {
         toastPlaceholderHstore.put(toastPlaceholderString, toastPlaceholderString);
         placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_HSTORE_TOAST_VALUE, toastPlaceholderHstore);
         placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_UUID_TOAST_VALUE, Arrays.asList(toastPlaceholderUuid));
+
+        // Store WKB data for lazy geometry creation
+        // Geometry: 'SRID=4326;POINT(-99999999 -99999999)'::geometry
+        geometryPlaceholderWkb = HexConverter.convertFromHex("0101000020E6100000000000FC83D797C1000000FC83D797C1");
+        // Geography: 'SRID=4326;POINT(179.999999 89.999999)'::geography
+        geographyPlaceholderWkb = HexConverter.convertFromHex("0101000020E61000000C21E7FDFF7F66401842CEFBFF7F5640");
+
+        // These will be created on-demand with the correct field schema
+        placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_POINT_TOAST_VALUE, UnchangedToastedReplicationMessageColumn.UNCHANGED_POINT_TOAST_VALUE);
+        placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_GEOMETRY_TOAST_VALUE, UnchangedToastedReplicationMessageColumn.UNCHANGED_GEOMETRY_TOAST_VALUE);
+        placeholderValues.put(UnchangedToastedReplicationMessageColumn.UNCHANGED_GEOGRAPHY_TOAST_VALUE, UnchangedToastedReplicationMessageColumn.UNCHANGED_GEOGRAPHY_TOAST_VALUE);
+
     }
 
     public Optional<Object> getValue(Object obj) {
@@ -67,5 +87,26 @@ public class UnchangedToastedPlaceholder {
 
     public String getToastPlaceholderString() {
         return toastPlaceholderString;
+    }
+
+    /**
+     * Create a geometry placeholder struct using the provided field schema
+     */
+    public Struct createGeometryPlaceholder(org.apache.kafka.connect.data.Schema fieldSchema) {
+        return Geometry.createValue(fieldSchema, geometryPlaceholderWkb, 4326);
+    }
+
+    /**
+     * Create a geography placeholder struct using the provided field schema
+     */
+    public Struct createGeographyPlaceholder(org.apache.kafka.connect.data.Schema fieldSchema) {
+        return Geography.createValue(fieldSchema, geographyPlaceholderWkb, 4326);
+    }
+
+    /**
+     * Create a point placeholder struct using the provided field schema
+     */
+    public Struct createPointPlaceholder(org.apache.kafka.connect.data.Schema fieldSchema) {
+        return Point.createValue(fieldSchema, -99999999, -99999999);
     }
 }

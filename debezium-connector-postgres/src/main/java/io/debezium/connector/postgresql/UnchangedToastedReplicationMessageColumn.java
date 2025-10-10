@@ -30,6 +30,9 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
     public static final Object UNCHANGED_BIGINT_ARRAY_TOAST_VALUE = new Object();
     public static final Object UNCHANGED_HSTORE_TOAST_VALUE = new Object();
     public static final Object UNCHANGED_UUID_TOAST_VALUE = new Object();
+    public static final Object UNCHANGED_GEOGRAPHY_TOAST_VALUE = new Object();
+    public static final Object UNCHANGED_GEOMETRY_TOAST_VALUE = new Object();
+    public static final Object UNCHANGED_POINT_TOAST_VALUE = new Object();
 
     private static final Object[] UNCHANGED_TOAST_VALUES = {
             UnchangedToastedReplicationMessageColumn.UNCHANGED_TOAST_VALUE,
@@ -38,6 +41,9 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
             UnchangedToastedReplicationMessageColumn.UNCHANGED_INT_ARRAY_TOAST_VALUE,
             UnchangedToastedReplicationMessageColumn.UNCHANGED_BIGINT_ARRAY_TOAST_VALUE,
             UnchangedToastedReplicationMessageColumn.UNCHANGED_HSTORE_TOAST_VALUE,
+            UnchangedToastedReplicationMessageColumn.UNCHANGED_GEOGRAPHY_TOAST_VALUE,
+            UnchangedToastedReplicationMessageColumn.UNCHANGED_GEOMETRY_TOAST_VALUE,
+            UnchangedToastedReplicationMessageColumn.UNCHANGED_POINT_TOAST_VALUE,
             UnchangedToastedReplicationMessageColumn.UNCHANGED_UUID_TOAST_VALUE };
     private Object unchangedToastValue;
 
@@ -104,6 +110,15 @@ public class UnchangedToastedReplicationMessageColumn extends AbstractReplicatio
             case "uuid[]":
             case "_uuid":
                 unchangedToastValue = UNCHANGED_UUID_TOAST_VALUE;
+                break;
+            case "geometry":
+                unchangedToastValue = UNCHANGED_GEOMETRY_TOAST_VALUE;
+                break;
+            case "geography":
+                unchangedToastValue = UNCHANGED_GEOGRAPHY_TOAST_VALUE;
+                break;
+            case "point":
+                unchangedToastValue = UNCHANGED_POINT_TOAST_VALUE;
                 break;
             default:
                 unchangedToastValue = UNCHANGED_TOAST_VALUE;

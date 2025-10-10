@@ -985,7 +985,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
         return convertValue(column, fieldDefn, data, io.debezium.data.geometry.Geometry.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid()), (r) -> {
             try {
                 final Schema schema = fieldDefn.schema();
-                if (data instanceof byte[]) {
+                if (data == UnchangedToastedReplicationMessageColumn.UNCHANGED_GEOMETRY_TOAST_VALUE) {
+                    r.deliver(unchangedToastedPlaceholder.createGeometryPlaceholder(schema));
+                }
+                else if (data instanceof byte[]) {
                     PostgisGeometry geom = PostgisGeometry.fromHexEwkb(new String((byte[]) data, StandardCharsets.US_ASCII));
                     r.deliver(io.debezium.data.geometry.Geometry.createValue(schema, geom.getWkb(), geom.getSrid()));
                 }
@@ -1010,7 +1013,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
         return convertValue(column, fieldDefn, data, io.debezium.data.geometry.Geography.createValue(fieldDefn.schema(), empty.getWkb(), empty.getSrid()), (r) -> {
             final Schema schema = fieldDefn.schema();
             try {
-                if (data instanceof byte[]) {
+                if (data == UnchangedToastedReplicationMessageColumn.UNCHANGED_GEOGRAPHY_TOAST_VALUE) {
+                    r.deliver(unchangedToastedPlaceholder.createGeographyPlaceholder(schema));
+                }
+                else if (data instanceof byte[]) {
                     PostgisGeometry geom = PostgisGeometry.fromHexEwkb(new String((byte[]) data, StandardCharsets.US_ASCII));
                     r.deliver(io.debezium.data.geometry.Geography.createValue(schema, geom.getWkb(), geom.getSrid()));
                 }
@@ -1069,7 +1075,10 @@ public class PostgresValueConverter extends JdbcValueConverters {
     protected Object convertPoint(Column column, Field fieldDefn, Object data) {
         return convertValue(column, fieldDefn, data, Point.createValue(fieldDefn.schema(), 0, 0), (r) -> {
             final Schema schema = fieldDefn.schema();
-            if (data instanceof PGpoint) {
+            if (data == UnchangedToastedReplicationMessageColumn.UNCHANGED_POINT_TOAST_VALUE) {
+                r.deliver(unchangedToastedPlaceholder.createPointPlaceholder(schema));
+            }
+            else if (data instanceof PGpoint) {
                 PGpoint pgPoint = (PGpoint) data;
                 r.deliver(Point.createValue(schema, pgPoint.x, pgPoint.y));
             }
