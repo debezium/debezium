@@ -13,7 +13,7 @@ import io.debezium.connector.binlog.BinlogTaskContext;
  * @author Chris Cranford
  */
 public class MariaDbTaskContext extends BinlogTaskContext<MariaDbDatabaseSchema> {
-    public MariaDbTaskContext(MariaDbConnectorConfig config, MariaDbDatabaseSchema schema) {
-        super(config, schema);
+    public MariaDbTaskContext(MariaDbConnectorConfig config) {
+        super(config);
     }
 }

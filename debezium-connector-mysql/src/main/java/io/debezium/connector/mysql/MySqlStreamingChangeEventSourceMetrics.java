@@ -20,6 +20,6 @@ public class MySqlStreamingChangeEventSourceMetrics
                                                   ChangeEventQueueMetrics changeEventQueueMetrics,
                                                   EventMetadataProvider metadataProvider,
                                                   CapturedTablesSupplier capturedTablesSupplier) {
-        super(taskContext, changeEventQueueMetrics, metadataProvider, capturedTablesSupplier, taskContext.getBinaryLogClient());
+        super(taskContext, changeEventQueueMetrics, metadataProvider, capturedTablesSupplier);
     }
 }

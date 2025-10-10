@@ -159,7 +159,7 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         this.eventDeserializationFailureHandlingMode = connectorConfig.getEventProcessingFailureHandlingMode();
         this.inconsistentSchemaHandlingMode = connectorConfig.getInconsistentSchemaFailureHandlingMode();
         this.snapshotterService = snapshotterService;
-        this.client = createBinaryLogClient(taskContext, connectorConfig, binaryLogClientThreads, connection);
+        this.client = createBinaryLogClient(connectorConfig, binaryLogClientThreads, connection);
         this.gtidDmlSourceFilter = getGtidDmlSourceFilter();
         this.isGtidModeEnabled = connection.isGtidModeEnabled();
     }
@@ -372,12 +372,24 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         return isGtidModeEnabled;
     }
 
+    /**
+     * Get the binary log client instance.
+     *
+     * @return the binary log client; never null
+     */
+    public BinaryLogClient getBinaryLogClient() {
+        return client;
+    }
+
     // todo: perhaps refactor back out to a binary log configurator instance?
-    protected BinaryLogClient createBinaryLogClient(BinlogTaskContext<?> taskContext,
-                                                    BinlogConnectorConfig connectorConfig,
+    protected BinaryLogClient createBinaryLogClient(BinlogConnectorConfig connectorConfig,
                                                     Map<String, Thread> clientThreads,
                                                     BinlogConnectorConnection connection) {
-        final BinaryLogClient client = taskContext.getBinaryLogClient();
+        final BinaryLogClient client = new BinaryLogClient(
+                connectorConfig.getHostName(),
+                connectorConfig.getPort(),
+                connectorConfig.getUserName(),
+                connectorConfig.getPassword());
         client.setThreadFactory(
                 Threads.threadFactory(
                         getConnectorClass(),
