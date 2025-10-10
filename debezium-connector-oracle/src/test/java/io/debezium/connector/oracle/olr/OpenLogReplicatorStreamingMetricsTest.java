@@ -34,7 +34,7 @@ public class OpenLogReplicatorStreamingMetricsTest extends OracleStreamingMetric
                                                                                EventMetadataProvider metadataProvider,
                                                                                OracleConnectorConfig connectorConfig,
                                                                                Clock clock) {
-        return new OpenLogReplicatorStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider);
+        return new OpenLogReplicatorStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider, java.util.Collections::emptyList);
     }
 
     @Test

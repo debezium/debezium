@@ -29,6 +29,7 @@ import io.debezium.connector.oracle.AbstractOracleStreamingChangeEventSourceMetr
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.Scn;
 import io.debezium.connector.oracle.logminer.events.EventType;
+import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.util.LRUCacheMap;
 import io.debezium.util.Strings;
@@ -99,16 +100,18 @@ public class LogMinerStreamingChangeEventSourceMetrics
     public LogMinerStreamingChangeEventSourceMetrics(CdcSourceTaskContext taskContext,
                                                      ChangeEventQueueMetrics changeEventQueueMetrics,
                                                      EventMetadataProvider metadataProvider,
-                                                     OracleConnectorConfig connectorConfig) {
-        this(taskContext, changeEventQueueMetrics, metadataProvider, connectorConfig, Clock.systemUTC());
+                                                     OracleConnectorConfig connectorConfig,
+                                                     CapturedTablesSupplier capturedTablesSupplier) {
+        this(taskContext, changeEventQueueMetrics, metadataProvider, connectorConfig, Clock.systemUTC(), capturedTablesSupplier);
     }
 
     public LogMinerStreamingChangeEventSourceMetrics(CdcSourceTaskContext taskContext,
                                                      ChangeEventQueueMetrics changeEventQueueMetrics,
                                                      EventMetadataProvider metadataProvider,
                                                      OracleConnectorConfig connectorConfig,
-                                                     Clock clock) {
-        super(taskContext, changeEventQueueMetrics, metadataProvider);
+                                                     Clock clock,
+                                                     CapturedTablesSupplier capturedTablesSupplier) {
+        super(taskContext, changeEventQueueMetrics, metadataProvider, capturedTablesSupplier);
         this.connectorConfig = connectorConfig;
         this.batchSize.set(connectorConfig.getLogMiningBatchSizeDefault());
         this.sleepTime.set(connectorConfig.getLogMiningSleepTimeDefault().toMillis());

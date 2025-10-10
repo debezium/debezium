@@ -16,6 +16,7 @@ import com.github.shyiko.mysql.binlog.jmx.BinaryLogClientStatistics;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.binlog.BinlogDatabaseSchema;
 import io.debezium.connector.binlog.BinlogTaskContext;
+import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.metrics.DefaultStreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.Partition;
@@ -30,9 +31,8 @@ public class BinlogStreamingChangeEventSourceMetrics<T extends BinlogDatabaseSch
         extends DefaultStreamingChangeEventSourceMetrics<P>
         implements BinlogStreamingChangeEventSourceMetricsMXBean {
 
-    private final BinaryLogClient client;
-    private final BinaryLogClientStatistics stats;
-    private final T schema;
+    private BinaryLogClient client;
+    private BinaryLogClientStatistics stats;
 
     private final AtomicLong numberOfCommittedTransactions = new AtomicLong();
     private final AtomicLong numberOfRolledBackTransactions = new AtomicLong();
@@ -44,12 +44,21 @@ public class BinlogStreamingChangeEventSourceMetrics<T extends BinlogDatabaseSch
 
     public BinlogStreamingChangeEventSourceMetrics(BinlogTaskContext<T> taskContext,
                                                    ChangeEventQueueMetrics changeEventQueueMetrics,
-                                                   EventMetadataProvider eventMetadataProvider) {
-        super(taskContext, changeEventQueueMetrics, eventMetadataProvider);
-        this.client = taskContext.getBinaryLogClient();
-        this.stats = new BinaryLogClientStatistics(client);
-        this.schema = taskContext.getSchema();
+                                                   EventMetadataProvider eventMetadataProvider,
+                                                   CapturedTablesSupplier capturedTablesSupplier) {
+        super(taskContext, changeEventQueueMetrics, eventMetadataProvider, capturedTablesSupplier);
         this.milliSecondsBehindMaster.set(-1);
+    }
+
+    /**
+     * Sets the binary log client for metrics tracking.
+     * This must be called before the metrics are used.
+     *
+     * @param client the binary log client; should not be null
+     */
+    public void setBinaryLogClient(BinaryLogClient client) {
+        this.client = client;
+        this.stats = new BinaryLogClientStatistics(client);
     }
 
     @Override
@@ -131,11 +140,6 @@ public class BinlogStreamingChangeEventSourceMetrics<T extends BinlogDatabaseSch
     @Override
     public long getNumberOfLargeTransactions() {
         return numberOfLargeTransactions.get();
-    }
-
-    @Override
-    public String[] getCapturedTables() {
-        return schema.capturedTablesAsStringArray();
     }
 
     @Override

@@ -285,6 +285,19 @@ public class PostgresConnection extends JdbcConnection {
     }
 
     /**
+     * Retrieves the catalog xmin value from the replication slot.
+     *
+     * @param slotName the name of the slot
+     * @param pluginName the name of the plugin used for the desired slot
+     * @return the catalog xmin value or null if the slot state is not found
+     * @throws SQLException if a database access error occurs
+     */
+    public Long getSlotXmin(String slotName, String pluginName) throws SQLException {
+        SlotState slotState = getReplicationSlotState(slotName, pluginName);
+        return slotState != null ? slotState.slotCatalogXmin() : null;
+    }
+
+    /**
      * Fetches the state of a replication stage given a slot name and plugin name
      * @param slotName the name of the slot
      * @param pluginName the name of the plugin used for the desired slot

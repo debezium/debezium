@@ -117,7 +117,7 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
         CustomConverterRegistry converterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
 
         this.schema = new MariaDbDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive, converterRegistry);
-        taskContext = new MariaDbTaskContext(connectorConfig, schema);
+        taskContext = new MariaDbTaskContext(config, connectorConfig);
 
         // Manual Bean Registration
         beanRegistryJdbcConnection = connectionFactory.newConnection();
@@ -235,7 +235,8 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
         final MariaDbStreamingChangeEventSourceMetrics streamingMetrics = new MariaDbStreamingChangeEventSourceMetrics(
                 taskContext,
                 queue,
-                metadataProvider);
+                metadataProvider,
+                schema::dataCollectionIds);
 
         NotificationService<MariaDbPartition, MariaDbOffsetContext> notificationService = new NotificationService<>(
                 getNotificationChannels(),

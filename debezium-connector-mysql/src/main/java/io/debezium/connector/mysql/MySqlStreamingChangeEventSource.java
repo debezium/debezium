@@ -48,9 +48,10 @@ public class MySqlStreamingChangeEventSource extends BinlogStreamingChangeEventS
                                            ErrorHandler errorHandler,
                                            Clock clock,
                                            MySqlTaskContext taskContext,
+                                           MySqlDatabaseSchema schema,
                                            MySqlStreamingChangeEventSourceMetrics metrics,
                                            SnapshotterService snapshotterService) {
-        super(connectorConfig, connection, dispatcher, errorHandler, clock, taskContext, taskContext.getSchema(), metrics, snapshotterService);
+        super(connectorConfig, connection, dispatcher, errorHandler, clock, taskContext, schema, metrics, snapshotterService);
         this.connectorConfig = connectorConfig;
     }
 

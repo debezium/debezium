@@ -11,6 +11,7 @@ import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.sqlserver.SqlServerPartition;
 import io.debezium.pipeline.meters.ConnectionMeter;
+import io.debezium.pipeline.metrics.CapturedTablesSupplier;
 import io.debezium.pipeline.metrics.StreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.util.Collect;
@@ -23,7 +24,8 @@ class SqlServerStreamingTaskMetrics extends AbstractSqlServerTaskMetrics<SqlServ
     SqlServerStreamingTaskMetrics(CdcSourceTaskContext taskContext,
                                   ChangeEventQueueMetrics changeEventQueueMetrics,
                                   EventMetadataProvider metadataProvider,
-                                  Collection<SqlServerPartition> partitions) {
+                                  Collection<SqlServerPartition> partitions,
+                                  CapturedTablesSupplier capturedTablesSupplier) {
         super(taskContext, "streaming", changeEventQueueMetrics, partitions,
                 (SqlServerPartition partition) -> new SqlServerStreamingPartitionMetrics(taskContext,
                         Collect.linkMapOf(
@@ -31,7 +33,8 @@ class SqlServerStreamingTaskMetrics extends AbstractSqlServerTaskMetrics<SqlServ
                                 "task", taskContext.getTaskId(),
                                 "context", "streaming",
                                 "database", partition.getDatabaseName()),
-                        metadataProvider));
+                        metadataProvider,
+                        capturedTablesSupplier));
         connectionMeter = new ConnectionMeter();
     }
 

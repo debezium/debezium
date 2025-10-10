@@ -80,7 +80,7 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
         return new MariaDbSnapshotChangeEventSource(
                 configuration,
                 connectionFactory,
-                taskContext.getSchema(),
+                schema,
                 dispatcher,
                 clock,
                 (MariaDbSnapshotChangeEventSourceMetrics) snapshotProgressListener,
@@ -93,15 +93,21 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
     @Override
     public StreamingChangeEventSource<MariaDbPartition, MariaDbOffsetContext> getStreamingChangeEventSource() {
         queue.disableBuffering();
-        return new MariaDbStreamingChangeEventSource(
+        MariaDbStreamingChangeEventSource streamingSource = new MariaDbStreamingChangeEventSource(
                 configuration,
                 connectionFactory.mainConnection(),
                 dispatcher,
                 errorHandler,
                 clock,
                 taskContext,
+                schema,
                 streamingMetrics,
                 snapshotterService);
+
+        // Set the binary log client on the metrics now that the streaming source has created it
+        streamingMetrics.setBinaryLogClient(streamingSource.getBinaryLogClient());
+
+        return streamingSource;
     }
 
     @Override

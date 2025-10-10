@@ -70,7 +70,7 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
         return new MySqlSnapshotChangeEventSource(
                 configuration,
                 connectionFactory,
-                taskContext.getSchema(),
+                schema,
                 dispatcher,
                 clock,
                 (MySqlSnapshotChangeEventSourceMetrics) snapshotProgressListener,
@@ -93,15 +93,21 @@ public class MySqlChangeEventSourceFactory implements ChangeEventSourceFactory<M
     public StreamingChangeEventSource<MySqlPartition, MySqlOffsetContext> getStreamingChangeEventSource() {
 
         queue.disableBuffering();
-        return new MySqlStreamingChangeEventSource(
+        MySqlStreamingChangeEventSource streamingSource = new MySqlStreamingChangeEventSource(
                 configuration,
                 connectionFactory.mainConnection(),
                 dispatcher,
                 errorHandler,
                 clock,
                 taskContext,
+                schema,
                 streamingMetrics,
                 snapshotterService);
+
+        // Set the binary log client on the metrics now that the streaming source has created it
+        streamingMetrics.setBinaryLogClient(streamingSource.getBinaryLogClient());
+
+        return streamingSource;
     }
 
     @Override

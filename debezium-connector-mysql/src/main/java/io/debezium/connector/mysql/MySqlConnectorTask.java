@@ -108,7 +108,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
         CustomConverterRegistry converterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
 
         this.schema = new MySqlDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive, converterRegistry);
-        taskContext = new MySqlTaskContext(connectorConfig, schema);
+        taskContext = new MySqlTaskContext(config, connectorConfig);
 
         // Manual Bean Registration
         beanRegistryJdbcConnection = connectionFactory.newConnection();
@@ -223,7 +223,8 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                         queue),
                 schemaNameAdjuster, signalProcessor, connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
 
-        final MySqlStreamingChangeEventSourceMetrics streamingMetrics = new MySqlStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider);
+        final MySqlStreamingChangeEventSourceMetrics streamingMetrics = new MySqlStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider,
+                schema::dataCollectionIds);
 
         NotificationService<MySqlPartition, MySqlOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                 connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);

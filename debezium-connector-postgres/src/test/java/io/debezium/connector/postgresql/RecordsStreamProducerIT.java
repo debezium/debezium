@@ -1523,7 +1523,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer.expects(1);
         executeAndWait(statement);
         assertWithTask(task -> {
-            Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_table", false));
+            Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_table", false));
             assertEquals(Arrays.asList("pk", "text", "not_toast"), tbl.retrieveColumnNames());
         });
 
@@ -1559,7 +1559,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         consumer.expects(1);
         executeAndWait(statement);
         assertWithTask(task -> {
-            Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_table", false));
+            Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_table", false));
             assertEquals(Arrays.asList("pk", "not_toast"), tbl.retrieveColumnNames());
         });
     }
@@ -1603,7 +1603,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_table", false));
                 assertEquals(Arrays.asList("pk", "text", "not_toast", "mandatory_text"), tbl.retrieveColumnNames());
             });
         });
@@ -1674,7 +1674,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "text", "not_toast", "mandatory_text_array"), tbl.retrieveColumnNames());
             });
         });
@@ -1716,7 +1716,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "text", "not_toast", "mandatory_text_array"), tbl.retrieveColumnNames());
             });
         });
@@ -1758,7 +1758,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "text", "not_toast", "mandatory_text_array"), tbl.retrieveColumnNames());
             });
         });
@@ -1802,7 +1802,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "not_toast", "date_array"), tbl.retrieveColumnNames());
             });
         });
@@ -1846,7 +1846,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "not_toast", "bytea_array"), tbl.retrieveColumnNames());
             });
         });
@@ -1919,7 +1919,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "not_toast", "int_array"), tbl.retrieveColumnNames());
             });
         });
@@ -1960,7 +1960,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "not_toast", "bigint_array"), tbl.retrieveColumnNames());
             });
         });
@@ -2004,7 +2004,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "text", "not_toast", "json_array"), tbl.retrieveColumnNames());
             });
         });
@@ -2045,7 +2045,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "text", "col"), tbl.retrieveColumnNames());
             });
         });
@@ -2093,7 +2093,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "text", "not_toast", "uuid_array"), tbl.retrieveColumnNames());
             });
         });
@@ -2140,7 +2140,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "not_toast", "mandatory_text_array"), tbl.retrieveColumnNames());
             });
         });
@@ -2190,7 +2190,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "not_toast", "mandatory_text_array"), tbl.retrieveColumnNames());
             });
         });
@@ -2243,7 +2243,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "not_toast", "date_array"), tbl.retrieveColumnNames());
             });
         });
@@ -2299,7 +2299,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "not_toast", "bytea_array"), tbl.retrieveColumnNames());
             });
         });
@@ -2355,7 +2355,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "not_toast", "int_array"), tbl.retrieveColumnNames());
             });
         });
@@ -2407,7 +2407,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "not_toast", "bigint_array"), tbl.retrieveColumnNames());
             });
         });
@@ -2462,7 +2462,7 @@ public class RecordsStreamProducerIT extends AbstractRecordsProducerTest {
         executeAndWait(statement);
         consumer.process(record -> {
             assertWithTask(task -> {
-                Table tbl = ((PostgresConnectorTask) task).getTaskContext().schema().tableFor(TableId.parse("public.test_toast_table", false));
+                Table tbl = ((PostgresConnectorTask) task).getSchema().tableFor(TableId.parse("public.test_toast_table", false));
                 assertEquals(Arrays.asList("id", "not_toast", "uuid_array"), tbl.retrieveColumnNames());
             });
         });
