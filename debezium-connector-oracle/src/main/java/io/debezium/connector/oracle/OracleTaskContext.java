@@ -5,11 +5,12 @@
  */
 package io.debezium.connector.oracle;
 
+import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
 
-public class OracleTaskContext extends CdcSourceTaskContext {
+public class OracleTaskContext extends CdcSourceTaskContext<OracleConnectorConfig> {
 
-    public OracleTaskContext(OracleConnectorConfig config) {
-        super(config, config.getCustomMetricTags());
+    public OracleTaskContext(Configuration rawConfig, OracleConnectorConfig config) {
+        super(rawConfig, config, config.getCustomMetricTags());
     }
 }

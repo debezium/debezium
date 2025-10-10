@@ -127,7 +127,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
         CustomConverterRegistry customConverterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
 
         schema = new PostgresSchema(connectorConfig, defaultValueConverter, topicNamingStrategy, valueConverter, customConverterRegistry);
-        this.taskContext = new PostgresTaskContext(connectorConfig, schema);
+        this.taskContext = new PostgresTaskContext(config, connectorConfig, schema);
         this.partitionProvider = new PostgresPartition.Provider(connectorConfig, config);
         this.offsetContextLoader = new PostgresOffsetContext.Loader(connectorConfig);
         final Offsets<PostgresPartition, PostgresOffsetContext> previousOffsets = getPreviousOffsets(

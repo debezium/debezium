@@ -605,8 +605,9 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     private LogMinerStreamingChangeEventSourceMetrics createMetrics(OracleDatabaseSchema schema) throws Exception {
-        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(getConfig().build());
-        final OracleTaskContext taskContext = new OracleTaskContext(connectorConfig);
+        final Configuration config = getConfig().build();
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+        final OracleTaskContext taskContext = new OracleTaskContext(config, connectorConfig);
 
         final ChangeEventQueue<DataChangeEvent> queue = new ChangeEventQueue.Builder<DataChangeEvent>()
                 .pollInterval(Duration.of(DEFAULT_MAX_QUEUE_SIZE, ChronoUnit.MILLIS))

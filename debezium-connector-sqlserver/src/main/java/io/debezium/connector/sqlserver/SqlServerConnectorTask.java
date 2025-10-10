@@ -99,7 +99,7 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
         this.schema = new SqlServerDatabaseSchema(connectorConfig, metadataConnection.getDefaultValueConverter(), valueConverters, topicNamingStrategy,
                 schemaNameAdjuster, customConverterRegistry);
         this.schema.initializeStorage();
-        taskContext = new SqlServerTaskContext(connectorConfig);
+        taskContext = new SqlServerTaskContext(config, connectorConfig);
 
         Offsets<SqlServerPartition, SqlServerOffsetContext> offsets = getPreviousOffsets(
                 new SqlServerPartition.Provider(connectorConfig),

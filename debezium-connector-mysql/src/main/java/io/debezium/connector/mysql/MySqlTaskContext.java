@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.mysql;
 
+import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.BinlogTaskContext;
 
 /**
@@ -14,7 +15,7 @@ import io.debezium.connector.binlog.BinlogTaskContext;
  *
  */
 public class MySqlTaskContext extends BinlogTaskContext<MySqlDatabaseSchema> {
-    public MySqlTaskContext(MySqlConnectorConfig config) {
-        super(config);
+    public MySqlTaskContext(Configuration rawConfig, MySqlConnectorConfig config) {
+        super(rawConfig, config);
     }
 }

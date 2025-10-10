@@ -251,7 +251,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     @Override
     @SuppressWarnings("unchecked")
     public void init(MongoDbPartition partition, OffsetContext offsetContext) {
-        mongo = MongoDbConnections.create(taskContext.getConfiguration(), dispatcher, partition);
+        mongo = MongoDbConnections.create(taskContext.getRawConfig(), dispatcher, partition);
 
         if (offsetContext == null) {
             LOGGER.info("Empty incremental snapshot change event source started, no action needed");

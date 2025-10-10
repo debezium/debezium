@@ -5,6 +5,7 @@
  */
 package io.debezium.connector.binlog;
 
+import io.debezium.config.Configuration;
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.relational.RelationalDatabaseSchema;
 
@@ -13,9 +14,9 @@ import io.debezium.relational.RelationalDatabaseSchema;
  *
  * @author Chris Cranford
  */
-public class BinlogTaskContext<T extends RelationalDatabaseSchema> extends CdcSourceTaskContext {
+public class BinlogTaskContext<T extends RelationalDatabaseSchema> extends CdcSourceTaskContext<BinlogConnectorConfig> {
 
-    public BinlogTaskContext(BinlogConnectorConfig config) {
-        super(config, config.getCustomMetricTags());
+    public BinlogTaskContext(Configuration rawConfig, BinlogConnectorConfig config) {
+        super(rawConfig, config, config.getCustomMetricTags());
     }
 }
