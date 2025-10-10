@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.runtime.DebeziumConnectorRegistry;
 import io.debezium.runtime.EngineManifest;
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
+import io.debezium.runtime.configuration.DevServicesConfig;
 import io.quarkus.debezium.configuration.PostgresDatasourceConfiguration;
 import io.quarkus.debezium.notification.QuarkusNotificationChannel;
 
@@ -58,6 +59,11 @@ class PostgresEngineProducerTest {
 
             @Override
             public Map<String, Capturing> capturing() {
+                return Map.of();
+            }
+
+            @Override
+            public Map<String, DevServicesConfig> devservices() {
                 return Map.of();
             }
         }).get(new EngineManifest("default"))
@@ -104,6 +110,11 @@ class PostgresEngineProducerTest {
             public Map<String, Capturing> capturing() {
                 return Map.of();
             }
+
+            @Override
+            public Map<String, DevServicesConfig> devservices() {
+                return Map.of();
+            }
         }).get(new EngineManifest("default"))
                 .configuration())
                 .isEqualTo(Map.of(
@@ -139,9 +150,7 @@ class PostgresEngineProducerTest {
                                 false,
                                 "another")),
                 quarkusNotificationChannel,
-                ignore -> {
-                    return event -> {
-                    };
+                ignore -> event -> {
                 });
 
         DebeziumConnectorRegistry registry = underTest.engine(new DebeziumEngineConfiguration() {
@@ -203,6 +212,11 @@ class PostgresEngineProducerTest {
                         return Map.of("configuration.key", "another_value");
                     }
                 });
+            }
+
+            @Override
+            public Map<String, DevServicesConfig> devservices() {
+                return Map.of();
             }
         });
 
