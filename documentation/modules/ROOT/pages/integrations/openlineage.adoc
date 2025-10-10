@@ -36,10 +36,11 @@ For more information, see the OpenLineage https://openlineage.io/[website] and h
 
 The {prodname} OpenLineage integration is available for the following deployment types:
 
-* *Kafka Connect*: When running {prodname} connectors as Kafka Connect plugins
-* *{prodname} Server*: When running {prodname} in standalone server mode
+Kafka Connect:: You run {prodname} connectors as Kafka Connect plugins.
+{prodname} Server:: You run {prodname} in standalone server mode.
 
-Both deployment types share the same core functionality and OpenLineage event model, but differ in their configuration approach and dependency installation.
+The same OpenLineage event model and features are available across the deployment types.
+But different processes are needed to configure the integration and install dependencies.
 
 == How {prodname} integrates with OpenLineage
 
@@ -49,7 +50,7 @@ To integrate with OpenLineage, {prodname} maps events in its lifecycle to artifa
 
 The {prodname} connector is mapped to an OpenLineage *Job*, which includes the following elements:
 
-Name:: A job inherits its name from the {prodname} `topic.prefix` combined with the task ID (for example, `inventory.0`).
+Name:: A job inherits its name from the {prodname} `topic.prefix`, combined with the task ID (for example, `inventory.0`).
 Namespace:: Inherited from `openlineage.integration.job.namespace`, if specified; otherwise defaults to the value of the `topic.prefix`.
 {prodname} connector version:: The version of the {prodname} connector that is running and generating lineage events.
 Complete connector configuration:: All connector configuration properties, enabling full reproducibility and debugging of the data pipeline.
@@ -86,27 +87,29 @@ For sink connectors, the data flow is reversed compared to source connectors.
 Input datasets::
 Represent the Kafka topics that the sink connector reads from.
 These topics typically contain CDC events from {prodname} source connectors.
-The following principles apply:
+The following principles apply when defining input datasets:
 +
-* Each Kafka topic that the sink connector consumes becomes an input dataset.
-* The input dataset captures the Kafka topic schema and metadata.
-* The namespace format follows `kafka://bootstrap-server:port` where the bootstrap server is specified via the `openlineage.integration.dataset.kafka.bootstrap.servers` property.
+* Each Kafka topic that the sink connector consumes represents an input dataset.
+* The input dataset specifies the Kafka topic schema and metadata.
+* The namespace format follows `kafka://bootstrap-server:port`, where the bootstrap server is specified via the `openlineage.integration.dataset.kafka.bootstrap.servers` property.
 
 Output datasets::
 Represents the target databases or collections where the sink connector writes data.
 +
-Output dataset mappings follow these principles:
+The following principles apply when defining output dataset mappings:
 +
-* Each target database table or collection becomes an output dataset.
-* The output dataset captures schema information for the target database.
-* The namespace format depends on the target database system (see <<dataset-namespace-formatting>> for details).
+* Each target database table or collection represents an output dataset.
+* The output dataset specifies the schema information for the target database.
+* The namespace format depends on the target database system. 
+For more information, see xref:dataset-namespace-formatting[Dataset namespace formatting] .
 
 The following {prodname} sink connectors support OpenLineage integration in Kafka Connect:
 
-* *MongoDB Sink Connector*: Writes CDC events to MongoDB collections
-* *JDBC Sink Connector*: Writes CDC events to relational database tables
+MongoDB Sink Connector:: Writes CDC events to MongoDB collections.
+JDBC Sink Connector:: Writes CDC events to relational database tables.
 
-NOTE: {prodname} Server currently only supports OpenLineage integration with the Kafka sink. MongoDB Sink and JDBC Sink connectors are only supported in Kafka Connect deployments.
+NOTE: {prodname} Server currently only supports OpenLineage integration with the Kafka sink. 
+MongoDB Sink and JDBC Sink connectors are only supported in Kafka Connect deployments.
 
 .Run events
 
@@ -164,7 +167,8 @@ openlineage.integration.job.owners=Alice Smith=maintainer,Bob Johnson=Data Engin
 
 === {prodname} Server configuration
 
-To enable {prodname} Server to integrate with OpenLineage, add properties to your `application.properties` file, as shown in the following example:
+To enable {prodname} Server to integrate with OpenLineage, add OpenLineage properties to the `application.properties` file, as shown in the following example.
+ OpenLineage properties use the `debezium.source.` prefix
 
 [source,properties]
 ----
@@ -180,12 +184,10 @@ debezium.source.openlineage.integration.job.tags=env=prod,team=data-engineering
 debezium.source.openlineage.integration.job.owners=Alice Smith=maintainer,Bob Johnson=Data Engineer
 ----
 
-NOTE: In {prodname} Server, all OpenLineage properties use the `debezium.source.` prefix, as shown in the example.
-
 == Configuring the OpenLineage client
 
 Create an `openlineage.yml` file to configure the OpenLineage client.
-This configuration file is used by both Kafka Connect and {prodname} Server deployments.
+The `openlineage.yml` configuration file is used in both Kafka Connect and {prodname} Server deployments.
 Use the following example as a guide:
 
 [source,yaml]
@@ -245,8 +247,11 @@ NOTE: For {prodname} Server, add the `debezium.source.` prefix to all property n
 |No
 |No default value
 
-|`openlineage.integration.dataset.kafka.bootstrap.servers`
-|Kafka bootstrap servers used to retrieve Kafka topic metadata. For source connectors, if not specified, the value of `schema.history.internal.kafka.bootstrap.servers` is used. For sink connectors, this property must be explicitly specified.
+|`openlineage.integration.dataset.kafka.bootstrap.servers` (source connectors only)
+|Kafka bootstrap servers used to retrieve Kafka topic metadata. 
+For source connectors, if you do not specify a value, the value of `schema.history.internal.kafka.bootstrap.servers` is used.
+
+For sink connectors, you must specify a value for this property.
 |Yes (for sink connectors)
 |Value of `schema.history.internal.kafka.bootstrap.servers` (for source connectors only)
 |===
@@ -300,7 +305,6 @@ The transformation captures schema data that includes the following items:
 For {prodname} Server deployments, output dataset lineage is automatically captured when OpenLineage integration is enabled.
 No additional configuration or transformation is required, as {prodname} Server has full control over the output records.
 
-NOTE: The OpenLineage SMT is only required for Kafka Connect deployments. {prodname} Server captures output lineage automatically.
 
 == Complete configuration examples
 
@@ -340,7 +344,7 @@ The following example shows a complete configuration for enabling a PostgreSQL c
 
 === {prodname} Server complete configuration example
 
-The following example shows a complete `application.properties` configuration for enabling a PostgreSQL connector to integrate with OpenLineage in {prodname} Server with Kafka sink:
+The following example shows a complete `application.properties` configuration for enabling a PostgreSQL connector to integrate with OpenLineage in {prodname} Server with a Kafka sink:
 
 [source,properties]
 ----
@@ -373,11 +377,10 @@ debezium.source.openlineage.integration.job.owners=Mario=maintainer,John Doe=Dat
 quarkus.log.console.json=false
 ----
 
-NOTE: In {prodname} Server, output dataset lineage is automatically captured. No SMT configuration is required.
 
 === MongoDB Sink Connector configuration example
 
-The following example shows a complete configuration for enabling the MongoDB Sink Connector to integrate with OpenLineage in Kafka Connect:
+The following example shows a complete configuration for enabling the MongoDB sink connector to integrate with OpenLineage in Kafka Connect:
 
 [source,json]
 ----
@@ -399,7 +402,8 @@ The following example shows a complete configuration for enabling the MongoDB Si
 }
 ----
 
-NOTE: For sink connectors, the `openlineage.integration.dataset.kafka.bootstrap.servers` property is required to retrieve input dataset metadata from Kafka topics. Unlike source connectors, sink connectors do not have direct access to Kafka topic metadata through the Kafka Connect framework and must explicitly connect to retrieve schema information.
+NOTE: For sink connectors, the `openlineage.integration.dataset.kafka.bootstrap.servers` property is required to retrieve input dataset metadata from Kafka topics. 
+Unlike source connectors, sink connectors do not have direct access to Kafka topic metadata through the Kafka Connect framework and must explicitly connect to retrieve schema information.
 
 === JDBC Sink Connector configuration example
 
@@ -515,8 +519,8 @@ Dependency issues::
 Missing input datasets for sink connectors::
 
 * Verify that the `openlineage.integration.dataset.kafka.bootstrap.servers` property is configured.
-* Check that the Kafka bootstrap servers are accessible from the connector.
-* Ensure the Kafka topics specified in the `topics` configuration exist and are accessible.
+* Verify that the connector has access to the Kafka bootstrap servers.
+* Verify that the Kafka topics specified in the `topics` configuration exist and that the connector has access to them.
 
 .Error Events
 
