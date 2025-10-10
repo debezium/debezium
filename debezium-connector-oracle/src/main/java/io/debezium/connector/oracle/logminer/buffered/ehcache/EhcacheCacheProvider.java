@@ -37,8 +37,11 @@ import io.debezium.DebeziumException;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.logminer.buffered.AbstractCacheProvider;
+import io.debezium.connector.oracle.logminer.buffered.CompositeTransactionCache;
+import io.debezium.connector.oracle.logminer.buffered.EventCountStrategy;
 import io.debezium.connector.oracle.logminer.buffered.LogMinerCache;
 import io.debezium.connector.oracle.logminer.buffered.LogMinerTransactionCache;
+import io.debezium.connector.oracle.logminer.buffered.SpillStrategy;
 import io.debezium.connector.oracle.logminer.events.LogMinerEvent;
 
 /**
@@ -53,7 +56,7 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
 
     private final boolean dropBufferOnStop;
     private final CacheManager cacheManager;
-    private final EhcacheLogMinerTransactionCache transactionCache;
+    private final LogMinerTransactionCache<EhcacheTransaction> transactionCache;
     private final EhcacheLogMinerCache<String, String> processedTransactionsCache;
     private final EhcacheLogMinerCache<String, String> schemaChangesCache;
 
@@ -65,7 +68,24 @@ public class EhcacheCacheProvider extends AbstractCacheProvider<EhcacheTransacti
 
         final EhcacheEvictionListener evictionListener = new EhcacheEvictionListener();
 
-        this.transactionCache = createTransactionCache(evictionListener);
+        // If the connector is configured to use MEMORY buffer with Ehcache as the spill provider,
+        // compose a Memory event store + Ehcache spill cache into a CompositeTransactionCache so the
+        // composite semantics (memory first, spilled second) match other providers like Chronicle.
+        if (connectorConfig.getLogMiningBufferType() == OracleConnectorConfig.LogMiningBufferType.MEMORY
+                && connectorConfig.isLogMiningBufferSpillEnabled()) {
+            // Create ehcache spillover cache and strategy, then create composite
+            EhcacheLogMinerTransactionCache spilloverCache = createTransactionCache(evictionListener);
+
+            long spillThreshold = connectorConfig.getLogMiningBufferSpillThreshold();
+            SpillStrategy strategy = new EventCountStrategy(spillThreshold);
+            int indexThreshold = connectorConfig.getLogMiningBufferSpillInMemoryIndexThreshold();
+
+            this.transactionCache = new CompositeTransactionCache<EhcacheTransaction>(spilloverCache, strategy, indexThreshold);
+        }
+        else {
+            this.transactionCache = createTransactionCache(evictionListener);
+        }
+
         this.processedTransactionsCache = createProcessedTransactionCache(evictionListener);
         this.schemaChangesCache = createSchemaChangesCache(evictionListener);
     }

@@ -202,6 +202,50 @@ public class TestHelper {
                 builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
                 builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
             }
+
+            // Configure spillover settings if enabled via system property (moved from POM profiles)
+            final String spillProvider = System.getProperty(OracleConnectorConfig.LOG_MINING_BUFFER_SPILL_PROVIDER.name());
+            if (spillProvider != null && !spillProvider.isEmpty()) {
+                // Always set the buffer type to memory for spillover tests
+                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_TYPE, "memory");
+
+                // Set the spill provider
+                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_SPILL_PROVIDER, spillProvider);
+
+                // Always set the in-memory events threshold to 0 so events spill immediately
+                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_SPILL_IN_MEMORY_EVENTS_THRESHOLD, 0);
+
+                // Set a default spill path per provider under the test target directory
+                String defaultPath = "./target/" + spillProvider;
+                builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_SPILL_PATH, defaultPath);
+
+                // Ensure transaction events threshold can be provided via system property, otherwise leave default
+                final String transactionEventsThreshold = System.getProperty(OracleConnectorConfig.LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD.name());
+                if (transactionEventsThreshold != null && !transactionEventsThreshold.isEmpty()) {
+                    builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD, Long.parseLong(transactionEventsThreshold));
+                }
+
+                // If Ehcache is used as the spill provider, ensure ehcache config fragments exist
+                if ("ehcache".equalsIgnoreCase(spillProvider)) {
+                    final int cacheSize = 1024000000; // 1GB default
+                    builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_GLOBAL_CONFIG, getEhcacheGlobalCacheConfig());
+                    builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_TRANSACTIONS_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
+                    builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_PROCESSED_TRANSACTIONS_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
+                    builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_SCHEMA_CHANGES_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
+                    builder.with(OracleConnectorConfig.LOG_MINING_BUFFER_EHCACHE_EVENTS_CONFIG, getEhcacheBasicCacheConfig(cacheSize));
+                }
+                // If Infinispan is used as the spill provider, ensure infinispan config fragments exist
+                else if ("infinispan_embedded".equalsIgnoreCase(spillProvider)) {
+                    withDefaultInfinispanCacheConfigurations(LogMiningBufferType.INFINISPAN_EMBEDDED, builder);
+                }
+                else if ("infinispan_remote".equalsIgnoreCase(spillProvider)) {
+                    withDefaultInfinispanCacheConfigurations(LogMiningBufferType.INFINISPAN_REMOTE, builder);
+                    builder.with("log.mining.buffer." + ConfigurationProperties.SERVER_LIST, INFINISPAN_SERVER_LIST);
+                    builder.with("log.mining.buffer." + ConfigurationProperties.AUTH_USERNAME, INFINISPAN_USER);
+                    builder.with("log.mining.buffer." + ConfigurationProperties.AUTH_PASSWORD, INFINISPAN_PASS);
+                }
+            }
+
             builder.withDefault(OracleConnectorConfig.LOG_MINING_BUFFER_DROP_ON_STOP, true);
         }
 

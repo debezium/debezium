@@ -112,6 +112,20 @@
             <version>${version.jaxb.implementation}</version>
         </dependency>
 
+        <!-- Chronicle Queue Dependencies -->
+        <dependency>
+            <groupId>net.openhft</groupId>
+            <artifactId>chronicle-queue</artifactId>
+            <version>${version.chronicle.queue}</version>
+        </dependency>
+
+        <!-- RocksDB Dependencies -->
+        <dependency>
+            <groupId>org.rocksdb</groupId>
+            <artifactId>rocksdbjni</artifactId>
+            <version>${version.rocksdbjni}</version>
+        </dependency>
+
         <!-- Introduce ehcache dependencies on Maven Central -->
         <dependency>
             <groupId>com.sun.istack</groupId>
@@ -227,6 +241,9 @@
         -->
         <version.istack>3.0.7</version.istack>
         <version.fastinfoset>1.2.15</version.fastinfoset>
+        
+        <version.chronicle.queue>2026.1</version.chronicle.queue>
+        <version.rocksdbjni>10.2.1</version.rocksdbjni>
 
         <protobuf.output.directory>${project.basedir}/generated-sources</protobuf.output.directory>
 
@@ -308,7 +325,17 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <argLine>-Djavax.xml.parsers.SAXParserFactory=com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl</argLine>
+                    <argLine>
+                        -Djavax.xml.parsers.SAXParserFactory=com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl
+                        --add-opens java.base/sun.nio.ch=ALL-UNNAMED
+                        --add-opens java.base/java.nio=ALL-UNNAMED
+                        --add-opens java.base/sun.security.action=ALL-UNNAMED
+                        --add-opens java.base/java.lang.reflect=ALL-UNNAMED
+                        --add-opens java.base/java.lang=ALL-UNNAMED
+                        --add-opens java.base/java.util=ALL-UNNAMED
+                        --add-opens java.base/jdk.internal.misc=ALL-UNNAMED
+                        --add-opens java.base/jdk.internal.ref=ALL-UNNAMED
+                    </argLine>
                     <systemPropertyVariables combine.children="append">
                         <database.connection.adapter>${adapter.name}</database.connection.adapter>
                         <log.mining.buffer.type>${log.mining.buffer.type.name}</log.mining.buffer.type>
@@ -336,11 +363,21 @@
                 <configuration>
                     <skipTests>${skipITs}</skipTests>
                     <enableAssertions>true</enableAssertions>
-                    <forkCount>0</forkCount>
-                    <argLine>-Djava.library.path=${instantclient.dir} -Ddebezium.embedded.shutdown.pause.before.interrupt.ms=20000</argLine>
+                    <argLine>
+                        -Djava.library.path=${instantclient.dir} -Ddebezium.embedded.shutdown.pause.before.interrupt.ms=20000
+                        --add-opens java.base/sun.nio.ch=ALL-UNNAMED
+                        --add-opens java.base/java.nio=ALL-UNNAMED
+                        --add-opens java.base/sun.security.action=ALL-UNNAMED
+                        --add-opens java.base/java.lang.reflect=ALL-UNNAMED
+                        --add-opens java.base/java.lang=ALL-UNNAMED
+                        --add-opens java.base/java.util=ALL-UNNAMED
+                        --add-opens java.base/jdk.internal.misc=ALL-UNNAMED
+                        --add-opens java.base/jdk.internal.ref=ALL-UNNAMED
+                    </argLine>
                     <systemPropertyVariables>
                         <database.connection.adapter>${adapter.name}</database.connection.adapter>
                         <log.mining.buffer.type>${log.mining.buffer.type.name}</log.mining.buffer.type>
+                        <log.mining.buffer.spill.provider>${log.mining.buffer.spill.provider}</log.mining.buffer.spill.provider>
                         <internal.log.mining.read.only>${log.mining.read.only.mode}</internal.log.mining.read.only>
                         <javax.xml.parsers.SAXParserFactory>com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl</javax.xml.parsers.SAXParserFactory>
                         <version.oracle.server>${version.oracle.server}</version.oracle.server>
@@ -805,6 +842,178 @@
                 </plugins>
             </build>
         </profile>
+
+        <!-- Memory spillover profiles (chronicle/rocksdb/ehcache) -->
+        <profile>
+            <id>oracle-memory-chronicle-spillover</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <log.mining.buffer.spill.provider>chronicle</log.mining.buffer.spill.provider>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/EmbeddedInfinispanStreamingChangeEventSourceIT.java</exclude>
+                                <exclude>**/EmbeddedInfinispanStreamingChangeEventSourceTest.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/EmbeddedInfinispanStreamingChangeEventSourceIT.java</exclude>
+                                <exclude>**/EmbeddedInfinispanStreamingChangeEventSourceTest.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <id>oracle-memory-rocksdb-spillover</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <log.mining.buffer.spill.provider>rocksdb</log.mining.buffer.spill.provider>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/EmbeddedInfinispanStreamingChangeEventSourceIT.java</exclude>
+                                <exclude>**/EmbeddedInfinispanStreamingChangeEventSourceTest.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/EmbeddedInfinispanStreamingChangeEventSourceIT.java</exclude>
+                                <exclude>**/EmbeddedInfinispanStreamingChangeEventSourceTest.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <id>oracle-memory-ehcache-spillover</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <log.mining.buffer.spill.provider>ehcache</log.mining.buffer.spill.provider>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/EmbeddedInfinispanStreamingChangeEventSourceIT.java</exclude>
+                                <exclude>**/EmbeddedInfinispanStreamingChangeEventSourceTest.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/EmbeddedInfinispanStreamingChangeEventSourceIT.java</exclude>
+                                <exclude>**/EmbeddedInfinispanStreamingChangeEventSourceTest.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <id>oracle-memory-infinispan-embedded-spillover</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <log.mining.buffer.spill.provider>infinispan_embedded</log.mining.buffer.spill.provider>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/EmbeddedInfinispanStreamingChangeEventSourceIT.java</exclude>
+                                <exclude>**/EmbeddedInfinispanStreamingChangeEventSourceTest.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/EmbeddedInfinispanStreamingChangeEventSourceIT.java</exclude>
+                                <exclude>**/EmbeddedInfinispanStreamingChangeEventSourceTest.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <id>oracle-memory-infinispan-remote-spillover</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <log.mining.buffer.spill.provider>infinispan_remote</log.mining.buffer.spill.provider>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/EmbeddedInfinispanStreamingChangeEventSourceIT.java</exclude>
+                                <exclude>**/EmbeddedInfinispanStreamingChangeEventSourceTest.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/EmbeddedInfinispanStreamingChangeEventSourceIT.java</exclude>
+                                <exclude>**/EmbeddedInfinispanStreamingChangeEventSourceTest.java</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
         <!-- This profile should be used for testing connector with EhCache only -->
         <profile>
             <id>oracle-ehcache</id>

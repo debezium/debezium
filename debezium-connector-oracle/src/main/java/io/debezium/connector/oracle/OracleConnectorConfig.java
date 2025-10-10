@@ -77,6 +77,12 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     protected final static long DEFAULT_RESUME_POSITION_INTERVAL = 10_000L;
 
+    // Buffer spill configuration constants
+    protected static final int SPILL_DISABLED_THRESHOLD = -1;
+    protected static final int DEFAULT_SPILL_IN_MEMORY_INDEX_THRESHOLD = 10000;
+    protected static final String DEFAULT_CHRONICLE_ROLL_CYCLE = "FAST_DAILY";
+    protected static final int DEFAULT_ROCKSDB_BATCH_FLUSH_THRESHOLD = 10000;
+
     public static final Field PORT = RelationalDatabaseConnectorConfig.PORT
             .withDefault(DEFAULT_PORT);
 
@@ -431,8 +437,139 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDefault(false)
             .withWidth(Width.SHORT)
             .withImportance(Importance.LOW)
+            .withValidation(OracleConnectorConfig::validateLogMiningBufferDropOnStop)
             .withDescription("When set to true the underlying buffer cache is not retained when the connector is stopped. " +
                     "When set to false (the default), the buffer cache is retained across restarts.");
+
+    public static final Field LOG_MINING_BUFFER_SPILL_PROVIDER = Field.create("log.mining.buffer.spill.provider")
+            .withDisplayName("The spill provider to use for disk-based buffering")
+            .withEnum(LogMiningSpillProvider.class, LogMiningSpillProvider.CHRONICLE)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("The provider implementation to use for spilling buffer events to disk.");
+
+    public static final Field LOG_MINING_BUFFER_SPILL_STRATEGY = Field.create("log.mining.buffer.spill.strategy")
+            .withDisplayName("The spill strategy to use for determining when to spill events")
+            .withEnum(LogMiningSpillStrategy.class, LogMiningSpillStrategy.EVENT_COUNT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("The strategy implementation to use for determining when transactions should begin spilling events to disk.");
+
+    public static final Field LOG_MINING_BUFFER_SPILL_IN_MEMORY_EVENTS_THRESHOLD = Field.create("log.mining.buffer.spill.in.memory.events.threshold")
+            .withDisplayName("The number of events to keep in memory before spilling to disk")
+            .withType(Type.INT)
+            .withDefault(SPILL_DISABLED_THRESHOLD)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("The maximum number of events to keep in memory before spilling to disk. " +
+                    "Values >= 0 enable spillover and specify the in-memory threshold; a value of -1 (default) disables spillover. " +
+                    "This allows the threshold to act as the single toggle for enabling spill behaviour for backward-compatible configurations.");
+
+    public static final Field LOG_MINING_BUFFER_SPILL_IN_MEMORY_INDEX_THRESHOLD = Field.create("log.mining.buffer.spill.in.memory.index.threshold")
+            .withDisplayName("The number of spilled events to index in memory before disabling the index")
+            .withType(Type.INT)
+            .withDefault(DEFAULT_SPILL_IN_MEMORY_INDEX_THRESHOLD)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("The maximum number of spilled events to keep in the composite in-memory index per transaction. " +
+                    "When the threshold is exceeded for a transaction, the index is disabled for that transaction and disk scans are used instead.");
+
+    public static final Field LOG_MINING_BUFFER_SPILL_PATH = Field.create("log.mining.buffer.spill.path")
+            .withDisplayName("The path where spill files are stored")
+            .withType(Type.STRING)
+            .withWidth(Width.LONG)
+            .withImportance(Importance.LOW)
+            .withDescription("The file system path where spill files are stored. " +
+                    "This path is used when spill is enabled and a spill provider is configured.");
+
+    public static final Field LOG_MINING_BUFFER_CHRONICLE_ROLL_CYCLE = Field.create("log.mining.buffer.chronicle.roll.cycle")
+            .withDisplayName("Chronicle Queue roll cycle")
+            .withType(Type.STRING)
+            .withDefault(DEFAULT_CHRONICLE_ROLL_CYCLE)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Chronicle Queue roll cycle setting. " +
+                    "Defaults to FAST_DAILY.");
+
+    public static final Field LOG_MINING_BUFFER_ROCKSDB_BATCH_FLUSH_THRESHOLD = Field.create("log.mining.buffer.rocksdb.batch.flush.threshold")
+            .withDisplayName("RocksDB batch flush threshold")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(DEFAULT_ROCKSDB_BATCH_FLUSH_THRESHOLD)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("Number of pending writes after which RocksDB will perform a batch flush. Default 10.");
+
+    public static final Field LOG_MINING_BUFFER_ROCKSDB_WRITE_BUFFER_SIZE_MB = Field.create("log.mining.buffer.rocksdb.write.buffer.size.mb")
+            .withDisplayName("RocksDB write buffer size (MB)")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(64L)
+            .withValidation(Field::isPositiveLong)
+            .withDescription("Write buffer size in megabytes for RocksDB (used for write buffer configuration). Default 64 MB.");
+
+    public static final Field LOG_MINING_BUFFER_ROCKSDB_MAX_WRITE_BUFFER_NUMBER = Field.create("log.mining.buffer.rocksdb.max.write.buffer.number")
+            .withDisplayName("RocksDB max write buffer number")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(3)
+            .withValidation(Field::isPositiveInteger)
+            .withDescription("Maximum number of write buffers for RocksDB. Default 3.");
+
+    public static final Field LOG_MINING_BUFFER_ROCKSDB_MAX_BACKGROUND_JOBS = Field.create("log.mining.buffer.rocksdb.max.background.jobs")
+            .withDisplayName("RocksDB max background jobs")
+            .withType(Type.INT)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(4)
+            .withValidation(Field::isNonNegativeInteger)
+            .withDescription("Maximum number of RocksDB background jobs (compactions, flushes). Default 4.");
+
+    public static final Field LOG_MINING_BUFFER_ROCKSDB_TARGET_FILE_SIZE_MB = Field.create("log.mining.buffer.rocksdb.target.file.size.mb")
+            .withDisplayName("RocksDB target file size base (MB)")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(64L)
+            .withValidation(Field::isPositiveLong)
+            .withDescription("Target file size for RocksDB level files. Default 64 MB.");
+
+    public static final Field LOG_MINING_BUFFER_ROCKSDB_MAX_BYTES_FOR_LEVEL_BASE_MB = Field.create("log.mining.buffer.rocksdb.max.bytes.for.level.base.mb")
+            .withDisplayName("RocksDB max bytes for level base (MB)")
+            .withType(Type.LONG)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(256L)
+            .withValidation(Field::isPositiveLong)
+            .withDescription("Maximum number of bytes for level base in RocksDB. Default 256 MB.");
+
+    public static final Field LOG_MINING_BUFFER_ROCKSDB_COMPRESSION = Field.create("log.mining.buffer.rocksdb.compression")
+            .withDisplayName("RocksDB compression type")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault("LZ4")
+            .withValidation(OracleConnectorConfig::validateRocksDbCompression)
+            .withDescription("Compression type for RocksDB. Supported values: NONE, SNAPPY, LZ4, ZSTD. Default LZ4.");
+
+    public static final Field LOG_MINING_BUFFER_ROCKSDB_BOTTOMMOST_COMPRESSION = Field.create("log.mining.buffer.rocksdb.bottommost.compression")
+            .withDisplayName("RocksDB bottommost compression type")
+            .withType(Type.STRING)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault("ZSTD")
+            .withValidation(OracleConnectorConfig::validateRocksDbCompression)
+            .withDescription("Compression type for the bottommost level in RocksDB. Supported values: NONE, SNAPPY, LZ4, ZSTD. Default ZSTD.");
+
+    public static final Field LOG_MINING_BUFFER_ROCKSDB_FORCE_FLUSH_ON_CLOSE = Field.create("log.mining.buffer.rocksdb.force.flush.on.close")
+            .withDisplayName("Force RocksDB flush on close")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(true)
+            .withDescription("Whether to force a flush of RocksDB data on close. Default true.");
 
     public static final Field LOG_MINING_SCN_GAP_DETECTION_GAP_SIZE_MIN = Field.create("log.mining.scn.gap.detection.gap.size.min")
             .withDisplayName("SCN gap size used to detect SCN gap")
@@ -818,6 +955,20 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     ARCHIVE_DESTINATION_NAME,
                     LOG_MINING_BUFFER_TYPE,
                     LOG_MINING_BUFFER_DROP_ON_STOP,
+                    LOG_MINING_BUFFER_SPILL_PROVIDER,
+                    LOG_MINING_BUFFER_SPILL_STRATEGY,
+                    LOG_MINING_BUFFER_SPILL_IN_MEMORY_EVENTS_THRESHOLD,
+                    LOG_MINING_BUFFER_SPILL_PATH,
+                    LOG_MINING_BUFFER_CHRONICLE_ROLL_CYCLE,
+                    LOG_MINING_BUFFER_ROCKSDB_BATCH_FLUSH_THRESHOLD,
+                    LOG_MINING_BUFFER_ROCKSDB_WRITE_BUFFER_SIZE_MB,
+                    LOG_MINING_BUFFER_ROCKSDB_MAX_WRITE_BUFFER_NUMBER,
+                    LOG_MINING_BUFFER_ROCKSDB_MAX_BACKGROUND_JOBS,
+                    LOG_MINING_BUFFER_ROCKSDB_TARGET_FILE_SIZE_MB,
+                    LOG_MINING_BUFFER_ROCKSDB_MAX_BYTES_FOR_LEVEL_BASE_MB,
+                    LOG_MINING_BUFFER_ROCKSDB_COMPRESSION,
+                    LOG_MINING_BUFFER_ROCKSDB_BOTTOMMOST_COMPRESSION,
+                    LOG_MINING_BUFFER_ROCKSDB_FORCE_FLUSH_ON_CLOSE,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_GLOBAL,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_TRANSACTIONS,
                     LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS,
@@ -920,6 +1071,20 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final LogMiningBufferType logMiningBufferType;
     private final long logMiningBufferTransactionEventsThreshold;
     private final boolean logMiningBufferDropOnStop;
+    private final LogMiningSpillProvider logMiningBufferSpillProvider;
+    private final int logMiningBufferSpillInMemoryEventsThreshold;
+    private final int logMiningBufferSpillInMemoryIndexThreshold;
+    private final String logMiningBufferSpillPath;
+    private final String chronicleRollCycle;
+    private final int rocksDbBatchFlushThreshold;
+    private final long rocksDbWriteBufferSizeMb;
+    private final int rocksDbMaxWriteBufferNumber;
+    private final int rocksDbMaxBackgroundJobs;
+    private final long rocksDbTargetFileSizeMb;
+    private final long rocksDbMaxBytesForLevelBaseMb;
+    private final String rocksDbCompression;
+    private final String rocksDbBottommostCompression;
+    private final boolean rocksDbForceFlushOnClose;
     private final int logMiningScnGapDetectionGapSizeMin;
     private final int logMiningScnGapDetectionTimeIntervalMaxMs;
     private final int logMiningLogFileQueryMaxRetries;
@@ -1002,7 +1167,20 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.logMiningUsernameExcludes = Strings.setOfTrimmed(config.getString(LOG_MINING_USERNAME_EXCLUDE_LIST), String::new);
         this.logMiningBufferType = LogMiningBufferType.parse(config.getString(LOG_MINING_BUFFER_TYPE));
         this.logMiningBufferTransactionEventsThreshold = config.getLong(LOG_MINING_BUFFER_TRANSACTION_EVENTS_THRESHOLD);
-        this.logMiningBufferDropOnStop = config.getBoolean(LOG_MINING_BUFFER_DROP_ON_STOP);
+        this.logMiningBufferSpillInMemoryEventsThreshold = config.getInteger(LOG_MINING_BUFFER_SPILL_IN_MEMORY_EVENTS_THRESHOLD);
+        this.logMiningBufferSpillProvider = LogMiningSpillProvider.parse(config.getString(LOG_MINING_BUFFER_SPILL_PROVIDER));
+        this.logMiningBufferSpillInMemoryIndexThreshold = config.getInteger(LOG_MINING_BUFFER_SPILL_IN_MEMORY_INDEX_THRESHOLD);
+        this.logMiningBufferSpillPath = config.getString(LOG_MINING_BUFFER_SPILL_PATH);
+        this.chronicleRollCycle = config.getString(LOG_MINING_BUFFER_CHRONICLE_ROLL_CYCLE);
+        this.rocksDbBatchFlushThreshold = config.getInteger(LOG_MINING_BUFFER_ROCKSDB_BATCH_FLUSH_THRESHOLD);
+        this.rocksDbWriteBufferSizeMb = config.getLong(LOG_MINING_BUFFER_ROCKSDB_WRITE_BUFFER_SIZE_MB);
+        this.rocksDbMaxWriteBufferNumber = config.getInteger(LOG_MINING_BUFFER_ROCKSDB_MAX_WRITE_BUFFER_NUMBER);
+        this.rocksDbMaxBackgroundJobs = config.getInteger(LOG_MINING_BUFFER_ROCKSDB_MAX_BACKGROUND_JOBS);
+        this.rocksDbTargetFileSizeMb = config.getLong(LOG_MINING_BUFFER_ROCKSDB_TARGET_FILE_SIZE_MB);
+        this.rocksDbMaxBytesForLevelBaseMb = config.getLong(LOG_MINING_BUFFER_ROCKSDB_MAX_BYTES_FOR_LEVEL_BASE_MB);
+        this.rocksDbCompression = config.getString(LOG_MINING_BUFFER_ROCKSDB_COMPRESSION);
+        this.rocksDbBottommostCompression = config.getString(LOG_MINING_BUFFER_ROCKSDB_BOTTOMMOST_COMPRESSION);
+        this.rocksDbForceFlushOnClose = config.getBoolean(LOG_MINING_BUFFER_ROCKSDB_FORCE_FLUSH_ON_CLOSE);
         this.archiveLogOnlyScnPollTime = Duration.ofMillis(config.getInteger(LOG_MINING_ARCHIVE_LOG_ONLY_SCN_POLL_INTERVAL_MS));
         this.logMiningScnGapDetectionGapSizeMin = config.getInteger(LOG_MINING_SCN_GAP_DETECTION_GAP_SIZE_MIN);
         this.logMiningScnGapDetectionTimeIntervalMaxMs = config.getInteger(LOG_MINING_SCN_GAP_DETECTION_TIME_INTERVAL_MAX_MS);
@@ -1034,6 +1212,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
         final List<String> destinationNames = Strings.listOfTrimmed(config.getString(ARCHIVE_DESTINATION_NAME), String::new);
         this.destinationNameResolver = new ArchiveDestinationNameResolver(destinationNames);
+
+        // TODO: Probably a better way to do this
+        this.logMiningBufferDropOnStop = computeEffectiveLogMiningBufferDropOnStop(config);
 
         // OpenLogReplicator
         this.openLogReplicatorSource = config.getString(OLR_SOURCE);
@@ -1633,6 +1814,122 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     }
 
+    public enum LogMiningSpillProvider implements EnumeratedValue {
+        CHRONICLE("chronicle") {
+            @Override
+            public io.debezium.connector.oracle.logminer.buffered.CacheProvider<?> createCacheProvider(OracleConnectorConfig config) {
+                return new io.debezium.connector.oracle.logminer.buffered.chronicle.ChronicleCacheProvider(config);
+            }
+
+            @Override
+            public io.debezium.connector.oracle.logminer.buffered.TransactionFactory<?> createTransactionFactory() {
+                return new io.debezium.connector.oracle.logminer.buffered.chronicle.ChronicleTransactionFactory();
+            }
+        },
+        ROCKSDB("rocksdb") {
+            @Override
+            public io.debezium.connector.oracle.logminer.buffered.CacheProvider<?> createCacheProvider(OracleConnectorConfig config) {
+                return new io.debezium.connector.oracle.logminer.buffered.rocksdb.RocksDbCacheProvider(config);
+            }
+
+            @Override
+            public io.debezium.connector.oracle.logminer.buffered.TransactionFactory<?> createTransactionFactory() {
+                return new io.debezium.connector.oracle.logminer.buffered.rocksdb.RocksDbTransactionFactory();
+            }
+        },
+        EHCACHE("ehcache") {
+            @Override
+            public io.debezium.connector.oracle.logminer.buffered.CacheProvider<?> createCacheProvider(OracleConnectorConfig config) {
+                return new io.debezium.connector.oracle.logminer.buffered.ehcache.EhcacheCacheProvider(config);
+            }
+
+            @Override
+            public io.debezium.connector.oracle.logminer.buffered.TransactionFactory<?> createTransactionFactory() {
+                return new io.debezium.connector.oracle.logminer.buffered.ehcache.EhcacheTransactionFactory();
+            }
+        },
+        INFINISPAN_EMBEDDED("infinispan_embedded") {
+            @Override
+            public io.debezium.connector.oracle.logminer.buffered.CacheProvider<?> createCacheProvider(OracleConnectorConfig config) {
+                return new io.debezium.connector.oracle.logminer.buffered.infinispan.EmbeddedInfinispanCacheProvider(config);
+            }
+
+            @Override
+            public io.debezium.connector.oracle.logminer.buffered.TransactionFactory<?> createTransactionFactory() {
+                return new io.debezium.connector.oracle.logminer.buffered.infinispan.InfinispanTransactionFactory();
+            }
+        },
+        INFINISPAN_REMOTE("infinispan_remote") {
+            @Override
+            public io.debezium.connector.oracle.logminer.buffered.CacheProvider<?> createCacheProvider(OracleConnectorConfig config) {
+                return new io.debezium.connector.oracle.logminer.buffered.infinispan.RemoteInfinispanCacheProvider(config);
+            }
+
+            @Override
+            public io.debezium.connector.oracle.logminer.buffered.TransactionFactory<?> createTransactionFactory() {
+                return new io.debezium.connector.oracle.logminer.buffered.infinispan.InfinispanTransactionFactory();
+            }
+        };
+
+        private final String value;
+
+        LogMiningSpillProvider(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public abstract io.debezium.connector.oracle.logminer.buffered.CacheProvider<?> createCacheProvider(OracleConnectorConfig config);
+
+        public abstract io.debezium.connector.oracle.logminer.buffered.TransactionFactory<?> createTransactionFactory();
+
+        public static LogMiningSpillProvider parse(String value) {
+            if (value == null) {
+                return null;
+            }
+
+            for (LogMiningSpillProvider option : LogMiningSpillProvider.values()) {
+                if (option.getValue().equalsIgnoreCase(value.trim())) {
+                    return option;
+                }
+            }
+
+            return null;
+        }
+    }
+
+    public enum LogMiningSpillStrategy implements EnumeratedValue {
+        EVENT_COUNT("event_count");
+
+        private final String value;
+
+        LogMiningSpillStrategy(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
+
+        public static LogMiningSpillStrategy parse(String value) {
+            if (value == null) {
+                return null;
+            }
+
+            for (LogMiningSpillStrategy option : LogMiningSpillStrategy.values()) {
+                if (option.getValue().equalsIgnoreCase(value.trim())) {
+                    return option;
+                }
+            }
+
+            return null;
+        }
+    }
+
     public enum LogMiningQueryFilterMode implements EnumeratedValue {
         /**
          * This filter mode does not add any predicates to the LogMiner query, all filtering of
@@ -1938,6 +2235,115 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      */
     public boolean isLogMiningBufferDropOnStop() {
         return logMiningBufferDropOnStop;
+    }
+
+    /**
+     * @return whether the memory buffer can spill to disk
+     */
+    public boolean isLogMiningBufferSpillEnabled() {
+        return this.logMiningBufferSpillInMemoryEventsThreshold >= 0;
+    }
+
+    /**
+     * @return the number of events to keep in memory before spilling to disk
+     */
+    public int getLogMiningBufferSpillThreshold() {
+        return logMiningBufferSpillInMemoryEventsThreshold;
+    }
+
+    /**
+     * @return the spill provider to use for disk-based buffering
+     */
+    public LogMiningSpillProvider getLogMiningBufferSpillProvider() {
+        return logMiningBufferSpillProvider;
+    }
+
+    /**
+     * @return the number of events to keep in memory before spilling to disk
+     */
+    public int getLogMiningBufferSpillInMemoryEventsThreshold() {
+        return logMiningBufferSpillInMemoryEventsThreshold;
+    }
+
+    public int getLogMiningBufferSpillInMemoryIndexThreshold() {
+        return logMiningBufferSpillInMemoryIndexThreshold;
+    }
+
+    /**
+     * @return the path where spill files are stored
+     */
+    public String getLogMiningBufferSpillPath() {
+        return logMiningBufferSpillPath;
+    }
+
+    /**
+     * @return the Chronicle Queue roll cycle setting.
+     */
+    public String getChronicleRollCycle() {
+        return chronicleRollCycle;
+    }
+
+    /**
+     * @return the RocksDB batch flush threshold.
+     */
+    public int getRocksDbBatchFlushThreshold() {
+        return rocksDbBatchFlushThreshold;
+    }
+
+    /**
+     * @return the RocksDB write buffer size in MB.
+     */
+    public long getRocksDbWriteBufferSizeMb() {
+        return rocksDbWriteBufferSizeMb;
+    }
+
+    /**
+     * @return the RocksDB max write buffer number.
+     */
+    public int getRocksDbMaxWriteBufferNumber() {
+        return rocksDbMaxWriteBufferNumber;
+    }
+
+    /**
+     * @return the RocksDB max background jobs.
+     */
+    public int getRocksDbMaxBackgroundJobs() {
+        return rocksDbMaxBackgroundJobs;
+    }
+
+    /**
+     * @return the RocksDB target file size in MB.
+     */
+    public long getRocksDbTargetFileSizeMb() {
+        return rocksDbTargetFileSizeMb;
+    }
+
+    /**
+     * @return the RocksDB max bytes for level base in MB.
+     */
+    public long getRocksDbMaxBytesForLevelBaseMb() {
+        return rocksDbMaxBytesForLevelBaseMb;
+    }
+
+    /**
+     * @return the RocksDB compression type.
+     */
+    public String getRocksDbCompression() {
+        return rocksDbCompression;
+    }
+
+    /**
+     * @return the RocksDB bottommost compression type.
+     */
+    public String getRocksDbBottommostCompression() {
+        return rocksDbBottommostCompression;
+    }
+
+    /**
+     * @return whether to force RocksDB flush on close.
+     */
+    public boolean isRocksDbForceFlushOnClose() {
+        return rocksDbForceFlushOnClose;
     }
 
     /**
@@ -2470,6 +2876,52 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             }
         }
         return 0;
+    }
+
+    /**
+     * Validation for log.mining.buffer.drop.on.stop. We don't reject the config, but we warn when the
+     * effective behavior will be forced to drop the buffer on stop due to using memory buffer + spill
+     * with the Ehcache provider.
+     */
+    public static int validateLogMiningBufferDropOnStop(Configuration config, Field field, ValidationOutput problems) {
+        final boolean rawDrop = config.getBoolean(LOG_MINING_BUFFER_DROP_ON_STOP);
+        final int inMemoryThreshold = config.getInteger(LOG_MINING_BUFFER_SPILL_IN_MEMORY_EVENTS_THRESHOLD);
+        final boolean spillEnabled = inMemoryThreshold >= 0;
+        final LogMiningBufferType bufferType = LogMiningBufferType.parseWithDefaultFallback(config.getString(LOG_MINING_BUFFER_TYPE));
+        final LogMiningSpillProvider provider = LogMiningSpillProvider.parse(config.getString(LOG_MINING_BUFFER_SPILL_PROVIDER));
+
+        if (!rawDrop && spillEnabled && LogMiningBufferType.MEMORY.equals(bufferType) && LogMiningSpillProvider.EHCACHE.equals(provider)) {
+            LOGGER.warn(
+                    "Configuration '{}' set to false but using an in-memory buffer with '{}' spill provider requires dropping the buffer on stop. Overriding to true to ensure Ehcache persistence is cleaned up.",
+                    LOG_MINING_BUFFER_DROP_ON_STOP.name(), LOG_MINING_BUFFER_SPILL_PROVIDER.name());
+        }
+        return 0;
+    }
+
+    private static boolean computeEffectiveLogMiningBufferDropOnStop(Configuration config) {
+        final boolean rawDrop = config.getBoolean(LOG_MINING_BUFFER_DROP_ON_STOP);
+        final int inMemoryThreshold = config.getInteger(LOG_MINING_BUFFER_SPILL_IN_MEMORY_EVENTS_THRESHOLD);
+        final boolean spillEnabled = inMemoryThreshold >= 0;
+        final LogMiningBufferType bufferType = LogMiningBufferType.parseWithDefaultFallback(config.getString(LOG_MINING_BUFFER_TYPE));
+        final LogMiningSpillProvider provider = LogMiningSpillProvider.parse(config.getString(LOG_MINING_BUFFER_SPILL_PROVIDER));
+
+        return rawDrop || (spillEnabled && LogMiningBufferType.MEMORY.equals(bufferType) && LogMiningSpillProvider.EHCACHE.equals(provider));
+    }
+
+    private static int validateRocksDbCompression(Configuration config, Field field, ValidationOutput problems) {
+        final String compressionType = config.getString(field);
+        if (!Strings.isNullOrEmpty(compressionType)) {
+            if (!isValidRocksDbCompressionType(compressionType)) {
+                LOGGER.error("Invalid RocksDB compression type '{}'. Supported values: NONE, SNAPPY, LZ4, ZSTD", compressionType);
+                return 1;
+            }
+        }
+        return 0;
+    }
+
+    private static boolean isValidRocksDbCompressionType(String type) {
+        return "NONE".equalsIgnoreCase(type) || "SNAPPY".equalsIgnoreCase(type) ||
+                "LZ4".equalsIgnoreCase(type) || "ZSTD".equalsIgnoreCase(type);
     }
 
     private static boolean isBufferedLogMiner(Configuration config) {
