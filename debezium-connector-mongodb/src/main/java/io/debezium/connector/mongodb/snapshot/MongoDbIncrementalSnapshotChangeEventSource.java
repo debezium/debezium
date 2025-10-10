@@ -48,6 +48,7 @@ import io.debezium.connector.mongodb.MongoDbPartition;
 import io.debezium.connector.mongodb.MongoDbSchema;
 import io.debezium.connector.mongodb.MongoDbTaskContext;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
+import io.debezium.connector.mongodb.connection.MongoDbConnections;
 import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.notification.NotificationService;
@@ -250,7 +251,7 @@ public class MongoDbIncrementalSnapshotChangeEventSource
     @Override
     @SuppressWarnings("unchecked")
     public void init(MongoDbPartition partition, OffsetContext offsetContext) {
-        mongo = taskContext.getConnection(dispatcher, partition);
+        mongo = MongoDbConnections.create(taskContext.getConfiguration(), dispatcher, partition);
 
         if (offsetContext == null) {
             LOGGER.info("Empty incremental snapshot change event source started, no action needed");

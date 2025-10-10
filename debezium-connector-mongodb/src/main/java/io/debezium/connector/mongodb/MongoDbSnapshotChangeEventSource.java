@@ -39,6 +39,7 @@ import com.mongodb.client.model.changestream.ChangeStreamDocument;
 import io.debezium.DebeziumException;
 import io.debezium.connector.SnapshotRecord;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
+import io.debezium.connector.mongodb.connection.MongoDbConnections;
 import io.debezium.connector.mongodb.recordemitter.MongoDbSnapshotRecordEmitter;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
@@ -163,7 +164,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
 
     private void doSnapshot(ChangeEventSourceContext sourceCtx, MongoDbSnapshotContext snapshotCtx, SnapshottingTask snapshottingTask)
             throws Throwable {
-        try (MongoDbConnection mongo = taskContext.getConnection(dispatcher, snapshotCtx.partition)) {
+        try (MongoDbConnection mongo = MongoDbConnections.create(taskContext.getConfiguration(), dispatcher, snapshotCtx.partition)) {
             initSnapshotStartOffsets(snapshotCtx, mongo);
             SnapshotReceiver<MongoDbPartition> snapshotReceiver = dispatcher.getSnapshotChangeEventReceiver();
             snapshotCtx.offset.preSnapshotStart(snapshottingTask.isOnDemand());
@@ -308,7 +309,7 @@ public class MongoDbSnapshotChangeEventSource extends AbstractSnapshotChangeEven
             final MongoDatabase database = client.getDatabase(collectionId.dbName());
             final MongoCollection<BsonDocument> collection = database.getCollection(collectionId.name(), BsonDocument.class);
 
-            final int batchSize = taskContext.getConnectorConfig().getSnapshotFetchSize();
+            final int batchSize = connectorConfig.getSnapshotFetchSize();
 
             long docs = 0;
             Optional<String> snapshotFilterForCollectionId = Optional.ofNullable(snapshotFilterQueryForCollection.get(collectionId));

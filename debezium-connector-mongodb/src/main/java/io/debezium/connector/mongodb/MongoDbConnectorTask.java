@@ -32,6 +32,7 @@ import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
 import io.debezium.connector.mongodb.connection.MongoDbConnectionContext;
+import io.debezium.connector.mongodb.connection.MongoDbConnections;
 import io.debezium.connector.mongodb.metrics.MongoDbChangeEventSourceMetricsFactory;
 import io.debezium.document.DocumentReader;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
@@ -90,7 +91,8 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
         this.connectionContext = new MongoDbConnectionContext(config);
 
         final Schema structSchema = connectorConfig.getSourceInfoStructMaker().schema();
-        this.schema = new MongoDbSchema(connectorConfig, taskContext.getFilters(), taskContext.getTopicNamingStrategy(), structSchema, schemaNameAdjuster);
+        this.schema = new MongoDbSchema(connectorConfig, taskContext.getFilters(), connectorConfig.getTopicNamingStrategy(MongoDbConnectorConfig.TOPIC_NAMING_STRATEGY),
+                structSchema, schemaNameAdjuster);
 
         final Offsets<MongoDbPartition, MongoDbOffsetContext> previousOffsets = getPreviousOffsets(connectorConfig);
         final Clock clock = Clock.system();
@@ -130,7 +132,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
 
             final EventDispatcher<MongoDbPartition, CollectionId> dispatcher = new EventDispatcher<>(
                     connectorConfig,
-                    taskContext.getTopicNamingStrategy(),
+                    connectorConfig.getTopicNamingStrategy(MongoDbConnectorConfig.TOPIC_NAMING_STRATEGY),
                     schema,
                     queue,
                     taskContext.getFilters().collectionFilter()::test,
@@ -140,7 +142,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                     signalProcessor,
                     connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
 
-            validate(connectorConfig, taskContext.getConnection(dispatcher, previousOffsets.getTheOnlyPartition()), previousOffsets,
+            validate(connectorConfig, MongoDbConnections.create(config, dispatcher, previousOffsets.getTheOnlyPartition()), previousOffsets,
                     snapshotterService.getSnapshotter());
 
             // Validate guardrail limits for captured collections to prevent loading excessive collection schemas into memory
@@ -148,7 +150,7 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
                 LOGGER.info("Guardrail validation skipped");
             }
             else {
-                validateGuardrailLimits(connectorConfig, taskContext.getConnection(dispatcher, previousOffsets.getTheOnlyPartition()));
+                validateGuardrailLimits(connectorConfig, MongoDbConnections.create(config, dispatcher, previousOffsets.getTheOnlyPartition()));
             }
 
             NotificationService<MongoDbPartition, MongoDbOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
