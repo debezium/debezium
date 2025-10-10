@@ -40,7 +40,7 @@ Kafka Connect:: You run {prodname} connectors as Kafka Connect plugins.
 {prodname} Server:: You run {prodname} in standalone server mode.
 
 The same OpenLineage event model and features are available across the deployment types.
-But different processes are needed to configure the integration and install dependencies.
+But different processes are needed to configure the integration and to install dependencies.
 
 == How {prodname} integrates with OpenLineage
 
@@ -101,7 +101,7 @@ The following principles apply when defining output dataset mappings:
 * Each target database table or collection represents an output dataset.
 * The output dataset specifies the schema information for the target database.
 * The namespace format depends on the target database system. 
-For more information, see xref:dataset-namespace-formatting[Dataset namespace formatting] .
+For more information, see xref:dataset-namespace-formatting[Dataset namespace formatting].
 
 The following {prodname} sink connectors support OpenLineage integration in Kafka Connect:
 
@@ -378,7 +378,7 @@ quarkus.log.console.json=false
 ----
 
 
-=== MongoDB Sink Connector configuration example
+=== MongoDB sink connector configuration example
 
 The following example shows a complete configuration for enabling the MongoDB sink connector to integrate with OpenLineage in Kafka Connect:
 
@@ -405,9 +405,9 @@ The following example shows a complete configuration for enabling the MongoDB si
 NOTE: For sink connectors, the `openlineage.integration.dataset.kafka.bootstrap.servers` property is required to retrieve input dataset metadata from Kafka topics. 
 Unlike source connectors, sink connectors do not have direct access to Kafka topic metadata through the Kafka Connect framework and must explicitly connect to retrieve schema information.
 
-=== JDBC Sink Connector configuration example
+=== JDBC sink connector configuration example
 
-The following example shows a complete configuration for enabling the JDBC Sink Connector to integrate with OpenLineage in Kafka Connect:
+The following example shows a complete configuration for enabling the JDBC sink connector to integrate with OpenLineage in Kafka Connect:
 
 [source,json]
 ----
@@ -485,7 +485,7 @@ To verify that the OpenLineage integration is working correctly, complete the fo
 .Procedure
 1. Check the connector logs for OpenLineage-related messages.
 2. If you configured HTTP transport, verify that events appear in your OpenLineage backend.
-3. For testing purposes, you can use console transport to view events directly in the logs:
+3. For testing purposes, you can configure console transport to view events directly in the logs, as shown in the following example:
 +
 [source,yaml]
 ----
