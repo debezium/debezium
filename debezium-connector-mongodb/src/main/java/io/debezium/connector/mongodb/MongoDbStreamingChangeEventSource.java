@@ -19,6 +19,7 @@ import com.mongodb.client.model.changestream.FullDocument;
 import com.mongodb.client.model.changestream.FullDocumentBeforeChange;
 
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
+import io.debezium.connector.mongodb.connection.MongoDbConnections;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor;
 import io.debezium.connector.mongodb.events.BufferingChangeStreamCursor.ResumableChangeStreamEvent;
 import io.debezium.connector.mongodb.events.SplitEventHandler;
@@ -80,7 +81,7 @@ public class MongoDbStreamingChangeEventSource implements StreamingChangeEventSo
             return;
         }
 
-        try (MongoDbConnection mongo = taskContext.getConnection(dispatcher, partition)) {
+        try (MongoDbConnection mongo = MongoDbConnections.create(taskContext.getConfiguration(), dispatcher, partition)) {
             mongo.execute("Reading change stream", client -> {
                 readChangeStream(client, context, partition);
             });
