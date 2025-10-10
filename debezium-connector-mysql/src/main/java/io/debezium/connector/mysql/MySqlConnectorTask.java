@@ -108,7 +108,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
         CustomConverterRegistry converterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
 
         this.schema = new MySqlDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive, converterRegistry);
-        taskContext = new MySqlTaskContext(connectorConfig, schema);
+        taskContext = new MySqlTaskContext(connectorConfig);
 
         // Manual Bean Registration
         beanRegistryJdbcConnection = connectionFactory.newConnection();

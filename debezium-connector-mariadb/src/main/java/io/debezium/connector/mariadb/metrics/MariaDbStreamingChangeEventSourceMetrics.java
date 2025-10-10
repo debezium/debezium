@@ -24,6 +24,6 @@ public class MariaDbStreamingChangeEventSourceMetrics
                                                     ChangeEventQueueMetrics changeEventQueueMetrics,
                                                     EventMetadataProvider eventMetadataProvider,
                                                     CapturedTablesSupplier capturedTablesSupplier) {
-        super(taskContext, changeEventQueueMetrics, eventMetadataProvider, capturedTablesSupplier, taskContext.getBinaryLogClient());
+        super(taskContext, changeEventQueueMetrics, eventMetadataProvider, capturedTablesSupplier);
     }
 }

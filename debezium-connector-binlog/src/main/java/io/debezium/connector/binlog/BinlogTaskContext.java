@@ -5,8 +5,6 @@
  */
 package io.debezium.connector.binlog;
 
-import com.github.shyiko.mysql.binlog.BinaryLogClient;
-
 import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.relational.RelationalDatabaseSchema;
 
@@ -17,19 +15,7 @@ import io.debezium.relational.RelationalDatabaseSchema;
  */
 public class BinlogTaskContext<T extends RelationalDatabaseSchema> extends CdcSourceTaskContext {
 
-    private final BinaryLogClient binaryLogClient;
-
-    public BinlogTaskContext(BinlogConnectorConfig config, T schema) {
+    public BinlogTaskContext(BinlogConnectorConfig config) {
         super(config, config.getCustomMetricTags());
-        this.binaryLogClient = new BinaryLogClient(config.getHostName(), config.getPort(), config.getUserName(), config.getPassword());
-    }
-
-    /**
-     * Get the task's underlying binary log client instance.
-     *
-     * @return the binary log client instance, never null
-     */
-    public BinaryLogClient getBinaryLogClient() {
-        return binaryLogClient;
     }
 }

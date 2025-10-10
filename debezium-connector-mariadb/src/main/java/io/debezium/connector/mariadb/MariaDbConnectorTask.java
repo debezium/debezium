@@ -117,7 +117,7 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
         CustomConverterRegistry converterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
 
         this.schema = new MariaDbDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive, converterRegistry);
-        taskContext = new MariaDbTaskContext(connectorConfig, schema);
+        taskContext = new MariaDbTaskContext(connectorConfig);
 
         // Manual Bean Registration
         beanRegistryJdbcConnection = connectionFactory.newConnection();

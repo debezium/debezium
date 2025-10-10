@@ -24,7 +24,6 @@ import com.github.shyiko.mysql.binlog.network.SSLMode;
 
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogStreamingChangeEventSource;
-import io.debezium.connector.binlog.BinlogTaskContext;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.mariadb.metrics.MariaDbStreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.ErrorHandler;
@@ -70,11 +69,10 @@ public class MariaDbStreamingChangeEventSource extends BinlogStreamingChangeEven
     }
 
     @Override
-    protected BinaryLogClient createBinaryLogClient(BinlogTaskContext<?> taskContext,
-                                                    BinlogConnectorConfig connectorConfig,
+    protected BinaryLogClient createBinaryLogClient(BinlogConnectorConfig connectorConfig,
                                                     Map<String, Thread> clientThreads,
                                                     BinlogConnectorConnection connection) {
-        final BinaryLogClient client = super.createBinaryLogClient(taskContext, connectorConfig, clientThreads, connection);
+        final BinaryLogClient client = super.createBinaryLogClient(connectorConfig, clientThreads, connection);
         if (connectorConfig.isSqlQueryIncluded()) {
             // Binlog client explicitly needs to be told to enable ANNOTATE_ROWS events, which is the MariaDB
             // equivalent of ROWS_QUERY for MySQL. This must be done ahead of the connection to make sure that
