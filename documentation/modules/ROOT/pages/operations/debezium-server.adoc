@@ -64,8 +64,10 @@ This means that the application can be configured from disparate sources like co
 [NOTE]
 ====
 Configuration properties that contain the `$` character are normally interpreted by Quarkus for property expansion.
-If a property value contains a `++${...}++` syntax and should not be expanded, the `$` character must be escaped using `++$$++` so that the value is written as `++$${name}++`.
-This syntax guarantees that the property value is passed to {prodname} as `++${name}++` without expansion.
+If a property value includes a `$` character as a prefix, such as `++${my.property}++`, the Microprofile configuration parser determines that the value is a https://quarkus.io/guides/config-reference#property-expressions[property expression] and attempts to expand it.
+
+To prevent the parser from attempting to expand values that use this syntax, escape the `$` prefix with a second `$` character; that is, provide the value as `++$${my.property}++`.
+The value of the property is then passed to {prodname} as `++${my.property}++`.
 ====
 
 The main configuration file is _config/application.properties_.
