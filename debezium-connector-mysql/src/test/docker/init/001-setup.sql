@@ -12,6 +12,7 @@ CREATE USER 'snapper' IDENTIFIED BY 'snapperpass';
 GRANT SELECT, INSERT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 'snapper'@'%';
 CREATE USER 'cloud' IDENTIFIED BY 'cloudpass';
 GRANT SELECT, RELOAD, SHOW DATABASES, REPLICATION SLAVE, REPLICATION CLIENT, LOCK TABLES  ON *.* TO 'cloud'@'%';
+CREATE USER 'mysqluser'@'%' IDENTIFIED BY 'mysqlpw';
 GRANT ALL PRIVILEGES ON *.* TO 'mysqluser'@'%';
 
 -- ----------------------------------------------------------------------------------------------------------------
