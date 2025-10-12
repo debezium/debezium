@@ -95,6 +95,26 @@ public interface LogMinerStreamingChangeEventSourceMetricsMXBean
     long getMaximumMinedLogCount();
 
     /**
+     * @return the minimum SCN used for reading the current mined logs.
+     */
+    BigInteger getMiningSessionLowerBounds();
+
+    /**
+     * @return the maximum SCN used for reading the current mined logs
+     */
+    BigInteger getMiningSessionUpperBounds();
+
+    /**
+     * @return the minimum SCN used for fetching the current mined data.
+     */
+    BigInteger getMiningFetchLowerBounds();
+
+    /**
+     * @return the maximum SCN used for fetching the current mined data.
+     */
+    BigInteger getMiningFetchUpperBounds();
+
+    /**
      * Exposes states of redo logs: current, active, inactive, unused ...
      * @return array of: (redo log name | status) elements
      */

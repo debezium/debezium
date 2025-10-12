@@ -240,6 +240,8 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
                 statement.setString(4, endScn.toString());
             }
 
+            getMetrics().setLastMiningFetchRange(startScn, endScn);
+
             executeAndProcessQuery(statement);
 
             logActiveTransactions();

@@ -340,4 +340,37 @@ public class LogMinerStreamMetricsTest extends OracleStreamingMetricsTest<LogMin
         assertThat(metrics.getAbandonedTransactionIds()).containsOnly("2", "3", "4", "5", "6", "7", "8", "9", "10", "11");
     }
 
+    @Test
+    @FixFor("DBZ-9545")
+    public void testMiningSessionAndFetchScnRanges() throws Exception {
+        init(TestHelper.defaultConfig());
+
+        // Starts set to Scn.NULL
+        assertThat(metrics.getMiningSessionLowerBounds()).isEqualTo(Scn.NULL.asBigInteger());
+        assertThat(metrics.getMiningSessionUpperBounds()).isEqualTo(Scn.NULL.asBigInteger());
+        assertThat(metrics.getMiningFetchLowerBounds()).isEqualTo(Scn.NULL.asBigInteger());
+        assertThat(metrics.getMiningFetchUpperBounds()).isEqualTo(Scn.NULL.asBigInteger());
+
+        // Set the mining session range, no effect on fetch range
+        metrics.setLastMiningSessionRange(Scn.valueOf(1), Scn.valueOf(1000));
+        assertThat(metrics.getMiningSessionLowerBounds()).isEqualTo(Scn.valueOf(1).asBigInteger());
+        assertThat(metrics.getMiningSessionUpperBounds()).isEqualTo(Scn.valueOf(1000).asBigInteger());
+        assertThat(metrics.getMiningFetchLowerBounds()).isEqualTo(Scn.NULL.asBigInteger());
+        assertThat(metrics.getMiningFetchUpperBounds()).isEqualTo(Scn.NULL.asBigInteger());
+
+        // Set the mining fetch range, no effect on session range
+        metrics.setLastMiningFetchRange(Scn.valueOf(100), Scn.valueOf(500));
+        assertThat(metrics.getMiningSessionLowerBounds()).isEqualTo(Scn.valueOf(1).asBigInteger());
+        assertThat(metrics.getMiningSessionUpperBounds()).isEqualTo(Scn.valueOf(1000).asBigInteger());
+        assertThat(metrics.getMiningFetchLowerBounds()).isEqualTo(Scn.valueOf(100).asBigInteger());
+        assertThat(metrics.getMiningFetchUpperBounds()).isEqualTo(Scn.valueOf(500).asBigInteger());
+
+        // These metrics are not reset
+        metrics.reset();
+        assertThat(metrics.getMiningSessionLowerBounds()).isEqualTo(Scn.valueOf(1).asBigInteger());
+        assertThat(metrics.getMiningSessionUpperBounds()).isEqualTo(Scn.valueOf(1000).asBigInteger());
+        assertThat(metrics.getMiningFetchLowerBounds()).isEqualTo(Scn.valueOf(100).asBigInteger());
+        assertThat(metrics.getMiningFetchUpperBounds()).isEqualTo(Scn.valueOf(500).asBigInteger());
+    }
+
 }

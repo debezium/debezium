@@ -4783,6 +4783,22 @@ If the buffer is empty, the value will be `0`.
 |`BigInteger`
 |The system change number currently written to the connector's offsets.
 
+|[[oracle-streaming-metrics-mining-session-lower-bounds]]<<oracle-streaming-metrics-mining-session-lower-bounds, `+MiningSessionLowerBounds+`>>
+|`BigInteger`
+|The system change number currently used as the LogMiner session lower boundary.
+
+|[[oracle-streaming-metrics-mining-session-upper-bounds]]<<oracle-streaming-metrics-mining-session-upper-bounds, `+MiningSessionUpperBounds+`>>
+|`BigInteger`
+|The system change number currently used as the LogMiner session upper boundary.
+
+|[[oracle-streaming-metrics-mining-fetch-lower-bounds]]<<oracle-streaming-metrics-mining-fetch-lower-bounds, `+MiningFetchLowerBounds+`>>
+|`BigInteger`
+|The system change number currently used as the LogMiner fetch query lower boundary.
+
+|[[oracle-streaming-metrics-mining-fetch-upper-bounds]]<<oracle-streaming-metrics-mining-fetch-upper-bounds, `+MiningFetchUpperBounds+`>>
+|`BigInteger`
+|The system change number currently used as the LogMiner fetch query upper boundary.
+
 |[[oracle-streaming-metrics-currentredologfilenames]]<<oracle-streaming-metrics-currentredologfilenames, `+CurrentRedoLogFileNames+`>>
 |`string[]`
 |Array of the current online redo log files of the database.
