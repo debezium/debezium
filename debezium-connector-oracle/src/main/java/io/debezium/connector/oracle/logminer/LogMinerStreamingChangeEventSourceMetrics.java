@@ -57,6 +57,8 @@ public class LogMinerStreamingChangeEventSourceMetrics
     private final AtomicReference<Scn> offsetScn = new AtomicReference<>(Scn.NULL);
     private final AtomicReference<Scn> commitScn = new AtomicReference<>(Scn.NULL);
     private final AtomicReference<Scn> oldestScn = new AtomicReference<>(Scn.NULL);
+    private final AtomicReference<ScnRange> miningSessionScnRange = new AtomicReference<>(ScnRange.empty());
+    private final AtomicReference<ScnRange> miningFetchScnRange = new AtomicReference<>(ScnRange.empty());
     private final AtomicReference<Instant> oldestScnTime = new AtomicReference<>();
     private final AtomicReference<String[]> currentLogFileNames = new AtomicReference<>(new String[0]);
     private final AtomicReference<String[]> minedLogFileNames = new AtomicReference<>(new String[0]);
@@ -209,6 +211,26 @@ public class LogMinerStreamingChangeEventSourceMetrics
     @Override
     public long getMaximumMinedLogCount() {
         return maximumLogsMined.get();
+    }
+
+    @Override
+    public BigInteger getMiningSessionLowerBounds() {
+        return miningSessionScnRange.get().lowerBounds().asBigInteger();
+    }
+
+    @Override
+    public BigInteger getMiningSessionUpperBounds() {
+        return miningSessionScnRange.get().upperBounds().asBigInteger();
+    }
+
+    @Override
+    public BigInteger getMiningFetchLowerBounds() {
+        return miningFetchScnRange.get().lowerBounds().asBigInteger();
+    }
+
+    @Override
+    public BigInteger getMiningFetchUpperBounds() {
+        return miningFetchScnRange.get().upperBounds.asBigInteger();
     }
 
     @Override
@@ -637,6 +659,26 @@ public class LogMinerStreamingChangeEventSourceMetrics
     }
 
     /**
+     * Sets the mining session range used for what logs are read.
+     *
+     * @param lowerBounds the lower SCN bounds, must not be {@code null}
+     * @param upperBounds the upper SCN bounds, must not be {@code null}
+     */
+    public void setLastMiningSessionRange(Scn lowerBounds, Scn upperBounds) {
+        miningSessionScnRange.set(new ScnRange(lowerBounds, upperBounds));
+    }
+
+    /**
+     * Sets the mining fetch range, used for what redo entries are read.
+     *
+     * @param lowerBounds the lower SCN bounds, must not be {@code null}
+     * @param upperBounds the upper SCN bounds, must not be {@code null}
+     */
+    public void setLastMiningFetchRange(Scn lowerBounds, Scn upperBounds) {
+        miningFetchScnRange.set(new ScnRange(lowerBounds, upperBounds));
+    }
+
+    /**
      * Sets the duration of the last LogMiner mining session start-up and data dictionary load.
      *
      * @param duration duration of the last LogMiner session start-up
@@ -780,6 +822,8 @@ public class LogMinerStreamingChangeEventSourceMetrics
                 ", processGlobalAreaMemory=" + processGlobalAreaMemory +
                 ", abandonedTransactionIds=" + abandonedTransactionIds +
                 ", rolledBackTransactionIds=" + rolledBackTransactionIds +
+                ", lastMiningSessionScnRange=" + miningSessionScnRange.get() +
+                ", lastMiningFetchScnRange=" + miningFetchScnRange.get() +
                 "} ";
     }
 
@@ -896,6 +940,26 @@ public class LogMinerStreamingChangeEventSourceMetrics
         @Override
         public String toString() {
             return String.format("{value=%d,max=%d}", value.get(), max.get());
+        }
+    }
+
+    /**
+     * A record that represents an SCN range.
+     *
+     * @param lowerBounds the lower bounds, must not be {@code null}
+     * @param upperBounds the upper bounds, must not be {@code null}
+     */
+    record ScnRange(Scn lowerBounds, Scn upperBounds) {
+        /**
+         * Get an empty SCN range.
+         */
+        static ScnRange empty() {
+            return new ScnRange(Scn.NULL, Scn.NULL);
+        }
+
+        @Override
+        public String toString() {
+            return "[%s, %s]".formatted(lowerBounds, upperBounds);
         }
     }
 

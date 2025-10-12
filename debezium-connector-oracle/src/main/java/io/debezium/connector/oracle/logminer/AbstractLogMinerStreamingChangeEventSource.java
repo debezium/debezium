@@ -1198,6 +1198,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             LOGGER.debug("Starting mining session [startScn={}, endScn={}, strategy={}, attempts={}/{}]",
                     startScn, endScn, connectorConfig.getLogMiningStrategy(), attempts, MINING_START_RETRIES);
 
+            metrics.setLastMiningSessionRange(startScn, endScn);
             sessionContext.startSession(startScn, endScn, isUsingCommittedDataOnly());
             metrics.setLastMiningSessionStartDuration(sessionContext.getLastSessionStartTime());
 

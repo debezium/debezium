@@ -266,6 +266,8 @@ public class UnbufferedLogMinerStreamingChangeEventSource extends AbstractLogMin
 
             lastCommitScn = minCommitScn;
 
+            getMetrics().setLastMiningFetchRange(minCommitScn, upperBoundsScn);
+
             executeAndProcessQuery(statement);
 
             if (!minCommitScn.equals(lastCommitScn)) {
