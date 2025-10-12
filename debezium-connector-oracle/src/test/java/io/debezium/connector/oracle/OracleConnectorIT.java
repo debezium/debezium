@@ -5365,6 +5365,10 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
     @Test
     @FixFor("DBZ-6528")
     public void shouldNotFailToStartWhenSignalDataCollectionNotDefinedWithinTableIncludeList() throws Exception {
+        final String connectorUser = TestHelper.getConnectorUserName();
+        final String signalTable = connectorUser + ".signals";
+        final String fullyQualifiedTable = (TestHelper.getDatabaseName() + "." + signalTable).toUpperCase();
+
         try {
             TestHelper.dropTable(connection, "dbz6528");
             TestHelper.dropTable(connection, "dbz6495");
@@ -5373,9 +5377,9 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
                 if (TestHelper.isUsingPdb()) {
                     admin.setSessionToPdb(TestHelper.getDatabaseName());
                 }
-                TestHelper.dropTable(admin, "c##dbzuser.signals");
-                admin.execute("CREATE TABLE c##dbzuser.signals (id varchar2(64), type varchar2(32), data varchar2(2048))");
-                TestHelper.streamTable(admin, "c##dbzuser.signals");
+                TestHelper.dropTable(admin, signalTable);
+                admin.execute("CREATE TABLE " + signalTable + " (id varchar2(64), type varchar2(32), data varchar2(2048))");
+                TestHelper.streamTable(admin, signalTable);
             }
 
             connection.execute("CREATE TABLE dbz6528 (id numeric(9,0), data varchar2(50))");
@@ -5383,7 +5387,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
 
             Configuration config = TestHelper.defaultConfig()
                     .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.DBZ6528")
-                    .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.getDatabaseName() + ".C##DBZUSER.SIGNALS")
+                    .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, fullyQualifiedTable)
                     .with(OracleConnectorConfig.STORE_ONLY_CAPTURED_TABLES_DDL, "true")
                     .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA.getValue())
                     .build();
@@ -5407,7 +5411,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
                 if (TestHelper.isUsingPdb()) {
                     admin.setSessionToPdb(TestHelper.getDatabaseName());
                 }
-                TestHelper.dropTable(admin, "c##dbzuser.signals");
+                TestHelper.dropTable(admin, signalTable);
             }
         }
     }
