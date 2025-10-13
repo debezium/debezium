@@ -2966,6 +2966,8 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
     @SkipWhenSink(value = { SinkType.DB2, SinkType.SQLSERVER, SinkType.MYSQL }, reason = "No support for GEOGRAPHY data type")
     @WithPostgresExtension("postgis")
     public void testGeometryDataType(Source source, Sink sink) throws Exception {
+        String postgisSchema = "postgis";
+        String geographyType = String.format("%s.geography", postgisSchema);
         List<Object> expectedValues;
         if (sink.getType().is(SinkType.ORACLE)) {
             expectedValues = List.of(
@@ -2990,22 +2992,21 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                     "010500000002000000010200000003000000000000000000244000000000000024400000000000003440000000000000344000000000000024400000000000004440010200000004000000000000000000444000000000000044400000000000003E400000000000003E40000000000000444000000000000034400000000000003E400000000000002440",
                     "01060000000200000001030000000100000004000000000000000000444000000000000044400000000000003440000000000080464000000000008046400000000000003E4000000000000044400000000000004440010300000002000000060000000000000000003440000000000080414000000000000024400000000000003E40000000000000244000000000000024400000000000003E4000000000000014400000000000804640000000000000344000000000000034400000000000804140040000000000000000003E40000000000000344000000000000034400000000000002E40000000000000344000000000000039400000000000003E400000000000003440");
         }
-
         List<String> values = List.of(
-                "'SRID=4326;POINT (8, 51)'::geography",
-                "'SRID=4326;LINESTRING (30 10, 10 30, 40 40)'::geography",
-                "'SRID=4326;POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))'::geography",
-                "'SRID=4326;POLYGON ((35 10, 45 45, 15 40, 10 20, 35 10),(20 30, 35 35, 30 20, 20 30))'::geography",
-                "'SRID=4326;MULTIPOINT ((10 40), (40 30), (20 20), (30 10))'::geography",
-                "'SRID=4326;MULTILINESTRING ((10 10, 20 20, 10 40),(40 40, 30 30, 40 20, 30 10))'::geography",
-                "'SRID=4326;MULTIPOLYGON (((40 40, 20 45, 45 30, 40 40)),((20 35, 10 30, 10 10, 30 5, 45 20, 20 35),(30 20, 20 15, 20 25, 30 20)))'::geography");
+                "'SRID=4326;POINT (8, 51)'::" + geographyType,
+                "'SRID=4326;LINESTRING (30 10, 10 30, 40 40)'::" + geographyType,
+                "'SRID=4326;POLYGON ((30 10, 40 40, 20 40, 10 20, 30 10))'::" + geographyType,
+                "'SRID=4326;POLYGON ((35 10, 45 45, 15 40, 10 20, 35 10),(20 30, 35 35, 30 20, 20 30))'::" + geographyType,
+                "'SRID=4326;MULTIPOINT ((10 40), (40 30), (20 20), (30 10))'::" + geographyType,
+                "'SRID=4326;MULTILINESTRING ((10 10, 20 20, 10 40),(40 40, 30 30, 40 20, 30 10))'::" + geographyType,
+                "'SRID=4326;MULTIPOLYGON (((40 40, 20 45, 45 30, 40 40)),((20 35, 10 30, 10 10, 30 5, 45 20, 20 35),(30 20, 20 15, 20 25, 30 20)))'::" + geographyType);
 
         assertDataTypeNonKeyOnly(source,
                 sink,
-                "postgis.geography",
+                geographyType,
                 values,
                 expectedValues,
-                (config) -> config.with(JdbcSinkConnectorConfig.POSTGRES_POSTGIS_SCHEMA, "postgis"),
+                (config) -> config.with(JdbcSinkConnectorConfig.POSTGRES_POSTGIS_SCHEMA, postgisSchema),
                 (record) -> {
                     if (sink.getType().is(SinkType.POSTGRES)) {
                         assertColumn(sink, record, "data", "GEOGRAPHY");
