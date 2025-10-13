@@ -10,6 +10,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import io.debezium.runtime.recorder.DatasourceRecorder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,8 +21,9 @@ import io.quarkus.runtime.annotations.Recorder;
 @Recorder
 public class MongoDbDatasourceRecorder implements DatasourceRecorder<MultiEngineMongoDbDatasourceConfiguration> {
 
+    public static final String TO_REMOVE = "health";
+    public static final String DEFAULT = "default";
     private final RuntimeValue<MongodbConfig> runtimeConfig;
-    private static final Logger LOGGER = LoggerFactory.getLogger(MongoDbDatasourceRecorder.class);
 
     public MongoDbDatasourceRecorder(final RuntimeValue<MongodbConfig> runtimeConfig) {
         this.runtimeConfig = runtimeConfig;
@@ -29,18 +31,17 @@ public class MongoDbDatasourceRecorder implements DatasourceRecorder<MultiEngine
 
     @Override
     public Supplier<MultiEngineMongoDbDatasourceConfiguration> convert(String name, boolean defaultConfiguration) {
-
         Map<String, MongoDbDatasourceConfiguration> configurations = runtimeConfig.getValue()
                 .mongoClientConfigs()
                 .entrySet().stream()
-                .filter(a -> !a.getKey().equals("health"))
+                .filter(entry -> !entry.getKey().equals(TO_REMOVE))
                 .map(config -> new MongoDbDatasourceConfiguration(
                         config.getValue().connectionString().get(),
                         config.getKey(),
                         false))
                 .collect(Collectors.toMap(MongoDbDatasourceConfiguration::getSanitizedName, Function.identity()));
 
-        configurations.put("default", new MongoDbDatasourceConfiguration(runtimeConfig.getValue().defaultMongoClientConfig().connectionString().get(), "default", true));
+        configurations.put(DEFAULT, new MongoDbDatasourceConfiguration(runtimeConfig.getValue().defaultMongoClientConfig().connectionString().get(), DEFAULT, true));
 
         return () -> new MultiEngineMongoDbDatasourceConfiguration(configurations);
     }
