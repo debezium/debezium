@@ -37,7 +37,10 @@ The Extension supports well-established {prodname} features and much more! Here 
 
 == Supported Connectors
 
-The *Postgres* connector is the only supported connector at this time.
+The following connectors are supported:
+
+- `quarkus-debezium-postgres` extension for *Postgres* Connector
+- `quarkus-debezium-mongodb` extension for *Mongodb* Connector
 
 
 == Prerequisites
