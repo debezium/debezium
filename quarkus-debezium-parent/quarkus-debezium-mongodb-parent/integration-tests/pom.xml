@@ -125,7 +125,7 @@
                 <configuration>
                     <images>
                         <image>
-                            <name>debezium-mongo:local6</name>
+                            <name>quay.io/debezium/mongo:6.0</name>
                             <alias>mongodb1</alias>
                             <run>
                                 <ports>
@@ -145,7 +145,7 @@
                             </run>
                         </image>
                         <image>
-                            <name>debezium-mongo:local6</name>
+                            <name>quay.io/debezium/mongo:6.0</name>
                             <alias>mongodb2</alias>
                             <run>
                                 <ports>
