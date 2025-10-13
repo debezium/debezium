@@ -10,6 +10,8 @@ import java.util.function.Function;
 
 import org.apache.kafka.connect.source.SourceRecord;
 
+import com.github.shyiko.mysql.binlog.BinaryLogClient;
+
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.mariadb.metrics.MariaDbSnapshotChangeEventSourceMetrics;
@@ -50,6 +52,7 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
     // Based on the DBZ-3113 the code can change in the future, and it will be handled in the core shared code.
     private final ChangeEventQueue<DataChangeEvent> queue;
     private final SnapshotterService snapshotterService;
+    private final BinaryLogClient binaryLogClient;
 
     public MariaDbChangeEventSourceFactory(MariaDbConnectorConfig configuration,
                                            MainConnectionProvidingConnectionFactory<BinlogConnectorConnection> connectionFactory,
@@ -60,7 +63,8 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
                                            MariaDbTaskContext taskContext,
                                            MariaDbStreamingChangeEventSourceMetrics streamingMetrics,
                                            ChangeEventQueue<DataChangeEvent> queue,
-                                           SnapshotterService snapshotterService) {
+                                           SnapshotterService snapshotterService,
+                                           BinaryLogClient binaryLogClient) {
         this.configuration = configuration;
         this.connectionFactory = connectionFactory;
         this.errorHandler = errorHandler;
@@ -71,6 +75,7 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
         this.queue = queue;
         this.schema = schema;
         this.snapshotterService = snapshotterService;
+        this.binaryLogClient = binaryLogClient;
     }
 
     @Override
@@ -102,10 +107,8 @@ public class MariaDbChangeEventSourceFactory implements ChangeEventSourceFactory
                 taskContext,
                 schema,
                 streamingMetrics,
-                snapshotterService);
-
-        // Set the binary log client on the metrics now that the streaming source has created it
-        streamingMetrics.setBinaryLogClient(streamingSource.getBinaryLogClient());
+                snapshotterService,
+                binaryLogClient);
 
         return streamingSource;
     }

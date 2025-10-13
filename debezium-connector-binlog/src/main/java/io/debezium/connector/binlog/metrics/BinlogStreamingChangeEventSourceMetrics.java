@@ -31,8 +31,8 @@ public class BinlogStreamingChangeEventSourceMetrics<T extends BinlogDatabaseSch
         extends DefaultStreamingChangeEventSourceMetrics<P>
         implements BinlogStreamingChangeEventSourceMetricsMXBean {
 
-    private BinaryLogClient client;
-    private BinaryLogClientStatistics stats;
+    private final BinaryLogClient client;
+    private final BinaryLogClientStatistics stats;
 
     private final AtomicLong numberOfCommittedTransactions = new AtomicLong();
     private final AtomicLong numberOfRolledBackTransactions = new AtomicLong();
@@ -45,20 +45,12 @@ public class BinlogStreamingChangeEventSourceMetrics<T extends BinlogDatabaseSch
     public BinlogStreamingChangeEventSourceMetrics(BinlogTaskContext<T> taskContext,
                                                    ChangeEventQueueMetrics changeEventQueueMetrics,
                                                    EventMetadataProvider eventMetadataProvider,
-                                                   CapturedTablesSupplier capturedTablesSupplier) {
+                                                   CapturedTablesSupplier capturedTablesSupplier,
+                                                   BinaryLogClient client) {
         super(taskContext, changeEventQueueMetrics, eventMetadataProvider, capturedTablesSupplier);
-        this.milliSecondsBehindMaster.set(-1);
-    }
-
-    /**
-     * Sets the binary log client for metrics tracking.
-     * This must be called before the metrics are used.
-     *
-     * @param client the binary log client; should not be null
-     */
-    public void setBinaryLogClient(BinaryLogClient client) {
         this.client = client;
         this.stats = new BinaryLogClientStatistics(client);
+        this.milliSecondsBehindMaster.set(-1);
     }
 
     @Override

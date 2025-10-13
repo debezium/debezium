@@ -5,6 +5,8 @@
  */
 package io.debezium.connector.mysql;
 
+import com.github.shyiko.mysql.binlog.BinaryLogClient;
+
 import io.debezium.connector.base.ChangeEventQueueMetrics;
 import io.debezium.connector.binlog.metrics.BinlogStreamingChangeEventSourceMetrics;
 import io.debezium.pipeline.metrics.CapturedTablesSupplier;
@@ -19,7 +21,8 @@ public class MySqlStreamingChangeEventSourceMetrics
     public MySqlStreamingChangeEventSourceMetrics(MySqlTaskContext taskContext,
                                                   ChangeEventQueueMetrics changeEventQueueMetrics,
                                                   EventMetadataProvider metadataProvider,
-                                                  CapturedTablesSupplier capturedTablesSupplier) {
-        super(taskContext, changeEventQueueMetrics, metadataProvider, capturedTablesSupplier);
+                                                  CapturedTablesSupplier capturedTablesSupplier,
+                                                  BinaryLogClient client) {
+        super(taskContext, changeEventQueueMetrics, metadataProvider, capturedTablesSupplier, client);
     }
 }
