@@ -167,7 +167,7 @@ Each connector requires its specific database container. Configure the Docker Ma
     <configuration>
         <images>
             <image>
-                <name>debezium-mongo:local4</name>
+                <name>quay.io/debezium/mongo:6.0</name>
                 <alias>mongodb</alias>
                 <run>
                     <ports>

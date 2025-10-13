@@ -108,7 +108,7 @@ public class MongoDbEngineProcessor {
         public static final String USER = "debezium";
         public static final String PASSWORD = "dbz";
         public static final String DATABASE = "debezium";
-        public static final String IMAGE = "debezium-mongo:local4";
+        public static final String IMAGE = "quay.io/debezium/mongo:6.0";
         public static final String LOCALHOST = "127.0.0.1";
         public static final String CONNECTION_STRING = "mongodb://" + USER + ":" + PASSWORD + "@" + LOCALHOST + ":27017/?replicaSet=rs0";
         public static final String SERVICE_NAME = "debezium-devservices-mongodb";
