@@ -1,13 +1,13 @@
 # Debezium Extensions for Quarkus
 
-The following documentation explore how to **develop** a quarkus extension that integrate Debezium.
-If you need some guideline in how to **use** quarkus extension for Debezium, please use the [official documentation](https://debezium.io/documentation/reference/stable/integrations/quarkus-debezium-engine-extension.html).
+The following documentation explores how to **develop** a Quarkus extension that integrates Debezium.
+If you need some guidelines on how to **use** Quarkus extension for Debezium, please use the [official documentation](https://debezium.io/documentation/reference/stable/integrations/quarkus-debezium-engine-extension.html).
 
 
-## Before start: The extension project
+## Before starting: The extension project
 
-Before start creating an extension, please take a look to the official documentation for [Quarkus extensions](https://quarkus.io/guides/writing-extensions).
-Your extension project should be setup as a multi-module project with three submodules:
+Before starting to create an extension, please take a look at the official documentation for [Quarkus extensions](https://quarkus.io/guides/writing-extensions).
+Your extension project should be set up as a multi-module project with three submodules:
 
 - runtime
 - deployment
@@ -23,8 +23,8 @@ Every extension should provide:
 
 ## Runtime module
 
-The runtime module contains the extension behaviour for the native executable or runtime JVM.
-In the case of Debezium Extensions for Quarkus, in the runtime is present the behaviour necessary to instrument correctly the debezium engine with configurations coming from Quarkus or other Extensions.
+The runtime module contains the extension behavior for the native executable or runtime JVM.
+In the case of Debezium Extensions for Quarkus, the runtime contains the behavior necessary to correctly instrument the Debezium engine with configurations coming from Quarkus or other Extensions.
 
 You should import at least the following dependencies:
 
@@ -47,17 +47,17 @@ In the runtime module, you should implement the following interfaces:
 - Connector producer
   - `io.debezium.runtime.ConnectorProducer` defines how to generate a `io.debezium.runtime.DebeziumConnectorRegistry` that contains information and the relative engines
 
-In general the code that is present in the runtime module, should define how to map the different configurations with the embedded engine.
+In general, the code that is present in the runtime module should define how to map the different configurations with the embedded engine.
 
 
 ## Deployment module
 
-The deployment module handles the build time processing and bytecode recording.
-In the case of Debezium Extensions for Quarkus, instrument the extension:
+The deployment module handles the build-time processing and bytecode recording.
+In the case of Debezium Extensions for Quarkus, the deployment module instruments the extension with:
 
-- extensions information
+- extension information
 - how to build the connector with the engine in native mode
-- how to instantiate eventually the dev services
+- how to instantiate the dev services if needed
 
 You should import the runtime module with at least the following dependencies:
 
@@ -82,15 +82,15 @@ You should import the runtime module with at least the following dependencies:
 
 In the deployment module, you should implement the following interface:
 
-- `io.quarkus.debezium.deployment.QuarkusEngineProcessor` guides the build time processing with the necessary steps for a working extensions
+- `io.quarkus.debezium.deployment.QuarkusEngineProcessor` guides the build-time processing with the necessary steps for a working extension
 
-Even if it isn't strictly necessary implement the `QuarkusEngineProcessor`, it helps to adhere to the expected beans that the `quarkus-debezium-engine` needs to work.
+Even if it isn't strictly necessary to implement the `QuarkusEngineProcessor`, it helps to adhere to the expected beans that the `quarkus-debezium-engine` needs to work.
 
 
 ### Testing the deployment module
 
-To test that the deployment module (and the runtime) are correct, you can use the `quarkus-debezium-testsuite` that provides a suite of tests that control the correctness of the modules.
-You should import the following dependency as test scope:
+To test that the deployment module (and the runtime) are correct, you can use the `quarkus-debezium-testsuite` that provides a suite of tests that verify the correctness of the modules.
+You should import the following dependency with test scope:
 
 ```xml
         <dependency>
@@ -103,16 +103,16 @@ You should import the following dependency as test scope:
 
 and implement the following interface:
 
-- `QuarkusDebeziumNoSqlExtensionTestSuite` which contains tests for no-sql datasource
+- `QuarkusDebeziumNoSqlExtensionTestSuite` which contains tests for NoSQL datasources
 or
-- `QuarkusDebeziumSqlExtensionTestSuite` which contains tests for sql datasource
+- `QuarkusDebeziumSqlExtensionTestSuite` which contains tests for SQL datasources
 
-in the class you have to define which resource (like a test container) should start or stop when the test suite is running.
+In the class, you have to define which resources (like test containers) should start or stop when the test suite is running.
 Please follow the guidelines present in the test suite [README.md](quarkus-debezium-testsuite-parent/README.md).
-Furthermore, you have to create a `quarkus-debezium-testsuite.properties`
+Furthermore, you have to create a `quarkus-debezium-testsuite.properties` file.
 
 ## Integration Tests module
 
-The integration tests module is necessary to test the extension inside a Quarkus application in the JVM runtime or as Native executable.
-To achieve this, the quarkus debezium test suite contains an integration testing suite that controls that the extension works in a single or multiengine manner.
-Please as for the deployment testing, follow the guidelines present in the test suite [README.md](quarkus-debezium-testsuite-parent/README.md).
+The integration tests module is necessary to test the extension inside a Quarkus application in the JVM runtime or as a native executable.
+To achieve this, the Quarkus Debezium test suite contains an integration testing suite that verifies that the extension works in both single-engine and multi-engine configurations.
+As with the deployment testing, please follow the guidelines present in the test suite [README.md](quarkus-debezium-testsuite-parent/README.md).
