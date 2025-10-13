@@ -16,6 +16,8 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.shyiko.mysql.binlog.BinaryLogClient;
+
 import io.debezium.DebeziumException;
 import io.debezium.bean.StandardBeanNames;
 import io.debezium.config.Configuration;
@@ -223,8 +225,15 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                         queue),
                 schemaNameAdjuster, signalProcessor, connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
 
+        // Create the binary log client that will be used for streaming change events
+        final BinaryLogClient binaryLogClient = new BinaryLogClient(
+                connectorConfig.getHostName(),
+                connectorConfig.getPort(),
+                connectorConfig.getUserName(),
+                connectorConfig.getPassword());
+
         final MySqlStreamingChangeEventSourceMetrics streamingMetrics = new MySqlStreamingChangeEventSourceMetrics(taskContext, queue, metadataProvider,
-                schema::dataCollectionIds);
+                schema::dataCollectionIds, binaryLogClient);
 
         NotificationService<MySqlPartition, MySqlOffsetContext> notificationService = new NotificationService<>(getNotificationChannels(),
                 connectorConfig, SchemaFactory.get(), dispatcher::enqueueNotification);
@@ -244,7 +253,8 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
                         taskContext,
                         streamingMetrics,
                         queue,
-                        snapshotterService),
+                        snapshotterService,
+                        binaryLogClient),
                 new MySqlChangeEventSourceMetricsFactory(streamingMetrics),
                 dispatcher,
                 schema,

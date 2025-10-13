@@ -147,7 +147,8 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
                                             BinlogTaskContext<?> taskContext,
                                             BinlogDatabaseSchema schema,
                                             BinlogStreamingChangeEventSourceMetrics<?, P> metrics,
-                                            SnapshotterService snapshotterService) {
+                                            SnapshotterService snapshotterService,
+                                            BinaryLogClient client) {
         this.taskContext = taskContext;
         this.connectorConfig = connectorConfig;
         this.schema = schema;
@@ -159,7 +160,8 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         this.eventDeserializationFailureHandlingMode = connectorConfig.getEventProcessingFailureHandlingMode();
         this.inconsistentSchemaHandlingMode = connectorConfig.getInconsistentSchemaFailureHandlingMode();
         this.snapshotterService = snapshotterService;
-        this.client = createBinaryLogClient(connectorConfig, binaryLogClientThreads, connection);
+        this.client = client;
+        configureBinaryLogClient(client, connectorConfig, binaryLogClientThreads, connection);
         this.gtidDmlSourceFilter = getGtidDmlSourceFilter();
         this.isGtidModeEnabled = connection.isGtidModeEnabled();
     }
@@ -382,14 +384,10 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
     }
 
     // todo: perhaps refactor back out to a binary log configurator instance?
-    protected BinaryLogClient createBinaryLogClient(BinlogConnectorConfig connectorConfig,
-                                                    Map<String, Thread> clientThreads,
-                                                    BinlogConnectorConnection connection) {
-        final BinaryLogClient client = new BinaryLogClient(
-                connectorConfig.getHostName(),
-                connectorConfig.getPort(),
-                connectorConfig.getUserName(),
-                connectorConfig.getPassword());
+    protected void configureBinaryLogClient(BinaryLogClient client,
+                                            BinlogConnectorConfig connectorConfig,
+                                            Map<String, Thread> clientThreads,
+                                            BinlogConnectorConnection connection) {
         client.setThreadFactory(
                 Threads.threadFactory(
                         getConnectorClass(),
@@ -423,7 +421,6 @@ public abstract class BinlogStreamingChangeEventSource<P extends BinlogPartition
         // to process the packet received from the database server.
         client.setHeartbeatInterval((long) (keepAliveInterval * heartbeatIntervalFactor));
         client.setEventDeserializer(createEventDeserializer());
-        return client;
     }
 
     protected void configureReplicaCompatibility(BinaryLogClient client) {

@@ -6,7 +6,6 @@
 package io.debezium.connector.mariadb;
 
 import java.time.Instant;
-import java.util.Map;
 import java.util.function.Predicate;
 
 import org.apache.kafka.connect.source.SourceConnector;
@@ -52,10 +51,19 @@ public class MariaDbStreamingChangeEventSource extends BinlogStreamingChangeEven
                                              MariaDbTaskContext taskContext,
                                              MariaDbDatabaseSchema schema,
                                              MariaDbStreamingChangeEventSourceMetrics metrics,
-                                             SnapshotterService snapshotterService) {
-        super(connectorConfig, connection, dispatcher, errorHandler, clock, taskContext, schema, metrics, snapshotterService);
+                                             SnapshotterService snapshotterService,
+                                             BinaryLogClient binaryLogClient) {
+        super(connectorConfig, connection, dispatcher, errorHandler, clock, taskContext, schema, metrics, snapshotterService, binaryLogClient);
         this.connectorConfig = connectorConfig;
         this.signalDataCollectionId = getSignalDataCollectionId(connectorConfig);
+
+        // MariaDB-specific configuration
+        if (connectorConfig.isSqlQueryIncluded()) {
+            // Binlog client explicitly needs to be told to enable ANNOTATE_ROWS events, which is the MariaDB
+            // equivalent of ROWS_QUERY for MySQL. This must be done ahead of the connection to make sure that
+            // the right negotiation bits are set during the handshake.
+            binaryLogClient.setUseSendAnnotateRowsEvent(true);
+        }
     }
 
     @Override
@@ -66,20 +74,6 @@ public class MariaDbStreamingChangeEventSource extends BinlogStreamingChangeEven
     @Override
     protected Class<? extends SourceConnector> getConnectorClass() {
         return MariaDbConnector.class;
-    }
-
-    @Override
-    protected BinaryLogClient createBinaryLogClient(BinlogConnectorConfig connectorConfig,
-                                                    Map<String, Thread> clientThreads,
-                                                    BinlogConnectorConnection connection) {
-        final BinaryLogClient client = super.createBinaryLogClient(connectorConfig, clientThreads, connection);
-        if (connectorConfig.isSqlQueryIncluded()) {
-            // Binlog client explicitly needs to be told to enable ANNOTATE_ROWS events, which is the MariaDB
-            // equivalent of ROWS_QUERY for MySQL. This must be done ahead of the connection to make sure that
-            // the right negotiation bits are set during the handshake.
-            client.setUseSendAnnotateRowsEvent(true);
-        }
-        return client;
     }
 
     @Override

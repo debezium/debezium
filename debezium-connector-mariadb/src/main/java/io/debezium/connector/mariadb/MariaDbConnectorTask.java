@@ -18,6 +18,8 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.shyiko.mysql.binlog.BinaryLogClient;
+
 import io.debezium.DebeziumException;
 import io.debezium.bean.StandardBeanNames;
 import io.debezium.config.Configuration;
@@ -232,11 +234,19 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                 signalProcessor,
                 connectorConfig.getServiceRegistry().tryGetService(DebeziumHeaderProducer.class));
 
+        // Create the binary log client that will be used for streaming change events
+        final BinaryLogClient binaryLogClient = new BinaryLogClient(
+                connectorConfig.getHostName(),
+                connectorConfig.getPort(),
+                connectorConfig.getUserName(),
+                connectorConfig.getPassword());
+
         final MariaDbStreamingChangeEventSourceMetrics streamingMetrics = new MariaDbStreamingChangeEventSourceMetrics(
                 taskContext,
                 queue,
                 metadataProvider,
-                schema::dataCollectionIds);
+                schema::dataCollectionIds,
+                binaryLogClient);
 
         NotificationService<MariaDbPartition, MariaDbOffsetContext> notificationService = new NotificationService<>(
                 getNotificationChannels(),
@@ -259,7 +269,8 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
                         taskContext,
                         streamingMetrics,
                         queue,
-                        snapshotterService),
+                        snapshotterService,
+                        binaryLogClient),
                 new MariaDbChangeEventSourceMetricsFactory(streamingMetrics),
                 dispatcher,
                 schema,
