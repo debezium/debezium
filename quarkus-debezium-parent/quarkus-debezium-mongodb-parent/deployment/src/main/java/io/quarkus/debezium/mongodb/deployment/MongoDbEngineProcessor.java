@@ -7,8 +7,6 @@ package io.quarkus.debezium.mongodb.deployment;
 
 import java.util.Map;
 
-import jakarta.inject.Singleton;
-
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 
@@ -27,7 +25,9 @@ import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.quarkus.arc.deployment.SyntheticBeanBuildItem;
 import io.quarkus.debezium.configuration.MongoDbDatasourceRecorder;
 import io.quarkus.debezium.configuration.MultiEngineMongoDbDatasourceConfiguration;
+import io.quarkus.debezium.deployment.QuarkusEngineProcessor;
 import io.quarkus.debezium.deployment.items.DebeziumConnectorBuildItem;
+import io.quarkus.debezium.deployment.items.DebeziumExtensionNameBuildItem;
 import io.quarkus.debezium.engine.MongoDbEngineProducer;
 import io.quarkus.deployment.IsNormal;
 import io.quarkus.deployment.annotations.BuildProducer;
@@ -35,37 +35,49 @@ import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.ExecutionTime;
 import io.quarkus.deployment.annotations.Record;
 import io.quarkus.deployment.builditem.DevServicesResultBuildItem;
-import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.builditem.Startable;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
 import io.quarkus.deployment.dev.devservices.DevServicesConfig;
 import io.quarkus.deployment.pkg.steps.NativeOrNativeSourcesBuild;
 
-public class MongoDbEngineProcessor {
+public class MongoDbEngineProcessor implements QuarkusEngineProcessor<MultiEngineMongoDbDatasourceConfiguration> {
     public static final String MONGODB = Module.name();
 
     @BuildStep
-    FeatureBuildItem feature() {
-        return new FeatureBuildItem("debezium-" + MONGODB);
+    @Override
+    public DebeziumExtensionNameBuildItem debeziumExtensionNameBuildItem() {
+        return new DebeziumExtensionNameBuildItem(MONGODB);
     }
 
+    @Override
     @BuildStep
     public DebeziumConnectorBuildItem engine() {
         return new DebeziumConnectorBuildItem(MONGODB, MongoDbEngineProducer.class);
     }
 
+    @BuildStep(onlyIf = NativeOrNativeSourcesBuild.class)
+    @Override
+    public void registerClassesThatAreLoadedThroughReflection(BuildProducer<ReflectiveClassBuildItem> reflectiveClassBuildItemBuildProducer) {
+        reflectiveClassBuildItemBuildProducer.produce(ReflectiveClassBuildItem.builder(
+                DefaultTopicNamingStrategy.class,
+                MongoDbConnector.class,
+                MongoDbConnectorTask.class,
+                MongoDbSourceInfoStructMaker.class,
+                SelectAllSnapshotQuery.class,
+                DefaultMongoDbAuthProvider.class)
+                .reason(getClass().getName())
+                .build());
+    }
+
+    @Override
+    public Class<MultiEngineMongoDbDatasourceConfiguration> quarkusDatasourceConfiguration() {
+        return MultiEngineMongoDbDatasourceConfiguration.class;
+    }
+
     @BuildStep
     @Record(ExecutionTime.RUNTIME_INIT)
-    public void generateDatasourceConfig(
-                                         MongoDbDatasourceRecorder mongoDbDatasourceRecorder,
-                                         BuildProducer<SyntheticBeanBuildItem> producer) {
-        producer.produce(SyntheticBeanBuildItem
-                .configure(MultiEngineMongoDbDatasourceConfiguration.class)
-                .scope(Singleton.class)
-                .supplier(mongoDbDatasourceRecorder.convert(null, false))
-                .setRuntimeInit()
-                .named(MONGODB)
-                .done());
+    public void produceMongoDbDatasourceConfig(MongoDbDatasourceRecorder mongoDbDatasourceRecorder, BuildProducer<SyntheticBeanBuildItem> producer) {
+        produceQuarkusDatasourceConfiguration(mongoDbDatasourceRecorder.convert(null, false), producer, MONGODB);
     }
 
     @BuildStep(onlyIfNot = IsNormal.class, onlyIf = DevServicesConfig.Enabled.class)
@@ -87,19 +99,6 @@ public class MongoDbEngineProcessor {
                 .name(DebeziumMongoDBContainer.SERVICE_NAME)
                 .config(Map.of("quarkus.mongodb.connection-string", DebeziumMongoDBContainer.CONNECTION_STRING))
                 .startable(DebeziumMongoDBContainer::new)
-                .build());
-    }
-
-    @BuildStep(onlyIf = NativeOrNativeSourcesBuild.class)
-    void registerClassesThatAreLoadedThroughReflection(BuildProducer<ReflectiveClassBuildItem> reflectiveClasses) {
-        reflectiveClasses.produce(ReflectiveClassBuildItem.builder(
-                DefaultTopicNamingStrategy.class,
-                MongoDbConnector.class,
-                MongoDbConnectorTask.class,
-                MongoDbSourceInfoStructMaker.class,
-                SelectAllSnapshotQuery.class,
-                DefaultMongoDbAuthProvider.class)
-                .reason(getClass().getName())
                 .build());
     }
 
