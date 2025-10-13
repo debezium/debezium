@@ -6,5 +6,5 @@
 
 package io.quarkus.sample.app;
 
-public class MongoDbDebeziumIntegrationTestSuiteIT implements QuarkusDebeziumIntegrationTestSuite {
+public class MongoDbDebeziumSingleEngineTestSuiteIT implements QuarkusDebeziumSingleEngineTestSuite {
 }
