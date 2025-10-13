@@ -11,9 +11,6 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import io.debezium.runtime.recorder.DatasourceRecorder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.quarkus.mongodb.runtime.MongodbConfig;
 import io.quarkus.runtime.RuntimeValue;
 import io.quarkus.runtime.annotations.Recorder;
