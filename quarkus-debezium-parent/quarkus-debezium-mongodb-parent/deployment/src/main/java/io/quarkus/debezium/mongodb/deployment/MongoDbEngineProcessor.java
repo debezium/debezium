@@ -49,8 +49,8 @@ public class MongoDbEngineProcessor implements QuarkusEngineProcessor<MultiEngin
         return new DebeziumExtensionNameBuildItem(MONGODB);
     }
 
-    @Override
     @BuildStep
+    @Override
     public DebeziumConnectorBuildItem engine() {
         return new DebeziumConnectorBuildItem(MONGODB, MongoDbEngineProducer.class);
     }
@@ -81,7 +81,7 @@ public class MongoDbEngineProcessor implements QuarkusEngineProcessor<MultiEngin
     }
 
     @BuildStep(onlyIfNot = IsNormal.class, onlyIf = DevServicesConfig.Enabled.class)
-    void configure(BuildProducer<DevServicesResultBuildItem> devServicesProducer, DebeziumEngineConfiguration debeziumEngineConfiguration) {
+    void devservices(BuildProducer<DevServicesResultBuildItem> devServicesProducer, DebeziumEngineConfiguration debeziumEngineConfiguration) {
 
         var mongoDb = debeziumEngineConfiguration.devservices().get("mongodb");
         var allServices = debeziumEngineConfiguration.devservices().get("*");
