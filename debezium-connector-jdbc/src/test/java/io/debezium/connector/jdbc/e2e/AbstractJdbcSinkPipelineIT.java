@@ -2985,7 +2985,7 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                 (config) -> config.with(JdbcSinkConnectorConfig.POSTGRES_POSTGIS_SCHEMA, postgisSchema),
                 (record) -> {
                     if (sink.getType().is(SinkType.POSTGRES)) {
-                        assertColumn(sink, record, "data", "GEOGRAPHY");
+                        assertColumn(sink, record, "data", "\"postgis\".\"geography\"");
                     }
                     else if (sink.getType().is(SinkType.ORACLE)) {
                         assertColumn(sink, record, "data", "MDSYS.SDO_GEOMETRY");
