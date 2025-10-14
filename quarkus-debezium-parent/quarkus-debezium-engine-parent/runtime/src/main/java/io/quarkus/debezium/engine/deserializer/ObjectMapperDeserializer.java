@@ -61,8 +61,7 @@ public class ObjectMapperDeserializer<T> implements Deserializer<T> {
             JsonNode root = objectMapper.readTree(data);
             JsonNode afterNode = root.path(PAYLOAD).path(path);
 
-            // Check if it's a string containing JSON
-            if (afterNode.isTextual()) {
+            if (containsJson(afterNode)) {
                 return objectMapper.treeToValue(objectMapper.readTree(afterNode.textValue()), type);
             }
 
@@ -72,6 +71,15 @@ public class ObjectMapperDeserializer<T> implements Deserializer<T> {
         catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     *
+     * @param afterNode Json tree model to check
+     * @return if the json node is a string that contains JSON
+     */
+    private boolean containsJson(JsonNode afterNode) {
+        return afterNode.isTextual();
     }
 
     @Override
