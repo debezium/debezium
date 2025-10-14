@@ -1,0 +1,68 @@
+[id="swap-geometry-coordinates"]
+= SwapGeometryCoordinates
+
+:toc:
+:toc-placement: macro
+:linkattrs:
+:icons: font
+:source-highlighter: highlight.js
+
+toc::[]
+
+When serializing geometry information into a WKB (Well-Known Binary) or EWKB (Extended Well-Known Binary) byte array, the source database will choose to use one of two different coordinate systems:
+
+Legacy CRS:84::
+This is an older convention that serializes coordinates using `(x, y)` or `(longitude, lattitude)` axis order.
+
+European Petroleum Survey Group (EPSG)::
+This is a modern convention that serializes coordinates using `(y, x)` or `(lattitude, longitude)` axis order.
+
+The format irrelevant in a {prodname} source connector since the data is written to the change event using the source database's chosen coordinate system.
+However, for a consumer, it's essential to understand the coordinate system used by the source and what is expected at the target.
+If the target expects a different coordinate system than the source, this SMT can be used to swap between the coordinate systems.
+
+[[example-swap-geometry-coordinates]]
+== Example
+
+To swap between the two coordinate systems, configure the `SwapGeometryCoordinates` SMT in the Kafka Connect configuration for a connector.
+You can configure the transformation to apply to the default set of spatial reference identifiers or modify the identifiers used to tailor which geometry fields are swapped and which are left unchanged.
+For example, to swap between coordinate systems using the default set of spatial reference identifiers, add the following lines to your connector configuration:
+
+[source]
+----
+transforms=swap
+transforms.swap.type=io.debezium.transforms.SwapGeometryCoordinates
+----
+
+To limit the swap of coordinate systems to only spatial reference identifier `4326`, add the following lines to your connector configuration:
+
+[source]
+----
+transforms=swap
+transforms.swap.type=io.debezium.transforms.SwapGeometryCoordinates
+transforms.swap.srids=4326
+----
+
+[[swap-geometry-coordinates-configuration-options]]
+== Configuration options
+
+The following table lists the configuration options that you can use with the `SwapGeometryCoordinates` SMT.
+
+.SwapGeometryCoordinates SMT configuration options
+[cols="14%a,40%a,10%a, 16%a, 16%a, 10%a"]
+|===
+|Property
+|Description
+|Type
+|Default
+|Valid Values
+|Importance
+
+|[[swap-geometry-coordinates-srids]]<<swap-geometry-coordinates-srids, `srids`>>
+|A comma-separated list of spatial reference identifiers used to control what geometry values will have their coordinate systems swapped.
+|list
+|`4326,3857, 4269`
+|non-empty list
+|low
+
+|===
