@@ -2541,6 +2541,7 @@ ifdef::product[]
 For details about setting up Oracle for use with the {prodname} connector, see the following sections:
 
 * xref:compatibility-of-the-debezium-oracle-connector-with-oracle-installation-types[]
+* xref:using-debezium-oracle-connector-with-autonomous-database[]
 * xref:schemas-that-the-debezium-oracle-connector-excludes-when-capturing-change-events[]
 * xref:preparing-oracle-databases-for-use-with-debezium[]
 * xref:resizing-oracle-redo-logs-to-accommodate-the-data-dictionary[]
@@ -2557,6 +2558,120 @@ endif::product[]
 
 An Oracle database can be installed either as a standalone instance or using Oracle Real Application Cluster (RAC).
 The {prodname} Oracle connector is compatible with both types of installation.
+
+// Type: concept
+// Title: Using {prodname} Oracle connector with Oracle Autonomous Database
+[id="using-debezium-oracle-connector-with-autonomous-database"]
+=== Using the connector with Oracle Autonomous Database
+
+Oracle Autonomous Database (ADB) is a fully managed cloud database service that includes built-in security, automatic patching, and optimizations.
+The {prodname} Oracle connector supports capturing changes from ADB instances with some configuration requirements due to the restricted nature of the ADB environment.
+
+[IMPORTANT]
+====
+Oracle Autonomous Database is only compatible with the LogMiner adapter (`database.connection.adapter=logminer`).
+ifdef::community[]
+The XStream and OpenLogReplicator adapters are not supported in ADB environments due to access restrictions and missing system privileges.
+endif::community[]
+ifdef::product[]
+The XStream adapter is not supported in ADB environments due to access restrictions and missing system privileges.
+endif::product[]
+====
+
+==== Autonomous Database restrictions
+
+Oracle Autonomous Database imposes several restrictions that affect how LogMiner operates:
+
+* Only one LogMiner session is allowed per Autonomous Database.
+* Archived log files are kept for 7 days only. Therefore, LogMiner can only access up to 7 days of archived log files.
+* Access to certain V$ views is restricted.
+Specifically, columns `SUPPLEMENTAL_LOG_DATA_MIN` and `SUPPLEMENTAL_LOG_DATA_ALL` in `V$DATABASE` are not accessible.
+* The `V$ARCHIVE_DEST_STATUS` view returns empty results because ADB manages archiving automatically.
+* Online redo logs cannot be directly accessed or mined due to security restrictions (`ORA-65040` error).
+* The `DBMS_LOGMNR.ADD_LOGFILE` and `DBMS_LOGMNR.REMOVE_LOGFILE` procedures are not supported.
+* All database operations must be performed within the pluggable database (PDB) context; direct CDB access is not available.
+
+For more information about these limitations, see the https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/autonomous-logminer.html[Oracle Autonomous Database LogMiner documentation].
+
+==== Configuring the connector for Autonomous Database
+
+To use the {prodname} Oracle connector with an Autonomous Database, configure the following property:
+
+[source,json]
+----
+{
+    "database.autonomous.mode": "true"
+}
+----
+
+When `database.autonomous.mode` is set to `true`, the connector automatically:
+
+* Uses `DBA_SUPPLEMENTAL_LOGGING` view instead of `V$DATABASE` columns for checking supplemental logging configuration.
+* Queries `V$ARCHIVED_LOG` for archive log destination IDs instead of `V$ARCHIVE_DEST_STATUS`.
+* Skips calls to `DBMS_LOGMNR.ADD_LOGFILE` and `DBMS_LOGMNR.REMOVE_LOGFILE`, relying on LogMiner's automatic log discovery.
+* Operates in archive-log-only mode, excluding online redo logs from mining.
+
+NOTE: The `log.mining.archive.log.only.mode` property is automatically set to `true` when `database.autonomous.mode` is enabled.
+
+==== LogMiner behavior in Autonomous Database
+
+In ADB environments, Oracle LogMiner operates with the following behavior:
+
+* LogMiner automatically discovers and includes archive logs based on the SCN range specified in the `START_LOGMNR` procedure.
+* The connector does not manually register log files; instead, it relies on Oracle's automatic log discovery mechanism.
+* Archive logs are the only log source; online redo logs are not available for mining.
+* The connector continues to use the `online_catalog` or `hybrid` mining strategies as configured.
+
+For more information about LogMiner support in Autonomous Database, see the https://docs.oracle.com/en/cloud/paas/autonomous-database/serverless/adbsb/autonomous-logminer.html[Oracle Autonomous Database documentation].
+
+==== Preparing the Autonomous Database
+
+Oracle Autonomous Database requires specific configuration steps before the {prodname} connector can capture changes.
+
+[IMPORTANT]
+====
+In Autonomous Database environments, only the `GGADMIN` user can use LogMiner to capture changes.
+This is an undocumented Oracle restriction that requires the connector to authenticate as the `GGADMIN` user.
+====
+
+.Procedure
+
+. Unlock and set a password for the `GGADMIN` user account:
++
+[source,sql]
+----
+ALTER USER ggadmin IDENTIFIED BY <password> ACCOUNT UNLOCK;
+----
+
+. Enable supplemental logging for all columns at the pluggable database level:
++
+[source,sql]
+----
+ALTER PLUGGABLE DATABASE ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
+----
+
+. Configure the connector to use the `GGADMIN` user credentials:
++
+[source,json]
+----
+{
+    "database.user": "ggadmin",
+    "database.password": "<password>",
+    "database.autonomous.mode": "true"
+}
+----
+
+For more information about configuring Oracle GoldenGate with Autonomous Database, see the https://docs.oracle.com/en/middleware/goldengate/core/21.3/oracle-db/using-ogg-autonomous-databases.html[Oracle GoldenGate documentation].
+
+==== Prerequisites for Autonomous Database
+
+Before configuring the connector for use with an Autonomous Database, ensure that the following requirements are met:
+
+* You have completed the database preparation steps described in xref:using-debezium-oracle-connector-with-autonomous-database[Preparing the Autonomous Database], including unlocking the `GGADMIN` user and enabling supplemental logging.
+* Archive logging is enabled (enabled by default in ADB).
+* Oracle Wallet is configured for secure connections to OCI managed databases.
+Download the wallet from the Oracle Cloud Console.
+For information about configuring Oracle Wallet with the connector, see xref:using-mtls-secure-connections-oracle-wallet[Using Oracle Wallet to configure mTLS connections].
 
 // Type: concept
 // Title: Schemas that the {prodname} Oracle connector excludes when capturing change events
@@ -3408,6 +3523,47 @@ The following JSON example shows the same configuration as in the preceding exam
     }
 }
 ----
+
+The following JSON example shows a configuration for connecting to an Oracle Autonomous Database.
+When connecting to ADB, the connector must enable autonomous database mode and archive-log-only mode.
+
+.Example: {prodname} Oracle connector configuration for Oracle Autonomous Database
+[source,json,indent=0,subs="+quotes"]
+----
+{
+    "name": "inventory-connector-adb",
+    "config": {
+        "connector.class" : "io.debezium.connector.oracle.OracleConnector",
+        "tasks.max" : "1",
+        "topic.prefix" : "adb-server",
+        "database.user" : "ggadmin",  // <1>
+        "database.password" : "_<ggadmin_password>_",  // <2>
+        "database.url": "jdbc:oracle:thin:@_<adb_service_name>___<level>_",  // <3>
+        "database.dbname" : "_<adb_database_name>_",  // <4>
+        "database.autonomous.mode": "true",  // <5>
+        "log.mining.archive.log.only.mode": "true",  // <6>
+        "driver.oracle.net.wallet_location": "(SOURCE=(METHOD=file)(METHOD_DATA=(DIRECTORY=_<wallet_location>_)))",  // <7>
+        "schema.history.internal.kafka.bootstrap.servers" : "kafka:9092",
+        "schema.history.internal.kafka.topic": "schema-changes.inventory"
+    }
+}
+----
+<1> The `GGADMIN` user account. In ADB environments, only the `GGADMIN` user can use LogMiner. For more information, see xref:using-debezium-oracle-connector-with-autonomous-database[].
+<2> The password for the `GGADMIN` user that you set when you unlocked the account.
+<3> The JDBC URL for connecting to the Autonomous Database. The connection string includes the ADB service name and connection level (`high`, `medium`, or `low`).
+<4> The name of the Autonomous Database service.
+<5> Enables Autonomous Database mode, which adapts the connector's behavior to work within ADB restrictions.
+<6> Explicitly enables archive-log-only mode. This property is automatically set when `database.autonomous.mode` is `true`, but including it makes the configuration more explicit.
+<7> The Oracle Wallet location configuration. Download the wallet from the Oracle Cloud Console and specify the directory path where the wallet files are stored. For more information about Oracle Wallet configuration, see xref:using-mtls-secure-connections-oracle-wallet[].
+
+[NOTE]
+====
+When connecting to Oracle Autonomous Database:
+
+* Do not specify the `database.pdb.name` property. ADB provides a fully managed PDB environment, and the connector operates within that context automatically.
+* Use the Oracle Wallet for secure connections. Download the wallet from the Oracle Cloud Console and configure it using the `driver.oracle.net.wallet_location` property as shown in the example above.
+* Ensure that you enable supplemental logging using the `ALTER PLUGGABLE DATABASE` command as described in xref:using-debezium-oracle-connector-with-autonomous-database[Preparing the Autonomous Database].
+====
 endif::community[]
 
 For the complete list of the configuration properties that you can set for the {prodname} Oracle connector, see xref:oracle-connector-properties[Oracle connector properties].
@@ -3689,6 +3845,18 @@ Valid values include raw TNS names and RAC connection strings.
 |[[oracle-property-database-pdb-name]]<<oracle-property-database-pdb-name, `+database.pdb.name+`>>
 |No default
 |Name of the Oracle pluggable database to connect to. Use this property with container database (CDB) installations only.
+
+|[[oracle-property-database-autonomous-mode]]<<oracle-property-database-autonomous-mode, `+database.autonomous.mode+`>>
+|`false`
+|Specifies whether the connector is capturing changes from an Oracle Autonomous Database (ADB). +
+When set to `true`, the connector adapts its behavior to work within ADB's restrictions:
+
+* Uses `DBA_SUPPLEMENTAL_LOGGING` view for supplemental logging checks instead of `V$DATABASE` columns.
+* Queries archive log destinations from `V$ARCHIVED_LOG` instead of `V$ARCHIVE_DEST_STATUS`.
+* Automatically enables archive-log-only mode and skips online redo log mining.
+* Bypasses manual log file registration with LogMiner, relying on automatic log discovery.
+
+For more information, see xref:using-debezium-oracle-connector-with-autonomous-database[Using the connector with Oracle Autonomous Database].
 
 |[[oracle-property-topic-prefix]]<<oracle-property-topic-prefix, `+topic.prefix+`>>
 |No default
