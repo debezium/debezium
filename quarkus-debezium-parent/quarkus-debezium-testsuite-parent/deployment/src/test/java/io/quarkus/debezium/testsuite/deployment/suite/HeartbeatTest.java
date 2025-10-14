@@ -4,7 +4,7 @@
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 
-package io.quarkus.debezium.mongodb.deployment.suite;
+package io.quarkus.debezium.testsuite.deployment.suite;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.given;
@@ -22,7 +22,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import io.debezium.runtime.events.DebeziumHeartbeat;
-import io.quarkus.debezium.mongodb.deployment.SuiteTags;
+import io.quarkus.debezium.testsuite.deployment.SuiteTags;
+import io.quarkus.debezium.testsuite.deployment.TestSuiteConfigurations;
 import io.quarkus.test.QuarkusUnitTest;
 
 @Tag(SuiteTags.DEFAULT)
@@ -39,7 +40,7 @@ public class HeartbeatTest {
     @DisplayName("should observe heartbeat events")
     void shouldObserveHeartbeatEvents() {
         given().await()
-                .atMost(100, TimeUnit.SECONDS)
+                .atMost(TestSuiteConfigurations.TIMEOUT, TimeUnit.SECONDS)
                 .untilAsserted(() -> assertThat(heartbeatHandler.isInvoked()).isTrue());
     }
 

@@ -4,7 +4,7 @@
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 
-package io.quarkus.debezium.mongodb.deployment;
+package io.quarkus.debezium.testsuite.deployment;
 
 import org.junit.platform.suite.api.AfterSuite;
 import org.junit.platform.suite.api.BeforeSuite;
@@ -12,13 +12,13 @@ import org.junit.platform.suite.api.SelectClasses;
 import org.junit.platform.suite.api.Suite;
 import org.junit.platform.suite.api.SuiteDisplayName;
 
-import io.quarkus.debezium.mongodb.deployment.suite.CapturingTest;
-import io.quarkus.debezium.mongodb.deployment.suite.CapturingTest.Order;
-import io.quarkus.debezium.mongodb.deployment.suite.CapturingTest.User;
-import io.quarkus.debezium.mongodb.deployment.suite.DebeziumLifeCycleTest;
-import io.quarkus.debezium.mongodb.deployment.suite.HeartbeatTest;
-import io.quarkus.debezium.mongodb.deployment.suite.NotificationTest;
-import io.quarkus.debezium.mongodb.deployment.suite.PostProcessingTest;
+import io.quarkus.debezium.testsuite.deployment.suite.CapturingTest;
+import io.quarkus.debezium.testsuite.deployment.suite.CapturingTest.Order;
+import io.quarkus.debezium.testsuite.deployment.suite.CapturingTest.User;
+import io.quarkus.debezium.testsuite.deployment.suite.DebeziumLifeCycleTest;
+import io.quarkus.debezium.testsuite.deployment.suite.HeartbeatTest;
+import io.quarkus.debezium.testsuite.deployment.suite.NotificationTest;
+import io.quarkus.debezium.testsuite.deployment.suite.PostProcessingTest;
 
 /**
  *

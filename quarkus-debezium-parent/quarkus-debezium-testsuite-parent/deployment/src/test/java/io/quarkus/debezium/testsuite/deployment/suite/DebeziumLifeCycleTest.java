@@ -4,7 +4,7 @@
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
 
-package io.quarkus.debezium.mongodb.deployment.suite;
+package io.quarkus.debezium.testsuite.deployment.suite;
 
 import static org.awaitility.Awaitility.given;
 
@@ -23,7 +23,8 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import io.debezium.runtime.DebeziumConnectorRegistry;
 import io.debezium.runtime.DebeziumStatus;
 import io.debezium.runtime.EngineManifest;
-import io.quarkus.debezium.mongodb.deployment.SuiteTags;
+import io.quarkus.debezium.testsuite.deployment.SuiteTags;
+import io.quarkus.debezium.testsuite.deployment.TestSuiteConfigurations;
 import io.quarkus.runtime.Application;
 import io.quarkus.test.QuarkusUnitTest;
 
@@ -45,14 +46,14 @@ public class DebeziumLifeCycleTest {
                 .isEqualTo("io.debezium.connector.mongodb.MongoDbConnector");
 
         given().await()
-                .atMost(10, TimeUnit.SECONDS)
+                .atMost(TestSuiteConfigurations.TIMEOUT, TimeUnit.SECONDS)
                 .untilAsserted(() -> Assertions.assertThat(registry.get(new EngineManifest("default")).status())
                         .isEqualTo(new DebeziumStatus(DebeziumStatus.State.POLLING)));
 
         Application.currentApplication().close();
 
         given().await()
-                .atMost(30, TimeUnit.SECONDS)
+                .atMost(TestSuiteConfigurations.TIMEOUT, TimeUnit.SECONDS)
                 .untilAsserted(() -> Assertions.assertThat(registry.get(new EngineManifest("default")).status())
                         .isEqualTo(new DebeziumStatus(DebeziumStatus.State.STOPPED)));
     }
