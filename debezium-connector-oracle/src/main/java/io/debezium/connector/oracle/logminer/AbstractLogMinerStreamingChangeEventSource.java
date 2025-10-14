@@ -126,6 +126,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
     private final XmlBeginParser xmlBeginParser;
     private final Tables.TableFilter tableFilter;
     private final List<String> archiveDestinationNames;
+    private final boolean autonomousDatabaseMode;
     private final LogMinerColumnIndexes columnIndexes;
     private final OffsetActivityMonitorService offsetActivityMonitorService;
 
@@ -169,6 +170,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         this.xmlBeginParser = new XmlBeginParser();
         this.tableFilter = connectorConfig.getTableFilters().dataCollectionFilter();
         this.archiveDestinationNames = connectorConfig.getArchiveDestinationNameResolver().getDestinationNames(streamingConnection);
+        this.autonomousDatabaseMode = connectorConfig.isAutonomousDatabaseMode();
         this.columnIndexes = LogMinerColumnIndexes.fromConfig(connectorConfig);
         this.offsetActivityMonitorService = OffsetActivityMonitorService.lookup(connectorConfig.getServiceRegistry());
     }
@@ -1122,7 +1124,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
             currentRedoLogSequences = sequences;
 
             metrics.setSwitchCount(streamingConnection.queryAndMap(
-                    SqlUtils.switchHistoryQuery(archiveDestinationNames),
+                    SqlUtils.switchHistoryQuery(archiveDestinationNames, autonomousDatabaseMode),
                     rs -> rs.next() ? rs.getInt(2) : 0));
 
             return true;
@@ -1173,9 +1175,12 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if a database exception occurs
      */
     protected void applyLogsToSession() throws SQLException {
-        sessionContext.removeAllLogFilesFromSession();
+        if (!autonomousDatabaseMode) {
+            // In ADB mode, LogMiner automatically finds logs; they cannot be added or removed manually
+            sessionContext.removeAllLogFilesFromSession();
 
-        sessionContext.addLogFiles(sessionLogFiles);
+            sessionContext.addLogFiles(sessionLogFiles);
+        }
 
         // These need to be updated when we prepare the session so that log switch check works
         currentRedoLogSequences = currentLogFiles.stream()
@@ -1858,7 +1863,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if a database exception occurred
      */
     private boolean isDatabaseAllSupplementalLoggingEnabled() throws SQLException {
-        return connectionFactory.mainConnection().queryAndMap(SqlUtils.databaseSupplementalLoggingAllCheckQuery(), rs -> {
+        boolean autonomousDatabaseMode = connectorConfig.isAutonomousDatabaseMode();
+        return connectionFactory.mainConnection().queryAndMap(SqlUtils.databaseSupplementalLoggingAllCheckQuery(autonomousDatabaseMode), rs -> {
             while (rs.next()) {
                 if ("YES".equalsIgnoreCase(rs.getString(2))) {
                     return true;
@@ -1875,7 +1881,8 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if a database exception occurred
      */
     private boolean isDatabaseMinSupplementalLoggingEnabled() throws SQLException {
-        return connectionFactory.mainConnection().queryAndMap(SqlUtils.databaseSupplementalLoggingMinCheckQuery(), rs -> {
+        boolean autonomousDatabaseMode = connectorConfig.isAutonomousDatabaseMode();
+        return connectionFactory.mainConnection().queryAndMap(SqlUtils.databaseSupplementalLoggingMinCheckQuery(autonomousDatabaseMode), rs -> {
             while (rs.next()) {
                 final String value = rs.getString(2);
                 // YES - ADD SUPPLEMENTAL LOG DATA

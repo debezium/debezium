@@ -406,8 +406,11 @@ public class OracleConnection extends JdbcConnection {
      * @throws DebeziumException if the oldest system change number cannot be found due to no logs available
      */
     public Optional<Scn> getFirstScnInLogs(Duration archiveLogRetention, List<String> archiveDestinationNames) throws SQLException {
+        return getFirstScnInLogs(archiveLogRetention, archiveDestinationNames, false);
+    }
 
-        final String oldestFirstChangeQuery = SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveDestinationNames);
+    public Optional<Scn> getFirstScnInLogs(Duration archiveLogRetention, List<String> archiveDestinationNames, boolean autonomousDatabaseMode) throws SQLException {
+        final String oldestFirstChangeQuery = SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveDestinationNames, autonomousDatabaseMode);
         final String oldestScn = singleOptionalValue(oldestFirstChangeQuery, rs -> rs.getString(1));
 
         if (oldestScn == null) {
@@ -421,11 +424,12 @@ public class OracleConnection extends JdbcConnection {
     public boolean validateLogPosition(Partition partition, OffsetContext offset, CommonConnectorConfig config) {
         final OracleConnectorConfig connectorConfig = (OracleConnectorConfig) config;
         final Duration archiveLogRetention = connectorConfig.getArchiveLogRetention();
+        final boolean autonomousDatabaseMode = connectorConfig.isAutonomousDatabaseMode();
         final List<String> archiveDestinationNames = connectorConfig.getArchiveDestinationNameResolver().getDestinationNames(this);
         final Scn storedOffset = ((OracleConnectorConfig) config).getAdapter().getOffsetScn((OracleOffsetContext) offset);
 
         try {
-            Optional<Scn> firstAvailableScn = getFirstScnInLogs(archiveLogRetention, archiveDestinationNames);
+            Optional<Scn> firstAvailableScn = getFirstScnInLogs(archiveLogRetention, archiveDestinationNames, autonomousDatabaseMode);
             return firstAvailableScn.filter(isLessThanOrEqualTo(storedOffset)).isPresent();
         }
         catch (SQLException e) {

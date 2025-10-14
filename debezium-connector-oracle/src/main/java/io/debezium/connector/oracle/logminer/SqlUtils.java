@@ -41,12 +41,24 @@ public class SqlUtils {
     private static final String ARCHIVED_LOG_VIEW = "V$ARCHIVED_LOG";
     private static final String ARCHIVE_DEST_STATUS_VIEW = "V$ARCHIVE_DEST_STATUS";
     private static final String ALL_LOG_GROUPS = "ALL_LOG_GROUPS";
+    private static final String DBA_SUPPLEMENTAL_LOGGING = "DBA_SUPPLEMENTAL_LOGGING";
 
     public static String redoLogStatusQuery() {
         return String.format("SELECT F.MEMBER, R.STATUS FROM %s F, %s R WHERE F.GROUP# = R.GROUP# ORDER BY 2", LOGFILE_VIEW, LOG_VIEW);
     }
 
     public static String switchHistoryQuery(List<String> archiveDestinationNames) {
+        return switchHistoryQuery(archiveDestinationNames, false);
+    }
+
+    public static String switchHistoryQuery(List<String> archiveDestinationNames, boolean autonomousDatabaseMode) {
+        if (autonomousDatabaseMode && archiveDestinationNames.isEmpty()) {
+            // In ADB, V$ARCHIVE_DEST_STATUS returns empty results since ADB manages archiving automatically.
+            return "SELECT 'TOTAL', COUNT(1) FROM V$ARCHIVED_LOG A " +
+                    "WHERE A.FIRST_TIME > TRUNC(SYSDATE) " +
+                    "AND A.DEST_ID IN (" + autonomousArchiveLogDestinationsQuery() + ")";
+        }
+
         if (archiveDestinationNames.isEmpty()) {
             throw new DebeziumException("At least one destination name is expected");
         }
@@ -76,11 +88,29 @@ public class SqlUtils {
     }
 
     public static String databaseSupplementalLoggingAllCheckQuery() {
-        return String.format("SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_ALL FROM %s", DATABASE_VIEW);
+        return databaseSupplementalLoggingAllCheckQuery(false);
+    }
+
+    public static String databaseSupplementalLoggingAllCheckQuery(boolean autonomousDatabaseMode) {
+        if (autonomousDatabaseMode) {
+            return String.format("SELECT 'KEY', ALL_COLUMN FROM %s", DBA_SUPPLEMENTAL_LOGGING);
+        }
+        else {
+            return String.format("SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_ALL FROM %s", DATABASE_VIEW);
+        }
     }
 
     public static String databaseSupplementalLoggingMinCheckQuery() {
-        return String.format("SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_MIN FROM %s", DATABASE_VIEW);
+        return databaseSupplementalLoggingMinCheckQuery(false);
+    }
+
+    public static String databaseSupplementalLoggingMinCheckQuery(boolean autonomousDatabaseMode) {
+        if (autonomousDatabaseMode) {
+            return String.format("SELECT 'KEY', MINIMAL FROM %s", DBA_SUPPLEMENTAL_LOGGING);
+        }
+        else {
+            return String.format("SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_MIN FROM %s", DATABASE_VIEW);
+        }
     }
 
     public static String tableSupplementalLoggingCheckQuery() {
@@ -88,16 +118,29 @@ public class SqlUtils {
     }
 
     public static String oldestFirstChangeQuery(Duration archiveLogRetention, List<String> archiveDestinationNames) {
+        return oldestFirstChangeQuery(archiveLogRetention, archiveDestinationNames, false);
+    }
+
+    public static String oldestFirstChangeQuery(Duration archiveLogRetention, List<String> archiveDestinationNames, boolean autonomousDatabaseMode) {
         final StringBuilder sb = new StringBuilder();
         sb.append("SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# ");
         sb.append("FROM ").append(LOG_VIEW).append(" ");
         sb.append("UNION SELECT MIN(A.FIRST_CHANGE#) AS FIRST_CHANGE# ");
-        sb.append("FROM ");
-        sb.append(ARCHIVED_LOG_VIEW).append(" A, ");
-        sb.append(DATABASE_VIEW).append(" D, ");
-        sb.append(ARCHIVE_DEST_STATUS_VIEW).append(" DS ");
-        sb.append("WHERE A.DEST_ID = DS.DEST_ID ");
-        sb.append("AND ").append(destinationNamesPredicate("DS.DEST_NAME", archiveDestinationNames)).append(" ");
+        if (autonomousDatabaseMode && archiveDestinationNames.isEmpty()) {
+            // In ADB, V$ARCHIVE_DEST_STATUS returns empty results since ADB manages archiving automatically.
+            sb.append("FROM ");
+            sb.append(ARCHIVED_LOG_VIEW).append(" A, ");
+            sb.append(DATABASE_VIEW).append(" D ");
+            sb.append("WHERE A.DEST_ID IN (").append(autonomousArchiveLogDestinationsQuery()).append(") ");
+        }
+        else {
+            sb.append("FROM ");
+            sb.append(ARCHIVED_LOG_VIEW).append(" A, ");
+            sb.append(DATABASE_VIEW).append(" D, ");
+            sb.append(ARCHIVE_DEST_STATUS_VIEW).append(" DS ");
+            sb.append("WHERE A.DEST_ID = DS.DEST_ID ");
+            sb.append("AND ").append(destinationNamesPredicate("DS.DEST_NAME", archiveDestinationNames)).append(" ");
+        }
         sb.append("AND A.STATUS='A' ");
         sb.append("AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# ");
         sb.append("AND A.RESETLOGS_TIME = D.RESETLOGS_TIME");
@@ -110,15 +153,29 @@ public class SqlUtils {
     }
 
     public static String allRedoThreadArchiveLogs(int threadId, List<String> archiveDestinationNames) {
+        return allRedoThreadArchiveLogs(threadId, archiveDestinationNames, false);
+    }
+
+    public static String allRedoThreadArchiveLogs(int threadId, List<String> archiveDestinationNames, boolean autonomousDatabaseMode) {
         final StringBuilder sb = new StringBuilder();
         sb.append("SELECT A.NAME, A.SEQUENCE#, A.FIRST_CHANGE#, A.NEXT_CHANGE#, A.BLOCKS*BLOCK_SIZE, ");
-        sb.append("A.DICTIONARY_BEGIN, A.DICTIONARY_END, DS.DEST_NAME ");
-        sb.append("FROM ");
-        sb.append(ARCHIVED_LOG_VIEW).append(" A, ");
-        sb.append(DATABASE_VIEW).append(" D, ");
-        sb.append(ARCHIVE_DEST_STATUS_VIEW).append(" DS ");
-        sb.append("WHERE A.DEST_ID = DS.DEST_ID ");
-        sb.append("AND ").append(destinationNamesPredicate("DS.DEST_NAME", archiveDestinationNames)).append(" ");
+        if (autonomousDatabaseMode && archiveDestinationNames.isEmpty()) {
+            // In ADB, V$ARCHIVE_DEST_STATUS returns empty results since ADB manages archiving automatically.
+            sb.append("A.DICTIONARY_BEGIN, A.DICTIONARY_END, NULL AS DEST_NAME ");
+            sb.append("FROM ");
+            sb.append(ARCHIVED_LOG_VIEW).append(" A, ");
+            sb.append(DATABASE_VIEW).append(" D ");
+            sb.append("WHERE A.DEST_ID IN (").append(autonomousArchiveLogDestinationsQuery()).append(") ");
+        }
+        else {
+            sb.append("A.DICTIONARY_BEGIN, A.DICTIONARY_END, DS.DEST_NAME ");
+            sb.append("FROM ");
+            sb.append(ARCHIVED_LOG_VIEW).append(" A, ");
+            sb.append(DATABASE_VIEW).append(" D, ");
+            sb.append(ARCHIVE_DEST_STATUS_VIEW).append(" DS ");
+            sb.append("WHERE A.DEST_ID = DS.DEST_ID ");
+            sb.append("AND ").append(destinationNamesPredicate("DS.DEST_NAME", archiveDestinationNames)).append(" ");
+        }
         sb.append("AND A.STATUS='A' ");
         sb.append("AND A.THREAD#=").append(threadId).append(" ");
         sb.append("AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# ");
@@ -137,6 +194,11 @@ public class SqlUtils {
      * @return the query string to obtain minable log files
      */
     public static String allMinableLogsQuery(Scn scn, Duration archiveLogRetention, boolean archiveLogOnlyMode, List<String> archiveDestinationNames) {
+        return allMinableLogsQuery(scn, archiveLogRetention, archiveLogOnlyMode, archiveDestinationNames, false);
+    }
+
+    public static String allMinableLogsQuery(Scn scn, Duration archiveLogRetention, boolean archiveLogOnlyMode, List<String> archiveDestinationNames,
+                                             boolean autonomousDatabaseMode) {
         // The generated query performs a union in order to obtain a list of all archive logs that should be mined
         // combined with a list of redo logs that should be mined.
         //
@@ -196,17 +258,31 @@ public class SqlUtils {
         }
         sb.append("SELECT A.NAME AS FILE_NAME, A.FIRST_CHANGE# FIRST_CHANGE, A.NEXT_CHANGE# NEXT_CHANGE, 'YES', ");
         sb.append("NULL, 'ARCHIVED', A.SEQUENCE# AS SEQ, A.DICTIONARY_BEGIN, A.DICTIONARY_END, A.THREAD# AS THREAD, ");
-        sb.append("A.BLOCKS*A.BLOCK_SIZE, DS.DEST_NAME ");
-        sb.append("FROM ");
-        sb.append(ARCHIVED_LOG_VIEW).append(" A, ");
-        sb.append(DATABASE_VIEW).append(" D, ");
-        sb.append(ARCHIVE_DEST_STATUS_VIEW).append(" DS ");
-        sb.append("WHERE A.NAME IS NOT NULL ");
-        sb.append("AND A.ARCHIVED = 'YES' ");
-        sb.append("AND A.STATUS = 'A' ");
-        sb.append("AND A.NEXT_CHANGE# > ").append(scn).append(" ");
-        sb.append("AND A.DEST_ID = DS.DEST_ID ");
-        sb.append("AND ").append(destinationNamesPredicate("DS.DEST_NAME", archiveDestinationNames)).append(" ");
+        if (autonomousDatabaseMode && archiveDestinationNames.isEmpty()) {
+            // In ADB, V$ARCHIVE_DEST_STATUS returns empty results since ADB manages archiving automatically.
+            sb.append("A.BLOCKS*A.BLOCK_SIZE, NULL AS DEST_NAME ");
+            sb.append("FROM ");
+            sb.append(ARCHIVED_LOG_VIEW).append(" A, ");
+            sb.append(DATABASE_VIEW).append(" D ");
+            sb.append("WHERE A.NAME IS NOT NULL ");
+            sb.append("AND A.ARCHIVED = 'YES' ");
+            sb.append("AND A.STATUS = 'A' ");
+            sb.append("AND A.NEXT_CHANGE# > ").append(scn).append(" ");
+            sb.append("AND A.DEST_ID IN (").append(autonomousArchiveLogDestinationsQuery()).append(") ");
+        }
+        else {
+            sb.append("A.BLOCKS*A.BLOCK_SIZE, DS.DEST_NAME ");
+            sb.append("FROM ");
+            sb.append(ARCHIVED_LOG_VIEW).append(" A, ");
+            sb.append(DATABASE_VIEW).append(" D, ");
+            sb.append(ARCHIVE_DEST_STATUS_VIEW).append(" DS ");
+            sb.append("WHERE A.NAME IS NOT NULL ");
+            sb.append("AND A.ARCHIVED = 'YES' ");
+            sb.append("AND A.STATUS = 'A' ");
+            sb.append("AND A.NEXT_CHANGE# > ").append(scn).append(" ");
+            sb.append("AND A.DEST_ID = DS.DEST_ID ");
+            sb.append("AND ").append(destinationNamesPredicate("DS.DEST_NAME", archiveDestinationNames)).append(" ");
+        }
         sb.append("AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# ");
         sb.append("AND A.RESETLOGS_TIME = D.RESETLOGS_TIME ");
 
@@ -228,6 +304,16 @@ public class SqlUtils {
         }
 
         return columnName + " IN (" + formattedValues + ")";
+    }
+
+    /**
+     * Returns a subquery that selects the archive log destination identifiers to be used when
+     * connected to an Oracle Autonomous Database (ADB). In ADB, {@code V$ARCHIVE_DEST_STATUS}
+     * returns empty results since ADB manages archiving automatically, so all destination
+     * identifiers found in {@link #ARCHIVED_LOG_VIEW} are included.
+     */
+    private static String autonomousArchiveLogDestinationsQuery() {
+        return String.format("SELECT DISTINCT DEST_ID FROM %s", ARCHIVED_LOG_VIEW);
     }
 
     public static String deletedArchiveLogsQuery(Scn scn, List<String> archiveDestinationNames) {

@@ -54,6 +54,7 @@ public class LogFileCollector {
     private final Duration archiveLogRetention;
     private final boolean archiveLogOnlyMode;
     private final List<String> archiveLogDestinationNames;
+    private final boolean autonomousDatabaseMode;
     private final OracleConnection connection;
 
     public LogFileCollector(OracleConnectorConfig connectorConfig, OracleConnection connection) {
@@ -63,6 +64,7 @@ public class LogFileCollector {
         this.archiveLogRetention = connectorConfig.getArchiveLogRetention();
         this.archiveLogOnlyMode = connectorConfig.isArchiveLogOnlyMode();
         this.archiveLogDestinationNames = connectorConfig.getArchiveDestinationNameResolver().getDestinationNames(connection);
+        this.autonomousDatabaseMode = connectorConfig.isAutonomousDatabaseMode();
         this.connection = connection;
     }
 
@@ -318,6 +320,19 @@ public class LogFileCollector {
     public static List<LogFile> mergeLogsByPrecedence(Map<String, List<LogFile>> logs, List<String> destinationNames) {
         final List<LogFile> result = new ArrayList<>();
         final Set<LogFile.ThreadSequence> seen = new HashSet<>();
+
+        if (destinationNames.isEmpty()) {
+            // No destination precedence is available, e.g. Oracle Autonomous Database where the
+            // archive destination views are hidden; retain all logs across destinations.
+            for (List<LogFile> destinationLogs : logs.values()) {
+                for (LogFile logFile : destinationLogs) {
+                    if (seen.add(logFile.getThreadSequence())) {
+                        result.add(logFile);
+                    }
+                }
+            }
+            return result;
+        }
 
         for (String destinationName : destinationNames) {
             final List<LogFile> destinationLogs = logs.get(destinationName);
@@ -593,7 +608,7 @@ public class LogFileCollector {
     @VisibleForTesting
     public List<LogFile> getAllRedoThreadArchiveLogs(int threadId) throws SQLException {
         return connection.queryAndMap(
-                SqlUtils.allRedoThreadArchiveLogs(threadId, archiveLogDestinationNames),
+                SqlUtils.allRedoThreadArchiveLogs(threadId, archiveLogDestinationNames, autonomousDatabaseMode),
                 rs -> {
                     final Map<String, List<LogFile>> archiveLogsByDestination = new HashMap<>();
                     while (rs.next()) {
@@ -629,7 +644,7 @@ public class LogFileCollector {
      * @return query string
      */
     private String getLogsQuery(Scn offsetScn) {
-        return SqlUtils.allMinableLogsQuery(offsetScn, archiveLogRetention, archiveLogOnlyMode, archiveLogDestinationNames);
+        return SqlUtils.allMinableLogsQuery(offsetScn, archiveLogRetention, archiveLogOnlyMode, archiveLogDestinationNames, autonomousDatabaseMode);
     }
 
     /**
