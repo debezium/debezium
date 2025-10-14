@@ -8,6 +8,7 @@ package io.debezium.antlr;
 
 import java.util.Collection;
 
+import io.debezium.relational.ddl.DdlChanges;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CodePointCharStream;
@@ -57,7 +58,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     }
 
     @Override
-    public void parse(String ddlContent, Tables databaseTables) {
+    public DdlChanges parse(String ddlContent, Tables databaseTables) {
         this.databaseTables = databaseTables;
 
         CodePointCharStream ddlContentCharStream = CharStreams.fromString(ddlContent);
@@ -85,6 +86,7 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
         else {
             throwParsingException(parsingErrorListener.getErrors());
         }
+        return getAndResetDdlChanges();
     }
 
     /**

@@ -96,9 +96,7 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
         final Table tableBefore = schema.tableFor(tableId);
 
         final OracleDdlParser parser = schema.getDdlParser();
-        final DdlChanges ddlChanges = parser.getDdlChanges();
         try {
-            ddlChanges.reset();
             parser.setCurrentDatabase(sourceDatabaseName);
             parser.setCurrentSchema(objectOwner);
             parser.parse(ddlText, schema.getTables());
@@ -114,6 +112,7 @@ public class OracleSchemaChangeEventEmitter implements SchemaChangeEventEmitter 
             }
         }
 
+        final DdlChanges ddlChanges = parser.getAndResetDdlChanges();
         if (!ddlChanges.isEmpty() && (filters.isIncluded(tableId) || !schema.storeOnlyCapturedTables())) {
             List<SchemaChangeEvent> changeEvents = new ArrayList<>();
             ddlChanges.getEventsByDatabase((String dbName, List<DdlParserListener.Event> events) -> {
