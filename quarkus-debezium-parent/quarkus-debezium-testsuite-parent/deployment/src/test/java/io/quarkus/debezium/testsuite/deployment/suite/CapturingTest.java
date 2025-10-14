@@ -3,7 +3,7 @@
  *
  * Licensed under the Apache Software License version 2.0, available at http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.quarkus.debezium.mongodb.deployment.suite;
+package io.quarkus.debezium.testsuite.deployment.suite;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.given;
@@ -32,7 +32,8 @@ import io.debezium.runtime.CapturingEvent;
 import io.quarkus.debezium.engine.deserializer.CapturingEventDeserializerRegistry;
 import io.quarkus.debezium.engine.deserializer.MutableCapturingEventDeserializerRegistry;
 import io.quarkus.debezium.engine.deserializer.ObjectMapperDeserializer;
-import io.quarkus.debezium.mongodb.deployment.SuiteTags;
+import io.quarkus.debezium.testsuite.deployment.SuiteTags;
+import io.quarkus.debezium.testsuite.deployment.TestSuiteConfigurations;
 import io.quarkus.test.QuarkusUnitTest;
 
 @Tag(SuiteTags.DEFAULT)
@@ -60,7 +61,7 @@ public class CapturingTest {
     @DisplayName("should invoke the default capture")
     void shouldInvokeDefaultCapture() {
         given().await()
-                .atMost(100, TimeUnit.SECONDS)
+                .atMost(TestSuiteConfigurations.TIMEOUT, TimeUnit.SECONDS)
                 .untilAsserted(() -> assertThat(captureProductsHandler.isInvoked()).isTrue());
 
     }
@@ -69,7 +70,7 @@ public class CapturingTest {
     @DisplayName("should call the filtered by destination capture")
     void shouldInvokeFilteredByDestinationCapture() {
         given().await()
-                .atMost(100, TimeUnit.SECONDS)
+                .atMost(TestSuiteConfigurations.TIMEOUT, TimeUnit.SECONDS)
                 .untilAsserted(() -> assertThat(captureProductsHandler.filteredEvent()).isEqualTo(2));
     }
 
@@ -77,7 +78,7 @@ public class CapturingTest {
     @DisplayName("should map and capture 'capturing' orders filtered by destination")
     void shouldMapAndCaptureOrdersFilteredByDestination() {
         given().await()
-                .atMost(100, TimeUnit.SECONDS)
+                .atMost(TestSuiteConfigurations.TIMEOUT, TimeUnit.SECONDS)
                 .untilAsserted(() -> assertThat(captureProductsHandler.getOrders()).containsExactlyInAnyOrder(
                         new Order(1, "one"),
                         new Order(2, "two")));
@@ -87,7 +88,7 @@ public class CapturingTest {
     @DisplayName("should map and capture users filtered by destination")
     void shouldMapAndCaptureUsersFilteredByDestination() {
         given().await()
-                .atMost(100, TimeUnit.SECONDS)
+                .atMost(TestSuiteConfigurations.TIMEOUT, TimeUnit.SECONDS)
                 .untilAsserted(() -> assertThat(captureProductsHandler.getUsers()).containsExactlyInAnyOrder(
                         new User(1, "giovanni", "developer"),
                         new User(2, "mario", "developer")));

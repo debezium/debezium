@@ -144,27 +144,6 @@
                                 </volumes>
                             </run>
                         </image>
-                        <image>
-                            <name>quay.io/debezium/mongo:6.0</name>
-                            <alias>mongodb2</alias>
-                            <run>
-                                <ports>
-                                    <port>27018:27018</port>
-                                </ports>
-                                <env>
-                                    <MONGO_INITDB_ROOT_USERNAME>alternative</MONGO_INITDB_ROOT_USERNAME>
-                                    <MONGO_INITDB_ROOT_PASSWORD>alternative</MONGO_INITDB_ROOT_PASSWORD>
-                                    <MONGO_INITDB_DATABASE>alternative</MONGO_INITDB_DATABASE>
-                                    <HOSTNAME>127.0.0.1</HOSTNAME>
-                                    <PORT>27018</PORT>
-                                </env>
-                                <volumes>
-                                    <bind>
-                                        <volume>${project.basedir}/src/main/resources/script/alternative:/docker-entrypoint-initdb.d</volume>
-                                    </bind>
-                                </volumes>
-                            </run>
-                        </image>
                     </images>
                 </configuration>
             </plugin>
