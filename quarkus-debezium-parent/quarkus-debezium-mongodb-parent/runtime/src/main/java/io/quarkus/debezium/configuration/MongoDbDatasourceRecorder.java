@@ -18,6 +18,10 @@ import io.quarkus.runtime.annotations.Recorder;
 @Recorder
 public class MongoDbDatasourceRecorder implements DatasourceRecorder<MultiEngineMongoDbDatasourceConfiguration> {
 
+    /**
+     * The mongodb-client extension contains health configurations which are not necessary for the instrumentation
+     * of Debezium Engine
+     */
     public static final String TO_REMOVE = "health";
     public static final String DEFAULT = "default";
     private final RuntimeValue<MongodbConfig> runtimeConfig;
