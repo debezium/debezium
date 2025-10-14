@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.postgresql.PostgresConnectorConfig.LogicalDecoder;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresDefaultValueConverter;
@@ -55,18 +56,19 @@ public class PostgresSchema extends RelationalDatabaseSchema {
      * Create a schema component given the supplied {@link PostgresConnectorConfig Postgres connector configuration}.
      *
      * @param customConverterRegistry
-     * @param config the connector configuration, which is presumed to be valid
+     * @param cdcSourceTaskContext the connector configuration, which is presumed to be valid
      */
-    protected PostgresSchema(PostgresConnectorConfig config, PostgresDefaultValueConverter defaultValueConverter,
+    protected PostgresSchema(CdcSourceTaskContext<PostgresConnectorConfig> cdcSourceTaskContext, PostgresDefaultValueConverter defaultValueConverter,
                              TopicNamingStrategy<TableId> topicNamingStrategy, PostgresValueConverter valueConverter, CustomConverterRegistry customConverterRegistry) {
-        super(config, topicNamingStrategy, config.getTableFilters().dataCollectionFilter(),
-                config.getColumnFilter(), getTableSchemaBuilder(config, valueConverter, defaultValueConverter, customConverterRegistry),
-                false, config.getKeyMapper());
+        super(cdcSourceTaskContext.getConfig(), topicNamingStrategy, cdcSourceTaskContext.getConfig().getTableFilters().dataCollectionFilter(),
+                cdcSourceTaskContext.getConfig().getColumnFilter(),
+                getTableSchemaBuilder(cdcSourceTaskContext.getConfig(), valueConverter, defaultValueConverter, customConverterRegistry),
+                false, cdcSourceTaskContext.getConfig().getKeyMapper(), cdcSourceTaskContext);
 
-        this.connectorConfig = config;
+        this.connectorConfig = cdcSourceTaskContext.getConfig();
         this.tableIdToToastableColumns = new HashMap<>();
         this.relationIdToTableId = new HashMap<>();
-        this.readToastableColumns = config.skipRefreshSchemaOnMissingToastableData();
+        this.readToastableColumns = connectorConfig.skipRefreshSchemaOnMissingToastableData();
     }
 
     private static TableSchemaBuilder getTableSchemaBuilder(PostgresConnectorConfig config, PostgresValueConverter valueConverter,

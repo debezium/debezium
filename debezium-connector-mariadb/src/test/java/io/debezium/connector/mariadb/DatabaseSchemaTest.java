@@ -70,7 +70,7 @@ public class DatabaseSchemaTest extends BinlogDatabaseSchemaTest<MariaDbConnecto
                         CommonConnectorConfig.EventConvertingFailureHandlingMode.WARN),
                 (TopicNamingStrategy) DefaultTopicNamingStrategy.create(connectorConfig),
                 SchemaNameAdjuster.create(),
-                false, new CustomConverterRegistry(Collections.emptyList()));
+                false, new CustomConverterRegistry(Collections.emptyList()), new MariaDbTaskContext(config, connectorConfig));
     }
 
     @Override

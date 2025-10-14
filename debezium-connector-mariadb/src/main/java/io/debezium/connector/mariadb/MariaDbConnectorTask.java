@@ -22,6 +22,7 @@ import com.github.shyiko.mysql.binlog.BinaryLogClient;
 
 import io.debezium.DebeziumException;
 import io.debezium.bean.StandardBeanNames;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
@@ -30,6 +31,7 @@ import io.debezium.connector.binlog.BinlogEventMetadataProvider;
 import io.debezium.connector.binlog.BinlogSourceTask;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
 import io.debezium.connector.binlog.jdbc.BinlogFieldReader;
+import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.mariadb.jdbc.MariaDbConnection;
 import io.debezium.connector.mariadb.jdbc.MariaDbConnectionConfiguration;
@@ -73,6 +75,7 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
     private volatile BinlogConnectorConnection beanRegistryJdbcConnection;
     private volatile ErrorHandler errorHandler;
     private volatile MariaDbDatabaseSchema schema;
+    private MariaDbConnectorConfig connectorConfig;
 
     @Override
     public String version() {
@@ -85,9 +88,18 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
     }
 
     @Override
+    public CdcSourceTaskContext<? extends CommonConnectorConfig> preStart(Configuration config) {
+
+        connectorConfig = new MariaDbConnectorConfig(config);
+        taskContext = new MariaDbTaskContext(config, connectorConfig);
+
+        return taskContext;
+    }
+
+    @Override
     protected ChangeEventSourceCoordinator<MariaDbPartition, MariaDbOffsetContext> start(Configuration configuration) {
         final Clock clock = Clock.system();
-        final MariaDbConnectorConfig connectorConfig = new MariaDbConnectorConfig(configuration);
+
         final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(TOPIC_NAMING_STRATEGY);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
         final MariaDbValueConverters valueConverters = getValueConverters(connectorConfig);
@@ -118,8 +130,8 @@ public class MariaDbConnectorTask extends BinlogSourceTask<MariaDbPartition, Mar
         final boolean tableIdCaseInsensitive = connection.isTableIdCaseSensitive();
         CustomConverterRegistry converterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
 
-        this.schema = new MariaDbDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive, converterRegistry);
-        taskContext = new MariaDbTaskContext(config, connectorConfig);
+        this.schema = new MariaDbDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive, converterRegistry,
+                taskContext);
 
         // Manual Bean Registration
         beanRegistryJdbcConnection = connectionFactory.newConnection();

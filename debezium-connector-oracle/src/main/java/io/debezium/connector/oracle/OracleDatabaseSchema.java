@@ -16,6 +16,8 @@ import java.util.concurrent.ConcurrentMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.config.CommonConnectorConfig;
+import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
 import io.debezium.connector.oracle.antlr.OracleDdlParser;
 import io.debezium.relational.Attribute;
@@ -58,7 +60,8 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
     public OracleDatabaseSchema(OracleConnectorConfig connectorConfig, OracleValueConverters valueConverters,
                                 DefaultValueConverter defaultValueConverter, SchemaNameAdjuster schemaNameAdjuster,
                                 TopicNamingStrategy<TableId> topicNamingStrategy, TableNameCaseSensitivity tableNameCaseSensitivity,
-                                boolean extendedStringsSupported, CustomConverterRegistry customConverterRegistry) {
+                                boolean extendedStringsSupported, CustomConverterRegistry customConverterRegistry,
+                                CdcSourceTaskContext<? extends CommonConnectorConfig> taskContext) {
         super(connectorConfig, topicNamingStrategy, connectorConfig.getTableFilters().dataCollectionFilter(),
                 connectorConfig.getColumnFilter(),
                 new TableSchemaBuilder(
@@ -70,7 +73,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                         connectorConfig.getFieldNamer(),
                         false),
                 TableNameCaseSensitivity.INSENSITIVE.equals(tableNameCaseSensitivity),
-                connectorConfig.getKeyMapper());
+                connectorConfig.getKeyMapper(), taskContext);
 
         this.valueConverters = valueConverters;
         this.ddlParser = new OracleDdlParser(
