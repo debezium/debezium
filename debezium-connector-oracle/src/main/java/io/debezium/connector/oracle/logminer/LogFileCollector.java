@@ -53,6 +53,7 @@ public class LogFileCollector {
     private final Duration archiveLogRetention;
     private final boolean archiveLogOnlyMode;
     private final String archiveLogDestinationName;
+    private final boolean autonomousDatabaseMode;
     private final OracleConnection connection;
 
     public LogFileCollector(OracleConnectorConfig connectorConfig, OracleConnection connection) {
@@ -62,6 +63,7 @@ public class LogFileCollector {
         this.archiveLogRetention = connectorConfig.getArchiveLogRetention();
         this.archiveLogOnlyMode = connectorConfig.isArchiveLogOnlyMode();
         this.archiveLogDestinationName = connectorConfig.getArchiveDestinationNameResolver().getDestinationName(connection);
+        this.autonomousDatabaseMode = connectorConfig.isAutonomousDatabaseMode();
         this.connection = connection;
     }
 
@@ -473,7 +475,7 @@ public class LogFileCollector {
     @VisibleForTesting
     public List<LogFile> getAllRedoThreadArchiveLogs(int threadId) throws SQLException {
         return connection.queryAndMap(
-                SqlUtils.allRedoThreadArchiveLogs(threadId, archiveLogDestinationName),
+                SqlUtils.allRedoThreadArchiveLogs(threadId, archiveLogDestinationName, autonomousDatabaseMode),
                 rs -> {
                     final List<LogFile> logs = new ArrayList<>();
                     while (rs.next()) {
@@ -505,7 +507,7 @@ public class LogFileCollector {
      * @return query string
      */
     private String getLogsQuery(Scn offsetScn) {
-        return SqlUtils.allMinableLogsQuery(offsetScn, archiveLogRetention, archiveLogOnlyMode, archiveLogDestinationName);
+        return SqlUtils.allMinableLogsQuery(offsetScn, archiveLogRetention, archiveLogOnlyMode, archiveLogDestinationName, autonomousDatabaseMode);
     }
 
     /**

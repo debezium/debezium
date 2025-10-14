@@ -217,7 +217,8 @@ public abstract class AbstractLogMinerStreamingAdapter
     protected Scn getOldestScnAvailableInLogs(OracleConnectorConfig config, OracleConnection connection) throws SQLException {
         final Duration archiveLogRetention = config.getArchiveLogRetention();
         final String archiveLogDestinationName = config.getArchiveDestinationNameResolver().getDestinationName(connection);
-        return connection.queryAndMap(SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveLogDestinationName),
+        final boolean autonomousDatabaseMode = config.isAutonomousDatabaseMode();
+        return connection.queryAndMap(SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveLogDestinationName, autonomousDatabaseMode),
                 rs -> {
                     if (rs.next()) {
                         final String value = rs.getString(1);
@@ -240,9 +241,13 @@ public abstract class AbstractLogMinerStreamingAdapter
     protected void getPendingTransactionsFromLogs(OracleConnection connection, Scn currentScn, Map<String, Scn> pendingTransactions) throws SQLException {
         final Scn oldestScn = getOldestScnAvailableInLogs(connectorConfig, connection);
         final List<LogFile> logFiles = getOrderedLogsFromScn(connectorConfig, oldestScn, connection);
+        final boolean autonomousDatabaseMode = connectorConfig.isAutonomousDatabaseMode();
         if (!logFiles.isEmpty()) {
             try (var context = new LogMinerSessionContext(connection, false, LogMiningStrategy.ONLINE_CATALOG, connectorConfig.getLogMiningPathToDictionary())) {
-                context.addLogFiles(getMostRecentLogFilesForSearch(logFiles));
+                if (!autonomousDatabaseMode) {
+                    // ADBs will implicitly add log files, they cannot be added manually
+                    context.addLogFiles(getMostRecentLogFilesForSearch(logFiles));
+                }
                 context.startSession(Scn.NULL, Scn.NULL, false);
 
                 LOGGER.info("\tQuerying transaction logs, please wait...");

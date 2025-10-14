@@ -39,14 +39,19 @@ public class SqlUtils {
     private static final String ARCHIVED_LOG_VIEW = "V$ARCHIVED_LOG";
     private static final String ARCHIVE_DEST_STATUS_VIEW = "V$ARCHIVE_DEST_STATUS";
     private static final String ALL_LOG_GROUPS = "ALL_LOG_GROUPS";
+    private static final String DBA_SUPPLEMENTAL_LOGGING = "DBA_SUPPLEMENTAL_LOGGING";
 
     public static String redoLogStatusQuery() {
         return String.format("SELECT F.MEMBER, R.STATUS FROM %s F, %s R WHERE F.GROUP# = R.GROUP# ORDER BY 2", LOGFILE_VIEW, LOG_VIEW);
     }
 
     public static String switchHistoryQuery(String archiveDestinationName) {
+        return switchHistoryQuery(archiveDestinationName, false);
+    }
+
+    public static String switchHistoryQuery(String archiveDestinationName, boolean autonomousDatabaseMode) {
         return String.format("SELECT 'TOTAL', COUNT(1) FROM %s WHERE FIRST_TIME > TRUNC(SYSDATE)" +
-                " AND DEST_ID IN (" + localArchiveLogDestinationsOnlyQuery(archiveDestinationName) + ")",
+                " AND DEST_ID IN (" + localArchiveLogDestinationsOnlyQuery(archiveDestinationName, autonomousDatabaseMode) + ")",
                 ARCHIVED_LOG_VIEW);
     }
 
@@ -59,11 +64,29 @@ public class SqlUtils {
     }
 
     public static String databaseSupplementalLoggingAllCheckQuery() {
-        return String.format("SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_ALL FROM %s", DATABASE_VIEW);
+        return databaseSupplementalLoggingAllCheckQuery(false);
+    }
+
+    public static String databaseSupplementalLoggingAllCheckQuery(boolean autonomousDatabaseMode) {
+        if (autonomousDatabaseMode) {
+            return String.format("SELECT 'KEY', ALL_COLUMN FROM %s", DBA_SUPPLEMENTAL_LOGGING);
+        }
+        else {
+            return String.format("SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_ALL FROM %s", DATABASE_VIEW);
+        }
     }
 
     public static String databaseSupplementalLoggingMinCheckQuery() {
-        return String.format("SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_MIN FROM %s", DATABASE_VIEW);
+        return databaseSupplementalLoggingMinCheckQuery(false);
+    }
+
+    public static String databaseSupplementalLoggingMinCheckQuery(boolean autonomousDatabaseMode) {
+        if (autonomousDatabaseMode) {
+            return String.format("SELECT 'KEY', MINIMAL FROM %s", DBA_SUPPLEMENTAL_LOGGING);
+        }
+        else {
+            return String.format("SELECT 'KEY', SUPPLEMENTAL_LOG_DATA_MIN FROM %s", DATABASE_VIEW);
+        }
     }
 
     public static String tableSupplementalLoggingCheckQuery() {
@@ -71,12 +94,16 @@ public class SqlUtils {
     }
 
     public static String oldestFirstChangeQuery(Duration archiveLogRetention, String archiveDestinationName) {
+        return oldestFirstChangeQuery(archiveLogRetention, archiveDestinationName, false);
+    }
+
+    public static String oldestFirstChangeQuery(Duration archiveLogRetention, String archiveDestinationName, boolean autonomousDatabaseMode) {
         final StringBuilder sb = new StringBuilder();
         sb.append("SELECT MIN(FIRST_CHANGE#) FROM (SELECT MIN(FIRST_CHANGE#) AS FIRST_CHANGE# ");
         sb.append("FROM ").append(LOG_VIEW).append(" ");
         sb.append("UNION SELECT MIN(A.FIRST_CHANGE#) AS FIRST_CHANGE# ");
         sb.append("FROM ").append(ARCHIVED_LOG_VIEW).append(" A, ").append(DATABASE_VIEW).append(" D ");
-        sb.append("WHERE A.DEST_ID IN (").append(localArchiveLogDestinationsOnlyQuery(archiveDestinationName)).append(") ");
+        sb.append("WHERE A.DEST_ID IN (").append(localArchiveLogDestinationsOnlyQuery(archiveDestinationName, autonomousDatabaseMode)).append(") ");
         sb.append("AND A.STATUS='A' ");
         sb.append("AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# ");
         sb.append("AND A.RESETLOGS_TIME = D.RESETLOGS_TIME");
@@ -89,10 +116,14 @@ public class SqlUtils {
     }
 
     public static String allRedoThreadArchiveLogs(int threadId, String archiveDestinationName) {
+        return allRedoThreadArchiveLogs(threadId, archiveDestinationName, false);
+    }
+
+    public static String allRedoThreadArchiveLogs(int threadId, String archiveDestinationName, boolean autonomousDatabaseMode) {
         final StringBuilder sb = new StringBuilder();
         sb.append("SELECT A.NAME, A.SEQUENCE#, A.FIRST_CHANGE#, A.NEXT_CHANGE# ");
         sb.append("FROM ").append(ARCHIVED_LOG_VIEW).append(" A, ").append(DATABASE_VIEW).append(" D ");
-        sb.append("WHERE A.DEST_ID IN (").append(localArchiveLogDestinationsOnlyQuery(archiveDestinationName)).append(") ");
+        sb.append("WHERE A.DEST_ID IN (").append(localArchiveLogDestinationsOnlyQuery(archiveDestinationName, autonomousDatabaseMode)).append(") ");
         sb.append("AND A.STATUS='A' ");
         sb.append("AND A.THREAD#=").append(threadId).append(" ");
         sb.append("AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# ");
@@ -111,6 +142,11 @@ public class SqlUtils {
      * @return the query string to obtain minable log files
      */
     public static String allMinableLogsQuery(Scn scn, Duration archiveLogRetention, boolean archiveLogOnlyMode, String archiveDestinationName) {
+        return allMinableLogsQuery(scn, archiveLogRetention, archiveLogOnlyMode, archiveDestinationName, false);
+    }
+
+    public static String allMinableLogsQuery(Scn scn, Duration archiveLogRetention, boolean archiveLogOnlyMode, String archiveDestinationName,
+                                             boolean autonomousDatabaseMode) {
         // The generated query performs a union in order to obtain a list of all archive logs that should be mined
         // combined with a list of redo logs that should be mined.
         //
@@ -181,7 +217,7 @@ public class SqlUtils {
         sb.append("AND A.ARCHIVED = 'YES' ");
         sb.append("AND A.STATUS = 'A' ");
         sb.append("AND A.NEXT_CHANGE# > ").append(scn).append(" ");
-        sb.append("AND A.DEST_ID IN (").append(localArchiveLogDestinationsOnlyQuery(archiveDestinationName)).append(") ");
+        sb.append("AND A.DEST_ID IN (").append(localArchiveLogDestinationsOnlyQuery(archiveDestinationName, autonomousDatabaseMode)).append(") ");
         sb.append("AND A.RESETLOGS_CHANGE# = D.RESETLOGS_CHANGE# ");
         sb.append("AND A.RESETLOGS_TIME = D.RESETLOGS_TIME ");
 
@@ -198,8 +234,15 @@ public class SqlUtils {
      * be generated by tools such as Oracle Data Guard.
      *
      * @param archiveDestinationName archive log destination to be used, may be {@code null} to auto-select
+     * @param autonomousDatabaseMode true if running in Oracle Autonomous Database mode
      */
-    private static String localArchiveLogDestinationsOnlyQuery(String archiveDestinationName) {
+    private static String localArchiveLogDestinationsOnlyQuery(String archiveDestinationName, boolean autonomousDatabaseMode) {
+        // In ADB, V$ARCHIVE_DEST_STATUS returns empty results since ADB manages archiving automatically.
+        // When no specific destination is requested in ADB mode, include all DEST_IDs (1, 2, etc).
+        if (autonomousDatabaseMode && Strings.isNullOrEmpty(archiveDestinationName)) {
+            return String.format("SELECT DISTINCT DEST_ID FROM %s", ARCHIVED_LOG_VIEW);
+        }
+
         final StringBuilder query = new StringBuilder(256);
         query.append("SELECT DEST_ID FROM ").append(ARCHIVE_DEST_STATUS_VIEW).append(" WHERE ");
         query.append("STATUS='VALID' AND TYPE='LOCAL' ");

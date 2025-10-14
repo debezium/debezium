@@ -426,8 +426,11 @@ public class OracleConnection extends JdbcConnection {
      * @throws DebeziumException if the oldest system change number cannot be found due to no logs available
      */
     public Optional<Scn> getFirstScnInLogs(Duration archiveLogRetention, String archiveDestinationName) throws SQLException {
+        return getFirstScnInLogs(archiveLogRetention, archiveDestinationName, false);
+    }
 
-        final String oldestFirstChangeQuery = SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveDestinationName);
+    public Optional<Scn> getFirstScnInLogs(Duration archiveLogRetention, String archiveDestinationName, boolean autonomousDatabaseMode) throws SQLException {
+        final String oldestFirstChangeQuery = SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveDestinationName, autonomousDatabaseMode);
         final String oldestScn = singleOptionalValue(oldestFirstChangeQuery, rs -> rs.getString(1));
 
         if (oldestScn == null) {
@@ -441,11 +444,12 @@ public class OracleConnection extends JdbcConnection {
     public boolean validateLogPosition(Partition partition, OffsetContext offset, CommonConnectorConfig config) {
         final OracleConnectorConfig connectorConfig = (OracleConnectorConfig) config;
         final Duration archiveLogRetention = connectorConfig.getArchiveLogRetention();
+        final boolean autonomousDatabaseMode = connectorConfig.isAutonomousDatabaseMode();
         final String archiveDestinationName = connectorConfig.getArchiveDestinationNameResolver().getDestinationName(this);
         final Scn storedOffset = ((OracleConnectorConfig) config).getAdapter().getOffsetScn((OracleOffsetContext) offset);
 
         try {
-            Optional<Scn> firstAvailableScn = getFirstScnInLogs(archiveLogRetention, archiveDestinationName);
+            Optional<Scn> firstAvailableScn = getFirstScnInLogs(archiveLogRetention, archiveDestinationName, autonomousDatabaseMode);
             return firstAvailableScn.filter(isLessThan(storedOffset)).isPresent();
         }
         catch (SQLException e) {
