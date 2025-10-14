@@ -61,6 +61,9 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
     public void parse(String ddlContent, Tables databaseTables) {
         this.databaseTables = databaseTables;
 
+        // DDL events from previous parse operation are no more relevant.
+        ddlChanges.reset();
+
         CodePointCharStream ddlContentCharStream = CharStreams.fromString(ddlContent);
         L lexer = createNewLexerInstance(new CaseChangingCharStream(ddlContentCharStream, isGrammarInUpperCase()));
         P parser = createNewParserInstance(new CommonTokenStream(lexer));
