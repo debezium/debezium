@@ -13,7 +13,6 @@ import java.util.Map;
 import org.bson.Document;
 import org.bson.UuidRepresentation;
 import org.testcontainers.containers.Network;
-import org.testcontainers.utility.DockerImageName;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
@@ -23,6 +22,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.InsertManyOptions;
 
+import io.debezium.testing.testcontainers.ImageNames;
 import io.debezium.testing.testcontainers.MongoDbReplicaSet;
 
 public class MongoDbTestResource {
@@ -32,7 +32,7 @@ public class MongoDbTestResource {
             .memberCount(1)
             .authEnabled(true)
             .network(Network.newNetwork())
-            .imageName(DockerImageName.parse("mirror.gcr.io/library/mongo:6.0"))
+            .imageName(ImageNames.OFFICIAL_DOCKER_IMAGE_NAME)
             .startupTimeout(Duration.ofSeconds(90))
             .build();
 
