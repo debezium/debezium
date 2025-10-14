@@ -18,6 +18,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -110,8 +111,7 @@ public class JdbcSinkConnectorTask extends SinkTask {
             datasetDataExtractor = new DatasetDataExtractor();
             String connectorName = props.get(ConfigurationNames.CONNECTOR_NAME_PROPERTY);
             String taskId = props.getOrDefault(TASK_ID_PROPERTY_NAME, "0");
-            connectorContext = new ConnectorContext(connectorName, Module.name(), taskId, Module.version(), props);
-            DebeziumOpenLineageEmitter.init(connectorContext);
+            connectorContext = new ConnectorContext(connectorName, Module.name(), taskId, Module.version(), UUID.randomUUID(), props);
 
             if (!state.compareAndSet(State.STOPPED, State.RUNNING)) {
                 LOGGER.info("Connector has already been started");

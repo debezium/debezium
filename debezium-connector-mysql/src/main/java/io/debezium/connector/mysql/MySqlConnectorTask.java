@@ -20,6 +20,7 @@ import com.github.shyiko.mysql.binlog.BinaryLogClient;
 
 import io.debezium.DebeziumException;
 import io.debezium.bean.StandardBeanNames;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
@@ -27,6 +28,7 @@ import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.connector.binlog.BinlogEventMetadataProvider;
 import io.debezium.connector.binlog.BinlogSourceTask;
 import io.debezium.connector.binlog.jdbc.BinlogConnectorConnection;
+import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.mysql.jdbc.MySqlConnection;
 import io.debezium.connector.mysql.jdbc.MySqlConnectionConfiguration;
@@ -71,6 +73,7 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
     private volatile BinlogConnectorConnection beanRegistryJdbcConnection;
     private volatile ErrorHandler errorHandler;
     private volatile MySqlDatabaseSchema schema;
+    private MySqlConnectorConfig connectorConfig;
 
     @Override
     public String version() {
@@ -78,9 +81,18 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
     }
 
     @Override
+    public CdcSourceTaskContext<? extends CommonConnectorConfig> preStart(Configuration config) {
+
+        connectorConfig = new MySqlConnectorConfig(config);
+        taskContext = new MySqlTaskContext(config, connectorConfig);
+
+        return taskContext;
+    }
+
+    @Override
     public ChangeEventSourceCoordinator<MySqlPartition, MySqlOffsetContext> start(Configuration configuration) {
         final Clock clock = Clock.system();
-        final MySqlConnectorConfig connectorConfig = new MySqlConnectorConfig(configuration);
+
         final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(MySqlConnectorConfig.TOPIC_NAMING_STRATEGY);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
         final MySqlValueConverters valueConverters = getValueConverters(connectorConfig);
@@ -110,8 +122,8 @@ public class MySqlConnectorTask extends BinlogSourceTask<MySqlPartition, MySqlOf
 
         CustomConverterRegistry converterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
 
-        this.schema = new MySqlDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive, converterRegistry);
-        taskContext = new MySqlTaskContext(config, connectorConfig);
+        this.schema = new MySqlDatabaseSchema(connectorConfig, valueConverters, topicNamingStrategy, schemaNameAdjuster, tableIdCaseInsensitive, converterRegistry,
+                taskContext);
 
         // Manual Bean Registration
         beanRegistryJdbcConnection = connectionFactory.newConnection();

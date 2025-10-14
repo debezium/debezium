@@ -26,6 +26,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.oracle.OracleConnectorConfig.ConnectorAdapter;
 import io.debezium.connector.oracle.StreamingAdapter.TableNameCaseSensitivity;
@@ -68,6 +69,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
     private ConnectorAdapter connectorAdapter;
     private Partition.Provider<OraclePartition> partitionProvider = null;
     private OffsetContext.Loader<OracleOffsetContext> offsetContextLoader = null;
+    private OracleConnectorConfig connectorConfig;
 
     @Override
     public String version() {
@@ -75,8 +77,17 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
     }
 
     @Override
+    public CdcSourceTaskContext<? extends CommonConnectorConfig> preStart(Configuration config) {
+
+        connectorConfig = new OracleConnectorConfig(config);
+        taskContext = new OracleTaskContext(config, connectorConfig);
+
+        return taskContext;
+    }
+
+    @Override
     public ChangeEventSourceCoordinator<OraclePartition, OracleOffsetContext> start(Configuration config) {
-        OracleConnectorConfig connectorConfig = new OracleConnectorConfig(config);
+
         connectorAdapter = connectorConfig.getConnectorAdapter();
         partitionProvider = new OraclePartition.Provider(connectorConfig);
         offsetContextLoader = connectorConfig.getAdapter().getOffsetContextLoader();
@@ -102,8 +113,7 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
         CustomConverterRegistry customConverterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
 
         this.schema = new OracleDatabaseSchema(connectorConfig, valueConverters, defaultValueConverter, schemaNameAdjuster,
-                topicNamingStrategy, tableNameCaseSensitivity, extendedStringsSupported, customConverterRegistry);
-        taskContext = new OracleTaskContext(config, connectorConfig);
+                topicNamingStrategy, tableNameCaseSensitivity, extendedStringsSupported, customConverterRegistry, taskContext);
 
         Offsets<OraclePartition, OracleOffsetContext> previousOffsets = getPreviousOffsets(partitionProvider, offsetContextLoader);
 

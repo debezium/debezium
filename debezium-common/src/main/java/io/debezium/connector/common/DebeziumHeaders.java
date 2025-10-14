@@ -12,4 +12,5 @@ public class DebeziumHeaders {
     public static final String DEBEZIUM_CONNECTOR_LOGICAL_NAME_HEADER = DEBEZIUM_CONTEXT_HEADER_PREFIX + "connectorLogicalName";
     public static final String DEBEZIUM_TASK_ID_HEADER = DEBEZIUM_CONTEXT_HEADER_PREFIX + "taskId";
     public static final String DEBEZIUM_CONNECTOR_NAME_HEADER = DEBEZIUM_CONTEXT_HEADER_PREFIX + "connectorName";
+    public static final String DEBEZIUM_CONNECTOR_RUN_ID = DEBEZIUM_CONTEXT_HEADER_PREFIX + "runId";
 }

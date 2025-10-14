@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.StreamSupport;
 
 import org.apache.kafka.connect.data.Schema;
@@ -164,6 +165,7 @@ public class EventDispatcherTest {
         when(cdcSourceTaskContext.getTaskId()).thenReturn("0");
         when(cdcSourceTaskContext.getConnectorLogicalName()).thenReturn("test");
         when(cdcSourceTaskContext.getConnectorPluginName()).thenReturn("plugin");
+        when(cdcSourceTaskContext.getRunId()).thenReturn(UUID.fromString("671711f6-5517-4c69-806b-87c1b034ee7b"));
 
         dispatcher = new EventDispatcher<>(config, topicNamingStrategy, databaseSchema, changeEventQueue, dataCollectionFilters, changeEventCreator,
                 eventMetadataProvider,
@@ -198,6 +200,7 @@ public class EventDispatcherTest {
         when(cdcSourceTaskContext.getTaskId()).thenReturn("0");
         when(cdcSourceTaskContext.getConnectorLogicalName()).thenReturn("test");
         when(cdcSourceTaskContext.getConnectorPluginName()).thenReturn("plugin");
+        when(cdcSourceTaskContext.getRunId()).thenReturn(UUID.fromString("671711f6-5517-4c69-806b-87c1b034ee7b"));
 
         dispatcher = new EventDispatcher<>(config, topicNamingStrategy, databaseSchema, changeEventQueue, dataCollectionFilters, changeEventCreator,
                 eventMetadataProvider,

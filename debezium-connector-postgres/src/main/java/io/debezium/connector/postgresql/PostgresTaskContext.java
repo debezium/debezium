@@ -19,7 +19,7 @@ import io.debezium.connector.common.CdcSourceTaskContext;
 @ThreadSafe
 public class PostgresTaskContext extends CdcSourceTaskContext<PostgresConnectorConfig> {
 
-    protected PostgresTaskContext(Configuration rawConfig, PostgresConnectorConfig config, PostgresSchema schema) {
+    protected PostgresTaskContext(Configuration rawConfig, PostgresConnectorConfig config) {
         super(rawConfig, config, config.getCustomMetricTags());
     }
 }

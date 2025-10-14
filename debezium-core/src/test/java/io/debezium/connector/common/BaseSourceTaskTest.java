@@ -32,6 +32,7 @@ import org.junit.jupiter.api.Test;
 import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
+import io.debezium.junit.relational.TestRelationalDatabaseConfig;
 import io.debezium.pipeline.ChangeEventSourceCoordinator;
 import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.spi.OffsetContext;
@@ -181,6 +182,11 @@ public class BaseSourceTaskTest {
 
         @SuppressWarnings("unchecked")
         final ChangeEventSourceCoordinator<Partition, OffsetContext> coordinator = mock(ChangeEventSourceCoordinator.class);
+
+        @Override
+        public CdcSourceTaskContext<? extends CommonConnectorConfig> preStart(Configuration config) {
+            return new CdcSourceTaskContext<>(config, new TestRelationalDatabaseConfig(config, null, null, 1), "0", Map.of());
+        }
 
         @Override
         protected ChangeEventSourceCoordinator<Partition, OffsetContext> start(Configuration config) {
