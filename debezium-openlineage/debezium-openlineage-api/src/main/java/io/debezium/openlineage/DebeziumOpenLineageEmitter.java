@@ -10,6 +10,7 @@ import static io.debezium.openlineage.OpenLineageConfig.OPEN_LINEAGE_INTEGRATION
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
@@ -48,62 +49,6 @@ public class DebeziumOpenLineageEmitter {
     private static final NoOpLineageEmitter noOpLineageEmitter = new NoOpLineageEmitter();
 
     /**
-     * Initializes the lineage emitter with the given configuration for a specific connector.
-     * <p>
-     * This method must be called before any emission methods are used. It sets up the
-     * OpenLineage context and emitter if OpenLineage integration is enabled in the configuration.
-     * The initialization is thread-safe and ensures each connector has its own emitter instance.
-     *
-     * @param configuration The Debezium connector configuration containing OpenLineage settings
-     * @param connectorTypeName The name of the connector used for event attribution
-     */
-    public static void init(Map<String, String> configuration, String connectorTypeName) {
-
-        LOGGER.debug("Calling init for connector {} and config {}", connectorTypeName, configuration);
-
-        ConnectorContext connectorContext = ConnectorContext.from(configuration, connectorTypeName);
-        init(connectorContext);
-    }
-
-    /**
-     * Initializes the lineage emitter with the given ConnectorContext.
-     * <p>
-     * This method must be called before any emission methods are used. It sets up the
-     * emitter if OpenLineage integration is enabled in the configuration.
-     * The initialization is thread-safe and ensures each connector has its own emitter instance.
-     *
-     * @param connectorContext The connector context
-     */
-    public static void init(ConnectorContext connectorContext) {
-        if (isOpenLineageDisabled(connectorContext)) {
-            return;
-        }
-
-        LOGGER.debug("Calling init for connector with context {}", connectorContext);
-
-        LineageEmitter emitter = emitters.computeIfAbsent(connectorContext.toEmitterKey(), key -> {
-            LOGGER.debug("Creating new emitter for connector with name {}", key);
-            /*
-             * lineageEmitterFactory addresses native compilation issues with the Debezium Quarkus extension when OpenLineage
-             * dependencies are scoped as 'provided'. In native builds, Quarkus performs comprehensive
-             * classpath scanning and fails when referenced classes are unavailable at build time.
-             * ServiceLoader registration signals to Quarkus that the implementation will be available
-             * at runtime, allowing the native compilation to proceed successfully.
-             */
-            synchronized (SERVICE_LOADER_LOCK) { // This required for connectors with multiple tasks because the ServiceLoader is not thread-safe
-                return lineageEmitterFactory
-                        .stream()
-                        .findFirst()
-                        .map(ServiceLoader.Provider::get)
-                        .orElse((ignore) -> new NoOpLineageEmitter())
-                        .get(connectorContext);
-            }
-        });
-
-        LOGGER.debug("Emitter instance for connector {}: {}", connectorContext.connectorName(), emitter);
-    }
-
-    /**
      * Removes the emitter for the specified connector.
      * Should be called when a connector is stopped or destroyed.
      *
@@ -115,10 +60,6 @@ public class DebeziumOpenLineageEmitter {
         if (removed != null) {
             LOGGER.debug("Cleaned up emitter for connector {}", connectorContext);
         }
-    }
-
-    public static ConnectorContext connectorContext(Map<String, String> config, String connectorName) {
-        return ConnectorContext.from(config, connectorName);
     }
 
     /**
@@ -176,6 +117,10 @@ public class DebeziumOpenLineageEmitter {
         getEmitter(connectorContext).emit(state, datasetMetadata, t);
     }
 
+    public static ConnectorContext connectorContext(Map<String, String> config, String connectorName, UUID runId) {
+        return ConnectorContext.from(config, connectorName, runId);
+    }
+
     private static LineageEmitter getEmitter(ConnectorContext connectorContext) {
         if (isOpenLineageDisabled(connectorContext)) {
             return noOpLineageEmitter;
@@ -184,8 +129,36 @@ public class DebeziumOpenLineageEmitter {
         LineageEmitter emitter = emitters.get(connectorContext.toEmitterKey());
         LOGGER.debug("Available emitters {}", emitters);
         if (emitter == null) {
-            throw new IllegalStateException("DebeziumOpenLineageEmitter not initialized for connector " + connectorContext + ". Call init() first.");
+            return init(connectorContext);
         }
+        return emitter;
+    }
+
+    private static LineageEmitter init(ConnectorContext connectorContext) {
+
+        LOGGER.debug("Calling init for connector with context {}", connectorContext);
+
+        LineageEmitter emitter = emitters.computeIfAbsent(connectorContext.toEmitterKey(), key -> {
+            LOGGER.debug("Creating new emitter for connector with name {}", key);
+            /*
+             * lineageEmitterFactory addresses native compilation issues with the Debezium Quarkus extension when OpenLineage
+             * dependencies are scoped as 'provided'. In native builds, Quarkus performs comprehensive
+             * classpath scanning and fails when referenced classes are unavailable at build time.
+             * ServiceLoader registration signals to Quarkus that the implementation will be available
+             * at runtime, allowing the native compilation to proceed successfully.
+             */
+            synchronized (SERVICE_LOADER_LOCK) { // This required for connectors with multiple tasks because the ServiceLoader is not thread-safe
+                return lineageEmitterFactory
+                        .stream()
+                        .findFirst()
+                        .map(ServiceLoader.Provider::get)
+                        .orElse((ignore) -> new NoOpLineageEmitter())
+                        .get(connectorContext);
+            }
+        });
+
+        LOGGER.debug("Emitter instance for connector {}: {}", connectorContext.connectorName(), emitter);
+
         return emitter;
     }
 

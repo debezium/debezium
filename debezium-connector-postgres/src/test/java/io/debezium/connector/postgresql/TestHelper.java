@@ -294,7 +294,7 @@ public final class TestHelper {
 
     public static PostgresSchema getSchema(PostgresConnectorConfig config, TypeRegistry typeRegistry) {
         return new PostgresSchema(
-                config,
+                null, // TODO
                 TestHelper.getDefaultValueConverter(),
                 (TopicNamingStrategy) SchemaTopicNamingStrategy.create(config),
                 getPostgresValueConverter(typeRegistry, config), new CustomConverterRegistry(Collections.emptyList()));

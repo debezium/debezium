@@ -23,11 +23,13 @@ import org.slf4j.LoggerFactory;
 import io.debezium.DebeziumException;
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.bean.StandardBeanNames;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.mongodb.connection.ConnectionStrings;
 import io.debezium.connector.mongodb.connection.MongoDbConnection;
@@ -82,16 +84,24 @@ public final class MongoDbConnectorTask extends BaseSourceTask<MongoDbPartition,
     }
 
     @Override
+    public CdcSourceTaskContext<? extends CommonConnectorConfig> preStart(Configuration config) {
+
+        this.taskContext = new MongoDbTaskContext(config);
+
+        return taskContext;
+    }
+
+    @Override
     public ChangeEventSourceCoordinator<MongoDbPartition, MongoDbOffsetContext> start(Configuration config) {
         final MongoDbConnectorConfig connectorConfig = new MongoDbConnectorConfig(config);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
 
         this.taskName = "task" + config.getInteger(MongoDbConnectorConfig.TASK_ID);
-        this.taskContext = new MongoDbTaskContext(config);
+
         this.connectionContext = new MongoDbConnectionContext(config);
 
         final Schema structSchema = connectorConfig.getSourceInfoStructMaker().schema();
-        this.schema = new MongoDbSchema(connectorConfig, taskContext.getFilters(), connectorConfig.getTopicNamingStrategy(MongoDbConnectorConfig.TOPIC_NAMING_STRATEGY),
+        this.schema = new MongoDbSchema(connectorConfig, taskContext, connectorConfig.getTopicNamingStrategy(MongoDbConnectorConfig.TOPIC_NAMING_STRATEGY),
                 structSchema, schemaNameAdjuster);
 
         final Offsets<MongoDbPartition, MongoDbOffsetContext> previousOffsets = getPreviousOffsets(connectorConfig);

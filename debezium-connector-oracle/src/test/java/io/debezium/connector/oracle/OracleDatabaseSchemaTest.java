@@ -17,7 +17,6 @@ import org.mockito.Mockito;
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
-import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.relational.Column;
 import io.debezium.relational.CustomConverterRegistry;
 import io.debezium.relational.Table;
@@ -70,7 +69,6 @@ public class OracleDatabaseSchemaTest {
     private OracleDatabaseSchema createOracleDatabaseSchema() {
         Configuration configuration = TestHelper.defaultConfig().build();
         final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(configuration);
-        DebeziumOpenLineageEmitter.init(configuration.asMap(), "oracle");
         final TopicNamingStrategy topicNamingStrategy = SchemaTopicNamingStrategy.create(connectorConfig);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
         final OracleValueConverters converters = connectorConfig.getAdapter().getValueConverter(connectorConfig, connection);
@@ -83,7 +81,7 @@ public class OracleDatabaseSchemaTest {
                 schemaNameAdjuster,
                 topicNamingStrategy,
                 sensitivity,
-                false, new CustomConverterRegistry(List.of()));
+                false, new CustomConverterRegistry(List.of()), new OracleTaskContext(configuration, connectorConfig));
 
         Table table = Table.editor()
                 .tableId(TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE"))

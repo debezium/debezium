@@ -8,9 +8,11 @@ package io.debezium.connector.mysql;
 import org.apache.kafka.connect.data.Schema;
 
 import io.debezium.annotation.NotThreadSafe;
+import io.debezium.config.CommonConnectorConfig;
 import io.debezium.connector.binlog.BinlogConnectorConfig;
 import io.debezium.connector.binlog.BinlogDatabaseSchema;
 import io.debezium.connector.binlog.charset.BinlogCharsetRegistry;
+import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.mysql.antlr.MySqlAntlrDdlParser;
 import io.debezium.connector.mysql.jdbc.MySqlDefaultValueConverter;
 import io.debezium.connector.mysql.jdbc.MySqlValueConverters;
@@ -38,13 +40,14 @@ public class MySqlDatabaseSchema extends BinlogDatabaseSchema<MySqlPartition, My
      *
      */
     public MySqlDatabaseSchema(MySqlConnectorConfig connectorConfig, MySqlValueConverters valueConverter, TopicNamingStrategy<TableId> topicNamingStrategy,
-                               SchemaNameAdjuster schemaNameAdjuster, boolean tableIdCaseInsensitive, CustomConverterRegistry converterRegistry) {
+                               SchemaNameAdjuster schemaNameAdjuster, boolean tableIdCaseInsensitive, CustomConverterRegistry converterRegistry,
+                               CdcSourceTaskContext<? extends CommonConnectorConfig> taskContext) {
         super(connectorConfig,
                 valueConverter,
                 new MySqlDefaultValueConverter(valueConverter),
                 topicNamingStrategy,
                 schemaNameAdjuster,
-                tableIdCaseInsensitive, converterRegistry);
+                tableIdCaseInsensitive, converterRegistry, taskContext);
     }
 
     @Override
