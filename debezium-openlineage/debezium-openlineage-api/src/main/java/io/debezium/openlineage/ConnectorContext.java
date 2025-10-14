@@ -9,6 +9,7 @@ import static io.debezium.config.ConfigurationNames.TASK_ID_PROPERTY_NAME;
 import static io.debezium.config.ConfigurationNames.TOPIC_PREFIX_PROPERTY_NAME;
 
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -38,6 +39,7 @@ public record ConnectorContext(String connectorLogicalName,
         String connectorName,
         String taskId,
         String version,
+        UUID runId,
         Map<String, String> config) {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConnectorContext.class);
@@ -50,17 +52,19 @@ public record ConnectorContext(String connectorLogicalName,
      * <p>This factory method extracts the topic prefix and task ID from the provided configuration.
      * If no task ID is found in the configuration, it defaults to "0".</p>
      *
-     * @param configuration the configuration object containing connector settings
+     * @param configuration     the configuration object containing connector settings
      * @param connectorTypeName the name of the connector type
+     * @param runId
      * @return a new ConnectorContext instance populated with configuration values
      */
-    public static ConnectorContext from(Map<String, String> configuration, String connectorTypeName) {
+    public static ConnectorContext from(Map<String, String> configuration, String connectorTypeName, UUID runId) {
 
         return new ConnectorContext(
                 configuration.get(TOPIC_PREFIX_PROPERTY_NAME),
                 connectorTypeName,
                 configuration.getOrDefault(TASK_ID_PROPERTY_NAME, "0"),
                 Module.version(),
+                runId,
                 configuration);
     }
 
@@ -94,6 +98,7 @@ public record ConnectorContext(String connectorLogicalName,
                 (String) contextHeaders.get(DebeziumHeaders.DEBEZIUM_CONNECTOR_NAME_HEADER),
                 (String) contextHeaders.get(DebeziumHeaders.DEBEZIUM_TASK_ID_HEADER),
                 null,
+                UUID.fromString((String) contextHeaders.get(DebeziumHeaders.DEBEZIUM_CONNECTOR_RUN_ID)),
                 null);
     }
 

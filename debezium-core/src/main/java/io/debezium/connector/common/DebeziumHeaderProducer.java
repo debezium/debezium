@@ -7,6 +7,7 @@ package io.debezium.connector.common;
 
 import static io.debezium.connector.common.DebeziumHeaders.DEBEZIUM_CONNECTOR_LOGICAL_NAME_HEADER;
 import static io.debezium.connector.common.DebeziumHeaders.DEBEZIUM_CONNECTOR_NAME_HEADER;
+import static io.debezium.connector.common.DebeziumHeaders.DEBEZIUM_CONNECTOR_RUN_ID;
 import static io.debezium.connector.common.DebeziumHeaders.DEBEZIUM_TASK_ID_HEADER;
 
 import org.apache.kafka.connect.data.Schema;
@@ -63,6 +64,7 @@ public class DebeziumHeaderProducer implements Service {
         debeziumContextHeaders.add(DEBEZIUM_CONNECTOR_LOGICAL_NAME_HEADER, sourceTaskContext.getConnectorLogicalName(), Schema.STRING_SCHEMA);
         debeziumContextHeaders.add(DEBEZIUM_TASK_ID_HEADER, sourceTaskContext.getTaskId(), Schema.STRING_SCHEMA);
         debeziumContextHeaders.add(DEBEZIUM_CONNECTOR_NAME_HEADER, sourceTaskContext.getConnectorPluginName(), Schema.STRING_SCHEMA);
+        debeziumContextHeaders.add(DEBEZIUM_CONNECTOR_RUN_ID, sourceTaskContext.getRunId().toString(), Schema.STRING_SCHEMA);
 
         return debeziumContextHeaders;
     }

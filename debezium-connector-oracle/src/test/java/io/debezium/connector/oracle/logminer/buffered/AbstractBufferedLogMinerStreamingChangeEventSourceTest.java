@@ -50,7 +50,6 @@ import io.debezium.connector.oracle.logminer.events.LogMinerEventRow;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
-import io.debezium.openlineage.DebeziumOpenLineageEmitter;
 import io.debezium.pipeline.DataChangeEvent;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.ChangeEventSource.ChangeEventSourceContext;
@@ -89,7 +88,6 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     @BeforeEach
     @SuppressWarnings({ "unchecked" })
     public void before() throws Exception {
-        DebeziumOpenLineageEmitter.init(getConfig().build().asMap(), "oracle");
         this.context = Mockito.mock(ChangeEventSourceContext.class);
         Mockito.when(this.context.isRunning()).thenReturn(true);
 
@@ -549,7 +547,8 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
     }
 
     private OracleDatabaseSchema createOracleDatabaseSchema() throws Exception {
-        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(getConfig().build());
+        Configuration configuration = getConfig().build();
+        final OracleConnectorConfig connectorConfig = new OracleConnectorConfig(configuration);
         final TopicNamingStrategy topicNamingStrategy = SchemaTopicNamingStrategy.create(connectorConfig);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
         final OracleValueConverters converters = connectorConfig.getAdapter().getValueConverter(connectorConfig, connection);
@@ -562,7 +561,7 @@ public abstract class AbstractBufferedLogMinerStreamingChangeEventSourceTest ext
                 schemaNameAdjuster,
                 topicNamingStrategy,
                 sensitivity,
-                false, new CustomConverterRegistry(emptyList()));
+                false, new CustomConverterRegistry(emptyList()), new OracleTaskContext(configuration, connectorConfig));
 
         Table table = Table.editor()
                 .tableId(TableId.parse("ORCLPDB1.DEBEZIUM.TEST_TABLE"))

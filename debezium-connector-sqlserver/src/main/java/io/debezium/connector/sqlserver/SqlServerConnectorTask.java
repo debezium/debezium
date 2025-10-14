@@ -24,6 +24,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.sqlserver.metrics.SqlServerMetricsFactory;
 import io.debezium.document.DocumentReader;
@@ -64,10 +65,20 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
     private volatile SqlServerConnection metadataConnection;
     private volatile SqlServerErrorHandler errorHandler;
     private volatile SqlServerDatabaseSchema schema;
+    private SqlServerConnectorConfig connectorConfig;
 
     @Override
     public String version() {
         return Module.version();
+    }
+
+    @Override
+    public CdcSourceTaskContext<? extends CommonConnectorConfig> preStart(Configuration config) {
+
+        connectorConfig = new SqlServerConnectorConfig(config);
+        taskContext = new SqlServerTaskContext(config, connectorConfig);
+
+        return taskContext;
     }
 
     @Override
@@ -80,7 +91,6 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
                 .withDefault(CommonConnectorConfig.DRIVER_CONFIG_PREFIX + "fetchSize", 10_000)
                 .build();
 
-        final SqlServerConnectorConfig connectorConfig = new SqlServerConnectorConfig(config);
         final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY, true);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
         final SqlServerValueConverters valueConverters = new SqlServerValueConverters(connectorConfig.getDecimalMode(),
@@ -98,9 +108,8 @@ public class SqlServerConnectorTask extends BaseSourceTask<SqlServerPartition, S
 
         CustomConverterRegistry customConverterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
         this.schema = new SqlServerDatabaseSchema(connectorConfig, metadataConnection.getDefaultValueConverter(), valueConverters, topicNamingStrategy,
-                schemaNameAdjuster, customConverterRegistry);
+                schemaNameAdjuster, customConverterRegistry, taskContext);
         this.schema.initializeStorage();
-        taskContext = new SqlServerTaskContext(config, connectorConfig);
 
         Offsets<SqlServerPartition, SqlServerOffsetContext> offsets = getPreviousOffsets(
                 new SqlServerPartition.Provider(connectorConfig),

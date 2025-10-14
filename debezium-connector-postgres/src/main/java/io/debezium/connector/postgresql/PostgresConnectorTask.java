@@ -31,6 +31,7 @@ import io.debezium.config.Field;
 import io.debezium.connector.base.ChangeEventQueue;
 import io.debezium.connector.base.DefaultQueueProvider;
 import io.debezium.connector.common.BaseSourceTask;
+import io.debezium.connector.common.CdcSourceTaskContext;
 import io.debezium.connector.common.DebeziumHeaderProducer;
 import io.debezium.connector.postgresql.connection.PostgresConnection;
 import io.debezium.connector.postgresql.connection.PostgresConnection.PostgresValueConverterBuilder;
@@ -86,9 +87,20 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
     private OffsetContext.Loader<PostgresOffsetContext> offsetContextLoader = null;
 
     private final ReentrantLock commitLock = new ReentrantLock();
+    private PostgresConnectorConfig connectorConfig;
+
+    @Override
+    public CdcSourceTaskContext<PostgresConnectorConfig> preStart(Configuration config) {
+
+        connectorConfig = new PostgresConnectorConfig(config);
+        this.taskContext = new PostgresTaskContext(config, connectorConfig);
+
+        return taskContext;
+    }
 
     @Override
     public ChangeEventSourceCoordinator<PostgresPartition, PostgresOffsetContext> start(Configuration config) {
+
         final PostgresConnectorConfig connectorConfig = new PostgresConnectorConfig(config);
         final TopicNamingStrategy<TableId> topicNamingStrategy = connectorConfig.getTopicNamingStrategy(CommonConnectorConfig.TOPIC_NAMING_STRATEGY);
         final SchemaNameAdjuster schemaNameAdjuster = connectorConfig.schemaNameAdjuster();
@@ -127,8 +139,7 @@ public class PostgresConnectorTask extends BaseSourceTask<PostgresPartition, Pos
 
         CustomConverterRegistry customConverterRegistry = connectorConfig.getServiceRegistry().tryGetService(CustomConverterRegistry.class);
 
-        schema = new PostgresSchema(connectorConfig, defaultValueConverter, topicNamingStrategy, valueConverter, customConverterRegistry);
-        this.taskContext = new PostgresTaskContext(config, connectorConfig, schema);
+        schema = new PostgresSchema(taskContext, defaultValueConverter, topicNamingStrategy, valueConverter, customConverterRegistry);
         this.partitionProvider = new PostgresPartition.Provider(connectorConfig, config);
         this.offsetContextLoader = new PostgresOffsetContext.Loader(connectorConfig);
         final Offsets<PostgresPartition, PostgresOffsetContext> previousOffsets = getPreviousOffsets(

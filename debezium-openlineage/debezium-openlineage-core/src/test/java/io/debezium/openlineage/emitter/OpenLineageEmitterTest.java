@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,7 +52,7 @@ public class OpenLineageEmitterTest {
         configMap.put("database.hostname", "localhost");
         configMap.put("database.port", "3306");
 
-        ConnectorContext connectorContext = new ConnectorContext("test-connector", "mysql", "0", "3.2.0.Final", configMap);
+        ConnectorContext connectorContext = new ConnectorContext("test-connector", "mysql", "0", "3.2.0.Final", UUID.randomUUID(), configMap);
         emitter = new OpenLineageEmitter(
                 connectorContext,
                 new OpenLineageContext(
@@ -64,7 +65,7 @@ public class OpenLineageEmitterTest {
                                         "description",
                                         Map.of("tag1", "tagValue"),
                                         Map.of("owner1", "ownervalue"))),
-                        new OpenLineageJobIdentifier("namespace", "test-connector")),
+                        new OpenLineageJobIdentifier("namespace", "test-connector"), UUID.randomUUID()),
                 eventEmitter,
                 new DefaultDatasetNamespaceResolverFactory());
     }

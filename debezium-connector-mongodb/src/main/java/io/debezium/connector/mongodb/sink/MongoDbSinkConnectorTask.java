@@ -14,6 +14,7 @@ import static io.debezium.openlineage.dataset.DatasetMetadata.DatasetKind.INPUT;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
@@ -70,8 +71,7 @@ public class MongoDbSinkConnectorTask extends SinkTask {
             datasetDataExtractor = new DatasetDataExtractor();
             String connectorName = props.get(CONNECTOR_NAME_PROPERTY);
             String taskId = props.getOrDefault(TASK_ID_PROPERTY_NAME, "0");
-            connectorContext = new ConnectorContext(connectorName, Module.name(), taskId, Module.version(), props);
-            DebeziumOpenLineageEmitter.init(connectorContext);
+            connectorContext = new ConnectorContext(connectorName, Module.name(), taskId, Module.version(), UUID.randomUUID(), props);
 
             DebeziumOpenLineageEmitter.emit(connectorContext, DebeziumTaskState.INITIAL);
             mongoSink = new MongoDbChangeEventSink(sinkConfig, client, createErrorReporter(), connectorContext);
