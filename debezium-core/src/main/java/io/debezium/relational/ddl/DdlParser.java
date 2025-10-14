@@ -26,7 +26,7 @@ public interface DdlParser {
      *                       tables as defined in the DDL content; may not be null
      * @throws ParsingException if there is a problem parsing the supplied content
      */
-    void parse(String ddlContent, Tables databaseTables);
+    DdlChanges parse(String ddlContent, Tables databaseTables);
 
     void setCurrentDatabase(String databaseName);
 
@@ -37,7 +37,7 @@ public interface DdlParser {
      */
     void setCurrentSchema(String schemaName);
 
-    DdlChanges getDdlChanges();
+    DdlChanges getAndResetDdlChanges();
 
     SystemVariables systemVariables();
 }

@@ -55,7 +55,6 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
     private final Set<String> ignoredQueryStatements = Collect.unmodifiableSet("BEGIN", "END", "FLUSH PRIVILEGES");
     private final DdlParser ddlParser;
     private final RelationalTableFilters filters;
-    private final DdlChanges ddlChanges;
     private final Map<Long, TableId> tableIdsByTableNumber = new ConcurrentHashMap<>();
     private final Map<Long, TableId> excludeTableIdsByTableNumber = new ConcurrentHashMap<>();
     private final BinlogConnectorConfig connectorConfig;
@@ -94,7 +93,6 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
                 tableIdCaseInsensitive,
                 connectorConfig.getKeyMapper());
         this.ddlParser = createDdlParser(connectorConfig, valueConverter);
-        this.ddlChanges = this.ddlParser.getDdlChanges();
         this.connectorConfig = connectorConfig;
         this.filters = connectorConfig.getTableFilters();
     }
@@ -308,7 +306,6 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
         }
 
         try {
-            this.ddlChanges.reset();
             this.ddlParser.setCurrentSchema(databaseName);
             this.ddlParser.parse(ddlStatements, tables());
         }
@@ -320,6 +317,8 @@ public abstract class BinlogDatabaseSchema<P extends BinlogPartition, O extends 
                 throw e;
             }
         }
+
+        DdlChanges ddlChanges = this.ddlParser.getAndResetDdlChanges();
 
         // No need to send schema events or store DDL if no table has changed
         if (!storeOnlyCapturedTables() || isGlobalSetVariableStatement(ddlStatements, databaseName) || ddlChanges.anyMatch(filters)) {

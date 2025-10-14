@@ -254,7 +254,7 @@ public class OracleDdlParserTest {
                 "  USING INDEX \"IDENTITYDB\".\"IDX_CHANGENUMBERS_PK\"  ENABLE NOVALIDATE;";
 
         parser.parse(MULTI_STATEMENT_DDL, tables);
-        final DdlChanges changes = parser.getDdlChanges();
+        final DdlChanges changes = parser.getAndResetDdlChanges();
 
         final List<DdlParserListener.EventType> eventTypes = new ArrayList<>();
         changes.getEventsByDatabase((String dbName, List<DdlParserListener.Event> events) -> {
@@ -284,7 +284,7 @@ public class OracleDdlParserTest {
         String SQL = "ALTER TABLE \"SCOTT\".\"T_DBZ_TEST1\" ADD T_VARCHAR2 VARCHAR2(20);";
         parser.parse(SQL, tables);
 
-        final DdlChanges changes = parser.getDdlChanges();
+        final DdlChanges changes = parser.getAndResetDdlChanges();
         final List<DdlParserListener.EventType> eventTypes = new ArrayList<>();
         changes.getEventsByDatabase((String dbName, List<DdlParserListener.Event> events) -> {
             events.forEach(event -> eventTypes.add(event.type()));
@@ -314,7 +314,7 @@ public class OracleDdlParserTest {
         String SQL = "ALTER TABLE \"SCOTT\".\"T_DBZ_TEST1\" MODIFY T_VARCHAR2 VARCHAR2(20);";
         parser.parse(SQL, tables);
 
-        final DdlChanges changes = parser.getDdlChanges();
+        final DdlChanges changes = parser.getAndResetDdlChanges();
         final List<DdlParserListener.EventType> eventTypes = new ArrayList<>();
         changes.getEventsByDatabase((String dbName, List<DdlParserListener.Event> events) -> {
             events.forEach(event -> eventTypes.add(event.type()));
@@ -344,7 +344,7 @@ public class OracleDdlParserTest {
         String SQL = "ALTER TABLE \"SCOTT\".\"T_DBZ_TEST1\" DROP COLUMN T_VARCHAR2";
         parser.parse(SQL, tables);
 
-        final DdlChanges changes = parser.getDdlChanges();
+        final DdlChanges changes = parser.getAndResetDdlChanges();
         final List<DdlParserListener.EventType> eventTypes = new ArrayList<>();
         changes.getEventsByDatabase((String dbName, List<DdlParserListener.Event> events) -> {
             events.forEach(event -> eventTypes.add(event.type()));
@@ -365,7 +365,7 @@ public class OracleDdlParserTest {
         String SQL = "CREATE TABLE \"SCOTT\".\"ASTERISK_TEST\" (ID NUMBER(*,0) NOT NULL)";
         parser.parse(SQL, tables);
 
-        DdlChanges changes = parser.getDdlChanges();
+        DdlChanges changes = parser.getAndResetDdlChanges();
         List<DdlParserListener.EventType> eventTypes = getEventTypesFromChanges(changes);
         assertThat(eventTypes).containsExactly(DdlParserListener.EventType.CREATE_TABLE);
 
@@ -380,7 +380,7 @@ public class OracleDdlParserTest {
         SQL = "ALTER TABLE \"SCOTT\".\"ASTERISK_TEST\" MODIFY (ID NUMBER(*,0) NULL);";
         parser.parse(SQL, tables);
 
-        changes = parser.getDdlChanges();
+        changes = parser.getAndResetDdlChanges();
         eventTypes = getEventTypesFromChanges(changes);
         assertThat(eventTypes).containsExactly(DdlParserListener.EventType.ALTER_TABLE);
 
@@ -401,13 +401,13 @@ public class OracleDdlParserTest {
 
         // Get the create table changes & reset
         // We're not worried about this specific phase of the schema evolution
-        DdlChanges changes = parser.getDdlChanges();
+        DdlChanges changes = parser.getAndResetDdlChanges();
         changes.reset();
 
         SQL = "ALTER TABLE \"SCOTT\".\"DBZ4976\" MODIFY NAME DEFAULT NULL";
         parser.parse(SQL, tables);
 
-        changes = parser.getDdlChanges();
+        changes = parser.getAndResetDdlChanges();
         List<DdlParserListener.EventType> eventTypes = getEventTypesFromChanges(changes);
         assertThat(eventTypes).containsExactly(DdlParserListener.EventType.ALTER_TABLE);
 
@@ -426,7 +426,7 @@ public class OracleDdlParserTest {
         String SQL = "CREATE TABLE \"SCOTT\".\"ASTERISK_TEST\" ( \"PID\" int, \"DEPT\" varchar(50), constraint \"CK_DEPT\" check(\"DEPT\" IN('IT','sales','manager')))";
         parser.parse(SQL, tables);
 
-        DdlChanges changes = parser.getDdlChanges();
+        DdlChanges changes = parser.getAndResetDdlChanges();
         List<DdlParserListener.EventType> eventTypes = getEventTypesFromChanges(changes);
         assertThat(eventTypes).containsExactly(DdlParserListener.EventType.CREATE_TABLE);
 
@@ -443,7 +443,7 @@ public class OracleDdlParserTest {
         String SQL = "CREATE TABLE \"SCOTT\".\"TEST\" (id NUMBER(4) PRIMARY KEY, name VARCHAR2(20), a_number_20 NUMBER(20))";
         parser.parse(SQL, tables);
 
-        DdlChanges changes = parser.getDdlChanges();
+        DdlChanges changes = parser.getAndResetDdlChanges();
         List<DdlParserListener.EventType> eventTypes = getEventTypesFromChanges(changes);
         assertThat(eventTypes).containsExactly(DdlParserListener.EventType.CREATE_TABLE);
 
@@ -455,7 +455,7 @@ public class OracleDdlParserTest {
         SQL = "ALTER TABLE \"SCOTT\".\"TEST\" MODIFY A_NUMBER_20 DEFAULT 1;";
         parser.parse(SQL, tables);
 
-        changes = parser.getDdlChanges();
+        changes = parser.getAndResetDdlChanges();
         eventTypes = getEventTypesFromChanges(changes);
         assertThat(eventTypes).containsExactly(DdlParserListener.EventType.ALTER_TABLE);
 
