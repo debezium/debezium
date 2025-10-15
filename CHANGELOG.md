@@ -2,6 +2,34 @@
 
 All notable changes are documented in this file. Release numbers follow [Semantic Versioning](http://semver.org)
 
+## 3.3.1.Final
+October 15th 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12469927)
+
+### New features since 3.3.0.Final
+
+None
+
+
+### Breaking changes since 3.3.0.Final
+
+None
+
+
+### Fixes since 3.3.0.Final
+
+* MySQL example container images are not properly configured [DBZ-9485](https://issues.redhat.com/browse/DBZ-9485)
+* Only log an error when the dump folder is provided but doesn't exist [DBZ-9519](https://issues.redhat.com/browse/DBZ-9519)
+* Events are mistakenly skipped during commit dispatch when LOB is enabled  [DBZ-9521](https://issues.redhat.com/browse/DBZ-9521)
+* Missing OpenLineage Complete event during gracefully shutdown [DBZ-9524](https://issues.redhat.com/browse/DBZ-9524)
+* SchemaUtil creates invalid JSON [DBZ-9540](https://issues.redhat.com/browse/DBZ-9540)
+
+
+### Other changes since 3.3.0.Final
+
+* Doc: Document metric `NumberOfErroneousEvents` [DBZ-9510](https://issues.redhat.com/browse/DBZ-9510)
+
+
+
 ## 3.3.0.Final
 October 1st 2025 [Detailed release notes](https://issues.redhat.com/secure/ReleaseNote.jspa?projectId=12317320&version=12469379)
 
