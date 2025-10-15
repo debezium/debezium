@@ -75,7 +75,16 @@ public class Timestamp {
         }
 
         // Fix rare JDK issue where one of the components of ChronoLocalDateTime is null
-        String ignored = dateTime.toString();
+        long dateTimeInstant;
+        try {
+            dateTimeInstant = dateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
+        }
+        catch (NullPointerException e) {
+            // Fallback for NPE from ChronoLocalDateTime#toLocalDate, see DBZ-9558
+            var ignored = dateTime.toString();
+            dateTimeInstant = dateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
+        }
+        return dateTimeInstant;
 
         return dateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
     }
