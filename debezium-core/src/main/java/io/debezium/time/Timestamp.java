@@ -74,6 +74,9 @@ public class Timestamp {
             dateTime = dateTime.with(adjuster);
         }
 
+        // Fix rare JDK issue where one of the components of ChronoLocalDateTime is null
+        String ignored = dateTime.toString();
+
         return dateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
     }
 
