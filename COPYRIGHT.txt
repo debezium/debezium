@@ -3,6 +3,7 @@ Aaron Brady
 Aaron Rosenberg
 Abhishek Gupta
 Abhishek Hodavdekar
+Adam Gray
 Adam Strickland
 Addison Higham
 Adham
@@ -188,6 +189,7 @@ Eric Weaver
 Eric S. Kreiseir
 Erik Malm
 Eric Xiao
+Erlend Hamnaberg
 Ethan Zou
 Eugene Abramchuk
 Ewen Cheslack-Postava
