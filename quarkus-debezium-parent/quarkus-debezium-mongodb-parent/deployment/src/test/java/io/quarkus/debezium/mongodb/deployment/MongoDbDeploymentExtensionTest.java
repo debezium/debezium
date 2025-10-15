@@ -9,10 +9,11 @@ package io.quarkus.debezium.mongodb.deployment;
 import java.util.List;
 import java.util.Map;
 
-import io.quarkus.debezium.testsuite.deployment.QuarkusDebeziumNoSqlExtensionTestSuite;
 import org.junit.platform.suite.api.AfterSuite;
 import org.junit.platform.suite.api.BeforeSuite;
 import org.junit.platform.suite.api.SuiteDisplayName;
+
+import io.quarkus.debezium.testsuite.deployment.QuarkusDebeziumNoSqlExtensionTestSuite;
 
 @SuiteDisplayName("MongoDB Debezium Extensions for Quarkus Test Suite")
 public class MongoDbDeploymentExtensionTest implements QuarkusDebeziumNoSqlExtensionTestSuite {
