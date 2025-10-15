@@ -55,7 +55,7 @@ VERSION_MAJOR_MINOR = "${VERSION_PARTS[0]}.${VERSION_PARTS[1]}"
 IMAGE_TAG = VERSION_MAJOR_MINOR
 CANDIDATE_BRANCH = "candidate-$RELEASE_VERSION"
 
-POSTGRES_TAGS = ['12', '12-alpine', '13', '13-alpine', '14', '14-alpine', '15', '15-alpine', '16', '16-alpine', '17', '17-alpine', '18', '18-alpine']
+POSTGRES_TAGS = ['14', '14-alpine', '15', '15-alpine', '16', '16-alpine', '17', '17-alpine', '18', '18-alpine']
 CONNECTORS_PER_VERSION = [
     '0.8' : ['mongodb', 'mysql', 'postgres', 'oracle'],
     '0.9' : ['mongodb', 'mysql', 'postgres', 'sqlserver', 'oracle'],
