@@ -1098,6 +1098,62 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
     }
 
     /**
+     * Abandons a single transaction identified by its transaction id.
+     * This method is public so it can be invoked by external signal actions.
+     *
+     * @param transactionId the transaction id to abandon, must be in lowercase hex format
+     * @return true if the transaction was found and abandoned, false otherwise
+     * @throws InterruptedException if interrupted while performing cleanup
+     */
+    public boolean abandonTransactionById(String transactionId) throws InterruptedException {
+        if (Strings.isNullOrEmpty(transactionId)) {
+            LOGGER.warn("Abandon transaction requested with null/empty transaction id");
+            return false;
+        }
+        final String txId = transactionId;
+        if (!getTransactionCache().containsTransaction(txId)) {
+            LOGGER.warn("Transaction '{}' not found in cache, cannot abandon", txId);
+            return false;
+        }
+
+        final Transaction transaction = getTransactionCache().getAndRemoveTransaction(txId);
+        if (transaction == null) {
+            LOGGER.warn("Transaction '{}' was not present when attempting to abandon", txId);
+            return false;
+        }
+
+        LOGGER.info("Manually abandoning transaction {} as requested", txId);
+        try {
+            cleanupAfterTransactionRemovedFromCache(transaction, true);
+        }
+        catch (Exception e) {
+            LOGGER.error("Failed to cleanup after abandoning transaction {}", txId, e);
+            getMetrics().incrementErrorCount();
+            throw e;
+        }
+
+        getMetrics().addAbandonedTransactionId(txId);
+        getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
+        getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
+
+        // Update oldest scn metric after manual abandonment
+        getTransactionCache().getEldestTransactionScnDetailsInCache().ifPresentOrElse(
+                scnDetails -> getMetrics().setOldestScnDetails(scnDetails.scn(), scnDetails.changeTime()),
+                () -> getMetrics().setOldestScnDetails(Scn.NULL, null));
+
+        // notify dispatcher to keep offsets moving
+        if (getEventDispatcher().heartbeatsEnabled()) {
+            getEventDispatcher().dispatchHeartbeatEvent(getPartition(), getOffsetContext());
+        }
+        else {
+            LOGGER.info("Heartbeats are not enabled, offsets will be updated on the next committed transaction");
+        }
+
+        LOGGER.info("Successfully dropped transaction '{}' from Oracle LogMiner buffer via manual request", txId);
+        return true;
+    }
+
+    /**
      * A helper records to return scn state after processing a batch.
      */
     @VisibleForTesting
