@@ -19,13 +19,13 @@ European Petroleum Survey Group (EPSG)::
 A modern convention that serializes coordinates by using `(y, x)` or `(latitude, longitude)` axis order.
 
 The serialization format is irrelevant in a {prodname} source connector, because the connector always uses the coordinate system of the source database when it writes data to a change event.
-However, a sink connector must not only be able to interpret the coordinate system of the source database, but also provide data to the target system in  a format that it can consume.
+However, a sink connector must not only be able to interpret the coordinate system of the source database, but also provide data to the target system in a format that it can consume.
 
 [[example-swap-geometry-coordinates]]
 == Example
 
-To convert the coordinate system of data that a {prodname} connector captures from a source database to a different coordinate system, add the `SwapGeometryCoordinates` SMT to the connector configuration.
-You can configure the transformation to transform the default set of spatial reference identifiers, or customize the configuration to apply it only to specific geometry fields.
+To convert the coordinate system of the data that a {prodname} connector captures from a source database to a different coordinate system, add the `SwapGeometryCoordinates` SMT to the connector configuration.
+You can configure the transformation so that it converts the default set of spatial reference identifiers, or you can customize the configuration so that the transform applies only to specific identifiers.
 Other fields are left unchanged.
 For example, to configure the connector to convert the default set of spatial reference identifiers, add the following lines to the connector configuration:
 
@@ -61,7 +61,7 @@ The following table lists the configuration options that you can use with the `S
 
 |[[swap-geometry-coordinates-srids]]<<swap-geometry-coordinates-srids, `srids`>>
 |A comma-separated list of spatial reference identifier values to which you want to apply the transformation.
-The transformation swaps the coordinate system of the specified values.
+The transformation swaps the coordinate system only for the specified values.
 Other geometry values are passed as-is.
 |list
 |`4326,3857, 4269`
