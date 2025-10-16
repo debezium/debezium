@@ -7,8 +7,9 @@
 package io.debezium.runtime;
 
 import io.debezium.common.annotation.Incubating;
+import io.debezium.runtime.configuration.QuarkusDatasourceConfiguration;
 
 @Incubating
 public record EngineManifest(String id) {
-    public static EngineManifest DEFAULT = new EngineManifest("default");
+    public static EngineManifest DEFAULT = new EngineManifest(QuarkusDatasourceConfiguration.DEFAULT);
 }

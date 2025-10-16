@@ -12,13 +12,14 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import io.debezium.common.annotation.Incubating;
+import io.debezium.runtime.configuration.QuarkusDatasourceConfiguration;
 
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 @Incubating()
 public @interface Capturing {
     String ALL = "*";
-    String DEFAULT = "default";
+    String DEFAULT = QuarkusDatasourceConfiguration.DEFAULT;
 
     /**
      * the destination that triggers the handler

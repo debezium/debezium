@@ -10,10 +10,13 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import io.debezium.runtime.configuration.QuarkusDatasourceConfiguration;
 import io.debezium.runtime.recorder.DatasourceRecorder;
 import io.quarkus.mongodb.runtime.MongodbConfig;
 import io.quarkus.runtime.RuntimeValue;
 import io.quarkus.runtime.annotations.Recorder;
+
+import static io.debezium.runtime.configuration.QuarkusDatasourceConfiguration.DEFAULT;
 
 @Recorder
 public class MongoDbDatasourceRecorder implements DatasourceRecorder<MultiEngineMongoDbDatasourceConfiguration> {
@@ -23,7 +26,6 @@ public class MongoDbDatasourceRecorder implements DatasourceRecorder<MultiEngine
      * of Debezium Engine
      */
     public static final String TO_REMOVE = "health";
-    public static final String DEFAULT = "default";
     private final RuntimeValue<MongodbConfig> runtimeConfig;
 
     public MongoDbDatasourceRecorder(final RuntimeValue<MongodbConfig> runtimeConfig) {
@@ -42,7 +44,10 @@ public class MongoDbDatasourceRecorder implements DatasourceRecorder<MultiEngine
                         false))
                 .collect(Collectors.toMap(MongoDbDatasourceConfiguration::getSanitizedName, Function.identity()));
 
-        configurations.put(DEFAULT, new MongoDbDatasourceConfiguration(runtimeConfig.getValue().defaultMongoClientConfig().connectionString().get(), DEFAULT, true));
+        configurations.put(DEFAULT,
+                new MongoDbDatasourceConfiguration(runtimeConfig.getValue().defaultMongoClientConfig().connectionString().get(),
+                        DEFAULT,
+                        true));
 
         return () -> new MultiEngineMongoDbDatasourceConfiguration(configurations);
     }

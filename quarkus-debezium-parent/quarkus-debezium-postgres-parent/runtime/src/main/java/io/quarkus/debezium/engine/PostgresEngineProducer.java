@@ -151,13 +151,11 @@ public class PostgresEngineProducer implements ConnectorProducer {
                 (key, value) -> value == null ? channel.name() : value.concat("," + channel.name()));
         configuration.put(CONNECTOR_CLASS.name(), POSTGRES.name());
 
-        EngineManifest engineManifest = new EngineManifest("default");
-
         return new DebeziumConnectorRegistry() {
             private final SourceRecordDebezium engine = new SourceRecordDebezium(configuration,
                     stateHandler,
                     POSTGRES,
-                    sourceRecordConsumerHandler.get(engineManifest), engineManifest);
+                    sourceRecordConsumerHandler.get(EngineManifest.DEFAULT), EngineManifest.DEFAULT);
 
             @Override
             public Connector connector() {

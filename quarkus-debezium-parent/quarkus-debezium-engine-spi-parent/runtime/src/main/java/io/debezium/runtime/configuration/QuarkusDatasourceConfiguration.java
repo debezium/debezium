@@ -13,6 +13,8 @@ import java.util.Map;
  */
 public interface QuarkusDatasourceConfiguration {
 
+    String DEFAULT = "default";
+
     /**
      * return the configuration compatible with Debezium
      */
