@@ -27,16 +27,6 @@ public class SdoGeometryUtil {
         return result;
     }
 
-    public static Object[] toSdoGeometryAttributes(BigDecimal sdoGtype, BigDecimal sdoSrid, BigDecimal[] sdoPoint, BigDecimal[] sdoElemInfo, BigDecimal[] sdoOrdinates) {
-        return new Object[]{
-                sdoGtype,
-                sdoSrid,
-                sdoPoint,
-                sdoElemInfo,
-                sdoOrdinates
-        };
-    }
-
     public static Object[] toSdoGeometryAttributes(int sdoGtype, int sdoSrid, double[] sdoPoint, double[] sdoElemInfo, double[] sdoOrdinates) {
         return new Object[]{
                 BigDecimal.valueOf(sdoGtype),
@@ -49,10 +39,6 @@ public class SdoGeometryUtil {
 
     public static Object[] toSdoGeometryAttributes(int sdoGtype, int sdoSrid, double[] sdoPoint) {
         return toSdoGeometryAttributes(sdoGtype, sdoSrid, sdoPoint, null, null);
-    }
-
-    public static Object[] toSdoGeometryAttributes(int sdoGtype, int sdoSrid, double[] sdoElemInfo, double[] sdoOrdinates) {
-        return toSdoGeometryAttributes(sdoGtype, sdoSrid, null, sdoElemInfo, sdoOrdinates);
     }
 
     public static Object[] toSdoGeometryAttributes(Struct struct) throws SQLException {

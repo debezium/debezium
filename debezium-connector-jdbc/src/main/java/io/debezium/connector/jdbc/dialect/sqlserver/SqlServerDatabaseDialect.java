@@ -93,6 +93,7 @@ public class SqlServerDatabaseDialect extends GeneralDatabaseDialect {
         registerType(XmlType.INSTANCE);
         registerType(ZonedTimeType.INSTANCE);
         registerType(ConnectTimeType.INSTANCE);
+        registerType(GeometryType.INSTANCE);
     }
 
     @Override

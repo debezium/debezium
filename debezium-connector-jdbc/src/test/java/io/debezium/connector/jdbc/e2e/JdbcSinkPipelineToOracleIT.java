@@ -8,6 +8,9 @@ package io.debezium.connector.jdbc.e2e;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.sql.Blob;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 
 import org.apache.commons.lang3.RandomStringUtils;
@@ -24,6 +27,7 @@ import io.debezium.connector.jdbc.junit.jupiter.e2e.source.Source;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourceType;
 import io.debezium.doc.FixFor;
 import io.debezium.sink.SinkConnectorConfig.PrimaryKeyMode;
+import io.debezium.spatial.GeometryBytes;
 import io.debezium.transforms.ExtractNewRecordState;
 
 /**
@@ -232,6 +236,39 @@ public class JdbcSinkPipelineToOracleIT extends AbstractJdbcSinkPipelineIT {
     @Override
     protected String getIntervalType(Source source, boolean numeric) {
         return numeric ? getInt64Type() : getStringType(source, false, false);
+    }
+
+    @Override
+    protected String getGeographyType() {
+        return "SDO_GEOMETRY";
+    }
+
+    @Override
+    protected String getGeometryType() {
+        return "SDO_GEOMETRY";
+    }
+
+    @Override
+    protected GeometryBytes getGeometryValues(ResultSet resultSet, int index) throws SQLException {
+        final java.sql.Struct values = (java.sql.Struct) resultSet.getObject(index);
+        final int srid = ((BigDecimal) values.getAttributes()[1]).intValue();
+
+        final String query = "SELECT SDO_UTIL.TO_WKBGEOMETRY(TREAT(? AS SDO_GEOMETRY)) FROM DUAL";
+        try (PreparedStatement statement = resultSet.getStatement().getConnection().prepareStatement(query)) {
+            statement.setObject(1, values);
+            try (ResultSet rs = statement.executeQuery()) {
+                if (rs.next()) {
+                    // Oracle's TO_WKBGEOMETRY returns EPSG format but in big endian format
+                    final byte[] bytes = rs.getBytes(1);
+                    return new GeometryBytes(bytes, srid).asLittleEndian();
+                }
+            }
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Failed to read geometry value for index " + index, e);
+        }
+
+        throw new UnsupportedOperationException("Failed to read Oracle Geometry value");
     }
 
     @TestTemplate

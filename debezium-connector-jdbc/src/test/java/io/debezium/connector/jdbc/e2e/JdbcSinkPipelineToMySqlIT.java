@@ -5,12 +5,15 @@
  */
 package io.debezium.connector.jdbc.e2e;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.OffsetTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Arrays;
 import java.util.Calendar;
 
 import org.hibernate.cfg.AvailableSettings;
@@ -19,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.debezium.connector.jdbc.junit.jupiter.MySqlSinkDatabaseContextProvider;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.Source;
+import io.debezium.spatial.GeometryBytes;
 
 /**
  * Implementation of the JDBC sink connector multi-source pipeline that writes to MySQL.
@@ -219,6 +223,27 @@ public class JdbcSinkPipelineToMySqlIT extends AbstractJdbcSinkPipelineIT {
                     .toOffsetTime();
         }
         return super.getTimeAsOffsetTime(rs, index);
+    }
+
+    @Override
+    protected String getGeographyType() {
+        return "GEOMETRY";
+    }
+
+    @Override
+    protected String getGeometryType() {
+        return "GEOMETRY";
+    }
+
+    @Override
+    protected GeometryBytes getGeometryValues(ResultSet resultSet, int index) throws SQLException {
+        final byte[] bytes = resultSet.getBytes(index);
+
+        final int srid = ByteBuffer.wrap(bytes, 0, 4).order(ByteOrder.LITTLE_ENDIAN).getInt();
+        final byte[] wkb = Arrays.copyOfRange(bytes, 4, bytes.length);
+
+        // Tests expect EPSG format, so swap
+        return new GeometryBytes(wkb, srid).swapCoordinatesNoCheck();
     }
 
     private boolean isConnectionTimeZoneSet() {

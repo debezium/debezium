@@ -5,11 +5,15 @@
  */
 package io.debezium.connector.jdbc.e2e;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.debezium.connector.jdbc.junit.jupiter.Db2SinkDatabaseContextProvider;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.Source;
+import io.debezium.spatial.GeometryBytes;
 
 /**
  * Implementation of the JDBC sink connector multi-source pipeline that writes to Db2.
@@ -172,5 +176,20 @@ public class JdbcSinkPipelineToDb2IT extends AbstractJdbcSinkPipelineIT {
     @Override
     protected String getIntervalType(Source source, boolean numeric) {
         return numeric ? getInt64Type() : getStringType(source, false, false);
+    }
+
+    @Override
+    protected String getGeographyType() {
+        return "ST_GEOMETRY";
+    }
+
+    @Override
+    protected String getGeometryType() {
+        return "ST_GEOMETRY";
+    }
+
+    @Override
+    protected GeometryBytes getGeometryValues(ResultSet resultSet, int index) throws SQLException {
+        throw new UnsupportedOperationException("Db2 is currently not fitted to support geometry data types");
     }
 }
