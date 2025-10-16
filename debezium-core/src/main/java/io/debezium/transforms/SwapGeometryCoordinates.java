@@ -127,7 +127,7 @@ public class SwapGeometryCoordinates<R extends ConnectRecord<R>> implements Tran
         final byte[] wkb = value.getBytes(Geometry.WKB_FIELD);
         if (sridList.contains(srid)) {
             final GeometryBytes geometry = new GeometryBytes(wkb, srid);
-            value.put(Geometry.WKB_FIELD, geometry.swapCoordinatesNoCheck().getWkb());
+            value.put(Geometry.WKB_FIELD, geometry.swapCoordinatesNoCheck().getBytes());
         }
 
         return value;
