@@ -8,5 +8,5 @@ package io.quarkus.debezium.testsuite.deployment;
 
 public class TestSuiteConfigurations {
 
-    public static final int TIMEOUT = Integer.parseInt(System.getProperty("QUARKUS.TESTSUITE.TIMEOUT", "100"));
+    public static final int TIMEOUT = Integer.parseInt(System.getProperty("quarkus.testsuite.timeout", "100"));
 }
