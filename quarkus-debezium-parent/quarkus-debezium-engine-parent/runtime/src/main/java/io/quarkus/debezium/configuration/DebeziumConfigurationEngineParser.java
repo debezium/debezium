@@ -15,10 +15,11 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
 
+import static io.debezium.runtime.configuration.QuarkusDatasourceConfiguration.DEFAULT;
+
 public class DebeziumConfigurationEngineParser {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DebeziumConfigurationEngineParser.class);
-    public static final String DEFAULT = "default";
     public static final String CAPTURING = "capturing";
 
     public List<MultiEngineConfiguration> parse(DebeziumEngineConfiguration globalConfiguration) {

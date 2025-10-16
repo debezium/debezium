@@ -8,6 +8,7 @@ package io.quarkus.debezium.configuration;
 
 import java.util.function.Supplier;
 
+import io.debezium.runtime.configuration.QuarkusDatasourceConfiguration;
 import org.eclipse.microprofile.config.ConfigProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +33,7 @@ public class DatasourceRecorder {
             String username = ConfigProvider.getConfig().getConfigValue(PREFIX + USERNAME).getValue();
             String password = ConfigProvider.getConfig().getConfigValue(PREFIX + PASSWORD).getValue();
 
-            return createConfiguration("default", jdbcUrl, username, password, true);
+            return createConfiguration(QuarkusDatasourceConfiguration.DEFAULT, jdbcUrl, username, password, true);
         }
         LOGGER.trace("Extracting datasource configuration for {}", name);
 

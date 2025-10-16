@@ -12,7 +12,6 @@ import io.debezium.runtime.configuration.QuarkusDatasourceConfiguration;
 
 public class MultiEngineMongoDbDatasourceConfiguration implements QuarkusDatasourceConfiguration {
 
-    public static final String DEFAULT = "default";
     private final Map<String, MongoDbDatasourceConfiguration> configurations;
 
     public MultiEngineMongoDbDatasourceConfiguration(Map<String, MongoDbDatasourceConfiguration> configurations) {
@@ -21,7 +20,7 @@ public class MultiEngineMongoDbDatasourceConfiguration implements QuarkusDatasou
 
     @Override
     public Map<String, String> asDebezium() {
-        return configurations.get(DEFAULT).asDebezium();
+        return configurations.get(QuarkusDatasourceConfiguration.DEFAULT).asDebezium();
     }
 
     @Override
