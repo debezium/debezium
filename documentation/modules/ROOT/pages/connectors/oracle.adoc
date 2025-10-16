@@ -2541,7 +2541,6 @@ ifdef::product[]
 For details about setting up Oracle for use with the {prodname} connector, see the following sections:
 
 * xref:compatibility-of-the-debezium-oracle-connector-with-oracle-installation-types[]
-* xref:using-debezium-oracle-connector-with-autonomous-database[]
 * xref:schemas-that-the-debezium-oracle-connector-excludes-when-capturing-change-events[]
 * xref:preparing-oracle-databases-for-use-with-debezium[]
 * xref:resizing-oracle-redo-logs-to-accommodate-the-data-dictionary[]
@@ -2559,8 +2558,7 @@ endif::product[]
 An Oracle database can be installed either as a standalone instance or using Oracle Real Application Cluster (RAC).
 The {prodname} Oracle connector is compatible with both types of installation.
 
-// Type: concept
-// Title: Using {prodname} Oracle connector with Oracle Autonomous Database
+ifdef::community[]
 [id="using-debezium-oracle-connector-with-autonomous-database"]
 === Using the connector with Oracle Autonomous Database
 
@@ -2582,7 +2580,7 @@ endif::product[]
 
 Oracle Autonomous Database imposes several restrictions that affect how LogMiner operates:
 
-* Only one LogMiner session is allowed per Autonomous Database.
+* Only one LogMiner session is allowed per Autonomous Database, limiting deployments to one {prodname} Oracle connector per ADB.
 * Archived log files are kept for 7 days only. Therefore, LogMiner can only access up to 7 days of archived log files.
 * Access to certain V$ views is restricted.
 Specifically, columns `SUPPLEMENTAL_LOG_DATA_MIN` and `SUPPLEMENTAL_LOG_DATA_ALL` in `V$DATABASE` are not accessible.
@@ -2672,6 +2670,7 @@ Before configuring the connector for use with an Autonomous Database, ensure tha
 * Oracle Wallet is configured for secure connections to OCI managed databases.
 Download the wallet from the Oracle Cloud Console.
 For information about configuring Oracle Wallet with the connector, see xref:using-mtls-secure-connections-oracle-wallet[Using Oracle Wallet to configure mTLS connections].
+endif::community[]
 
 // Type: concept
 // Title: Schemas that the {prodname} Oracle connector excludes when capturing change events
@@ -3560,7 +3559,7 @@ When connecting to ADB, the connector must enable autonomous database mode and a
 ====
 When connecting to Oracle Autonomous Database:
 
-* Do not specify the `database.pdb.name` property. ADB provides a fully managed PDB environment, and the connector operates within that context automatically.
+* Do not specify the `database.pdb.name` property. ADB provides a fully managed PDB environment, and the connector operates within that context automatically. Specify the ADB's PDB name as `database.dbname` instead.
 * Use the Oracle Wallet for secure connections. Download the wallet from the Oracle Cloud Console and configure it using the `driver.oracle.net.wallet_location` property as shown in the example above.
 * Ensure that you enable supplemental logging using the `ALTER PLUGGABLE DATABASE` command as described in xref:using-debezium-oracle-connector-with-autonomous-database[Preparing the Autonomous Database].
 ====
@@ -3846,6 +3845,7 @@ Valid values include raw TNS names and RAC connection strings.
 |No default
 |Name of the Oracle pluggable database to connect to. Use this property with container database (CDB) installations only.
 
+ifdef::community[]
 |[[oracle-property-database-autonomous-mode]]<<oracle-property-database-autonomous-mode, `+database.autonomous.mode+`>>
 |`false`
 |Specifies whether the connector is capturing changes from an Oracle Autonomous Database (ADB). +
@@ -3857,6 +3857,7 @@ When set to `true`, the connector adapts its behavior to work within ADB's restr
 * Bypasses manual log file registration with LogMiner, relying on automatic log discovery.
 
 For more information, see xref:using-debezium-oracle-connector-with-autonomous-database[Using the connector with Oracle Autonomous Database].
+endif::community[]
 
 |[[oracle-property-topic-prefix]]<<oracle-property-topic-prefix, `+topic.prefix+`>>
 |No default
