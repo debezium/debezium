@@ -6,12 +6,14 @@
 package io.debezium.connector.jdbc.e2e;
 
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.postgresql.util.PGobject;
 
 import io.debezium.connector.jdbc.junit.jupiter.PostgresSinkDatabaseContextProvider;
 import io.debezium.connector.jdbc.junit.jupiter.Sink;
@@ -20,6 +22,8 @@ import io.debezium.connector.jdbc.junit.jupiter.e2e.ForSource;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.WithTemporalPrecisionMode;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.Source;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourceType;
+import io.debezium.spatial.GeometryBytes;
+import io.debezium.util.HexConverter;
 
 /**
  * Implementation of the JDBC sink connector multi-source pipeline that writes to PostgreSQL.
@@ -192,6 +196,26 @@ public class JdbcSinkPipelineToPostgresIT extends AbstractJdbcSinkPipelineIT {
     @Override
     protected String getIntervalType(Source source, boolean numeric) {
         return "INTERVAL";
+    }
+
+    @Override
+    protected String getGeographyType() {
+        return "\"postgis\".\"geography\"";
+    }
+
+    @Override
+    protected String getGeometryType() {
+        return "\"postgis\".\"geometry\"";
+    }
+
+    @Override
+    protected GeometryBytes getGeometryValues(ResultSet resultSet, int index) throws SQLException {
+        final PGobject object = (PGobject) resultSet.getObject(index);
+        if (object == null || object.getValue() == null) {
+            return null;
+        }
+        // Tests expect WKB so convert it from EWKB that Postgres provides
+        return new GeometryBytes(HexConverter.convertFromHex(object.getValue())).asWkb();
     }
 
     @TestTemplate

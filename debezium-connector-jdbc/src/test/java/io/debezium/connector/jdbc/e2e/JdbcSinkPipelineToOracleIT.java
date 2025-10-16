@@ -5,12 +5,18 @@
  */
 package io.debezium.connector.jdbc.e2e;
 
+import java.math.BigDecimal;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.debezium.connector.jdbc.junit.jupiter.OracleSinkDatabaseContextProvider;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.Source;
 import io.debezium.connector.jdbc.junit.jupiter.e2e.source.SourceType;
+import io.debezium.spatial.GeometryBytes;
 
 /**
  * Implementation of the JDBC sink connector multi-source pipeline that writes to Oracle.
@@ -218,5 +224,38 @@ public class JdbcSinkPipelineToOracleIT extends AbstractJdbcSinkPipelineIT {
     @Override
     protected String getIntervalType(Source source, boolean numeric) {
         return numeric ? getInt64Type() : getStringType(source, false, false);
+    }
+
+    @Override
+    protected String getGeographyType() {
+        return "SDO_GEOMETRY";
+    }
+
+    @Override
+    protected String getGeometryType() {
+        return "SDO_GEOMETRY";
+    }
+
+    @Override
+    protected GeometryBytes getGeometryValues(ResultSet resultSet, int index) throws SQLException {
+        final java.sql.Struct values = (java.sql.Struct) resultSet.getObject(index);
+        final int srid = ((BigDecimal) values.getAttributes()[1]).intValue();
+
+        final String query = "SELECT SDO_UTIL.TO_WKBGEOMETRY(TREAT(? AS SDO_GEOMETRY)) FROM DUAL";
+        try (PreparedStatement statement = resultSet.getStatement().getConnection().prepareStatement(query)) {
+            statement.setObject(1, values);
+            try (ResultSet rs = statement.executeQuery()) {
+                if (rs.next()) {
+                    // Oracle's TO_WKBGEOMETRY returns EPSG format but in big endian format
+                    final byte[] bytes = rs.getBytes(1);
+                    return new GeometryBytes(bytes, srid).asLittleEndian();
+                }
+            }
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Failed to read geometry value for index " + index, e);
+        }
+
+        throw new UnsupportedOperationException("Failed to read Oracle Geometry value");
     }
 }
