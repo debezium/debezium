@@ -46,23 +46,23 @@ The testsuite expects a standardized data structure:
 
 ### Module Structure
 
-```
-quarkus-debezium-testsuite-parent/
-├── deployment/                    # tests for deployment/runtime-time processing
-│   └── suite/                    # Standard test classes for deployment testing
-│       ├── CapturingTest.java    # Tests basic change capture functionality
-│       ├── DebeziumLifeCycleTest.java # Tests connector lifecycle
-│       ├── HeartbeatTest.java    # Tests heartbeat functionality
-│       ├── NotificationTest.java # Tests event notifications
-│       └── PostProcessingTest.java # Tests data transformations
-└── integration-tests/            # Runtime integration test framework
-    ├── general/                  # Standard integration test classes
-    │   ├── CapturingIT.java     # Integration capturing tests
-    │   ├── EngineIT.java        # Engine integration tests
-    │   └── NotificationIT.java  # Notification integration tests
-    └── events/                   # Event-specific integration tests
-        ├── HeartbeatEventIT.java
-        └── LifecycleEventIT.java
+```text
+ quarkus-debezium-testsuite-parent/
+ ├── deployment/                    # tests for deployment/runtime-time processing
+ │   └── suite/                    # Standard test classes for deployment testing
+ │       ├── CapturingTest.java    # Tests basic change capture functionality
+ │       ├── DebeziumLifeCycleTest.java # Tests connector lifecycle
+ │       ├── HeartbeatTest.java    # Tests heartbeat functionality
+ │       ├── NotificationTest.java # Tests event notifications
+ │       └── PostProcessingTest.java # Tests data transformations
+ └── integration-tests/            # Runtime integration test framework
+     ├── general/                  # Standard integration test classes
+     │   ├── CapturingIT.java     # Integration capturing tests
+     │   ├── EngineIT.java        # Engine integration tests
+     │   └── NotificationIT.java  # Notification integration tests
+     └── events/                   # Event-specific integration tests
+         ├── HeartbeatEventIT.java
+         └── LifecycleEventIT.java
 ```
 
 ## Integration Guide
