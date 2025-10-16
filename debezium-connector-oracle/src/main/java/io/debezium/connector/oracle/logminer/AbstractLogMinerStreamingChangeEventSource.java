@@ -1812,7 +1812,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if a database exception occurred
      */
     private boolean isDatabaseAllSupplementalLoggingEnabled() throws SQLException {
-        boolean autonomousDatabaseMode = connectorConfig.isAutonomousDatabaseMode();
         return jdbcConnection.queryAndMap(SqlUtils.databaseSupplementalLoggingAllCheckQuery(autonomousDatabaseMode), rs -> {
             while (rs.next()) {
                 if ("YES".equalsIgnoreCase(rs.getString(2))) {
@@ -1830,7 +1829,6 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if a database exception occurred
      */
     private boolean isDatabaseMinSupplementalLoggingEnabled() throws SQLException {
-        boolean autonomousDatabaseMode = connectorConfig.isAutonomousDatabaseMode();
         return jdbcConnection.queryAndMap(SqlUtils.databaseSupplementalLoggingMinCheckQuery(autonomousDatabaseMode), rs -> {
             while (rs.next()) {
                 if ("YES".equalsIgnoreCase(rs.getString(2))) {
