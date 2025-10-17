@@ -137,15 +137,37 @@
                                     <MSSQL_PID>Standard</MSSQL_PID>
                                     <MSSQL_AGENT_ENABLED>true</MSSQL_AGENT_ENABLED>
                                 </env>
-                                <volumes>
-                                    <bind>
-                                        <volume>${project.basedir}/src/test/docker/mssql.key:/etc/ssl/debezium/private/mssql.key</volume>
-                                        <volume>${project.basedir}/src/test/docker/mssql.pem:/etc/ssl/debezium/certs/mssql.pem</volume>
-                                        <volume>${project.basedir}/src/test/docker/mssql.conf:/var/opt/mssql/mssql.conf</volume>
-                                    </bind>
-                                </volumes>
                                 <ports>
                                     <port>1433:1433</port>
+                                </ports>
+                                <log>
+                                    <prefix>sqlserver</prefix>
+                                    <enabled>true</enabled>
+                                    <color>yellow</color>
+                                </log>
+                                <wait>
+                                    <time>60000</time> <!-- 60 seconds max -->
+                                    <log>SQL Server is now ready for client connections</log>
+                                </wait>
+                            </run>
+                            <external>
+                                <type>properties</type>
+                                <mode>override</mode>
+                            </external>
+                        </image>
+                        <image>
+                            <!-- A Docker image using the SQL Server -->
+                            <name>mcr.microsoft.com/mssql/server:2022-latest</name>
+                            <alias>sqlserver2</alias>
+                            <run>
+                                <env>
+                                    <ACCEPT_EULA>Y</ACCEPT_EULA>
+                                    <SA_PASSWORD>Password!</SA_PASSWORD>
+                                    <MSSQL_PID>Standard</MSSQL_PID>
+                                    <MSSQL_AGENT_ENABLED>true</MSSQL_AGENT_ENABLED>
+                                </env>
+                                <ports>
+                                    <port>1434:1433</port>
                                 </ports>
                                 <log>
                                     <prefix>sqlserver</prefix>
