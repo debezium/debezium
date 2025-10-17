@@ -37,9 +37,7 @@ public class MySqlTestConnection extends BinlogTestConnection {
      * @return the MySQLConnection instance; never null
      */
     public static MySqlTestConnection forTestDatabase(String databaseName) {
-        return new MySqlTestConnection(getDefaultJdbcConfig(databaseName)
-                .with("protocol", "jdbc:mysql")
-                .build());
+        return new MySqlTestConnection(getDefaultJdbcConfig(databaseName).build());
     }
 
     /**
@@ -49,9 +47,7 @@ public class MySqlTestConnection extends BinlogTestConnection {
      * @return the MySQLConnection instance; never null
      */
     public static MySqlTestConnection forTestReplicaDatabase(String databaseName) {
-        return new MySqlTestConnection(getReplicaJdbcConfig(databaseName)
-                .with("protocol", "jdbc:mysql")
-                .build());
+        return new MySqlTestConnection(getReplicaJdbcConfig(databaseName).build());
     }
 
     /**
@@ -65,7 +61,6 @@ public class MySqlTestConnection extends BinlogTestConnection {
 
     public static MySqlTestConnection forTestDatabase(String databaseName, int queryTimeout) {
         return new MySqlTestConnection(getDefaultJdbcConfig(databaseName)
-                .with("protocol", "jdbc:mysql")
                 .withQueryTimeoutMs(queryTimeout)
                 .build());
     }
@@ -77,8 +72,7 @@ public class MySqlTestConnection extends BinlogTestConnection {
      * @return the MySQLConnection instance; never null
      */
     public static MySqlTestConnection forTestDatabase(String databaseName, Map<String, Object> urlProperties) {
-        final JdbcConfiguration.Builder builder = getDefaultJdbcConfig(databaseName)
-                .with("protocol", "jdbc:mysql");
+        final JdbcConfiguration.Builder builder = getDefaultJdbcConfig(databaseName);
         urlProperties.forEach(builder::with);
         return new MySqlTestConnection(builder.build());
     }
