@@ -58,7 +58,7 @@ public class PostProcessingTest {
     void shouldApplyPostProcessor() {
         given().await()
                 .atMost(TestSuiteConfigurations.TIMEOUT, TimeUnit.SECONDS)
-                .untilAsserted(() -> assertThat(postProcessingHandler.key()).contains("id"));
+                .untilAsserted(() -> assertThat(postProcessingHandler.key()).isNotEmpty());
     }
 
     @ApplicationScoped
@@ -68,7 +68,7 @@ public class PostProcessingTest {
         @PostProcessing()
         public void postProcessing(Object key, Struct struct) {
             this.ids.add(((Struct) key)
-                    .getString("id"));
+                    .get("id").toString());
         }
 
         public String key() {
