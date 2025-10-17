@@ -24,7 +24,6 @@
         <maven.compiler.testTarget>${debezium.java.specific.target}</maven.compiler.testTarget>
         <maven.compiler.testRelease>${debezium.java.specific.target}</maven.compiler.testRelease>
 
-        <quarkus.platform.version>3.26.3</quarkus.platform.version>
         <debezium.version>${project.version}</debezium.version>
     </properties>
 
@@ -33,7 +32,7 @@
             <dependency>
                 <groupId>io.quarkus.platform</groupId>
                 <artifactId>quarkus-bom</artifactId>
-                <version>${quarkus.platform.version}</version>
+                <version>${quarkus.version.extension}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -72,12 +71,12 @@
                 <plugin>
                     <groupId>io.quarkus</groupId>
                     <artifactId>quarkus-maven-plugin</artifactId>
-                    <version>${quarkus.platform.version}</version>
+                    <version>${quarkus.version.extension}</version>
                 </plugin>
                 <plugin>
                     <groupId>io.quarkus</groupId>
                     <artifactId>quarkus-extension-maven-plugin</artifactId>
-                    <version>${quarkus.platform.version}</version>
+                    <version>${quarkus.version.extension}</version>
                     <executions>
                         <execution>
                             <goals>
@@ -98,7 +97,7 @@
                             <path>
                                 <groupId>io.quarkus</groupId>
                                 <artifactId>quarkus-extension-processor</artifactId>
-                                <version>${quarkus.platform.version}</version>
+                                <version>${quarkus.version.extension}</version>
                             </path>
                         </annotationProcessorPaths>
                     </configuration>
