@@ -31,6 +31,7 @@ import io.debezium.connector.oracle.OracleConnectorConfig;
 import io.debezium.connector.oracle.logminer.buffered.AbstractCacheProvider;
 import io.debezium.connector.oracle.logminer.buffered.LogMinerCache;
 import io.debezium.connector.oracle.logminer.buffered.LogMinerTransactionCache;
+import io.debezium.connector.oracle.logminer.buffered.ProcessedTransaction;
 
 /**
  * Provides access to various transaction-focused caches to store transaction details in Infinispan
@@ -45,7 +46,7 @@ public class EmbeddedInfinispanCacheProvider extends AbstractCacheProvider<Infin
     private final boolean dropBufferOnStop;
     private final EmbeddedCacheManager cacheManager;
     private final InfinispanLogMinerTransactionCache transactionCache;
-    private final InfinispanLogMinerCache<String, String> processedTransactionsCache;
+    private final InfinispanLogMinerCache<String, ProcessedTransaction> processedTransactionsCache;
     private final InfinispanLogMinerCache<String, String> schemaChangesCache;
 
     public EmbeddedInfinispanCacheProvider(OracleConnectorConfig connectorConfig) {
@@ -72,7 +73,7 @@ public class EmbeddedInfinispanCacheProvider extends AbstractCacheProvider<Infin
     }
 
     @Override
-    public LogMinerCache<String, String> getProcessedTransactionsCache() {
+    public LogMinerCache<String, ProcessedTransaction> getProcessedTransactionsCache() {
         return processedTransactionsCache;
     }
 
@@ -100,7 +101,7 @@ public class EmbeddedInfinispanCacheProvider extends AbstractCacheProvider<Infin
                 createCache(EVENTS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_EVENTS));
     }
 
-    private InfinispanLogMinerCache<String, String> createProcessedTransactionsCache(OracleConnectorConfig connectorConfig) {
+    private InfinispanLogMinerCache<String, ProcessedTransaction> createProcessedTransactionsCache(OracleConnectorConfig connectorConfig) {
         return new InfinispanLogMinerCache<>(
                 createCache(PROCESSED_TRANSACTIONS_CACHE_NAME, connectorConfig, LOG_MINING_BUFFER_INFINISPAN_CACHE_PROCESSED_TRANSACTIONS));
     }
