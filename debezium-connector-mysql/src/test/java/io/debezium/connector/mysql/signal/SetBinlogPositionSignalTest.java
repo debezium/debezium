@@ -38,6 +38,7 @@ public class SetBinlogPositionSignalTest {
     private MySqlConnectorConfig connectorConfig;
     private SetBinlogPositionSignal<MySqlPartition> signal;
     private MySqlOffsetContext offsetContext;
+    private MySqlPartition partition;
 
     @Before
     public void setUp() {
@@ -45,6 +46,7 @@ public class SetBinlogPositionSignalTest {
         changeEventSourceCoordinator = mock(ChangeEventSourceCoordinator.class);
         connectorConfig = mock(MySqlConnectorConfig.class);
         offsetContext = mock(MySqlOffsetContext.class);
+        partition = new MySqlPartition("test-server", "test-db");
 
         signal = new SetBinlogPositionSignal<>(eventDispatcher, changeEventSourceCoordinator, connectorConfig);
     }
@@ -59,7 +61,7 @@ public class SetBinlogPositionSignalTest {
                 "{\"binlog_filename\": \"" + binlogFilename + "\", \"binlog_position\": " + binlogPosition + "}");
 
         SignalPayload<MySqlPartition> payload = new SignalPayload<>(
-                null, "set-binlog-position", data, Map.of(), offsetContext, null);
+                partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
 
         // When/Then
         assertThatThrownBy(() -> signal.arrived(payload))
@@ -68,7 +70,7 @@ public class SetBinlogPositionSignalTest {
 
         // Verify the offset was updated
         verify(offsetContext).setBinlogStartPoint(binlogFilename, binlogPosition);
-        verify(eventDispatcher).alwaysDispatchHeartbeatEvent(offsetContext);
+        verify(eventDispatcher).alwaysDispatchHeartbeatEvent(partition, offsetContext);
     }
 
     @Test
@@ -80,7 +82,7 @@ public class SetBinlogPositionSignalTest {
                 "{\"gtid_set\": \"" + gtidSet + "\"}");
 
         SignalPayload<MySqlPartition> payload = new SignalPayload<>(
-                null, "set-binlog-position", data, Map.of(), offsetContext, null);
+                partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
 
         // When/Then
         assertThatThrownBy(() -> signal.arrived(payload))
@@ -89,7 +91,7 @@ public class SetBinlogPositionSignalTest {
 
         // Verify the offset was updated
         verify(offsetContext).setCompletedGtidSet(gtidSet);
-        verify(eventDispatcher).alwaysDispatchHeartbeatEvent(offsetContext);
+        verify(eventDispatcher).alwaysDispatchHeartbeatEvent(partition, offsetContext);
     }
 
     @Test
@@ -99,7 +101,7 @@ public class SetBinlogPositionSignalTest {
                 "{\"binlog_filename\": \"invalid-name\", \"binlog_position\": 1234}");
 
         SignalPayload<MySqlPartition> payload = new SignalPayload<>(
-                null, "set-binlog-position", data, Map.of(), offsetContext, null);
+                partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
 
         // When/Then
         assertThatThrownBy(() -> signal.arrived(payload))
@@ -114,7 +116,7 @@ public class SetBinlogPositionSignalTest {
                 "{\"binlog_filename\": \"mysql-bin.000003\"}");
 
         SignalPayload<MySqlPartition> payload = new SignalPayload<>(
-                null, "set-binlog-position", data, Map.of(), offsetContext, null);
+                partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
 
         // When/Then
         assertThatThrownBy(() -> signal.arrived(payload))
@@ -129,7 +131,7 @@ public class SetBinlogPositionSignalTest {
                 "{\"binlog_position\": 1234}");
 
         SignalPayload<MySqlPartition> payload = new SignalPayload<>(
-                null, "set-binlog-position", data, Map.of(), offsetContext, null);
+                partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
 
         // When/Then
         assertThatThrownBy(() -> signal.arrived(payload))
@@ -145,7 +147,7 @@ public class SetBinlogPositionSignalTest {
                         "\"gtid_set\": \"3E11FA47-71CA-11E1-9E33-C80AA9429562:1-100\"}");
 
         SignalPayload<MySqlPartition> payload = new SignalPayload<>(
-                null, "set-binlog-position", data, Map.of(), offsetContext, null);
+                partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
 
         // When/Then
         assertThatThrownBy(() -> signal.arrived(payload))
@@ -160,7 +162,7 @@ public class SetBinlogPositionSignalTest {
                 "{\"gtid_set\": \"invalid-gtid-format\"}");
 
         SignalPayload<MySqlPartition> payload = new SignalPayload<>(
-                null, "set-binlog-position", data, Map.of(), offsetContext, null);
+                partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
 
         // When/Then
         assertThatThrownBy(() -> signal.arrived(payload))
@@ -174,7 +176,7 @@ public class SetBinlogPositionSignalTest {
         Document data = Document.create();
 
         SignalPayload<MySqlPartition> payload = new SignalPayload<>(
-                null, "set-binlog-position", data, Map.of(), offsetContext, null);
+                partition, "test-id", "set-binlog-position", data, offsetContext, Map.of());
 
         // When/Then
         boolean result = signal.arrived(payload);
@@ -188,7 +190,7 @@ public class SetBinlogPositionSignalTest {
                 "{\"binlog_filename\": \"mysql-bin.000003\", \"binlog_position\": 1234}");
 
         SignalPayload<MySqlPartition> payload = new SignalPayload<>(
-                null, "set-binlog-position", data, Map.of(), null, null);
+                null, "test-id", "set-binlog-position", data, null, Map.of());
 
         // When/Then
         assertThatThrownBy(() -> signal.arrived(payload))
