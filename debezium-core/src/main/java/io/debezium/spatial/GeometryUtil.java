@@ -30,7 +30,7 @@ public class GeometryUtil {
         buffer.order(getByteOrder(buffer.get()));
 
         final int type = buffer.getInt();
-        return (type & 0x20000000) != 0;
+        return (type & GeometryConstants.EWKB_SRID_FLAG) != 0;
     }
 
     /**
@@ -46,7 +46,7 @@ public class GeometryUtil {
 
         final ByteBuffer buffer = ByteBuffer.wrap(ewkb);
         final byte byteOrder = buffer.get();
-        buffer.order(byteOrder == 0x01 ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN);
+        buffer.order(getByteOrder(byteOrder));
 
         final int wkbType = buffer.getInt();
         if (hasSrid(wkbType)) {
@@ -63,7 +63,7 @@ public class GeometryUtil {
      * @return {@code true} if the SRID is encoded, {@code false} if the SRID is not encoded
      */
     public static boolean hasSrid(int wkbType) {
-        return (wkbType & 0x20000000) != 0;
+        return (wkbType & GeometryConstants.EWKB_SRID_FLAG) != 0;
     }
 
     /**
@@ -73,7 +73,7 @@ public class GeometryUtil {
      * @return the Java byte order
      */
     public static ByteOrder getByteOrder(byte byteOrder) {
-        return byteOrder == 0x01 ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN;
+        return byteOrder == GeometryConstants.LITTLE_BYTE_ORDER ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN;
     }
 
     /**
@@ -83,7 +83,9 @@ public class GeometryUtil {
      * @return the WKB byte order
      */
     public static byte getByteOrderByte(ByteOrder byteOrder) {
-        return (byte) (byteOrder == ByteOrder.LITTLE_ENDIAN ? 0x01 : 0x00);
+        return (byte) (byteOrder == ByteOrder.LITTLE_ENDIAN
+                ? GeometryConstants.LITTLE_BYTE_ORDER
+                : GeometryConstants.BIG_BYTE_ORDER);
     }
 
     private GeometryUtil() {
