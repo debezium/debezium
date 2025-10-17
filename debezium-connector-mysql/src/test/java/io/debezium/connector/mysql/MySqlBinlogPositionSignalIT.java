@@ -28,7 +28,6 @@ import io.debezium.util.Testing;
  *
  * @author Debezium Authors
  */
-@FixFor("DBZ-3829")
 public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTest {
 
     private static final String SERVER_NAME = "binlog_signal_test";
@@ -36,9 +35,9 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
     private MySqlTestConnection connection;
 
     @Before
-    public void beforeEach() {
+    public void beforeEach() throws SQLException {
         stopConnector();
-        connection = MySqlTestConnection.testConnection();
+        connection = MySqlTestConnection.forTestDatabase("signal_test");
         connection.connect();
 
         initializeConnectorTestFramework();
@@ -47,7 +46,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
     }
 
     @After
-    public void afterEach() {
+    public void afterEach() throws SQLException {
         try {
             stopConnector();
         }
@@ -220,33 +219,28 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
     }
 
     private Map<String, Object> getCurrentBinlogPosition() throws SQLException {
-        return connection.connection().queryAndMap(
-                "SHOW MASTER STATUS",
-                rs -> {
-                    if (rs.next()) {
-                        return Map.of(
-                                "file", rs.getString(1),
-                                "position", rs.getLong(2));
-                    }
-                    throw new IllegalStateException("Could not get binlog position");
-                });
+        return connection.queryAndMap("SHOW MASTER STATUS", rs -> {
+            if (rs.next()) {
+                return Map.of(
+                        "file", rs.getString(1),
+                        "position", rs.getLong(2));
+            }
+            throw new IllegalStateException("Could not get binlog position");
+        });
     }
 
     private String getCurrentGtidSet() throws SQLException {
-        return connection.connection().queryAndMap(
-                "SELECT @@GLOBAL.gtid_executed",
-                rs -> {
-                    if (rs.next()) {
-                        return rs.getString(1);
-                    }
-                    throw new IllegalStateException("Could not get GTID set");
-                });
+        return connection.queryAndMap("SELECT @@GLOBAL.gtid_executed", rs -> {
+            if (rs.next()) {
+                return rs.getString(1);
+            }
+            throw new IllegalStateException("Could not get GTID set");
+        });
     }
 
     private boolean isGtidModeEnabled() {
         try {
-            return connection.connection().queryAndMap(
-                    "SELECT @@GLOBAL.gtid_mode",
+            return connection.queryAndMap("SELECT @@GLOBAL.gtid_mode",
                     rs -> rs.next() && "ON".equals(rs.getString(1)));
         }
         catch (SQLException e) {
