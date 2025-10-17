@@ -6,6 +6,8 @@
 
 package io.quarkus.debezium.configuration;
 
+import static io.debezium.runtime.configuration.QuarkusDatasourceConfiguration.DEFAULT;
+
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -14,8 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
-
-import static io.debezium.runtime.configuration.QuarkusDatasourceConfiguration.DEFAULT;
 
 public class DebeziumConfigurationEngineParser {
 

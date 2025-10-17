@@ -5,18 +5,17 @@
  */
 package io.quarkus.debezium.configuration;
 
+import static io.debezium.runtime.configuration.QuarkusDatasourceConfiguration.DEFAULT;
+
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import io.debezium.runtime.configuration.QuarkusDatasourceConfiguration;
 import io.debezium.runtime.recorder.DatasourceRecorder;
 import io.quarkus.mongodb.runtime.MongodbConfig;
 import io.quarkus.runtime.RuntimeValue;
 import io.quarkus.runtime.annotations.Recorder;
-
-import static io.debezium.runtime.configuration.QuarkusDatasourceConfiguration.DEFAULT;
 
 @Recorder
 public class MongoDbDatasourceRecorder implements DatasourceRecorder<MultiEngineMongoDbDatasourceConfiguration> {
