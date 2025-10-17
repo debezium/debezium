@@ -35,7 +35,20 @@ public class Scripts {
             EXEC sys.sp_cdc_enable_table @source_schema = 'dbo', @source_name = 'products', @role_name = NULL, @supports_net_changes = 0
             EXEC sys.sp_cdc_enable_table @source_schema = 'dbo', @source_name = 'users', @role_name = NULL, @supports_net_changes = 0
             """;
+    public static final String ALTERNATIVE = """
+            CREATE DATABASE alternative
+            USE alternative
 
+            WAITFOR DELAY '00:00:30'
+
+            EXEC sys.sp_cdc_enable_db
+
+            CREATE TABLE orders(id INT NOT NULL PRIMARY KEY, name VARCHAR(255) NOT NULL, description VARCHAR(255) NOT NULL)
+
+            INSERT INTO orders(id, name, description) VALUES (1, 'pizza','pizza with peperoni'), (2,'kebab','kebab with mayonnaise')
+
+            EXEC sys.sp_cdc_enable_table @source_schema = 'dbo', @source_name = 'orders', @role_name = NULL, @supports_net_changes = 0
+            """;
 
     public static void applySql(SqlServerConnectorConfig defaultConfig, String script) throws SQLException {
         try (SqlServerConnection defaultConnection = new SqlServerConnection(defaultConfig,
