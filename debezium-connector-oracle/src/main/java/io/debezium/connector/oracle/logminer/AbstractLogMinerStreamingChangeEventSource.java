@@ -154,7 +154,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         this.xmlBeginParser = new XmlBeginParser();
         this.tableFilter = connectorConfig.getTableFilters().dataCollectionFilter();
         this.archiveDestinationName = connectorConfig.getArchiveDestinationNameResolver().getDestinationName(jdbcConnection);
-        this.autonomousDatabaseMode = connectorConfig.isAutonomousDatabaseMode();
+        this.autonomousDatabaseMode = jdbcConnection.isAutonomousDatabase();
 
         metrics.setBatchSize(connectorConfig.getLogMiningBatchSizeDefault());
         metrics.setSleepTime(connectorConfig.getLogMiningSleepTimeDefault().toMillis());
@@ -853,7 +853,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
      * @throws SQLException if a database exception is thrown
      */
     protected Scn calculateUpperBounds(Scn lowerBoundsScn, Scn previousUpperBounds, Scn currentScn) throws SQLException {
-        final Scn maximumScn = getConfig().isArchiveLogOnlyMode() ? getMaximumArchiveLogsScn() : currentScn;
+        final Scn maximumScn = connectorConfig.isArchiveLogOnlyMode() ? getMaximumArchiveLogsScn() : currentScn;
 
         final Scn maximumBatchScn = lowerBoundsScn.add(Scn.valueOf(metrics.getBatchSize()));
         final Scn defaultBatchSizeScn = Scn.valueOf(connectorConfig.getLogMiningBatchSizeDefault());

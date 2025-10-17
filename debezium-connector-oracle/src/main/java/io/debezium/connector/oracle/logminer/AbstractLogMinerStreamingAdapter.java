@@ -217,7 +217,7 @@ public abstract class AbstractLogMinerStreamingAdapter
     protected Scn getOldestScnAvailableInLogs(OracleConnectorConfig config, OracleConnection connection) throws SQLException {
         final Duration archiveLogRetention = config.getArchiveLogRetention();
         final String archiveLogDestinationName = config.getArchiveDestinationNameResolver().getDestinationName(connection);
-        final boolean autonomousDatabaseMode = config.isAutonomousDatabaseMode();
+        final boolean autonomousDatabaseMode = connection.isAutonomousDatabase();
         return connection.queryAndMap(SqlUtils.oldestFirstChangeQuery(archiveLogRetention, archiveLogDestinationName, autonomousDatabaseMode),
                 rs -> {
                     if (rs.next()) {
@@ -241,7 +241,7 @@ public abstract class AbstractLogMinerStreamingAdapter
     protected void getPendingTransactionsFromLogs(OracleConnection connection, Scn currentScn, Map<String, Scn> pendingTransactions) throws SQLException {
         final Scn oldestScn = getOldestScnAvailableInLogs(connectorConfig, connection);
         final List<LogFile> logFiles = getOrderedLogsFromScn(connectorConfig, oldestScn, connection);
-        final boolean autonomousDatabaseMode = connectorConfig.isAutonomousDatabaseMode();
+        final boolean autonomousDatabaseMode = connection.isAutonomousDatabase();
         if (!logFiles.isEmpty()) {
             try (var context = new LogMinerSessionContext(connection, false, LogMiningStrategy.ONLINE_CATALOG, connectorConfig.getLogMiningPathToDictionary())) {
                 if (!autonomousDatabaseMode) {

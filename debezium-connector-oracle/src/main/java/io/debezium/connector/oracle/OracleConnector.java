@@ -87,6 +87,16 @@ public class OracleConnector extends RelationalBaseSourceConnector {
                     // Force a connection call to the database.
                     connection.getOracleVersion();
 
+                    // Validate that Autonomous Database environments have archive-log-only mode enabled
+                    if (connection.isAutonomousDatabase()) {
+                        final ConfigValue archiveLogOnlyValue = configValues.get(OracleConnectorConfig.LOG_MINING_ARCHIVE_LOG_ONLY_MODE.name());
+                        if (!config.getBoolean(OracleConnectorConfig.LOG_MINING_ARCHIVE_LOG_ONLY_MODE)) {
+                            archiveLogOnlyValue.addErrorMessage(
+                                    "Oracle Autonomous Database does not support online redo logs and requires archive-log-only mode. " +
+                                            "Please set 'log.mining.archive.log.only.mode=true' in the connector configuration.");
+                        }
+                    }
+
                     LOGGER.debug("Successfully tested connection for {} with user '{}'", OracleConnection.connectionString(connectorConfig.getJdbcConfig()),
                             connection.username());
                 }

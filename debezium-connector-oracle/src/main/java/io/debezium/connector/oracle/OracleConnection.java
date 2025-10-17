@@ -90,6 +90,7 @@ public class OracleConnection extends JdbcConnection {
 
     private final int queryFetchSize;
     private OracleDatabaseVersion databaseVersion;
+    private Boolean autonomousDatabaseMode;
 
     public OracleConnection(OracleConnectorConfig connectorConfig) {
         this(connectorConfig.getJdbcConfig(), connectorConfig.getQueryFetchSize());
@@ -444,7 +445,7 @@ public class OracleConnection extends JdbcConnection {
     public boolean validateLogPosition(Partition partition, OffsetContext offset, CommonConnectorConfig config) {
         final OracleConnectorConfig connectorConfig = (OracleConnectorConfig) config;
         final Duration archiveLogRetention = connectorConfig.getArchiveLogRetention();
-        final boolean autonomousDatabaseMode = connectorConfig.isAutonomousDatabaseMode();
+        final boolean autonomousDatabaseMode = isAutonomousDatabase();
         final String archiveDestinationName = connectorConfig.getArchiveDestinationNameResolver().getDestinationName(this);
         final Scn storedOffset = ((OracleConnectorConfig) config).getAdapter().getOffsetScn((OracleOffsetContext) offset);
 
@@ -897,6 +898,38 @@ public class OracleConnection extends JdbcConnection {
     public String getDatabaseParameterValue(String parameterName) throws SQLException {
         final String query = "SELECT VALUE FROM V$PARAMETER WHERE UPPER(NAME) = UPPER(?)";
         return prepareQueryAndMap(query, ps -> ps.setString(1, parameterName), rs -> rs.next() ? rs.getString(1) : null);
+    }
+
+    /**
+     * Detects whether the connection is to an Oracle Autonomous Database (ADB).
+     * The result is cached after the first call.
+     * 
+     * @return true if connected to an Autonomous Database, false otherwise
+     */
+    public boolean isAutonomousDatabase() {
+        if (autonomousDatabaseMode == null) {
+            try {
+                final String query = "SELECT sys_context('USERENV', 'CLOUD_SERVICE') FROM DUAL";
+                final String cloudService = prepareQueryAndMap(query, ps -> {}, rs -> rs.next() ? rs.getString(1) : null);
+                
+                // If CLOUD_SERVICE returns OLTP, DWCS, or JDCS, we're in an autonomous environment
+                if (cloudService != null) {
+                    final String service = cloudService.trim().toUpperCase();
+                    final Set<String> autonomousServices = Set.of("OLTP", "DWCS", "JDCS");
+                    autonomousDatabaseMode = autonomousServices.contains(service);
+                    LOGGER.info("Oracle CLOUD_SERVICE is '{}', autonomous database mode: {}", cloudService, autonomousDatabaseMode);
+                }
+                else {
+                    LOGGER.debug("Oracle CLOUD_SERVICE is null, not running in autonomous database mode");
+                    autonomousDatabaseMode = false;
+                }
+            }
+            catch (SQLException e) {
+                LOGGER.warn("Failed to check CLOUD_SERVICE context, defaulting to non-autonomous mode", e);
+                autonomousDatabaseMode = false;
+            }
+        }
+        return autonomousDatabaseMode;
     }
 
     private static Scn readScnColumnAsScn(ResultSet rs, String columnName) throws SQLException {

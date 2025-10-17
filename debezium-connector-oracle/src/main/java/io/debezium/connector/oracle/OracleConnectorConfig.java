@@ -93,15 +93,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("Name of the pluggable database when working with a multi-tenant set-up. "
                     + "The CDB name must be given via " + DATABASE_NAME.name() + " in this case.");
 
-    public static final Field DATABASE_AUTONOMOUS_MODE = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "autonomous.mode")
-            .withDisplayName("Autonomous Database Mode")
-            .withType(Type.BOOLEAN)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDefault(false)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 0))
-            .withDescription("Enable when connecting to Oracle Autonomous Database (ADB).");
-
     public static final Field XSTREAM_SERVER_NAME = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "out.server.name")
             .withDisplayName("XStream out server name")
             .withType(Type.STRING)
@@ -779,7 +770,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     DATABASE_NAME,
                     QUERY_TIMEOUT_MS,
                     PDB_NAME,
-                    DATABASE_AUTONOMOUS_MODE,
                     XSTREAM_SERVER_NAME,
                     SNAPSHOT_MODE,
                     CONNECTOR_ADAPTER,
@@ -939,7 +929,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Integer openLogReplicatorPort;
 
     private final Duration resumePositionUpdateInterval;
-    private final boolean databaseAutonomousMode;
 
     public OracleConnectorConfig(Configuration config) {
         super(
@@ -962,8 +951,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.lobEnabled = config.getBoolean(LOB_ENABLED);
         this.objectIdToTableIdCacheSize = config.getInteger(OBJECT_ID_CACHE_SIZE);
         this.legacyDecimalHandlingStrategy = config.getBoolean(LEGACY_DECIMAL_HANDLING_STRATEGY);
-
-        this.databaseAutonomousMode = config.getBoolean(DATABASE_AUTONOMOUS_MODE);
 
         this.streamingAdapter = this.connectorAdapter.getInstance(this);
         if (this.streamingAdapter == null) {
@@ -1036,10 +1023,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public String getPdbName() {
         return pdbName;
-    }
-
-    public boolean isAutonomousDatabaseMode() {
-        return databaseAutonomousMode;
     }
 
     public String getCatalogName() {
@@ -1872,8 +1855,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      * @return true if the connector is to mine archive logs only, false to mine all logs.
      */
     public boolean isArchiveLogOnlyMode() {
-        // ADB mode requires archive-log-only since online redo logs cannot be used
-        return archiveLogOnlyMode || isAutonomousDatabaseMode();
+        return archiveLogOnlyMode;
     }
 
     /**
