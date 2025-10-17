@@ -21,11 +21,14 @@ import org.junit.Test;
 
 import io.debezium.config.Configuration;
 import io.debezium.connector.oracle.OracleConnectorConfig.SnapshotMode;
+import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
+import io.debezium.connector.oracle.spi.DropTransactionAction;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.embedded.async.AbstractAsyncEngineConnectorTest;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipTestRule;
 import io.debezium.junit.SkipWhenDatabaseVersion;
+import io.debezium.junit.logging.LogInterceptor;
 import io.debezium.util.Testing;
 
 /**
@@ -148,5 +151,64 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
         assertThat(postKey2.schema().fields()).hasSize(2);
         assertThat(postKey2.schema().field("ID")).isNotNull();
         assertThat(postKey2.schema().field("NAME")).isNotNull();
+    }
+
+    @Test
+    @SkipWhenAdapterNameIsNot(value = SkipWhenAdapterNameIsNot.AdapterName.LOGMINER_BUFFERED)
+    public void shouldDropTransactionViaSignal() throws Exception {
+        // There isn't an easy way to track the transaction ID, so we test the negative case
+        // to validate signal processing and logging work correctly.
+
+        final LogInterceptor logInterceptor = new LogInterceptor(DropTransactionAction.class);
+
+        Configuration config = TestHelper.defaultConfig()
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, "DEBEZIUM\\.CUSTOMER")
+                .with(OracleConnectorConfig.SIGNAL_DATA_COLLECTION, TestHelper.getDatabaseName() + ".DEBEZIUM.DEBEZIUM_SIGNAL")
+                .with(OracleConnectorConfig.SNAPSHOT_MODE, SnapshotMode.NO_DATA)
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+        waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        // Create an uncommitted transaction in the buffer (won't be captured until committed)
+        connection.executeWithoutCommitting("INSERT INTO debezium.customer VALUES (1, 'Uncommitted-Transaction', 100.00, TO_DATE('2024-01-01', 'yyyy-mm-dd'))");
+
+        // Send drop-transaction signal with a fake transaction ID using a separate connection
+        // This ensures the signal doesn't accidentally commit the uncommitted transaction above
+        final String fakeTransactionId = "fake.transaction.id.12345";
+        try (OracleConnection signalConnection = TestHelper.testConnection()) {
+            signalConnection.execute(String.format(
+                    "INSERT INTO debezium.debezium_signal VALUES('drop-tx-1', 'drop-transaction', '{\"transaction-id\": \"%s\"}')",
+                    fakeTransactionId));
+        }
+
+        // Wait for signal to be processed (signal processor runs every 5s by default)
+        // We need to wait longer than the signal processing interval to ensure the signal is processed
+        waitForAvailableRecords(6000, TimeUnit.MILLISECONDS);
+
+        // Verify the signal was processed and warning logged for non-existent transaction
+        assertThat(logInterceptor.containsMessage("Attempting to drop transaction '" + fakeTransactionId + "'")).isTrue();
+        assertThat(logInterceptor.containsWarnMessage("Transaction '" + fakeTransactionId + "' was not found")).isTrue();
+
+        // Commit the first transaction (was uncommitted until now)
+        connection.execute("COMMIT");
+
+        // Insert a new transaction to verify connector still works after the signal
+        connection.execute("INSERT INTO debezium.customer VALUES (2, 'After-Signal', 88.88, TO_DATE('2024-01-02', 'yyyy-mm-dd'))");
+        connection.execute("COMMIT");
+
+        // Wait for both transactions to be processed
+        waitForAvailableRecords(3000, TimeUnit.MILLISECONDS);
+
+        // Should receive 2 records (the first uncommitted transaction + the After-Signal transaction)
+        SourceRecords records = consumeRecordsByTopic(3);
+        List<SourceRecord> customerRecords = records.recordsForTopic("server1.DEBEZIUM.CUSTOMER");
+        assertThat(customerRecords).hasSize(2);
+
+        assertNoRecordsToConsume();
+        stopConnector();
     }
 }
