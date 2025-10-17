@@ -435,40 +435,6 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     + "transaction in progress is going to be committed or rolled back. Use 0 to disable look-ahead "
                     + "buffering. Defaults to " + DEFAULT_BINLOG_BUFFER_SIZE + " (i.e. buffering is disabled.");
 
-    public static final Field BINLOG_START_FILENAME = Field.create("binlog.start.filename")
-            .withDisplayName("Initial binlog filename")
-            .withType(ConfigDef.Type.STRING)
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.MEDIUM)
-            .withValidation(BinlogConnectorConfig::validateBinlogStartPosition)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 4))
-            .withDescription("The binlog filename to start reading from. If specified along with binlog.start.position, "
-                    + "the connector will start reading from this specific binlog file and position, allowing you to "
-                    + "resume CDC from a specific point without performing a snapshot.");
-
-    public static final Field BINLOG_START_POSITION = Field.create("binlog.start.position")
-            .withDisplayName("Initial binlog position")
-            .withType(ConfigDef.Type.LONG)
-            .withWidth(ConfigDef.Width.MEDIUM)
-            .withImportance(ConfigDef.Importance.MEDIUM)
-            .withValidation(Field::isNonNegativeLong, BinlogConnectorConfig::validateBinlogStartPosition)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 5))
-            .withDescription("The position within the binlog file to start reading from. Must be used together with "
-                    + "binlog.start.filename. When both properties are set, the connector will start reading from this "
-                    + "specific position, allowing you to resume CDC from a specific point without performing a snapshot.");
-
-    public static final Field BINLOG_START_GTID_SET = Field.create("binlog.start.gtid.set")
-            .withDisplayName("Initial GTID set")
-            .withType(ConfigDef.Type.STRING)
-            .withWidth(ConfigDef.Width.LONG)
-            .withImportance(ConfigDef.Importance.MEDIUM)
-            .withValidation(BinlogConnectorConfig::validateBinlogStartGtidSet)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR_ADVANCED, 6))
-            .withDescription("The GTID set to start reading from when using GTID-enabled MySQL. "
-                    + "When this property is set, the connector will start reading from this GTID set instead of "
-                    + "binlog file/position. Cannot be used together with binlog.start.filename and binlog.start.position. "
-                    + "Format example: 'server-uuid:1-100,other-server-uuid:1-50'");
-
     public static final Field TOPIC_NAMING_STRATEGY = Field.create("topic.naming.strategy")
             .withDisplayName("Topic naming strategy class")
             .withType(ConfigDef.Type.CLASS)
@@ -667,9 +633,6 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
                     DATABASE_INCLUDE_LIST,
                     DATABASE_EXCLUDE_LIST,
                     BUFFER_SIZE_FOR_BINLOG_READER,
-                    BINLOG_START_FILENAME,
-                    BINLOG_START_POSITION,
-                    BINLOG_START_GTID_SET,
                     EVENT_DESERIALIZATION_FAILURE_HANDLING_MODE,
                     INCONSISTENT_SCHEMA_HANDLING_MODE,
                     GTID_SOURCE_INCLUDES,
@@ -806,27 +769,6 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
     }
 
     /**
-     * @return the custom binlog filename to start reading from
-     */
-    public String getBinlogStartFilename() {
-        return config.getString(BINLOG_START_FILENAME);
-    }
-
-    /**
-     * @return the custom binlog position to start reading from
-     */
-    public Long getBinlogStartPosition() {
-        return config.getLong(BINLOG_START_POSITION);
-    }
-
-    /**
-     * @return the custom GTID set to start reading from
-     */
-    public String getBinlogStartGtidSet() {
-        return config.getString(BINLOG_START_GTID_SET);
-    }
-
-    /**
      * @return whether the SQL query for a binlog event should be included in the event payload
      */
     public boolean isSqlQueryIncluded() {
@@ -939,110 +881,6 @@ public abstract class BinlogConnectorConfig extends HistorizedRelationalDatabase
             }
         }
         return 0;
-    }
-
-    /**
-     * Validate that binlog start position is properly configured when binlog start filename is provided.
-     */
-    private static int validateBinlogStartPosition(Configuration config, Field field, ValidationOutput problems) {
-        final String binlogFilename = config.getString(BINLOG_START_FILENAME.name());
-        final Long binlogPosition = config.getLong(BINLOG_START_POSITION.name());
-        final String gtidSet = config.getString(BINLOG_START_GTID_SET.name());
-
-        int errorCount = 0;
-
-        // Check mutual exclusivity with GTID set
-        if (gtidSet != null && !gtidSet.trim().isEmpty()) {
-            if (binlogFilename != null && !binlogFilename.trim().isEmpty()) {
-                problems.accept(BINLOG_START_FILENAME, binlogFilename,
-                        "binlog.start.filename cannot be used together with binlog.start.gtid.set");
-                errorCount++;
-            }
-            if (binlogPosition != null) {
-                problems.accept(BINLOG_START_POSITION, binlogPosition.toString(),
-                        "binlog.start.position cannot be used together with binlog.start.gtid.set");
-                errorCount++;
-            }
-        }
-
-        // If one of filename/position is specified, both must be specified
-        if ((binlogFilename != null && !binlogFilename.trim().isEmpty()) && binlogPosition == null) {
-            problems.accept(BINLOG_START_POSITION, null,
-                    "binlog.start.position must be specified when binlog.start.filename is provided");
-            errorCount++;
-        }
-
-        if (binlogPosition != null && (binlogFilename == null || binlogFilename.trim().isEmpty())) {
-            problems.accept(BINLOG_START_FILENAME, binlogFilename,
-                    "binlog.start.filename must be specified when binlog.start.position is provided");
-            errorCount++;
-        }
-
-        // Validate binlog filename format
-        if (binlogFilename != null && !binlogFilename.trim().isEmpty()) {
-            if (!isValidBinlogFilename(binlogFilename)) {
-                problems.accept(BINLOG_START_FILENAME, binlogFilename,
-                        "binlog.start.filename must match MySQL binlog naming pattern (e.g., mysql-bin.000001)");
-                errorCount++;
-            }
-        }
-
-        return errorCount;
-    }
-
-    /**
-     * Validate GTID set format and mutual exclusivity with binlog file/position.
-     */
-    private static int validateBinlogStartGtidSet(Configuration config, Field field, ValidationOutput problems) {
-        final String gtidSet = config.getString(BINLOG_START_GTID_SET.name());
-        final String binlogFilename = config.getString(BINLOG_START_FILENAME.name());
-        final Long binlogPosition = config.getLong(BINLOG_START_POSITION.name());
-
-        if (gtidSet == null || gtidSet.trim().isEmpty()) {
-            return 0; // No validation needed for empty GTID set
-        }
-
-        int errorCount = 0;
-
-        // Check mutual exclusivity with binlog file/position
-        if (binlogFilename != null && !binlogFilename.trim().isEmpty()) {
-            problems.accept(BINLOG_START_GTID_SET, gtidSet,
-                    "binlog.start.gtid.set cannot be used together with binlog.start.filename");
-            errorCount++;
-        }
-
-        if (binlogPosition != null) {
-            problems.accept(BINLOG_START_GTID_SET, gtidSet,
-                    "binlog.start.gtid.set cannot be used together with binlog.start.position");
-            errorCount++;
-        }
-
-        // Validate GTID set format
-        if (!isValidGtidSet(gtidSet)) {
-            problems.accept(BINLOG_START_GTID_SET, gtidSet,
-                    "binlog.start.gtid.set must be a valid GTID set format (e.g., 'server-uuid:1-100,other-uuid:1-50')");
-            errorCount++;
-        }
-
-        return errorCount;
-    }
-
-    /**
-     * Validates if the binlog filename follows MySQL naming convention.
-     */
-    private static boolean isValidBinlogFilename(String filename) {
-        // MySQL binlog files typically follow pattern: prefix.number (e.g., mysql-bin.000001)
-        return filename.matches("^[a-zA-Z0-9_-]+\\.\\d{6}$");
-    }
-
-    /**
-     * Validates if the GTID set follows MySQL GTID format.
-     */
-    private static boolean isValidGtidSet(String gtidSet) {
-        // Basic validation for GTID set format: server-uuid:interval[,server-uuid:interval]...
-        // Pattern: UUID:number-number[,UUID:number-number]...
-        String gtidPattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}:\\d+(-\\d+)?(,[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}:\\d+(-\\d+)?)*$";
-        return gtidSet.matches(gtidPattern);
     }
 
     /**

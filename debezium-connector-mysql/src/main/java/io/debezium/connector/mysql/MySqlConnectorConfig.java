@@ -410,28 +410,6 @@ public class MySqlConnectorConfig extends BinlogConnectorConfig {
     }
 
     /**
-     * @return the custom binlog filename to start reading from
-     */
-    public String getBinlogStartFilename() {
-        return getConfig().getString(io.debezium.connector.binlog.BinlogConnectorConfig.BINLOG_START_FILENAME);
-    }
-
-    /**
-     * @return the custom binlog position to start reading from
-     */
-    public Long getBinlogStartPosition() {
-        String position = getConfig().getString(io.debezium.connector.binlog.BinlogConnectorConfig.BINLOG_START_POSITION);
-        return position != null ? Long.valueOf(position) : null;
-    }
-
-    /**
-     * @return the custom GTID set to start reading from
-     */
-    public String getBinlogStartGtidSet() {
-        return getConfig().getString(io.debezium.connector.binlog.BinlogConnectorConfig.BINLOG_START_GTID_SET);
-    }
-
-    /**
      * Custom {@link io.debezium.connector.binlog.BinlogConnectorConfig.SnapshotLockingStrategy} for MySQL.
      */
     public static class MySqlSnapshotLockingStrategy implements SnapshotLockingStrategy {
