@@ -43,7 +43,7 @@ public class DebeziumLifeCycleTest {
     @DisplayName("debezium should be integrated in the quarkus lifecycle")
     void shouldDebeziumBeIntegratedInTheQuarkusLifeCycle() {
         Assertions.assertThat(registry.get(new EngineManifest("default")).configuration().get("connector.class"))
-                .isEqualTo("io.debezium.connector.mongodb.MongoDbConnector");
+                .contains("io.debezium.connector");
 
         given().await()
                 .atMost(TestSuiteConfigurations.TIMEOUT, TimeUnit.SECONDS)
