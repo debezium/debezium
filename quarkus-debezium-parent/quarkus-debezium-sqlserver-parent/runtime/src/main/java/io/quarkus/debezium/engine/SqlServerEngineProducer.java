@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 
 import io.debezium.connector.sqlserver.SqlServerConnector;
 import io.debezium.runtime.Connector;
@@ -32,7 +33,6 @@ import io.quarkus.debezium.configuration.DebeziumConfigurationEngineParser.Multi
 import io.quarkus.debezium.engine.capture.consumer.SourceRecordConsumerHandler;
 import io.quarkus.debezium.notification.QuarkusNotificationChannel;
 import io.quarkus.debezium.sqlserver.configuration.SqlServerDatasourceConfiguration;
-import jakarta.inject.Singleton;
 
 public class SqlServerEngineProducer implements ConnectorProducer {
     public static final Connector SQLSERVER = new Connector(SqlServerConnector.class.getName());
