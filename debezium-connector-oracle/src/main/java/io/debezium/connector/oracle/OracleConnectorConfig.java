@@ -84,15 +84,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
             .withDescription("Name of the pluggable database when working with a multi-tenant set-up. "
                     + "The CDB name must be given via " + DATABASE_NAME.name() + " in this case.");
 
-    public static final Field DATABASE_AUTONOMOUS_MODE = Field.create(ConfigurationNames.DATABASE_CONFIG_PREFIX + "autonomous.mode")
-            .withDisplayName("Autonomous Database Mode")
-            .withType(Type.BOOLEAN)
-            .withWidth(Width.SHORT)
-            .withImportance(Importance.LOW)
-            .withDefault(false)
-            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 0))
-            .withDescription("Enable when connecting to Oracle Autonomous Database (ADB).");
-
     /**
      * @deprecated to be removed in Debezium 4.0
      */
@@ -855,7 +846,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
                     CommonConnectorConfig.SIGNAL_DATA_COLLECTION)
             .group(Field.Group.CONNECTION, HOSTNAME, PORT, USER, PASSWORD, DATABASE_NAME, QUERY_TIMEOUT_MS, PDB_NAME, XSTREAM_SERVER_NAME)
             .group(Field.Group.CONNECTION, RAC_NODES, URL, SECONDARY_DATABASE, SECONDARY_HOSTNAME, SECONDARY_PORT, SECONDARY_URL)
-            .group(Field.Group.CONNECTION_ADVANCED, DATABASE_AUTONOMOUS_MODE, CONNECTOR_ADAPTER, LOG_MINING_STRATEGY, CAPTURE_MODE, ARCHIVE_LOG_HOURS, LOG_MINING_TRANSACTION_RETENTION_MS,
+            .group(Field.Group.CONNECTION_ADVANCED, CONNECTOR_ADAPTER, LOG_MINING_STRATEGY, CAPTURE_MODE, ARCHIVE_LOG_HOURS, LOG_MINING_TRANSACTION_RETENTION_MS,
                     LOG_MINING_ARCHIVE_LOG_ONLY_MODE, LOB_ENABLED, LOG_MINING_USERNAME_INCLUDE_LIST, LOG_MINING_USERNAME_EXCLUDE_LIST, ARCHIVE_DESTINATION_NAME,
                     LOG_MINING_BUFFER_TYPE, LOG_MINING_BUFFER_TRACK_RS_ID, LOG_MINING_BUFFER_TRACK_CLIENT_ID, LOG_MINING_BUFFER_TRACK_USERNAME,
                     LOG_MINING_BUFFER_TRACK_COMMIT_TIMESTAMP, LOG_MINING_BUFFER_TRACK_START_TIMESTAMP,
@@ -965,7 +956,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
     private final Integer openLogReplicatorPort;
 
     private final Duration resumePositionUpdateInterval;
-    private final boolean databaseAutonomousMode;
 
     public OracleConnectorConfig(Configuration config) {
         super(
@@ -988,8 +978,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
         this.lobEnabled = config.getBoolean(LOB_ENABLED);
         this.objectIdToTableIdCacheSize = config.getInteger(OBJECT_ID_CACHE_SIZE);
         this.legacyDecimalHandlingStrategy = config.getBoolean(LEGACY_DECIMAL_HANDLING_STRATEGY);
-
-        this.databaseAutonomousMode = config.getBoolean(DATABASE_AUTONOMOUS_MODE);
 
         this.streamingAdapter = this.connectorAdapter.getInstance(this);
         if (this.streamingAdapter == null) {
@@ -1076,10 +1064,6 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public String getPdbName() {
         return pdbName;
-    }
-
-    public boolean isAutonomousDatabaseMode() {
-        return databaseAutonomousMode;
     }
 
     public String getCatalogName() {
@@ -1856,8 +1840,7 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
      * @return true if the connector is to mine archive logs only, false to mine all logs.
      */
     public boolean isArchiveLogOnlyMode() {
-        // ADB mode requires archive-log-only since online redo logs cannot be used
-        return archiveLogOnlyMode || isAutonomousDatabaseMode();
+        return archiveLogOnlyMode;
     }
 
     /**

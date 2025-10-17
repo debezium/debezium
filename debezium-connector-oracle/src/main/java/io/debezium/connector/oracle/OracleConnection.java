@@ -94,6 +94,7 @@ public class OracleConnection extends JdbcConnection {
 
     private final int queryFetchSize;
     private OracleDatabaseVersion databaseVersion;
+    private Boolean autonomousDatabaseMode;
 
     public OracleConnection(OracleConnectorConfig connectorConfig, boolean autoCommit) {
         this(connectorConfig.getJdbcConfig(), connectorConfig.getQueryFetchSize(), autoCommit);
@@ -424,7 +425,7 @@ public class OracleConnection extends JdbcConnection {
     public boolean validateLogPosition(Partition partition, OffsetContext offset, CommonConnectorConfig config) {
         final OracleConnectorConfig connectorConfig = (OracleConnectorConfig) config;
         final Duration archiveLogRetention = connectorConfig.getArchiveLogRetention();
-        final boolean autonomousDatabaseMode = connectorConfig.isAutonomousDatabaseMode();
+        final boolean autonomousDatabaseMode = isAutonomousDatabase();
         final List<String> archiveDestinationNames = connectorConfig.getArchiveDestinationNameResolver().getDestinationNames(this);
         final Scn storedOffset = ((OracleConnectorConfig) config).getAdapter().getOffsetScn((OracleOffsetContext) offset);
 
@@ -973,6 +974,26 @@ public class OracleConnection extends JdbcConnection {
     public String getDatabaseParameterValue(String parameterName) throws SQLException {
         final String query = "SELECT VALUE FROM V$PARAMETER WHERE UPPER(NAME) = UPPER(?)";
         return prepareQueryAndMap(query, ps -> ps.setString(1, parameterName), rs -> rs.next() ? rs.getString(1) : null);
+    }
+
+    /**
+     * Detects whether the connection is to an Oracle Autonomous Database (ADB).
+     * The result is cached after the first call.
+     *
+     * @return true if connected to an Autonomous Database, false otherwise
+     */
+    public boolean isAutonomousDatabase() {
+        if (autonomousDatabaseMode == null) {
+            try {
+                autonomousDatabaseMode = isAutonomous();
+                LOGGER.info("Oracle autonomous database mode: {}", autonomousDatabaseMode);
+            }
+            catch (SQLException e) {
+                LOGGER.warn("Failed to check CLOUD_SERVICE context, defaulting to non-autonomous mode", e);
+                autonomousDatabaseMode = false;
+            }
+        }
+        return autonomousDatabaseMode;
     }
 
     private static Scn readScnColumnAsScn(ResultSet rs, String columnName) throws SQLException {

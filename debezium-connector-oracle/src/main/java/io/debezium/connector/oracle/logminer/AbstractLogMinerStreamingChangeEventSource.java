@@ -170,7 +170,7 @@ public abstract class AbstractLogMinerStreamingChangeEventSource
         this.xmlBeginParser = new XmlBeginParser();
         this.tableFilter = connectorConfig.getTableFilters().dataCollectionFilter();
         this.archiveDestinationNames = connectorConfig.getArchiveDestinationNameResolver().getDestinationNames(streamingConnection);
-        this.autonomousDatabaseMode = connectorConfig.isAutonomousDatabaseMode();
+        this.autonomousDatabaseMode = streamingConnection.isAutonomousDatabase();
         this.columnIndexes = LogMinerColumnIndexes.fromConfig(connectorConfig);
         this.offsetActivityMonitorService = OffsetActivityMonitorService.lookup(connectorConfig.getServiceRegistry());
     }
