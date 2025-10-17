@@ -122,6 +122,7 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-jackson</artifactId>
         </dependency>
+        <!-- The jetty-util should be managed by the bom (version) and the embedded-engine (deps) -->
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-util</artifactId>
