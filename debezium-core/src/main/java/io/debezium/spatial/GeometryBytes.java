@@ -40,8 +40,7 @@ public class GeometryBytes {
      * @param ewkb byte array, must not be {@code null}
      */
     public GeometryBytes(byte[] ewkb) {
-        this.wkb = ewkb;
-        this.srid = GeometryUtil.extractSrid(wkb);
+        this(ewkb, GeometryUtil.extractSrid(ewkb));
     }
 
     /**
@@ -80,18 +79,7 @@ public class GeometryBytes {
         final ByteBuffer buffer = ByteBuffer.wrap(wkb);
         buffer.order(GeometryUtil.getByteOrder(buffer.get()));
 
-        class EmptyCheckVisitor implements GeometryVisitor {
-            boolean isGeometryCollection = false;
-            boolean isEmpty = true;
-
-            @Override
-            public void startGeometryCollection(int geometryCount) {
-                isGeometryCollection = true;
-                isEmpty = (geometryCount == 0);
-            }
-        }
-
-        final EmptyCheckVisitor visitor = new EmptyCheckVisitor();
+        final EmptyGeometryCollectionVisitor visitor = new EmptyGeometryCollectionVisitor();
         GeometryTraverser.traverse(buffer, visitor);
 
         return visitor.isGeometryCollection && visitor.isEmpty;
@@ -166,5 +154,19 @@ public class GeometryBytes {
                 "wkb=" + HexConverter.convertToHexString(wkb) +
                 ", srid=" + srid +
                 '}';
+    }
+
+    /**
+     * Utility visitor that checks if the {@code GEOMETRYCOLLECTION} is empty.
+     */
+    static class EmptyGeometryCollectionVisitor implements GeometryVisitor {
+        boolean isGeometryCollection = false;
+        boolean isEmpty = true;
+
+        @Override
+        public void startGeometryCollection(int geometryCount) {
+            isGeometryCollection = true;
+            isEmpty = (geometryCount == 0);
+        }
     }
 }

@@ -50,7 +50,7 @@ class GeometryFormatConverter {
         buffer.order(GeometryUtil.getByteOrder(byteOrder));
 
         int wkbType = buffer.getInt();
-        wkbType = wkbType | 0x20000000; // Add SRID flag
+        wkbType = wkbType | GeometryConstants.EWKB_SRID_FLAG; // Add SRID flag
 
         final ByteBuffer output = ByteBuffer.allocate(wkb.length + 4);
         output.put(byteOrder);
@@ -68,7 +68,7 @@ class GeometryFormatConverter {
         buffer.order(GeometryUtil.getByteOrder(byteOrder));
 
         int wkbType = buffer.getInt();
-        wkbType = wkbType & ~0x20000000; // Remove SRID flag
+        wkbType = wkbType & ~GeometryConstants.EWKB_SRID_FLAG; // Remove SRID flag
         buffer.getInt(); // Skip SRID
 
         final ByteBuffer output = ByteBuffer.allocate(extendedWkb.length - 4);

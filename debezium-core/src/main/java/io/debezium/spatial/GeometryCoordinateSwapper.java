@@ -17,7 +17,7 @@ import io.debezium.DebeziumException;
  */
 class GeometryCoordinateSwapper {
 
-    static final int[] DEFAULT_SWAP_SRIDS = { 4326, 4269 };
+    static final int[] DEFAULT_SWAP_SRIDS = { 4326, 3857, 4269 };
 
     /**
      * Swap geometry coordinates using default spatial reference identifiers.

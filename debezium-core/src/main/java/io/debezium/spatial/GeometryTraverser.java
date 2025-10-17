@@ -27,8 +27,8 @@ class GeometryTraverser {
     public static void traverse(ByteBuffer buffer, GeometryVisitor visitor) {
         final int wkbType = buffer.getInt();
 
-        final boolean hasZ = (wkbType & 0x80000000) != 0;
-        final boolean hasM = (wkbType & 0x40000000) != 0;
+        final boolean hasZ = (wkbType & GeometryConstants.EWKB_SRID_Z_MASK) != 0;
+        final boolean hasM = (wkbType & GeometryConstants.EWKB_SRID_M_MASK) != 0;
         final int stride = 2 + (hasZ ? 1 : 0) + (hasM ? 1 : 0);
 
         if (!visitor.enterGeometry(wkbType, hasZ, hasM, stride)) {
@@ -39,27 +39,27 @@ class GeometryTraverser {
             visitor.visitSrid(buffer.getInt());
         }
 
-        final int baseType = wkbType & 0xFF;
+        final int baseType = wkbType & GeometryConstants.WKB_TYPE_MASK;
         switch (baseType) {
-            case 1: // Point
+            case GeometryConstants.POINT: // Point
                 traversePoint(buffer, visitor, stride);
                 break;
-            case 2: // Line String
+            case GeometryConstants.LINE_STRING: // Line String
                 traverseLineString(buffer, visitor, stride);
                 break;
-            case 3: // Polygon
+            case GeometryConstants.POLYGON: // Polygon
                 traversePolygon(buffer, visitor, stride);
                 break;
-            case 4: // Multi Point
+            case GeometryConstants.MULTI_POINT: // Multi Point
                 traverseMultiPoint(buffer, visitor, stride);
                 break;
-            case 5: // Multi Line String
+            case GeometryConstants.MULTI_LINE_STRING: // Multi Line String
                 traverseMultiLineString(buffer, visitor, stride);
                 break;
-            case 6: // Multi Polygon
+            case GeometryConstants.MULTI_POLYGON: // Multi Polygon
                 traverseMultiPolygon(buffer, visitor, stride);
                 break;
-            case 7: // Geometry Collection
+            case GeometryConstants.GEOMETRY_COLLECTION: // Geometry Collection
                 traverseGeometryCollection(buffer, visitor);
                 break;
             default:
