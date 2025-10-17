@@ -37,7 +37,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
     @Before
     public void beforeEach() throws SQLException {
         stopConnector();
-        connection = MySqlTestConnection.forTestDatabase("signal_test");
+        connection = MySqlTestConnection.forTestDatabase("mysql");
         connection.connect();
 
         initializeConnectorTestFramework();
@@ -82,6 +82,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
                 .with(MySqlConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source")
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, "signal_test." + SIGNAL_TABLE)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with("driver.connectionTimeZone", "UTC")
                 .build();
 
         start(MySqlConnector.class, config);
@@ -168,6 +169,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
                 .with(MySqlConnectorConfig.SIGNAL_ENABLED_CHANNELS, "source")
                 .with(MySqlConnectorConfig.SIGNAL_DATA_COLLECTION, "signal_test." + SIGNAL_TABLE)
                 .with(MySqlConnectorConfig.INCLUDE_SCHEMA_CHANGES, false)
+                .with("driver.connectionTimeZone", "UTC")
                 .build();
 
         start(MySqlConnector.class, config);
