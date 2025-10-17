@@ -37,7 +37,7 @@ public class MySqlBinlogPositionSignalIT extends AbstractAsyncEngineConnectorTes
     @Before
     public void beforeEach() throws SQLException {
         stopConnector();
-        connection = MySqlTestConnection.forTestDatabase("mysql");
+        connection = MySqlTestConnection.forTestDatabase("mysql", Map.of("protocol", "jdbc:mysql"));
         connection.connect();
 
         initializeConnectorTestFramework();
