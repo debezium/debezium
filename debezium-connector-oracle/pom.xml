@@ -223,6 +223,12 @@
             <artifactId>kafka_${version.kafka.scala}</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+            <version>3.0.2</version>
+            <scope>test</scope>
+        </dependency>
 
     </dependencies>
 
