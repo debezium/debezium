@@ -2604,9 +2604,18 @@ When operating in Autonomous Database mode, the connector automatically:
 
 [IMPORTANT]
 ====
-Oracle Autonomous Database does not provide access to online redo logs.
-You must explicitly set `log.mining.archive.log.only.mode=true` in the connector configuration.
+Oracle Autonomous Database has the following configuration requirements:
+
+* *Archive-log-only mode*: You must explicitly set `log.mining.archive.log.only.mode=true` in the connector configuration.
+ADB does not provide access to online redo logs.
 If this property is not enabled, the connector will fail during startup validation.
+
+* *LogMiner-based adapter required*: The connector must use a LogMiner-based adapter (`LogMiner` or `LogMiner_Unbuffered`).
+Set the `database.connection.adapter` property to one of these values.
+Xstream and OLR adapters are not supported on ADB.
+
+* *No PDB configuration*: ADB does not support pluggable database (PDB) configuration.
+Do not set the `database.pdb.name` property when connecting to an Autonomous Database.
 ====
 
 ==== LogMiner behavior in Autonomous Database

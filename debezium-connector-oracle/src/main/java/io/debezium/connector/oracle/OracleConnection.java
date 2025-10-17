@@ -903,15 +903,16 @@ public class OracleConnection extends JdbcConnection {
     /**
      * Detects whether the connection is to an Oracle Autonomous Database (ADB).
      * The result is cached after the first call.
-     * 
+     *
      * @return true if connected to an Autonomous Database, false otherwise
      */
     public boolean isAutonomousDatabase() {
         if (autonomousDatabaseMode == null) {
             try {
                 final String query = "SELECT sys_context('USERENV', 'CLOUD_SERVICE') FROM DUAL";
-                final String cloudService = prepareQueryAndMap(query, ps -> {}, rs -> rs.next() ? rs.getString(1) : null);
-                
+                final String cloudService = prepareQueryAndMap(query, ps -> {
+                }, rs -> rs.next() ? rs.getString(1) : null);
+
                 // If CLOUD_SERVICE returns OLTP, DWCS, or JDCS, we're in an autonomous environment
                 if (cloudService != null) {
                     final String service = cloudService.trim().toUpperCase();

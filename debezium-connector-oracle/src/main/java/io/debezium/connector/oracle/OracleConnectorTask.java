@@ -90,6 +90,32 @@ public class OracleConnectorTask extends BaseSourceTask<OraclePartition, OracleO
 
         LOGGER.info("Database Version: {}", jdbcConnection.getOracleVersion().getBanner());
 
+        // Validate Autonomous Database configuration
+        if (jdbcConnection.isAutonomousDatabase()) {
+            if (!connectorConfig.isArchiveLogOnlyMode()) {
+                throw new DebeziumException(
+                        "Oracle Autonomous Database does not support online redo logs and requires archive-log-only mode. " +
+                                "Please set 'log.mining.archive.log.only.mode=true' in the connector configuration.");
+            }
+
+            if (!Strings.isNullOrBlank(connectorConfig.getPdbName())) {
+                throw new DebeziumException(
+                        "Oracle Autonomous Database does not support pluggable database (PDB) configuration. " +
+                                "Please remove the 'database.pdb.name' property from the connector configuration.");
+            }
+
+            final OracleConnectorConfig.ConnectorAdapter adapter = connectorConfig.getConnectorAdapter();
+            if (adapter != OracleConnectorConfig.ConnectorAdapter.LOG_MINER &&
+                    adapter != OracleConnectorConfig.ConnectorAdapter.LOG_MINER_UNBUFFERED) {
+                throw new DebeziumException(
+                        "Oracle Autonomous Database only supports LogMiner-based adapters (LogMiner, LogMiner_Unbuffered). " +
+                                "The currently configured adapter '" + adapter.getValue() + "' is not supported. " +
+                                "Please set 'database.connection.adapter' to 'LogMiner' or 'LogMiner_Unbuffered'.");
+            }
+
+            LOGGER.info("Oracle Autonomous Database detected, using archive-log-only mode with {} adapter", adapter.getValue());
+        }
+
         final boolean extendedStringsSupported = jdbcConnection.hasExtendedStringSupport();
 
         // Service providers
