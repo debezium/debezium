@@ -274,46 +274,17 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
 
         boolean offsetExists = previousOffset != null;
         boolean snapshotInProgress = false;
-        boolean isCustomBinlogPosition = false;
 
         if (offsetExists) {
             snapshotInProgress = previousOffset.isInitialSnapshotRunning();
-
-            // Check if this offset represents a custom binlog position
-            // For binlog-based connectors, we need to determine if this is a genuinely completed snapshot
-            // or just a custom starting position provided by configuration
-            isCustomBinlogPosition = isCustomBinlogStartPosition(previousOffset);
         }
 
-        if (offsetExists && !previousOffset.isInitialSnapshotRunning() && !isCustomBinlogPosition) {
+        if (offsetExists && !previousOffset.isInitialSnapshotRunning()) {
             LOGGER.info("A previous offset indicating a completed snapshot has been found.");
         }
-        else if (isCustomBinlogPosition) {
-            LOGGER.info("A custom binlog position has been configured. Schema will be captured at the custom position.");
-        }
 
-        // Adjust the offset existence logic to handle custom binlog positions
-        boolean effectiveOffsetExists = offsetExists && !isCustomBinlogPosition;
-
-        boolean shouldSnapshotSchema = snapshotter.shouldSnapshotSchema(effectiveOffsetExists, snapshotInProgress);
-        boolean shouldSnapshotData = snapshotter.shouldSnapshotData(effectiveOffsetExists, snapshotInProgress);
-
-        // Special handling for custom binlog positions:
-        // We want to capture schema but skip data when a custom binlog position is configured
-        if (isCustomBinlogPosition) {
-            shouldSnapshotSchema = true; // Always capture schema for custom positions
-            shouldSnapshotData = false; // Skip data since we're starting from a specific position
-            LOGGER.info("Custom binlog position detected: forcing schema snapshot and skipping data snapshot");
-
-            // Additional validation and logging for custom positions
-            try {
-                validateCustomBinlogPosition(previousOffset);
-            }
-            catch (Exception e) {
-                LOGGER.error("Invalid custom binlog position configuration: {}", e.getMessage());
-                throw new IllegalArgumentException("Custom binlog position validation failed: " + e.getMessage(), e);
-            }
-        }
+        boolean shouldSnapshotSchema = snapshotter.shouldSnapshotSchema(offsetExists, snapshotInProgress);
+        boolean shouldSnapshotData = snapshotter.shouldSnapshotData(offsetExists, snapshotInProgress);
 
         if (shouldSnapshotData && shouldSnapshotSchema) {
             LOGGER.info("According to the connector configuration both schema and data will be snapshot.");
@@ -325,36 +296,6 @@ public abstract class RelationalSnapshotChangeEventSource<P extends Partition, O
         return new SnapshottingTask(shouldSnapshotSchema, shouldSnapshotData,
                 dataCollectionsToBeSnapshotted, snapshotSelectOverridesByTable,
                 false);
-    }
-
-    /**
-     * Determines if the given offset represents a custom binlog start position
-     * rather than a completed snapshot. This is used to handle cases where
-     * users configure a custom binlog position to start CDC from a specific point.
-     *
-     * @param offset the offset to check
-     * @return true if this offset represents a custom binlog position
-     */
-    protected boolean isCustomBinlogStartPosition(O offset) {
-        // Default implementation returns false
-        // Binlog-based connectors should override this method to check for custom positions
-        return false;
-    }
-
-    /**
-     * Validates the custom binlog position configuration.
-     * This method can be overridden by specific connectors to add additional validation.
-     *
-     * @param offset the offset to validate
-     * @throws Exception if the custom binlog position is invalid
-     */
-    protected void validateCustomBinlogPosition(O offset) throws Exception {
-        // Default implementation does basic validation
-        if (offset == null) {
-            throw new IllegalArgumentException("Offset cannot be null for custom binlog position");
-        }
-
-        LOGGER.info("Custom binlog position validation passed for offset: {}", offset.getOffset());
     }
 
     /**
