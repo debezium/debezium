@@ -95,7 +95,7 @@ public class SetBinlogPositionSignal<P extends Partition> implements SignalActio
             }
 
             // Force a new offset commit to persist the change
-            eventDispatcher.alwaysDispatchHeartbeatEvent(offsetContext);
+            eventDispatcher.alwaysDispatchHeartbeatEvent(signalPayload.partition, offsetContext);
 
             LOGGER.info("Successfully updated binlog position. New offset: {}", offsetContext);
 
