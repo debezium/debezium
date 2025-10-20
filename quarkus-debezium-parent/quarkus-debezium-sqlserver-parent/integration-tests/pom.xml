@@ -114,12 +114,12 @@
                 <artifactId>docker-maven-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>start-mongodb</id>
+                        <id>start-sqlserver</id>
                         <phase>pre-integration-test</phase>
                         <goals><goal>start</goal></goals>
                     </execution>
                     <execution>
-                        <id>stop-mongodb</id>
+                        <id>stop-sqlserver</id>
                         <phase>post-integration-test</phase>
                         <goals><goal>stop</goal></goals>
                     </execution>

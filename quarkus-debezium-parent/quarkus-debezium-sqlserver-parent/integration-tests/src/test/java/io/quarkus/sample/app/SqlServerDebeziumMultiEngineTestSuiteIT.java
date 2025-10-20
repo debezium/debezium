@@ -6,40 +6,16 @@
 
 package io.quarkus.sample.app;
 
-import static io.quarkus.sample.app.Scripts.applySql;
-
 import java.sql.SQLException;
 
-import io.debezium.config.Configuration;
-import io.debezium.config.ConfigurationNames;
-import io.debezium.connector.sqlserver.SqlServerConnectorConfig;
-import io.debezium.jdbc.JdbcConfiguration;
+import org.junit.platform.suite.api.BeforeSuite;
 
-public class SqlServerDebeziumMultiEngineTestSuiteIT {
+public class SqlServerDebeziumMultiEngineTestSuiteIT implements QuarkusDebeziumMultiEngineTestSuite {
 
+    @BeforeSuite
     public static void init() throws SQLException {
-        SqlServerConnectorConfig defaultConfig = new SqlServerConnectorConfig(
-                JdbcConfiguration.copy(Configuration.fromSystemProperties(ConfigurationNames.DATABASE_CONFIG_PREFIX))
-                        .with("database.hostname", "localhost")
-                        .with("database.port", 1433)
-                        .with("database.user", "sa")
-                        .with("database.encrypt", "false")
-                        .with("database.trustServerCertificate", "false")
-                        .with("database.password", "Password!")
-                        .build());
-
-        SqlServerConnectorConfig alternativeConfig = new SqlServerConnectorConfig(
-                JdbcConfiguration.copy(Configuration.fromSystemProperties(ConfigurationNames.DATABASE_CONFIG_PREFIX))
-                        .with("database.hostname", "localhost")
-                        .with("database.port", 1434)
-                        .with("database.user", "sa")
-                        .with("database.encrypt", "false")
-                        .with("database.trustServerCertificate", "false")
-                        .with("database.password", "Password!")
-                        .build());
-
-        applySql(defaultConfig, Scripts.DEFAULT);
-        applySql(alternativeConfig, Scripts.ALTERNATIVE);
+        Scripts.apply(Scripts.Database.DEFAULT);
+        Scripts.apply(Scripts.Database.ALTERNATIVE);
     }
 
 }
