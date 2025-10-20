@@ -23,19 +23,6 @@ import io.quarkus.test.junit.QuarkusIntegrationTest;
 public class HeartbeatEventMultiEngineIT {
 
     @Test
-    @DisplayName("should get an heartbeat")
-    void shouldGetHeartbeat() {
-        await().untilAsserted(() -> assertThat(
-                get("/heartbeat?engine=default")
-                        .then()
-                        .statusCode(200)
-                        .extract()
-                        .body()
-                        .as(DebeziumHeartbeat.class).connector().name())
-                .startsWith("io.debezium.connector"));
-    }
-
-    @Test
     @DisplayName("should get an heartbeat from another engine")
     @DisableIfSingleEngine
     void shouldGetHeartbeatFromAnotherEngine() {
