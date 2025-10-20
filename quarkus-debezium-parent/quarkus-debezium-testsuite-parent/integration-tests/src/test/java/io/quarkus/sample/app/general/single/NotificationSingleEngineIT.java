@@ -17,7 +17,6 @@ import io.quarkus.debezium.notification.SnapshotCompleted;
 import io.quarkus.debezium.notification.SnapshotInProgress;
 import io.quarkus.debezium.notification.SnapshotStarted;
 import io.quarkus.debezium.notification.SnapshotTableScanCompleted;
-import io.quarkus.sample.app.conditions.DisableIfMultiEngine;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 
 @Tag("external-suite-only")
@@ -26,7 +25,6 @@ public class NotificationSingleEngineIT {
 
     @Test
     @DisplayName("should get snapshot notifications")
-    @DisableIfMultiEngine
     void shouldGetSnapshotNotifications() {
         await().untilAsserted(() -> Assertions.assertThat(
                 get("/notifications?engine=default")

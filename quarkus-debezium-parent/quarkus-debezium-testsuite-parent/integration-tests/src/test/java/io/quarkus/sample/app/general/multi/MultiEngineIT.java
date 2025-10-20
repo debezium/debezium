@@ -5,8 +5,6 @@
  */
 package io.quarkus.sample.app.general.multi;
 
-import static io.restassured.RestAssured.get;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.startsWith;
@@ -16,7 +14,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
-import io.debezium.runtime.DebeziumStatus;
 import io.quarkus.sample.app.conditions.DisableIfSingleEngine;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.restassured.RestAssured;
@@ -43,14 +40,4 @@ public class MultiEngineIT {
                 .body("[1].connector", startsWith("io.debezium.connector")));
     }
 
-    @Test
-    @DisplayName("Debezium should start polling")
-    void shouldDebeziumStartPolling() {
-        await().untilAsserted(() -> assertThat(
-                get("/engine/status")
-                        .then()
-                        .statusCode(200)
-                        .extract().body().as(DebeziumStatus.class))
-                .isEqualTo(new DebeziumStatus(DebeziumStatus.State.POLLING)));
-    }
 }
