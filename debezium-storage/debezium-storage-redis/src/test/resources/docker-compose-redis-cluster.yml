@@ -84,7 +84,6 @@ services:
 
   redis-cluster-init:
     image: alpine:3.22.1
-    container_name: redis-cluster-init
     command: >
       sh -c "
         echo 'Installing redis-cli...' &&
