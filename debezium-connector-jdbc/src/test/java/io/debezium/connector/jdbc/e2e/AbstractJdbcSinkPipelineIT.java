@@ -3215,6 +3215,11 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         void adjust(ConnectorConfiguration configuration);
     }
 
+    @FunctionalInterface
+    protected interface SinkPropertiesAdjuster {
+        void adjust(Properties properties);
+    }
+
     protected void assertColumn(Sink sink, SinkRecord record, String columnName, String columnType) {
         sink.assertColumn(getSinkTable(record, sink), columnName, columnType);
     }
@@ -3360,6 +3365,23 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
                                                    List<U> expectedValues, ConfigurationAdjuster configAdjuster,
                                                    DataTypeColumnAssert columnAssert, ColumnReader<U> columnReader)
             throws Exception {
+        assertDataTypeNonKeyOnly(source,
+                sink,
+                typeName,
+                valueBinder,
+                expectedValues,
+                configAdjuster,
+                null,
+                columnAssert,
+                columnReader);
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    protected <T, U> void assertDataTypeNonKeyOnly(Source source, Sink sink, String typeName, ValueBinder valueBinder,
+                                                   List<U> expectedValues, ConfigurationAdjuster configAdjuster,
+                                                   SinkPropertiesAdjuster sinkConfigAdjuster,
+                                                   DataTypeColumnAssert columnAssert, ColumnReader<U> columnReader)
+            throws Exception {
         final String tableName = source.randomTableName();
 
         final String createSql = String.format("CREATE TABLE %s (data %s NOT NULL, id integer, primary key(id))", tableName, typeName);
@@ -3382,6 +3404,9 @@ public abstract class AbstractJdbcSinkPipelineIT extends AbstractJdbcSinkIT {
         sinkProperties.put(JdbcSinkConnectorConfig.SCHEMA_EVOLUTION, SchemaEvolutionMode.BASIC.getValue());
         sinkProperties.put(JdbcSinkConnectorConfig.PRIMARY_KEY_MODE, PrimaryKeyMode.NONE.getValue());
         sinkProperties.put(JdbcSinkConnectorConfig.INSERT_MODE, InsertMode.INSERT.getValue());
+        if (sinkConfigAdjuster != null) {
+            sinkConfigAdjuster.adjust(sinkProperties);
+        }
         startSink(source, sinkProperties, tableName);
 
         consumeAndAssert(sink, columnAssert, expectedValues, columnReader);
