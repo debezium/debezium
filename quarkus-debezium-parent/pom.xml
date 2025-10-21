@@ -58,6 +58,16 @@
                 <version>${project.version}</version>
             </dependency>
             <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>quarkus-debezium-agroal</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>quarkus-debezium-agroal-deployment</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>io.debezium.quarkus</groupId>
                 <artifactId>quarkus-debezium-testsuite-deployment</artifactId>
                 <type>test-jar</type>
@@ -80,6 +90,7 @@
     <modules>
         <module>quarkus-debezium-engine-spi-parent</module>
         <module>quarkus-debezium-engine-parent</module>
+        <module>quarkus-debezium-agroal-parent</module>
         <module>quarkus-debezium-testsuite-parent</module>
         <module>quarkus-debezium-postgres-parent</module>
         <module>quarkus-debezium-mongodb-parent</module>
