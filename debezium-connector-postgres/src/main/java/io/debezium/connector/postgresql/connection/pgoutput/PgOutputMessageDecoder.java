@@ -25,11 +25,11 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
-import io.debezium.connector.postgresql.PostgresOffsetContext;
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.postgresql.PostgresOffsetContext;
 import io.debezium.connector.postgresql.PostgresStreamingChangeEventSource.PgConnectionSupplier;
 import io.debezium.connector.postgresql.PostgresType;
 import io.debezium.connector.postgresql.TypeRegistry;
@@ -69,7 +69,6 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
     private final MessageDecoderContext decoderContext;
     private final PostgresConnection connection;
-    private PostgresOffsetContext postgresOffsetContext;
 
     private Instant commitTimestamp;
 
@@ -129,6 +128,7 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
 
     @Override
     public boolean shouldMessageBeSkipped(ByteBuffer buffer, Lsn lastReceivedLsn, Lsn startLsn, WalPositionLocator walPosition) {
+
         int originalPosition = buffer.position();
 
         try {
@@ -173,33 +173,43 @@ public class PgOutputMessageDecoder extends AbstractMessageDecoder {
                 return false;
             }
 
-            Lsn lastProcessedLsn = postgresOffsetContext.lastCompletelyProcessedLsn();
-            Lsn lastCommitLsn = postgresOffsetContext.lastCommitLsn();
+            PostgresOffsetContext offsetContext = getOffsetContext();
+
+            if (offsetContext == null) {
+                lsnSearchCompleted = true;
+                return false;
+            }
+
+            Lsn lastProcessedLsn = offsetContext.lastCompletelyProcessedLsn();
+            Lsn lastCommitLsn = offsetContext.lastCommitLsn();
 
             if (lastProcessedLsn == null) {
                 lsnSearchCompleted = true;
                 return false;
             }
 
+            if (lastCommitLsn == null) {
+                if (lastReceivedLsn.compareTo(lastProcessedLsn) > 0) {
+                    lsnSearchCompleted = true;
+                    return false;
+                }
+                return true;
+            }
+
             int compare = lastCommitLsn.compareTo(this.commitLsn);
 
-            if (compare > 0) {
-                return true;
-            } else if (compare < 0) {
+            if (compare < 0 && lastReceivedLsn.compareTo(lastProcessedLsn) > 0) {
                 lsnSearchCompleted = true;
                 return false;
-            } else if (lastReceivedLsn.equals(lastProcessedLsn)) {
-                lsnSearchCompleted = true;
-                return true;
             }
 
             return true;
 
-        } finally {
+        }
+        finally {
             buffer.position(originalPosition);
         }
     }
-
 
     @Override
     public void processNotEmptyMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {

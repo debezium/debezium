@@ -267,7 +267,7 @@ public class PostgresOffsetContext extends CommonOffsetContext<SourceInfo> {
     }
 
     public static PostgresOffsetContext initialContext(PostgresConnectorConfig connectorConfig, PostgresConnection jdbcConnection, Clock clock) {
-        return initialContext(connectorConfig, jdbcConnection, clock, null,null, null, null, null);
+        return initialContext(connectorConfig, jdbcConnection, clock, null, null, null, null, null);
     }
 
     public static PostgresOffsetContext initialContext(PostgresConnectorConfig connectorConfig, PostgresConnection jdbcConnection, Clock clock,

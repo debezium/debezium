@@ -12,6 +12,7 @@ import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.debezium.connector.postgresql.PostgresOffsetContext;
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
 import io.debezium.util.Clock;
@@ -30,6 +31,7 @@ public abstract class AbstractMessageDecoder implements MessageDecoder {
 
     // timer needs to be initialized when the first logging attempt happens
     private Timer timer = null;
+    private PostgresOffsetContext offsetContext;
 
     @Override
     public void processMessage(ByteBuffer buffer, ReplicationMessageProcessor processor, TypeRegistry typeRegistry) throws SQLException, InterruptedException {
@@ -69,5 +71,14 @@ public abstract class AbstractMessageDecoder implements MessageDecoder {
             return true;
         }
         return false;
+    }
+
+    @Override
+    public void setOffsetContext(PostgresOffsetContext postgresOffsetContext) {
+        this.offsetContext = postgresOffsetContext;
+    }
+
+    protected PostgresOffsetContext getOffsetContext() {
+        return offsetContext;
     }
 }
