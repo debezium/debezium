@@ -8,7 +8,6 @@ package io.debezium.pipeline;
 import static io.debezium.pipeline.signal.actions.AbstractSnapshotSignal.SnapshotType.BLOCKING;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.lang.management.ManagementFactory;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
@@ -25,9 +24,7 @@ import java.util.stream.Stream;
 import javax.management.AttributeNotFoundException;
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanException;
-import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
-import javax.management.ObjectName;
 import javax.management.ReflectionException;
 import javax.management.openmbean.CompositeDataSupport;
 import javax.management.openmbean.TabularDataSupport;
@@ -42,6 +39,7 @@ import io.debezium.config.CommonConnectorConfig;
 import io.debezium.config.Configuration;
 import io.debezium.doc.FixFor;
 import io.debezium.embedded.EmbeddedEngineConfig;
+import io.debezium.embedded.util.MetricsHelper;
 import io.debezium.jdbc.JdbcConnection;
 import io.debezium.junit.EqualityCheck;
 import io.debezium.junit.SkipWhenConnectorUnderTest;
@@ -486,25 +484,12 @@ public abstract class AbstractBlockingSnapshotTest<T extends SourceConnector> ex
         };
     }
 
-    private Long getTotalStreamingCreateEventsSeen(String connector, String server, String task, String database) throws MalformedObjectNameException,
-            ReflectionException, AttributeNotFoundException, InstanceNotFoundException,
-            MBeanException {
-
-        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-
-        ObjectName objectName = getStreamingMetricsObjectName(connector, server, "streaming", task, database);
-
-        return (Long) mbeanServer.getAttribute(objectName, "TotalNumberOfCreateEventsSeen");
+    private Long getTotalStreamingCreateEventsSeen(String connector, String server, String task, String database) {
+        return MetricsHelper.getStreamingMetric(connector, server, "streaming", task, database, "TotalNumberOfCreateEventsSeen");
     }
 
-    private Long getTotalSnapshotRecords(String table, String connector, String server, String task, String database) throws MalformedObjectNameException,
-            ReflectionException, AttributeNotFoundException, InstanceNotFoundException,
-            MBeanException {
-
-        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-
-        TabularDataSupport rowsScanned = (TabularDataSupport) mbeanServer.getAttribute(getSnapshotMetricsObjectName(connector, server, task, database),
-                "RowsScanned");
+    private Long getTotalSnapshotRecords(String table, String connector, String server, String task, String database) {
+        final TabularDataSupport rowsScanned = MetricsHelper.getSnapshotMetric(connector, server, task, database, "RowsScanned");
 
         Map<String, Object> scannedRowsByTable = rowsScanned.values().stream().map(c -> ((CompositeDataSupport) c))
                 .collect(Collectors.toMap(compositeDataSupport -> compositeDataSupport.get("key").toString(), compositeDataSupport -> compositeDataSupport.get("value")));
