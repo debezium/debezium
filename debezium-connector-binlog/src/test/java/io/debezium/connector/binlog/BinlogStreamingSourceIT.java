@@ -10,7 +10,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -25,8 +24,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-import javax.management.MBeanServer;
-
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.source.SourceConnector;
@@ -38,7 +35,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
 
-import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.EventProcessingFailureHandlingMode;
 import io.debezium.config.Configuration;
 import io.debezium.connector.binlog.junit.SkipTestDependingOnDatabaseRule;
@@ -53,6 +49,7 @@ import io.debezium.data.KeyValueStore.Collection;
 import io.debezium.data.SchemaChangeHistory;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
+import io.debezium.embedded.util.MetricsHelper;
 import io.debezium.heartbeat.DatabaseHeartbeatImpl;
 import io.debezium.heartbeat.Heartbeat;
 import io.debezium.jdbc.JdbcConnection;
@@ -130,27 +127,11 @@ public abstract class BinlogStreamingSourceIT<C extends SourceConnector> extends
     }
 
     private long getNumberOfEventsFiltered() {
-        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-        try {
-            return (long) mbeanServer.getAttribute(
-                    getStreamingMetricsObjectName(getConnectorName(), DATABASE.getServerName(), "streaming"),
-                    "NumberOfEventsFiltered");
-        }
-        catch (Exception e) {
-            throw new DebeziumException(e);
-        }
+        return MetricsHelper.getStreamingMetric(getConnectorName(), DATABASE.getServerName(), "streaming", "NumberOfEventsFiltered");
     }
 
     private long getNumberOfSkippedEvents() {
-        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-        try {
-            return (long) mbeanServer.getAttribute(
-                    getStreamingMetricsObjectName(getConnectorName(), DATABASE.getServerName(), "streaming"),
-                    "NumberOfSkippedEvents");
-        }
-        catch (Exception e) {
-            throw new DebeziumException(e);
-        }
+        return MetricsHelper.getStreamingMetric(getConnectorName(), DATABASE.getServerName(), "streaming", "NumberOfSkippedEvents");
     }
 
     protected Configuration.Builder simpleConfig() {
