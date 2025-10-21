@@ -7,20 +7,12 @@ package io.debezium.connector.oracle.logminer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.lang.management.ManagementFactory;
-import java.math.BigInteger;
 import java.sql.Clob;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
-
-import javax.management.JMException;
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.connect.source.SourceRecord;
-import org.awaitility.Awaitility;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -36,6 +28,7 @@ import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnStrategyRule;
 import io.debezium.connector.oracle.junit.SkipWhenAdapterNameIsNot;
 import io.debezium.connector.oracle.junit.SkipWhenLogMiningStrategyIs;
+import io.debezium.connector.oracle.util.OracleMetricsHelper;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.data.VerifyRecord;
 import io.debezium.doc.FixFor;
@@ -252,12 +245,7 @@ public class TransactionCommitConsumerIT extends AbstractAsyncEngineConnectorTes
             // Awaitility call below.
             connection.execute("INSERT INTO dbz9521b (id, data1) values (3, 'data')");
 
-            Awaitility.await()
-                    .atMost(2, TimeUnit.MINUTES)
-                    .until(() -> {
-                        final BigInteger offsetScn = getStreamingMetric("OffsetScn");
-                        return offsetScn != null && Scn.valueOf(offsetScn.toString()).compareTo(currentScn) > 0;
-                    });
+            OracleMetricsHelper.waitForOffsetScnAfter(currentScn);
 
             assertThat(interceptor.containsMessage("Skipping event "))
                     .as("Should not skip events")
@@ -271,14 +259,6 @@ public class TransactionCommitConsumerIT extends AbstractAsyncEngineConnectorTes
             TestHelper.dropTable(connection, "dbz9521a");
             TestHelper.dropTable(connection, "dbz9521b");
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> T getStreamingMetric(String metricName) throws JMException {
-        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-
-        final ObjectName objectName = getStreamingMetricsObjectName(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
-        return (T) mbeanServer.getAttribute(objectName, metricName);
     }
 
 }

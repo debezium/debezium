@@ -16,7 +16,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
 
-import java.lang.management.ManagementFactory;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.file.Path;
@@ -42,10 +41,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
-import javax.management.JMException;
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -85,6 +80,7 @@ import io.debezium.connector.oracle.junit.SkipWhenLogMiningStrategyIs;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingAdapter;
 import io.debezium.connector.oracle.logminer.AbstractLogMinerStreamingChangeEventSource;
 import io.debezium.connector.oracle.logminer.buffered.BufferedLogMinerStreamingChangeEventSource;
+import io.debezium.connector.oracle.util.OracleMetricsHelper;
 import io.debezium.connector.oracle.util.TestHelper;
 import io.debezium.converters.CloudEventsConverterTest;
 import io.debezium.converters.spi.CloudEventsMaker;
@@ -2673,8 +2669,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             assertThat(records.recordsForTopic("server1.DEBEZIUM.DBZ3898")).hasSize(1);
 
             // Wait for the connector to advance beyond the current SCN after the INSERT.
-            Awaitility.await().atMost(Duration.ofMinutes(3))
-                    .until(() -> new Scn(getStreamingMetric("CurrentScn")).compareTo(scnAfterInsert) > 0);
+            OracleMetricsHelper.waitForCurrentScnAfter(scnAfterInsert);
 
             assertNoRecordsToConsume();
         }
@@ -2894,14 +2889,6 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private <T> T getStreamingMetric(String metricName) throws JMException {
-        final MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-
-        final ObjectName objectName = getStreamingMetricsObjectName(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
-        return (T) mbeanServer.getAttribute(objectName, metricName);
-    }
-
     private String generateAlphaNumericStringColumn(int size) {
         final String alphaNumericString = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
         final StringBuilder sb = new StringBuilder(size);
@@ -3059,7 +3046,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
             connection.execute("INSERT INTO dbz4161_with_a_name_that_is_greater_than_30 values (2, 'streaming')");
-            waitForCurrentScnToHaveBeenSeenByConnector();
+            OracleMetricsHelper.waitForCurrentScnToHaveBeenSeenByConnector();
 
             assertNoRecordsToConsume();
             assertThat(logInterceptor.containsWarnMessage("Table 'DBZ4161_WITH_A_NAME_THAT_IS_GREATER_THAN_30' won't be captured by Oracle LogMiner")).isTrue();
@@ -3102,7 +3089,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
             connection.execute("INSERT INTO dbz4161 values (2, 'streaming')");
-            waitForCurrentScnToHaveBeenSeenByConnector();
+            OracleMetricsHelper.waitForCurrentScnToHaveBeenSeenByConnector();
 
             assertNoRecordsToConsume();
             assertThat(logInterceptor.containsWarnMessage("Table 'DBZ4161' won't be captured by Oracle LogMiner")).isTrue();
@@ -3781,11 +3768,11 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
 
             // There should at least be a commit by the flush policy that triggers the advancement
             // of the SCN values in the offsets within a few seconds of the polling mechanism.
-            final BigInteger offsetScn = getStreamingMetric("OffsetScn");
-            final BigInteger committedScn = getStreamingMetric("CommittedScn");
+            final BigInteger offsetScn = OracleMetricsHelper.getOffsetScn();
+            final BigInteger committedScn = OracleMetricsHelper.getCommittedScn();
             Awaitility.await().atMost(60, TimeUnit.SECONDS).until(() -> {
-                final BigInteger newOffsetScn = getStreamingMetric("OffsetScn");
-                final BigInteger newCommittedScn = getStreamingMetric("CommittedScn");
+                final BigInteger newOffsetScn = OracleMetricsHelper.getOffsetScn();
+                final BigInteger newCommittedScn = OracleMetricsHelper.getCommittedScn();
                 return newOffsetScn != null &&
                         newCommittedScn != null &&
                         !newOffsetScn.equals(offsetScn) &&
@@ -5153,7 +5140,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
 
             final AtomicReference<Scn> offsetScn = new AtomicReference<>(Scn.NULL);
             Awaitility.await().atMost(Duration.ofMinutes(5)).until(() -> {
-                final BigInteger offsetScnValue = getStreamingMetric("OffsetScn");
+                final BigInteger offsetScnValue = OracleMetricsHelper.getOffsetScn();
                 if (offsetScnValue != null) {
                     offsetScn.set(new Scn(offsetScnValue));
                     return true;
@@ -5161,9 +5148,7 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
                 return false;
             });
 
-            Awaitility.await().atMost(Duration.ofMinutes(5)).pollInterval(Duration.ofSeconds(2)).until(() -> {
-                return new Scn(getStreamingMetric("OffsetScn")).compareTo(offsetScn.get()) > 0;
-            });
+            OracleMetricsHelper.waitForOffsetScnAfter(offsetScn.get());
         }
         finally {
             TestHelper.dropTable(connection, "dbz5395");
@@ -5224,14 +5209,12 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
                 waitForStreamingRunning(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
 
                 // Get the number of fetching queries up to this point.
-                final Long fetchingQueryCount = getStreamingMetric("FetchQueryCount");
+                final Long fetchingQueryCount = OracleMetricsHelper.getFetchingQueryCount();
 
                 connection.execute("INSERT INTO dbz6355 (id,name) VALUES (3, 'Donald Duck')");
 
                 // Fetch for a few mining iterations to guarantee that the abandonment process has fired
-                Awaitility.waitAtMost(Duration.ofSeconds(60)).until(() -> {
-                    return (fetchingQueryCount + 5L) <= (Long) getStreamingMetric("FetchQueryCount");
-                });
+                OracleMetricsHelper.waitForFetchQueryCountGreaterThan(fetchingQueryCount + 5L);
 
                 // Commit in progress transaction
                 otherConnection.commit();
@@ -5839,9 +5822,9 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             // Wait for CURRENT_SCN to be seen by the connector
             // Then force a log switch
             // Then wait for new CURRENT_SCN to be seen by the connector
-            waitForCurrentScnToHaveBeenSeenByConnector();
+            OracleMetricsHelper.waitForCurrentScnToHaveBeenSeenByConnector();
             TestHelper.forceLogfileSwitch();
-            waitForCurrentScnToHaveBeenSeenByConnector();
+            OracleMetricsHelper.waitForCurrentScnToHaveBeenSeenByConnector();
 
             // Insert a row to act as a marker
             connection.execute("INSERT INTO dbz8577 (id,data) values (1,'test')");
@@ -5876,9 +5859,9 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
             // Wait for CURRENT_SCN to be seen by the connector
             // Then force a log switch
             // Then wait for new CURRENT_SCN to be seen by the connector
-            waitForCurrentScnToHaveBeenSeenByConnector();
+            OracleMetricsHelper.waitForCurrentScnToHaveBeenSeenByConnector();
             TestHelper.forceLogfileSwitch();
-            waitForCurrentScnToHaveBeenSeenByConnector();
+            OracleMetricsHelper.waitForCurrentScnToHaveBeenSeenByConnector();
 
             // Insert a row to act as a marker
             connection.execute("INSERT INTO dbz8577 (id,data) values (1,'test')");
@@ -6049,21 +6032,6 @@ public class OracleConnectorIT extends AbstractAsyncEngineConnectorTest {
         }
         finally {
             TestHelper.dropTable(connection, "dbztest");
-        }
-    }
-
-    private void waitForCurrentScnToHaveBeenSeenByConnector() throws SQLException {
-        try (OracleConnection admin = TestHelper.adminConnection(true)) {
-            final Scn scn = admin.getCurrentScn();
-            Awaitility.await()
-                    .atMost(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS)
-                    .until(() -> {
-                        final BigInteger scnValue = getStreamingMetric("CurrentScn");
-                        if (scnValue == null) {
-                            return false;
-                        }
-                        return new Scn(scnValue).compareTo(scn) > 0;
-                    });
         }
     }
 
