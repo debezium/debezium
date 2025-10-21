@@ -21,6 +21,7 @@ import javax.management.ObjectName;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.awaitility.Awaitility;
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -55,7 +56,17 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
     @BeforeClass
     public static void beforeClass() throws SQLException {
         connection = TestHelper.testConnection();
+    }
 
+    @AfterClass
+    public static void closeConnection() throws SQLException {
+        if (connection != null) {
+            connection.close();
+        }
+    }
+
+    @Before
+    public void before() throws SQLException {
         TestHelper.dropTable(connection, "debezium.customer");
         TestHelper.dropTable(connection, "debezium.debezium_signal");
 
@@ -81,24 +92,15 @@ public class SignalsIT extends AbstractAsyncEngineConnectorTest {
         connection.execute("GRANT SELECT ON debezium.debezium_signal to  " + TestHelper.getConnectorUserName());
         connection.execute("ALTER TABLE debezium.debezium_signal ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS");
 
-    }
-
-    @AfterClass
-    public static void closeConnection() throws SQLException {
-        if (connection != null) {
-            TestHelper.dropTable(connection, "debezium.debezium_signal");
-            TestHelper.dropTable(connection, "debezium.customer");
-            connection.close();
-        }
-    }
-
-    @Before
-    public void before() throws SQLException {
-        connection.execute("delete from debezium.customer");
-        connection.execute("delete from debezium.debezium_signal");
         setConsumeTimeout(TestHelper.defaultMessageConsumerPollTimeout(), TimeUnit.SECONDS);
         initializeConnectorTestFramework();
         Testing.Files.delete(TestHelper.SCHEMA_HISTORY_PATH);
+    }
+
+    @After
+    public void after() throws SQLException {
+        TestHelper.dropTable(connection, "debezium.debezium_signal");
+        TestHelper.dropTable(connection, "debezium.customer");
     }
 
     @Test
