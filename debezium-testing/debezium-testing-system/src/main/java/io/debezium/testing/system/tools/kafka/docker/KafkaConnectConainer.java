@@ -7,12 +7,12 @@ package io.debezium.testing.system.tools.kafka.docker;
 
 import java.time.Duration;
 
-import io.strimzi.test.container.StrimziKafkaContainer;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 
 import io.debezium.testing.system.tools.ConfigProperties;
 import io.debezium.testing.system.tools.WaitConditions;
+import io.strimzi.test.container.StrimziKafkaContainer;
 
 public class KafkaConnectConainer extends GenericContainer<KafkaConnectConainer> {
 

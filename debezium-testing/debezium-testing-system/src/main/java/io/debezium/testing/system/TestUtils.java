@@ -5,10 +5,6 @@
  */
 package io.debezium.testing.system;
 
-import org.apache.maven.artifact.versioning.ComparableVersion;
-
-import io.debezium.testing.system.tools.ConfigProperties;
-
 /**
  * Utility functions used in tests
  * @author Jakub Cechacek

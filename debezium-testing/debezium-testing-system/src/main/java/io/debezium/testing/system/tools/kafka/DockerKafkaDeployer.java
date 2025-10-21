@@ -5,12 +5,12 @@
  */
 package io.debezium.testing.system.tools.kafka;
 
-import io.strimzi.test.container.StrimziKafkaContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.testing.system.tools.AbstractDockerDeployer;
 import io.debezium.testing.system.tools.Deployer;
+import io.strimzi.test.container.StrimziKafkaContainer;
 
 public class DockerKafkaDeployer
         extends AbstractDockerDeployer<DockerKafkaController, StrimziKafkaContainer>

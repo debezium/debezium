@@ -5,10 +5,11 @@
  */
 package io.debezium.testing.testcontainers;
 
-import io.strimzi.test.container.StrimziKafkaContainer;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.utility.DockerImageName;
+
+import io.strimzi.test.container.StrimziKafkaContainer;
 
 public class SchemaRegistryContainer extends GenericContainer<SchemaRegistryContainer> {
 
