@@ -1110,29 +1110,28 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             LOGGER.warn("Abandon transaction requested with null/empty transaction id");
             return false;
         }
-        final String txId = transactionId;
-        if (!getTransactionCache().containsTransaction(txId)) {
-            LOGGER.warn("Transaction '{}' not found in cache, cannot abandon", txId);
+        if (!getTransactionCache().containsTransaction(transactionId)) {
+            LOGGER.warn("Transaction '{}' not found in cache, cannot abandon", transactionId);
             return false;
         }
 
-        final Transaction transaction = getTransactionCache().getAndRemoveTransaction(txId);
+        final Transaction transaction = getTransactionCache().getAndRemoveTransaction(transactionId);
         if (transaction == null) {
-            LOGGER.warn("Transaction '{}' was not present when attempting to abandon", txId);
+            LOGGER.warn("Transaction '{}' was not present when attempting to abandon", transactionId);
             return false;
         }
 
-        LOGGER.info("Manually abandoning transaction {} as requested", txId);
+        LOGGER.info("Manually abandoning transaction {} as requested", transactionId);
         try {
             cleanupAfterTransactionRemovedFromCache(transaction, true);
         }
         catch (Exception e) {
-            LOGGER.error("Failed to cleanup after abandoning transaction {}", txId, e);
+            LOGGER.error("Failed to cleanup after abandoning transaction {}", transactionId, e);
             getMetrics().incrementErrorCount();
             throw e;
         }
 
-        getMetrics().addAbandonedTransactionId(txId);
+        getMetrics().addAbandonedTransactionId(transactionId);
         getMetrics().setActiveTransactionCount(getTransactionCache().getTransactionCount());
         getMetrics().setBufferedEventCount(getTransactionCache().getTransactionEvents());
 
@@ -1149,7 +1148,7 @@ public class BufferedLogMinerStreamingChangeEventSource extends AbstractLogMiner
             LOGGER.info("Heartbeats are not enabled, offsets will be updated on the next committed transaction");
         }
 
-        LOGGER.info("Successfully dropped transaction '{}' from Oracle LogMiner buffer via manual request", txId);
+        LOGGER.info("Successfully dropped transaction '{}' from Oracle LogMiner buffer via manual request", transactionId);
         return true;
     }
 
