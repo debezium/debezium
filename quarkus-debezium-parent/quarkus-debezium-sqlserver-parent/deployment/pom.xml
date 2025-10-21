@@ -39,6 +39,10 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-jdbc-mssql-deployment</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.debezium.quarkus</groupId>
+            <artifactId>quarkus-debezium-agroal-deployment</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.assertj</groupId>

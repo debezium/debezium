@@ -6,16 +6,10 @@
 
 package io.quarkus.debezium.engine;
 
-import static io.debezium.config.CommonConnectorConfig.NOTIFICATION_ENABLED_CHANNELS;
-import static io.debezium.embedded.EmbeddedEngineConfig.CONNECTOR_CLASS;
-
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -27,61 +21,35 @@ import io.debezium.runtime.Debezium;
 import io.debezium.runtime.DebeziumConnectorRegistry;
 import io.debezium.runtime.EngineManifest;
 import io.debezium.runtime.configuration.DebeziumEngineConfiguration;
-import io.debezium.runtime.configuration.QuarkusDatasourceConfiguration;
-import io.quarkus.debezium.configuration.DebeziumConfigurationEngineParser;
+import io.quarkus.datasource.common.runtime.DatabaseKind;
+import io.quarkus.debezium.agroal.engine.AgroalParser;
 import io.quarkus.debezium.configuration.DebeziumConfigurationEngineParser.MultiEngineConfiguration;
 import io.quarkus.debezium.engine.capture.consumer.SourceRecordConsumerHandler;
-import io.quarkus.debezium.notification.QuarkusNotificationChannel;
-import io.quarkus.debezium.sqlserver.configuration.SqlServerDatasourceConfiguration;
 
 public class SqlServerEngineProducer implements ConnectorProducer {
     public static final Connector SQLSERVER = new Connector(SqlServerConnector.class.getName());
 
     private final StateHandler stateHandler;
-    private final Map<String, SqlServerDatasourceConfiguration> quarkusDatasourceConfigurations;
-    private final QuarkusNotificationChannel channel;
     private final SourceRecordConsumerHandler sourceRecordConsumerHandler;
-    private final DebeziumConfigurationEngineParser engineParser = new DebeziumConfigurationEngineParser();
+    private final AgroalParser agroalParser;
 
     @Inject
     public SqlServerEngineProducer(StateHandler stateHandler,
-                                   Instance<SqlServerDatasourceConfiguration> configurations,
-                                   QuarkusNotificationChannel channel,
-                                   SourceRecordConsumerHandler sourceRecordConsumerHandler) {
+                                   SourceRecordConsumerHandler sourceRecordConsumerHandler,
+                                   AgroalParser agroalParser) {
         this.stateHandler = stateHandler;
-        this.channel = channel;
         this.sourceRecordConsumerHandler = sourceRecordConsumerHandler;
-        this.quarkusDatasourceConfigurations = configurations
-                .stream()
-                .collect(Collectors.toMap(QuarkusDatasourceConfiguration::getSanitizedName, Function.identity()));
-    }
-
-    public SqlServerEngineProducer(StateHandler stateHandler,
-                                   Map<String, SqlServerDatasourceConfiguration> quarkusDatasourceConfigurations,
-                                   QuarkusNotificationChannel channel,
-                                   SourceRecordConsumerHandler sourceRecordConsumerHandler) {
-        this.stateHandler = stateHandler;
-        this.quarkusDatasourceConfigurations = quarkusDatasourceConfigurations;
-        this.channel = channel;
-        this.sourceRecordConsumerHandler = sourceRecordConsumerHandler;
+        this.agroalParser = agroalParser;
     }
 
     @Produces
     @Singleton
     @Override
     public DebeziumConnectorRegistry engine(DebeziumEngineConfiguration debeziumEngineConfiguration) {
-        List<MultiEngineConfiguration> multiEngineConfigurations = engineParser.parse(debeziumEngineConfiguration);
-
-        /*
-         * enrich Quarkus-like debezium configuration with quarkus datasource configuration
-         */
-        List<MultiEngineConfiguration> enrichedMultiEngineConfigurations = multiEngineConfigurations
-                .stream()
-                .map(engine -> enrichConfiguration(engine, quarkusDatasourceConfigurations))
-                .toList();
+        List<MultiEngineConfiguration> multiEngineConfigurations = agroalParser.parse(debeziumEngineConfiguration, DatabaseKind.MSSQL, SQLSERVER);
 
         return new DebeziumConnectorRegistry() {
-            private final Map<String, Debezium> engines = enrichedMultiEngineConfigurations
+            private final Map<String, Debezium> engines = multiEngineConfigurations
                     .stream()
                     .map(engine -> {
                         EngineManifest engineManifest = new EngineManifest(engine.engineId());
@@ -111,25 +79,4 @@ public class SqlServerEngineProducer implements ConnectorProducer {
         };
     }
 
-    private MultiEngineConfiguration enrichConfiguration(MultiEngineConfiguration engine, Map<String, ? extends QuarkusDatasourceConfiguration> collect) {
-        HashMap<String, String> mutableMap = new HashMap<>(engine.configuration());
-
-        mutableMap.compute(NOTIFICATION_ENABLED_CHANNELS.name(),
-                (key, value) -> value == null ? channel.name() : value.concat("," + channel.name()));
-
-        mutableMap.putAll(getQuarkusDatasourceConfigurationByEngineId(engine.engineId(), collect).asDebezium());
-        mutableMap.put(CONNECTOR_CLASS.name(), SQLSERVER.name());
-
-        return new MultiEngineConfiguration(engine.engineId(), mutableMap);
-    }
-
-    private QuarkusDatasourceConfiguration getQuarkusDatasourceConfigurationByEngineId(String engineId, Map<String, ? extends QuarkusDatasourceConfiguration> collect) {
-        QuarkusDatasourceConfiguration configuration = collect.get(engineId);
-
-        if (configuration == null) {
-            throw new IllegalArgumentException("No datasource configuration found for engine " + engineId);
-        }
-
-        return configuration;
-    }
 }
