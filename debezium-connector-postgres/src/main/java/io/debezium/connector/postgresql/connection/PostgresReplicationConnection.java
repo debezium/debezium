@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 
 import io.debezium.DebeziumException;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
+import io.debezium.connector.postgresql.PostgresOffsetContext;
 import io.debezium.connector.postgresql.PostgresSchema;
 import io.debezium.connector.postgresql.ReplicaIdentityMapper;
 import io.debezium.connector.postgresql.TypeRegistry;
@@ -665,12 +666,13 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
      * @throws InterruptedException
      */
     @Override
-    public ReplicationStream startStreaming(WalPositionLocator walPosition) throws SQLException, InterruptedException {
-        return startStreaming(null, walPosition);
+    public ReplicationStream startStreaming(WalPositionLocator walPosition, PostgresOffsetContext postgresOffsetContext) throws SQLException, InterruptedException {
+        return startStreaming(null, walPosition, postgresOffsetContext);
     }
 
     @Override
-    public ReplicationStream startStreaming(Lsn offset, WalPositionLocator walPosition) throws SQLException, InterruptedException {
+    public ReplicationStream startStreaming(Lsn offset, WalPositionLocator walPosition, PostgresOffsetContext postgresOffsetContext)
+            throws SQLException, InterruptedException {
         initConnection();
 
         connect();
@@ -690,7 +692,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 if (connectorConfig.slotSeekToKnownOffsetOnStart()) {
                     validateSlotIsInExpectedState(walPosition);
                 }
-                return createReplicationStream(lsn, walPosition);
+                return createReplicationStream(lsn, walPosition, postgresOffsetContext);
             }
             catch (Exception e) {
                 String message = "Failed to start replication stream at " + lsn;
@@ -888,9 +890,10 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
         }
     }
 
-    private ReplicationStream createReplicationStream(final Lsn startLsn, WalPositionLocator walPosition) throws SQLException, InterruptedException {
+    private ReplicationStream createReplicationStream(final Lsn startLsn, WalPositionLocator walPosition, PostgresOffsetContext postgresOffsetContext)
+            throws SQLException, InterruptedException {
         PGReplicationStream s;
-
+        messageDecoder.setOffsetContext(postgresOffsetContext);
         try {
             try {
                 s = startPgReplicationStream(startLsn, messageDecoder::defaultOptions);
@@ -948,7 +951,7 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                 processWarnings(false);
                 ByteBuffer read = stream.readPending();
                 final Lsn lastReceiveLsn = Lsn.valueOf(stream.getLastReceiveLSN());
-                LOGGER.trace("Streaming requested from LSN {}, received LSN {}", startLsn, lastReceiveLsn);
+                // LOGGER.trace("Streaming requested from LSN {} - {}, received LSN {} - {}", startLsn, startLsn.asLong(), lastReceiveLsn, lastReceiveLsn.asLong());
 
                 if (read == null) {
                     return false;
@@ -1048,6 +1051,8 @@ public class PostgresReplicationConnection extends JdbcConnection implements Rep
                                                          BiFunction<ChainedLogicalStreamBuilder, Function<Integer, Boolean>, ChainedLogicalStreamBuilder> configurator)
             throws SQLException {
         assert lsn != null;
+
+        LOGGER.info("Starting PG Replication Stream from LSN {} - {}", lsn, lsn.asLong());
         ChainedLogicalStreamBuilder streamBuilder = pgConnection()
                 .getReplicationAPI()
                 .replicationStream()

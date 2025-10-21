@@ -12,6 +12,7 @@ import java.util.function.Function;
 
 import org.postgresql.replication.fluent.logical.ChainedLogicalStreamBuilder;
 
+import io.debezium.connector.postgresql.PostgresOffsetContext;
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.connection.ReplicationStream.ReplicationMessageProcessor;
 
@@ -58,4 +59,6 @@ public interface MessageDecoder {
      * Closes this decoder, freeing and/or closing all resources it may potentially hold.
      */
     void close();
+
+    void setOffsetContext(PostgresOffsetContext postgresOffsetContext);
 }

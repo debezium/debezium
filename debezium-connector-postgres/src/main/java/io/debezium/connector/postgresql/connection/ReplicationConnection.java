@@ -14,6 +14,7 @@ import org.postgresql.replication.PGReplicationStream;
 
 import io.debezium.annotation.NotThreadSafe;
 import io.debezium.connector.postgresql.PostgresConnectorConfig;
+import io.debezium.connector.postgresql.PostgresOffsetContext;
 import io.debezium.connector.postgresql.PostgresSchema;
 import io.debezium.connector.postgresql.TypeRegistry;
 import io.debezium.connector.postgresql.spi.SlotCreationResult;
@@ -40,7 +41,7 @@ public interface ReplicationConnection extends AutoCloseable {
      * @return a {@link PGReplicationStream} from which data is read; never null
      * @throws SQLException if there is a problem obtaining the replication stream
      */
-    ReplicationStream startStreaming(WalPositionLocator walPosition) throws SQLException, InterruptedException;
+    ReplicationStream startStreaming(WalPositionLocator walPosition, PostgresOffsetContext postgresOffsetContext) throws SQLException, InterruptedException;
 
     /**
      * Opens a stream for reading logical replication changes from a given LSN position.
@@ -55,7 +56,7 @@ public interface ReplicationConnection extends AutoCloseable {
      * @see org.postgresql.replication.LogSequenceNumber
      * @throws SQLException if anything fails
      */
-    ReplicationStream startStreaming(Lsn offset, WalPositionLocator walPosition) throws SQLException, InterruptedException;
+    ReplicationStream startStreaming(Lsn offset, WalPositionLocator walPosition, PostgresOffsetContext postgresOffsetContext) throws SQLException, InterruptedException;
 
     /**
      * Creates a new replication slot with the given option and returns the result of the command, which

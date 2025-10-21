@@ -165,12 +165,13 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 final Operation lastProcessedMessageType = this.effectiveOffset.lastProcessedMessageType();
                 LOGGER.info("Retrieved latest position from stored offset '{}'", lsn);
                 walPosition = new WalPositionLocator(this.effectiveOffset.lastCommitLsn(), lsn, lastProcessedMessageType);
-                replicationStream.compareAndSet(null, replicationConnection.startStreaming(lsn, walPosition));
+                replicationStream.compareAndSet(null, replicationConnection.startStreaming(lsn, walPosition, this.effectiveOffset));
+
             }
             else {
                 LOGGER.info("No previous LSN found in Kafka, streaming from the latest xlogpos or flushed LSN...");
                 walPosition = new WalPositionLocator();
-                replicationStream.compareAndSet(null, replicationConnection.startStreaming(walPosition));
+                replicationStream.compareAndSet(null, replicationConnection.startStreaming(walPosition, this.effectiveOffset));
             }
 
             // Start keep alive thread to prevent connection timeout during time-consuming operations the DB side.
@@ -185,7 +186,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
 
             this.lastCompletelyProcessedLsn = replicationStream.get().startLsn();
 
-            if (walPosition.searchingEnabled() && this.effectiveOffset.hasCompletelyProcessedPosition()) {
+            // WAL lookup is only available now for DECODERBUFS plugin.
+            if (connectorConfig.plugin() == PostgresConnectorConfig.LogicalDecoder.DECODERBUFS && walPosition.searchingEnabled() && this.effectiveOffset.hasCompletelyProcessedPosition()) {
                 searchWalPosition(context, partition, this.effectiveOffset, stream, walPosition);
                 try {
                     if (!isInPreSnapshotCatchUpStreaming(this.effectiveOffset)) {
@@ -198,7 +200,7 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
                 walPosition.enableFiltering();
                 stream.stopKeepAlive();
                 replicationConnection.reconnect();
-                replicationStream.set(replicationConnection.startStreaming(walPosition.getLastEventStoredLsn(), walPosition));
+                replicationStream.set(replicationConnection.startStreaming(walPosition.getLastEventStoredLsn(), walPosition, this.effectiveOffset));
                 stream = this.replicationStream.get();
                 stream.startKeepAlive(Threads.newSingleThreadExecutor(PostgresConnector.class, connectorConfig.getLogicalName(), KEEP_ALIVE_THREAD_NAME));
             }
@@ -288,7 +290,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             throws SQLException, InterruptedException {
 
         final Lsn lsn = stream.lastReceivedLsn();
-        LOGGER.trace("Processing replication message {}", message);
+        LOGGER.info("Processing replication message {}", message);
+        LOGGER.info("Last recieved lsn {}", lsn);
         if (message.isLastEventForLsn()) {
             lastCompletelyProcessedLsn = lsn;
         }
@@ -407,7 +410,10 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         }
     }
 
-    private void commitMessage(PostgresPartition partition, PostgresOffsetContext offsetContext, final Lsn lsn, final Lsn commitLsn, OptionalLong commitTxId) throws SQLException, InterruptedException {
+    private void commitMessage(PostgresPartition partition, PostgresOffsetContext offsetContext, final Lsn lsn, final Lsn commitLsn, OptionalLong commitTxId)
+            throws SQLException, InterruptedException {
+        LOGGER.info("commitMessage commitLsn {} - {}, lastProcessedLsn {} - {}, lsn {} - {}, commitTXID {}", commitLsn, commitLsn.asLong(), lastCompletelyProcessedLsn,
+                lastCompletelyProcessedLsn.asLong(), lsn, lsn.asLong(), commitTxId);
         lastCompletelyProcessedLsn = lsn;
         offsetContext.updateCommitPosition(lsn, lastCompletelyProcessedLsn, commitLsn, commitTxId);
         maybeWarnAboutGrowingWalBacklog(false);
@@ -456,9 +462,9 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
         final Lsn commitLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMMIT_LSN_KEY));
         final Lsn endLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_END_LSN_KEY));
         final Lsn changeLsn = Lsn.valueOf((Long) offset.get(PostgresOffsetContext.LAST_COMPLETELY_PROCESSED_LSN_KEY));
-        final Lsn lsn = (commitLsn != null) ? commitLsn : changeLsn;
+        final Lsn lsn = (endLsn != null) ? endLsn : changeLsn;
 
-        LOGGER.debug("Received offset commit request on commit LSN '{}' and change LSN '{}'", commitLsn, changeLsn);
+        LOGGER.info("Received offset commit request on commit LSN {}, end LSN '{}' and change LSN '{}'", commitLsn, endLsn, changeLsn);
         if (replicationStream != null && lsn != null) {
             if (!lsnFlushingAllowed) {
                 LOGGER.info("Received offset commit request on '{}', but ignoring it. LSN flushing is not allowed yet", lsn);
@@ -472,7 +478,13 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             Future<Void> future = null;
             try {
                 future = lsnFlushExecutor.submit(() -> {
+                    /*
+                     * LOGGER.info("Flushing LSN to server: {}", lsn);
+                     *
+                     * return null;
+                     */
                     try {
+                        LOGGER.info("Flushing LSN to server: {}", lsn);
                         replicationStream.flushLsn(lsn);
                         return null;
                     }
