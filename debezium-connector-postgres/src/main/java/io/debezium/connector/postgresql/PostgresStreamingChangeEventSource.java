@@ -187,7 +187,8 @@ public class PostgresStreamingChangeEventSource implements StreamingChangeEventS
             this.lastCompletelyProcessedLsn = replicationStream.get().startLsn();
 
             // WAL lookup is only available now for DECODERBUFS plugin.
-            if (connectorConfig.plugin() == PostgresConnectorConfig.LogicalDecoder.DECODERBUFS && walPosition.searchingEnabled() && this.effectiveOffset.hasCompletelyProcessedPosition()) {
+            if (connectorConfig.plugin() == PostgresConnectorConfig.LogicalDecoder.DECODERBUFS && walPosition.searchingEnabled()
+                    && this.effectiveOffset.hasCompletelyProcessedPosition()) {
                 searchWalPosition(context, partition, this.effectiveOffset, stream, walPosition);
                 try {
                     if (!isInPreSnapshotCatchUpStreaming(this.effectiveOffset)) {
