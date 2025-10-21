@@ -92,6 +92,19 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
             "  primary key (id)" +
             ")";
 
+    private static final String DDL_BINARY_FP = "create table debezium.type_binary_fp (" +
+            "  id numeric(9,0) not null, " +
+            "  val_bf_inf binary_float, " +
+            "  val_bf_pinf binary_float, " +
+            "  val_bf_ninf binary_float, " +
+            "  val_bf_nan binary_float, " +
+            "  val_bd_inf binary_double, " +
+            "  val_bd_pinf binary_double, " +
+            "  val_bd_ninf binary_double, " +
+            "  val_bd_nan binary_double, " +
+            "  primary key(id)" +
+            ")";
+
     private static final String DDL_INT = "create table debezium.type_int (" +
             "  id numeric(9,0) not null, " +
             "  val_int int, " +
@@ -197,6 +210,16 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
             new SchemaAndValueField("VAL_NUM_VS", Schema.OPTIONAL_FLOAT64_SCHEMA, 77.323),
             new SchemaAndValueField("VAL_NUM_VS2", Schema.OPTIONAL_FLOAT64_SCHEMA, 77.0));
 
+    private static final List<SchemaAndValueField> EXPECTED_BINARY_FP_AS_STRING = Arrays.asList(
+            new SchemaAndValueField("VAL_BF_INF", Schema.OPTIONAL_STRING_SCHEMA, "Infinity"),
+            new SchemaAndValueField("VAL_BF_PINF", Schema.OPTIONAL_STRING_SCHEMA, "Infinity"),
+            new SchemaAndValueField("VAL_BF_NINF", Schema.OPTIONAL_STRING_SCHEMA, "-Infinity"),
+            new SchemaAndValueField("VAL_BF_NAN", Schema.OPTIONAL_STRING_SCHEMA, "NaN"),
+            new SchemaAndValueField("VAL_BD_INF", Schema.OPTIONAL_STRING_SCHEMA, "Infinity"),
+            new SchemaAndValueField("VAL_BD_PINF", Schema.OPTIONAL_STRING_SCHEMA, "Infinity"),
+            new SchemaAndValueField("VAL_BD_NINF", Schema.OPTIONAL_STRING_SCHEMA, "-Infinity"),
+            new SchemaAndValueField("VAL_BD_NAN", Schema.OPTIONAL_STRING_SCHEMA, "NaN"));
+
     private static final List<SchemaAndValueField> EXPECTED_INT = Arrays.asList(
             new SchemaAndValueField("VAL_INT", NUMBER_SCHEMA, new BigDecimal("1")),
             new SchemaAndValueField("VAL_INTEGER", NUMBER_SCHEMA, new BigDecimal("22")),
@@ -295,6 +318,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
     private static final String[] ALL_TABLES = {
             "debezium.type_string",
             "debezium.type_fp",
+            "debezium.type_binary_fp",
             "debezium.type_int",
             "debezium.type_time",
             "debezium.type_clob",
@@ -304,6 +328,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
     private static final String[] ALL_DDLS = {
             DDL_STRING,
             DDL_FP,
+            DDL_BINARY_FP,
             DDL_INT,
             DDL_TIME,
             DDL_CLOB,
@@ -506,6 +531,48 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
 
         Struct after = (Struct) ((Struct) record.value()).get("after");
         assertRecord(after, EXPECTED_FP_AS_DOUBLE);
+    }
+
+    @Test
+    public void binaryFpTypesAsString() throws Exception {
+        stopConnector();
+        initializeConnectorTestFramework();
+        final Configuration config = connectorConfig()
+                .with(OracleConnectorConfig.BINARY_DECIMAL_HANDLING_MODE, "string")
+                .build();
+
+        start(OracleConnector.class, config);
+        assertConnectorIsRunning();
+
+        waitForSnapshotToBeCompleted(TestHelper.CONNECTOR_NAME, TestHelper.SERVER_NAME);
+
+        int expectedRecordCount = 0;
+
+        if (insertRecordsDuringTest()) {
+            insertBinaryFpTypes();
+        }
+
+        Testing.debug("Inserted");
+        expectedRecordCount++;
+
+        final SourceRecords records = consumeRecordsByTopic(expectedRecordCount);
+
+        List<SourceRecord> testTableRecords = records.recordsForTopic("server1.DEBEZIUM.TYPE_BINARY_FP");
+        assertThat(testTableRecords).hasSize(expectedRecordCount);
+        SourceRecord record = testTableRecords.get(0);
+
+        VerifyRecord.isValid(record);
+
+        // insert
+        if (insertRecordsDuringTest()) {
+            VerifyRecord.isValidInsert(record, true);
+        }
+        else {
+            VerifyRecord.isValidRead(record);
+        }
+
+        Struct after = (Struct) ((Struct) record.value()).get("after");
+        assertRecord(after, EXPECTED_BINARY_FP_AS_STRING);
     }
 
     @Test
@@ -765,6 +832,21 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
 
     protected static void insertFpTypes() throws SQLException {
         connection.execute("INSERT INTO debezium.type_fp VALUES (1, 1.1, 2.22, 3.33, 8.888, 4.4444, 5.555, 6.66, 1234.567891, 1234.567891, 77.323, 77.323)");
+        connection.execute("COMMIT");
+    }
+
+    protected static void insertBinaryFpTypes() throws SQLException {
+        connection.execute("INSERT INTO debezium.type_binary_fp VALUES ("
+                + "1"
+                + ", BINARY_FLOAT_INFINITY"
+                + ", TO_BINARY_FLOAT('+INF')"
+                + ", TO_BINARY_FLOAT('-INF')"
+                + ", TO_BINARY_FLOAT('NaN')"
+                + ", BINARY_DOUBLE_INFINITY"
+                + ", TO_BINARY_DOUBLE('+INF')"
+                + ", TO_BINARY_DOUBLE('-INF')"
+                + ", TO_BINARY_DOUBLE('NaN')"
+                + ")");
         connection.execute("COMMIT");
     }
 

@@ -36,6 +36,7 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
 
         insertStringTypes();
         insertFpTypes();
+        insertBinaryFpTypes();
         insertIntTypes();
         insertTimeTypes();
         if (!isHybridMiningStrategy()) {
@@ -80,6 +81,9 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
             case "fpTypesAsString":
             case "fpTypesAsDouble":
                 return "debezium.type_fp";
+            case "binaryFpTypes":
+            case "binaryFpTypesAsString":
+                return "debezium.type_binary_fp";
             case "intTypes":
                 return "debezium.type_int";
             case "timeTypes":

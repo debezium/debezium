@@ -34,6 +34,7 @@ import org.apache.kafka.connect.data.SchemaBuilder;
 
 import io.debezium.DebeziumException;
 import io.debezium.config.CommonConnectorConfig.BinaryHandlingMode;
+import io.debezium.connector.oracle.OracleConnectorConfig.BinaryDecimalHandlingMode;
 import io.debezium.connector.oracle.logminer.UnistrHelper;
 import io.debezium.connector.oracle.util.TimestampUtils;
 import io.debezium.data.SpecialValueDecimal;
@@ -75,6 +76,15 @@ public class OracleValueConverters extends JdbcValueConverters {
     public static final String HEXTORAW_FUNCTION_START = "HEXTORAW('";
     public static final String HEXTORAW_FUNCTION_END = "')";
 
+    public static final String INFINITY = "Infinity";
+    public static final String STREAM_INFINITY = "Inf";
+    public static final String POSITIVE_INFINITY = "+" + INFINITY;
+    public static final String STREAM_POSITIVE_INFINITY = "+" + STREAM_INFINITY;
+    public static final String NEGATIVE_INFINITY = "-" + INFINITY;
+    public static final String STREAM_NEGATIVE_INFINITY = "-" + STREAM_INFINITY;
+    public static final String NOT_A_NUMBER = "NaN";
+    public static final String STREAM_NOT_A_NUMBER = "Nan";
+
     private static final Pattern INTERVAL_DAY_SECOND_PATTERN = Pattern.compile("([+\\-])?(\\d+) (\\d+):(\\d+):(\\d+).(\\d+)");
 
     private static final DateTimeFormatter TIMESTAMP_TZ_FORMATTER = new DateTimeFormatterBuilder()
@@ -96,6 +106,7 @@ public class OracleValueConverters extends JdbcValueConverters {
     private final OracleConnection connection;
     private final boolean legacyDecimalModeStrategy;
     private final OracleConnectorConfig.IntervalHandlingMode intervalHandlingMode;
+    private final BinaryDecimalHandlingMode binaryDecimalHandlingMode;
     private final byte[] unavailableValuePlaceholderBinary;
     private final String unavailableValuePlaceholderString;
     private final CharacterSet nationalCharacterSet;
@@ -105,6 +116,7 @@ public class OracleValueConverters extends JdbcValueConverters {
         this.connection = connection;
         this.legacyDecimalModeStrategy = config.isUsingLegacyDecimalHandlingStrategy();
         this.intervalHandlingMode = config.getIntervalHandlingMode();
+        this.binaryDecimalHandlingMode = config.getBinaryDecimalHandlingMode();
         this.unavailableValuePlaceholderBinary = config.getUnavailableValuePlaceholder();
         this.unavailableValuePlaceholderString = new String(config.getUnavailableValuePlaceholder());
         this.nationalCharacterSet = connection.getNationalCharacterSet();
@@ -134,9 +146,9 @@ public class OracleValueConverters extends JdbcValueConverters {
             case Types.NUMERIC:
                 return getNumericSchema(column);
             case OracleTypes.BINARY_FLOAT:
-                return SchemaBuilder.float32();
+                return getBinaryFloatSchema(column);
             case OracleTypes.BINARY_DOUBLE:
-                return SchemaBuilder.float64();
+                return getBinaryDoubleSchema(column);
             case OracleTypes.TIMESTAMPTZ:
             case OracleTypes.TIMESTAMPLTZ:
                 return ZonedTimestamp.builder();
@@ -201,6 +213,20 @@ public class OracleValueConverters extends JdbcValueConverters {
         return SpecialValueDecimal.builder(decimalMode, column.length(), column.scale().orElse(-1));
     }
 
+    private SchemaBuilder getBinaryFloatSchema(Column column) {
+        if (BinaryDecimalHandlingMode.NUMERIC == binaryDecimalHandlingMode) {
+            return SchemaBuilder.float32();
+        }
+        return SchemaBuilder.string();
+    }
+
+    private SchemaBuilder getBinaryDoubleSchema(Column column) {
+        if (BinaryDecimalHandlingMode.NUMERIC == binaryDecimalHandlingMode) {
+            return SchemaBuilder.float64();
+        }
+        return SchemaBuilder.string();
+    }
+
     @Override
     public ValueConverter converter(Column column, Field fieldDefn) {
         switch (column.jdbcType()) {
@@ -215,9 +241,9 @@ public class OracleValueConverters extends JdbcValueConverters {
             case Types.BLOB:
                 return data -> convertBinary(column, fieldDefn, data, binaryMode);
             case OracleTypes.BINARY_FLOAT:
-                return data -> convertFloat(column, fieldDefn, data);
+                return data -> convertBinaryFloat(column, fieldDefn, data);
             case OracleTypes.BINARY_DOUBLE:
-                return data -> convertDouble(column, fieldDefn, data);
+                return data -> convertBinaryDouble(column, fieldDefn, data);
             case Types.NUMERIC:
                 return getNumericConverter(column, fieldDefn);
             case Types.FLOAT:
@@ -399,14 +425,6 @@ public class OracleValueConverters extends JdbcValueConverters {
         else if (data instanceof NUMBER) {
             return ((NUMBER) data).floatValue();
         }
-        else if (data instanceof BINARY_FLOAT) {
-            try {
-                return ((BINARY_FLOAT) data).floatValue();
-            }
-            catch (SQLException e) {
-                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
-            }
-        }
         else if (data instanceof Double) {
             return ((Double) data).floatValue();
         }
@@ -417,17 +435,54 @@ public class OracleValueConverters extends JdbcValueConverters {
         return super.convertFloat(column, fieldDefn, data);
     }
 
+    protected Object convertBinaryFloat(Column column, Field fieldDefn, Object data) {
+        if (BinaryDecimalHandlingMode.NUMERIC == binaryDecimalHandlingMode) {
+            return convertFloat(column, fieldDefn, data);
+        }
+
+        if (data instanceof Float floatValue) {
+            data = floatValue.toString();
+        }
+        else if (data instanceof BINARY_FLOAT binaryFloat) {
+            data = binaryFloat.stringValue();
+        }
+
+        return decodeBinaryFloatingPointConstants(data);
+    }
+
+    protected Object convertBinaryDouble(Column column, Field fieldDefn, Object data) {
+        if (BinaryDecimalHandlingMode.NUMERIC == binaryDecimalHandlingMode) {
+            return convertDouble(column, fieldDefn, data);
+        }
+
+        if (data instanceof Float floatValue) {
+            data = floatValue.toString();
+        }
+        else if (data instanceof Double doubleValue) {
+            data = doubleValue.toString();
+        }
+        else if (data instanceof BINARY_DOUBLE binaryDouble) {
+            data = binaryDouble.toString();
+        }
+
+        return decodeBinaryFloatingPointConstants(data);
+    }
+
+    protected Object decodeBinaryFloatingPointConstants(Object value) {
+        if (value instanceof String stringValue) {
+            return switch (stringValue) {
+                case INFINITY, POSITIVE_INFINITY, STREAM_INFINITY, STREAM_POSITIVE_INFINITY -> INFINITY;
+                case NEGATIVE_INFINITY, STREAM_NEGATIVE_INFINITY -> NEGATIVE_INFINITY;
+                case NOT_A_NUMBER, STREAM_NOT_A_NUMBER -> NOT_A_NUMBER;
+                default -> value;
+            };
+        }
+        return value;
+    }
+
     @Override
     protected Object convertDouble(Column column, Field fieldDefn, Object data) {
-        if (data instanceof BINARY_DOUBLE) {
-            try {
-                return ((BINARY_DOUBLE) data).doubleValue();
-            }
-            catch (SQLException e) {
-                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
-            }
-        }
-        else if (data instanceof String) {
+        if (data instanceof String) {
             return Double.parseDouble(toStringFromNumericHexToRawIfApplicable(column, (String) data));
         }
 
