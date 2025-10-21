@@ -56,7 +56,7 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
 
     private static final int KAFKA_CONNECT_PORT = 8083;
     private static final Integer DEFAULT_JMX_PORT = 13333;
-    private static final Duration DEBEZIUM_CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(waitTimeForRecords() * 30);
+    private static final Duration DEBEZIUM_CONTAINER_STARTUP_TIMEOUT = Duration.ofSeconds(waitTimeForRecords() * 30L);
     private static final String TEST_PROPERTY_PREFIX = "debezium.test.";
     public static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     protected static final ObjectMapper MAPPER = new ObjectMapper();
@@ -114,12 +114,12 @@ public class DebeziumContainer extends GenericContainer<DebeziumContainer> {
     }
 
     public DebeziumContainer withKafka(final StrimziKafkaContainer kafkaContainer) {
-        return withKafka(kafkaContainer.getNetwork(), kafkaContainer.getNetworkBootstrapServers());
+        return withKafka(kafkaContainer.getNetwork(), kafkaContainer.getBootstrapServers());
     }
 
     public DebeziumContainer withKafka(final StrimziKafkaCluster kafkaCluster) {
-        final StrimziKafkaContainer kafkaContainer = (StrimziKafkaContainer) kafkaCluster.getNodes().stream().findFirst().get();
-        return withKafka(kafkaContainer.getNetwork(), kafkaCluster.getNetworkBootstrapServers());
+        final StrimziKafkaContainer kafkaContainer = (StrimziKafkaContainer) kafkaCluster.getBrokers().stream().findFirst().get();
+        return withKafka(kafkaContainer.getNetwork(), kafkaCluster.getBootstrapServers());
     }
 
     public DebeziumContainer withKafka(final Network network, final String bootstrapServers) {

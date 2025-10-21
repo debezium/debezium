@@ -10,27 +10,22 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
+import io.strimzi.test.container.StrimziKafkaContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.lifecycle.Startables;
-import org.testcontainers.utility.DockerImageName;
 
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
 
 public class SchemaRegistryTestResourceLifecycleManager implements QuarkusTestResourceLifecycleManager {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SchemaRegistryTestResourceLifecycleManager.class);
-    private static final String defaultImage = "quay.io/debezium/confluentinc-cp-kafka:7.2.10";
-
     private static final Network network = Network.newNetwork();
     private static final Integer PORT = 8081;
 
-    public static KafkaContainer kafkaContainer = new KafkaContainer(DockerImageName.parse(defaultImage)
-            .asCompatibleSubstituteFor("confluentinc/cp-kafka"))
-            .withNetwork(network);
+    public static StrimziKafkaContainer kafkaContainer = new StrimziKafkaContainer().withNetwork(network);
 
     private static final SchemaRegistryContainer schemaRegistryContainer = new SchemaRegistryContainer()
             .withNetwork(network)

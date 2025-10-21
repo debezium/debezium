@@ -5,65 +5,42 @@
  */
 package io.debezium.testing.system.tools.kafka;
 
-import java.util.stream.Stream;
-
+import io.strimzi.test.container.StrimziKafkaContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.lifecycle.Startables;
 
-import io.debezium.testing.system.TestUtils;
 import io.debezium.testing.system.tools.AbstractDockerDeployer;
 import io.debezium.testing.system.tools.Deployer;
-import io.debezium.testing.system.tools.kafka.docker.KafkaContainer;
-import io.debezium.testing.system.tools.kafka.docker.ZookeeperContainer;
 
 public class DockerKafkaDeployer
-        extends AbstractDockerDeployer<DockerKafkaController, KafkaContainer>
+        extends AbstractDockerDeployer<DockerKafkaController, StrimziKafkaContainer>
         implements Deployer<DockerKafkaController> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DockerKafkaDeployer.class);
 
-    public DockerKafkaDeployer(KafkaContainer container) {
+    public DockerKafkaDeployer(StrimziKafkaContainer container) {
         super(container);
     }
 
     @Override
-    protected DockerKafkaController getController(KafkaContainer container) {
+    protected DockerKafkaController getController(StrimziKafkaContainer container) {
         LOGGER.info("Deploying Kafka container");
         return new DockerKafkaController(container);
     }
 
     @Override
     public DockerKafkaController deploy() {
-        DockerKafkaController controller;
-
-        if (!TestUtils.shouldKRaftBeUsed()) {
-            LOGGER.info("Using Kafka in Zookeeper mode");
-            LOGGER.info("Deploying Zookeeper container");
-            ZookeeperContainer zookeeperContainer = new ZookeeperContainer()
-                    .withNetwork(container.getNetwork());
-            container.withZookeeper(zookeeperContainer);
-            Startables.deepStart(Stream.of(zookeeperContainer, container)).join();
-
-            controller = getController(container);
-            controller.setZookeeperContainer(zookeeperContainer);
-        }
-        else {
-            LOGGER.info("Using Kafka in KRaft mode");
-            controller = getController(container);
-        }
-
-        return controller;
+        return getController(container);
     }
 
     public static class Builder
-            extends AbstractDockerDeployer.DockerBuilder<Builder, KafkaContainer, DockerKafkaDeployer> {
+            extends AbstractDockerDeployer.DockerBuilder<Builder, StrimziKafkaContainer, DockerKafkaDeployer> {
 
         public Builder() {
-            this(new KafkaContainer());
+            this(new StrimziKafkaContainer());
         }
 
-        public Builder(KafkaContainer container) {
+        public Builder(StrimziKafkaContainer container) {
             super(container);
         }
 

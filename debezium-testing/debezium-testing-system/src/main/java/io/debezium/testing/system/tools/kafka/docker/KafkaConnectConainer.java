@@ -7,6 +7,7 @@ package io.debezium.testing.system.tools.kafka.docker;
 
 import java.time.Duration;
 
+import io.strimzi.test.container.StrimziKafkaContainer;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 
@@ -43,10 +44,10 @@ public class KafkaConnectConainer extends GenericContainer<KafkaConnectConainer>
         withCommand(KAFKA_CONNECT_COMMAND);
     }
 
-    public KafkaConnectConainer withKafka(KafkaContainer kafka) {
+    public KafkaConnectConainer withKafka(StrimziKafkaContainer kafka) {
         return this
                 .dependsOn(kafka)
-                .withKafka(kafka.getNetwork(), kafka.getBootstrapAddress());
+                .withKafka(kafka.getNetwork(), kafka.getBootstrapServers());
     }
 
     public KafkaConnectConainer withKafka(Network network, String bootstrapServers) {
