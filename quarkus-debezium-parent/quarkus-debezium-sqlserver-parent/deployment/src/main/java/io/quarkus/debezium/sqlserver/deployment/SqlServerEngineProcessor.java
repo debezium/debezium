@@ -11,6 +11,14 @@ import static io.quarkus.datasource.common.runtime.DatabaseKind.SupportedDatabas
 import java.util.List;
 
 import io.debezium.connector.sqlserver.Module;
+import io.debezium.connector.sqlserver.SqlServerConnector;
+import io.debezium.connector.sqlserver.SqlServerConnectorTask;
+import io.debezium.connector.sqlserver.SqlServerSourceInfoStructMaker;
+import io.debezium.connector.sqlserver.snapshot.lock.ExclusiveSnapshotLock;
+import io.debezium.connector.sqlserver.snapshot.lock.NoSnapshotLock;
+import io.debezium.connector.sqlserver.snapshot.query.SelectAllSnapshotQuery;
+import io.debezium.relational.history.SchemaHistory;
+import io.debezium.storage.kafka.history.KafkaSchemaHistory;
 import io.quarkus.agroal.spi.JdbcDataSourceBuildItem;
 import io.quarkus.arc.deployment.SyntheticBeanBuildItem;
 import io.quarkus.debezium.deployment.QuarkusEngineProcessor;
@@ -24,6 +32,7 @@ import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.ExecutionTime;
 import io.quarkus.deployment.annotations.Record;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
+import io.quarkus.deployment.pkg.steps.NativeOrNativeSourcesBuild;
 
 public class SqlServerEngineProcessor implements QuarkusEngineProcessor<SqlServerDatasourceConfiguration> {
 
@@ -41,10 +50,20 @@ public class SqlServerEngineProcessor implements QuarkusEngineProcessor<SqlServe
         return new DebeziumConnectorBuildItem(SQLSERVER, SqlServerEngineProducer.class);
     }
 
-    @BuildStep
+    @BuildStep(onlyIf = NativeOrNativeSourcesBuild.class)
     @Override
     public void registerClassesThatAreLoadedThroughReflection(BuildProducer<ReflectiveClassBuildItem> reflectiveClassBuildItemBuildProducer) {
-        // TODO
+        reflectiveClassBuildItemBuildProducer.produce(ReflectiveClassBuildItem.builder(
+                SchemaHistory.class,
+                KafkaSchemaHistory.class,
+                SqlServerConnector.class,
+                SqlServerSourceInfoStructMaker.class,
+                SqlServerConnectorTask.class,
+                NoSnapshotLock.class,
+                ExclusiveSnapshotLock.class,
+                SelectAllSnapshotQuery.class)
+                .reason(getClass().getName())
+                .build());
     }
 
     @Override
