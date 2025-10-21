@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import io.debezium.jdbc.JdbcConfiguration;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
@@ -28,6 +29,8 @@ import io.quarkus.datasource.common.runtime.DatabaseKind;
 import io.quarkus.debezium.agroal.engine.AgroalParser;
 import io.quarkus.debezium.configuration.DebeziumConfigurationEngineParser.MultiEngineConfiguration;
 import io.quarkus.debezium.engine.capture.consumer.SourceRecordConsumerHandler;
+
+import static io.debezium.config.CommonConnectorConfig.DATABASE_CONFIG_PREFIX;
 
 public class SqlServerEngineProducer implements ConnectorProducer {
     public static final Connector SQLSERVER = new Connector(SqlServerConnector.class.getName());
