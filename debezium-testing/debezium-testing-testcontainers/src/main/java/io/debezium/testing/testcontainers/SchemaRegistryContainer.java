@@ -18,7 +18,8 @@ public class SchemaRegistryContainer extends GenericContainer<SchemaRegistryCont
         final String baseImageName = "quay.io/apicurio/apicurio-registry";
         final String apicurioVersion = System.getProperty("version.apicurio", "2.6.13.Final");
         String imageName = apicurioVersion.startsWith("2.")
-                ? baseImageName + "-mem" : baseImageName;
+                ? baseImageName + "-mem"
+                : baseImageName;
 
         return DockerImageName
                 .parse(imageName)
