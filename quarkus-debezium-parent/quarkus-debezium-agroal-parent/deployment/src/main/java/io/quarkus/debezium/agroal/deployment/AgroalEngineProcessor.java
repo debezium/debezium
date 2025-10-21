@@ -25,7 +25,6 @@ public class AgroalEngineProcessor {
 
     @BuildStep
     public void parser(BuildProducer<AdditionalBeanBuildItem> additionalBeanProducer) {
-        // Beans that will be injected by child modules
         additionalBeanProducer.produce(AdditionalBeanBuildItem
                 .builder()
                 .addBeanClasses(AgroalParser.class)
