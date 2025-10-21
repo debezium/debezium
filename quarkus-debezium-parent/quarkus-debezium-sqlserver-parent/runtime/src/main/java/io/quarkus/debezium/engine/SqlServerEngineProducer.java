@@ -6,16 +6,18 @@
 
 package io.quarkus.debezium.engine;
 
+import static io.debezium.config.CommonConnectorConfig.DATABASE_CONFIG_PREFIX;
+
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import io.debezium.jdbc.JdbcConfiguration;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
 import io.debezium.connector.sqlserver.SqlServerConnector;
+import io.debezium.jdbc.JdbcConfiguration;
 import io.debezium.runtime.Connector;
 import io.debezium.runtime.ConnectorProducer;
 import io.debezium.runtime.Debezium;
@@ -26,8 +28,6 @@ import io.quarkus.datasource.common.runtime.DatabaseKind;
 import io.quarkus.debezium.agroal.engine.AgroalParser;
 import io.quarkus.debezium.configuration.DebeziumConfigurationEngineParser.MultiEngineConfiguration;
 import io.quarkus.debezium.engine.capture.consumer.SourceRecordConsumerHandler;
-
-import static io.debezium.config.CommonConnectorConfig.DATABASE_CONFIG_PREFIX;
 
 public class SqlServerEngineProducer implements ConnectorProducer {
     public static final Connector SQLSERVER = new Connector(SqlServerConnector.class.getName());

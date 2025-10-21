@@ -33,9 +33,9 @@ public class AgroalEngineProcessor {
 
     @BuildStep
     @Record(ExecutionTime.RUNTIME_INIT)
-    public void produceSqlServerDatasourceConfig(List<JdbcDataSourceBuildItem> jdbcDataSources,
-                                                 AgroalDatasourceRecorder recorder,
-                                                 BuildProducer<SyntheticBeanBuildItem> producer) {
+    public void produceAgroalDatasourceConfigurations(List<JdbcDataSourceBuildItem> jdbcDataSources,
+                                                      AgroalDatasourceRecorder recorder,
+                                                      BuildProducer<SyntheticBeanBuildItem> producer) {
         jdbcDataSources.forEach(item -> producer.produce(SyntheticBeanBuildItem
                 .configure(AgroalDatasourceConfiguration.class)
                 .scope(Singleton.class)
