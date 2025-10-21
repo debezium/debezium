@@ -54,12 +54,6 @@
         <!-- Azure Identity -->
         <version.azure.identity>1.15.4</version.azure.identity>
 
-        <!-- Azure Core -->
-        <version.azure.core>1.57.0</version.azure.core>
-
-        <!-- MSAL4J-->
-        <version.msal4j>1.23.1</version.msal4j>
-
         <!-- K8s Config Map Storage -->
         <version.kubernetes.client>6.13.4</version.kubernetes.client>
 
@@ -584,20 +578,6 @@
                 <groupId>com.azure</groupId>
                 <artifactId>azure-identity</artifactId>
                 <version>${version.azure.identity}</version>
-            </dependency>
-
-            <!-- MSAL4J -->
-            <dependency>
-                <groupId>com.microsoft.azure</groupId>
-                <artifactId>msal4j</artifactId>
-                <version>${version.msal4j}</version>
-            </dependency>
-
-            <!-- Azure Core -->
-            <dependency>
-                <groupId>com.azure</groupId>
-                <artifactId>azure-core</artifactId>
-                <version>${version.azure.core}</version>
             </dependency>
 
             <!-- K8s Config Map Storage -->
