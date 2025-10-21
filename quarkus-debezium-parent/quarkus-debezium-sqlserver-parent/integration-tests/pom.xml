@@ -19,6 +19,13 @@
         <dependency>
             <groupId>io.debezium.quarkus</groupId>
             <artifactId>quarkus-debezium-sqlserver</artifactId>
+            <exclusions>
+                <!-- Disable dev services for testing purpose -->
+                <exclusion>
+                    <groupId>io.quarkus</groupId>
+                    <artifactId>quarkus-devservices-mssql</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
