@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Blob;
 import java.sql.Clob;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -405,13 +406,8 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     @Override
     protected Object convertInteger(Column column, Field fieldDefn, Object data) {
-        if (data instanceof NUMBER) {
-            try {
-                data = ((NUMBER) data).intValue();
-            }
-            catch (SQLException e) {
-                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
-            }
+        if (data instanceof NUMBER number) {
+            data = getSqlValueOrThrow(column, number::intValue);
         }
 
         return super.convertInteger(column, fieldDefn, data);
@@ -535,21 +531,16 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     @Override
     protected Object convertDecimal(Column column, Field fieldDefn, Object data) {
-        if (data instanceof NUMBER) {
-            try {
-                data = ((NUMBER) data).bigDecimalValue();
-            }
-            catch (SQLException e) {
-                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
-            }
+        if (data instanceof NUMBER number) {
+            data = getSqlValueOrThrow(column, number::bigDecimalValue);
         }
         else if (data instanceof BigInteger) {
             // OpenLogReplicator
             data = toBigDecimal(column, fieldDefn, data.toString());
         }
-        else if (data instanceof String) {
+        else if (data instanceof String strValue) {
             // LogMiner
-            data = toBigDecimal(column, fieldDefn, toNumberFromNumericHexToRawIfApplicable(column, (String) data));
+            data = toBigDecimal(column, fieldDefn, toNumberFromNumericHexToRawIfApplicable(column, strValue));
         }
 
         // adjust scale to column's scale if the column's scale is larger than the one from
@@ -567,64 +558,44 @@ public class OracleValueConverters extends JdbcValueConverters {
     }
 
     protected Object convertNumericAsTinyInt(Column column, Field fieldDefn, Object data) {
-        if (data instanceof NUMBER) {
-            try {
-                data = ((NUMBER) data).byteValue();
-            }
-            catch (SQLException e) {
-                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
-            }
+        if (data instanceof NUMBER number) {
+            data = getSqlValueOrThrow(column, number::byteValue);
         }
-        else if (data instanceof String) {
-            data = toNumberFromNumericHexToRawIfApplicable(column, (String) data);
+        else if (data instanceof String strValue) {
+            data = toNumberFromNumericHexToRawIfApplicable(column, strValue);
         }
 
         return convertTinyInt(column, fieldDefn, data);
     }
 
     protected Object convertNumericAsSmallInt(Column column, Field fieldDefn, Object data) {
-        if (data instanceof NUMBER) {
-            try {
-                data = ((NUMBER) data).shortValue();
-            }
-            catch (SQLException e) {
-                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
-            }
+        if (data instanceof NUMBER number) {
+            data = getSqlValueOrThrow(column, number::shortValue);
         }
-        else if (data instanceof String) {
-            data = toNumberFromNumericHexToRawIfApplicable(column, (String) data);
+        else if (data instanceof String strValue) {
+            data = toNumberFromNumericHexToRawIfApplicable(column, strValue);
         }
 
         return super.convertSmallInt(column, fieldDefn, data);
     }
 
     protected Object convertNumericAsInteger(Column column, Field fieldDefn, Object data) {
-        if (data instanceof NUMBER) {
-            try {
-                data = ((NUMBER) data).intValue();
-            }
-            catch (SQLException e) {
-                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
-            }
+        if (data instanceof NUMBER number) {
+            data = getSqlValueOrThrow(column, number::intValue);
         }
-        else if (data instanceof String) {
-            data = toNumberFromNumericHexToRawIfApplicable(column, (String) data);
+        else if (data instanceof String strValue) {
+            data = toNumberFromNumericHexToRawIfApplicable(column, strValue);
         }
 
         return super.convertInteger(column, fieldDefn, data);
     }
 
     protected Object convertNumericAsBigInteger(Column column, Field fieldDefn, Object data) {
-        if (data instanceof NUMBER) {
-            try {
-                data = ((NUMBER) data).longValue();
-            }
-            catch (SQLException e) {
-                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
-            }
+        if (data instanceof NUMBER number) {
+            data = getSqlValueOrThrow(column, number::longValue);
         }
-        else if (data instanceof String) {
-            data = toNumberFromNumericHexToRawIfApplicable(column, (String) data);
+        else if (data instanceof String strValue) {
+            data = toNumberFromNumericHexToRawIfApplicable(column, strValue);
         }
 
         return super.convertBigInt(column, fieldDefn, data);
@@ -641,20 +612,16 @@ public class OracleValueConverters extends JdbcValueConverters {
      */
     @Override
     protected Object convertBoolean(Column column, Field fieldDefn, Object data) {
-        if (data instanceof BigDecimal) {
-            return ((BigDecimal) data).byteValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
+        if (data instanceof BigDecimal bigDecimal) {
+            return bigDecimal.byteValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
         }
-        if (data instanceof String) {
-            data = toStringFromStringHexToRawIfApplicable(column, (String) data);
+        if (data instanceof String strValue) {
+            data = toStringFromStringHexToRawIfApplicable(column, strValue);
             return Byte.parseByte((String) data) == 0 ? Boolean.FALSE : Boolean.TRUE;
         }
-        if (data instanceof NUMBER) {
-            try {
-                return ((NUMBER) data).intValue() == 0 ? Boolean.FALSE : Boolean.TRUE;
-            }
-            catch (SQLException e) {
-                throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
-            }
+        if (data instanceof NUMBER number) {
+            final int value = getSqlValueOrThrow(column, number::intValue);
+            return value == 0 ? Boolean.FALSE : Boolean.TRUE;
         }
         return super.convertBoolean(column, fieldDefn, data);
     }
@@ -700,24 +667,18 @@ public class OracleValueConverters extends JdbcValueConverters {
     }
 
     protected Object fromOracleTimeClasses(Column column, Object data) {
-        try {
-            if (data instanceof TIMESTAMP) {
-                data = ((TIMESTAMP) data).timestampValue();
-            }
-            else if (data instanceof DATE) {
-                data = ((DATE) data).timestampValue();
-            }
-            else if (data instanceof TIMESTAMPTZ) {
-                final TIMESTAMPTZ ts = (TIMESTAMPTZ) data;
-                data = ts.toZonedDateTime();
-            }
-            else if (data instanceof TIMESTAMPLTZ) {
-                final TIMESTAMPLTZ ts = (TIMESTAMPLTZ) data;
-                data = ZonedDateTime.ofInstant(ts.timestampValue(connection.connection()).toInstant(), ZoneId.systemDefault()).withZoneSameInstant(ZoneOffset.UTC);
-            }
+        if (data instanceof TIMESTAMP timestamp) {
+            return getSqlValueOrThrow(column, timestamp::timestampValue);
         }
-        catch (SQLException e) {
-            throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
+        else if (data instanceof DATE date) {
+            return getSqlValueOrThrow(column, date::timestampValue);
+        }
+        else if (data instanceof TIMESTAMPTZ timestampTz) {
+            return getSqlValueOrThrow(column, timestampTz::toZonedDateTime);
+        }
+        else if (data instanceof TIMESTAMPLTZ timestampLtz) {
+            final Timestamp timestamp = getSqlValueOrThrow(column, () -> timestampLtz.timestampValue(connection.connection()));
+            return ZonedDateTime.ofInstant(timestamp.toInstant(), ZoneId.systemDefault()).withZoneSameInstant(ZoneOffset.UTC);
         }
         return data;
     }
@@ -989,18 +950,11 @@ public class OracleValueConverters extends JdbcValueConverters {
      * @return the converted string value
      */
     private String convertHexToRawFunctionToString(Column column, String function) {
-        try {
-            switch (column.jdbcType()) {
-                case OracleTypes.NVARCHAR:
-                case OracleTypes.NCHAR:
-                    return new CHAR(convertHexToRawFunctionToByteArray(function), nationalCharacterSet).toString();
-                default:
-                    return new String(RAW.hexString2Bytes(getHexToRawHexString(function)), StandardCharsets.UTF_8);
-            }
-        }
-        catch (Exception e) {
-            throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
-        }
+        return getSqlValueOrThrow(column, () -> switch (column.jdbcType()) {
+            case OracleTypes.NVARCHAR, OracleTypes.NCHAR ->
+                new CHAR(convertHexToRawFunctionToByteArray(function), nationalCharacterSet).toString();
+            default -> new String(RAW.hexString2Bytes(getHexToRawHexString(function)), StandardCharsets.UTF_8);
+        });
     }
 
     /**
@@ -1011,19 +965,14 @@ public class OracleValueConverters extends JdbcValueConverters {
      * @return the converted numeric data type
      */
     private Object convertHexToRawFunctionToNumber(Column column, String data) {
-        try {
-            switch (column.jdbcType()) {
-                case OracleTypes.BINARY_FLOAT:
-                    return new BINARY_FLOAT(convertHexToRawFunctionToByteArray(data)).stringValue();
-                case OracleTypes.BINARY_DOUBLE:
-                    return new BINARY_DOUBLE(convertHexToRawFunctionToByteArray(data)).stringValue();
-                default:
-                    return new NUMBER(convertHexToRawFunctionToByteArray(data)).stringValue();
-            }
-        }
-        catch (Exception e) {
-            throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
-        }
+        return getSqlValueOrThrow(column, () -> {
+            final byte[] byteData = convertHexToRawFunctionToByteArray(data);
+            return switch (column.jdbcType()) {
+                case OracleTypes.BINARY_FLOAT -> new BINARY_FLOAT(byteData).stringValue();
+                case OracleTypes.BINARY_DOUBLE -> new BINARY_DOUBLE(byteData).stringValue();
+                default -> new NUMBER(byteData).stringValue();
+            };
+        });
     }
 
     private String toStringFromNumericHexToRawIfApplicable(Column column, String data) {
