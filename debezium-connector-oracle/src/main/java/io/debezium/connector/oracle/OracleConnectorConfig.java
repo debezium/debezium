@@ -756,10 +756,9 @@ public class OracleConnectorConfig extends HistorizedRelationalDatabaseConnector
 
     public static final Field BINARY_DECIMAL_HANDLING_MODE = Field.create("binary.decimal.handling.mode")
             .withDisplayName("Binary decimal handling mode")
-            .withType(Type.STRING)
+            .withEnum(BinaryDecimalHandlingMode.class, BinaryDecimalHandlingMode.NUMERIC)
             .withWidth(Width.MEDIUM)
             .withImportance(Importance.LOW)
-            .withDefault(BinaryDecimalHandlingMode.NUMERIC.getValue())
             .withDescription("Specifies how Oracle binary float/double columns are serialized." +
                     "numeric: serialized as either float32 or float64 types depending on precision; " +
                     "string: serialized as a string, allowing support for NaN/Infinity/-Infinity values");
