@@ -70,7 +70,17 @@ public class SnapshotDatatypesIT extends AbstractOracleDatatypesTest {
 
     protected Builder connectorConfig() {
         return TestHelper.defaultConfig()
-                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, getTableIncludeList());
+                .with(OracleConnectorConfig.TABLE_INCLUDE_LIST, getTableIncludeList())
+                .with(OracleConnectorConfig.BINARY_DECIMAL_HANDLING_MODE, getBinaryDecimalHandlingMode());
+    }
+
+    private OracleConnectorConfig.BinaryDecimalHandlingMode getBinaryDecimalHandlingMode() {
+        switch (name.getMethodName()) {
+            case "binaryFpTypesAsString":
+                return OracleConnectorConfig.BinaryDecimalHandlingMode.STRING;
+            default:
+                return OracleConnectorConfig.BinaryDecimalHandlingMode.NUMERIC;
+        }
     }
 
     private String getTableIncludeList() {

@@ -31,6 +31,7 @@ import org.junit.rules.TestRule;
 
 import io.debezium.config.Configuration;
 import io.debezium.config.Configuration.Builder;
+import io.debezium.connector.oracle.OracleConnectorConfig.BinaryDecimalHandlingMode;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnAdapterNameRule;
 import io.debezium.connector.oracle.junit.SkipTestDependingOnStrategyRule;
 import io.debezium.connector.oracle.junit.SkipTestWhenRunWithApicurioRule;
@@ -98,10 +99,12 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
             "  val_bf_pinf binary_float, " +
             "  val_bf_ninf binary_float, " +
             "  val_bf_nan binary_float, " +
+            "  val_bf_null binary_float, " +
             "  val_bd_inf binary_double, " +
             "  val_bd_pinf binary_double, " +
             "  val_bd_ninf binary_double, " +
             "  val_bd_nan binary_double, " +
+            "  val_bd_null binary_double, " +
             "  primary key(id)" +
             ")";
 
@@ -215,10 +218,12 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
             new SchemaAndValueField("VAL_BF_PINF", Schema.OPTIONAL_STRING_SCHEMA, "Infinity"),
             new SchemaAndValueField("VAL_BF_NINF", Schema.OPTIONAL_STRING_SCHEMA, "-Infinity"),
             new SchemaAndValueField("VAL_BF_NAN", Schema.OPTIONAL_STRING_SCHEMA, "NaN"),
+            new SchemaAndValueField("VAL_BF_NULL", Schema.OPTIONAL_STRING_SCHEMA, null),
             new SchemaAndValueField("VAL_BD_INF", Schema.OPTIONAL_STRING_SCHEMA, "Infinity"),
             new SchemaAndValueField("VAL_BD_PINF", Schema.OPTIONAL_STRING_SCHEMA, "Infinity"),
             new SchemaAndValueField("VAL_BD_NINF", Schema.OPTIONAL_STRING_SCHEMA, "-Infinity"),
-            new SchemaAndValueField("VAL_BD_NAN", Schema.OPTIONAL_STRING_SCHEMA, "NaN"));
+            new SchemaAndValueField("VAL_BD_NAN", Schema.OPTIONAL_STRING_SCHEMA, "NaN"),
+            new SchemaAndValueField("VAL_BD_NULL", Schema.OPTIONAL_STRING_SCHEMA, null));
 
     private static final List<SchemaAndValueField> EXPECTED_INT = Arrays.asList(
             new SchemaAndValueField("VAL_INT", NUMBER_SCHEMA, new BigDecimal("1")),
@@ -538,7 +543,7 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
         stopConnector();
         initializeConnectorTestFramework();
         final Configuration config = connectorConfig()
-                .with(OracleConnectorConfig.BINARY_DECIMAL_HANDLING_MODE, "string")
+                .with(OracleConnectorConfig.BINARY_DECIMAL_HANDLING_MODE, BinaryDecimalHandlingMode.STRING)
                 .build();
 
         start(OracleConnector.class, config);
@@ -842,10 +847,12 @@ public abstract class AbstractOracleDatatypesTest extends AbstractAsyncEngineCon
                 + ", TO_BINARY_FLOAT('+INF')"
                 + ", TO_BINARY_FLOAT('-INF')"
                 + ", TO_BINARY_FLOAT('NaN')"
+                + ", NULL"
                 + ", BINARY_DOUBLE_INFINITY"
                 + ", TO_BINARY_DOUBLE('+INF')"
                 + ", TO_BINARY_DOUBLE('-INF')"
                 + ", TO_BINARY_DOUBLE('NaN')"
+                + ", NULL"
                 + ")");
         connection.execute("COMMIT");
     }

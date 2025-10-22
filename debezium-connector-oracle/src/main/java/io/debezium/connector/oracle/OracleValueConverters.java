@@ -77,12 +77,12 @@ public class OracleValueConverters extends JdbcValueConverters {
     public static final String HEXTORAW_FUNCTION_END = "')";
 
     public static final String INFINITY = "Infinity";
-    public static final String STREAM_INFINITY = "Inf";
-    public static final String POSITIVE_INFINITY = "+" + INFINITY;
-    public static final String STREAM_POSITIVE_INFINITY = "+" + STREAM_INFINITY;
     public static final String NEGATIVE_INFINITY = "-" + INFINITY;
-    public static final String STREAM_NEGATIVE_INFINITY = "-" + STREAM_INFINITY;
     public static final String NOT_A_NUMBER = "NaN";
+
+    // Values returned by LogMiner
+    public static final String STREAM_INFINITY = "Inf";
+    public static final String STREAM_NEGATIVE_INFINITY = "-" + STREAM_INFINITY;
     public static final String STREAM_NOT_A_NUMBER = "Nan";
 
     private static final Pattern INTERVAL_DAY_SECOND_PATTERN = Pattern.compile("([+\\-])?(\\d+) (\\d+):(\\d+):(\\d+).(\\d+)");
@@ -419,65 +419,60 @@ public class OracleValueConverters extends JdbcValueConverters {
 
     @Override
     protected Object convertFloat(Column column, Field fieldDefn, Object data) {
-        if (data instanceof Float) {
-            return data;
+        final Float floatValue = extractFloatValue(column, data);
+        if (floatValue != null) {
+            return floatValue;
         }
-        else if (data instanceof NUMBER) {
-            return ((NUMBER) data).floatValue();
-        }
-        else if (data instanceof Double) {
-            return ((Double) data).floatValue();
-        }
-        else if (data instanceof String) {
-            return Float.parseFloat(toStringFromNumericHexToRawIfApplicable(column, (String) data));
-        }
-
         return super.convertFloat(column, fieldDefn, data);
     }
 
     protected Object convertBinaryFloat(Column column, Field fieldDefn, Object data) {
-        if (BinaryDecimalHandlingMode.NUMERIC == binaryDecimalHandlingMode) {
-            return convertFloat(column, fieldDefn, data);
-        }
+        final Float floatValue = extractFloatValue(column, data);
+        if (floatValue != null) {
+            if (BinaryDecimalHandlingMode.NUMERIC == binaryDecimalHandlingMode) {
+                if (floatValue.isInfinite()) {
+                    throw new DebeziumException("Set binary.decimal.handling.mode to 'string' to emit infinity values");
+                }
+                else if (floatValue.isNaN()) {
+                    throw new DebeziumException("Set binary.decimal.handling.mode to 'string' to emit NAN values");
+                }
+                return floatValue;
+            }
 
-        if (data instanceof Float floatValue) {
-            data = floatValue.toString();
+            if (floatValue.isInfinite()) {
+                return floatValue < 0 ? NEGATIVE_INFINITY : INFINITY;
+            }
+            else if (floatValue.isNaN()) {
+                return NOT_A_NUMBER;
+            }
+            return String.valueOf(floatValue);
         }
-        else if (data instanceof BINARY_FLOAT binaryFloat) {
-            data = binaryFloat.stringValue();
-        }
-
-        return decodeBinaryFloatingPointConstants(data);
+        return null;
     }
 
-    protected Object convertBinaryDouble(Column column, Field fieldDefn, Object data) {
-        if (BinaryDecimalHandlingMode.NUMERIC == binaryDecimalHandlingMode) {
-            return convertDouble(column, fieldDefn, data);
-        }
-
-        if (data instanceof Float floatValue) {
-            data = floatValue.toString();
-        }
-        else if (data instanceof Double doubleValue) {
-            data = doubleValue.toString();
-        }
-        else if (data instanceof BINARY_DOUBLE binaryDouble) {
-            data = binaryDouble.toString();
-        }
-
-        return decodeBinaryFloatingPointConstants(data);
-    }
-
-    protected Object decodeBinaryFloatingPointConstants(Object value) {
-        if (value instanceof String stringValue) {
-            return switch (stringValue) {
-                case INFINITY, POSITIVE_INFINITY, STREAM_INFINITY, STREAM_POSITIVE_INFINITY -> INFINITY;
-                case NEGATIVE_INFINITY, STREAM_NEGATIVE_INFINITY -> NEGATIVE_INFINITY;
-                case NOT_A_NUMBER, STREAM_NOT_A_NUMBER -> NOT_A_NUMBER;
-                default -> value;
+    private Float extractFloatValue(Column column, Object data) {
+        if (data instanceof String floatString) {
+            final String convertedString = toStringFromNumericHexToRawIfApplicable(column, floatString);
+            return switch (convertedString) {
+                case STREAM_INFINITY -> Float.POSITIVE_INFINITY;
+                case STREAM_NEGATIVE_INFINITY -> Float.NEGATIVE_INFINITY;
+                case STREAM_NOT_A_NUMBER -> Float.NaN;
+                default -> Float.parseFloat(convertedString);
             };
         }
-        return value;
+        else if (data instanceof NUMBER number) {
+            return number.floatValue();
+        }
+        else if (data instanceof BINARY_FLOAT binaryFloat) {
+            return getSqlValueOrThrow(column, binaryFloat::floatValue);
+        }
+        else if (data instanceof Float floatValue) {
+            return floatValue;
+        }
+        else if (data instanceof Double doubleValue) {
+            return doubleValue.floatValue();
+        }
+        return null;
     }
 
     @Override
@@ -487,6 +482,55 @@ public class OracleValueConverters extends JdbcValueConverters {
         }
 
         return super.convertDouble(column, fieldDefn, data);
+    }
+
+    protected Object convertBinaryDouble(Column column, Field fieldDefn, Object data) {
+        final Double doubleValue = extractDoubleValue(column, data);
+        if (doubleValue != null) {
+            if (BinaryDecimalHandlingMode.NUMERIC == binaryDecimalHandlingMode) {
+                if (doubleValue.isInfinite()) {
+                    throw new DebeziumException("Set binary.decimal.handling.mode to 'string' to emit infinity values");
+                }
+                else if (doubleValue.isNaN()) {
+                    throw new DebeziumException("Set binary.decimal.handling.mode to 'string' to emit NAN values");
+                }
+                return doubleValue;
+            }
+
+            if (doubleValue.isInfinite()) {
+                return doubleValue < 0 ? NEGATIVE_INFINITY : INFINITY;
+            }
+            else if (doubleValue.isNaN()) {
+                return NOT_A_NUMBER;
+            }
+            return String.valueOf(doubleValue);
+        }
+        return null;
+    }
+
+    private Double extractDoubleValue(Column column, Object data) {
+        if (data instanceof String doubleString) {
+            final String convertedString = toStringFromNumericHexToRawIfApplicable(column, doubleString);
+            return switch (convertedString) {
+                case STREAM_INFINITY -> Double.POSITIVE_INFINITY;
+                case STREAM_NEGATIVE_INFINITY -> Double.NEGATIVE_INFINITY;
+                case STREAM_NOT_A_NUMBER -> Double.NaN;
+                default -> Double.parseDouble(convertedString);
+            };
+        }
+        else if (data instanceof NUMBER number) {
+            return number.doubleValue();
+        }
+        else if (data instanceof BINARY_DOUBLE binaryDouble) {
+            return getSqlValueOrThrow(column, binaryDouble::doubleValue);
+        }
+        else if (data instanceof Float floatValue) {
+            return floatValue.doubleValue();
+        }
+        else if (data instanceof Double doubleValue) {
+            return doubleValue;
+        }
+        return null;
     }
 
     @Override
@@ -1037,4 +1081,17 @@ public class OracleValueConverters extends JdbcValueConverters {
         }
     }
 
+    private <T> T getSqlValueOrThrow(Column column, SqlValueProvider<T> supplier) {
+        try {
+            return supplier.getValue();
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Couldn't convert value for column " + column.name(), e);
+        }
+    }
+
+    @FunctionalInterface
+    interface SqlValueProvider<T> {
+        T getValue() throws SQLException;
+    }
 }
