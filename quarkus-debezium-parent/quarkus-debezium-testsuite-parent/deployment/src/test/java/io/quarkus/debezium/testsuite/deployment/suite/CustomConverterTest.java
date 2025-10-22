@@ -6,13 +6,12 @@
 
 package io.quarkus.debezium.testsuite.deployment.suite;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.testcontainers.shaded.org.awaitility.Awaitility.given;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.given;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import io.quarkus.debezium.testsuite.deployment.SuiteTags;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
@@ -32,6 +31,7 @@ import io.debezium.runtime.DebeziumStatus;
 import io.debezium.runtime.EngineManifest;
 import io.debezium.runtime.FieldFilterStrategy;
 import io.debezium.spi.converter.ConvertedField;
+import io.quarkus.debezium.testsuite.deployment.SuiteTags;
 import io.quarkus.test.QuarkusUnitTest;
 
 @Tag(SuiteTags.DEFAULT)
